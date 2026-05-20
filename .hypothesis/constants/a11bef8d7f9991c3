@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\allreduce_matmul_grad_overlapping.py
+# hypothesis_version: 6.148.7
+
+['X', 'X@GRAD', 'Y@GRAD', 'c_allreduce_sum', 'dist_context', 'matmul_v2_grad', 'trans_x', 'trans_y']

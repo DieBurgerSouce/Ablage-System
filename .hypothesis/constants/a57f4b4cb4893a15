@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\pre_grad.py
+# hypothesis_version: 6.148.7
+
+[0.0001, ',', '.', '_', 'artifact', 'bias', 'call_function', 'call_method', 'counter', 'encoding', 'fuse_conv_bn', 'get_attr', 'inductor', 'input', 'mutate_cat_pass_aten', 'name', 'normalization_pass', 'num_iterations', 'other', 'permutation', 'permute', 'pre_grad', 'pre_grad_custom_pass', 'precision', 'relu', 'remove_identity', 'remove_reshape_pass', 'split_cat_pass_aten', 'string', 'tanh', 'tensor_meta', 'view', 'weight']

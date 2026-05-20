@@ -1,0 +1,491 @@
+# -*- coding: utf-8 -*-
+"""Papierkorb (Trash) API - Soft Delete Management.
+
+Benutzerfreundliche Schnittstelle für:
+- Gelöschte Dokumente auflisten
+- Dokumente wiederherstellen
+- Dokumente permanent löschen
+
+GDPR-konform mit 30-Tage-Wiederherstellungsfrist.
+"""
+
+from typing import Optional
+from uuid import UUID
+
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import and_, delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.dependencies import get_db, get_current_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.db.models import Company, Document, User, UserCompany
+from app.db.schemas import (
+    SoftDeleteResponse,
+    RestoreDocumentResponse,
+    DeletedDocumentsListResponse,
+)
+from app.services.document_services.gdpr_service import get_gdpr_service
+from app.core.rate_limiting import limiter, get_user_identifier
+
+logger = structlog.get_logger(__name__)
+
+router = APIRouter(prefix="/trash", tags=["Papierkorb"])
+
+
+# =============================================================================
+# Multi-Tenant Helpers (Pattern analog F3 / app/api/v1/invoices.py)
+# =============================================================================
+
+
+async def _get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
+    """Aktive Company-ID des Users via UserCompany ermitteln."""
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.is_current.is_(True))
+        .where(Company.is_active.is_(True))
+        .where(Company.deleted_at.is_(None))
+    )
+    current_company_id = result.scalar_one_or_none()
+    if current_company_id:
+        return current_company_id
+    # Fallback: erste verfügbare Firma
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(Company.is_active.is_(True))
+        .where(Company.deleted_at.is_(None))
+        .order_by(UserCompany.created_at)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _require_user_company_id_dep(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UUID:
+    """FastAPI-Dependency: liefert die aktive Firmen-ID, 403 wenn keine Zuordnung."""
+    company_id = await _get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kein Unternehmen zugeordnet",
+        )
+    return company_id
+
+
+# =============================================================================
+# Response Schemas
+# =============================================================================
+
+
+class TrashStatsResponse(BaseModel):
+    """Statistiken zum Papierkorb."""
+
+    total_items: int = Field(..., description="Anzahl Dokumente im Papierkorb")
+    can_restore_count: int = Field(
+        ..., description="Davon noch wiederherstellbar"
+    )
+    expiring_soon_count: int = Field(
+        ..., description="Laufen in 7 Tagen ab"
+    )
+    storage_used_bytes: int = Field(
+        0, description="Speicherplatz der gelöschten Dokumente"
+    )
+
+
+class PermanentDeleteResponse(BaseModel):
+    """Response nach permanenter Löschung."""
+
+    document_id: UUID
+    message: str = "Dokument wurde permanent gelöscht"
+
+
+class EmptyTrashResponse(BaseModel):
+    """Response nach Leeren des Papierkorbs."""
+
+    deleted_count: int
+    message: str
+
+
+# =============================================================================
+# Endpoints
+# =============================================================================
+
+
+@router.get(
+    "",
+    response_model=DeletedDocumentsListResponse,
+    summary="Papierkorb auflisten",
+    description="Listet alle soft-gelöschten Dokumente des aktuellen Benutzers auf.",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def list_trash(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DeletedDocumentsListResponse:
+    """Alle Dokumente im Papierkorb auflisten.
+
+    Zeigt gelöschte Dokumente mit:
+    - Löschdatum
+    - Verbleibende Tage bis zur permanenten Löschung
+    - Wiederherstellbarkeit
+
+    Returns:
+        DeletedDocumentsListResponse mit allen gelöschten Dokumenten
+    """
+    service = get_gdpr_service()
+    result = await service.list_deleted_documents(db=db, user_id=current_user.id)
+
+    logger.debug(
+        "trash_listed",
+        user_id=str(current_user.id),
+        count=result.total,
+    )
+
+    return result
+
+
+@router.get(
+    "/stats",
+    response_model=TrashStatsResponse,
+    summary="Papierkorb-Statistiken",
+    description="Gibt Statistiken über den Papierkorb zurück.",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_trash_stats(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TrashStatsResponse:
+    """Statistiken zum Papierkorb abrufen.
+
+    Returns:
+        TrashStatsResponse mit Anzahl, wiederherstellbar, bald ablaufend
+    """
+    service = get_gdpr_service()
+    result = await service.list_deleted_documents(db=db, user_id=current_user.id)
+
+    can_restore = sum(1 for doc in result.documents if doc.can_restore)
+    expiring_soon = sum(
+        1 for doc in result.documents
+        if doc.days_until_permanent_deletion is not None
+        and doc.days_until_permanent_deletion <= 7
+    )
+
+    # Calculate storage used from file_size of deleted documents
+    from app.db.models import Document
+    from sqlalchemy import select, func
+
+    storage_query = select(func.coalesce(func.sum(Document.file_size), 0)).where(
+        Document.owner_id == current_user.id,
+        Document.deleted_at.isnot(None),
+    )
+    storage_result = await db.execute(storage_query)
+    storage_used = storage_result.scalar() or 0
+
+    return TrashStatsResponse(
+        total_items=result.total,
+        can_restore_count=can_restore,
+        expiring_soon_count=expiring_soon,
+        storage_used_bytes=storage_used,
+    )
+
+
+@router.get(
+    "/{document_id}",
+    summary="Dokument-Details im Papierkorb",
+    description="Gibt Details zu einem gelöschten Dokument zurück.",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_trash_item(
+    request: Request,
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Details eines gelöschten Dokuments abrufen.
+
+    Args:
+        document_id: ID des Dokuments
+
+    Returns:
+        Dict mit Aufbewahrungsinformationen
+
+    Raises:
+        HTTPException 404: Dokument nicht gefunden
+    """
+    service = get_gdpr_service()
+    info = await service.get_retention_info(
+        db=db, document_id=document_id, user_id=current_user.id
+    )
+
+    if not info:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden",
+        )
+
+    if not info.get("is_deleted"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument befindet sich nicht im Papierkorb",
+        )
+
+    return info
+
+
+@router.post(
+    "/{document_id}/restore",
+    response_model=RestoreDocumentResponse,
+    summary="Dokument wiederherstellen",
+    description="Stellt ein soft-gelöschtes Dokument wieder her.",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def restore_document(
+    request: Request,
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RestoreDocumentResponse:
+    """Soft-gelöschtes Dokument wiederherstellen.
+
+    Nur möglich innerhalb der 30-Tage-Frist.
+
+    Args:
+        document_id: ID des wiederherzustellenden Dokuments
+
+    Returns:
+        RestoreDocumentResponse bei Erfolg
+
+    Raises:
+        HTTPException 404: Dokument nicht gefunden
+        HTTPException 410: 30-Tage-Frist abgelaufen
+    """
+    service = get_gdpr_service()
+
+    try:
+        result = await service.restore_document(
+            db=db, document_id=document_id, user_id=current_user.id
+        )
+    except ValueError as e:
+        # 30-Tage-Frist abgelaufen
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=safe_error_detail(e, "Papierkorb"),
+        )
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden oder nicht im Papierkorb",
+        )
+
+    logger.info(
+        "document_restored_from_trash",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+    )
+
+    return result
+
+
+@router.delete(
+    "/{document_id}",
+    response_model=PermanentDeleteResponse,
+    summary="Dokument permanent löschen",
+    description="Löscht ein Dokument permanent aus dem Papierkorb.",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def permanently_delete_document(
+    request: Request,
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(_require_user_company_id_dep),
+) -> PermanentDeleteResponse:
+    """Dokument permanent aus dem Papierkorb löschen.
+
+    ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden!
+
+    SECURITY: Multi-Tenant-Isolation via Document.company_id - User die zwischen
+    Companies wechseln können fremde Dokumente nicht hart löschen.
+
+    Args:
+        document_id: ID des zu löschenden Dokuments
+
+    Returns:
+        PermanentDeleteResponse bei Erfolg
+
+    Raises:
+        HTTPException 404: Dokument nicht gefunden
+    """
+    # Nur gelöschte Dokumente der aktuellen Company finden (Defense-in-Depth:
+    # owner_id zusätzlich, damit auch ohne company_id-Backfill kein Bypass).
+    query = select(Document).where(
+        and_(
+            Document.id == document_id,
+            Document.company_id == company_id,
+            Document.owner_id == current_user.id,
+            Document.deleted_at.isnot(None),
+        )
+    )
+    result = await db.execute(query)
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden oder nicht im Papierkorb",
+        )
+
+    # Audit-Event VOR der Hard-Delete-Kaskade emittieren (sonst geht der
+    # Eintrag im FK-Cascade verloren).
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+
+    try:
+        await emit_domain_event(
+            db=db,
+            aggregate_type="document",
+            aggregate_id=document_id,
+            event_type="document_permanently_deleted",
+            event_data={
+                "title": doc.title,
+                "source": "trash.permanently_delete_document",
+            },
+            company_id=company_id,
+            user_id=current_user.id,
+        )
+    except Exception as e:  # noqa: BLE001 - Audit darf Delete nicht blocken
+        logger.error(
+            "document_permanently_delete_audit_failed",
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            **safe_error_log(e),
+        )
+
+    try:
+        await db.delete(doc)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    logger.warning(
+        "document_permanently_deleted",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        company_id=str(company_id),
+    )
+
+    return PermanentDeleteResponse(document_id=document_id)
+
+
+@router.delete(
+    "",
+    response_model=EmptyTrashResponse,
+    summary="Papierkorb leeren",
+    description="Löscht alle Dokumente im Papierkorb permanent.",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def empty_trash(
+    request: Request,
+    only_expired: bool = Query(
+        False,
+        description="Nur abgelaufene Dokumente löschen (>30 Tage)",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(_require_user_company_id_dep),
+) -> EmptyTrashResponse:
+    """Papierkorb leeren.
+
+    ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden!
+
+    SECURITY: Multi-Tenant-Isolation via Document.company_id - es werden nur
+    Dokumente der aktuellen Company gelöscht. Defense-in-Depth: owner_id
+    bleibt als zusätzlicher Filter.
+
+    Args:
+        only_expired: Wenn True, nur >30 Tage alte Dokumente löschen
+
+    Returns:
+        EmptyTrashResponse mit Anzahl gelöschter Dokumente
+    """
+    from datetime import datetime, timezone, timedelta
+
+    conditions = [
+        Document.company_id == company_id,
+        Document.owner_id == current_user.id,
+        Document.deleted_at.isnot(None),
+    ]
+
+    if only_expired:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        conditions.append(Document.deleted_at < cutoff)
+
+    # IDs vor Bulk-Delete sammeln (für Audit-Events).
+    id_query = select(Document.id).where(and_(*conditions))
+    id_result = await db.execute(id_query)
+    doc_ids = list(id_result.scalars().all())
+    count = len(doc_ids)
+
+    if count == 0:
+        return EmptyTrashResponse(
+            deleted_count=0,
+            message="Papierkorb ist bereits leer",
+        )
+
+    # Audit-Events VOR Hard-Delete emittieren (gleicher Pattern wie
+    # permanently_delete_document - sonst geht der Eintrag im FK-Cascade verloren).
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+
+    for doc_id in doc_ids:
+        try:
+            await emit_domain_event(
+                db=db,
+                aggregate_type="document",
+                aggregate_id=doc_id,
+                event_type="document_permanently_deleted",
+                event_data={
+                    "source": "trash.empty_trash",
+                    "only_expired": only_expired,
+                },
+                company_id=company_id,
+                user_id=current_user.id,
+            )
+        except Exception as e:  # noqa: BLE001 - Audit darf Delete nicht blocken
+            logger.error(
+                "empty_trash_audit_failed",
+                document_id=str(doc_id),
+                user_id=str(current_user.id),
+                **safe_error_log(e),
+            )
+
+    # Bulk-Delete in einem Statement (statt N+1 await db.delete(doc) in Schleife).
+    try:
+        await db.execute(delete(Document).where(and_(*conditions)))
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    action = "abgelaufene Dokumente" if only_expired else "alle Dokumente"
+    logger.warning(
+        "trash_emptied",
+        user_id=str(current_user.id),
+        company_id=str(company_id),
+        count=count,
+        only_expired=only_expired,
+    )
+
+    return EmptyTrashResponse(
+        deleted_count=count,
+        message=f"{count} {action} wurden permanent gelöscht",
+    )

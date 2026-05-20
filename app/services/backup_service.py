@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Backup-Service fuer Ablage-System.
+Backup-Service für Ablage-System.
 
-Fuehrt Backups durch fuer:
+Führt Backups durch für:
 - PostgreSQL (pg_dump)
 - Redis (RDB Snapshot)
 - MinIO (Bucket-Sync)
 - Konfiguration (tar.gz)
 
-Mit GPG-Verschluesselung und Remote-Sync via rsync.
+Mit GPG-Verschlüsselung und Remote-Sync via rsync.
 
 Feinpoliert und durchdacht - Enterprise Backup in Produktion.
 """
@@ -20,17 +20,20 @@ import shutil
 import tarfile
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+from app.core.datetime_utils import utc_now
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
 
+from app.core.config import settings
 from app.services.backup_metrics_service import get_backup_metrics, track_backup
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
-# Thread-Safety fuer Singleton
+# Thread-Safety für Singleton
 _backup_service_lock = threading.Lock()
 
 # Safe subprocess runner (equivalent to Node's execFile - no shell injection)
@@ -44,33 +47,35 @@ run_subprocess = asyncio.create_subprocess_exec
 
 @dataclass
 class BackupConfig:
-    """Konfiguration fuer Backup-Service."""
+    """Konfiguration für Backup-Service - verwendet zentrale settings."""
 
     # Verzeichnisse
     backup_dir: Path = field(default_factory=lambda: Path(os.getenv("BACKUP_DIR", "/var/backups/ablage")))
     retention_days: int = field(default_factory=lambda: int(os.getenv("BACKUP_RETENTION_DAYS", "30")))
     compression_enabled: bool = field(default_factory=lambda: os.getenv("BACKUP_COMPRESSION", "true").lower() == "true")
 
-    # PostgreSQL
-    postgres_host: str = field(default_factory=lambda: os.getenv("DB_HOST", "localhost"))
-    postgres_port: int = field(default_factory=lambda: int(os.getenv("DB_PORT", "5433")))
-    postgres_db: str = field(default_factory=lambda: os.getenv("DB_NAME", "ablage_system"))
-    postgres_user: str = field(default_factory=lambda: os.getenv("DB_USER", "ablage_admin"))
-    postgres_password: str = field(default_factory=lambda: os.getenv("DB_PASSWORD", ""))
+    # PostgreSQL - aus zentraler settings
+    postgres_host: str = field(default_factory=lambda: settings.DB_HOST)
+    postgres_port: int = field(default_factory=lambda: settings.DB_PORT)
+    postgres_db: str = field(default_factory=lambda: settings.DB_NAME)
+    postgres_user: str = field(default_factory=lambda: settings.DB_USER)
+    postgres_password: str = field(default_factory=lambda: settings.DB_PASSWORD.get_secret_value() if settings.DB_PASSWORD else "")
 
-    # Redis
-    redis_host: str = field(default_factory=lambda: os.getenv("REDIS_HOST", "localhost"))
-    redis_port: int = field(default_factory=lambda: int(os.getenv("REDIS_PORT", "6380")))
-    redis_password: Optional[str] = field(default_factory=lambda: os.getenv("REDIS_PASSWORD"))
+    # Redis - aus zentraler settings
+    redis_host: str = field(default_factory=lambda: settings.REDIS_HOST)
+    redis_port: int = field(default_factory=lambda: settings.REDIS_PORT)
+    redis_password: Optional[str] = field(default_factory=lambda: settings.REDIS_PASSWORD.get_secret_value() if settings.REDIS_PASSWORD else None)
 
-    # MinIO
-    minio_endpoint: str = field(default_factory=lambda: os.getenv("MINIO_ENDPOINT", "localhost:9000"))
-    minio_access_key: str = field(default_factory=lambda: os.getenv("MINIO_ACCESS_KEY", "minioadmin"))
-    minio_secret_key: str = field(default_factory=lambda: os.getenv("MINIO_SECRET_KEY", "minioadmin123"))
-    minio_buckets: List[str] = field(default_factory=lambda: os.getenv("MINIO_BUCKETS", "documents,processed,thumbnails").split(","))
+    # MinIO - aus zentraler settings
+    minio_endpoint: str = field(default_factory=lambda: settings.MINIO_ENDPOINT)
+    minio_access_key: str = field(default_factory=lambda: settings.MINIO_ACCESS_KEY)
+    minio_secret_key: str = field(default_factory=lambda: settings.MINIO_SECRET_KEY.get_secret_value() if settings.MINIO_SECRET_KEY else "")
+    minio_buckets: List[str] = field(default_factory=lambda: [settings.MINIO_BUCKET_DOCUMENTS, settings.MINIO_BUCKET_PROCESSED, settings.MINIO_BUCKET_THUMBNAILS])
 
-    # GPG Verschluesselung
-    encryption_enabled: bool = field(default_factory=lambda: os.getenv("BACKUP_ENCRYPTION", "false").lower() == "true")
+    # GPG Verschlüsselung
+    # SECURITY FIX: Default auf True geändert für GDPR-Compliance (Art. 32)
+    # Backups MÜSSEN in Production verschlüsselt sein
+    encryption_enabled: bool = field(default_factory=lambda: os.getenv("BACKUP_ENCRYPTION", "true").lower() == "true")
     gpg_recipient: str = field(default_factory=lambda: os.getenv("BACKUP_GPG_RECIPIENT", "backup@ablage-system.local"))
     gpg_home: Optional[str] = field(default_factory=lambda: os.getenv("BACKUP_GPG_HOME"))
 
@@ -110,11 +115,11 @@ class BackupResult:
 
 class BackupService:
     """
-    Zentrale Klasse fuer Backup-Operationen.
+    Zentrale Klasse für Backup-Operationen.
 
-    Unterstuetzt:
+    Unterstützt:
     - PostgreSQL, Redis, MinIO, Config Backups
-    - GPG-Verschluesselung
+    - GPG-Verschlüsselung
     - Remote-Synchronisation via rsync
     - Retention Policy
     - Validierung
@@ -133,10 +138,10 @@ class BackupService:
         # Verzeichnisse erstellen
         self._ensure_directories()
 
-        # Verschluesselungsstatus setzen
+        # Verschlüsselungsstatus setzen
         self.metrics.set_encryption_enabled(self.config.encryption_enabled)
 
-        # GPG-Konfiguration validieren wenn Verschluesselung aktiviert
+        # GPG-Konfiguration validieren wenn Verschlüsselung aktiviert
         self._encryption_validated = False
         self._encryption_validation_error: Optional[str] = None
         if self.config.encryption_enabled:
@@ -152,7 +157,7 @@ class BackupService:
 
     def _ensure_directories(self) -> None:
         """Stelle sicher, dass alle Backup-Verzeichnisse existieren."""
-        dirs = ["postgres", "redis", "minio", "config", "full"]
+        dirs = ["postgres", "redis", "minio", "config", "qdrant", "full"]
         for subdir in dirs:
             path = self.config.backup_dir / subdir
             path.mkdir(parents=True, exist_ok=True)
@@ -160,28 +165,28 @@ class BackupService:
 
     def _validate_encryption_config(self) -> None:
         """
-        Validiere GPG-Verschluesselungs-Konfiguration.
+        Validiere GPG-Verschlüsselungs-Konfiguration.
 
-        Prueft:
-        - GPG-Binary verfuegbar
-        - GPG-Schluessel fuer Empfaenger existiert
+        Prüft:
+        - GPG-Binary verfügbar
+        - GPG-Schluessel für Empfänger existiert
         - GPG-Home Verzeichnis valide (wenn konfiguriert)
         """
         import subprocess
 
         try:
-            # 1. GPG-Binary verfuegbar?
+            # 1. GPG-Binary verfügbar?
             result = subprocess.run(
                 ["gpg", "--version"],
                 capture_output=True,
                 timeout=5,
             )
             if result.returncode != 0:
-                self._encryption_validation_error = "GPG nicht verfuegbar oder fehlerhaft"
+                self._encryption_validation_error = "GPG nicht verfügbar oder fehlerhaft"
                 logger.error("gpg_validation_fehler", error=self._encryption_validation_error)
                 return
 
-            # 2. GPG-Home Verzeichnis pruefen (wenn konfiguriert)
+            # 2. GPG-Home Verzeichnis prüfen (wenn konfiguriert)
             gpg_args = ["gpg"]
             if self.config.gpg_home:
                 gpg_home_path = Path(self.config.gpg_home)
@@ -191,7 +196,7 @@ class BackupService:
                     return
                 gpg_args.extend(["--homedir", self.config.gpg_home])
 
-            # 3. GPG-Schluessel fuer Empfaenger pruefen
+            # 3. GPG-Schluessel für Empfänger prüfen
             gpg_args.extend(["--list-keys", self.config.gpg_recipient])
             result = subprocess.run(
                 gpg_args,
@@ -203,11 +208,11 @@ class BackupService:
                 stderr = result.stderr.decode("utf-8", errors="ignore")
                 if "not found" in stderr.lower() or "keine" in stderr.lower():
                     self._encryption_validation_error = (
-                        f"GPG-Schluessel fuer '{self.config.gpg_recipient}' nicht gefunden. "
+                        f"GPG-Schluessel für '{self.config.gpg_recipient}' nicht gefunden. "
                         f"Bitte Schluessel importieren: gpg --import <keyfile>"
                     )
                 else:
-                    self._encryption_validation_error = f"GPG-Schluessel-Pruefung fehlgeschlagen: {stderr[:200]}"
+                    self._encryption_validation_error = f"GPG-Schluessel-Prüfung fehlgeschlagen: {stderr[:200]}"
                 logger.error(
                     "gpg_validation_fehler",
                     error=self._encryption_validation_error,
@@ -229,8 +234,8 @@ class BackupService:
         except FileNotFoundError:
             self._encryption_validation_error = "GPG nicht installiert"
             logger.error("gpg_nicht_gefunden")
-        except Exception as e:
-            self._encryption_validation_error = f"GPG-Validierung Fehler: {str(e)}"
+        except (subprocess.SubprocessError, OSError, ValueError) as e:
+            self._encryption_validation_error = safe_error_detail(e, "GPG")
             logger.exception("gpg_validation_fehler")
 
     def _generate_filename(self, backup_type: str, extension: str) -> str:
@@ -244,7 +249,7 @@ class BackupService:
         Returns:
             Dateiname mit Zeitstempel
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         return f"{backup_type}_{timestamp}{extension}"
 
     # -------------------------------------------------------------------------
@@ -266,11 +271,11 @@ class BackupService:
         logger.info("postgres_backup_gestartet", ziel=str(output_path))
 
         try:
-            # Umgebungsvariablen fuer pg_dump
+            # Umgebungsvariablen für pg_dump
             env = os.environ.copy()
             env["PGPASSWORD"] = self.config.postgres_password
 
-            # pg_dump ausfuehren (safe subprocess - arguments as list)
+            # pg_dump ausführen (safe subprocess - arguments as list)
             proc = await run_subprocess(
                 "pg_dump",
                 "-h", self.config.postgres_host,
@@ -298,17 +303,17 @@ class BackupService:
             # Komprimieren
             if self.config.compression_enabled:
                 await self._compress_file(temp_path, output_path)
-                temp_path.unlink()  # Unkomprimierte Datei loeschen
+                temp_path.unlink()  # Unkomprimierte Datei löschen
             else:
                 output_path = temp_path
 
             size_bytes = output_path.stat().st_size
 
-            # Optional: Verschluesseln
+            # Optional: Verschlüsseln
             if self.config.encryption_enabled:
                 encrypted_path = await self.encrypt_backup(output_path)
                 if encrypted_path:
-                    output_path.unlink()  # Unverschluesselte Datei loeschen
+                    output_path.unlink()  # Unverschlüsselte Datei löschen
                     output_path = encrypted_path
 
             # Validieren
@@ -337,12 +342,12 @@ class BackupService:
                 backup_type="postgres",
                 error=error_msg,
             )
-        except Exception as e:
+        except (IOError, OSError, asyncio.TimeoutError) as e:
             logger.exception("postgres_backup_fehler")
             return BackupResult(
                 success=False,
                 backup_type="postgres",
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -363,7 +368,7 @@ class BackupService:
         logger.info("redis_backup_gestartet", ziel=str(output_path))
 
         try:
-            # redis-cli BGSAVE ausfuehren
+            # redis-cli BGSAVE ausführen
             auth_args = []
             if self.config.redis_password:
                 auth_args = ["-a", self.config.redis_password]
@@ -428,7 +433,7 @@ class BackupService:
 
             size_bytes = output_path.stat().st_size
 
-            # Optional: Verschluesseln
+            # Optional: Verschlüsseln
             if self.config.encryption_enabled:
                 encrypted_path = await self.encrypt_backup(output_path)
                 if encrypted_path:
@@ -460,12 +465,12 @@ class BackupService:
                 backup_type="redis",
                 error=error_msg,
             )
-        except Exception as e:
+        except (IOError, OSError, asyncio.TimeoutError) as e:
             logger.exception("redis_backup_fehler")
             return BackupResult(
                 success=False,
                 backup_type="redis",
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -480,7 +485,7 @@ class BackupService:
         Returns:
             BackupResult mit Pfad und Status
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
         output_dir = self.config.backup_dir / "minio" / f"minio_{timestamp}"
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -514,7 +519,7 @@ class BackupService:
                     )
                     failed_buckets.append(bucket)
                 else:
-                    # Groesse berechnen
+                    # Größe berechnen
                     for file in bucket_dir.rglob("*"):
                         if file.is_file():
                             total_size += file.stat().st_size
@@ -537,7 +542,7 @@ class BackupService:
                 final_path = tar_path
                 total_size = tar_path.stat().st_size
 
-            # Optional: Verschluesseln
+            # Optional: Verschlüsseln
             if self.config.encryption_enabled:
                 encrypted_path = await self.encrypt_backup(final_path)
                 if encrypted_path:
@@ -571,12 +576,12 @@ class BackupService:
                 backup_type="minio",
                 error=error_msg,
             )
-        except Exception as e:
+        except (IOError, OSError, tarfile.TarError) as e:
             logger.exception("minio_backup_fehler")
             return BackupResult(
                 success=False,
                 backup_type="minio",
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -607,7 +612,7 @@ class BackupService:
 
             size_bytes = output_path.stat().st_size
 
-            # Optional: Verschluesseln
+            # Optional: Verschlüsseln
             if self.config.encryption_enabled:
                 encrypted_path = await self.encrypt_backup(output_path)
                 if encrypted_path:
@@ -631,12 +636,223 @@ class BackupService:
                 encrypted=self.config.encryption_enabled,
             )
 
-        except Exception as e:
+        except (tarfile.TarError, IOError, OSError) as e:
             logger.exception("config_backup_fehler")
             return BackupResult(
                 success=False,
                 backup_type="config",
-                error=str(e),
+                **safe_error_log(e),
+            )
+
+    # -------------------------------------------------------------------------
+    # Qdrant Vector DB Backup
+    # -------------------------------------------------------------------------
+
+    @track_backup(backup_type="qdrant")
+    async def backup_qdrant(self) -> BackupResult:
+        """
+        Erstelle Qdrant Vector-DB Backup (Snapshot).
+
+        Nutzt Qdrant's Snapshot-API um alle Collections zu sichern
+        und laedt die Snapshots nach MinIO/lokales Dateisystem hoch.
+
+        Returns:
+            BackupResult mit Pfad und Status
+        """
+        if not settings.QDRANT_ENABLED:
+            logger.debug("qdrant_backup_übersprungen", grund="QDRANT_ENABLED=False")
+            return BackupResult(
+                success=True,
+                backup_type="qdrant",
+                error="Qdrant nicht aktiviert - Backup übersprungen",
+            )
+
+        timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
+        output_dir = self.config.backup_dir / "qdrant" / f"qdrant_{timestamp}"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info("qdrant_backup_gestartet", ziel=str(output_dir))
+
+        try:
+            from qdrant_client import QdrantClient
+            from qdrant_client.http.exceptions import UnexpectedResponse
+
+            # Qdrant-Client initialisieren
+            api_key = settings.QDRANT_API_KEY.get_secret_value() if settings.QDRANT_API_KEY else None
+            client = QdrantClient(
+                host=settings.QDRANT_HOST,
+                port=settings.QDRANT_HTTP_PORT,
+                api_key=api_key,
+                prefer_grpc=False,  # Snapshots nur via REST API
+            )
+
+            # Collections zum Backup
+            collections_to_backup = [
+                settings.QDRANT_COLLECTION_DOCUMENTS,
+                settings.QDRANT_COLLECTION_CHUNKS,
+            ]
+
+            # Optional: Alle existierenden Collections ermitteln
+            try:
+                all_collections = client.get_collections().collections
+                existing_collection_names = {c.name for c in all_collections}
+            except Exception as e:
+                logger.warning("qdrant_collections_abruf_fehler", error=str(e))
+                existing_collection_names = set()
+
+            snapshot_files: List[Path] = []
+            failed_collections: List[str] = []
+            total_size = 0
+
+            for collection in collections_to_backup:
+                # Prüfe ob Collection existiert
+                if collection not in existing_collection_names:
+                    logger.debug(
+                        "qdrant_collection_existiert_nicht",
+                        collection=collection,
+                    )
+                    continue
+
+                try:
+                    # Snapshot erstellen via REST API
+                    snapshot_info = client.create_snapshot(collection_name=collection)
+                    snapshot_name = snapshot_info.name
+
+                    logger.info(
+                        "qdrant_snapshot_erstellt",
+                        collection=collection,
+                        snapshot=snapshot_name,
+                    )
+
+                    # Snapshot herunterladen
+                    # Qdrant-Client bietet keine direkte Download-Methode
+                    # Nutze HTTP-Request zum Download
+                    import httpx
+
+                    snapshot_url = (
+                        f"http://{settings.QDRANT_HOST}:{settings.QDRANT_HTTP_PORT}"
+                        f"/collections/{collection}/snapshots/{snapshot_name}"
+                    )
+
+                    headers = {}
+                    if api_key:
+                        headers["api-key"] = api_key
+
+                    snapshot_path = output_dir / f"{collection}_{snapshot_name}"
+
+                    async with httpx.AsyncClient(timeout=300.0) as http_client:
+                        response = await http_client.get(snapshot_url, headers=headers)
+                        response.raise_for_status()
+
+                        with open(snapshot_path, "wb") as f:
+                            f.write(response.content)
+
+                    file_size = snapshot_path.stat().st_size
+                    total_size += file_size
+                    snapshot_files.append(snapshot_path)
+
+                    logger.info(
+                        "qdrant_snapshot_heruntergeladen",
+                        collection=collection,
+                        pfad=str(snapshot_path),
+                        groesse_mb=round(file_size / 1024 / 1024, 2),
+                    )
+
+                    # Snapshot auf Qdrant-Server löschen (Aufraeumen)
+                    try:
+                        client.delete_snapshot(
+                            collection_name=collection,
+                            snapshot_name=snapshot_name,
+                        )
+                    except Exception:
+                        pass  # Nicht kritisch
+
+                except UnexpectedResponse as e:
+                    logger.error(
+                        "qdrant_snapshot_fehler",
+                        collection=collection,
+                        error=str(e),
+                    )
+                    failed_collections.append(collection)
+                except Exception as e:
+                    logger.error(
+                        "qdrant_collection_backup_fehler",
+                        collection=collection,
+                        error=str(e),
+                    )
+                    failed_collections.append(collection)
+
+            # Prüfen ob Backups erstellt wurden
+            if not snapshot_files:
+                if failed_collections:
+                    error_msg = f"Alle Collection-Backups fehlgeschlagen: {failed_collections}"
+                else:
+                    error_msg = "Keine Collections zum Backup gefunden"
+
+                # Aufraeumen leeres Verzeichnis
+                if output_dir.exists() and not list(output_dir.iterdir()):
+                    output_dir.rmdir()
+
+                return BackupResult(
+                    success=False,
+                    backup_type="qdrant",
+                    error=error_msg,
+                )
+
+            # Tar-Archiv erstellen wenn Kompression aktiviert
+            final_path = output_dir
+            if self.config.compression_enabled and snapshot_files:
+                tar_path = output_dir.with_suffix(".tar.gz")
+                with tarfile.open(tar_path, "w:gz") as tar:
+                    tar.add(output_dir, arcname=output_dir.name)
+                shutil.rmtree(output_dir)
+                final_path = tar_path
+                total_size = tar_path.stat().st_size
+
+            # Optional: Verschlüsseln
+            if self.config.encryption_enabled:
+                encrypted_path = await self.encrypt_backup(final_path)
+                if encrypted_path:
+                    if final_path.is_file():
+                        final_path.unlink()
+                    else:
+                        shutil.rmtree(final_path)
+                    final_path = encrypted_path
+
+            # Upload zu MinIO (optional)
+            # Wird bereits im output_dir gespeichert
+
+            logger.info(
+                "qdrant_backup_erfolgreich",
+                pfad=str(final_path),
+                groesse_mb=round(total_size / 1024 / 1024, 2),
+                collections=len(snapshot_files),
+                fehlgeschlagen=failed_collections if failed_collections else None,
+            )
+
+            return BackupResult(
+                success=True,
+                backup_type="qdrant",
+                path=final_path,
+                size_bytes=total_size,
+                validated=True,
+                encrypted=self.config.encryption_enabled,
+            )
+
+        except ImportError:
+            error_msg = "qdrant-client nicht installiert - pip install qdrant-client"
+            logger.error("qdrant_client_nicht_gefunden", error=error_msg)
+            return BackupResult(
+                success=False,
+                backup_type="qdrant",
+                error=error_msg,
+            )
+        except Exception as e:
+            logger.exception("qdrant_backup_fehler")
+            return BackupResult(
+                success=False,
+                backup_type="qdrant",
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -645,20 +861,21 @@ class BackupService:
 
     async def backup_full(self) -> List[BackupResult]:
         """
-        Fuehre vollstaendiges Backup aller Komponenten durch.
+        Führe vollständiges Backup aller Komponenten durch.
 
         Returns:
-            Liste von BackupResult fuer jede Komponente
+            Liste von BackupResult für jede Komponente
         """
-        logger.info("vollstaendiges_backup_gestartet")
+        logger.info("vollständiges_backup_gestartet")
 
         results: List[BackupResult] = []
 
-        # Sequentiell ausfuehren um Ressourcenkonflikte zu vermeiden
+        # Sequentiell ausführen um Ressourcenkonflikte zu vermeiden
         results.append(await self.backup_postgres())
         results.append(await self.backup_redis())
         results.append(await self.backup_minio())
         results.append(await self.backup_config())
+        results.append(await self.backup_qdrant())
 
         # Metriken aktualisieren
         self.metrics.update_disk_usage()
@@ -672,7 +889,7 @@ class BackupService:
 
         success_count = sum(1 for r in results if r.success)
         logger.info(
-            "vollstaendiges_backup_abgeschlossen",
+            "vollständiges_backup_abgeschlossen",
             erfolgreich=success_count,
             gesamt=len(results),
         )
@@ -680,7 +897,7 @@ class BackupService:
         return results
 
     # -------------------------------------------------------------------------
-    # GPG Verschluesselung
+    # GPG Verschlüsselung
     # -------------------------------------------------------------------------
 
     async def encrypt_backup(self, path: Path) -> Optional[Path]:
@@ -691,17 +908,17 @@ class BackupService:
             path: Pfad zur Backup-Datei
 
         Returns:
-            Pfad zur verschluesselten Datei oder None bei Fehler
+            Pfad zur verschlüsselten Datei oder None bei Fehler
         """
         if not path.exists():
-            logger.error("verschluesselung_datei_nicht_gefunden", pfad=str(path))
+            logger.error("verschlüsselung_datei_nicht_gefunden", pfad=str(path))
             return None
 
         # Pre-Flight Check: Encryption-Konfiguration validiert?
         if not self._encryption_validated:
             error_msg = self._encryption_validation_error or "GPG-Konfiguration nicht validiert"
             logger.error(
-                "verschluesselung_nicht_moeglich",
+                "verschlüsselung_nicht_möglich",
                 error=error_msg,
                 pfad=str(path),
             )
@@ -710,7 +927,7 @@ class BackupService:
 
         output_path = path.with_suffix(path.suffix + ".gpg")
 
-        logger.debug("backup_verschluesselung_gestartet", quelle=str(path))
+        logger.debug("backup_verschlüsselung_gestartet", quelle=str(path))
 
         try:
             gpg_env = os.environ.copy()
@@ -732,8 +949,8 @@ class BackupService:
             stdout, stderr = await proc.communicate()
 
             if proc.returncode != 0:
-                error_msg = stderr.decode() if stderr else "GPG Verschluesselung fehlgeschlagen"
-                logger.error("verschluesselung_fehlgeschlagen", error=error_msg)
+                error_msg = stderr.decode() if stderr else "GPG Verschlüsselung fehlgeschlagen"
+                logger.error("verschlüsselung_fehlgeschlagen", error=error_msg)
                 self.metrics.record_encryption_failure(error_msg)
                 # Aufraumen bei Fehler
                 if output_path.exists():
@@ -755,7 +972,7 @@ class BackupService:
 
             self.metrics.record_encryption_success()
             logger.info(
-                "backup_verschluesselt",
+                "backup_verschlüsselt",
                 pfad=str(output_path),
                 original_groesse=path.stat().st_size,
                 verschluesselt_groesse=output_path.stat().st_size,
@@ -767,9 +984,9 @@ class BackupService:
             logger.error("gpg_nicht_gefunden")
             self.metrics.record_encryption_failure(error_msg)
             return None
-        except Exception as e:
-            logger.exception("verschluesselung_fehler")
-            self.metrics.record_encryption_failure(str(e))
+        except (subprocess.SubprocessError, IOError, OSError) as e:
+            logger.exception("verschlüsselung_fehler")
+            self.metrics.record_encryption_failure(safe_error_detail(e, "Encryption"))
             # Aufraumen bei Fehler
             if output_path.exists():
                 output_path.unlink()
@@ -779,35 +996,35 @@ class BackupService:
         self,
         encrypted_path: Path,
         original_size: int,
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
-        Validiere verschluesselte Datei nach Erstellung.
+        Validiere verschlüsselte Datei nach Erstellung.
 
         Args:
-            encrypted_path: Pfad zur verschluesselten Datei
-            original_size: Groesse der Original-Datei
+            encrypted_path: Pfad zur verschlüsselten Datei
+            original_size: Größe der Original-Datei
 
         Returns:
             Dict mit 'valid' (bool) und optional 'error' (str)
         """
         # 1. Datei existiert?
         if not encrypted_path.exists():
-            return {"valid": False, "error": "Verschluesselte Datei wurde nicht erstellt"}
+            return {"valid": False, "error": "Verschlüsselte Datei wurde nicht erstellt"}
 
         encrypted_size = encrypted_path.stat().st_size
 
         # 2. Datei nicht leer?
         if encrypted_size == 0:
-            return {"valid": False, "error": "Verschluesselte Datei ist leer"}
+            return {"valid": False, "error": "Verschlüsselte Datei ist leer"}
 
-        # 3. Verschluesselte Datei sollte mindestens aehnlich gross sein
+        # 3. Verschlüsselte Datei sollte mindestens ähnlich gross sein
         # GPG fuegt Overhead hinzu (~100-500 Bytes), aber die Datei sollte
         # nicht dramatisch kleiner sein als das Original
-        min_expected_size = max(100, original_size * 0.5)  # Mind. 50% der Originalgroesse
+        min_expected_size = max(100, original_size * 0.5)  # Mind. 50% der Originalgröße
         if encrypted_size < min_expected_size:
             return {
                 "valid": False,
-                "error": f"Verschluesselte Datei zu klein: {encrypted_size} < {min_expected_size}",
+                "error": f"Verschlüsselte Datei zu klein: {encrypted_size} < {min_expected_size}",
             }
 
         # 4. GPG-Header validieren
@@ -828,7 +1045,7 @@ class BackupService:
                 if not ascii_check.startswith(b"-----BEGIN PGP MESSAGE"):
                     return {
                         "valid": False,
-                        "error": f"Ungueltige GPG-Datei: Header 0x{header[0]:02x} nicht erkannt",
+                        "error": f"Ungültige GPG-Datei: Header 0x{header[0]:02x} nicht erkannt",
                     }
 
         except Exception as e:
@@ -836,9 +1053,9 @@ class BackupService:
 
         return {"valid": True}
 
-    def get_encryption_status(self) -> Dict[str, any]:
+    def get_encryption_status(self) -> Dict[str, Any]:
         """
-        Hole aktuellen Encryption-Status (fuer Health-Checks).
+        Hole aktuellen Encryption-Status (für Health-Checks).
 
         Returns:
             Dict mit Status-Informationen
@@ -855,7 +1072,7 @@ class BackupService:
         """
         Validiere GPG-Konfiguration erneut.
 
-        Nuetzlich nach Schluessel-Import oder Konfigurationsaenderung.
+        Nützlich nach Schluessel-Import oder Konfigurationsänderung.
 
         Returns:
             True wenn Validierung erfolgreich
@@ -872,17 +1089,17 @@ class BackupService:
 
     async def decrypt_backup(self, path: Path, output_path: Optional[Path] = None) -> Optional[Path]:
         """
-        Entschluessele GPG-verschluesseltes Backup.
+        Entschlüssele GPG-verschlüsseltes Backup.
 
         Args:
-            path: Pfad zur verschluesselten Datei (.gpg)
+            path: Pfad zur verschlüsselten Datei (.gpg)
             output_path: Ausgabepfad (optional)
 
         Returns:
-            Pfad zur entschluesselten Datei oder None bei Fehler
+            Pfad zur entschlüsselten Datei oder None bei Fehler
         """
         if not path.exists():
-            logger.error("entschluesselung_datei_nicht_gefunden", pfad=str(path))
+            logger.error("entschlüsselung_datei_nicht_gefunden", pfad=str(path))
             return None
 
         if output_path is None:
@@ -907,15 +1124,15 @@ class BackupService:
             stdout, stderr = await proc.communicate()
 
             if proc.returncode != 0:
-                error_msg = stderr.decode() if stderr else "GPG Entschluesselung fehlgeschlagen"
-                logger.error("entschluesselung_fehlgeschlagen", error=error_msg)
+                error_msg = stderr.decode() if stderr else "GPG Entschlüsselung fehlgeschlagen"
+                logger.error("entschlüsselung_fehlgeschlagen", error=error_msg)
                 return None
 
-            logger.info("backup_entschluesselt", pfad=str(output_path))
+            logger.info("backup_entschlüsselt", pfad=str(output_path))
             return output_path
 
         except Exception as e:
-            logger.exception("entschluesselung_fehler")
+            logger.exception("entschlüsselung_fehler")
             return None
 
     # -------------------------------------------------------------------------
@@ -1006,7 +1223,7 @@ class BackupService:
             # Parse host und path aus remote_target (user@host:/path)
             target_parts = self.config.remote_target.split(":")
             if len(target_parts) != 2:
-                logger.error("remote_target_format_ungueltig")
+                logger.error("remote_target_format_ungültig")
                 return []
 
             host, path = target_parts
@@ -1040,7 +1257,7 @@ class BackupService:
 
     async def validate_backup(self, path: Path) -> bool:
         """
-        Validiere Backup-Integritaet.
+        Validiere Backup-Integrität.
 
         Args:
             path: Pfad zur Backup-Datei
@@ -1056,10 +1273,10 @@ class BackupService:
             try:
                 suffix = "".join(path.suffixes).lower()
 
-                # GPG-verschluesselte Dateien - erweiterte Validierung
+                # GPG-verschlüsselte Dateien - erweiterte Validierung
                 if suffix.endswith(".gpg"):
                     file_size = path.stat().st_size
-                    if file_size < 100:  # Minimal sinnvolle GPG-Dateigroesse
+                    if file_size < 100:  # Minimal sinnvolle GPG-Dateigröße
                         logger.warning("gpg_backup_zu_klein", pfad=str(path), groesse=file_size)
                         return False
 
@@ -1067,18 +1284,18 @@ class BackupService:
                     with open(path, "rb") as f:
                         header = f.read(2)
 
-                    # Gueltige GPG-Header
+                    # Gültige GPG-Header
                     valid_headers = set([0x85, 0xa3] + list(range(0xc0, 0x100)))
                     if len(header) >= 1 and header[0] in valid_headers:
                         return True
 
-                    # ASCII-armored GPG pruefen
+                    # ASCII-armored GPG prüfen
                     with open(path, "rb") as f:
                         ascii_check = f.read(27)
                     if ascii_check.startswith(b"-----BEGIN PGP MESSAGE"):
                         return True
 
-                    logger.warning("gpg_backup_ungueltiger_header", pfad=str(path))
+                    logger.warning("gpg_backup_ungültiger_header", pfad=str(path))
                     return False
 
                 # Gzip-komprimierte Dateien
@@ -1105,11 +1322,11 @@ class BackupService:
                         content = f.read(100)
                         return "--" in content or "CREATE" in content.upper()
 
-                # Generische Dateigroessen-Pruefung
+                # Generische Dateigrößen-Prüfung
                 return path.stat().st_size > 0
 
             except Exception as e:
-                logger.error("validierung_fehlgeschlagen", pfad=str(path), error=str(e))
+                logger.error("validierung_fehlgeschlagen", pfad=str(path), **safe_error_log(e))
                 return False
 
     # -------------------------------------------------------------------------
@@ -1118,10 +1335,10 @@ class BackupService:
 
     async def apply_retention_policy(self) -> Dict[str, int]:
         """
-        Wende Retention Policy an - loesche alte Backups.
+        Wende Retention Policy an - lösche alte Backups.
 
         Returns:
-            Dict mit Anzahl geloeschter Dateien pro Typ
+            Dict mit Anzahl gelöschter Dateien pro Typ
         """
         logger.info(
             "retention_policy_gestartet",
@@ -1133,9 +1350,10 @@ class BackupService:
             "redis": 0,
             "minio": 0,
             "config": 0,
+            "qdrant": 0,
         }
 
-        cutoff_timestamp = datetime.utcnow().timestamp() - (self.config.retention_days * 86400)
+        cutoff_timestamp = utc_now().timestamp() - (self.config.retention_days * 86400)
 
         for backup_type in deleted.keys():
             backup_dir = self.config.backup_dir / backup_type
@@ -1152,9 +1370,9 @@ class BackupService:
                         elif item.is_dir():
                             shutil.rmtree(item)
                         deleted[backup_type] += 1
-                        logger.debug("backup_geloescht", pfad=str(item))
+                        logger.debug("backup_gelöscht", pfad=str(item))
                 except Exception as e:
-                    logger.error("backup_loeschung_fehler", pfad=str(item), error=str(e))
+                    logger.error("backup_löschung_fehler", pfad=str(item), **safe_error_log(e))
 
         total_deleted = sum(deleted.values())
         logger.info(
@@ -1185,7 +1403,7 @@ class BackupService:
             with gzip.open(output_path, "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
-    def list_backups(self, backup_type: Optional[str] = None) -> List[Dict[str, any]]:
+    def list_backups(self, backup_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Liste lokale Backups auf.
 
@@ -1195,8 +1413,8 @@ class BackupService:
         Returns:
             Liste von Backup-Informationen
         """
-        backups: List[Dict[str, any]] = []
-        types = [backup_type] if backup_type else ["postgres", "redis", "minio", "config"]
+        backups: List[Dict[str, Any]] = []
+        types = [backup_type] if backup_type else ["postgres", "redis", "minio", "config", "qdrant"]
 
         for btype in types:
             backup_dir = self.config.backup_dir / btype
@@ -1216,7 +1434,7 @@ class BackupService:
                         "encrypted": item.suffix == ".gpg",
                     })
                 except Exception as e:
-                    logger.warning("backup_info_fehler", pfad=str(item), error=str(e))
+                    logger.warning("backup_info_fehler", pfad=str(item), **safe_error_log(e))
 
         return backups
 
@@ -1275,18 +1493,18 @@ class BackupService:
                     duration_seconds=duration,
                 )
 
-            # Arbeite mit temporaerer Datei wenn verschluesselt/komprimiert
+            # Arbeite mit temporaerer Datei wenn verschlüsselt/komprimiert
             work_path = backup_path
             temp_files: List[Path] = []
 
-            # Entschluesseln wenn GPG
+            # Entschlüsseln wenn GPG
             if backup_path.suffix == ".gpg":
                 decrypted_path = await self._decrypt_backup(backup_path)
                 if decrypted_path is None:
                     return BackupResult(
                         success=False,
                         backup_type="postgres_restore",
-                        error="Entschluesselung fehlgeschlagen",
+                        error="Entschlüsselung fehlgeschlagen",
                     )
                 work_path = decrypted_path
                 temp_files.append(decrypted_path)
@@ -1301,7 +1519,7 @@ class BackupService:
                 work_path = decompressed_path
                 temp_files.append(decompressed_path)
 
-            # psql ausfuehren
+            # psql ausführen
             env = os.environ.copy()
             env["PGPASSWORD"] = self.config.postgres_password
 
@@ -1359,7 +1577,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="postgres_restore",
-                error=str(e)[:500],
+                **safe_error_log(e)[:500],
             )
 
     async def restore_redis(
@@ -1477,7 +1695,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="redis_restore",
-                error=str(e)[:500],
+                **safe_error_log(e)[:500],
             )
 
     async def restore_minio(
@@ -1543,7 +1761,7 @@ class BackupService:
                     duration_seconds=duration,
                 )
 
-            # mc mirror fuer jeden Bucket (von Backup zu MinIO)
+            # mc mirror für jeden Bucket (von Backup zu MinIO)
             for bucket_name in buckets_to_restore:
                 bucket_source = backup_path / bucket_name
                 if not bucket_source.exists():
@@ -1590,7 +1808,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="minio_restore",
-                error=str(e)[:500],
+                **safe_error_log(e)[:500],
             )
 
     async def restore_full(
@@ -1600,7 +1818,7 @@ class BackupService:
         components: Optional[List[str]] = None,
     ) -> List[BackupResult]:
         """
-        Vollstaendige Wiederherstellung aller Komponenten.
+        Vollständige Wiederherstellung aller Komponenten.
 
         Args:
             backup_dir: Verzeichnis mit Backups (muss Unterordner haben)
@@ -1611,7 +1829,7 @@ class BackupService:
             Liste von BackupResults
         """
         logger.info(
-            "vollstaendige_wiederherstellung_gestartet",
+            "vollständige_wiederherstellung_gestartet",
             verzeichnis=str(backup_dir),
             dry_run=dry_run,
             komponenten=components,
@@ -1681,7 +1899,7 @@ class BackupService:
 
         success_count = sum(1 for r in results if r.success)
         logger.info(
-            "vollstaendige_wiederherstellung_abgeschlossen",
+            "vollständige_wiederherstellung_abgeschlossen",
             erfolgreich=success_count,
             gesamt=len(results),
             dry_run=dry_run,
@@ -1691,13 +1909,13 @@ class BackupService:
 
     async def _decrypt_backup(self, encrypted_path: Path) -> Optional[Path]:
         """
-        Entschluessele GPG-verschluesselte Backup-Datei.
+        Entschlüssele GPG-verschlüsselte Backup-Datei.
 
         Args:
             encrypted_path: Pfad zur .gpg Datei
 
         Returns:
-            Pfad zur entschluesselten Datei oder None bei Fehler
+            Pfad zur entschlüsselten Datei oder None bei Fehler
         """
         output_path = encrypted_path.with_suffix("")  # Entferne .gpg
 
@@ -1718,7 +1936,7 @@ class BackupService:
         stdout, stderr = await proc.communicate()
 
         if proc.returncode != 0:
-            logger.error("gpg_entschluesselung_fehler", error=stderr.decode())
+            logger.error("gpg_entschlüsselung_fehler", error=stderr.decode())
             return None
 
         return output_path

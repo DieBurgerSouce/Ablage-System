@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\loss.py
+# hypothesis_version: 6.148.7
+
+['Out', 'X', 'float32', 'float64', 'identity_loss', 'mean', 'none', 'reduction', 'sum', 'x']

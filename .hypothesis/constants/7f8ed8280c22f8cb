@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\nn\qat\modules\embedding_ops.py
+# hypothesis_version: 6.148.7
+
+['Embedding', 'EmbeddingBag']

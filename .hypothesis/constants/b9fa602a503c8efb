@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\hapi\model.py
+# hypothesis_version: 6.148.7
+
+[',', '.pdmodel', '.pdopt', '.pdparams', '.pdscaler', ':', '@LR_DECAY_COUNTER@', 'O0', 'O1', 'O2', 'Out', 'X', '_', '_0', '_batch', '_scaler', '_total', 'batch_size', 'bkcl_id', 'c_comm_init', 'c_gen_bkcl_id', 'c_gen_nccl_id', 'c_gen_xccl_id', 'custom_black_list', 'custom_white_list', 'decr_ratio', 'endpoint', 'endpoints', 'eval', 'eval_batch', 'eval_total', 'float16', 'global_step', 'incr_every_n_steps', 'incr_ratio', 'init_loss_scaling', 'latin1', 'learning_rate_', 'level', 'list length invalid', 'loss', 'metric', 'metrics', 'nccl_id', 'not a list', 'not a variable', 'nranks', 'num_iters', 'number of inputs', 'other_endpoints', 'output', 'pd_op.data', 'predict', 'rank', 'rb', 'ring_id', 'self', 'set_state_dict', 'step', 'steps', 'test', 'test_batch', 'test_total', 'train', 'use_fp16_guard', 'use_pure_fp16', 'wb', 'xccl_id']

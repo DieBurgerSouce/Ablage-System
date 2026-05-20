@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\lmdb_dataset.py
+# hypothesis_version: 6.148.7
+
+[b'__len__', b'image_hr-%09d', b'image_lr-%09d', b'label-%09d', 1.0, 100, ',', '/', '1', '2', 'Global', 'RGB', 'all', 'batch_size_per_card', 'bbox', 'cells', 'data_dir', 'dataset', 'digit', 'dirpath', 'env', 'ext_data', 'ext_data_num', 'ext_op_transform_idx', 'file_name', 'image', 'image-%09d', 'image_hr', 'image_lr', 'label', 'label-%09d', 'loader', 'lower', 'num-samples', 'num_samples', 'ratio_list', 'shuffle', 'structure', 'tokens', 'transforms', 'txn', 'uint8', 'upper', 'utf-8', 'utf8']

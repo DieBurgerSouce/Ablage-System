@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\marko\html_renderer.py
+# hypothesis_version: 6.148.7
+
+['&#x27;', "'", '/#:()*?=%@+,&', '<br />\n', '<hr />\n', '_tight', 'block.FencedCode', 'block.Heading', 'inline.Link', 'inline.RawText', 'ol', 'ul']

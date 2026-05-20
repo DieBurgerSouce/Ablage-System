@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_parallel\pp_utils\utils.py
+# hypothesis_version: 6.148.7
+
+['bfloat16', 'bool', 'float16', 'float32', 'float64', 'int32', 'int64']

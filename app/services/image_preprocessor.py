@@ -385,11 +385,12 @@ class ImagePreprocessor:
 
         # fastNlMeansDenoisingColored for color images
         if len(image.shape) == 3:
+            # OpenCV 4.x uses 'hColor' instead of 'hForColorComponents'
             return cv2.fastNlMeansDenoisingColored(
                 image,
                 None,
                 h=strength,
-                hForColorComponents=strength,
+                hColor=strength,  # FIX: Korrekter Parameter für OpenCV 4.x
                 templateWindowSize=7,
                 searchWindowSize=21
             )

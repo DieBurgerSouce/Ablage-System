@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\framework\ir.py
+# hypothesis_version: 6.148.7
+
+['bool', 'fuse_adam_op_pass', 'fuse_bn_act_pass', 'fuse_bn_add_act_pass', 'fuse_resunit_pass', 'fuse_sgd_op_pass', 'fusion_group_pass', 'grad_merge_cond_name', 'list[str]', 'mem_opt_skip_vars', 'nranks', 'size_t', 'sync_batch_norm_pass', 'use_cuda']

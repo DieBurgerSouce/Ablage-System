@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\olmocr_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.95, 600.0, 224, 300, 1000, 1024, 4096, '.pdf', 'Ae', 'OLMOCR_ERROR', 'Oe', 'RGB', 'Ue', 'ae', 'allocated_vram_gb', 'available', 'cached_vram_gb', 'confidence', 'content', 'cpu', 'cuda', 'cuda_version', 'de', 'device_name', 'error', 'german_chars_found', 'gpu_info', 'image', 'image_path', 'language', 'model_name', 'models_loaded', 'oe', 'olmocr_agent', 'olmocr_completed', 'olmocr_failed', 'olmocr_gpu_memory', 'olmocr_gpu_oom', 'olmocr_loading_model', 'olmocr_models_loaded', 'olmocr_page_error', 'olmocr_pages_loaded', 'olmocr_starting', 'olmocr_warmup_failed', 'page_confidence', 'page_number', 'pt', 'role', 'ss', 'test', 'text', 'text_regions', 'tf32_enabled', 'total_vram_gb', 'type', 'ue', 'user', 'white', 'äöüÄÖÜß']

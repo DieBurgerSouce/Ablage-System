@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\decode.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 1000000000.0, 'bool', 'float32', 'float64', 'int64', 'lengths']

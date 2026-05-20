@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\datasets\dataset.py
+# hypothesis_version: 6.148.7
+
+['feat', 'label', 'logmelspectrogram', 'melspectrogram', 'mfcc', 'raw', 'spectrogram']

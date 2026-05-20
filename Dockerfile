@@ -1,6 +1,68 @@
 # GPU-enabled Docker image for Ablage-System OCR
+# Multi-stage build: builder installs/compiles, production keeps only runtime artifacts
 # Security-hardened with non-root user
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+
+# ============================================================
+# Stage 1: builder
+# All build tools, compilers, and pip/uv live here only.
+# ============================================================
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:f3a7fb39fa3ffbe54da713dd2e93063885e5be2f4586a705c39031b8284d379a AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
+
+# Install build + runtime-needed system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    build-essential \
+    libhunspell-dev \
+    git \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+# Install uv for fast dependency resolution (10-100x faster than pip)
+RUN python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel uv
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt requirements-gpu.txt ./
+RUN uv pip install --system -r requirements.txt
+RUN uv pip install --system -r requirements-gpu.txt
+
+# Sprint 0 / G02: Janus optional via Build-Arg (Skip bei RAM-Pressure oder Image-Failure)
+# Default: SKIP_JANUS=0 (Janus wird gebaut, gleich wie vorher)
+# Skip:    docker-compose build backend --build-arg SKIP_JANUS=1
+#          (DeepSeek-Janus-OCR-Backend nicht verfuegbar - 6 andere Backends bleiben)
+ARG SKIP_JANUS=0
+# Clone and register DeepSeek Janus (oder skip wenn SKIP_JANUS=1)
+RUN if [ "${SKIP_JANUS}" = "1" ]; then \
+        echo "SKIP_JANUS=1 - DeepSeek-Janus wird NICHT installiert (Sprint 0 / G02-Workaround)" && \
+        mkdir -p /opt/janus && \
+        echo "# Janus skipped (SKIP_JANUS=1)" > /opt/janus/SKIPPED.txt && \
+        echo "# Janus skipped" > /usr/local/lib/python3.11/dist-packages/janus.pth; \
+    else \
+        git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
+        uv pip install --system attrdict einops sentencepiece timm accelerate && \
+        echo "/opt/janus" > /usr/local/lib/python3.11/dist-packages/janus.pth && \
+        python3.11 -c "from janus.models import MultiModalityCausalLM, VLChatProcessor; print('Janus OK')"; \
+    fi
+
+# ============================================================
+# Stage 2: production
+# Only runtime packages; no build tools, no git, no uv/pip.
+# curl is kept for the HEALTHCHECK.
+# ============================================================
+# Pin base image digest for reproducible builds (same image as builder)
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:f3a7fb39fa3ffbe54da713dd2e93063885e5be2f4586a705c39031b8284d379a
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -8,13 +70,9 @@ ENV PYTHONUNBUFFERED=1
 ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
 ENV CUDA_VISIBLE_DEVICES=0
 
-# Install system dependencies
+# Install ONLY runtime system dependencies (+ curl for HEALTHCHECK)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
-    python3.11-dev \
-    python3-pip \
-    git \
-    wget \
     curl \
     libgl1-mesa-glx \
     libglib2.0-0 \
@@ -26,15 +84,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     tesseract-ocr \
     tesseract-ocr-deu \
+    fonts-dejavu-core \
+    libhunspell-dev \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
 # Set Python 3.11 as default
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
-RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
-# Upgrade pip
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Copy installed Python packages from builder
+COPY --from=builder /usr/local/lib/python3.11/dist-packages/ /usr/local/lib/python3.11/dist-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+# Copy Janus source tree and its .pth registration file
+COPY --from=builder /opt/janus /opt/janus
+# The .pth file is already inside dist-packages (copied above), but copy explicitly to be safe
+COPY --from=builder /usr/local/lib/python3.11/dist-packages/janus.pth /usr/local/lib/python3.11/dist-packages/janus.pth
 
 # Create non-root user BEFORE copying files
 ARG UID=1000
@@ -47,26 +113,12 @@ WORKDIR /app
 RUN mkdir -p /app/uploads /app/outputs /app/logs /app/cache && \
     chown -R ablage:ablage /app
 
-# Copy requirements first for better caching
-COPY --chown=ablage:ablage requirements.txt .
-COPY --chown=ablage:ablage requirements-gpu.txt .
-
-# Install Python dependencies as root (for system packages)
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install PyTorch with CUDA support
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Install additional GPU requirements
-RUN pip install --no-cache-dir -r requirements-gpu.txt
-
 # Copy application code with correct ownership
 COPY --chown=ablage:ablage app/ ./app/
 COPY --chown=ablage:ablage test_documents/ ./test_documents/
 COPY --chown=ablage:ablage *.py ./
 
 # Set permissions (SECURITY FIX: 775 statt 777 für write-Verzeichnisse)
-# User ablage und Gruppe ablage haben Schreibrechte, andere nur lesen
 RUN chmod -R 755 /app && \
     chmod -R 775 /app/uploads /app/outputs /app/logs /app/cache
 

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communicator.py
+# hypothesis_version: 6.148.7
+
+[10000, 500000, ',', 'ASYNC', 'GEO', 'HALF_ASYNC', 'SYNC', 'WITH_COORDINATOR', 'barrier_table_id', 'need_global_step', 'pserver_endpoints', 'trainer_id', 'trainers']

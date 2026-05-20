@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\integrations\flash_paged.py
+# hypothesis_version: 6.148.7
+
+['full_attention', 's_aux', 'sliding_attention', 'sliding_window']

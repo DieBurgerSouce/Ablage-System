@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\triton\dequantize_rowwise.py
+# hypothesis_version: 6.148.7
+
+[1.0, 127, 'n_elements']

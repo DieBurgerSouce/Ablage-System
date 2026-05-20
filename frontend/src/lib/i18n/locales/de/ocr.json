@@ -1,0 +1,144 @@
+{
+  "title": "OCR-Verarbeitung",
+  "subtitle": "Texterkennung aus Dokumenten",
+  "backend": {
+    "title": "OCR-Backend",
+    "auto": "Automatisch",
+    "deepseek": "DeepSeek-Janus-Pro",
+    "gotocr": "GOT-OCR 2.0",
+    "surya": "Surya + Docling",
+    "suryaGpu": "Surya GPU",
+    "description": {
+      "auto": "Automatische Auswahl basierend auf Dokumenttyp",
+      "deepseek": "Beste Umlaut-Erkennung, Frakturschrift",
+      "gotocr": "Schnell, gut für Tabellen und Formeln",
+      "surya": "CPU-basiert, Layout-Analyse",
+      "suryaGpu": "Schnelle GPU-Variante"
+    }
+  },
+  "status": {
+    "idle": "Bereit",
+    "uploading": "Hochladen...",
+    "queued": "In Warteschlange",
+    "preprocessing": "Vorverarbeitung...",
+    "processing": "Wird verarbeitet...",
+    "postprocessing": "Nachbearbeitung...",
+    "completed": "Abgeschlossen",
+    "failed": "Fehlgeschlagen"
+  },
+  "progress": {
+    "uploading": "Dokument wird hochgeladen...",
+    "queued": "Warte auf Verarbeitung...",
+    "preprocessing": "Bild wird vorbereitet...",
+    "processing": "Text wird extrahiert...",
+    "postprocessing": "Text wird optimiert...",
+    "page": "Verarbeite Seite {{current}} von {{total}}",
+    "percent": "{{percent}}% abgeschlossen"
+  },
+  "results": {
+    "title": "OCR-Ergebnisse",
+    "extractedText": "Extrahierter Text",
+    "confidence": "Erkennungssicherheit",
+    "processingTime": "Verarbeitungszeit",
+    "backend": "Verwendetes Backend",
+    "pages": "Verarbeitete Seiten",
+    "words": "Erkannte Wörter",
+    "characters": "Erkannte Zeichen",
+    "download": "Text herunterladen",
+    "copy": "Text kopieren"
+  },
+  "quality": {
+    "title": "Qualität",
+    "high": "Hohe Erkennungsqualität",
+    "medium": "Mittlere Erkennungsqualität",
+    "low": "Niedrige Erkennungsqualität",
+    "veryLow": "Sehr niedrige Qualität",
+    "reviewRecommended": "Manuelle Prüfung empfohlen",
+    "confidence": {
+      "excellent": "Ausgezeichnet (>95%)",
+      "good": "Gut (85-95%)",
+      "fair": "Befriedigend (70-85%)",
+      "poor": "Mangelhaft (<70%)"
+    }
+  },
+  "german": {
+    "title": "Deutsche Texterkennung",
+    "detected": "Deutscher Text erkannt",
+    "umlauts": "Umlaute erkannt",
+    "umlautsPreserved": "Umlaute korrekt erkannt",
+    "fraktur": "Frakturschrift erkannt",
+    "frakturDetected": "Historische Frakturschrift erkannt",
+    "validation": "Deutsche Textvalidierung",
+    "score": "Deutsche Qualität: {{score}}%"
+  },
+  "extraction": {
+    "title": "Datenextraktion",
+    "fields": "Extrahierte Felder",
+    "invoiceNumber": "Rechnungsnummer",
+    "invoiceDate": "Rechnungsdatum",
+    "dueDate": "Fälligkeitsdatum",
+    "totalAmount": "Gesamtbetrag",
+    "taxAmount": "Steuerbetrag",
+    "netAmount": "Nettobetrag",
+    "vatId": "USt-IdNr.",
+    "iban": "IBAN",
+    "bic": "BIC",
+    "currency": "Währung",
+    "vendor": "Lieferant",
+    "customer": "Kunde",
+    "items": "Positionen",
+    "confidence": "Sicherheit: {{percent}}%"
+  },
+  "errors": {
+    "gpuOom": "GPU-Speicher voll. Fallback auf CPU wird verwendet.",
+    "backendUnavailable": "OCR-Backend nicht verfügbar",
+    "processingFailed": "OCR-Verarbeitung fehlgeschlagen",
+    "timeout": "Zeitüberschreitung bei der Verarbeitung",
+    "invalidDocument": "Dokument kann nicht verarbeitet werden",
+    "noTextExtracted": "Kein Text konnte extrahiert werden",
+    "corruptedFile": "Datei ist beschädigt oder nicht lesbar",
+    "unsupportedFormat": "Dateiformat wird nicht unterstützt"
+  },
+  "settings": {
+    "title": "OCR-Einstellungen",
+    "defaultBackend": "Standard-Backend",
+    "language": "Erkennungssprache",
+    "enhanceQuality": "Bildqualität verbessern",
+    "detectTables": "Tabellen erkennen",
+    "detectLayout": "Layout analysieren",
+    "gpu": {
+      "title": "GPU-Einstellungen",
+      "enabled": "GPU-Beschleunigung",
+      "memoryLimit": "Speicherlimit",
+      "batchSize": "Batch-Größe"
+    }
+  },
+  "learning": {
+    "title": "OCR-Training",
+    "subtitle": "Erkennung durch Korrekturen verbessern",
+    "correction": "Korrektur einreichen",
+    "original": "Original",
+    "corrected": "Korrigiert",
+    "submit": "Korrektur speichern",
+    "success": "Korrektur gespeichert",
+    "stats": {
+      "title": "Trainingsstatistiken",
+      "corrections": "Korrekturen",
+      "accuracy": "Genauigkeit",
+      "improvement": "Verbesserung"
+    },
+    "abTest": {
+      "title": "A/B Tests",
+      "active": "Aktive Tests",
+      "results": "Ergebnisse"
+    }
+  },
+  "batch": {
+    "title": "Stapelverarbeitung",
+    "documents": "{{count}} Dokumente",
+    "progress": "{{completed}} von {{total}} verarbeitet",
+    "estimatedTime": "Geschätzte Restzeit: {{time}}",
+    "cancel": "Stapel abbrechen",
+    "retry": "Fehlgeschlagene wiederholen"
+  }
+}

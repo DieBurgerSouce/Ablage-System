@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\flex_checkpoint\dcp\utils.py
+# hypothesis_version: 6.148.7
+
+['.', '.safetensors', 'BF16', 'BOOL', 'F16', 'F32', 'F64', 'I16', 'I8', 'U16', 'U8', 'bfloat16', 'bool', 'float16', 'float32', 'float64', 'int16', 'int8', 'no overlap!', 'np', 'uint8']

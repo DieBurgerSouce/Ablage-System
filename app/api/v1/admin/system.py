@@ -37,22 +37,22 @@ router = APIRouter(prefix="/system", tags=["Admin - Systemstatus"])
     "/dashboard",
     response_model=SystemDashboard,
     summary="System-Dashboard",
-    description="Ruft eine Uebersicht aller Systemstatus-Informationen ab"
+    description="Ruft eine Übersicht aller Systemstatus-Informationen ab"
 )
 async def get_dashboard(
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> SystemDashboard:
     """
-    Ruft eine vollstaendige Uebersicht des Systemstatus ab.
+    Ruft eine vollständige Übersicht des Systemstatus ab.
 
-    Enthaelt:
+    Enthält:
     - GPU-Status und Speichernutzung
     - Warteschlangenstatus
     - Gesundheitsstatus aller Dienste
     - Verarbeitungsstatistiken
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     return await SystemStatusService.get_dashboard(db)
 
@@ -72,7 +72,7 @@ async def get_gpu_status(
     Ruft detaillierten GPU-Status ab.
 
     Zeigt:
-    - GPU-Verfuegbarkeit und Modell
+    - GPU-Verfügbarkeit und Modell
     - VRAM-Nutzung (aktuell/gesamt)
     - GPU-Auslastung in Prozent
     - Temperatur und Leistungsaufnahme
@@ -93,10 +93,10 @@ async def clear_gpu_cache(
     """
     Leert den GPU-Speicher-Cache.
 
-    Nuetzlich wenn der VRAM-Verbrauch zu hoch ist oder
+    Nützlich wenn der VRAM-Verbrauch zu hoch ist oder
     Speicherprobleme auftreten.
 
-    **Hinweis:** Kann laufende GPU-Operationen beeintraechtigen.
+    **Hinweis:** Kann laufende GPU-Operationen beeinträchtigen.
     """
     result = await SystemStatusService.clear_gpu_cache()
     return MessageResponse(
@@ -136,23 +136,23 @@ async def get_queue_status(
     "/health",
     response_model=SystemHealthStatus,
     summary="Gesundheitsstatus",
-    description="Prueft den Gesundheitsstatus aller Systemkomponenten"
+    description="Prüft den Gesundheitsstatus aller Systemkomponenten"
 )
 async def get_health_status(
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> SystemHealthStatus:
     """
-    Prueft den Gesundheitsstatus aller Systemkomponenten.
+    Prüft den Gesundheitsstatus aller Systemkomponenten.
 
-    Prueft:
+    Prüft:
     - PostgreSQL-Datenbankverbindung
     - Redis-Cache und Warteschlange
     - MinIO-Objektspeicher
     - Celery-Worker-Status
-    - GPU-Verfuegbarkeit
+    - GPU-Verfügbarkeit
 
-    Gibt den Gesamtstatus und Details fuer jede Komponente zurueck.
+    Gibt den Gesamtstatus und Details für jede Komponente zurück.
     """
     return await SystemStatusService.get_health_status(db)
 
@@ -166,7 +166,7 @@ async def get_health_status(
     description="Ruft Statistiken zur Dokumentenverarbeitung ab"
 )
 async def get_processing_stats(
-    days: int = Query(7, ge=1, le=90, description="Anzahl Tage fuer Statistiken"),
+    days: int = Query(7, ge=1, le=90, description="Anzahl Tage für Statistiken"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> ProcessingStats:
@@ -196,9 +196,9 @@ async def get_backends_status(
     """
     Ruft den Status aller OCR-Backends ab.
 
-    Zeigt fuer jedes Backend:
-    - Ob es verfuegbar ist
-    - Letzte Aktivitaet
+    Zeigt für jedes Backend:
+    - Ob es verfügbar ist
+    - Letzte Aktivität
     - Fehler oder Warnungen
     - VRAM-Bedarf
     """
@@ -256,10 +256,10 @@ async def restart_service(
     """
     Startet einen Systemdienst neu.
 
-    Unterstuetzte Dienste:
+    Unterstützte Dienste:
     - **celery**: Celery Worker neu starten
 
-    **Hinweis:** Ein Neustart kann laufende Auftraege unterbrechen.
+    **Hinweis:** Ein Neustart kann laufende Aufträge unterbrechen.
     """
     if service not in ["celery"]:
         raise HTTPException(
@@ -271,5 +271,5 @@ async def restart_service(
     # For now, return a placeholder response
     return MessageResponse(
         message=f"Neustart von '{service}' wurde angefordert",
-        detail="Der Dienst wird in Kuerze neu gestartet. Dies kann einige Sekunden dauern.",
+        detail="Der Dienst wird in Kürze neu gestartet. Dies kann einige Sekunden dauern.",
     )

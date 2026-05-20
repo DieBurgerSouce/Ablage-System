@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\operators\graph_sample_neighbors.py
+# hypothesis_version: 6.148.7
+
+['2.4.0', 'Col_Ptr', 'Eids', 'Out', 'Out_Count', 'Out_Eids', 'Perm_Buffer', 'Row', 'X', 'flag_perm_buffer', 'int32', 'int64', 'return_eids', 'sample_size']

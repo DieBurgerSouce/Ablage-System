@@ -157,8 +157,8 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                 http_request_size_bytes.labels(
                     method=method, endpoint=endpoint
                 ).observe(int(content_length))
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("request_size_parse_failed", error_type=type(e).__name__)
 
         status_code = 500
         error_type = None
@@ -175,8 +175,12 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                     http_response_size_bytes.labels(
                         method=method, endpoint=endpoint
                     ).observe(int(response_size))
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(
+                        "response_size_parse_failed",
+                        error_type=type(e).__name__,
+                        response_size=response_size
+                    )
 
             return response
 

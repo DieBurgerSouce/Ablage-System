@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\pipeline_optimizer.py
+# hypothesis_version: 6.148.7
+
+[1.0, 1000, '1F1B', '@MERGED', 'AMPOptimizer', 'MERGED', 'Out', 'RecomputeOptimizer', 'X', 'accumulate_steps', 'all_reduce', 'broadcast', 'c_sync_comm_stream', 'global_ring_id', 'inner_parallelism', 'local_rank', 'micro_batch_size', 'mp_degree', 'mp_rank', 'out', 'reduce_type', 'ring_id', 'root', 'scale', 'schedule_mode', 'section_program', 'startup_program', 'use_sharding', 'x']

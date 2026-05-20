@@ -482,3 +482,292 @@ class TestSecurityAspects:
         assert token not in hashed
         # Hash sollte feste Länge haben (SHA-256)
         assert len(hashed) == 64
+
+
+class TestPasswordResetConfirmationEmail:
+    """Tests für Bestätigungs-Email nach Passwort-Reset."""
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock database session."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.commit = AsyncMock()
+        db.rollback = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def mock_notification_service(self):
+        """Mock notification service."""
+        service = AsyncMock()
+        service.send_email = AsyncMock(return_value=True)
+        return service
+
+    @pytest.fixture
+    def mock_user(self):
+        """Mock User with email."""
+        user = Mock()
+        user.id = uuid4()
+        user.email = "user@example.com"
+        user.username = "testuser"
+        user.full_name = "Test User"
+        user.is_active = True
+        return user
+
+    @pytest.mark.asyncio
+    async def test_reset_sends_confirmation_email(self, mock_db, mock_notification_service, mock_user):
+        """Reset sollte Bestätigungs-Email senden."""
+        user_id = mock_user.id
+
+        # Valid token
+        mock_token = Mock()
+        mock_token.user_id = user_id
+        mock_token_result = Mock()
+        mock_token_result.scalar_one_or_none.return_value = mock_token
+
+        # Active user
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
+
+        # Mock the update operations
+        mock_update_result = Mock()
+
+        mock_db.execute.side_effect = [
+            mock_token_result,
+            mock_user_result,
+            mock_update_result,
+            mock_update_result,
+            mock_update_result,
+        ]
+
+        success, message = await PasswordResetService.reset_password(
+            db=mock_db,
+            token="valid_token",
+            new_password="NewSecurePassword123!",
+            notification_service=mock_notification_service,
+            ip_address="192.168.1.100",
+            user_agent="Mozilla/5.0 Test Browser",
+        )
+
+        assert success is True
+        mock_notification_service.send_email.assert_called_once()
+
+        # Überprüfe Email-Inhalt
+        call_kwargs = mock_notification_service.send_email.call_args.kwargs
+        assert call_kwargs["to_email"] == mock_user.email
+        assert "erfolgreich geändert" in call_kwargs["subject"]
+        assert "192.168.1.100" in call_kwargs["body"]
+        assert "Mozilla/5.0" in call_kwargs["body"]
+
+    @pytest.mark.asyncio
+    async def test_reset_works_without_notification_service(self, mock_db, mock_user):
+        """Reset sollte auch ohne NotificationService funktionieren."""
+        user_id = mock_user.id
+
+        # Valid token
+        mock_token = Mock()
+        mock_token.user_id = user_id
+        mock_token_result = Mock()
+        mock_token_result.scalar_one_or_none.return_value = mock_token
+
+        # Active user
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
+
+        # Mock the update operations
+        mock_update_result = Mock()
+
+        mock_db.execute.side_effect = [
+            mock_token_result,
+            mock_user_result,
+            mock_update_result,
+            mock_update_result,
+            mock_update_result,
+        ]
+
+        success, message = await PasswordResetService.reset_password(
+            db=mock_db,
+            token="valid_token",
+            new_password="NewSecurePassword123!",
+            # Kein notification_service
+        )
+
+        assert success is True
+        assert "erfolgreich" in message
+
+    @pytest.mark.asyncio
+    async def test_reset_continues_on_email_failure(self, mock_db, mock_notification_service, mock_user):
+        """Reset sollte trotz Email-Fehler erfolgreich sein."""
+        user_id = mock_user.id
+
+        # Email-Versand schlägt fehl
+        mock_notification_service.send_email = AsyncMock(return_value=False)
+
+        # Valid token
+        mock_token = Mock()
+        mock_token.user_id = user_id
+        mock_token_result = Mock()
+        mock_token_result.scalar_one_or_none.return_value = mock_token
+
+        # Active user
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
+
+        # Mock the update operations
+        mock_update_result = Mock()
+
+        mock_db.execute.side_effect = [
+            mock_token_result,
+            mock_user_result,
+            mock_update_result,
+            mock_update_result,
+            mock_update_result,
+        ]
+
+        success, message = await PasswordResetService.reset_password(
+            db=mock_db,
+            token="valid_token",
+            new_password="NewSecurePassword123!",
+            notification_service=mock_notification_service,
+        )
+
+        # Reset sollte trotzdem erfolgreich sein
+        assert success is True
+        assert "erfolgreich" in message
+
+    @pytest.mark.asyncio
+    async def test_reset_continues_on_email_exception(self, mock_db, mock_notification_service, mock_user):
+        """Reset sollte trotz Email-Exception erfolgreich sein."""
+        user_id = mock_user.id
+
+        # Email-Versand wirft Exception
+        mock_notification_service.send_email = AsyncMock(side_effect=Exception("SMTP Error"))
+
+        # Valid token
+        mock_token = Mock()
+        mock_token.user_id = user_id
+        mock_token_result = Mock()
+        mock_token_result.scalar_one_or_none.return_value = mock_token
+
+        # Active user
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
+
+        # Mock the update operations
+        mock_update_result = Mock()
+
+        mock_db.execute.side_effect = [
+            mock_token_result,
+            mock_user_result,
+            mock_update_result,
+            mock_update_result,
+            mock_update_result,
+        ]
+
+        success, message = await PasswordResetService.reset_password(
+            db=mock_db,
+            token="valid_token",
+            new_password="NewSecurePassword123!",
+            notification_service=mock_notification_service,
+        )
+
+        # Reset sollte trotzdem erfolgreich sein (Email-Fehler ist nicht kritisch)
+        assert success is True
+        assert "erfolgreich" in message
+
+    @pytest.mark.asyncio
+    async def test_confirmation_email_contains_security_info(self, mock_db, mock_notification_service, mock_user):
+        """Bestätigungs-Email sollte Sicherheitsinformationen enthalten."""
+        user_id = mock_user.id
+
+        # Valid token
+        mock_token = Mock()
+        mock_token.user_id = user_id
+        mock_token_result = Mock()
+        mock_token_result.scalar_one_or_none.return_value = mock_token
+
+        # Active user
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
+
+        mock_update_result = Mock()
+        mock_db.execute.side_effect = [
+            mock_token_result,
+            mock_user_result,
+            mock_update_result,
+            mock_update_result,
+            mock_update_result,
+        ]
+
+        await PasswordResetService.reset_password(
+            db=mock_db,
+            token="valid_token",
+            new_password="NewSecurePassword123!",
+            notification_service=mock_notification_service,
+            ip_address="10.0.0.1",
+            user_agent="Chrome/120.0",
+        )
+
+        call_kwargs = mock_notification_service.send_email.call_args.kwargs
+        body = call_kwargs["body"]
+        html_body = call_kwargs["html_body"]
+
+        # Plaintext sollte Sicherheitswarnung enthalten
+        assert "NICHT vorgenommen haben" in body
+        assert "Administrator" in body
+        assert "10.0.0.1" in body
+
+        # HTML sollte formatierte Warnung enthalten
+        assert "NICHT" in html_body
+        assert "Wichtig" in html_body or "Warnung" in html_body or "⚠️" in html_body
+
+    @pytest.mark.asyncio
+    async def test_confirmation_email_handles_unknown_ip(self, mock_db, mock_notification_service, mock_user):
+        """Bestätigungs-Email sollte mit unbekannter IP umgehen können."""
+        user_id = mock_user.id
+
+        mock_token = Mock()
+        mock_token.user_id = user_id
+        mock_token_result = Mock()
+        mock_token_result.scalar_one_or_none.return_value = mock_token
+
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
+
+        mock_update_result = Mock()
+        mock_db.execute.side_effect = [
+            mock_token_result,
+            mock_user_result,
+            mock_update_result,
+            mock_update_result,
+            mock_update_result,
+        ]
+
+        await PasswordResetService.reset_password(
+            db=mock_db,
+            token="valid_token",
+            new_password="NewSecurePassword123!",
+            notification_service=mock_notification_service,
+            # Keine IP-Adresse oder User-Agent
+        )
+
+        call_kwargs = mock_notification_service.send_email.call_args.kwargs
+        body = call_kwargs["body"]
+
+        # Sollte "Unbekannt" für fehlende Werte anzeigen
+        assert "Unbekannt" in body
+
+    def test_reset_password_signature_includes_new_params(self):
+        """reset_password sollte neue Parameter für Email haben."""
+        import inspect
+        sig = inspect.signature(PasswordResetService.reset_password)
+        params = list(sig.parameters.keys())
+
+        assert 'notification_service' in params
+        assert 'ip_address' in params
+        assert 'user_agent' in params
+
+        # Alle neuen Parameter sollten optional sein
+        assert sig.parameters['notification_service'].default is None
+        assert sig.parameters['ip_address'].default is None
+        assert sig.parameters['user_agent'].default is None

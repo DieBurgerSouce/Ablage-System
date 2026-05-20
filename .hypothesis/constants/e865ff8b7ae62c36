@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\mm.py
+# hypothesis_version: 6.148.7
+
+['0.0.0', '3.3.0', 'addmm', 'at::_int_mm_out', 'at::_scaled_mm_out', 'at::addmm_out', 'at::mm_out', 'aten_mm_info', 'contiguous addmm', 'contiguous mm', 'contiguous_addmm', 'contiguous_mm', 'decompose_k', 'extern_mm', 'int_mm', 'k', 'm', 'mat1', 'mat1_dtype', 'mat1_iscontig', 'mat2', 'mat2_dtype', 'mat2_iscontig', 'mm', 'mm-ah', 'mm_persistent_tma', 'n', 'scaled_mm', 'scaled_mm_device_tma']

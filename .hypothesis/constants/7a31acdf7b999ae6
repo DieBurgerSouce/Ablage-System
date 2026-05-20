@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\function_spec.py
+# hypothesis_version: 6.148.7
+
+[',', '__self__', 'dims_mapping', 'kwargs.', 'process_mesh', 'stop_gradient']

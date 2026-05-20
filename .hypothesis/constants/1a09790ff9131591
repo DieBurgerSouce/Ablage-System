@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\notification\rule_engine.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 1000, '.', 'AND', 'Benachrichtigung', 'Europe/Berlin', 'NOT', 'OR', '\\{\\{([^}]+)\\}\\}', 'action_type', 'action_url', 'actions', 'body', 'conditions', 'contains', 'data', 'email', 'endswith', 'eq', 'event_evaluated', 'event_id', 'event_type', 'false', 'field', 'gt', 'gte', 'in', 'in_app', 'in_app_action_error', 'is_not_null', 'is_null', 'lt', 'lte', 'matched', 'message', 'ne', 'normal', 'not_in', 'op', 'operator', 'payload', 'priority', 'push', 'quiet_hours', 'rate_limited', 'regex', 'skipped', 'source', 'space_id', 'startswith', 'subject', 'template', 'timestamp', 'title', 'true', 'type', 'unknown_action_type', 'unknown_operator', 'url', 'user_id', 'value', 'webhook']

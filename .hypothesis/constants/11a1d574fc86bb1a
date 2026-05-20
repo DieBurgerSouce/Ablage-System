@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\functional\input.py
+# hypothesis_version: 6.148.7
+
+[1e-07, 2.0, 'Ids', 'Out', 'W', 'X', 'allow_out_of_range', 'depth', 'depth_tensor', 'embedding', 'float32', 'input', 'int16', 'int32', 'int64', 'int8', 'is_distributed', 'is_sparse', 'lookup_table_v2', 'one_hot_v2', 'out', 'padding_idx', 'remote_prefetch', 'uint8', 'weight', 'x']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\graph.py
+# hypothesis_version: 6.148.7
+
+[0.7, ', ', '--', '->', 'CycleError', 'DOT', 'DependencyGraph', 'GraphFormatter', 'HelveticaNeue', 'arrowcolor', 'arrowhead', 'arrowsize', 'bgcolor', 'black', 'box', 'color', 'darkseagreen4', 'dependencies', 'digraph', 'fillcolor', 'filled', 'fontname', 'graph', 'ignore', 'mintcream', 'palegreen1', 'palegreen2', 'palegreen3', 'palegreen4', 'shape', 'style', 'utf-8', 'vee', '{0}({1})', '{INp}"{0}" [{attrs}]', '{IN}}}', '{name}={value}']

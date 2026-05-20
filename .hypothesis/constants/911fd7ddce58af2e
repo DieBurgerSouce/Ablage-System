@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\dropout\xy_masking.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'XYMasking', 'after', 'holes', 'inpaint_ns', 'inpaint_telea', 'mask_x_length', 'mask_y_length', 'random', 'random_uniform', 'seed', 'shape', 'tuple[int, int]', 'x', 'y']

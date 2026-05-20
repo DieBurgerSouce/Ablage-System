@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\skimage\util\compare.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'blend', 'checkerboard', 'diff', 'image0', 'image1', 'image2', 'method', 'n_tiles']

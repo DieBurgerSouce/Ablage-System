@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\cudagraph_utils.py
+# hypothesis_version: 6.148.7
+
+['cpu', 'cuda', 'cudagraph_skips', 'inductor', 'meta', 'mutated inputs', 'perf_hints', 'placeholder', 'stack_trace']

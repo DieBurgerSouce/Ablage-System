@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\accelerate\utils\torch_xla.py
+# hypothesis_version: 6.148.7
+
+['-U', '.', 'IPython', 'google.colab', 'install', 'pip', 'torch']

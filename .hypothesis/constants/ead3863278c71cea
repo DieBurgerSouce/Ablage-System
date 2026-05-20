@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\messaging.py
+# hypothesis_version: 6.148.7
+
+[1000, 'Consumer', 'Exchange', 'Producer', 'Queue', 'basic_return', 'binary', 'compression', 'delivery_mode', 'expiration', 'message_to_python', 'reply_to', 'utf-8', '{}{}']

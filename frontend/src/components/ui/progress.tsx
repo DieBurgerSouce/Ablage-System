@@ -3,12 +3,24 @@ import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import { cn } from "@/lib/utils"
 
+interface ProgressProps
+    extends React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> {
+    /** Accessible label for screen readers (defaults to "Fortschritt") */
+    "aria-label"?: string;
+    /** Custom class for the indicator (colored bar) */
+    indicatorClassName?: string;
+}
+
 const Progress = React.forwardRef<
     React.ElementRef<typeof ProgressPrimitive.Root>,
-    React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
->(({ className, value, ...props }, ref) => (
+    ProgressProps
+>(({ className, value, "aria-label": ariaLabel, indicatorClassName, ...props }, ref) => (
     <ProgressPrimitive.Root
         ref={ref}
+        aria-label={ariaLabel || "Fortschritt"}
+        aria-valuenow={value || 0}
+        aria-valuemin={0}
+        aria-valuemax={100}
         className={cn(
             "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
             className
@@ -16,7 +28,7 @@ const Progress = React.forwardRef<
         {...props}
     >
         <ProgressPrimitive.Indicator
-            className="h-full w-full flex-1 bg-primary transition-all"
+            className={cn("h-full w-full flex-1 bg-primary transition-all", indicatorClassName)}
             style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
         />
     </ProgressPrimitive.Root>

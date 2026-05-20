@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\dependencies.py
+# hypothesis_version: 6.148.7
+
+[100, 429, 503, 1000, 3600, 10000, 86400, 100000, '...', '3600', '60', '86400', 'Bearer', 'JWT', 'Retry-After', 'WWW-Authenticate', 'ablage_', 'access', 'batch_hourly', 'batch_reset_in', 'batch_used', 'daily_reset_in', 'daily_used', 'false', 'free', 'hourly_reset_in', 'hourly_used', 'is_admin', 'is_whitelisted', 'limits', 'ocr_daily', 'ocr_hourly', 'premium', 'rate_limit', 'sub', 'tier', 'true', 'usage', 'user_id']

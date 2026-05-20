@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\amp_nn.py
+# hypothesis_version: 6.148.7
+
+['FoundInfinite', 'InBadSteps', 'InGoodSteps', 'LossScaling', 'Out', 'OutBadSteps', 'OutGoodSteps', 'PrevLossScaling', 'Scale', 'StopUpdate', 'X', 'bool', 'decr_ratio', 'float16', 'float32', 'float64', 'incr_every_n_steps', 'incr_ratio', 'prev_loss_scaling', 'stop_update', 'uint16', 'update_loss_scaling', 'x']

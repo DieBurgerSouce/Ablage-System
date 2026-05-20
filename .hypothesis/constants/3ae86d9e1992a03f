@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\quality_gate.py
+# hypothesis_version: 6.148.7
+
+['"""', '"Bad request"', '"Error\\s*:', '"Failed\\s*:', '"Forbidden"', '"Invalid\\s*:', '"Not found"', '"Success\\s*:', '"Unauthorized"', '"Warning\\s*:', '#', "'''", '.py', '16gb', 'Syntax-Fehler', '\\.cuda\\(\\)', '\\beval\\s*\\(', '\\bexec\\s*\\(', '__init__', 'alembic/versions/', 'app/agents/ocr/', 'app/core/', 'app/security/', 'failed', 'file_path', 'from ', 'from .', 'german_messages', 'gpu_memory_guard', 'gpu_patterns', 'haiku', 'import ', 'imports', 'message', 'model_used', 'name', 'os\\.system\\s*\\(', 'passed', 'pickle\\.loads?\\s*\\(', 'security', 'self', 'shell=True vermeiden', 'shell\\s*=\\s*True', 'status', 'syntax', 'to\\(["\\\']cuda["\\\']\\)', 'torch\\.cuda', 'total_checks', 'type_hints', 'vram', 'warning']

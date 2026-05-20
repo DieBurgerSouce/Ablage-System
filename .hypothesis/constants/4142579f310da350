@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\parallelizer_v2.py
+# hypothesis_version: 6.148.7
+
+['0', 'amp_dtype', 'amp_level', 'auto_parallel_amp', 'auto_parallel_fp16', 'base_opt', 'completer', 'dist_context', 'dtype', 'eliminate_transpose', 'enable_sp', 'eval', 'fuse_gemm_epilogue', 'global_rank', 'grad_to_global_grad', 'input_data', 'inputs', 'labels', 'level', 'loss', 'main_program', 'memory_limit_times', 'mode', 'no_grad_set', 'num_micro_batches', 'o0', 'o1', 'o2', 'o3', 'opt_', 'params_grads', 'pass_list', 'pipeline_mode', 'pp_degree', 'pp_stage', 'predict', 'program_runtimes', 'rank_id', 'schedule_mode', 'split_backward', 'standalone_opt', 'startup_program', 'train', 'use_master_grad', 'use_sharding', 'vpp_degree']

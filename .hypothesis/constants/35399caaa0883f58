@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\search_metrics.py
+# hypothesis_version: 6.148.7
+
+[b'# Prometheus not available\n', 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 2.5, 5.0, 10.0, 100, 200, 500, 1000, 'Cache-Operationen', 'cache_invalidation', 'cached', 'confidence', 'date', 'document_type', 'embedding', 'embedding_generated', 'error', 'false', 'filter_type', 'hit', 'is_download', 'language', 'lookup', 'miss', 'operation', 'query', 'reason', 'result', 'search_cache_entries', 'search_request', 'search_results_count', 'search_similar_count', 'search_type', 'skip_cache', 'source', 'status', 'store', 'success', 'tags', 'text/plain', 'total', 'true', 'unknown']

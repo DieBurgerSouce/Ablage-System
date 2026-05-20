@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\classification\vip\pytorch.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 0.02, 0.1, 0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 1.0, 128, 192, 256, 384, 1000, '6.fc.bias', '6.fc.weight', 'classes', 'fan_out', 'french', 'input_shape', 'mean', 'num_classes', 'relu', 'std', 'url', 'vip_base', 'vip_tiny']

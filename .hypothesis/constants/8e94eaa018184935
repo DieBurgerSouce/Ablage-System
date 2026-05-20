@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\rapidfuzz\fuzz.py
+# hypothesis_version: 6.148.7
+
+['QRatio', 'WRatio', 'cpp', 'partial_ratio', 'partial_token_ratio', 'python', 'ratio', 'token_ratio', 'token_set_ratio', 'token_sort_ratio']

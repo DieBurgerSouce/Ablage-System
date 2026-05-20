@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\log.py
+# hypothesis_version: 6.148.7
+
+['%', '%r', '%s', 'DISABLE_TRACEBACKS', 'ERROR', 'FATAL', 'LOG_LEVELS', 'LogMixin', 'exc_info', 'get_loglevel', 'r', 's', 'setup_logging', 'write']

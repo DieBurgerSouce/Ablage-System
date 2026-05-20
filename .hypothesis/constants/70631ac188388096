@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\fft.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'Out', 'X', 'axes', 'backward', 'complex128', 'complex64', 'fft', 'fft2', 'fft_c2c', 'fft_c2r', 'fft_r2c', 'fftfreq', 'fftn', 'fftshift', 'float16', 'float32', 'float64', 'forward', 'hfft', 'hfft2', 'hfftn', 'ifft', 'ifft2', 'ifftn', 'ifftshift', 'ihfft', 'ihfft2', 'ihfftn', 'irfft', 'irfft2', 'irfftn', 'last_dim_size', 'normalization', 'onesided', 'ortho', 'rfft', 'rfft2', 'rfftfreq', 'rfftn', 'x']

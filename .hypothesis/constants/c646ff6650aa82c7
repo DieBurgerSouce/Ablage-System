@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\hapi\dynamic_flops.py
+# hypothesis_version: 6.148.7
+
+['Flops', 'Input Shape', 'Layer Name', 'Output Shape', 'Params', 'input_shape', 'int64', 'output_shape', 'total_ops', 'total_params']

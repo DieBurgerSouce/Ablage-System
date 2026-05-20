@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\flex_checkpoint\dcp\load_state_dict.py
+# hypothesis_version: 6.148.7
+
+['.', '.safetensors', '_fp32_master_0', 'bfloat16', 'flat_shard', 'float16', 'float32', 'float64', 'float8_e4m3fn', 'float8_e5m2', 'is_flattened', 'master_weights', 'metadata', 'min_shape', 'model', 'slice_range', 'src', 'total_size', 'uint16', 'uint8', 'utf-8', 'w', 'weight_map']

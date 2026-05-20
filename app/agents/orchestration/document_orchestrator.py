@@ -15,7 +15,7 @@ Feinpoliert und durchdacht - Enterprise-grade document processing pipeline.
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -23,6 +23,7 @@ import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.core.redis_state import get_redis, RedisStateManager
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 # Import error recovery components
 from app.core.circuit_breaker import (
@@ -155,7 +156,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.warning(
                 "error_recovery_init_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             # Continue without error recovery - graceful degradation
 
@@ -283,7 +284,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 },
                 "workflow_metadata": {
                     "total_duration_seconds": (
-                        datetime.utcnow() - workflow_state["started_at"]
+                        datetime.now(timezone.utc) - workflow_state["started_at"]
                     ).total_seconds(),
                     "priority": priority,
                 },
@@ -304,13 +305,13 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             await self._update_workflow_state(
                 workflow_state,
                 WorkflowPhase.FAILED,
-                {"error": str(e), "error_type": type(e).__name__},
+                {**safe_error_log(e), "error_type": type(e).__name__},
             )
 
             self.logger.error(
                 "workflow_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
 
@@ -329,7 +330,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         Returns:
             Initialized workflow state dictionary
         """
-        started_at = datetime.utcnow()
+        started_at = datetime.now(timezone.utc)
 
         state = {
             "document_id": document_id,
@@ -370,7 +371,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             self.logger.warning(
                 "workflow_state_redis_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return state
@@ -419,9 +420,9 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         retry_phase_map = {
             WorkflowPhase.CLASSIFYING: RetryPhase.CLASSIFICATION,
             WorkflowPhase.PREPROCESSING: RetryPhase.PREPROCESSING,
-            WorkflowPhase.OCR_PROCESSING: RetryPhase.OCR_PROCESSING,
+            WorkflowPhase.OCR_PROCESSING: RetryPhase.OCR,
             WorkflowPhase.POSTPROCESSING: RetryPhase.POSTPROCESSING,
-            WorkflowPhase.QA_CHECK: RetryPhase.QA_CHECK,
+            WorkflowPhase.QA_CHECK: RetryPhase.QA,
             WorkflowPhase.STORING: RetryPhase.STORAGE,
         }
         retry_phase = retry_phase_map.get(phase, RetryPhase.CLASSIFICATION)
@@ -465,7 +466,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 await self._update_workflow_state(
                     workflow_state, phase, {
                         "status": "failed",
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                         "error_type": "circuit_open",
                     }
                 )
@@ -477,7 +478,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                     "phase_gpu_recovery_failed",
                     document_id=document_id,
                     phase=phase.value,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
                 # Try to get partial result
@@ -485,7 +486,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                     partial_result = await self._partial_result_handler.create_partial_result(
                         document_id=document_id,
                         phase=phase.value,
-                        error=str(e),
+                        **safe_error_log(e),
                         partial_data=phase_input,
                     )
 
@@ -499,7 +500,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                             workflow_state, phase, {
                                 "status": "partial",
                                 "result": partial_result.data,
-                                "partial_reason": str(e),
+                                "partial_reason": safe_error_detail(e, "Orchestration"),
                             }
                         )
                         return partial_result.data
@@ -507,7 +508,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 await self._update_workflow_state(
                     workflow_state, phase, {
                         "status": "failed",
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                         "error_type": "gpu_failure",
                     }
                 )
@@ -536,7 +537,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                         phase=phase.value,
                         attempt=attempt,
                         wait_seconds=wait_time,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
                     await self._update_workflow_state(
@@ -555,7 +556,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                     "phase_failed",
                     document_id=document_id,
                     phase=phase.value,
-                    error=str(e),
+                    **safe_error_log(e),
                     attempts=attempt,
                 )
 
@@ -567,7 +568,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                     partial_result = await self._partial_result_handler.create_partial_result(
                         document_id=document_id,
                         phase=phase.value,
-                        error=str(e),
+                        **safe_error_log(e),
                         partial_data=phase_input,
                     )
 
@@ -581,13 +582,13 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                             workflow_state, phase, {
                                 "status": "partial",
                                 "result": partial_result.data,
-                                "partial_reason": str(e),
+                                "partial_reason": safe_error_detail(e, "Orchestration"),
                             }
                         )
                         return partial_result.data
 
                 await self._update_workflow_state(
-                    workflow_state, phase, {"status": "failed", "error": str(e)}
+                    workflow_state, phase, {"status": "failed", **safe_error_log(e)}
                 )
                 raise
 
@@ -602,7 +603,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             phase: New workflow phase
             data: Phase-specific data to store
         """
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
         # Update local state
         workflow_state["current_phase"] = phase
@@ -662,7 +663,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 "workflow_state_update_failed",
                 document_id=document_id,
                 phase=phase.value,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # =========================================================================
@@ -703,7 +704,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.error(
                 "classification_failed",
-                error=str(e),
+                **safe_error_log(e),
                 file_path=input_data.get("file_path"),
             )
 
@@ -718,7 +719,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 "has_multi_column": False,
                 "recommended_backend": "deepseek",
                 "confidence": 0.5,
-                "metadata": {"classification_error": str(e)},
+                "metadata": {"classification_error": safe_error_detail(e, "Klassifizierung")},
             }
 
     async def _preprocess_document(
@@ -790,7 +791,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.warning(
                 "image_enhancement_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             # Return original file path on failure
             return {
@@ -854,7 +855,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.warning(
                 "page_segmentation_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             # Return basic fallback
             return {
@@ -957,7 +958,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.warning(
                 "router_fallback_to_classification",
-                error=str(e),
+                **safe_error_log(e),
             )
             # Fallback to classification recommendation
             recommended = classification.get("recommended_backend")
@@ -1041,7 +1042,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             self.logger.error(
                 "ocr_gpu_recovery_exhausted",
                 backend=backend,
-                error=str(e),
+                **safe_error_log(e),
                 document_id=document_id,
             )
 
@@ -1054,7 +1055,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             self.logger.error(
                 "ocr_processing_failed",
                 backend=backend,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
 
@@ -1086,8 +1087,11 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             if is_gpu_backend and self._gpu_recovery_manager:
                 try:
                     await self._gpu_recovery_manager.clear_cache()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "gpu_cache_clear_failed",
+                        error_type=type(e).__name__,
+                    )
 
     async def _execute_ocr_with_recovery(
         self,
@@ -1269,7 +1273,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except ImportError as e:
             self.logger.warning(
                 "gpu_agents_import_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
 
         # Get the agent class
@@ -1362,7 +1366,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.warning(
                 "german_correction_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return {"text": text, "corrections_applied": 0}
 
@@ -1407,7 +1411,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.warning(
                 "entity_extraction_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return {"entities": [], "entity_count": 0}
 
@@ -1473,7 +1477,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         except Exception as e:
             self.logger.error(
                 "quality_check_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             # Fallback to simple confidence-based check
             score = postprocessing.get("original_confidence", 0.9)
@@ -1485,7 +1489,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 "review_reasons": ["QA-Agent Fehler - manuelle Prüfung empfohlen"] if needs_review else [],
                 "checks": {
                     "confidence": score >= 0.7,
-                    "qa_error": str(e),
+                    "qa_error": safe_error_detail(e, "QA"),
                 },
             }
 
@@ -1573,7 +1577,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             self.logger.error(
                 "human_review_queue_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Don't fail the workflow if review queue fails
             # The document is still processed, just won't be in the review queue
@@ -1602,7 +1606,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
 
         storage_result = {
             "document_id": document_id,
-            "stored_at": datetime.utcnow().isoformat(),
+            "stored_at": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata,
             "postgresql_updated": False,
             "version_created": False,
@@ -1641,7 +1645,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 processing_duration_ms = None
                 if hasattr(self, "_processing_start_time"):
                     processing_duration_ms = int(
-                        (datetime.utcnow() - self._processing_start_time).total_seconds() * 1000
+                        (datetime.now(timezone.utc) - self._processing_start_time).total_seconds() * 1000
                     )
 
                 # Update document fields
@@ -1651,7 +1655,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 document.document_type = classification.get("document_type", "other")
                 document.detected_language = classification.get("language", "de")
                 document.has_umlauts = "ä" in text or "ö" in text or "ü" in text or "ß" in text
-                document.processed_date = datetime.utcnow()
+                document.processed_date = datetime.now(timezone.utc)
 
                 if processing_duration_ms:
                     document.processing_duration_ms = processing_duration_ms
@@ -1673,7 +1677,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                     },
                     "qa_score": qa_score,
                     "ocr_backend": metadata.get("ocr_backend", "unknown"),
-                    "processing_completed_at": datetime.utcnow().isoformat(),
+                    "processing_completed_at": datetime.now(timezone.utc).isoformat(),
                 }
 
                 await db.commit()
@@ -1702,7 +1706,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                         "metadata": {
                             "backend_used": metadata.get("ocr_backend", "unknown"),
                             "language": classification.get("language", "de"),
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         },
                         "detected_dates": [
                             e.get("value") for e in entities if e.get("type") == "date"
@@ -1752,12 +1756,13 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             try:
                 from app.services.storage_service import get_storage_service
 
+
                 storage_service = get_storage_service()
 
                 if storage_service.available:
                     # Create searchable text file
                     text_content = f"""# OCR Ergebnis für Dokument {document_id}
-# Verarbeitet am: {datetime.utcnow().isoformat()}
+# Verarbeitet am: {datetime.now(timezone.utc).isoformat()}
 # Backend: {metadata.get('ocr_backend', 'unknown')}
 # Konfidenz: {qa_score:.2%}
 
@@ -1814,7 +1819,7 @@ Metadaten:
             self.logger.error(
                 "storage_phase_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
             raise
@@ -1833,7 +1838,7 @@ Metadaten:
         """
         health = {
             "orchestrator": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "error_recovery": {},
             "agents": {},
             "external_services": {},
@@ -1851,7 +1856,12 @@ Metadaten:
                             "failure_count": circuit.failure_count,
                             "last_failure": circuit.last_failure_time.isoformat() if circuit.last_failure_time else None,
                         }
-                except Exception:
+                except Exception as e:
+                    logger.debug(
+                        "circuit_breaker_status_check_failed",
+                        circuit_name=name,
+                        error_type=type(e).__name__,
+                    )
                     circuit_status[name] = {"state": "unknown"}
             health["error_recovery"]["circuit_breakers"] = circuit_status
         else:
@@ -1880,7 +1890,7 @@ Metadaten:
                 health["error_recovery"]["gpu_recovery"] = {
                     "enabled": True,
                     "status": "error",
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
         else:
             health["error_recovery"]["gpu_recovery"] = {"enabled": False}
@@ -1911,7 +1921,7 @@ Metadaten:
         except Exception as e:
             health["external_services"]["redis"] = {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
 
         return health
@@ -1949,7 +1959,7 @@ Metadaten:
             self.logger.error(
                 "circuit_breaker_reset_failed",
                 circuit=circuit_name,
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return False

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cpp_flex_attention_template.py
+# hypothesis_version: 6.148.7
+
+['\nGEMM_DEFINE\n', 'GEMM_DEFINE', '\\d+', '_kernel_micro_gemm', 'b', 'cpp_micro_gemm', 'cur_kvSplitSize', 'cur_qSplitSize', 'flex_attention', 'get_dtype', 'h', 'in_ptr0', 'in_ptr1', 'in_ptr2', 'in_ptr3', 'in_ptr4', 'kv_idx', 'max_parallel_depth', 'q_idx', 'score']

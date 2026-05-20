@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\circuit_breaker.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 30.0, 60.0, 'T', 'closed', 'config', 'consecutive_failures', 'failed_calls', 'failure_rate', 'failure_threshold', 'failure_window', 'half_open', 'half_open_max_calls', 'last_failure_time', 'last_success_time', 'name', 'open', 'recovery_timeout', 'retry_after', 'state', 'stats', 'success_rate', 'success_threshold', 'successful_calls', 'times_half_opened', 'times_opened', 'total_calls']

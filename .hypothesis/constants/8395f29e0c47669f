@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\dist_saver.py
+# hypothesis_version: 6.148.7
+
+[',', '.pdattr', '.pdmodel', '.pdopt', '.pdparams', 'Out', 'X', '[rank -> ring_ids]\n', '[ring_id -> ranks]\n', '_dist', '_serial.pdmodel', 'feed', 'latin1', 'legacy_format', 'opt', 'param', 'pdattr', 'pdopt', 'pdparams', 'program', 'rank_mapping.csv', 'rb', 'read', 'recv_v2', 'send_v2', 'w', 'wb']

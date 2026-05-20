@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ocr_cache_service.py
+# hypothesis_version: 6.148.7
+
+[2.0, 100, 200, 256, 300, 1024, 3600, 86400, '*', ':', 'JsonValue', 'available', 'backend', 'cached_at', 'created', 'de', 'deepseek', 'description', 'donut', 'easyocr', 'enabled', 'error', 'expires', 'file_hash', 'got_ocr', 'hit', 'hit_rate_percent', 'hits', 'hybrid', 'json', 'l1', 'l1_cache', 'l1_hits', 'l2', 'l2_cache', 'l2_hits', 'language', 'max_memory_mb', 'maxsize', 'memory_bytes', 'memory_mb', 'memory_usage_percent', 'miss', 'misses', 'ocr_cache:', 'ocr_cache_get_error', 'ocr_cache_l1_hit', 'ocr_cache_l2_hit', 'ocr_cache_stats:', 'ocr_result_cached', 'options', 'orjson', 'overall', 'per_backend', 'redis_available', 'result', 'size', 'size_bytes', 'surya', 'surya_gpu', 'total_l1_hits', 'total_l2_hits', 'total_misses', 'total_requests', 'ttl_seconds', 'utf-8', 'v0', 'v1.0', 'v1.1', 'v2.0', 'value']

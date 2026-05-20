@@ -1,0 +1,160 @@
+# OpenTelemetry Collector Konfiguration
+#
+# Sammelt Traces von allen Services und exportiert zu:
+# - Jaeger (Visualisierung)
+# - Prometheus (Metriken aus Traces)
+# - Optional: Tempo, Zipkin, Elasticsearch
+
+receivers:
+  # OTLP Receiver (gRPC und HTTP)
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        max_recv_msg_size_mib: 16
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://localhost:*"
+            - "https://localhost:*"
+
+  # Jaeger Receiver (fuer Legacy-Integration)
+  jaeger:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:14250
+      thrift_http:
+        endpoint: 0.0.0.0:14268
+
+  # Zipkin Receiver (Kompatibilitaet)
+  zipkin:
+    endpoint: 0.0.0.0:9411
+
+processors:
+  # Batch Processor fuer effiziente Exports
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+    send_batch_max_size: 1024
+
+  # Memory Limiter (verhindert OOM)
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Resource Detection
+  resourcedetection:
+    detectors: [env, system, docker]
+    timeout: 5s
+    override: false
+
+  # Attribute Processor (Anreicherung)
+  attributes:
+    actions:
+      - key: deployment.environment
+        value: production
+        action: upsert
+      - key: service.namespace
+        value: ablage-system
+        action: upsert
+
+  # Span Processor (Filterung)
+  filter/health:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["http.target"] == "/health"'
+        - 'attributes["http.target"] == "/readiness"'
+        - 'attributes["http.target"] == "/metrics"'
+
+  # Tail Sampling (nur relevante Traces speichern)
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100000
+    expected_new_traces_per_sec: 100
+    policies:
+      # Alle Fehler samplen
+      - name: errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      # Langsame Requests samplen (>2s)
+      - name: slow-requests
+        type: latency
+        latency:
+          threshold_ms: 2000
+      # OCR-Operationen immer samplen
+      - name: ocr-operations
+        type: string_attribute
+        string_attribute:
+          key: ocr.backend
+          values: [deepseek, got_ocr, surya, surya_gpu]
+      # Probabilistisches Sampling fuer Rest
+      - name: probabilistic
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+exporters:
+  # Jaeger Exporter (OTLP)
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # Prometheus Exporter (Span Metriken)
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: ablage_traces
+    const_labels:
+      exporter: otel-collector
+
+  # Logging Exporter (Debug)
+  logging:
+    verbosity: normal
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # Debug Exporter (Development)
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+extensions:
+  # Health Check
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # pprof (Performance Profiling)
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # zpages (Debug UI)
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+
+  pipelines:
+    # Traces Pipeline
+    traces:
+      receivers: [otlp, jaeger, zipkin]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - attributes
+        - filter/health
+        - tail_sampling
+        - batch
+      exporters: [otlp/jaeger, logging]
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\mcp-server\parallel_executor.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.2, 0.3, 0.5, 1.0, 300.0, 1000, '=', 'Aggregated metrics:', 'Dependency failed', 'Design', 'Design API', 'Format code', 'Format file A', 'Format file B', 'Format file C', 'Implement', 'Implement A', 'Implement B', 'Merge results', 'Write tests', '__main__', 'completed', 'completed_tasks', 'concatenate', 'design', 'escalated', 'escalations', 'execution_time_ms', 'failed', 'failed_tasks', 'format', 'format A', 'format B', 'format C', 'haiku', 'impl A', 'impl B', 'impl_a', 'impl_b', 'implement', 'merge', 'opus', 'parallel_speedup', 'pending', 'results', 'running', 'skipped', 'skipped_tasks', 'sonnet', 'status', 'success', 'task_1', 'task_2', 'task_3', 'task_id', 'test', 'tier_distribution', 'tier_used', 'time_by_tier', 'total_tasks', 'unknown']

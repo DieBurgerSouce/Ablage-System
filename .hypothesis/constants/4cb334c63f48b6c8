@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\utils\__init__.py
+# hypothesis_version: 6.148.7
+
+['MaskedModel', 'OpChain', 'assert_import', 'convert_name', 'format_value', 'hclust', 'hclust_ordering', 'make_masks', 'ordinal_str', 'partition_tree', 'record_import_error', 'safe_isinstance', 'sample', 'shapley_coefficients', 'show_progress', 'suppress_stderr']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\rag\search.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.3, 0.7, 1.0, 100, 1000, '/hybrid', '/search', '/semantic', '60/minute', 'Gewicht Keyword', 'Gewicht Semantic', 'Hybrid-Suche (GET)', 'Max Ergebnisse', 'Min Similarity', 'Reranking aktivieren', 'Suchanfrage', 'rag-search', 'rag_search_failed', 'rag_search_request']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\datamodel\vlm_model_specs.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 2.0, 120, 8192, '</doctag>', '<end_of_utterance>', '<|end_of_text|>', '<|im_end|>', 'ByteDance/Dolphin', 'Extract the text.', 'bfloat16', 'format', 'got_ocr_2', 'granite3.2-vision:2b', 'granite_docling', 'granite_docling_vllm', 'granite_vision', 'granite_vision_vllm', 'model', 'smoldocling', 'smoldocling_vllm', 'untied']

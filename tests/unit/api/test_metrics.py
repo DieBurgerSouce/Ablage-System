@@ -27,6 +27,7 @@ class TestPrometheusMetrics:
     async def test_prometheus_metrics_endpoint(self):
         """Prometheus Metrics Endpoint gibt gültiges Format zurück."""
         from app.api.v1.metrics import prometheus_metrics
+        from prometheus_client import CONTENT_TYPE_LATEST
 
         with patch('app.api.v1.metrics.generate_latest') as mock_generate:
             mock_generate.return_value = b'# HELP test_metric Test\n# TYPE test_metric gauge\ntest_metric 1.0\n'
@@ -34,7 +35,8 @@ class TestPrometheusMetrics:
             response = await prometheus_metrics()
 
             assert isinstance(response, Response)
-            assert response.media_type == "text/plain; version=0.0.4; charset=utf-8"
+            # prometheus_client CONTENT_TYPE_LATEST verwenden (aktuell version=1.0.0)
+            assert response.media_type == CONTENT_TYPE_LATEST
 
     @pytest.mark.asyncio
     async def test_prometheus_metrics_content(self):
@@ -250,23 +252,24 @@ class TestBusinessMetrics:
 
     @pytest.mark.asyncio
     async def test_business_metrics_endpoint(self, mock_superuser):
-        """Business Metrics Endpoint für Superuser."""
-        from app.api.v1.metrics import get_business_metrics
+        """Business Metrics Endpoint gibt gültige Metriken zurück."""
+        from app.api.v1.metrics import business_metrics
 
-        mock_metrics = {
-            "documents_total": 1500,
-            "documents_processed_today": 50,
-            "ocr_success_rate": 0.98,
-            "average_processing_time_seconds": 2.5,
-            "active_users_today": 25,
-            "storage_used_gb": 150.5
-        }
+        # Mock Redis
+        mock_redis = AsyncMock()
+        mock_redis.get_counter = AsyncMock(side_effect=[100, 5, 2])  # processed, failed, oom
+        mock_redis.get_all_agents_status = AsyncMock(return_value=[
+            {"status": "running"},
+            {"status": "idle"}
+        ])
 
-        with patch('app.api.v1.metrics.calculate_business_metrics', return_value=mock_metrics):
-            response = await get_business_metrics(current_user=mock_superuser)
+        with patch('app.api.v1.metrics.get_redis', return_value=mock_redis):
+            response = await business_metrics()
 
-            assert response["documents_total"] == 1500
-            assert response["ocr_success_rate"] == 0.98
+            assert "documents" in response
+            assert "gpu" in response
+            assert "agents" in response
+            assert response["documents"]["total_processed"] == 100
 
 
 # ==================== Metriken-Integrität Tests ====================

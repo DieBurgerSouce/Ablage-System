@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\deprecated.py
+# hypothesis_version: 6.148.7
+
+['Callable', 'Property', 'alternative', 'cannot set attribute', 'deprecation', 'description', 'removal', 'stacklevel', 'warn']

@@ -6,7 +6,8 @@ Provides rate limit operations for the admin console:
 - View usage statistics
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 import math
@@ -26,6 +27,7 @@ from app.db.schemas import (
     UserTier,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -102,7 +104,7 @@ class RateLimitService:
             return None
 
         # Get active override
-        now = datetime.utcnow()
+        now = utc_now()
         override_result = await db.execute(
             select(RateLimitOverride).where(
                 and_(
@@ -156,8 +158,8 @@ class RateLimitService:
             Current usage counts
         """
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6380')
-            client = redis.from_url(redis_url)
+            # Verwende zentrale settings - REDIS_URL wird automatisch konstruiert
+            client = redis.from_url(settings.REDIS_URL)
 
             # Keys for rate limiting
             keys = {
@@ -175,7 +177,7 @@ class RateLimitService:
             await client.close()
             return usage
         except Exception as e:
-            logger.warning("redis_usage_fetch_failed", error=str(e))
+            logger.warning("redis_usage_fetch_failed", **safe_error_log(e))
             return {
                 "ocr_hourly": 0,
                 "ocr_daily": 0,
@@ -228,7 +230,7 @@ class RateLimitService:
                 override.api_per_minute = data.api_per_minute
             override.valid_until = data.valid_until
             override.reason = data.reason
-            override.updated_at = datetime.utcnow()
+            override.updated_at = utc_now()
             action = "update_rate_limit_override"
         else:
             # Create new
@@ -397,8 +399,8 @@ class RateLimitService:
             True if successful
         """
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6380')
-            client = redis.from_url(redis_url)
+            # Verwende zentrale settings - REDIS_URL wird automatisch konstruiert
+            client = redis.from_url(settings.REDIS_URL)
 
             # Delete all rate limit keys for user
             keys = [
@@ -432,7 +434,7 @@ class RateLimitService:
 
             return True
         except Exception as e:
-            logger.error("rate_limit_reset_failed", error=str(e))
+            logger.error("rate_limit_reset_failed", **safe_error_log(e))
             return False
 
     @staticmethod

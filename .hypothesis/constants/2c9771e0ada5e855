@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\quantization\quanter.py
+# hypothesis_version: 6.148.7
+
+[0.9, 10000, './', 'PaddleLite', 'TensorRT', 'X', 'abs_max', 'activation_bits', 'channel_wise_abs_max', 'config must be dict', 'conv2d', 'depthwise_conv2d', 'dtype', 'dtype can only be ', 'dtype must be a str.', 'elementwise_add', 'for_tensorrt', 'graph.pdf', 'int8', 'is_full_quantize', 'leaky_relu', 'moving_rate', 'mul', 'not_quant_pattern', 'onnx_format', 'pool2d', 'quant_config', 'quant_post_first', 'quantizable_op_type', 'quantize_op_types', 'r', 'range_abs_max', 'scale_trainable', 'skip_quant', 'sub_block', 'w', 'weight_bits', 'weight_quantize_type', 'while', 'window_size']

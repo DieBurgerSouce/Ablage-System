@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\tuner\trial.py
+# hypothesis_version: 6.148.7
+
+[10000000.0, '    +', '+', '-', ':', '=', 'COMPLETED', 'INVALID', 'RUNNING', 'STOPPED', 'Tunable space:', 'best_step', 'id', 'recorder', 'score', 'space', 'status', 'utf-8']

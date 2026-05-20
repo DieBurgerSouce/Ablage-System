@@ -7,7 +7,7 @@ Speichert Ergebnisse in Redis mit konfigurierbarem TTL.
 Feinpoliert und durchdacht - Robuste API-Operationen.
 """
 
-from typing import Optional, Any, Dict, Callable, TypeVar
+from typing import Optional, Dict, Callable, TypeVar
 from functools import wraps
 import json
 import hashlib
@@ -30,7 +30,7 @@ class IdempotencyService:
     um bei wiederholten Requests das gleiche Ergebnis zurückzugeben.
     """
 
-    def __init__(self, redis_client: Any = None):
+    def __init__(self, redis_client: Optional[object] = None):
         """
         Initialize IdempotencyService.
 
@@ -41,10 +41,11 @@ class IdempotencyService:
         self._prefix = "idempotency:"
         self._default_ttl = 86400  # 24 Stunden
 
-    async def _get_redis(self) -> Any:
+    async def _get_redis(self) -> Optional[object]:
         """Get Redis client, lazy loading if needed."""
         if self._redis is None:
             from app.core.rate_limiting import get_redis_storage
+
             self._redis = await get_redis_storage()
         return self._redis
 
@@ -67,7 +68,7 @@ class IdempotencyService:
         self,
         idempotency_key: str,
         user_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, object]]:
         """
         Get cached response for idempotency key.
 
@@ -95,14 +96,14 @@ class IdempotencyService:
                 )
                 return data
         except Exception as e:
-            logger.warning("idempotency_cache_get_error", error=str(e))
+            logger.warning("idempotency_cache_get_error", **safe_error_log(e))
 
         return None
 
     async def cache_response(
         self,
         idempotency_key: str,
-        response_data: Dict[str, Any],
+        response_data: Dict[str, object],
         status_code: int = 200,
         user_id: Optional[str] = None,
         ttl: Optional[int] = None
@@ -142,7 +143,7 @@ class IdempotencyService:
             )
             return True
         except Exception as e:
-            logger.warning("idempotency_cache_set_error", error=str(e))
+            logger.warning("idempotency_cache_set_error", **safe_error_log(e))
             return False
 
     async def is_request_in_progress(
@@ -172,7 +173,7 @@ class IdempotencyService:
             exists = await redis.exists(lock_key)
             return bool(exists)
         except Exception as e:
-            logger.warning("idempotency_lock_check_error", error=str(e))
+            logger.warning("idempotency_lock_check_error", **safe_error_log(e))
             return False
 
     async def acquire_lock(
@@ -205,7 +206,7 @@ class IdempotencyService:
                 logger.debug("idempotency_lock_acquired", key=idempotency_key)
             return bool(acquired)
         except Exception as e:
-            logger.warning("idempotency_lock_acquire_error", error=str(e))
+            logger.warning("idempotency_lock_acquire_error", **safe_error_log(e))
             return True  # Bei Fehler, erlaube Verarbeitung
 
     async def release_lock(
@@ -230,7 +231,7 @@ class IdempotencyService:
             await redis.delete(lock_key)
             logger.debug("idempotency_lock_released", key=idempotency_key)
         except Exception as e:
-            logger.warning("idempotency_lock_release_error", error=str(e))
+            logger.warning("idempotency_lock_release_error", **safe_error_log(e))
 
 
 # Singleton instance
@@ -249,7 +250,7 @@ async def check_idempotency(
     request: Request,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
-) -> Optional[Dict[str, Any]]:
+) -> Optional[Dict[str, object]]:
     """
     FastAPI Dependency für Idempotency-Check.
 
@@ -302,7 +303,7 @@ async def check_idempotency(
 
 
 def generate_idempotency_key(
-    *args: Any,
+    *args: object,
     prefix: str = "auto"
 ) -> str:
     """

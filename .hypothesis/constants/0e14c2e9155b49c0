@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\quant\format.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, -57344, -448, 128, 448, 57344, 'Scale', 'X', 'Y', 'ZeroPoint', '_quanter', 'bit_length', 'dequantize_linear', 'e4m3', 'e5m2', 'float32', 'float8_e4m3fn', 'float8_e5m2', 'qmax', 'qmin', 'quant_axis', 'quant_dequant.scale', 'quant_out', 'quantize_linear']

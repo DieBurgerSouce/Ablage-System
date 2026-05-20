@@ -26,6 +26,7 @@ from app.db.models import User, PasswordResetToken
 from app.services.notification_service import NotificationService
 from app.core.config import settings
 from app.core.security import get_password_hash
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -209,7 +210,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             return True, standard_message
 
         except Exception as e:
-            logger.error("password_reset_request_failed", error=str(e))
+            logger.error("password_reset_request_failed", **safe_error_log(e))
             await db.rollback()
             # Trotzdem Standard-Antwort (keine Fehlerdetails preisgeben)
             return True, standard_message
@@ -264,7 +265,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             return True, user, "Token gültig"
 
         except Exception as e:
-            logger.error("password_reset_validation_failed", error=str(e))
+            logger.error("password_reset_validation_failed", **safe_error_log(e))
             return False, None, "Validierung fehlgeschlagen"
 
     @classmethod
@@ -273,6 +274,9 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
         db: AsyncSession,
         token: str,
         new_password: str,
+        notification_service: Optional[NotificationService] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """
         Setzt das Passwort mit einem gültigen Token zurück.
@@ -281,6 +285,9 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             db: Database session
             token: Das Reset-Token (Klartext)
             new_password: Das neue Passwort
+            notification_service: Service für Bestätigungs-Email
+            ip_address: IP-Adresse für Sicherheits-Email
+            user_agent: User-Agent für Sicherheits-Email
 
         Returns:
             Tuple[bool, str]: (Erfolg, Nachricht)
@@ -335,10 +342,98 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
                 user_id=str(user.id),
             )
 
+            # Sende Bestätigungs-Email (Sicherheit: Benutzer über Änderung informieren)
+            if notification_service and user.email:
+                try:
+                    timestamp = datetime.now(timezone.utc).strftime("%d.%m.%Y %H:%M:%S UTC")
+
+                    # Plain text Email
+                    body = f"""
+Guten Tag {user.full_name or user.username},
+
+Ihr Passwort für das Ablage-System wurde erfolgreich geändert.
+
+Zeitpunkt: {timestamp}
+IP-Adresse: {ip_address or "Unbekannt"}
+Gerät: {user_agent or "Unbekannt"}
+
+Falls Sie diese Änderung NICHT vorgenommen haben, ergreifen Sie bitte sofort folgende Maßnahmen:
+1. Kontaktieren Sie umgehend den Administrator
+2. Versuchen Sie, Ihr Passwort erneut zurückzusetzen
+3. Überprüfen Sie Ihre anderen Konten auf verdächtige Aktivitäten
+
+Mit freundlichen Grüßen,
+Ablage-System Team
+
+---
+Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+                    """.strip()
+
+                    # HTML Email
+                    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #333;">Passwort erfolgreich geändert</h2>
+    <p>Guten Tag {user.full_name or user.username},</p>
+    <p>Ihr Passwort für das <strong>Ablage-System</strong> wurde erfolgreich geändert.</p>
+
+    <table style="background-color: #f5f5f5; padding: 15px; border-radius: 4px; width: 100%;">
+        <tr><td><strong>Zeitpunkt:</strong></td><td>{timestamp}</td></tr>
+        <tr><td><strong>IP-Adresse:</strong></td><td>{ip_address or "Unbekannt"}</td></tr>
+        <tr><td><strong>Gerät:</strong></td><td>{user_agent or "Unbekannt"}</td></tr>
+    </table>
+
+    <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <strong style="color: #856404;">⚠️ Wichtig:</strong>
+        <p style="color: #856404; margin: 10px 0 0 0;">
+            Falls Sie diese Änderung <strong>NICHT</strong> vorgenommen haben, ergreifen Sie bitte sofort folgende Maßnahmen:
+        </p>
+        <ol style="color: #856404;">
+            <li>Kontaktieren Sie umgehend den Administrator</li>
+            <li>Versuchen Sie, Ihr Passwort erneut zurückzusetzen</li>
+            <li>Überprüfen Sie Ihre anderen Konten auf verdächtige Aktivitäten</li>
+        </ol>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+    <p style="color: #666; font-size: 12px;">
+        Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+    </p>
+</body>
+</html>
+                    """.strip()
+
+                    email_sent = await notification_service.send_email(
+                        to_email=user.email,
+                        subject="Passwort erfolgreich geändert - Ablage-System",
+                        body=body,
+                        html_body=html_body,
+                    )
+
+                    if email_sent:
+                        logger.info(
+                            "password_reset_confirmation_sent",
+                            user_id=str(user.id),
+                        )
+                    else:
+                        logger.warning(
+                            "password_reset_confirmation_email_failed",
+                            user_id=str(user.id),
+                        )
+                except Exception as email_error:
+                    # Email-Fehler sollte Reset nicht rückgängig machen
+                    logger.error(
+                        "password_reset_confirmation_email_error",
+                        user_id=str(user.id),
+                        error=str(email_error),
+                    )
+
             return True, "Passwort erfolgreich zurückgesetzt"
 
         except Exception as e:
-            logger.error("password_reset_failed", error=str(e))
+            logger.error("password_reset_failed", **safe_error_log(e))
             await db.rollback()
             return False, "Passwort konnte nicht zurückgesetzt werden"
 
@@ -373,7 +468,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             return deleted_count
 
         except Exception as e:
-            logger.error("password_reset_cleanup_failed", error=str(e))
+            logger.error("password_reset_cleanup_failed", **safe_error_log(e))
             await db.rollback()
             return 0
 

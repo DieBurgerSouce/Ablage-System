@@ -15,13 +15,14 @@ Feinpoliert und durchdacht - Zuverlässige Konfidenzschätzungen.
 import json
 import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -515,7 +516,7 @@ class ConfidenceCalibrator:
             is_correct=is_correct,
             backend=backend,
             document_type=document_type,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         if backend not in self._pending_samples:
@@ -580,7 +581,7 @@ class ConfidenceCalibrator:
             method=method,
             parameters=parameters,
             samples_used=len(samples),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metrics=metrics,
         )
 
@@ -729,7 +730,7 @@ class ConfidenceCalibrator:
                 self.train_model(backend, samples)
                 self._pending_samples[backend] = []  # Clear nach Training
             except Exception as e:
-                logger.error("retrain_failed", backend=backend, error=str(e))
+                logger.error("retrain_failed", backend=backend, **safe_error_log(e))
 
     def _save_model(self, model: CalibrationModel) -> None:
         """Speichere Modell auf Disk."""
@@ -743,7 +744,7 @@ class ConfidenceCalibrator:
             logger.debug("calibration_model_saved", path=str(model_path))
 
         except Exception as e:
-            logger.error("calibration_save_failed", error=str(e))
+            logger.error("calibration_save_failed", **safe_error_log(e))
 
     def _load_models(self) -> None:
         """Lade alle Modelle von Disk."""
@@ -767,7 +768,7 @@ class ConfidenceCalibrator:
                 logger.warning(
                     "calibration_load_failed",
                     path=str(model_path),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     def _reconstruct_calibrator(self, model: CalibrationModel) -> None:

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\dataset\common.py
+# hypothesis_version: 6.148.7
+
+[4096, '\nDownload finished\n', '%05d.pickle', '.cache', '/', 'Begin to download\n', 'GET', '^[a-zA-Z0-9_/\\-]+$', '__', 'content-length', 'dataset', 'fetch', 'item', 'paddle', 'r', 'rb', 'w', 'wb', '~']

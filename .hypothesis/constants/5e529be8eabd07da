@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\datev\metrics.py
+# hypothesis_version: 6.148.7
+
+[1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 'DATEVMetricsService', 'SKR03', 'SKR04', 'datev_config_count', 'datev_exports_total', 'error_type', 'hinweis', 'kontenrahmen', 'metriken', 'prometheus_endpoint', 'status', 'zeitstempel']

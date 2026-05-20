@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\document_service.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 255, 500, 1024, 5000, '.', '..', '/data/privat', 'Falsches Passwort', 'PRIVAT_STORAGE_PATH', 'SecureBytesWrapper', '[^a-zA-Z0-9.\\-_ ]', '^\\.[a-zA-Z0-9]+$', '_', 'action', 'admin', 'application/msword', 'application/pdf', 'application/zip', 'change_encryption', 'document_title', 'document_type', 'encrypted', 'encryption_changed', 'file_size', 'filename_sanitized', 'idor_attempt_blocked', 'image/gif', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp', 'info', 'move_to_folder', 'new_folder_id', 'now_encrypted', 'old_folder_id', 'privat_document', 'rb', 'read', 'recovery_possible', 'soft_delete', 'space_id', 'system', 'text/csv', 'text/plain', 'updated_fields', 'warning', 'was_encrypted', 'wb', 'write']

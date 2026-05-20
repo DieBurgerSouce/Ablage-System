@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\pir_partial_program.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'Not implemented.', 'auto_layout_pass', 'backend', 'backward_program', 'bfloat16', 'bo_g', 'build_strategy', 'cuda_graph_state', 'float16', 'fo', 'fo_values', 'forward_program', 'grad_input_', 'grad_output_', 'in_sot_mode', 'is_test', 'no_need_buffers', 'output_', 'output_name', 'preserved_index_', 'preserved_value_', 'program_id', 'targets']

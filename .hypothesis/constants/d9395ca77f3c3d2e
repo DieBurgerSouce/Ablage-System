@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_openml.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 412, 4096, "'", '.gz', '/', '/data_version/{}', '/status/active/', '/status/deactivated', 'Accept-encoding', 'Content-Encoding', 'NumberOfInstances', '`fetch_openml`', 'active', 'as_frame', 'auto', 'cache', 'data', 'data_features', 'data_home', 'data_id', 'data_qualities', 'data_set_description', 'data_type', 'dataset', 'default-target', 'delay', 'description', 'did', 'error', 'feature', 'fetch_openml', 'format', 'gzip', 'is_ignore', 'is_row_identifier', 'is_target', 'left', 'liac-arff', 'md5_checksum', 'n_retries', 'name', 'neither', 'numeric', 'numpy', 'openml', 'openml.org', 'pandas', 'parser', 'quality', 'rb', 'read_csv_kwargs', 'return_X_y', 'sparse', 'sparse_arff', 'status', 'string', 'target_column', 'true', 'url', 'utf-8', 'value', 'version', 'warning', 'wb']

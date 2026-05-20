@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\sharding\offload_helper.py
+# hypothesis_version: 6.148.7
+
+['.cast_fp16', '@offload', 'Moment1', 'Moment2', 'Out', 'Param', 'X', 'adam', 'adamw', 'broadcast', 'c_broadcast', 'cast', 'cast_fp16', 'coalesce_tensor', 'dst_place_type', 'in_dtype', 'is_distributed', 'lamb', 'lars', 'memcpy', 'momentum', 'out', 'out_dtype', 'ring_id', 'root', 'subprog', 'x']

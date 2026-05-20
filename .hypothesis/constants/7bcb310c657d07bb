@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\libpath.py
+# hypothesis_version: 6.148.7
+
+['\n- ', '\nSee: ', '\nsys.base_prefix: ', 'Library', 'OS400', 'XGBOOST_BUILD_DOC', 'bin', 'cygwin', 'cygxgboost.dll', 'darwin', 'emscripten', 'freebsd', 'lib', 'libxgboost.dylib', 'libxgboost.so', 'linux', 'mingw-w64', 'win32', 'xgboost.dll']

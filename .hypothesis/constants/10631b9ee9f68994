@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\regular.py
+# hypothesis_version: 6.148.7
+
+[2.0, 'Graph has no nodes.', 'directed', 'is_k_regular', 'is_regular', 'k_factor', 'multigraph', 'weight']

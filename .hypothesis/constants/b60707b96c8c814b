@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\reference_parser.py
+# hypothesis_version: 6.148.7
+
+[100, 2000, '+', '++', 'ABSCHLAG', 'BEITRAG', 'BELEG', 'CLUB', 'DARLEHEN', 'EINZUG', 'ENERGIE', 'ENTGELT', 'FAKTURA', 'GEHALT', 'INVOICE', 'KALTMIETE', 'KREDIT', 'LASTSCHRIFT', 'LOHN', 'MANDATE', 'MIETE', 'MIETZA', 'MITGLIED', 'MOBILFUNK', 'O2', 'PACHT', 'PRÄMIE', 'RATE', 'RECHNUNG', 'SALARY', 'SEPA', 'STADTWERKE', 'STROM', 'TELEFON', 'TELEKOM', 'TILGUNG', 'VEREIN', 'VERGÜTUNG', 'VERS', 'VERSICHERUNG', 'VODAFONE', 'WARMMIETE', 'ZINSEN', '[./]', '\\s+', 'contract_numbers', 'creditor_id', 'customer_numbers', 'dates', 'end_to_end_id', 'gehalt', 'invoice_numbers', 'keywords', 'kredit', 'lastschrift', 'mandate_id', 'miete', 'mitgliedschaft', 'order_numbers', 'payment_purpose', 'period_from', 'period_to', 'rechnung', 'strom', 'telefon', 'versicherung']

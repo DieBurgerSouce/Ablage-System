@@ -19,7 +19,7 @@ Feinpoliert und durchdacht - Qualitätssicherung für perfekte Ergebnisse.
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import structlog
 
@@ -43,7 +43,7 @@ class QualityMetrics:
     critical_issue_count: int = 0
     suggestion_count: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Convert to dictionary."""
         return {
             "overall_score": round(self.overall_score, 3),
@@ -66,7 +66,7 @@ class SemanticCheck:
     passed: bool
     message: str
     severity: float = 0.5
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: Dict[str, object] = field(default_factory=dict)
 
 
 class QualityLevel:
@@ -170,7 +170,7 @@ class QAAgent(PostprocessingAgent):
         super().__init__(name="qa_agent")
         self.validator = GermanValidator()
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Perform quality assurance on OCR output.
 
@@ -207,8 +207,8 @@ class QAAgent(PostprocessingAgent):
         )
 
         # Collect all issues
-        issues: List[Dict[str, Any]] = []
-        suggestions: List[Dict[str, Any]] = []
+        issues: List[Dict[str, object]] = []
+        suggestions: List[Dict[str, object]] = []
 
         # Run all quality checks
         text_quality = self._check_text_quality(text)
@@ -328,7 +328,7 @@ class QAAgent(PostprocessingAgent):
 
         return result
 
-    def _check_text_quality(self, text: str) -> Dict[str, Any]:
+    def _check_text_quality(self, text: str) -> Dict[str, object]:
         """
         Check overall text quality.
 
@@ -400,7 +400,7 @@ class QAAgent(PostprocessingAgent):
             },
         }
 
-    def _check_german_quality(self, text: str) -> Dict[str, Any]:
+    def _check_german_quality(self, text: str) -> Dict[str, object]:
         """
         Check German language quality.
 
@@ -440,9 +440,9 @@ class QAAgent(PostprocessingAgent):
             likely_errors = [
                 p for p in ae_patterns
                 if any(pattern in p.lower() for pattern in [
-                    'aend', 'aerzt', 'aehn', 'aerger', 'baeck', 'geraet',
-                    'hoehe', 'koennen', 'moeglich', 'oeffn',
-                    'fuer', 'muessen', 'pruef', 'ueber', 'zurueck',
+                    'aend', 'aerzt', 'aehn', 'ärger', 'baeck', 'geraet',
+                    'höhe', 'können', 'möglich', 'öffn',
+                    'für', 'müssen', 'prüf', 'über', 'zurück',
                 ])
             ]
             if likely_errors:
@@ -476,9 +476,9 @@ class QAAgent(PostprocessingAgent):
 
     def _check_entity_quality(
         self,
-        entities: List[Dict[str, Any]],
-        classification: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        entities: List[Dict[str, object]],
+        classification: Dict[str, object],
+    ) -> Dict[str, object]:
         """
         Check entity extraction quality.
 
@@ -562,7 +562,7 @@ class QAAgent(PostprocessingAgent):
         }
         return expected.get(document_type, [])
 
-    def _validate_entity(self, entity: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _validate_entity(self, entity: Dict[str, object]) -> List[Dict[str, object]]:
         """Validate individual entity."""
         issues = []
         entity_type = entity.get("type", "")
@@ -632,9 +632,9 @@ class QAAgent(PostprocessingAgent):
 
     def _check_entity_plausibility(
         self,
-        entities: List[Dict[str, Any]],
+        entities: List[Dict[str, object]],
         document_type: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, object]]:
         """Check entity plausibility."""
         issues = []
 
@@ -681,8 +681,8 @@ class QAAgent(PostprocessingAgent):
     def _check_confidence(
         self,
         ocr_confidence: float,
-        entities: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        entities: List[Dict[str, object]],
+    ) -> Dict[str, object]:
         """Check confidence scores."""
         issues = []
 
@@ -722,7 +722,7 @@ class QAAgent(PostprocessingAgent):
             },
         }
 
-    def _check_encoding(self, text: str) -> Dict[str, Any]:
+    def _check_encoding(self, text: str) -> Dict[str, object]:
         """Check for encoding issues."""
         issues = []
         suggestions = []
@@ -782,7 +782,7 @@ class QAAgent(PostprocessingAgent):
         german_score: float,
         entity_score: float,
         ocr_confidence: float,
-        issues: List[Dict[str, Any]],
+        issues: List[Dict[str, object]],
         completeness_score: float = 1.0,
         semantic_score: float = 1.0,
     ) -> float:
@@ -845,7 +845,7 @@ class QAAgent(PostprocessingAgent):
     def _get_recommendation(
         self,
         quality_level: str,
-        issues: List[Dict[str, Any]],
+        issues: List[Dict[str, object]],
     ) -> str:
         """Get recommendation based on quality assessment."""
         critical_issues = [i for i in issues if i.get("severity", 0) > 0.8]
@@ -870,7 +870,7 @@ class QAAgent(PostprocessingAgent):
         self,
         quality_level: str,
         quality_score: float,
-        issues: List[Dict[str, Any]],
+        issues: List[Dict[str, object]],
         ocr_confidence: float,
     ) -> Tuple[bool, List[str]]:
         """
@@ -958,7 +958,7 @@ class QAAgent(PostprocessingAgent):
 
         return needs_review, review_reasons
 
-    def get_qa_stats(self) -> Dict[str, Any]:
+    def get_qa_stats(self) -> Dict[str, object]:
         """Get QA agent statistics."""
         return {
             "issue_types": list(QAIssueType.__dict__.keys()),
@@ -979,9 +979,9 @@ class QAAgent(PostprocessingAgent):
     def _check_semantic_plausibility(
         self,
         text: str,
-        entities: List[Dict[str, Any]],
-        classification: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        entities: List[Dict[str, object]],
+        classification: Dict[str, object],
+    ) -> Dict[str, object]:
         """
         Check semantic plausibility of document content.
 
@@ -999,8 +999,8 @@ class QAAgent(PostprocessingAgent):
         Returns:
             Dictionary with score, issues, suggestions, and semantic checks
         """
-        issues: List[Dict[str, Any]] = []
-        suggestions: List[Dict[str, Any]] = []
+        issues: List[Dict[str, object]] = []
+        suggestions: List[Dict[str, object]] = []
         semantic_checks: List[SemanticCheck] = []
         score = 1.0
 
@@ -1098,7 +1098,7 @@ class QAAgent(PostprocessingAgent):
         }
 
     def _validate_date_sequences(
-        self, entities: List[Dict[str, Any]]
+        self, entities: List[Dict[str, object]]
     ) -> SemanticCheck:
         """Validate that date sequences are logical (start before end)."""
         date_entities = [e for e in entities if e.get("type") == "DATE"]
@@ -1146,8 +1146,11 @@ class QAAgent(PostprocessingAgent):
                                     "end_date": end["value"],
                                 },
                             )
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug(
+                            "date_sequence_parse_failed",
+                            error_type=type(e).__name__,
+                        )
 
         return SemanticCheck(
             check_name="date_sequence",
@@ -1157,7 +1160,7 @@ class QAAgent(PostprocessingAgent):
         )
 
     def _validate_amount_consistency(
-        self, entities: List[Dict[str, Any]]
+        self, entities: List[Dict[str, object]]
     ) -> SemanticCheck:
         """Validate that amounts in invoice are consistent (subtotals add up)."""
         currency_entities = [
@@ -1218,7 +1221,7 @@ class QAAgent(PostprocessingAgent):
         )
 
     def _validate_invoice_number(
-        self, entities: List[Dict[str, Any]], text: str
+        self, entities: List[Dict[str, object]], text: str
     ) -> SemanticCheck:
         """Validate invoice number format and presence."""
         invoice_entities = [
@@ -1267,7 +1270,7 @@ class QAAgent(PostprocessingAgent):
         )
 
     def _validate_contract_dates(
-        self, entities: List[Dict[str, Any]]
+        self, entities: List[Dict[str, object]]
     ) -> SemanticCheck:
         """Validate contract-specific date logic."""
         date_entities = [e for e in entities if e.get("type") == "DATE"]
@@ -1322,8 +1325,11 @@ class QAAgent(PostprocessingAgent):
                         },
                     )
 
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "contract_dates_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
         return SemanticCheck(
             check_name="contract_dates",
@@ -1396,9 +1402,9 @@ class QAAgent(PostprocessingAgent):
 
     def _check_cross_entity_consistency(
         self,
-        entities: List[Dict[str, Any]],
-        classification: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        entities: List[Dict[str, object]],
+        classification: Dict[str, object],
+    ) -> Dict[str, object]:
         """
         Check consistency between related entities.
 
@@ -1415,8 +1421,8 @@ class QAAgent(PostprocessingAgent):
         Returns:
             Dictionary with score, issues, and suggestions
         """
-        issues: List[Dict[str, Any]] = []
-        suggestions: List[Dict[str, Any]] = []
+        issues: List[Dict[str, object]] = []
+        suggestions: List[Dict[str, object]] = []
         score = 1.0
 
         # Check 1: IBAN country matches address
@@ -1472,8 +1478,8 @@ class QAAgent(PostprocessingAgent):
         }
 
     def _check_iban_address_consistency(
-        self, entities: List[Dict[str, Any]]
-    ) -> Optional[Dict[str, Any]]:
+        self, entities: List[Dict[str, object]]
+    ) -> Optional[Dict[str, object]]:
         """Check if IBAN country code matches address country."""
         ibans = [e for e in entities if e.get("type") == "IBAN"]
         addresses = [e for e in entities if e.get("type") == "ADDRESS"]
@@ -1520,8 +1526,8 @@ class QAAgent(PostprocessingAgent):
         return None
 
     def _check_vat_consistency(
-        self, entities: List[Dict[str, Any]]
-    ) -> Optional[Dict[str, Any]]:
+        self, entities: List[Dict[str, object]]
+    ) -> Optional[Dict[str, object]]:
         """Check VAT ID format consistency."""
         vat_ids = [e for e in entities if e.get("type") == "VAT_ID"]
 
@@ -1554,13 +1560,13 @@ class QAAgent(PostprocessingAgent):
         return None
 
     def _check_duplicate_entity_consistency(
-        self, entities: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, entities: List[Dict[str, object]]
+    ) -> List[Dict[str, object]]:
         """Check that duplicate entities have consistent values."""
         issues = []
 
         # Group entities by type
-        by_type: Dict[str, List[Dict[str, Any]]] = {}
+        by_type: Dict[str, List[Dict[str, object]]] = {}
         for entity in entities:
             entity_type = entity.get("type", "")
             if entity_type not in by_type:
@@ -1595,8 +1601,8 @@ class QAAgent(PostprocessingAgent):
         return issues
 
     def _check_name_consistency(
-        self, entities: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, entities: List[Dict[str, object]]
+    ) -> List[Dict[str, object]]:
         """Check person name formatting consistency."""
         issues = []
         persons = [e for e in entities if e.get("type") == "PERSON"]
@@ -1626,8 +1632,8 @@ class QAAgent(PostprocessingAgent):
         return issues
 
     def _check_date_format_consistency(
-        self, entities: List[Dict[str, Any]]
-    ) -> Optional[Dict[str, Any]]:
+        self, entities: List[Dict[str, object]]
+    ) -> Optional[Dict[str, object]]:
         """Check that all dates use consistent formatting."""
         dates = [e for e in entities if e.get("type") == "DATE"]
 
@@ -1659,9 +1665,9 @@ class QAAgent(PostprocessingAgent):
     def _check_document_completeness(
         self,
         text: str,
-        entities: List[Dict[str, Any]],
-        classification: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        entities: List[Dict[str, object]],
+        classification: Dict[str, object],
+    ) -> Dict[str, object]:
         """
         Check document completeness based on type requirements.
 
@@ -1679,8 +1685,8 @@ class QAAgent(PostprocessingAgent):
         Returns:
             Dictionary with score, issues, and suggestions
         """
-        issues: List[Dict[str, Any]] = []
-        suggestions: List[Dict[str, Any]] = []
+        issues: List[Dict[str, object]] = []
+        suggestions: List[Dict[str, object]] = []
         score = 1.0
 
         document_type = classification.get("document_type", "other")
@@ -1778,7 +1784,7 @@ class QAAgent(PostprocessingAgent):
 
     def _check_document_sections(
         self, text: str, document_type: str
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """Check for expected document sections."""
         text_lower = text.lower()
 
@@ -1829,9 +1835,9 @@ class QAAgent(PostprocessingAgent):
         self,
         metrics: QualityMetrics,
         quality_level: str,
-        issues: List[Dict[str, Any]],
-        suggestions: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        issues: List[Dict[str, object]],
+        suggestions: List[Dict[str, object]],
+    ) -> Dict[str, object]:
         """
         Generate a human-readable quality summary in German.
 

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\trainer_pt_utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.1, -100, 100, '_mem_', '_runtime', 'all_results.json', 'atleast_1d', 'batch_sampler', 'cuda', 'ds_numel', 'generator', 'help', 'input_ids', 'logits', 'loss', 'lr', 'need to call step', 'r', 'sampler', 'set_epoch', 'total_flos', 'trainer_state.json', 'utf-8', 'w']

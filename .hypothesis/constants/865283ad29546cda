@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\limits\storage\__init__.py
+# hypothesis_version: 6.148.7
+
+['MemcachedStorage', 'MemoryStorage', 'MongoDBStorage', 'MongoDBStorageBase', 'MovingWindowSupport', 'RedisClusterStorage', 'RedisSentinelStorage', 'RedisStorage', 'Storage', 'storage_from_string']

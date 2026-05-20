@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\data_export_service.py
+# hypothesis_version: 6.148.7
+
+[500, 1000, 10000, '...', '.zip', 'LIESMICH.txt', 'activity_log', 'aktion', 'aktivitaet.json', 'aktivitaeten_gesamt', 'benutzer_id', 'benutzername', 'csv', 'data/exports', 'data_export_failed', 'dateigroesse_bytes', 'dateiname', 'dateityp', 'documents', 'dokument_id', 'dokumente.csv', 'dokumente.json', 'dokumente_gesamt', 'email', 'erstellt_am', 'export_metadaten', 'exportiert_am', 'extrahierter_text', 'hochgeladen_am', 'ist_aktiv', 'json', 'letzter_login', 'ocr_konfidenz', 'profil.json', 'profile', 'ressource_id', 'ressource_typ', 'status', 'verarbeitet_am', 'vollstaendiger_name', 'w', 'zeitpunkt']

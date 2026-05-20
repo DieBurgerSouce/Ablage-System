@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\utils\weight_norm_hook.py
+# hypothesis_version: 6.148.7
+
+[1e-12, 'Norm', 'Out', 'X', '_g', '_v', 'axis', 'epsilon', 'float32', 'float64', 'l2_normalize', 'norm', 'weight']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\classes\digraph.py
+# hypothesis_version: 6.148.7
+
+['DiGraph', '_adj', '_pred', '_succ', 'adj', 'degree', 'edges', 'in_degree', 'in_edges', 'out_degree', 'out_edges', 'pred', 'succ']

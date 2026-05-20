@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\transforms3d\transforms.py
+# hypothesis_version: 6.148.7
+
+[0.1, 0.2, 0.5, 1.0, 'CenterCrop3D', 'CoarseDropout3D', 'CubicSymmetry', 'KeypointsProcessor', 'Pad3D', 'PadIfNeeded3D', 'RandomCrop3D', 'after', 'center', 'crop_coords', 'hole_depth_range', 'hole_height_range', 'hole_width_range', 'holes', 'index', 'keypoints', 'pad_back', 'pad_bottom', 'pad_front', 'pad_left', 'pad_params', 'pad_right', 'pad_top', 'padding', 'random', 'volume', 'volume_shape']

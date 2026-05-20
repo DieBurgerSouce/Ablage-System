@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\asgd.py
+# hypothesis_version: 6.148.7
+
+[0.001, 'Out', 'X', 'Y', '_', 'asgd', 'assign', 'd', 'd_out', 'elementwise_add', 'grad', 'int64', 'learning_rate', 'm', 'master_param', 'master_param_out', 'multi_precision', 'n', 'param', 'param_out', 'params', 'y', 'y_out']

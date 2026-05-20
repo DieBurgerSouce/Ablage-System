@@ -1,0 +1,465 @@
+"""GraphQL-ähnliche API - Flexible Query-Schnittstelle mit Field Selection."""
+
+import structlog
+import re
+from typing import List, Optional, Dict, Set, Tuple, Type, Union
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_, or_, desc, asc
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql import Select
+
+from app.api.dependencies import get_db, get_current_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.db.models import User
+from app.core.rate_limiting import limiter, get_user_identifier
+
+logger = structlog.get_logger(__name__)
+
+router = APIRouter(prefix="/graphql", tags=["graphql"])
+
+
+# ============================================================================
+# Pydantic Models
+# ============================================================================
+
+
+class GraphQLQueryRequest(BaseModel):
+    """GraphQL-ähnliche Query-Anfrage."""
+
+    entity_type: str = Field(..., description="Entitätstyp (document, entity, invoice, alert)")
+    fields: List[str] = Field(..., description="Auszuwählende Felder")
+    filters: Dict[str, object] = Field(default_factory=dict, description="Filter-Bedingungen")
+    limit: int = Field(20, ge=1, le=100, description="Max. Ergebnisse")
+    offset: int = Field(0, ge=0, description="Offset für Paginierung")
+    order_by: Optional[str] = Field(None, description="Sortierfeld")
+    order_desc: bool = Field(False, description="Absteigend sortieren")
+
+    @field_validator("entity_type")
+    @classmethod
+    def validate_entity_type(cls, v: str) -> str:
+        """Validiert Entity-Type gegen Whitelist."""
+        allowed = {"document", "entity", "invoice", "alert", "workflow", "payment"}
+        if v not in allowed:
+            raise ValueError(f"Ungültiger Entity-Typ. Erlaubt: {allowed}")
+        return v
+
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v: List[str]) -> List[str]:
+        """Validiert Feldnamen."""
+        pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
+        for field in v:
+            if not pattern.match(field):
+                raise ValueError(f"Ungültiger Feldname: {field}")
+        return v
+
+    @field_validator("order_by")
+    @classmethod
+    def validate_order_by(cls, v: Optional[str]) -> Optional[str]:
+        """Validiert Order-By Feld."""
+        if v is None:
+            return v
+        pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
+        if not pattern.match(v):
+            raise ValueError(f"Ungültiges Sortierfeld: {v}")
+        return v
+
+
+class GraphQLQueryResponse(BaseModel):
+    """GraphQL-ähnliche Query-Antwort."""
+
+    entity_type: str
+    total_count: int
+    items: List[Dict[str, object]]
+    has_more: bool
+    offset: int
+    limit: int
+
+
+class GraphQLSchemaField(BaseModel):
+    """Schema-Feld-Definition."""
+
+    name: str
+    type: str
+    nullable: bool
+    description: str
+
+
+class GraphQLSchemaType(BaseModel):
+    """Schema-Typ-Definition."""
+
+    type_name: str
+    fields: List[GraphQLSchemaField]
+    description: str
+
+
+class GraphQLSchemaResponse(BaseModel):
+    """GraphQL-Schema-Antwort."""
+
+    types: List[GraphQLSchemaType]
+
+
+# ============================================================================
+# Schema Definitionen
+# ============================================================================
+
+
+GRAPHQL_SCHEMAS = {
+    "document": GraphQLSchemaType(
+        type_name="Document",
+        description="Dokument mit OCR-Daten",
+        fields=[
+            GraphQLSchemaField(name="id", type="UUID", nullable=False, description="Dokument-ID"),
+            GraphQLSchemaField(name="filename", type="String", nullable=False, description="Dateiname"),
+            GraphQLSchemaField(name="status", type="String", nullable=False, description="Verarbeitungsstatus"),
+            GraphQLSchemaField(name="ocr_text", type="String", nullable=True, description="OCR-Text"),
+            GraphQLSchemaField(name="ocr_confidence", type="Float", nullable=True, description="OCR-Confidence"),
+            GraphQLSchemaField(name="created_at", type="DateTime", nullable=False, description="Erstellungsdatum"),
+            GraphQLSchemaField(name="updated_at", type="DateTime", nullable=False, description="Änderungsdatum"),
+            GraphQLSchemaField(name="folder_id", type="UUID", nullable=True, description="Ordner-ID"),
+            GraphQLSchemaField(name="tags", type="List[String]", nullable=True, description="Tags"),
+        ]
+    ),
+    "entity": GraphQLSchemaType(
+        type_name="BusinessEntity",
+        description="Geschäftspartner (Kunde/Lieferant)",
+        fields=[
+            GraphQLSchemaField(name="id", type="UUID", nullable=False, description="Entity-ID"),
+            GraphQLSchemaField(name="name", type="String", nullable=False, description="Name"),
+            GraphQLSchemaField(name="entity_type", type="String", nullable=False, description="Typ (customer/supplier)"),
+            GraphQLSchemaField(name="risk_score", type="Float", nullable=True, description="Risiko-Score"),
+            GraphQLSchemaField(name="payment_delay_days", type="Float", nullable=True, description="Zahlungsverzögerung"),
+            GraphQLSchemaField(name="default_rate", type="Float", nullable=True, description="Ausfallrate"),
+            GraphQLSchemaField(name="created_at", type="DateTime", nullable=False, description="Erstellungsdatum"),
+        ]
+    ),
+    "invoice": GraphQLSchemaType(
+        type_name="InvoiceTracking",
+        description="Rechnungsverfolgung",
+        fields=[
+            GraphQLSchemaField(name="id", type="UUID", nullable=False, description="Rechnung-ID"),
+            GraphQLSchemaField(name="invoice_number", type="String", nullable=False, description="Rechnungsnummer"),
+            GraphQLSchemaField(name="amount", type="Decimal", nullable=False, description="Betrag"),
+            GraphQLSchemaField(name="status", type="String", nullable=False, description="Status"),
+            GraphQLSchemaField(name="due_date", type="Date", nullable=True, description="Fälligkeitsdatum"),
+            GraphQLSchemaField(name="paid_date", type="Date", nullable=True, description="Zahlungsdatum"),
+            GraphQLSchemaField(name="dunning_level", type="Integer", nullable=True, description="Mahnstufe"),
+            GraphQLSchemaField(name="entity_id", type="UUID", nullable=True, description="Geschäftspartner-ID"),
+        ]
+    ),
+    "alert": GraphQLSchemaType(
+        type_name="Alert",
+        description="System-Alert",
+        fields=[
+            GraphQLSchemaField(name="id", type="UUID", nullable=False, description="Alert-ID"),
+            GraphQLSchemaField(name="alert_code", type="String", nullable=False, description="Alert-Code"),
+            GraphQLSchemaField(name="title", type="String", nullable=False, description="Titel"),
+            GraphQLSchemaField(name="category", type="String", nullable=False, description="Kategorie"),
+            GraphQLSchemaField(name="severity", type="String", nullable=False, description="Schweregrad"),
+            GraphQLSchemaField(name="status", type="String", nullable=False, description="Status"),
+            GraphQLSchemaField(name="created_at", type="DateTime", nullable=False, description="Erstellungsdatum"),
+        ]
+    ),
+}
+
+
+# ============================================================================
+# Query Builder
+# ============================================================================
+
+
+class QueryBuilder:
+    """Baut sichere SQL-Queries aus GraphQL-ähnlichen Anfragen."""
+
+    @staticmethod
+    async def build_query(
+        body: GraphQLQueryRequest,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> Tuple[object, int]:
+        """Baut Query und führt sie aus.
+
+        Args:
+            body: Query-Anfrage
+            company_id: Mandanten-ID
+            db: Datenbank-Session
+
+        Returns:
+            Tuple aus (Ergebnisse, Gesamt-Anzahl)
+        """
+        # Model ermitteln
+        model_class = QueryBuilder._get_model_class(body.entity_type)
+
+        # Verfügbare Felder prüfen
+        available_fields = QueryBuilder._get_available_fields(model_class)
+        for field in body.fields:
+            if field not in available_fields:
+                raise ValueError(f"Feld nicht verfügbar: {field}")
+
+        # Base Query mit company_id Filter
+        stmt = select(model_class).where(model_class.company_id == company_id)
+
+        # Filter anwenden (Allow-List via entity_type)
+        stmt = QueryBuilder._apply_filters(stmt, model_class, body.filters, body.entity_type)
+
+        # Gesamt-Anzahl ermitteln (vor Limit/Offset)
+        from sqlalchemy import func
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        count_result = await db.execute(count_stmt)
+        total_count = count_result.scalar() or 0
+
+        # SECURITY: Whitelist für Sortierfelder pro Entity-Typ (CWE-89)
+        ALLOWED_ORDER_FIELDS = {
+            "document": {"id", "filename", "status", "created_at", "updated_at", "ocr_confidence"},
+            "entity": {"id", "name", "entity_type", "risk_score", "created_at", "payment_delay_days"},
+            "invoice": {"id", "invoice_number", "amount", "status", "due_date", "paid_date", "dunning_level"},
+            "alert": {"id", "alert_code", "title", "category", "severity", "status", "created_at"},
+            "workflow": {"id", "name", "status", "created_at", "updated_at"},
+            "payment": {"id", "amount", "status", "created_at"},
+        }
+        # Sortierung mit Whitelist-Validierung
+        if body.order_by:
+            entity_fields = ALLOWED_ORDER_FIELDS.get(body.entity_type, set())
+            if body.order_by in entity_fields:
+                order_field = getattr(model_class, body.order_by, None)
+                if order_field is not None:
+                    stmt = stmt.order_by(desc(order_field) if body.order_desc else asc(order_field))
+            # Ungültige Felder werden ignoriert (Silent Fallback auf Default)
+        else:
+            # Standard: Nach created_at absteigend
+            if hasattr(model_class, "created_at"):
+                stmt = stmt.order_by(desc(model_class.created_at))
+
+        # Paginierung
+        stmt = stmt.limit(body.limit).offset(body.offset)
+
+        # Query ausführen
+        result = await db.execute(stmt)
+        items = result.scalars().all()
+
+        return items, total_count
+
+    @staticmethod
+    def _get_model_class(entity_type: str) -> Type[DeclarativeBase]:
+        """Gibt Model-Klasse für Entity-Typ zurück."""
+        from app.db.models import Document, BusinessEntity, InvoiceTracking
+        from app.db.models_alert import Alert
+
+        mapping = {
+            "document": Document,
+            "entity": BusinessEntity,
+            "invoice": InvoiceTracking,
+            "alert": Alert,
+        }
+
+        return mapping[entity_type]
+
+    @staticmethod
+    def _get_available_fields(model_class: Type[DeclarativeBase]) -> Set[str]:
+        """Gibt verfügbare Felder für Model zurück."""
+        from sqlalchemy.inspection import inspect
+
+        mapper = inspect(model_class)
+        return {col.key for col in mapper.columns}
+
+    # SECURITY: Whitelist fuer Filter-Felder pro Entity-Typ (CWE-89).
+    # Verhindert Boolean-based Field-Oracle-Attacks auf PII (iban, vat_id,
+    # tax_id) und Auth-Daten (password_hash, totp_secret).
+    # Analog zu ALLOWED_ORDER_FIELDS. Bewusst konservativ - bei Bedarf
+    # erweitern, niemals iban/vat_id/tax_id/password_hash/totp_secret aufnehmen.
+    ALLOWED_FILTER_FIELDS: Dict[str, Set[str]] = {
+        "document": {
+            "id", "filename", "status", "created_at", "updated_at",
+            "deleted_at", "ocr_confidence", "document_type", "mime_type",
+            "language", "category", "business_entity_id", "company_id",
+            "owner_id", "folder_id", "is_starred",
+        },
+        "entity": {
+            "id", "name", "entity_type", "risk_score", "created_at",
+            "updated_at", "payment_delay_days", "country_code", "company_id",
+            "deleted_at", "is_active",
+        },
+        "invoice": {
+            "id", "invoice_number", "amount", "status", "due_date",
+            "paid_date", "dunning_level", "document_id", "business_entity_id",
+            "company_id", "created_at", "updated_at", "deleted_at", "currency",
+        },
+        "alert": {
+            "id", "alert_code", "title", "category", "severity", "status",
+            "created_at", "updated_at", "business_entity_id", "company_id",
+            "document_id", "resolved_at", "acknowledged_at",
+        },
+        "workflow": {
+            "id", "name", "status", "created_at", "updated_at",
+            "owner_id", "company_id", "is_active",
+        },
+        "payment": {
+            "id", "amount", "status", "created_at", "due_date",
+            "company_id", "currency", "document_id",
+        },
+    }
+
+    @staticmethod
+    def _apply_filters(
+        stmt: Select,
+        model_class: Type[DeclarativeBase],
+        filters: Dict[str, object],
+        entity_type: Optional[str] = None,
+    ) -> Select:
+        """Wendet Filter auf Query an - nur Felder aus der Allow-List.
+
+        SECURITY: Ohne ``entity_type``-Allow-List werden alle Filter abgelehnt
+        (fail-closed), damit Aufrufer mit einer expliziten Liste arbeiten muss.
+        """
+        allowed = QueryBuilder.ALLOWED_FILTER_FIELDS.get(entity_type or "", set())
+        for field_name, field_value in filters.items():
+            if field_name not in allowed:
+                logger.warning(
+                    "graphql_filter_field_rejected",
+                    entity_type=entity_type,
+                    field=field_name,
+                )
+                continue
+            field = getattr(model_class, field_name, None)
+            if field is None:
+                continue
+
+            # String-Filter
+            if isinstance(field_value, str):
+                if field_value.startswith("%") or field_value.endswith("%"):
+                    # LIKE-Filter
+                    stmt = stmt.where(field.ilike(field_value))
+                else:
+                    # Exakte Übereinstimmung
+                    stmt = stmt.where(field == field_value)
+
+            # Listen-Filter (IN)
+            elif isinstance(field_value, list):
+                stmt = stmt.where(field.in_(field_value))
+
+            # Bereichs-Filter
+            elif isinstance(field_value, dict):
+                if "gte" in field_value:
+                    stmt = stmt.where(field >= field_value["gte"])
+                if "lte" in field_value:
+                    stmt = stmt.where(field <= field_value["lte"])
+                if "gt" in field_value:
+                    stmt = stmt.where(field > field_value["gt"])
+                if "lt" in field_value:
+                    stmt = stmt.where(field < field_value["lt"])
+
+            # Direkte Werte
+            else:
+                stmt = stmt.where(field == field_value)
+
+        return stmt
+
+    @staticmethod
+    def _project_fields(item: object, fields: List[str]) -> Dict[str, object]:
+        """Projiziert nur angeforderte Felder."""
+        result = {}
+        for field in fields:
+            value = getattr(item, field, None)
+            # UUID zu String konvertieren
+            if isinstance(value, UUID):
+                value = str(value)
+            result[field] = value
+        return result
+
+
+# ============================================================================
+# API Endpoints
+# ============================================================================
+
+
+@router.post(
+    "/query",
+    response_model=GraphQLQueryResponse,
+    summary="GraphQL-ähnliche Query",
+    description="Flexible Query mit Field Selection und Filterung."
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def execute_query(
+    request: Request,
+    body: GraphQLQueryRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GraphQLQueryResponse:
+    """Führt GraphQL-ähnliche Query aus."""
+    try:
+        # Query ausführen
+        items, total_count = await QueryBuilder.build_query(
+            body=body,
+            company_id=current_user.company_id,
+            db=db,
+        )
+
+        # Felder projizieren
+        projected_items = [
+            QueryBuilder._project_fields(item, body.fields)
+            for item in items
+        ]
+
+        has_more = (body.offset + body.limit) < total_count
+
+        logger.info(
+            "graphql_query_executed",
+            entity_type=body.entity_type,
+            fields=len(body.fields),
+            results=len(projected_items),
+            total=total_count,
+        )
+
+        return GraphQLQueryResponse(
+            entity_type=body.entity_type,
+            total_count=total_count,
+            items=projected_items,
+            has_more=has_more,
+            offset=body.offset,
+            limit=body.limit,
+        )
+
+    except ValueError as e:
+        logger.warning("graphql_query_fehler", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "GraphQL-Abfrage"))
+    except Exception as e:
+        logger.error("graphql_query_fehler", **safe_error_log(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Fehler bei der Query-Ausführung")
+
+
+@router.get(
+    "/schema",
+    response_model=GraphQLSchemaResponse,
+    summary="GraphQL-Schema",
+    description="Holt verfügbare Typen und Felder."
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_schema(
+    request: Request,
+    entity_type: Optional[str] = Query(None, description="Spezifischer Entity-Typ"),
+    current_user: User = Depends(get_current_user),
+) -> GraphQLSchemaResponse:
+    """Holt GraphQL-Schema."""
+    try:
+        if entity_type:
+            # Validierung
+            if entity_type not in GRAPHQL_SCHEMAS:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Schema für Typ '{entity_type}' nicht gefunden"
+                )
+            types = [GRAPHQL_SCHEMAS[entity_type]]
+        else:
+            types = list(GRAPHQL_SCHEMAS.values())
+
+        return GraphQLSchemaResponse(types=types)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("schema_abruf_fehler", **safe_error_log(e))
+        raise HTTPException(status_code=500, detail="Fehler beim Schema-Abruf")

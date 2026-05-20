@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\auto\video_processing_auto.py
+# hypothesis_version: 6.148.7
+
+['AutoImageProcessor', 'AutoVideoProcessor', 'Glm4vVideoProcessor', 'ImageProcessor', 'VJEPA2VideoProcessor', 'VideoProcessor', '__name__', '_from_auto', 'auto_map', 'code_revision', 'config', 'glm4v', 'image_processor_type', 'instructblip', 'instructblipvideo', 'internvl', 'llava_next_video', 'llava_onevision', 'perception_lm', 'qwen2_5_omni', 'qwen2_5_vl', 'qwen2_vl', 'qwen3_omni_moe', 'qwen3_vl', 'qwen3_vl_moe', 'sam2_video', 'smolvlm', 'token', 'torchvision', 'transformers', 'transformers.models', 'trust_remote_code', 'use_auth_token', 'utf-8', 'video_llava', 'video_processor_type', 'vision', 'vjepa2']

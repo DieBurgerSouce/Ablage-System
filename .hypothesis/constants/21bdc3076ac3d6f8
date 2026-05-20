@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling_ibm_models\list_item_normalizer\list_marker_processor.py
+# hypothesis_version: 6.148.7
+
+['#', '[-*+•·‣⁃]', '[A-Z]\\)', '[A-Z]\\.', '[IVXLCDM]+\\.', '[a-z]\\)', '[a-z]\\.', '[ivxlcdm]+\\.', '[►▶▸‣➤➢]', '[✓✔✗✘]', '\\(\\d+\\)', '\\[\\d+\\]', '\\d+\\)', '\\d+\\.', '\\s(.+)']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\latexocr_dataset.py
+# hypothesis_version: 6.148.7
+
+['Global', 'MakeBorderMap', 'MakeShrinkMap', 'batch_size_per_pair', 'data', 'data_dir', 'dataset', 'epoch', 'ext_op_transform_idx', 'image', 'img_path', 'keep_smaller_batches', 'loader', 'max_dimensions', 'max_seq_len', 'min_dimensions', 'rb', 'rec_char_dict_path', 'shuffle', 'train', 'transforms']

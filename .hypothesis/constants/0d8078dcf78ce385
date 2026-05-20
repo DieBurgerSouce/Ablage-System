@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\datamodel\pipeline_options_asr_model.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 0.6, 2.4, 30.0, 256, '--', '/', 'en', 'inline_model_options', 'mlx', 'transcribe', 'whisper']

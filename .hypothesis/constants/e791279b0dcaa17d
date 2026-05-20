@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\rocm\ck_template.py
+# hypothesis_version: 6.148.7
+
+['BF16', 'BF8', 'F16', 'F32', 'F64', 'F8', 'I32', 'I8', 'int32_t', 'kBatch']

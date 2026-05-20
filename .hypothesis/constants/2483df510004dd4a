@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\batch_processor.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.5, 0.7, 0.85, 0.95, 1.0, 10.0, 30.0, 120.0, 100, 300, 450, 500, 600, 1024, '*.pdf', 'OutOfMemoryError', 'adaptive', 'allocated_gb', 'auto', 'available', 'avg_time_per_doc', 'batch_size_cache_hit', 'batch_size_cache_set', 'cached_backends', 'cpu', 'critical', 'current_chunk', 'current_memory_gb', 'de', 'deepseek', 'default', 'error', 'errors', 'failed', 'file', 'file_name', 'files_found', 'free_gb', 'got_ocr', 'gpu_stats', 'hit_rate', 'hits', 'legacy_gpu', 'message', 'misses', 'optimal_batch_size', 'peak_memory_gb', 'processed', 'processing_chunk', 'processing_time', 'progress', 'reserved_gb', 'results', 'safe', 'single_file_oom', 'status', 'success', 'successful', 'surya_cpu', 'surya_gpu', 'total', 'total_gb', 'ttl_seconds', 'unknown', 'usage_percent', 'warmup_started', 'warning']

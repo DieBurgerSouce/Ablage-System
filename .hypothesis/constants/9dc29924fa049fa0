@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\launch\context\device.py
+# hypothesis_version: 6.148.7
+
+[',', ':', 'CUDA_VISIBLE_DEVICES', 'FLAGS_selected_cpus', 'FLAGS_selected_gpus', 'FLAGS_selected_ipus', 'FLAGS_selected_xpus', 'FLAGS_selected_{}s', 'PADDLE_XCCL_BACKEND', 'XPU_VISIBLE_DEVICES', '__main__', 'all', 'cpu', 'custom_device', 'gpu', 'ipu', 'xccl', 'xpu', '{}_VISIBLE_DEVICES']

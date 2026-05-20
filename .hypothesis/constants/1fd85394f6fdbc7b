@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\mm_grouped.py
+# hypothesis_version: 6.148.7
+
+[128, 256, 'A_IS_2D', 'BLOCK_K', 'BLOCK_M', 'BLOCK_N', 'B_IS_2D', 'NUM_CONSUMER_GROUPS', 'NUM_SMS', 'SCALED', 'USE_FAST_ACCUM', 'USE_TMA_LOAD', 'at::_grouped_mm', 'aten_mm_info', 'grouped_mm', 'num_consumer_groups', 'scaled_grouped_mm']

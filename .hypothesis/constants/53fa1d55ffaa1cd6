@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\compile_worker\tracked_process_pool.py
+# hypothesis_version: 6.148.7
+
+[100, '  P50: %0.2fs', '  P95: %0.2fs', '  Pools %s', '_P', '_R']

@@ -13,8 +13,9 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 import sys
+import uuid
 from pathlib import Path
 import structlog
 import os
@@ -29,7 +30,7 @@ except ImportError:
     MAGIC_AVAILABLE = False
 
 # Use absolute imports for production compatibility
-from app.gpu_manager import GPUManager
+from app.gpu_manager import GPUManager, get_memory_guard
 from app.german_validator import GermanValidator
 from app.services.ocr_service import OCRService
 from app.core.rate_limiting import (
@@ -39,14 +40,31 @@ from app.core.rate_limiting import (
     RateLimitTier,
     RateLimitStorageError,
 )
-from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response, IPBlockingMiddleware
+from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response, IPBlockingMiddleware, CompanyContextMiddleware
+from app.middleware.profiling import ProfilingMiddleware
+from app.middleware.tenant_context import TenantContextMiddleware
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
 from app.services.storage_service import cleanup_storage_service
+from app.services.webhook_dispatcher import get_webhook_dispatcher
 from app.core.idempotency import check_idempotency, get_idempotency_service
 from app.services.ocr_cache_service import get_ocr_cache_service, get_cached_ocr_result, cache_ocr_result
 from app.core.exception_handlers import register_exception_handlers
+from app.core.exceptions import ErrorResponseSchema
+from app.services.model_preloader import get_model_preloader, preload_ocr_models
+from app.api.v1.websocket import startup_realtime_services, shutdown_realtime_services
+from app.core.backpressure import (
+    backpressure_dependency,
+    get_backpressure_info,
+    add_backpressure_headers,
+    BackpressureStatus,
+)
+from app.api.dependencies import get_current_active_user, get_current_superuser, get_db
+from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.db.models import User
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.security.safe_module_loader import lock_bpmn_registration
 
 logger = structlog.get_logger(__name__)
 
@@ -56,13 +74,15 @@ try:
     initialize_sentry_for_backend()
     logger.info("sentry_initialized")
 except Exception as e:
-    logger.warning("sentry_not_configured", error=str(e))
+    logger.warning("sentry_not_configured", **safe_error_log(e))
 
 # Global instances
 gpu_manager = None
 german_validator = None
 ocr_service = None
 redis_storage = None
+memory_guard = None  # P0: GPU Memory Guard mit proaktivem Monitor
+model_preloader = None  # P1: Model Pre-Loading für schnellere erste Anfragen
 
 # Allowed MIME types mapped to extensions
 ALLOWED_MIME_TYPES = {
@@ -121,7 +141,7 @@ def validate_file_content_type(content: bytes, filename: str) -> Tuple[bool, str
         try:
             mime_type = magic.from_buffer(content, mime=True)
         except Exception as e:
-            logger.warning("magic_detection_error", error=str(e), filename=filename)
+            logger.warning("magic_detection_error", **safe_error_log(e), filename=filename)
             # On error, use fallback
             mime_type = _detect_mime_basic(content)
 
@@ -178,32 +198,204 @@ def _detect_mime_basic(content: bytes) -> Optional[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
-    global gpu_manager, german_validator, ocr_service, redis_storage
+    global gpu_manager, german_validator, ocr_service, redis_storage, memory_guard, model_preloader
 
     # Startup
     logger.info("api_starting")
+
+    # SECURITY: Production Debug Check
+    # Verhindert versehentlich aktivierten Debug-Modus in Production
+    if os.getenv("ENVIRONMENT", "development").lower() == "production":
+        if settings.DEBUG:
+            logger.critical(
+                "production_debug_mode_detected",
+                message="DEBUG=True in Production-Umgebung erkannt! "
+                        "Dies ist ein Sicherheitsrisiko. Setze DEBUG=False."
+            )
+            raise RuntimeError(
+                "SICHERHEITSFEHLER: DEBUG=True ist in Production nicht erlaubt! "
+                "Setze DEBUG=False oder entferne ENVIRONMENT=production."
+            )
+
+    # STARTUP HEALTH GATE: Verify DB connectivity before accepting requests
+    try:
+        from app.api.dependencies import engine
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        logger.info("db_connectivity_check_passed")
+    except Exception as e:
+        logger.critical("db_connectivity_check_failed", **safe_error_log(e))
+        raise RuntimeError(
+            "STARTUP FEHLGESCHLAGEN: Datenbankverbindung konnte nicht hergestellt werden. "
+            "Bitte PostgreSQL-Status pruefen."
+        )
 
     # Initialize managers
     gpu_manager = GPUManager()
     german_validator = GermanValidator()
     ocr_service = OCRService()
 
+    # Initialize OpenTelemetry Tracing
+    try:
+        from app.core.telemetry import init_telemetry, set_system_info
+        otlp_endpoint = getattr(settings, "OTLP_ENDPOINT", None) or os.getenv("OTLP_ENDPOINT")
+        init_telemetry(
+            service_name="ablage-system-ocr",
+            otlp_endpoint=otlp_endpoint
+        )
+        set_system_info(
+            version=getattr(settings, "APP_VERSION", "1.0.0"),
+            environment=os.getenv("ENVIRONMENT", "development")
+        )
+        logger.info(
+            "telemetry_initialized",
+            otlp_enabled=otlp_endpoint is not None
+        )
+    except Exception as e:
+        logger.warning("telemetry_init_failed", **safe_error_log(e))
+
+    # Initialize Database Query Metrics
+    try:
+        from app.api.dependencies import engine
+        from app.middleware.db_metrics import setup_db_metrics
+        setup_db_metrics(engine)
+        logger.info("db_query_metrics_initialized")
+    except Exception as e:
+        logger.warning("db_query_metrics_init_failed", **safe_error_log(e))
+
+    # P0: Initialize GPU Memory Guard with proactive monitoring
+    # Prevents 80% of OOM errors through proactive cache cleanup
+    memory_guard = get_memory_guard()
+    try:
+        await memory_guard.start_memory_monitor()
+        logger.info(
+            "gpu_memory_monitor_initialized",
+            interval=memory_guard.MONITOR_INTERVAL_SECONDS,
+            proactive_threshold=memory_guard.PROACTIVE_CLEANUP_THRESHOLD
+        )
+    except Exception as e:
+        logger.warning("gpu_memory_monitor_start_failed", **safe_error_log(e))
+
     # Initialize rate limiting Redis storage
     if settings.RATE_LIMIT_ENABLED:
         redis_storage = await get_redis_storage()
+        # FIX P0.5: Store redis_storage in app.state for middleware late binding
+        # The RateLimitMiddleware is created before lifespan runs, so it can't
+        # receive redis_storage at construction time. This enables the middleware
+        # to access redis_storage via app.state.redis_storage property fallback.
+        app.state.redis_storage = redis_storage
         logger.info("rate_limiting_enabled", redis_available=redis_storage.is_available if redis_storage else False)
 
     logger.info("available_ocr_backends", backends=ocr_service.backend_manager.get_available_backends())
+
+    # P1: Model Pre-Loading - Lädt OCR-Modelle im Background vor
+    # Reduziert Cold-Start-Latenz für erste Anfragen um 10-30 Sekunden
+    model_preloader = get_model_preloader()
+    preload_enabled = getattr(settings, "MODEL_PRELOAD_ENABLED", True)
+
+    if preload_enabled:
+        include_gpu = gpu_manager.has_gpu() if gpu_manager else False
+        logger.info(
+            "model_preload_starting",
+            include_gpu=include_gpu,
+            background=True
+        )
+        try:
+            # Background-Loading: Blockiert nicht den Startup
+            await preload_ocr_models(
+                include_gpu=include_gpu,
+                background=True
+            )
+        except Exception as e:
+            logger.warning("model_preload_startup_error", **safe_error_log(e))
+        # Optional: Block startup until models are loaded (for OCR-heavy deployments)
+        if getattr(settings, "WAIT_FOR_MODEL_PRELOAD", False):
+            import asyncio
+            timeout = getattr(settings, "WAIT_FOR_MODEL_PRELOAD_TIMEOUT", 120)
+            logger.info("model_preload_blocking_wait", timeout_seconds=timeout)
+            try:
+                deadline = asyncio.get_event_loop().time() + timeout
+                while not model_preloader.is_ready():
+                    if asyncio.get_event_loop().time() > deadline:
+                        logger.warning("model_preload_blocking_timeout", timeout_seconds=timeout)
+                        break
+                    await asyncio.sleep(1)
+                if model_preloader.is_ready():
+                    logger.info("model_preload_blocking_complete")
+            except Exception as e:
+                logger.warning("model_preload_blocking_wait_error", **safe_error_log(e))
+    else:
+        logger.info("model_preload_disabled_by_config")
+
+    # Initialize Realtime WebSocket Services
+    try:
+        await startup_realtime_services()
+        logger.info("realtime_services_started")
+    except Exception as e:
+        logger.warning("realtime_services_startup_failed", **safe_error_log(e))
+
+    # Phase 3: Register Pipeline Event Subscriber (Import -> Pipeline Chain)
+    try:
+        from app.services.events.event_bus import get_event_bus
+        from app.services.pipeline.pipeline_event_subscriber import register_pipeline_subscribers
+        register_pipeline_subscribers(get_event_bus())
+        logger.info("pipeline_event_subscriber_registered")
+    except Exception as e:
+        logger.warning("pipeline_event_subscriber_registration_failed", **safe_error_log(e))
+
+    # SECURITY (CWE-470): Lock BPMN module registration after startup
+    # Prevents runtime whitelist modification attacks
+    try:
+        lock_bpmn_registration()
+        logger.info("bpmn_registration_locked", message="BPMN-Modul-Registrierung gesperrt")
+    except Exception as e:
+        logger.error("bpmn_registration_lock_failed", **safe_error_log(e))
+        raise RuntimeError(
+            "SICHERHEITSFEHLER: BPMN-Registrierungssperre konnte nicht aktiviert werden!"
+        )
+
     logger.info("api_started")
 
     yield
 
     # Shutdown
     logger.info("api_shutting_down")
+
+    # Shutdown Realtime WebSocket Services
+    try:
+        await shutdown_realtime_services()
+        logger.info("realtime_services_stopped")
+    except Exception as e:
+        logger.warning("realtime_services_shutdown_failed", **safe_error_log(e))
+
+    # P1: Cleanup Model Preloader
+    if model_preloader:
+        try:
+            await model_preloader.cleanup()
+            logger.info("model_preloader_cleanup_complete")
+        except Exception as e:
+            logger.warning("model_preloader_cleanup_failed", **safe_error_log(e))
+
+    # P0: Stop GPU Memory Monitor
+    if memory_guard:
+        try:
+            await memory_guard.stop_memory_monitor()
+            logger.info("gpu_memory_monitor_stopped")
+        except Exception as e:
+            logger.warning("gpu_memory_monitor_stop_failed", **safe_error_log(e))
+
     if ocr_service:
         await ocr_service.cleanup()
     if redis_storage:
         await redis_storage.disconnect()
+    # Cleanup webhook dispatcher HTTP client
+    try:
+        webhook_dispatcher = get_webhook_dispatcher()
+        await webhook_dispatcher.close()
+        logger.info("webhook_dispatcher_cleanup_complete")
+    except Exception as e:
+        logger.warning("webhook_dispatcher_cleanup_failed", **safe_error_log(e))
     # Cleanup storage service (MinIO client)
     await cleanup_storage_service()
     logger.info("api_shutdown_complete")
@@ -245,12 +437,427 @@ OPENAPI_TAGS = [
     },
     {
         "name": "webhooks",
-        "description": "Webhook-Konfiguration für externe Integrationen.",
+        "description": "Webhook-Konfiguration für externe Integrationen und Event-Benachrichtigungen.",
     },
     {
         "name": "metrics",
-        "description": "Prometheus-Metriken und Business-Analytics.",
+        "description": "Prometheus-Metriken und Business-Analytics für Monitoring.",
     },
+    {
+        "name": "errors",
+        "description": "Error-Tracking und -Statistiken. Überwachung von Fehlern nach Kategorie mit Alert-Management.",
+    },
+    {
+        "name": "profiling",
+        "description": "Performance-Profiling. Endpoint-Latenz, Hot Paths, Memory-Snapshots und Optimierungsempfehlungen.",
+    },
+    {
+        "name": "search",
+        "description": "Volltextsuche und semantische Suche in Dokumenten mit Elasticsearch-Backend.",
+    },
+    {
+        "name": "api-keys",
+        "description": "API-Schlüssel-Verwaltung für programmatischen Zugriff und Integrationen.",
+    },
+    {
+        "name": "batch-jobs",
+        "description": "Batch-Verarbeitung und Job-Queue-Management für große Dokumentenmengen.",
+    },
+    {
+        "name": "sharing",
+        "description": "Dokumentenfreigabe und Zugriffssteuerung für Collaboration.",
+    },
+    {
+        "name": "collaboration",
+        "description": "Echtzeit-Kollaboration: Document Locking, @Mentions, Activity Feed, Presence.",
+    },
+    {
+        "name": "settings",
+        "description": "Benutzer- und Systemeinstellungen. Präferenzen und Konfiguration.",
+    },
+    {
+        "name": "favorites",
+        "description": "Favoriten-Verwaltung für schnellen Zugriff auf wichtige Dokumente.",
+    },
+    {
+        "name": "security",
+        "description": "Security Audit und Sicherheitsprüfungen. Konfigurationsanalyse und Empfehlungen.",
+    },
+    {
+        "name": "readiness",
+        "description": "Production Readiness Checks. Deployment-Vorbereitung und System-Validierung.",
+    },
+    {
+        "name": "log-analytics",
+        "description": "Log-Analyse und Monitoring. Trend-Erkennung, Anomalien und Dashboard-Metriken.",
+    },
+    {
+        "name": "Strukturierte Daten",
+        "description": "Strukturierte Dokumenten-Extraktion. Rechnungen, Bestellungen, Verträge mit automatischer Feld-Extraktion und Suche.",
+    },
+    {
+        "name": "rag",
+        "description": "RAG Intelligence Layer. Semantische Suche, Document Chunking, Chat mit LLM-Unterstützung.",
+    },
+    {
+        "name": "rag-search",
+        "description": "RAG-basierte Suche. Semantic Search, Hybrid Search, Chunk-Retrieval.",
+    },
+    {
+        "name": "rag-chunks",
+        "description": "Document Chunking. Dokumente in semantische Chunks teilen mit Embedding-Generierung.",
+    },
+    {
+        "name": "rag-chat",
+        "description": "Chat mit RAG-Kontext. Sessions, LLM-Antworten mit Quellenangaben.",
+    },
+    {
+        "name": "rag-jobs",
+        "description": "RAG Batch-Jobs. Bulk-Chunking, Customer Card Sync, Report-Generierung.",
+    },
+    {
+        "name": "rag-customers",
+        "description": "Customer Cards. Pre-computed Kundenzusammenfassungen mit LLM-Generierung.",
+    },
+    {
+        "name": "Firmen",
+        "description": "Multi-Mandanten Firmenverwaltung. Firmenwechsel, Benutzer-Zuordnungen und Berechtigungen.",
+    },
+    {
+        "name": "Kassenbuch - Kassen",
+        "description": "Kassenverwaltung. Kassen erstellen, bearbeiten und Salden verwalten.",
+    },
+    {
+        "name": "Kassenbuch - Einträge",
+        "description": "GoBD-konforme Kassenbucheinträge. APPEND-ONLY, Stornierung nur durch Gegenbuchung.",
+    },
+    {
+        "name": "Kassenbuch - Kassensturz",
+        "description": "Kassensturz-Protokolle. Zählung mit automatischer Differenz-Buchung.",
+    },
+    {
+        "name": "Kassenbuch - Berichte",
+        "description": "Kassenbuch-Berichte. Zusammenfassungen und Tagesabschlüsse.",
+    },
+    {
+        "name": "Kassenbuch - Kategorien",
+        "description": "Kassenbuch-Kategorien mit SKR03/SKR04 Kontenzuordnung.",
+    },
+    {
+        "name": "comments",
+        "description": "Dokumenten-Kommentare. Kommentieren, Antworten, @Mentions und Reaktionen für Enterprise-Collaboration.",
+    },
+    {
+        "name": "notifications",
+        "description": "Benutzer-Benachrichtigungen. Mentions, Replies, Sharing-Benachrichtigungen mit Gelesen-Status.",
+    },
+    {
+        "name": "activity",
+        "description": "Dokumenten-Aktivitätsverlauf. Audit-Trail aller Aktionen auf Dokumenten.",
+    },
+    {
+        "name": "Spesen - Abrechnungen",
+        "description": "Spesenabrechnungen. CRUD und Positionsverwaltung.",
+    },
+    {
+        "name": "Spesen - Positionen",
+        "description": "Spesenpositionen. Belege, Kilometergeld, Verpflegungspauschalen.",
+    },
+    {
+        "name": "Spesen - Workflow",
+        "description": "Spesenabrechnung-Workflow. Einreichen, Genehmigen, Ablehnen, Auszahlen.",
+    },
+    {
+        "name": "Spesen - Rechner",
+        "description": "Berechnungen für Kilometergeld und Verpflegungspauschalen.",
+    },
+    {
+        "name": "Contracts",
+        "description": "Vertragsmanagement. Vertragslaufzeiten, Kündigungsfristen, Verlängerungsoptionen, Meilensteine und Nachträge.",
+    },
+    {
+        "name": "Dokumentvorlagen",
+        "description": "Dokumentvorlagen-System. Templates mit Jinja2-Syntax, Variablen-Platzhalter, Ein-Klick Dokumentenerstellung, Textbausteine.",
+    },
+    {
+        "name": "DATEV Connect",
+        "description": "DATEVconnect API Integration. OAuth2-Authentifizierung, Buchungsstapel, Belegbilder-Upload, Stammdaten-Sync, GoBD-konforme Festschreibung, ML-basierte Kontierungsvorschläge.",
+    },
+    {
+        "name": "saga-monitoring",
+        "description": "Saga-Monitoring. Überwachung von Saga-Ausführungen, Steps und Transaktionslogs für verteilte Transaktionen.",
+    },
+    {
+        "name": "Analytics",
+        "description": "Team-Produktivitäts-Statistiken und Workload-Heatmaps.",
+    },
+    # AI/KI/ML
+    {"name": "AI/LLM", "description": "KI-gestützte Sprachmodell-Integration"},
+    {"name": "AI Autonomy", "description": "Autonome KI-Entscheidungsfindung"},
+    {"name": "AI Conversations", "description": "KI-Konversationen und Chat-Verläufe"},
+    {"name": "AI Decisions", "description": "KI-gestützte Entscheidungsunterstützung"},
+    {"name": "AI Ethics", "description": "KI-Ethik und verantwortungsvolle KI"},
+    {"name": "ai-mentor", "description": "KI-Mentor für personalisierte Empfehlungen"},
+    {"name": "Conversational Assistant", "description": "Konversationsbasierter KI-Assistent"},
+    {"name": "Explainable AI", "description": "Erklärbare KI-Entscheidungen"},
+    {"name": "Finance Assistant", "description": "KI-gestützter Finanzassistent"},
+    {"name": "KI-Pipeline", "description": "KI-Verarbeitungspipeline und Modellverwaltung"},
+    {"name": "Lernende Autonomie", "description": "Selbstlernende autonome Prozesse"},
+    {"name": "ML", "description": "Machine-Learning-Modelle und Training"},
+    {"name": "ML Dashboard", "description": "Machine-Learning-Dashboard und Metriken"},
+    {"name": "Classification", "description": "Dokumentenklassifizierung und Kategorisierung"},
+    {"name": "Predictive Actions", "description": "Prädiktive Aktionsvorschläge"},
+    {"name": "Predictive Payment AI", "description": "KI-gestützte Zahlungsvorhersage"},
+    {"name": "Predictive Routing", "description": "Prädiktives Dokumenten-Routing"},
+    {"name": "Predictive Cash-Flow", "description": "KI-basierte Cashflow-Prognose"},
+    {"name": "Action Queue", "description": "Aktionswarteschlange für automatisierte Aufgaben"},
+    {"name": "Autonomous Trust System", "description": "Autonomes Vertrauenssystem"},
+    {"name": "Trust Dashboard", "description": "Vertrauens-Dashboard und Metriken"},
+    {"name": "Predictive Health", "description": "Prädiktive Systemgesundheitsanalyse"},
+    # Admin
+    {"name": "Admin - Audit-Logs", "description": "Verwaltung der Audit-Protokolle"},
+    {"name": "Admin - Automation", "description": "Verwaltung der Automatisierungsregeln"},
+    {"name": "Admin - Benutzerverwaltung", "description": "Benutzerverwaltung und Zugriffssteuerung"},
+    {"name": "Admin - Dead Letter Queue", "description": "Verwaltung fehlgeschlagener Nachrichten"},
+    {"name": "Admin - Extraktion", "description": "Verwaltung der Datenextraktion"},
+    {"name": "Admin - Firmendaten", "description": "Verwaltung der Unternehmensstammdaten"},
+    {"name": "Admin - GDPR", "description": "DSGVO-Verwaltung und Datenschutz"},
+    {"name": "Admin - Rate Limits", "description": "Verwaltung der API-Ratenbegrenzung"},
+    {"name": "Admin - Systemstatus", "description": "Systemstatus und Gesundheitsprüfung"},
+    {"name": "Admin - Tags", "description": "Verwaltung der Dokumenten-Tags"},
+    {"name": "Admin - Warteschlangen", "description": "Verwaltung der Aufgabenwarteschlangen"},
+    {"name": "Admin - Auftragsverwaltung", "description": "Verwaltung von Hintergrundaufträgen"},
+    # Banking
+    {"name": "Banking - FinTS", "description": "FinTS-Bankanbindung und -Synchronisation"},
+    {"name": "Banking - SEPA", "description": "SEPA-Überweisungen und Lastschriften"},
+    {"name": "Banking - Dashboard", "description": "Banking-Dashboard und Übersicht"},
+    {"name": "Banking - Konten", "description": "Bankkontenverwaltung"},
+    {"name": "Banking - Import", "description": "Import von Bankdaten und Kontoauszügen"},
+    {"name": "Banking - Transaktionen", "description": "Banktransaktionen und Buchungen"},
+    {"name": "Banking - Abgleich", "description": "Automatischer Bankabgleich"},
+    {"name": "Banking - Zahlungen", "description": "Zahlungsverwaltung und -ausführung"},
+    {"name": "Banking - Cash-Flow", "description": "Cashflow-Analyse und -Planung"},
+    {"name": "Banking - Mahnwesen", "description": "Mahnwesen und Zahlungserinnerungen"},
+    {"name": "Banking - Altersanalyse", "description": "Fälligkeitsanalyse offener Posten"},
+    {"name": "Banking - Mahnaufgaben", "description": "Mahnaufgaben und Mahnlauf"},
+    {"name": "Banking - Mahneinstellungen", "description": "Konfiguration des Mahnwesens"},
+    {"name": "Banking - Kundeneinstellungen", "description": "Kundenspezifische Zahlungseinstellungen"},
+    {"name": "Banking - Zahlungsautomation", "description": "Automatisierte Zahlungsverarbeitung"},
+    {"name": "Banking Integration", "description": "Integration mit Bankensystemen"},
+    {"name": "Enhanced Banking", "description": "Erweiterte Banking-Funktionen"},
+    # Finance/Accounting
+    {"name": "Buchhaltung", "description": "Buchhaltung und Finanzverwaltung"},
+    {"name": "Buchungsvorschläge", "description": "Automatische Buchungsvorschläge"},
+    {"name": "Cashflow Prediction", "description": "Cashflow-Prognose und -Analyse"},
+    {"name": "Credit Management", "description": "Kreditmanagement und Bonitätsprüfung"},
+    {"name": "DATEV Export", "description": "DATEV-Datenexport"},
+    {"name": "DATEV Buchungsvorschläge", "description": "DATEV-Buchungsvorschläge"},
+    {"name": "Deutsche Finanzen", "description": "Deutsche Finanzstandards und -berichte"},
+    {"name": "Finance", "description": "Finanzverwaltung und -berichte"},
+    {"name": "Financial Insights", "description": "Finanzielle Einblicke und Analysen"},
+    {"name": "Invoice Tracking", "description": "Rechnungsverfolgung und -status"},
+    {"name": "Rechnungs-Pipeline", "description": "Rechnungsverarbeitungspipeline"},
+    {"name": "Reconciliation", "description": "Kontenabstimmung und Abgleich"},
+    {"name": "Wiederkehrende Rechnungen", "description": "Verwaltung wiederkehrender Rechnungen"},
+    {"name": "Payment Behavior", "description": "Zahlungsverhaltensanalyse"},
+    {"name": "Jahresabschluss", "description": "Jahresabschluss und Bilanzierung"},
+    {"name": "liquidity-scenarios", "description": "Liquiditätsszenarien und -planung"},
+    {"name": "PO-Matching", "description": "Bestellungsabgleich mit Rechnungen"},
+    {"name": "Period Comparison", "description": "Periodenvergleich und Trendanalyse"},
+    # Documents
+    {"name": "Bulk Operations", "description": "Massenoperationen für Dokumente"},
+    {"name": "Document Chains", "description": "Dokumentenketten und -verknüpfungen"},
+    {"name": "Document Chains V2", "description": "Erweiterte Dokumentenketten (V2)"},
+    {"name": "Document Comparison", "description": "Dokumentenvergleich und Differenzanalyse"},
+    {"name": "Dokumentvergleich", "description": "Visueller Dokumentenvergleich"},
+    {"name": "Document Context", "description": "Dokumentenkontext und -metadaten"},
+    {"name": "Document Groups", "description": "Dokumentengruppen und Sammlungen"},
+    {"name": "Document Hints", "description": "Dokumentenhinweise und Empfehlungen"},
+    {"name": "Document Lifecycle", "description": "Dokumentenlebenszyklus-Verwaltung"},
+    {"name": "Document Lineage", "description": "Dokumentenherkunft und -abstammung"},
+    {"name": "Document Timeline", "description": "Dokumenten-Zeitachse und -Verlauf"},
+    {"name": "Belegprüfung", "description": "Belegprüfung und Validierung"},
+    {"name": "Dokument-Integrität", "description": "Dokumentenintegrität und -sicherheit"},
+    {"name": "Ähnliche Dokumente", "description": "Ähnliche Dokumente finden"},
+    {"name": "document-quality", "description": "Dokumentenqualitätsanalyse"},
+    {"name": "document-tasks", "description": "Dokumentenaufgaben und -workflows"},
+    {"name": "Ordner", "description": "Ordner- und Ablageverwaltung"},
+    {"name": "Papierkorb", "description": "Papierkorb und Dokumentenwiederherstellung"},
+    {"name": "versions", "description": "Dokumentenversionierung und -historie"},
+    {"name": "visual-diff", "description": "Visueller Dokumentenvergleich"},
+    # Dashboard
+    {"name": "CEO Dashboard", "description": "CEO-Dashboard mit Geschäftskennzahlen"},
+    {"name": "dashboard", "description": "Dashboard-Verwaltung und -Konfiguration"},
+    {"name": "dashboards", "description": "Dashboard-Sammlung und Vorlagen"},
+    {"name": "Dashboard Widgets", "description": "Dashboard-Widgets und -Komponenten"},
+    {"name": "Digital Twin", "description": "Digitaler Zwilling des Unternehmens"},
+    {"name": "Holding Dashboard", "description": "Holding-Dashboard für Unternehmensgruppen"},
+    {"name": "Smart Dashboard", "description": "Intelligentes Dashboard mit KI-Empfehlungen"},
+    # Search
+    {"name": "Gespeicherte Suchen", "description": "Verwaltung gespeicherter Suchen"},
+    {"name": "Saved Filters", "description": "Gespeicherte Filtervorlagen"},
+    {"name": "smart-search", "description": "Intelligente Suche mit KI-Unterstützung"},
+    {"name": "Unified Search", "description": "Einheitliche Suche über alle Module"},
+    {"name": "spotlight", "description": "Spotlight-Schnellsuche"},
+    # OCR
+    {"name": "OCR Confidence", "description": "OCR-Konfidenzanalyse und -Schwellenwerte"},
+    {"name": "OCR Feedback", "description": "OCR-Feedback und manuelle Korrekturen"},
+    {"name": "OCR Self-Learning", "description": "OCR-Selbstlernende Optimierung"},
+    {"name": "OCR Templates", "description": "OCR-Vorlagen und Dokumenttypen"},
+    {"name": "Supplier OCR Templates", "description": "Lieferantenspezifische OCR-Vorlagen"},
+    {"name": "Zero-Touch OCR", "description": "Vollautomatische OCR-Verarbeitung"},
+    # Entities/Business
+    {"name": "Business Entities", "description": "Geschäftspartner und Unternehmensdaten"},
+    {"name": "business-contacts", "description": "Geschäftskontakte und Ansprechpartner"},
+    {"name": "Communication Hub", "description": "Kommunikationszentrale und Nachrichtenveraltung"},
+    {"name": "supplier-verification", "description": "Lieferantenverifizierung und -prüfung"},
+    {"name": "Supplier Ranking", "description": "Lieferantenbewertung und -ranking"},
+    {"name": "Streckengeschäft Detection", "description": "Erkennung von Streckengeschäften"},
+    {"name": "Handelsregister Monitoring", "description": "Handelsregisterüberwachung"},
+    # Annotations
+    {"name": "annotations", "description": "Dokumentenannotationen und Markierungen"},
+    {"name": "Annotationen & Kommentare", "description": "Annotationen und Kommentarfunktion"},
+    {"name": "Kommentar-Threads", "description": "Kommentar-Threads und Diskussionen"},
+    # Approval/Workflow
+    {"name": "approvals", "description": "Freigabeprozesse und Genehmigungen"},
+    {"name": "approval-enhanced", "description": "Erweiterte Freigabeworkflows"},
+    {"name": "approvals-extended", "description": "Mehrstufige Genehmigungsprozesse"},
+    {"name": "automation", "description": "Automatisierungsregeln und -workflows"},
+    {"name": "BPMN Workflow Engine", "description": "BPMN-Workflow-Engine"},
+    {"name": "BPMN 2.0 Converter", "description": "BPMN-2.0-Konvertierung"},
+    {"name": "workflows", "description": "Workflow-Verwaltung und -Ausführung"},
+    {"name": "workflow-analytics", "description": "Workflow-Analyse und -Optimierung"},
+    {"name": "visual-workflow-builder", "description": "Visueller Workflow-Designer"},
+    {"name": "Kanban Board", "description": "Kanban-Board für Aufgabenverwaltung"},
+    # Compliance/Archive
+    {"name": "Archive (GoBD)", "description": "GoBD-konforme Archivierung"},
+    {"name": "Audit Chain", "description": "Prüfkette und Revisionssicherheit"},
+    {"name": "Audit Trail", "description": "Lückenloser Prüfpfad"},
+    {"name": "GoBD Compliance", "description": "GoBD-Konformitätsprüfung"},
+    {"name": "compliance-autopilot", "description": "Automatisierte Compliance-Überwachung"},
+    {"name": "DPIA", "description": "Datenschutz-Folgenabschätzung"},
+    {"name": "GDPR - Einwilligung", "description": "DSGVO-Einwilligungsverwaltung"},
+    {"name": "GDPR - Betroffenenrechte", "description": "DSGVO-Betroffenenrechte"},
+    {"name": "Consent Management", "description": "Einwilligungsverwaltung"},
+    {"name": "ESG-Reporting", "description": "ESG-Berichterstattung und Nachhaltigkeit"},
+    # Teams/Collaboration
+    {"name": "Teams", "description": "Teamverwaltung und Zusammenarbeit"},
+    {"name": "Delegations", "description": "Delegationen und Stellvertretungen"},
+    {"name": "Präsenz", "description": "Präsenz- und Verfügbarkeitsstatus"},
+    {"name": "Smart Escalation", "description": "Intelligente Eskalationsregeln"},
+    {"name": "Projects", "description": "Projektverwaltung und -verfolgung"},
+    # Notifications
+    {"name": "notification-preferences", "description": "Benachrichtigungseinstellungen"},
+    {"name": "notification-rules", "description": "Benachrichtigungsregeln und -filter"},
+    {"name": "notification-templates", "description": "Benachrichtigungsvorlagen"},
+    {"name": "Push Notifications", "description": "Push-Benachrichtigungen"},
+    # Portal
+    {"name": "Kundenportal", "description": "Kundenportal und Selbstbedienung"},
+    {"name": "Portal-Auth", "description": "Portal-Authentifizierung"},
+    {"name": "Portal-Dokumente", "description": "Portal-Dokumentenverwaltung"},
+    {"name": "Portal-Rechnungen", "description": "Portal-Rechnungsübersicht"},
+    {"name": "Portal-Reklamationen", "description": "Portal-Reklamationsverwaltung"},
+    {"name": "Portal-Nachrichten", "description": "Portal-Nachrichtensystem"},
+    {"name": "Portal-Zahlungen", "description": "Portal-Zahlungsverwaltung"},
+    # Personal/HR
+    {"name": "Personal", "description": "Personalverwaltung"},
+    {"name": "Personal - Mitarbeiter", "description": "Mitarbeiterverwaltung"},
+    {"name": "Personal - Abteilungen", "description": "Abteilungsverwaltung"},
+    {"name": "Personal - Positionen", "description": "Positionsverwaltung und Stellenplan"},
+    # Private
+    {"name": "privat", "description": "Persönlicher Bereich und Finanzen"},
+    {"name": "privat-tax", "description": "Private Steuerverwaltung"},
+    {"name": "privat-analytics", "description": "Persönliche Finanzanalyse"},
+    {"name": "life-events", "description": "Lebensereignisse und Finanzplanung"},
+    {"name": "Privacy Analytics", "description": "Datenschutzanalyse und -berichte"},
+    # Integration
+    {"name": "Lexware Integration", "description": "Lexware-Datenimport und -synchronisation"},
+    {"name": "slack", "description": "Slack-Integration und Benachrichtigungen"},
+    {"name": "Microsoft Teams", "description": "Microsoft-Teams-Integration"},
+    {"name": "odoo-webhooks", "description": "Odoo-Webhook-Integration"},
+    {"name": "Integration Sync", "description": "Integrationssynchronisierung"},
+    {"name": "Calendar Sync", "description": "Kalendersynchronisierung"},
+    # Import/Export
+    {"name": "imports", "description": "Datenimport und -verarbeitung"},
+    {"name": "email-file-import", "description": "E-Mail- und Dateiimport"},
+    {"name": "exports", "description": "Datenexport und -bereitstellung"},
+    {"name": "scheduled-exports", "description": "Geplante automatische Exporte"},
+    # Training/QA
+    {"name": "training", "description": "KI-Training und Modelloptimierung"},
+    {"name": "training-export", "description": "Export von Trainingsdaten"},
+    {"name": "quality-monitoring", "description": "Qualitätsüberwachung und -sicherung"},
+    {"name": "verification-queue", "description": "Verifizierungswarteschlange"},
+    {"name": "coverage", "description": "Testabdeckung und Qualitätsmetriken"},
+    {"name": "llm-review", "description": "LLM-basierte Dokumentenprüfung"},
+    # Reports
+    {"name": "Ad-Hoc Reporting", "description": "Ad-hoc-Berichte und Auswertungen"},
+    {"name": "Executive Reporting", "description": "Führungskräfte-Berichte"},
+    {"name": "reports", "description": "Berichtswesen und Auswertungen"},
+    {"name": "industry-benchmarks", "description": "Branchenvergleiche und Benchmarks"},
+    {"name": "Daily Insights", "description": "Tägliche Geschäftseinblicke"},
+    {"name": "Proactive Insights", "description": "Proaktive Geschäftsempfehlungen"},
+    {"name": "Proaktiver Assistent", "description": "Proaktiver KI-Assistent"},
+    # Security
+    {"name": "DLP", "description": "Data Loss Prevention"},
+    {"name": "Incident Response", "description": "Sicherheitsvorfallbehandlung"},
+    {"name": "MFA", "description": "Multi-Faktor-Authentifizierung"},
+    {"name": "Rollen", "description": "Rollen- und Berechtigungsverwaltung"},
+    {"name": "SSO", "description": "Single Sign-On Integration"},
+    {"name": "Tenant Rate Limits", "description": "Mandantenspezifische Ratenbegrenzung"},
+    {"name": "tenant-admin", "description": "Mandantenverwaltung"},
+    # Misc
+    {"name": "agents", "description": "KI-Agenten und Automatisierung"},
+    {"name": "Alerts", "description": "Warnungen und Benachrichtigungen"},
+    {"name": "Budgets", "description": "Budgetverwaltung und -überwachung"},
+    {"name": "Calendar", "description": "Kalender und Terminverwaltung"},
+    {"name": "cache-admin", "description": "Cache-Verwaltung und -Optimierung"},
+    {"name": "chat-websocket", "description": "Echtzeit-Chat über WebSocket"},
+    {"name": "cross-tenant-reports", "description": "Mandantenübergreifende Berichte"},
+    {"name": "Datenqualität", "description": "Datenqualitätsmanagement"},
+    {"name": "enrichment", "description": "Dokumentenanreicherung und -ergänzung"},
+    {"name": "erp-admin", "description": "ERP-Systemverwaltung"},
+    {"name": "event-sourcing", "description": "Event-Sourcing und Ereignisprotokollierung"},
+    {"name": "feature-flags", "description": "Feature-Flags und Rollout-Steuerung"},
+    {"name": "feature-flags-admin", "description": "Feature-Flag-Verwaltung"},
+    {"name": "Fraud Detection", "description": "Betrugserkennung und -prävention"},
+    {"name": "graphql", "description": "GraphQL-API und -Abfragen"},
+    {"name": "Hardware-Monitoring", "description": "Hardware-Überwachung und -Status"},
+    {"name": "help", "description": "Hilfe und Dokumentation"},
+    {"name": "Inventory", "description": "Inventar- und Bestandsverwaltung"},
+    {"name": "Kassenbuch - Export", "description": "Kassenbuch-Export und -Berichte"},
+    {"name": "Knowledge Graph", "description": "Wissensgraph und Beziehungsnetzwerk"},
+    {"name": "Knowledge Management", "description": "Wissensmanagement und Wissensbasis"},
+    {"name": "nlq", "description": "Natural Language Queries - Natürlichsprachliche Abfragen"},
+    {"name": "oneclick", "description": "Ein-Klick-Aktionen und Schnellzugriff"},
+    {"name": "onboarding", "description": "Onboarding und Einführungsassistent"},
+    {"name": "Orchestration", "description": "Prozessorchestierung und -koordination"},
+    {"name": "Process Mining", "description": "Prozessanalyse und -optimierung"},
+    {"name": "retention-admin", "description": "Aufbewahrungsrichtlinien-Verwaltung"},
+    {"name": "Sendungen", "description": "Sendungsverfolgung und Lieferungen"},
+    {"name": "Scanner", "description": "Scanner-Integration und Dokumentenerfassung"},
+    {"name": "Elektronische Signaturen", "description": "Elektronische Signaturen und Unterschriften"},
+    {"name": "smart-inbox", "description": "Intelligenter Posteingang"},
+    {"name": "smart-tagging", "description": "Automatische intelligente Verschlagwortung"},
+    {"name": "Steuerberater-Zugang", "description": "Steuerberaterzugang und -portal"},
+    {"name": "Steuerberater Packages", "description": "Steuerberater-Pakete und -Export"},
+    {"name": "Steuerberater-Pakete", "description": "Steuerberater-Paketversand"},
+    {"name": "Subscriptions", "description": "Abonnementverwaltung"},
+    {"name": "stammdaten-hygiene", "description": "Stammdatenbereinigung und -pflege"},
+    {"name": "sync", "description": "Datensynchronisierung"},
+    {"name": "Zusammenfassungen", "description": "KI-gestützte Dokumentenzusammenfassungen"},
+    {"name": "Deutsche Terminologie", "description": "Deutsche Fachbegriffe und Terminologie"},
+    {"name": "tasks", "description": "Aufgabenverwaltung"},
+    {"name": "templates", "description": "Vorlagenverwaltung"},
+    {"name": "transactions", "description": "Transaktionsverwaltung"},
+    {"name": "validation", "description": "Datenvalidierung und -prüfung"},
+    {"name": "webhooks-inbound", "description": "Eingehende Webhook-Verarbeitung"},
+    {"name": "webhooks-outbound", "description": "Ausgehende Webhook Event Platform (Outbound Webhooks, Replay, DLQ)"},
+    # Mismatch Variants (router names differ from existing tags)
+    {"name": "Authentication", "description": "Authentifizierung und Anmeldung"},
+    {"name": "API Keys", "description": "API-Schlüssel-Verwaltung"},
+    {"name": "Administration", "description": "Systemadministration"},
+    {"name": "GDPR", "description": "DSGVO-Datenschutzkonformität"},
+    {"name": "RAG Intelligence", "description": "RAG-basierte intelligente Dokumentensuche"},
 ]
 
 OPENAPI_DESCRIPTION = """
@@ -260,24 +867,41 @@ Enterprise-Lösung für deutsche Dokumentenverarbeitung mit GPU-beschleunigter O
 
 ## Hauptfunktionen
 
-- **Multi-Backend OCR**: DeepSeek-Janus-Pro, GOT-OCR 2.0, Surya+Docling
-- **Deutsche Textoptimierung**: Spezialisiert auf deutsche Dokumente mit Fraktur-Unterstützung
-- **GPU-Beschleunigung**: NVIDIA RTX 4080 optimiert für Echtzeit-Verarbeitung
-- **DSGVO-Konform**: Vollständige Compliance mit deutschem Datenschutzrecht
+| Feature | Beschreibung |
+|---------|--------------|
+| **Multi-Backend OCR** | DeepSeek-Janus-Pro, GOT-OCR 2.0, Surya+Docling |
+| **Deutsche Textoptimierung** | Spezialisiert auf deutsche Dokumente mit Fraktur-Unterstützung |
+| **GPU-Beschleunigung** | NVIDIA RTX 4080 optimiert für Echtzeit-Verarbeitung |
+| **DSGVO-Konform** | Vollständige Compliance mit deutschem Datenschutzrecht |
+| **Performance-Monitoring** | Integriertes Profiling, Error-Tracking und Prometheus-Metriken |
+| **Enterprise Security** | JWT-Auth, 2FA, API-Keys, Rate-Limiting, Audit-Logs |
 
 ## Authentifizierung
 
-Die API verwendet JWT-Bearer-Tokens. Tokens können über `/api/v1/auth/login` abgerufen werden.
+Die API unterstützt mehrere Authentifizierungsmethoden:
 
+### JWT Bearer Token (Standard)
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <access_token>
 ```
+Tokens werden über `/api/v1/auth/login` abgerufen.
+
+### API-Schlüssel (für Integrationen)
+```
+X-API-Key: <api_key>
+```
+API-Schlüssel werden über `/api/v1/api-keys` verwaltet.
 
 ## Rate Limiting
 
-- Standard: 100 Anfragen/Minute
-- Upload: 50 Anfragen/Minute
-- Kritische Endpoints: 5-20 Anfragen/Minute
+| Endpoint-Typ | Limit |
+|--------------|-------|
+| Standard | 100 Anfragen/Minute |
+| Upload | 50 Anfragen/Minute |
+| Auth | 20 Anfragen/Minute |
+| Admin | 30 Anfragen/Minute |
+
+Bei Überschreitung wird HTTP 429 zurückgegeben mit `Retry-After` Header.
 
 ## Fehlerbehandlung
 
@@ -286,32 +910,105 @@ Alle Fehlerantworten folgen diesem Format:
 ```json
 {
   "fehler": "Kurze Fehlerbezeichnung",
-  "nachricht": "Detaillierte Beschreibung",
+  "nachricht": "Detaillierte Beschreibung auf Deutsch",
   "status_code": 400,
   "fehler_code": "E001",
   "zeitstempel": "2025-01-01T12:00:00Z",
-  "pfad": "/api/v1/resource"
+  "pfad": "/api/v1/resource",
+  "request_id": "req-abc123"
 }
 ```
+
+## Monitoring
+
+- **Health Checks**: `/api/v1/health/*`
+- **Prometheus Metriken**: `/api/v1/metrics/prometheus`
+- **Error-Statistiken**: `/api/v1/errors/stats`
+- **Performance-Profiling**: `/api/v1/profiling/summary`
+
+## Webhooks
+
+Konfigurieren Sie Webhooks für Event-Benachrichtigungen:
+- `document.uploaded` - Dokument hochgeladen
+- `document.processed` - OCR abgeschlossen
+- `document.failed` - Verarbeitung fehlgeschlagen
+
+## Fehlercode-Katalog
+
+Alle Fehlercodes folgen dem Format `[DOMAIN]_[NUMMER]`:
+
+| Domain | Codes | Beschreibung |
+|--------|-------|--------------|
+| **GPU** | GPU_001 - GPU_003 | GPU/CUDA-Fehler (OOM, nicht verfügbar) |
+| **OCR** | OCR_001 - OCR_004 | OCR-Verarbeitung (Timeout, Backend, Encoding) |
+| **VAL** | VAL_001 - VAL_003 | Validierung (Format, Dateigröße, Eingabe) |
+| **AUTH** | AUTH_001 - AUTH_005 | Authentifizierung (Login, Token, Rate-Limit) |
+| **DB** | DB_001 - DB_003 | Datenbank (Verbindung, Timeout, Transaktion) |
+| **STOR** | STOR_001 - STOR_003 | Speicher/MinIO (Upload, Not Found) |
+| **NET** | NET_001 - NET_003 | Netzwerk (Redis, Webhook, externe API) |
+| **GDPR** | GDPR_001 - GDPR_003 | DSGVO-Compliance (Verstoß, Aufbewahrung) |
+| **DOC** | DOC_001 - DOC_003 | Dokumente (Verarbeitung, Export, Not Found) |
+| **ML** | ML_001 - ML_004 | ML/KI (Verarbeitung, Suche, Embedding, Modell) |
+| **NOTIF** | NOTIF_001 - NOTIF_003 | Benachrichtigungen (E-Mail, Slack) |
+| **ARCH** | ARCH_001 - ARCH_003 | Archiv/Backup (GoBD, Restore) |
+| **PARSE** | PARSE_001 - PARSE_004 | Parsing (Betrag, Datum, MwSt, Währung) |
+| **CACHE** | CACHE_001 - CACHE_003 | Cache/Metriken (Redis Pool) |
 
 ## Support
 
 Bei Problemen erstellen Sie ein Issue im [GitHub Repository](https://github.com/ablage-system/ocr).
 """
 
+# Global error responses for OpenAPI documentation
+_ERROR_RESPONSES = {
+    400: {
+        "model": ErrorResponseSchema,
+        "description": "Ungültige Anfrage",
+    },
+    401: {
+        "model": ErrorResponseSchema,
+        "description": "Nicht authentifiziert",
+    },
+    403: {
+        "model": ErrorResponseSchema,
+        "description": "Zugriff verweigert",
+    },
+    404: {
+        "model": ErrorResponseSchema,
+        "description": "Ressource nicht gefunden",
+    },
+    422: {
+        "model": ErrorResponseSchema,
+        "description": "Validierungsfehler - Eingabedaten ungültig",
+    },
+    429: {
+        "model": ErrorResponseSchema,
+        "description": "Zu viele Anfragen",
+    },
+    500: {
+        "model": ErrorResponseSchema,
+        "description": "Interner Serverfehler",
+    },
+    503: {
+        "model": ErrorResponseSchema,
+        "description": "Service nicht verfügbar",
+    },
+}
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Ablage-System OCR",
     description=OPENAPI_DESCRIPTION,
-    version="0.2.0-poc",
+    version="0.3.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
     openapi_tags=OPENAPI_TAGS,
+    responses=_ERROR_RESPONSES,
     contact={
         "name": "Ablage-System Support",
         "url": "https://github.com/ablage-system/ocr",
-        "email": "support@ablage-system.local",
+        "email": "support@ablage-system.dev",
     },
     license_info={
         "name": "Proprietär",
@@ -341,6 +1038,38 @@ app.add_middleware(
     whitelist={"127.0.0.1", "::1", "localhost"},
 )
 
+# Standardisierte Fehler-Middleware (Phase 1.3: Error Standardization)
+# Faengt Exceptions ab, wandelt in StandardErrorResponse, X-Correlation-ID
+from app.core.error_middleware import ErrorStandardizationMiddleware
+app.add_middleware(ErrorStandardizationMiddleware)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Wandelt HTTPException in StandardErrorResponse um."""
+    correlation_id = getattr(
+        getattr(request, "state", None), "correlation_id", str(uuid.uuid4())
+    )
+
+    detail_str = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+
+    body = {
+        "error_code": f"ERR-HTTP-{exc.status_code}",
+        "message": detail_str,
+        "message_de": detail_str,  # Already German in our codebase
+        "correlation_id": correlation_id,
+        "details": None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "path": str(request.url.path),
+    }
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=body,
+        headers={"X-Correlation-ID": correlation_id},
+    )
+
+
 # Add Security Headers middleware (MUSS vor CORS sein!)
 # Fügt X-Content-Type-Options, X-Frame-Options, CSP, HSTS, etc. hinzu
 app.add_middleware(
@@ -350,10 +1079,21 @@ app.add_middleware(
 )
 
 # Add CORS middleware for web interface
-# WICHTIG: In Production explizite Origins setzen via CORS_ORIGINS Umgebungsvariable!
+# J.5 SECURITY FIX: In Production NUR explizite Origins, in Development zusätzlich localhost
+_cors_origins = settings.CORS_ORIGINS.copy()
+if settings.DEBUG:
+    # Nur in Development (DEBUG=True): localhost Origins hinzufügen
+    _cors_origins.extend(settings.CORS_DEVELOPMENT_ORIGINS)
+elif not _cors_origins:
+    # In Production OHNE konfigurierte Origins: Warnung ausgeben
+    logger.warning(
+        "cors_no_origins_configured",
+        message="CORS_ORIGINS ist leer in Production - keine Cross-Origin-Requests erlaubt!"
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=_cors_origins,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
@@ -370,6 +1110,21 @@ app.add_middleware(
     cookie_secure=not settings.DEBUG,
     cookie_samesite="strict",
     bearer_token_bypass=True,  # API-Clients mit Bearer Token überspringen
+)
+
+# Add Company Context middleware
+# Setzt die aktuelle Firma aus X-Company-ID Header oder User-Session
+app.add_middleware(CompanyContextMiddleware)
+
+# Add Tenant Context middleware (Multi-Tenancy RLS)
+# Propagiert tenant_id für Row-Level Security Policies
+app.add_middleware(TenantContextMiddleware)
+
+# Add profiling middleware
+# Erfasst Request-Timings für Performance-Analyse
+app.add_middleware(
+    ProfilingMiddleware,
+    track_memory=settings.DEBUG,  # Memory-Tracking nur in Debug-Modus
 )
 
 # Add rate limiting middleware
@@ -395,16 +1150,262 @@ register_exception_handlers(app)
 app.state.limiter = limiter
 
 # Include API routers
-from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr
+from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr, agents
+from app.api.v1.ocr_confidence import router as ocr_confidence_router
 from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
 from app.api.v1.vault import router as vault_router
 from app.api.v1.gdpr import router as gdpr_router, admin_router as gdpr_admin_router
+from app.api.v1.trash import router as trash_router
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.favorites import router as favorites_router
 from app.api.v1.search import router as search_router
+from app.api.v1.unified_search import router as unified_search_router
 from app.api.v1.api_keys import router as api_keys_router
 from app.api.v1.batch_jobs import router as batch_jobs_router
+from app.api.v1.sharing import router as sharing_router
+from app.api.v1.settings import router as settings_router
+from app.api.v1.errors import router as errors_router
+from app.api.v1.profiling import router as profiling_router
+from app.api.v1.security import router as security_router
+from app.api.v1.readiness import router as readiness_router
+from app.api.v1.log_analytics import router as log_analytics_router
+from app.api.v1.entities import router as entities_router
+from app.api.v1.groups import router as groups_router
+from app.api.v1.training import router as training_router
+from app.api.v1.tunes import router as tunes_router
+from app.api.v1.extracted_data import router as extracted_data_router
+from app.api.v1.rag import router as rag_router
+from app.api.v1.einvoice import router as einvoice_router
+from app.api.v1.banking import router as banking_router
+from app.api.v1.reconciliation import router as reconciliation_router
+from app.api.v1.document_comparison import router as document_comparison_router
+from app.api.v1.saved_searches import router as saved_searches_router
+from app.api.v1.period_comparison import router as period_comparison_router
+from app.api.v1.banking_fints import fints_router, sepa_router, dashboard_router as banking_dashboard_router
+from app.api.v1.datev import router as datev_router
+from app.api.v1.finance import router as finance_router
+from app.api.v1.recurring_invoices import router as recurring_invoices_router  # Phase 2.2: Abo-Verwaltung
+from app.api.v1.exports import router as exports_router
+from app.api.v1.scheduled_exports import router as scheduled_exports_router
+from app.api.v1.companies import router as companies_router
+from app.api.v1.cash import router as cash_router
+from app.api.v1.expenses import router as expenses_router
+from app.api.v1.streckengeschaeft import router as streckengeschaeft_router
+from app.api.v1.privat import router as privat_router
+from app.api.v1.privat_analytics import router as privat_analytics_router
+from app.api.v1.privat.tax import router as privat_tax_router  # Phase 3.1: Tax Optimization
+from app.api.v1.contracts_private import router as contracts_private_router  # P5.1: Vertragsmanagement
+from app.api.v1.personal import router as personal_router
+from app.api.v1.validation import router as validation_router
+from app.api.v1.comments import router as comments_router
+from app.api.v1.notifications import router as notifications_router
+from app.api.v1.notification_templates import router as notification_templates_router
+from app.api.v1.document_tasks import router as document_tasks_router
+from app.api.v1.activity import router as activity_router
+from app.api.v1.archive import router as archive_router
+from app.api.v1.tax_advisor import router as tax_advisor_router
+from app.api.v1.dashboards import router as dashboards_router  # Enterprise Dashboard API
+from app.api.v1.dashboard_widgets import router as dashboard_widgets_router  # Phase 7: Dashboard Widgets
+from app.api.v1.imports import router as imports_router
+from app.api.v1.ai_autonomy import router as ai_autonomy_router
+from app.api.v1.autonomous import router as autonomous_trust_router  # Phase 2.1: Multi-Level Trust
+from app.api.v1.reports import router as reports_router
+from app.api.v1.workflows import router as workflows_router
+from app.api.v1.push_notifications import router as push_notifications_router
+from app.api.v1.notification_rules import router as notification_rules_router
+from app.api.v1.orchestration import router as orchestration_router
+from app.api.v1.ai import router as ai_router
+from app.api.v1.lexware import router as lexware_router
+from app.api.v1.invoices import router as invoices_router
+from app.api.v1.invoice_pipeline import router as invoice_pipeline_router  # Feature #3: Vollautomatischer Rechnungsworkflow
+from app.api.v1.predictions import router as predictions_router  # Phase 3: Predictive Payment AI
+from app.api.v1.approvals import router as approvals_router
+from app.api.v1.oneclick import router as oneclick_router
+from app.api.v1.document_chains import router as document_chains_router
+from app.api.v1.po_matching import router as po_matching_router
+from app.api.v1.hygiene import router as hygiene_router
+from app.api.v1.tax_advisor_packages import router as tax_advisor_packages_router
+from app.api.v1.accounting import router as accounting_router
+from app.api.v1.budgets import router as budgets_router
+from app.api.v1.kanban import router as kanban_router
+from app.api.v1.calendar import router as calendar_router
+from app.api.v1.magic_buttons import router as magic_buttons_router
+from app.api.v1.contracts import router as contracts_router
+from app.api.v1.projects import router as projects_router
+from app.api.v1.gobd_compliance import router as gobd_compliance_router
+from app.api.v1.ai_decisions import router as ai_decisions_router
+from app.api.v1.daily_insights import router as daily_insights_router
+from app.api.v1.steuerberater_packages import router as steuerberater_packages_router
+from app.api.v1.enhanced_banking import router as enhanced_banking_router
+from app.api.v1.handelsregister_monitoring import router as handelsregister_monitoring_router
+from app.api.v1.document_templates import router as document_templates_router
+from app.api.v1.supplier_ranking import router as supplier_ranking_router
+from app.api.v1.payment_behavior import router as payment_behavior_router
+from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.slack import router as slack_router
+from app.api.v1.ms_teams import router as ms_teams_router
+from app.api.v1.shipments import router as shipments_router
+from app.api.v1.websocket import router as websocket_router
+from app.api.v1.predictive_actions import router as predictive_actions_router
+from app.api.v1.smart_escalation import router as smart_escalation_router
+from app.api.v1.tenant_rate_limits import router as tenant_rate_limits_router
+from app.api.v1.subscriptions import router as subscriptions_router
+from app.api.v1.holding import router as holding_router
+from app.api.v1.predictive_cashflow import router as predictive_cashflow_router
+from app.api.v1.cashflow_prediction import router as cashflow_prediction_router  # Monte Carlo Cashflow Prediction
+from app.api.v1.cashflow import router as entity_cashflow_router  # Phase 2.2: Entity-based Cashflow Prediction
+from app.api.v1.fraud_detection import router as fraud_detection_router
+from app.api.v1.risk_intelligence import router as risk_intelligence_router
+from app.api.v1.ocr_learning import router as ocr_learning_router
+from app.api.v1.ocr_templates import router as ocr_templates_router
+from app.api.v1.bpmn import router as bpmn_router
+from app.api.v1.compliance import router as compliance_router
+from app.api.v1.document_completeness import router as document_completeness_router
+from app.api.v1.document_quality import router as document_quality_router  # Datenqualitäts-Ampel
+from app.api.v1.dpia import router as dpia_router
+from app.api.v1.help import router as help_router
+from app.api.v1.mfa import router as mfa_router
+from app.api.v1.dlp import router as dlp_router
+from app.api.v1.transactions import router as transactions_router
+from app.api.v1.teams import router as teams_router
+from app.api.v1.delegations import router as delegations_router
+from app.api.v1.activity_timeline import router as activity_timeline_router
+from app.api.v1.rules import router as rules_router
+from app.api.v1.proactive_insights import router as proactive_insights_router
+from app.api.v1.proactive_assistant import router as proactive_assistant_router  # Feature #1: Proaktiver Assistent
+from app.api.v1.compare import router as compare_router
+from app.api.v1.routing import router as routing_router
+from app.api.v1.hardware import router as hardware_router
+from app.api.v1.saved_filters import router as saved_filters_router
+from app.api.v1.alerts import router as alerts_router
+from app.api.v1.inventory import router as inventory_router
+from app.api.v1.finance_assistant import router as finance_assistant_router
+from app.api.v1.ai_conversations import router as ai_conversations_router
+from app.api.v1.zero_touch import router as zero_touch_router
+from app.api.v1.nlq import router as nlq_router
+from app.api.v1.smart_search import router as smart_search_router  # Feature #1: Smart Search / Natural Language Search
+from app.api.v1.spotlight import router as spotlight_router  # Spotlight Cmd+K Schnellsuche
+from app.api.v1.semantic_search import router as semantic_search_router  # M4: Semantische Suche
+from app.api.v1.barcodes import router as barcodes_router  # M5: Barcode/QR Pipeline
+from app.api.v1.lifecycle_engine import router as lifecycle_engine_router  # M1: Document Lifecycle Engine
+from app.api.v1.custom_fields import router as custom_fields_router  # M3: Custom Field System
+from app.api.v1.smart_inbox import router as smart_inbox_router
+from app.api.v1.ceo_dashboard import router as ceo_dashboard_router
+from app.api.v1.knowledge_graph import router as knowledge_graph_router
+from app.api.v1.audit_chain import router as audit_chain_router
+from app.api.v1.ai_ethics import router as ai_ethics_router
+from app.api.v1.event_sourcing import router as event_sourcing_router
+from app.api.v1.graphql_api import router as graphql_api_router
+from app.api.v1.sync import router as sync_router
+from app.api.v1.template_engine import router as template_engine_router
+from app.api.v1.enrichment import router as enrichment_router
+from app.api.v1.compliance_autopilot import router as compliance_autopilot_router
+from app.api.v1.annotations import router as annotations_router
+from app.api.v1.visual_diff import router as visual_diff_router
+from app.api.v1.life_events import router as life_events_router
+from app.api.v1.smart_tagging import router as smart_tagging_router  # Vision 2026+ Q1: Smart Auto-Tagging
+from app.api.v1.audit_trail_visualization import router as audit_trail_visualization_router  # Vision 2026+ Q1: Audit Trail Visualization
+from app.api.v1.communication_hub import router as communication_hub_router  # Vision 2026+ Q1: Kommunikations-Hub
+from app.api.v1.supplier_ocr_templates import router as supplier_ocr_templates_router  # Vision 2026+ Q1: Lieferanten OCR-Templates
+from app.api.v1.visual_workflow_builder import router as visual_workflow_builder_router  # Vision 2026+ Q2: Visual Workflow Builder
+from app.api.v1.supplier_verification import router as supplier_verification_router  # Vision 2026+ Q2: Lieferanten-Verifizierung
+from app.api.v1.liquidity_scenarios import router as liquidity_scenarios_router  # Vision 2026+ Q2: Liquiditäts-Szenarien
+from app.api.v1.ai_mentor import router as ai_mentor_router  # Vision 2026+ Q3: AI-Mentor (Feature #9)
+from app.api.v1.industry_benchmarks import router as industry_benchmarks_router  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
+from app.api.v1.onboarding import router as onboarding_router  # Vision 2026+ Q3: Tenant Onboarding Wizard (Feature #11)
+
+# Vision 2.0 Phase 2: Erweiterte Integrationen
+from app.api.v1.process_mining import router as process_mining_router  # Vision 2.0: Process Mining
+from app.api.v1.consent import router as consent_router  # Vision 2.0: Consent Management (DSGVO)
+from app.api.v1.credit import router as credit_router  # Vision 2.0: Creditreform Integration
+from app.api.v1.datev_booking import router as datev_booking_router  # Vision 2.0: DATEV Buchungsvorschläge
+from app.api.v1.datev_connect import router as datev_connect_router  # DATEV Connect Integration (Migration 145)
+from app.api.v1.classification import router as classification_router  # Vision 2.0 Phase 3: Multi-Label Classification
+from app.api.v1.document_context import router as document_context_router  # Phase 2: Document Context Aggregation
+from app.api.v1.calendar_sync import router as calendar_sync_router  # Phase 5: Calendar Sync
+from app.api.v1.role_dashboards import router as role_dashboards_router  # Phase 5.3: Rollen-basierte Dashboards
+from app.api.v1.scanner import router as scanner_router  # Phase 5: Scanner Integration
+from app.api.v1.admin.integration_sync import router as integration_sync_router  # Phase 5: DATEV/Lexware Sync
+from app.api.v1.email_file_import import router as email_file_import_router  # Phase 6D: E-Mail-Datei-Import
+
+# Vision 2.0 Phase 5: Privacy & Predictive Maintenance
+from app.api.v1.privacy_analytics import router as privacy_analytics_router  # Vision 2.0 Phase 5: Differential Privacy
+from app.api.v1.predictive_health import router as predictive_health_router  # Vision 2.0 Phase 5: Predictive Maintenance
+
+# Vision 2.0 Phase 6: Autonomy Framework & Intelligence
+from app.api.v1.action_queue import router as action_queue_router  # Vision 2.0 Phase 6: Action Approval Queue
+from app.api.v1.financial_insights import router as financial_insights_router  # Vision 2.0 Phase 6: Financial Insights
+from app.api.v1.xai import router as xai_router  # Vision 2.0 Phase 6: Explainable AI
+from app.api.v1.document_lifecycle import router as document_lifecycle_router  # Document Lifecycle SLA
+from app.api.v1.sso import router as sso_router  # Enterprise SSO (OIDC/SAML)
+from app.api.v1.lineage import router as lineage_router  # Phase 1.3: Document Lineage Timeline
+from app.api.v1.workflow_analytics import router as workflow_analytics_router  # Phase 4: Workflow Analytics, SLA, Approvals
+from app.api.v1.odoo_webhooks import router as odoo_webhooks_router  # Phase 6: Odoo Integration Deepening
+from app.api.v1.webhooks_receive import router as webhooks_receive_router  # Phase 3.2: Inbound Webhook Receiver
+from app.api.v1.webhooks_outbound import router as webhooks_outbound_platform_router  # Outbound Webhook Event Platform
+from app.api.v1.pipeline import router as pipeline_router  # Phase 3: Integration Pipeline
+from app.api.v1.review_queue import router as review_queue_router  # Review Queue & Confirm-Filing
+from app.api.v1.bpmn_converter import router as bpmn_converter_router  # BPMN 2.0 Import/Export Converter
+from app.api.v1.banking.connections import router as psd2_banking_router  # Phase 6: PSD2/FinTS Banking Integration
+from app.api.v1.documents_bulk import router as documents_bulk_router  # Phase 2.3: Bulk Actions
+from app.api.v1.assistant import router as assistant_router  # Conversational Assistant mit Ollama
+from app.api.v1.portal import router as portal_router  # Phase 5.2: Kundenportal Self-Service
+from app.api.v1.esg import router as esg_router  # Phase 7.4: ESG-Reporting
+from app.api.v1.reporting import router as reporting_router  # Executive Dashboard Reporting
+from app.api.v1.tenant_admin import router as tenant_admin_router  # Multi-Tenancy Admin API
+from app.api.v1.cache_admin import router as cache_admin_router  # Cache Stampede Prevention Admin API
+from app.api.v1.retention_admin import router as retention_admin_router  # Phase 3: GoBD Retention Admin
+from app.api.v1.cross_tenant_reports import router as cross_tenant_reports_router  # Phase 3: Cross-Tenant Reports
+from app.api.v1.notification_preferences import router as notification_preferences_router  # Phase 3: Notification Preferences
+from app.api.v1.feature_flags import admin_router as feature_flags_admin_router, user_router as feature_flags_router  # Feature Flag Service
+from app.api.v1.digital_twin import router as digital_twin_router  # Feature #6: Digitaler Zwilling
+from app.api.v1.data_quality import router as data_quality_router  # Feature #8: Datenqualitäts-Cockpit
+from app.api.v1.presence import router as presence_router  # Feature: Collaborative Presence Indicators
+
+# Phase 1: Enterprise & Compliance (Dokument-Integrität, Signaturen, Jahresabschluss)
+from app.api.v1.integrity import router as integrity_router  # Phase 1: Dokument-Integrität (Hash-Chain)
+from app.api.v1.signatures import router as signatures_router  # Phase 1: QES/eIDAS Signaturen
+from app.api.v1.year_end import router as year_end_router  # Phase 1: Jahresabschluss-Assistent
+from app.api.v1.document_hints import router as document_hints_router  # Feature #5: Proaktive Dokument-Hinweise
+from app.api.v1.collaboration import router as collaboration_router  # Feature #4: Echtzeit-Kollaboration
+from app.api.v1.trust_dashboard import router as trust_dashboard_router  # Feature #7: Trust/Security Dashboard
+from app.api.v1.ml_dashboard import router as ml_dashboard_router  # Feature #10: ML Progress Dashboard
+from app.api.v1.document_timeline import router as document_timeline_router  # Feature #11: Document Timeline
+from app.api.v1.folders import router as folders_router  # Phase 1.1: Geschäftliche Ordnerhierarchie
+from app.api.v1.learning_autonomy import router as learning_autonomy_router  # Phase 2.2: Lernende Autonomie
+from app.api.v1.comment_threads import router as comment_threads_router  # Phase 3.1: Kommentar-Threads
+from app.api.v1.summarization import router as summarization_router  # Phase 4.1: AI-Zusammenfassungen
+from app.api.v1.booking_suggestions import router as booking_suggestions_router  # Phase 5.1: Buchungsvorschläge
+from app.api.v1.similar_documents import router as similar_documents_router  # Ähnliche Dokumente API
+from app.api.v1.smart_dashboard import router as smart_dashboard_router  # Feature #2+#6: Smart Dashboard + Live-Feedback
+from app.api.v1.analytics_team import router as analytics_team_router  # Phase 5: Analytics Team Stats
+from app.api.v1.approval_enhanced import router as approval_enhanced_router  # Feature #3+#7: Approval Depth + Automation 2.0
+from app.api.v1.approval_extended import router as approval_extended_router  # Feature #3: Approval Escalation & SLA
+from app.api.v1.automation import router as automation_router  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
+from app.api.v1.ki_pipeline import router as ki_pipeline_router  # Feature #4: KI-Pipeline Intelligence
+from app.api.v1.annotations_enhanced import router as annotations_enhanced_router  # Feature #8: Kommentare & Annotationen
+from app.api.v1.annotations_extended import router as annotations_extended_router  # Feature #8: Bounding-Box, Replies, Tasks
+from app.api.v1.terminology import router as terminology_router  # Feature #10: Deutsche Praezision
+from app.api.v1.german_finance import router as german_finance_router  # Feature #11: Deutsche Finanz-Features
+from app.api.v1.adhoc_reports import router as adhoc_reports_router  # Feature #12: Ad-Hoc Reporting
+from app.api.v1.saga_monitoring import router as saga_monitoring_router  # Phase 2.2: Saga Monitoring
+from app.api.v1.approval_matrix import router as approval_matrix_router  # M2: Approval Matrix
+from app.api.v1.duplicate_detection import router as duplicate_detection_router  # Phase 4.1: Duplikat-Erkennung
+from app.api.v1.explainability import router as explainability_router  # Phase 4.3: Erklaerbare AI-Entscheidungen
+from app.api.v1.morning_briefing import router as morning_briefing_router  # Phase 4.1: Morning Briefing Cockpit
+from app.api.v1.ai_chat import router as ai_chat_router  # Phase 4.1: Eingebetteter KI-Assistent
+from app.api.v1.dashboard_builder import router as dashboard_builder_router  # Phase 7.3: Dashboard-Builder
+from app.api.v1.clustering import router as clustering_router  # Phase 2.1: Dokumenten-Clustering
+from app.api.v1.anomalies import router as anomalies_router  # Phase 2.3: Anomalie-Erkennung
+from app.api.v1.active_learning import router as active_learning_router  # Phase 2.4: Active Learning Pipeline
+from app.api.v1.cdc import router as cdc_router  # Phase 1.1: Change Data Capture Admin
+from app.api.v1.encryption import router as encryption_router  # Phase 1.4: Field-Level Encryption Admin
+from app.api.v1.feature_toggles import router as feature_toggles_router  # Phase 7.1: Feature Toggle Admin UI
+from app.api.v1.integration_sync import router as integrations_dashboard_router  # Phase 4.4: Integrations-Sync Dashboard
+from app.api.v1.access_analytics import router as access_analytics_router  # Priority 4: Zugriffs-Analytik Dashboard
+from app.api.v1.agent_orchestrator import router as agent_orchestrator_router  # Multi-Agent KI-Orchestrator mit CoT
+from app.api.v1.command_center import router as command_center_router  # Command Center Startseite
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -416,14 +1417,278 @@ app.include_router(admin_router, prefix="/api/v1")
 app.include_router(backup_router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
+app.include_router(ocr_confidence_router, prefix="/api/v1")
 app.include_router(vault_router, prefix="/api/v1")
 app.include_router(gdpr_router, prefix="/api/v1")
 app.include_router(gdpr_admin_router, prefix="/api/v1")
+app.include_router(trash_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1")
 app.include_router(favorites_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
+app.include_router(unified_search_router, prefix="/api/v1")
 app.include_router(api_keys_router, prefix="/api/v1")
 app.include_router(batch_jobs_router, prefix="/api/v1")
+app.include_router(sharing_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
+app.include_router(agents.router, prefix="/api/v1")
+app.include_router(errors_router, prefix="/api/v1")
+app.include_router(profiling_router, prefix="/api/v1")
+app.include_router(security_router, prefix="/api/v1")
+app.include_router(readiness_router, prefix="/api/v1")
+app.include_router(log_analytics_router, prefix="/api/v1")
+app.include_router(entities_router, prefix="/api/v1")
+app.include_router(groups_router, prefix="/api/v1")
+app.include_router(training_router, prefix="/api/v1")
+app.include_router(tunes_router, prefix="/api/v1/tunes", tags=["tunes"])
+app.include_router(extracted_data_router, prefix="/api/v1")
+app.include_router(rag_router, prefix="/api/v1")
+app.include_router(einvoice_router, prefix="/api/v1")
+app.include_router(banking_router, prefix="/api/v1")
+app.include_router(reconciliation_router, prefix="/api/v1")  # Payment Reconciliation API
+app.include_router(document_comparison_router, prefix="/api/v1")  # Document Version Comparison API
+app.include_router(saved_searches_router, prefix="/api/v1")  # Saved Searches API
+app.include_router(period_comparison_router, prefix="/api/v1")  # Period Comparison API (YoY/MoM/QoQ)
+app.include_router(fints_router, prefix="/api/v1")
+app.include_router(sepa_router, prefix="/api/v1")
+app.include_router(banking_dashboard_router, prefix="/api/v1")
+app.include_router(psd2_banking_router, prefix="/api/v1")  # Phase 6: PSD2/FinTS Banking Integration
+app.include_router(datev_router, prefix="/api/v1")
+app.include_router(finance_router, prefix="/api/v1")
+app.include_router(recurring_invoices_router, prefix="/api/v1")  # Phase 2.2: Abo-Verwaltung
+app.include_router(exports_router, prefix="/api/v1")
+app.include_router(scheduled_exports_router, prefix="/api/v1")
+app.include_router(companies_router, prefix="/api/v1")
+app.include_router(cash_router, prefix="/api/v1")
+app.include_router(expenses_router, prefix="/api/v1")
+app.include_router(streckengeschaeft_router, prefix="/api/v1")
+app.include_router(privat_router, prefix="/api/v1")
+app.include_router(privat_analytics_router, prefix="/api/v1")
+app.include_router(privat_tax_router, prefix="/api/v1/privat")  # Phase 3.1: Tax Optimization
+app.include_router(contracts_private_router, prefix="/api/v1/privat")  # P5.1: Vertragsmanagement
+app.include_router(personal_router, prefix="/api/v1")
+app.include_router(validation_router, prefix="/api/v1")
+app.include_router(comments_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(notification_templates_router, prefix="/api/v1")
+app.include_router(document_tasks_router, prefix="/api/v1")
+app.include_router(activity_router, prefix="/api/v1")
+app.include_router(archive_router, prefix="/api/v1")
+app.include_router(tax_advisor_router, prefix="/api/v1")
+app.include_router(dashboards_router, prefix="/api/v1")
+app.include_router(dashboard_widgets_router, prefix="/api/v1")  # Phase 7: Dashboard Widgets
+app.include_router(imports_router, prefix="/api/v1")
+app.include_router(ai_autonomy_router, prefix="/api/v1")
+app.include_router(autonomous_trust_router, prefix="/api/v1")  # Phase 2.1: Multi-Level Trust
+app.include_router(reports_router, prefix="/api/v1")
+app.include_router(workflows_router, prefix="/api/v1")
+app.include_router(push_notifications_router, prefix="/api/v1")
+app.include_router(notification_rules_router, prefix="/api/v1")
+app.include_router(orchestration_router, prefix="/api/v1")
+app.include_router(ai_router, prefix="/api/v1")
+app.include_router(lexware_router, prefix="/api/v1")
+app.include_router(invoices_router, prefix="/api/v1")
+app.include_router(invoice_pipeline_router, prefix="/api/v1")  # Feature #3: Vollautomatischer Rechnungsworkflow
+app.include_router(predictions_router, prefix="/api/v1")  # Phase 3: Predictive Payment AI
+app.include_router(approvals_router, prefix="/api/v1")
+app.include_router(oneclick_router, prefix="/api/v1")
+app.include_router(document_chains_router, prefix="/api/v1")
+app.include_router(po_matching_router, prefix="/api/v1")  # 3-Way PO-Matching
+app.include_router(hygiene_router, prefix="/api/v1")
+app.include_router(tax_advisor_packages_router, prefix="/api/v1")
+app.include_router(accounting_router, prefix="/api/v1")
+app.include_router(budgets_router, prefix="/api/v1")  # Phase 2.1: Budgetierung & Controlling
+app.include_router(calendar_router, prefix="/api/v1")
+app.include_router(magic_buttons_router, prefix="/api/v1")
+app.include_router(contracts_router, prefix="/api/v1")
+app.include_router(document_templates_router, prefix="/api/v1")
+app.include_router(supplier_ranking_router, prefix="/api/v1")
+app.include_router(payment_behavior_router, prefix="/api/v1")
+app.include_router(knowledge_router, prefix="/api/v1")
+app.include_router(slack_router, prefix="/api/v1")
+app.include_router(ms_teams_router, prefix="/api/v1")
+app.include_router(shipments_router, prefix="/api/v1")
+app.include_router(websocket_router, prefix="/api/v1", tags=["websocket"])
+app.include_router(predictive_actions_router, prefix="/api/v1")
+app.include_router(smart_escalation_router, prefix="/api/v1")
+app.include_router(tenant_rate_limits_router, prefix="/api/v1")
+app.include_router(subscriptions_router, prefix="/api/v1")
+app.include_router(holding_router, prefix="/api/v1")
+app.include_router(predictive_cashflow_router, prefix="/api/v1")
+app.include_router(cashflow_prediction_router, prefix="/api/v1")  # Monte Carlo Cashflow Prediction
+app.include_router(entity_cashflow_router, prefix="/api/v1")  # Phase 2.2: Entity-based Cashflow Prediction
+app.include_router(fraud_detection_router, prefix="/api/v1")
+app.include_router(risk_intelligence_router, prefix="/api/v1")
+app.include_router(ocr_learning_router, prefix="/api/v1")
+app.include_router(ocr_templates_router, prefix="/api/v1")
+app.include_router(bpmn_router, prefix="/api/v1")
+app.include_router(compliance_router, prefix="/api/v1")
+app.include_router(document_completeness_router, prefix="/api/v1")  # Belegprüfung
+app.include_router(document_quality_router, prefix="/api/v1")  # Datenqualitäts-Ampel
+app.include_router(dpia_router, prefix="/api/v1")
+app.include_router(help_router, prefix="/api/v1")
+app.include_router(mfa_router, prefix="/api/v1")
+app.include_router(sso_router, prefix="/api/v1")  # Enterprise SSO (OIDC/SAML)
+app.include_router(lineage_router, prefix="/api/v1")  # Phase 1.3: Document Lineage Timeline
+app.include_router(documents_bulk_router, prefix="/api/v1")  # Phase 2.3: Bulk Actions
+app.include_router(dlp_router, prefix="/api/v1")
+app.include_router(transactions_router, prefix="/api/v1")
+app.include_router(teams_router, prefix="/api/v1")
+app.include_router(delegations_router, prefix="/api/v1")
+app.include_router(activity_timeline_router, prefix="/api/v1")
+app.include_router(rules_router, prefix="/api/v1")
+app.include_router(proactive_insights_router, prefix="/api/v1")
+app.include_router(proactive_assistant_router, prefix="/api/v1")  # Feature #1: Proaktiver Assistent
+app.include_router(compare_router, prefix="/api/v1")
+app.include_router(routing_router, prefix="/api/v1")
+app.include_router(hardware_router, prefix="/api/v1")
+app.include_router(saved_filters_router, prefix="/api/v1")
+app.include_router(alerts_router, prefix="/api/v1")
+app.include_router(inventory_router, prefix="/api/v1")
+app.include_router(finance_assistant_router, prefix="/api/v1")  # Vision 2.0: KI-Finanzassistent
+app.include_router(ai_conversations_router, prefix="/api/v1")  # Vision 2.0: KI-Konversationen Persistenz
+app.include_router(assistant_router, prefix="/api/v1")  # Conversational Assistant mit Ollama
+app.include_router(zero_touch_router, prefix="/api/v1")  # Vision 2.0: Zero-Touch OCR
+app.include_router(nlq_router, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
+app.include_router(smart_search_router, prefix="/api/v1")  # Feature #1: Smart Search / Natural Language Search
+app.include_router(spotlight_router, prefix="/api/v1")  # Spotlight Cmd+K Schnellsuche
+app.include_router(semantic_search_router, prefix="/api/v1")  # M4: Semantische Suche
+app.include_router(barcodes_router, prefix="/api/v1")  # M5: Barcode/QR Pipeline Integration
+app.include_router(lifecycle_engine_router, prefix="/api/v1")  # M1: Document Lifecycle Engine
+app.include_router(custom_fields_router, prefix="/api/v1")  # M3: Custom Field System
+app.include_router(smart_inbox_router, prefix="/api/v1")  # Vision 2.0: Smart Inbox
+app.include_router(ceo_dashboard_router, prefix="/api/v1")  # Vision 2.0: CEO Dashboard
+app.include_router(knowledge_graph_router, prefix="/api/v1")  # Vision 2.0: Knowledge Graph
+app.include_router(audit_chain_router, prefix="/api/v1")  # Vision 2.0: Merkle Audit Trail
+app.include_router(ai_ethics_router, prefix="/api/v1")  # Vision 2.0: KI-Ethik-Layer
+app.include_router(event_sourcing_router, prefix="/api/v1")  # Vision 2.0: Event Sourcing
+app.include_router(graphql_api_router, prefix="/api/v1")  # Vision 2.0: GraphQL
+app.include_router(sync_router, prefix="/api/v1")  # Vision 2.0: Offline Sync
+app.include_router(template_engine_router, prefix="/api/v1")  # Vision 2.0: Template Engine
+app.include_router(enrichment_router, prefix="/api/v1")  # Vision 2.0: External Enrichment
+app.include_router(compliance_autopilot_router, prefix="/api/v1")  # Vision 2.0: Compliance Autopilot
+app.include_router(annotations_router, prefix="/api/v1")  # Vision 2.0: Annotations
+app.include_router(visual_diff_router, prefix="/api/v1")  # Vision 2.0: Visual Diff
+app.include_router(life_events_router, prefix="/api/v1")  # Vision 2.0: Life Events
+app.include_router(projects_router, prefix="/api/v1")  # Vision 2026: Project Management
+app.include_router(gobd_compliance_router, prefix="/api/v1")  # Vision 2026: GoBD Compliance
+app.include_router(ai_decisions_router, prefix="/api/v1")  # Vision 2026: AI Decision Explorer
+app.include_router(daily_insights_router, prefix="/api/v1")  # Vision 2026 Q4: Daily Insights Engine
+app.include_router(steuerberater_packages_router, prefix="/api/v1")  # Vision 2026 Q4: Steuerberater Packages
+app.include_router(enhanced_banking_router, prefix="/api/v1")  # Vision 2026 Q4: Enhanced Banking
+app.include_router(handelsregister_monitoring_router, prefix="/api/v1")  # Vision 2026 Q4: Handelsregister Monitoring
+app.include_router(smart_tagging_router, prefix="/api/v1")  # Vision 2026+ Q1: Smart Auto-Tagging
+app.include_router(calendar_sync_router, prefix="/api/v1")  # Phase 5: Calendar iCal/CalDAV Sync
+app.include_router(role_dashboards_router, prefix="/api/v1")  # Phase 5.3: Rollen-basierte Dashboard APIs
+app.include_router(email_file_import_router, prefix="/api/v1", tags=["E-Mail-Import"])  # Phase 6D: E-Mail-Datei-Import
+app.include_router(scanner_router, prefix="/api/v1")  # Phase 5: Scanner Device Integration
+app.include_router(integration_sync_router, prefix="/api/v1")  # Phase 5: DATEV/Lexware Bidirectional Sync
+app.include_router(audit_trail_visualization_router, prefix="/api/v1")  # Vision 2026+ Q1: Audit Trail Visualization
+app.include_router(communication_hub_router, prefix="/api/v1")  # Vision 2026+ Q1: Kommunikations-Hub
+app.include_router(supplier_ocr_templates_router, prefix="/api/v1")  # Vision 2026+ Q1: Lieferanten OCR-Templates
+app.include_router(visual_workflow_builder_router, prefix="/api/v1")  # Vision 2026+ Q2: Visual Workflow Builder
+app.include_router(supplier_verification_router, prefix="/api/v1")  # Vision 2026+ Q2: Lieferanten-Verifizierung
+app.include_router(liquidity_scenarios_router, prefix="/api/v1")  # Vision 2026+ Q2: Liquiditäts-Szenarien
+app.include_router(ai_mentor_router, prefix="/api/v1")  # Vision 2026+ Q3: AI-Mentor (Feature #9)
+app.include_router(industry_benchmarks_router, prefix="/api/v1")  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
+app.include_router(onboarding_router, prefix="/api/v1")  # Vision 2026+ Q3: Tenant Onboarding Wizard (Feature #11)
+
+# Vision 2.0 Phase 2: Erweiterte Integrationen
+app.include_router(process_mining_router, prefix="/api/v1")  # Vision 2.0: Process Mining
+app.include_router(consent_router, prefix="/api/v1")  # Vision 2.0: Consent Management (DSGVO)
+app.include_router(credit_router, prefix="/api/v1")  # Vision 2.0: Creditreform Integration
+app.include_router(datev_booking_router, prefix="/api/v1")  # Vision 2.0: DATEV Buchungsvorschläge
+app.include_router(datev_connect_router, prefix="/api/v1")  # DATEV Connect Integration (Migration 145)
+app.include_router(classification_router, prefix="/api/v1")  # Vision 2.0 Phase 3: Multi-Label Classification
+
+# Vision 2.0 Phase 5: Privacy & Predictive Maintenance (100% Completion)
+app.include_router(privacy_analytics_router, prefix="/api/v1")  # Vision 2.0 Phase 5: Differential Privacy Analytics
+app.include_router(predictive_health_router, prefix="/api/v1")  # Vision 2.0 Phase 5: Predictive Maintenance
+
+# Vision 2.0 Phase 6: Autonomy Framework, Financial Insights & XAI
+app.include_router(action_queue_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Action Approval Queue
+app.include_router(financial_insights_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Financial Insights
+app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explainable AI
+app.include_router(document_lifecycle_router, prefix="/api/v1")  # Document Lifecycle SLA
+app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
+app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
+app.include_router(webhooks_receive_router, prefix="/api/v1")  # Phase 3.2: Inbound Webhook Receiver
+app.include_router(webhooks_outbound_platform_router, prefix="/api/v1")  # Outbound Webhook Event Platform
+app.include_router(pipeline_router, prefix="/api/v1")  # Phase 3: Integration Pipeline (Kontierung + Matching)
+app.include_router(review_queue_router, prefix="/api/v1")  # Review Queue & Confirm-Filing
+app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/Export Converter
+
+# Phase 5.2: Kundenportal Self-Service
+app.include_router(portal_router, prefix="/api/v1")
+
+# Phase 7.4: ESG-Reporting (Environmental, Social, Governance)
+app.include_router(esg_router, prefix="/api/v1")
+
+# Executive Dashboard Reporting
+app.include_router(reporting_router, prefix="/api/v1")
+
+# Phase 2: Kanban Document Workflow
+app.include_router(kanban_router, prefix="/api/v1")
+
+# Enterprise Completion: Multi-Tenancy Admin
+app.include_router(tenant_admin_router, prefix="/api/v1")
+
+# Cache Administration (Stampede Prevention, Metrics, Warming)
+app.include_router(cache_admin_router, prefix="/api/v1")
+
+# Phase 3: Enterprise-Compliance (P1-Critical)
+app.include_router(retention_admin_router, prefix="/api/v1")  # GoBD Retention Admin Config
+app.include_router(cross_tenant_reports_router, prefix="/api/v1")  # Multi-Firma Cross-Tenant Reports
+app.include_router(notification_preferences_router, prefix="/api/v1")  # Notification Preferences
+app.include_router(feature_flags_admin_router, prefix="/api/v1")  # Feature Flag Admin CRUD
+app.include_router(feature_flags_router, prefix="/api/v1")  # Feature Flag Evaluation
+app.include_router(document_context_router, prefix="/api/v1")  # Phase 2: Document Context Aggregation
+
+# Phase 1: Enterprise & Compliance
+app.include_router(integrity_router, prefix="/api/v1")  # Dokument-Integrität (Hash-Chain, Merkle-Tree)
+app.include_router(signatures_router, prefix="/api/v1")  # QES/eIDAS Elektronische Signaturen
+app.include_router(year_end_router, prefix="/api/v1")  # Jahresabschluss-Assistent
+app.include_router(document_hints_router, prefix="/api/v1")  # Feature #5: Proaktive Dokument-Hinweise
+app.include_router(collaboration_router, prefix="/api/v1")  # Feature #4: Echtzeit-Kollaboration
+app.include_router(digital_twin_router, prefix="/api/v1")  # Feature #6: Digitaler Zwilling
+app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqualitäts-Cockpit
+app.include_router(presence_router, prefix="/api/v1")  # Feature: Collaborative Presence Indicators
+app.include_router(trust_dashboard_router, prefix="/api/v1")  # Feature #7: Trust/Security Dashboard
+app.include_router(ml_dashboard_router, prefix="/api/v1")  # Feature #10: ML Progress Dashboard
+app.include_router(document_timeline_router, prefix="/api/v1")  # Feature #11: Document Timeline
+app.include_router(folders_router, prefix="/api/v1")  # Phase 1.1: Geschäftliche Ordnerhierarchie
+app.include_router(learning_autonomy_router, prefix="/api/v1")  # Phase 2.2: Lernende Autonomie
+app.include_router(comment_threads_router, prefix="/api/v1")  # Phase 3.1: Kommentar-Threads
+app.include_router(summarization_router, prefix="/api/v1")  # Phase 4.1: AI-Zusammenfassungen
+app.include_router(booking_suggestions_router, prefix="/api/v1")  # Phase 5.1: Buchungsvorschläge
+app.include_router(similar_documents_router, prefix="/api/v1")  # Ähnliche Dokumente API
+app.include_router(smart_dashboard_router, prefix="/api/v1")  # Feature #2+#6: Smart Dashboard + Live-Feedback
+app.include_router(analytics_team_router, prefix="/api/v1")  # Phase 5: Analytics Team Stats
+app.include_router(approval_enhanced_router, prefix="/api/v1")  # Feature #3+#7: Approval Depth + Automation 2.0
+app.include_router(approval_extended_router, prefix="/api/v1")  # Feature #3: Approval Escalation & SLA
+app.include_router(automation_router, prefix="/api/v1")  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
+app.include_router(ki_pipeline_router, prefix="/api/v1")  # Feature #4: KI-Pipeline Intelligence
+app.include_router(annotations_enhanced_router, prefix="/api/v1")  # Feature #8: Kommentare & Annotationen
+app.include_router(annotations_extended_router, prefix="/api/v1")  # Feature #8: Bounding-Box, Replies, Tasks
+app.include_router(terminology_router, prefix="/api/v1")  # Feature #10: Deutsche Praezision
+app.include_router(german_finance_router, prefix="/api/v1")  # Feature #11: Deutsche Finanz-Features
+app.include_router(adhoc_reports_router, prefix="/api/v1")  # Feature #12: Ad-Hoc Reporting
+app.include_router(saga_monitoring_router, prefix="/api/v1")  # Phase 2.2: Saga Monitoring
+app.include_router(approval_matrix_router, prefix="/api/v1")  # M2: Approval Matrix
+app.include_router(duplicate_detection_router, prefix="/api/v1")  # Phase 4.1: Duplikat-Erkennung
+app.include_router(explainability_router, prefix="/api/v1")  # Phase 4.3: Erklaerbare AI-Entscheidungen
+app.include_router(morning_briefing_router, prefix="/api/v1")  # Phase 4.1: Morning Briefing Cockpit
+app.include_router(ai_chat_router, prefix="/api/v1")  # Phase 4.1: Eingebetteter KI-Assistent
+app.include_router(dashboard_builder_router, prefix="/api/v1")  # Phase 7.3: Dashboard-Builder
+app.include_router(clustering_router, prefix="/api/v1")  # Phase 2.1: Dokumenten-Clustering
+app.include_router(anomalies_router, prefix="/api/v1")  # Phase 2.3: Anomalie-Erkennung
+app.include_router(active_learning_router, prefix="/api/v1")  # Phase 2.4: Active Learning Pipeline
+app.include_router(cdc_router, prefix="/api/v1")  # Phase 1.1: Change Data Capture Admin
+app.include_router(encryption_router, prefix="/api/v1")  # Phase 1.4: Field-Level Encryption Admin
+app.include_router(feature_toggles_router, prefix="/api/v1")  # Phase 7.1: Feature Toggle Admin UI
+app.include_router(integrations_dashboard_router, prefix="/api/v1")  # Phase 4.4: Integrations-Sync Dashboard
+app.include_router(access_analytics_router, prefix="/api/v1")  # Priority 4: Zugriffs-Analytik Dashboard
+app.include_router(agent_orchestrator_router, prefix="/api/v1")  # Multi-Agent KI-Orchestrator mit CoT
+app.include_router(command_center_router, prefix="/api/v1")  # Command Center Startseite
 
 
 # ==================== Health & Status Endpoints ====================
@@ -471,6 +1736,14 @@ async def health_check():
     """Comprehensive health check"""
     gpu_status = gpu_manager.get_detailed_status() if gpu_manager else None
     ocr_backends = ocr_service.backend_manager.get_available_backends() if ocr_service else []
+    preloader_status = model_preloader.get_status() if model_preloader else None
+
+    # P2: Backpressure Status
+    try:
+        backpressure_status = get_backpressure_info()
+    except Exception as e:
+        logger.debug("backpressure_info_failed", **safe_error_log(e))
+        backpressure_status = {"enabled": False, **safe_error_log(e)}
 
     health = {
         "status": "healthy",
@@ -486,6 +1759,16 @@ async def health_check():
             },
             "german_validator": {
                 "available": german_validator is not None
+            },
+            "model_preloader": {
+                "enabled": preloader_status.get("enabled", False) if preloader_status else False,
+                "completed": preloader_status.get("preload_completed", False) if preloader_status else False,
+                "models_loaded": preloader_status.get("summary", {}).get("loaded", 0) if preloader_status else 0,
+            },
+            "backpressure": {
+                "enabled": backpressure_status.get("enabled", False),
+                "status": backpressure_status.get("current_status", "unknown"),
+                "queue_length": backpressure_status.get("total_queue_length", 0),
             }
         }
     }
@@ -495,14 +1778,26 @@ async def health_check():
         health["status"] = "degraded"
         health["message"] = "No OCR backends available"
 
+    # Check backpressure status
+    bp_status = backpressure_status.get("current_status", "normal")
+    if bp_status == BackpressureStatus.OVERLOADED:
+        health["status"] = "degraded"
+        health["message"] = "System überlastet - hohe Queue-Auslastung"
+    elif bp_status == BackpressureStatus.CRITICAL:
+        if health["status"] == "healthy":
+            health["status"] = "warning"
+            health["message"] = "Kritische Queue-Auslastung - Graceful Degradation aktiv"
+
     return health
 
 
 # ==================== GPU Management Endpoints ====================
 
 @app.get("/gpu/status")
-async def get_gpu_status():
-    """Get detailed GPU status"""
+async def get_gpu_status(
+    current_user: User = Depends(get_current_active_user)  # CC.4 SECURITY FIX: Auth required
+):
+    """Get detailed GPU status. Requires authentication."""
     if not gpu_manager:
         raise HTTPException(status_code=503, detail=HTTPErrors.GPU_MANAGER_NOT_INITIALIZED)
 
@@ -512,8 +1807,10 @@ async def get_gpu_status():
 # ==================== OCR Processing Endpoints ====================
 
 @app.get("/ocr/backends")
-async def get_ocr_backends():
-    """Get available OCR backends and their status"""
+async def get_ocr_backends(
+    current_user: User = Depends(get_current_active_user)  # CC.5 SECURITY FIX: Auth required
+):
+    """Get available OCR backends and their status. Requires authentication."""
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
@@ -531,24 +1828,57 @@ async def process_document(
     backend: Optional[str] = Form("auto"),
     language: Optional[str] = Form("de"),
     detect_layout: Optional[bool] = Form(True),
-    cached_response: Optional[Dict[str, Any]] = Depends(check_idempotency)
+    run_quick_classification: Optional[bool] = Form(True),  # NEU: Quick Classification aktivieren
+    cached_response: Optional[Dict[str, object]] = Depends(check_idempotency),
+    backpressure: Dict[str, object] = Depends(backpressure_dependency),
+    current_user: User = Depends(get_current_active_user),  # CC.1 SECURITY FIX: Auth required
+    db: AsyncSession = Depends(get_db),  # NEU: DB Session für Quick Classification
 ):
     """
-    Process a document with OCR
+    Process a document with OCR and optional Quick Classification.
+
+    NEU: Enterprise Upload Workflow mit Quick Classification + Temp Storage.
+    Nach erfolgreichem OCR wird automatisch Quick Classification ausgeführt:
+    - Dokumenttyp erkennen (Eingangs-/Ausgangsrechnung)
+    - Entity-Matching (Lieferant/Kunde)
+    - Rename-Vorschlag generieren
+    - Datei temporär speichern für Review-Modal
 
     Args:
         file: Document file (PDF, PNG, JPG, etc.)
         backend: OCR backend to use (auto, surya, got_ocr, deepseek)
         language: Target language (de, en)
         detect_layout: Whether to detect document layout
+        run_quick_classification: Quick Classification + Temp Storage aktivieren (default: True)
         cached_response: Gecachte Antwort bei Idempotency-Key (automatisch geprüft)
+        backpressure: Queue-Backpressure-Status (automatisch geprüft)
 
     Returns:
-        OCR processing result with extracted text
+        OCR processing result with:
+        - text: Extrahierter Text
+        - quick_classification: Direction, Entity-Match, Tags (wenn aktiviert)
+        - rename_suggestion: Vorgeschlagener Dateiname (wenn aktiviert)
+        - temp_file_id: ID für temporäre Datei (wenn aktiviert)
 
     Headers:
         Idempotency-Key: Optional. Bei Wiederholung wird gecachtes Ergebnis zurückgegeben.
+        X-Priority: Optional. Priorität der Anfrage (high, normal, low)
+        X-Backpressure-Status: Response Header mit aktuellem Queue-Status
+
+    Raises:
+        HTTPException 503: Wenn System überlastet (Backpressure)
     """
+    # P2: Backpressure - Backend-Empfehlung bei hoher Last
+    suggested_backend = backpressure.get("suggested_backend")
+    if suggested_backend and backend == "auto":
+        logger.info(
+            "backpressure_backend_override",
+            original_backend=backend,
+            suggested_backend=suggested_backend,
+            queue_length=backpressure.get("queue_length", 0)
+        )
+        backend = suggested_backend
+
     # Wenn gecachte Antwort vorhanden, direkt zurückgeben
     if cached_response:
         return JSONResponse(
@@ -697,13 +2027,190 @@ async def process_document(
             result["german_validation"] = validation
 
         # Cache OCR result for identical file uploads (24h TTL)
-        if result.get("success"):
+        # Only cache results with sufficient quality (confidence > 10% and text extracted)
+        # This prevents caching of failed/empty OCR results
+        ocr_confidence = result.get("confidence", 0.0)
+        ocr_text = result.get("text", "")
+        should_cache = (
+            result.get("success")
+            and ocr_confidence >= 0.1  # Minimum 10% confidence
+            and len(ocr_text.strip()) > 10  # Minimum 10 characters
+        )
+        if should_cache:
             await cache_ocr_result(
                 content=file_content,
                 backend=actual_backend,
                 result=result,
                 language=language or "de"
             )
+        elif result.get("success") and not should_cache:
+            logger.info(
+                "ocr_result_not_cached_low_quality",
+                confidence=ocr_confidence,
+                text_length=len(ocr_text),
+                backend=actual_backend,
+                filename=file.filename
+            )
+
+        # ========================================================================
+        # NEU: Enterprise Upload Workflow - Quick Classification + Temp Storage
+        # ========================================================================
+        # DEBUG: Log condition values
+        logger.info(
+            "quick_classification_condition_check",
+            run_quick_classification=run_quick_classification,
+            run_quick_classification_type=type(run_quick_classification).__name__,
+            result_success=result.get("success"),
+            result_text_length=len(result.get("text", "") or ""),
+            result_keys=list(result.keys()) if result else [],
+        )
+        if run_quick_classification and result.get("success") and result.get("text"):
+            try:
+                import uuid as uuid_module
+                from app.services.quick_classification_service import QuickClassificationService
+                from app.services.temp_file_storage import get_temp_file_storage
+
+                ocr_text = result.get("text", "")
+                temp_doc_id = uuid_module.uuid4()  # Temporäre ID für Classification
+
+                # 1. Quick Classification ausführen
+                logger.info("quick_classification_starting", filename=file.filename)
+                quick_service = QuickClassificationService()
+                classification_result = await quick_service.classify_document(
+                    document_id=temp_doc_id,
+                    ocr_text=ocr_text,
+                    db=db,
+                    auto_assign_tag=False  # Kein Tag zuweisen - nur klassifizieren
+                )
+
+                # 2. Ergebnis in Response einbauen
+                result["quick_classification"] = {
+                    "direction": classification_result.direction.value if classification_result.direction else None,
+                    "confidence": classification_result.confidence,
+                    "reason": classification_result.reason,
+                    "extracted_vat_ids": classification_result.extracted_vat_ids,
+                    "extracted_ibans": classification_result.extracted_ibans,
+                    "matched_entity_id": str(classification_result.matched_entity_id) if classification_result.matched_entity_id else None,
+                    "matched_entity_name": classification_result.matched_entity_name,
+                    "matched_entity_type": classification_result.matched_entity_type,
+                    "entity_match_method": classification_result.entity_match_method,
+                    "entity_confidence": classification_result.entity_confidence,
+                }
+
+                # 2b. Structured Extraction für Datum, Betrag, Belegnummer
+                # Nutzt StructuredExtractionService für vollständige Datenextraktion
+                extracted_data = None
+                if ocr_text and len(ocr_text) > 50:
+                    try:
+                        from app.services.structured_extraction_service import (
+                            StructuredExtractionService,
+                            get_structured_extraction_service,
+                        )
+                        extraction_service = get_structured_extraction_service()
+                        extraction_result = await extraction_service.extract(
+                            text=ocr_text,
+                            document_id=None,  # Temp file, kein Document noch
+                            tables=None,
+                            detected_language=language,
+                            db=db,
+                        )
+                        if extraction_result:
+                            # Invoice-Daten extrahieren falls vorhanden
+                            invoice = extraction_result.invoice
+                            if invoice:
+                                extracted_data = {
+                                    "document_number": invoice.invoice_number,
+                                    "document_date": invoice.invoice_date.isoformat() if invoice.invoice_date else None,
+                                    "total_amount": float(invoice.gross_amount) if invoice.gross_amount else None,
+                                    "currency": invoice.currency.value if hasattr(invoice.currency, 'value') else str(invoice.currency),
+                                    "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
+                                    "vendor_name": invoice.sender.company if invoice.sender and invoice.sender.company else None,
+                                    "extraction_confidence": extraction_result.overall_confidence,
+                                }
+                            else:
+                                # Fallback: Allgemeine Daten aus classification
+                                extracted_data = {
+                                    "document_number": None,
+                                    "document_date": None,
+                                    "total_amount": float(extraction_result.amounts[0]) if extraction_result.amounts else None,
+                                    "currency": "EUR",
+                                    "due_date": None,
+                                    "vendor_name": extraction_result.companies[0] if extraction_result.companies else None,
+                                    "extraction_confidence": extraction_result.overall_confidence,
+                                }
+                        logger.info(
+                            "structured_extraction_completed",
+                            filename=file.filename,
+                            has_invoice_data=extracted_data is not None and extracted_data.get("document_number") is not None,
+                            extraction_confidence=extracted_data.get("extraction_confidence") if extracted_data else 0,
+                        )
+                    except Exception as se_error:
+                        # Structured Extraction Fehler sollen OCR nicht abbrechen
+                        logger.warning(
+                            "structured_extraction_failed",
+                            filename=file.filename,
+                            error=str(se_error)
+                        )
+                        extracted_data = None
+
+                # Extracted data zum quick_classification hinzufügen
+                result["quick_classification"]["extracted_data"] = extracted_data
+
+                # 3. Rename-Vorschlag (bereits in classification_result enthalten)
+                result["rename_suggestion"] = classification_result.rename_suggestion
+
+                # 4. Datei temporär speichern (für späteres Ablegen)
+                temp_storage = get_temp_file_storage()
+
+                # MIME-Type aus Dateiendung
+                file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+                mime_map = {
+                    ".pdf": "application/pdf",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".tiff": "image/tiff",
+                    ".tif": "image/tiff",
+                    ".bmp": "image/bmp",
+                }
+                detected_mime = mime_map.get(file_ext, "application/octet-stream")
+
+                temp_file_info = await temp_storage.store(
+                    file_content=file_content,
+                    original_filename=file.filename or "unknown",
+                    mime_type=detected_mime,
+                    user_id=str(current_user.id),
+                    metadata={
+                        "ocr_backend": actual_backend,
+                        "language": language,
+                        "quick_classification": result["quick_classification"],
+                    }
+                )
+
+                result["temp_file_id"] = temp_file_info.temp_file_id
+                result["temp_file_expires_in_seconds"] = 3600  # 1 Stunde
+
+                logger.info(
+                    "quick_classification_completed",
+                    filename=file.filename,
+                    direction=classification_result.direction.value if classification_result.direction else None,
+                    confidence=classification_result.confidence,
+                    matched_entity=classification_result.matched_entity_name,
+                    rename_suggestion=classification_result.rename_suggestion.get("suggested_filename") if classification_result.rename_suggestion else None,
+                    temp_file_id=temp_file_info.temp_file_id
+                )
+
+            except Exception as qc_error:
+                # Quick Classification Fehler sollen OCR nicht abbrechen
+                logger.warning(
+                    "quick_classification_failed",
+                    filename=file.filename,
+                    error=str(qc_error)
+                )
+                result["quick_classification"] = None
+                result["quick_classification_error"] = str(qc_error)
+                result["rename_suggestion"] = None
+                result["temp_file_id"] = None
 
         # Cache result if Idempotency-Key was provided
         idempotency_key = getattr(request.state, "idempotency_key", None)
@@ -720,20 +2227,23 @@ async def process_document(
         return result
 
     except Exception as e:
-        logger.error("ocr_processing_failed", error=str(e))
+        logger.error("ocr_processing_failed", **safe_error_log(e))
         # Record error metric
         monitor.metrics.record_error("ocr_processing_error")
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail=HTTPErrors.PROCESSING_FAILED.format(details=safe_error_detail(e, "Verarbeitung"))
         )
 
 
 @app.post("/ocr/batch")
 async def process_batch(
+    request: Request,
     files: List[UploadFile] = File(...),
     backend: Optional[str] = Form("auto"),
-    language: Optional[str] = Form("de")
+    language: Optional[str] = Form("de"),
+    backpressure: Dict[str, object] = Depends(backpressure_dependency),
+    current_user: User = Depends(get_current_active_user)  # CC.2 SECURITY FIX: Auth required
 ):
     """
     Process multiple documents in batch
@@ -742,10 +2252,40 @@ async def process_batch(
         files: List of document files (max 32 Dateien)
         backend: OCR backend to use
         language: Target language
+        backpressure: Queue-Backpressure-Status (automatisch geprüft)
 
     Returns:
         List of OCR results
+
+    Headers:
+        X-Priority: Optional. Priorität der Anfrage (high, normal, low)
+
+    Raises:
+        HTTPException 503: Wenn System überlastet (Backpressure)
     """
+    # P2: Backpressure - Bei Batch strengere Limits
+    bp_status = backpressure.get("status", "normal")
+    if bp_status in [BackpressureStatus.CRITICAL, BackpressureStatus.OVERLOADED]:
+        # Bei kritischer Last: Batch-Größe reduzieren
+        max_batch = 8 if bp_status == BackpressureStatus.CRITICAL else 4
+        if len(files) > max_batch:
+            raise HTTPException(
+                status_code=503,
+                detail=f"System unter hoher Last. Batch-Größe temporär auf {max_batch} Dateien limitiert. "
+                       f"Aktuelle Anfrage: {len(files)} Dateien."
+            )
+
+    # P2: Backpressure - Backend-Empfehlung bei hoher Last
+    suggested_backend = backpressure.get("suggested_backend")
+    if suggested_backend and backend == "auto":
+        logger.info(
+            "backpressure_batch_backend_override",
+            original_backend=backend,
+            suggested_backend=suggested_backend,
+            queue_length=backpressure.get("queue_length", 0)
+        )
+        backend = suggested_backend
+
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
@@ -832,16 +2372,17 @@ async def process_batch(
         }
 
     except Exception as e:
-        logger.error("batch_processing_failed", error=str(e))
+        logger.error("batch_processing_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail=HTTPErrors.PROCESSING_FAILED.format(details=safe_error_detail(e, "Verarbeitung"))
         )
 
 
 @app.post("/ocr/test")
 async def test_german_text(
-    text: str = Form(..., max_length=50000, description="Zu validierender Text (max 50KB)")
+    text: str = Form(..., max_length=50000, description="Zu validierender Text (max 50KB)"),
+    current_user: User = Depends(get_current_active_user)  # CC.3 SECURITY FIX: Auth required
 ):
     """
     Test German text validation
@@ -889,8 +2430,10 @@ async def test_german_text(
 # ==================== Statistics Endpoint ====================
 
 @app.get("/stats")
-async def get_statistics():
-    """Get OCR processing statistics"""
+async def get_statistics(
+    current_user: User = Depends(get_current_active_user)  # CC.6 SECURITY FIX: Auth required
+):
+    """Get OCR processing statistics. Requires authentication."""
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
@@ -900,9 +2443,12 @@ async def get_statistics():
 # ==================== System Monitoring Endpoint ====================
 
 @app.get("/monitoring/system")
-async def get_system_status():
+async def get_system_status(
+    current_user: User = Depends(get_current_superuser)  # CC.7 SECURITY FIX: Admin required
+):
     """
     Get comprehensive system status including CPU, RAM, GPU, and OCR metrics.
+    Requires admin authentication.
 
     Returns:
         System resource usage, GPU status, and processing metrics
@@ -916,9 +2462,12 @@ async def get_system_status():
 
 
 @app.get("/monitoring/health")
-async def get_monitoring_health():
+async def get_monitoring_health(
+    current_user: User = Depends(get_current_superuser)  # CC.8 SECURITY FIX: Admin required
+):
     """
     Get system health status for monitoring and alerting.
+    Requires admin authentication.
 
     Returns:
         Health status of all system components
@@ -930,9 +2479,12 @@ async def get_monitoring_health():
 # ==================== Rate Limit Status Endpoint ====================
 
 @app.get("/ratelimit/status")
-async def get_rate_limit_status():
+async def get_rate_limit_status(
+    current_user: User = Depends(get_current_superuser)  # CC.9 SECURITY FIX: Admin required
+):
     """
     Get rate limiting status and statistics.
+    Requires admin authentication.
 
     Returns:
         Rate limit configuration and statistics
@@ -943,9 +2495,13 @@ async def get_rate_limit_status():
 
 
 @app.get("/ratelimit/info")
-async def get_rate_limit_info_endpoint(request: Request):
+async def get_rate_limit_info_endpoint(
+    request: Request,
+    current_user: User = Depends(get_current_active_user)  # CC.10 SECURITY FIX: Auth required
+):
     """
     Get rate limit information for current request.
+    Requires authentication.
 
     Returns:
         Current user's rate limit information
@@ -953,6 +2509,48 @@ async def get_rate_limit_info_endpoint(request: Request):
     from app.core.rate_limiting import get_rate_limit_info
 
     return get_rate_limit_info(request)
+
+
+# ==================== Backpressure Status Endpoint ====================
+
+@app.get("/backpressure/status")
+async def get_backpressure_status_endpoint(
+    current_user: User = Depends(get_current_active_user)  # EE.1 SECURITY FIX: Auth required
+):
+    """
+    Get current backpressure status for queue monitoring.
+
+    **REQUIRES AUTHENTICATION**
+
+    Returns backpressure information including:
+    - Current status (normal, warning, critical, overloaded)
+    - Queue lengths per queue
+    - Thresholds and recommendations
+
+    Use this endpoint for:
+    - Monitoring dashboards
+    - Alerting systems
+    - Client-side backoff decisions
+
+    Returns:
+        Backpressure status and queue information
+    """
+    try:
+        info = get_backpressure_info()
+        return {
+            "success": True,
+            "backpressure": info
+        }
+    except Exception as e:
+        logger.error("backpressure_status_error", **safe_error_log(e))
+        return {
+            "success": False,
+            "error": safe_error_detail(e, "Vorgang"),
+            "backpressure": {
+                "enabled": False,
+                "current_status": "unknown"
+            }
+        }
 
 
 # ==================== Main Entry Point ====================

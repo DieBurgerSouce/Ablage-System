@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\notification_rules.py
+# hypothesis_version: 6.148.7
+
+[100, '%H:%M', '.', '/', '/event-types', '/notification-rules', '/test', '/{rule_id}', '/{rule_id}/toggle', ':', 'AND', 'Email-Betreff', 'Email-Template Name', 'Erwarteter Wert', 'Europe/Berlin', 'Loescht eine Regel.', 'Name der Regel', 'Nur aktive Regeln', 'Regel abrufen', 'Regel aktualisieren', 'Regel erstellen', 'Regel loeschen', 'Regel nicht gefunden', 'Regel testen', 'Regel-Statistiken', 'Regeln auflisten', 'Webhook-URL', 'Zusaetzliche Daten', '^\\d{2}:\\d{2}$', '_', 'actions', 'category', 'conditions', 'created_at', 'enabled', 'event_data', 'label', 'last_triggered_at', 'matched', 'model_dump', 'normal', 'notification-rules', 'quiet_hours_end', 'quiet_hours_start', 'rule_id', 'rule_name', 'trigger_count', 'value']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\validators\pii_masking.py
+# hypothesis_version: 6.148.7
+
+['***', '****', '****-****-****-****', '***@***', '***REDACTED***', '**/***/****', '@', '\\D', 'api_key', 'bic', 'credit_card', 'customer_number', 'email', 'iban', 'kd_nr', 'kreditkarte', 'kundennummer', 'matchcode', 'mobil', 'password', 'passwort', 'phone', 'secret', 'ssn', 'steuernummer', 'svnr', 'telefon', 'token', 'ust_id', 'vat_id']

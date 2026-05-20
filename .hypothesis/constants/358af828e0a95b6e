@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\skimage\_shared\utils.py
+# hypothesis_version: 6.148.7
+
+[0.001, 0.5, '-or-', '.', '3', 'DEPRECATED', 'G', 'Other Parameters', '__wrapped__', 'all_warnings', 'c', 'channel_axis', 'check_nD', 'check_shape_equality', 'constant', 'deprecate_func', 'deprecate_parameter', 'df', 'edge', 'g', 'grid-constant', 'grid-wrap', 'identity', 'image', 'mirror', 'nearest', 'reflect', 'reshape_nd', 'safe_as_int', 'slice_at_axis', 'symmetric', 'warn', 'wrap']

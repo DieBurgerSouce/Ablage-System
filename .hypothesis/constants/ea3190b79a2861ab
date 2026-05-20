@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\croniter\croniter.py
+# hypothesis_version: 6.148.7
+
+[100, 130, 400, 1970, 2099, 3600, 3999999999, 4294967295, '%d-%d\\1', '*', ',', '-', '0 * * * *', '0 0 * * *', '0 0 * * 0', '0 0 1 * *', '0 0 1 1 *', '31', '32', '?', '@annually', '@daily', '@hourly', '@midnight', '@monthly', '@weekly', '@yearly', 'Bad expression: {0}', 'P', 'UTF-8', '[*]', '\\1-%d/\\2', '^(.+)\\/(.+)$', '^(\\d+|\\*)$', '^\\*(\\/.+)$', '^\\d+$', 'apr', 'aug', 'dec', 'divisor', 'feb', 'fri', 'h', 'h * * * * h', 'h h * * * h', 'h h * * h h', 'h h h * * h', 'h h h h * h', 'h h(0-2) * * * h', 'hash', 'hash_type', 'he', 'invalid range: {0}', 'jan', 'jul', 'jun', 'l', 'last', 'mar', 'may', 'mon', 'nov', 'oct', 'pre', 'r', 'range_begin', 'range_end', 'sat', 'second', 'sep', 'sun', 'thu', 'tue', 'unix', 'wed', 'year', '{0}', '{0} is out of bands', '{0}#{1}', '{0}-{1}/{2}', '{:02}', '|']

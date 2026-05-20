@@ -20,7 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.db.models import BatchJob, Document, ProcessingStatus
+from app.core.safe_errors import safe_error_log
 from app.services.webhook_dispatcher import (
+
     get_webhook_dispatcher,
     WebhookEventType
 )
@@ -240,7 +242,7 @@ class BatchJobService:
             logger.warning(
                 "batch_webhook_dispatch_failed",
                 batch_id=str(batch_id)[:8],
-                error=str(e)
+                **safe_error_log(e)
             )
 
         logger.info(
@@ -357,24 +359,8 @@ class BatchJobService:
 
         return batch_job
 
-    async def get_batch_job(
-        self,
-        db: AsyncSession,
-        batch_id: UUID,
-        user_id: UUID
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Gibt detaillierte Informationen zu einem Batch-Job zurück.
-        """
-        batch_job = await self._get_batch_job(db, batch_id)
-        if not batch_job:
-            return None
-
-        # Prüfe Berechtigung
-        if batch_job.user_id != user_id:
-            return None
-
-        # Berechne verbleibende Zeit
+    def _batch_job_to_dict(self, batch_job: BatchJob) -> Dict[str, Any]:
+        """Konvertiert ein BatchJob-Objekt zu einem Dictionary (vermeidet N+1 Queries)."""
         remaining_time = None
         if batch_job.estimated_completion and batch_job.status == ProcessingStatus.PROCESSING:
             remaining = (batch_job.estimated_completion - datetime.now(timezone.utc)).total_seconds()
@@ -404,6 +390,25 @@ class BatchJobService:
             "total_processing_time_ms": batch_job.total_processing_time_ms,
             "result_summary": batch_job.result_summary
         }
+
+    async def get_batch_job(
+        self,
+        db: AsyncSession,
+        batch_id: UUID,
+        user_id: UUID
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Gibt detaillierte Informationen zu einem Batch-Job zurück.
+        """
+        batch_job = await self._get_batch_job(db, batch_id)
+        if not batch_job:
+            return None
+
+        # Prüfe Berechtigung
+        if batch_job.user_id != user_id:
+            return None
+
+        return self._batch_job_to_dict(batch_job)
 
     async def list_batch_jobs(
         self,
@@ -440,10 +445,11 @@ class BatchJobService:
         result = await db.execute(query)
         batch_jobs = list(result.scalars().all())
 
+        # Direkte Konvertierung ohne erneute DB-Abfragen (N+1 Fix)
         return {
             "total": total,
             "batch_jobs": [
-                await self.get_batch_job(db, job.id, user_id)
+                self._batch_job_to_dict(job)
                 for job in batch_jobs
             ]
         }
@@ -467,8 +473,9 @@ class BatchJobService:
         result = await db.execute(query)
         batch_jobs = list(result.scalars().all())
 
+        # Direkte Konvertierung ohne erneute DB-Abfragen (N+1 Fix)
         return [
-            await self.get_batch_job(db, job.id, user_id)
+            self._batch_job_to_dict(job)
             for job in batch_jobs
         ]
 

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\backends\dispatch.py
+# hypothesis_version: 6.148.7
+
+['autograd', 'autograd.numpy', 'build_expression', 'cupy', 'dask', 'dask.array', 'einsum', 'evaluate_constants', 'get_func', 'has_backend', 'has_einsum', 'has_tensordot', 'jax', 'jax.numpy', 'mars', 'mars.tensor', 'numpy', 'object', 'tensordot', 'tensorflow', 'theano', 'theano.tensor', 'torch', 'transpose']

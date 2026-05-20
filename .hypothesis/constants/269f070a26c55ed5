@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\utility.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, 127, 255, 488, '--alphacolor', '--binarize', '--formula', '--formula_algorithm', '--formula_batch_num', '--formula_model_dir', '--image_orientation', '--invert', '--kie_algorithm', '--layout', '--layout_dict_path', '--layout_model_dir', '--mode', '--ocr', '--ocr_order_method', '--output', '--re_model_dir', '--recovery', '--ser_dict_path', '--ser_model_dir', '--table', '--table_algorithm', '--table_max_len', '--table_model_dir', '--use_pdf2docx_api', '.', './output', 'LaTeXOCR', 'LayoutXLM', 'TableAttn', 'Threshold of nms.', 'Threshold of score.', 'bbox', 'cn', 'confidence', 'equation', 'kie', 'latex', 'res', 'structure', 'table', 'text', 'text_region', 'text_word_region', 'type', 'utf-8']

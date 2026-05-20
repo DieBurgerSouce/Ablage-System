@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen3_vl\processing_qwen3_vl.py
+# hypothesis_version: 6.148.7
+
+['<|image_pad|>', '<|placeholder|>', '<|video_pad|>', '<|vision_end|>', '<|vision_start|>', 'AutoImageProcessor', 'AutoVideoProcessor', 'Qwen2Tokenizer', 'Qwen2TokenizerFast', 'Qwen3VLProcessor', 'image', 'image_grid_thw', 'image_processor', 'image_token', 'image_token_id', 'images_kwargs', 'input_ids', 'merge_size', 'mm_token_type_ids', 'num_image_patches', 'num_image_tokens', 'num_video_tokens', 'padding', 'return_metadata', 'return_tensors', 'text_kwargs', 'tokenizer', 'video', 'video_grid_thw', 'video_metadata', 'video_processor', 'video_token', 'video_token_id', 'videos_kwargs', 'vision_end_token', 'vision_end_token_id', 'vision_start_token']

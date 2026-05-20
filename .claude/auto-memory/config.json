@@ -1,0 +1,82 @@
+{
+  "triggerMode": "default",
+  "modularStructure": true,
+  "memoryLayout": {
+    "root": ".claude/CLAUDE.md",
+    "quickRef": "CLAUDE.md",
+    "memoryDir": ".claude/memory",
+    "docsDir": ".claude/Docs"
+  },
+  "memoryFiles": {
+    "PROJECT_STATUS.md": {
+      "sections": ["project-status", "service-health", "deployments"],
+      "triggers": ["docker-compose.yml", "*.yaml", "alembic/*", "infrastructure/*"],
+      "description": "Service health, deployment status"
+    },
+    "KNOWN_ISSUES.md": {
+      "sections": ["known-issues", "bugs", "workarounds"],
+      "triggers": ["*.py", "*.ts", "*.tsx"],
+      "description": "Bug tracking, known issues"
+    },
+    "RECENT_CHANGES.md": {
+      "sections": ["changelog", "recent-changes"],
+      "triggers": ["*"],
+      "description": "Recent changes, changelog"
+    },
+    "DEPENDENCIES.md": {
+      "sections": ["dependencies", "tech-stack"],
+      "triggers": ["requirements*.txt", "pyproject.toml", "package.json", "docker-compose.yml"],
+      "description": "Technology stack, versions"
+    }
+  },
+  "rootSections": {
+    "project-status": "Embeds in root, links to PROJECT_STATUS.md",
+    "critical-rules": "Core rules, never auto-modify content",
+    "enterprise-features": "Feature summaries, links to Docs/",
+    "lexware-integration": "In .claude/CLAUDE.md only"
+  },
+  "sizeConstraints": {
+    "maxRootLines": 300,
+    "maxCoreRefLines": 600,
+    "maxMemoryFileLines": 100,
+    "pruningTriggerLines": 100,
+    "maxTotalChars": 40000
+  },
+  "autoManagedMarkers": {
+    "format": "<!-- AUTO-MANAGED: {section} -->",
+    "endFormat": "<!-- /AUTO-MANAGED: {section} -->"
+  },
+  "pruning": {
+    "enabled": true,
+    "archiveDir": ".claude/Docs/Archive",
+    "indexFile": ".claude/Docs/Archive/INDEX.md",
+    "rules": {
+      "RECENT_CHANGES.md": {
+        "keepDays": 30,
+        "archivePattern": "CHANGELOG-{year}-{month}.md",
+        "dateHeaderFormat": "## YYYY-MM-DD"
+      },
+      "KNOWN_ISSUES.md": {
+        "keepResolved": 20,
+        "archivePattern": "ISSUES-{year}.md",
+        "neverArchiveActive": true
+      },
+      "PROJECT_STATUS.md": {
+        "noArchive": true,
+        "reason": "Always current state"
+      },
+      "DEPENDENCIES.md": {
+        "noArchive": true,
+        "reason": "Always current state"
+      }
+    }
+  },
+  "transfer": {
+    "description": "Rules for transferring content between files",
+    "onPrune": {
+      "updateIndex": true,
+      "preserveDates": true,
+      "mergeExisting": true
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\backends\cupy.py
+# hypothesis_version: 6.148.7
+
+['build_expression', 'cupy', 'evaluate_constants', 'to_cupy']

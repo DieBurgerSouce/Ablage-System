@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_finegrained_fp8.py
+# hypothesis_version: 6.148.7
+
+['.', '.bias', '.weight', '.weight_scale_inv', 'PreTrainedModel', 'Qwen3', 'accelerate', 'bias', 'cpu', 'device_map', 'disk', 'from_flax', 'from_tf', 'gather', 'layers.*.mlp', 'layers.*.self_attn', 'local_colwise', 'local_rowwise', 'torch.Tensor', 'torch.device', 'torch.dtype', 'weight', 'weight_scale_inv']

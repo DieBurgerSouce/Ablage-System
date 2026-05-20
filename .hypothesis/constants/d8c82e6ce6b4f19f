@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\chart\_3d.py
+# hypothesis_version: 6.148.7
+
+[500, 'ChartBase', 'depthPercent', 'hPercent', 'perspective', 'pictureOptions', 'rAngAx', 'rotX', 'rotY', 'spPr', 'surface', 'thickness', 'view3D']

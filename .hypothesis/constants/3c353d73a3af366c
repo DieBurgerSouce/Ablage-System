@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\utils\__init__.py
+# hypothesis_version: 6.148.7
+
+['deprecated', 'require_version', 'run_check', 'try_import']

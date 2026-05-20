@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\decorator.py
+# hypothesis_version: 6.148.7
+
+[0.5, 0.8, 1.0, 2.0, 1000, 2000, 'O0', 'O1', 'O2', 'OD', 'Out', 'X', '_multi_precision', '_set_auxiliary_var', 'assign', 'bfloat16', 'cast', 'find_infinite_scale', 'float16', 'float32', 'found_inf', 'in_dtype', 'inner_opt', 'int32', 'learning_rate', 'loss_scaling', 'minimize', 'num_bad_steps', 'num_good_steps', 'out_dtype', 'update_loss_scaling']

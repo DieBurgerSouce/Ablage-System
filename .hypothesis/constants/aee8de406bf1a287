@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\utils\geometry.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 180.0, 180, 1024, 'bbox_to_polygon', 'detach_scores', 'estimate_page_angle', 'extract_crops', 'extract_rcrops', 'polygon_to_bbox', 'raise', 'remove_image_padding', 'rotate_abs_geoms', 'rotate_boxes', 'rotate_image']

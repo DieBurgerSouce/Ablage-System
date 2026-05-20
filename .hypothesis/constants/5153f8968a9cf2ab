@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\transformers\ifelse_transformer.py
+# hypothesis_version: 6.148.7
+
+['False', 'None', 'True', '__args', 'append', 'extend', 'get_args', 'lambda args: None', 'lambda: None', 'numpy', 'set_args', 'targets', 'value', 'visit_']

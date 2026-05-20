@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\squeezenet.py
+# hypothesis_version: 6.148.7
+
+[0.5, 128, 192, 256, 384, 512, 1000, '1.0', '1.1', 'downscale_in_infer', 'squeezenet1_0', 'squeezenet1_1']

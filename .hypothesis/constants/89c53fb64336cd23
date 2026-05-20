@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\kpi\loan_kpi_service.py
+# hypothesis_version: 6.148.7
+
+[100, 600, '0', '0.001', '0.01', 'balance', 'interest', 'month', 'payment', 'principal']

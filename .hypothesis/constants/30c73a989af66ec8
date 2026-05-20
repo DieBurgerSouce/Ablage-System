@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\optimizer.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 1.0, '.SCALE_VALUE', '1', 'Adam', 'AdamW', 'FP16_DenseTensor', 'FP32_DenseTensor', 'LR_Scheduler', 'Momentum', 'Out', 'True', 'X', '_', '_fp32_master', '_master_weights', '_sorted', 'beta', 'bfloat16', 'cast', 'cpu', 'dtype', 'enable_tensor_fusion', 'fill_constant', 'float16', 'float32', 'found_inf', 'fp16', 'fp32', 'grad', 'grad_clip', 'in_dtype', 'learning_rate', 'main_grad', 'master_grad_cast', 'master_weights', 'optimize_attr', 'optimizer', 'out_dtype', 'parameter_name', 'params', 'regularization', 'regularizer', 'scale_with_param_lr', 'shape', 'sum', 'true', 'value', 'weight_decay', 'xpu']

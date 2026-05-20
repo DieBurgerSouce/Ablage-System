@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\dropout\transforms.py
+# hypothesis_version: 6.148.7
+
+[0.01, 0.5, 'BboxProcessor', 'KeypointsProcessor', 'PixelDropout', 'bboxes', 'drop_mask', 'drop_values', 'image', 'images', 'inpaint_ns', 'inpaint_telea', 'keypoints', 'mask_drop_mask', 'mask_drop_values', 'random', 'random_uniform', 'shape']

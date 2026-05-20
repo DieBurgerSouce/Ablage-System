@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\tensor\math.py
+# hypothesis_version: 6.148.7
+
+['2.4.0', 'MAX', 'MEAN', 'MIN', 'Out', 'SUM', 'SegmentIds', 'SummedIds', 'X', 'float32', 'float64', 'int32', 'int64', 'pooltype', 'segment_max', 'segment_mean', 'segment_min', 'segment_pool', 'segment_sum']

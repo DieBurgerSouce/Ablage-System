@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_export\passes\replace_view_ops_with_view_copy_ops_pass.py
+# hypothesis_version: 6.148.7
+
+['::', '_copy', 'aten::', 'default']

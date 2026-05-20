@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\backends\cuda\ops.py
+# hypothesis_version: 6.148.7
+
+[0.0, 127.0, 100, 128, 256, 512, 1024, 2048, 4096, 'A must be int8', 'B must be int8', 'adagrad', 'adam', 'ademamix', 'cuda', 'fp4', 'lamb', 'lion', 'momentum', 'nf4', 'rmsprop']

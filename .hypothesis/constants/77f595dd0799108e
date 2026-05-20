@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\helper.py
+# hypothesis_version: 6.148.7
+
+['FLAGS_enable_pir_api', '_', '_eval', '_predict', '_train', 'bfloat16', 'call_loss', 'call_metrics', 'dims_mapping', 'dtype', 'eval', 'float16', 'int32', 'level', 'loss', 'minimize', 'o2', 'o3', 'predict', 'process_group', 'process_shape', 'ring_id', 'train']

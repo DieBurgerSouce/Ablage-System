@@ -54,7 +54,7 @@ def log_execution_time(
                 }
 
             try:
-                result = await func(*args, **kwargs)  # type: ignore[misc]
+                result = await func(*args, **kwargs)  # type: ignore[misc]  # ParamSpec async call
                 duration_ms = int((time.time() - start_time) * 1000)
 
                 log_data.update({
@@ -121,9 +121,9 @@ def log_execution_time(
 
         # Return appropriate wrapper based on function type
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore[return-value]
+            return async_wrapper  # type: ignore[return-value]  # async_wrapper satisfies Callable[P, R]
         else:
-            return sync_wrapper  # type: ignore[return-value]
+            return sync_wrapper  # type: ignore[return-value]  # sync_wrapper satisfies Callable[P, R]
 
     return decorator
 
@@ -163,7 +163,7 @@ def log_retry(
                         )
                         await asyncio.sleep(wait_time)
 
-                    return await func(*args, **kwargs)  # type: ignore[misc]
+                    return await func(*args, **kwargs)  # type: ignore[misc]  # ParamSpec async call
 
                 except Exception as e:
                     last_exception = e
@@ -232,9 +232,9 @@ def log_retry(
             raise RuntimeError("Unerwarteter Fehler: last_exception ist None")
 
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore[return-value]
+            return async_wrapper  # type: ignore[return-value]  # async_wrapper satisfies Callable[P, R]
         else:
-            return sync_wrapper  # type: ignore[return-value]
+            return sync_wrapper  # type: ignore[return-value]  # sync_wrapper satisfies Callable[P, R]
 
     return decorator
 

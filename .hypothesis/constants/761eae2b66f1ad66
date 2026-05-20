@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\rag\ab_testing_router.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 1000.0, 100, 1000, 'ABTestContext', 'ABTestingRouter', '_initialized', 'ab_testing_disabled', 'avg_latency_ms', 'avg_results', 'avg_score', 'backend', 'big', 'control', 'document_bucket', 'embedding_model', 'enabled', 'error_rate', 'errors', 'forced_control', 'forced_treatment', 'jina', 'last_updated', 'metrics', 'pgvector', 'qdrant', 'random_bucket', 'session_bucket', 'total_requests', 'traffic_split', 'treatment', 'user_bucket', 'variant', 'vector_search_total']

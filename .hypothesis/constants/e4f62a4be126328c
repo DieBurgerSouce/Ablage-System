@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\geometric\resize.py
+# hypothesis_version: 6.148.7
+
+[-0.1, 0.1, 0.5, 1.0, 'LongestMaxSize', 'RandomScale', 'Resize', 'SmallestMaxSize', 'after', 'image', 'image_mask', 'scale', 'scale_limit', 'shape', 'spatial', 'tuple[float, float]']

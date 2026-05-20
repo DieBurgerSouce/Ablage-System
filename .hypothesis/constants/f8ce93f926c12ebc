@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pylatexenc\latexencode\_unicode_to_latex_encoder.py
+# hypothesis_version: 6.148.7
+
+[127, ',', '-', 'Invalid {}: {}', 'NFC', '\\', '_', 'apply_protection', 'braces', 'conversion_rules', 'defaults', 'do_unknown_char', 'keep', 'latex_string_class', 'non_ascii_only', 'u2lobj', 'unicode-xml', 'unknown_char_policy', 'unknown_char_warning', '{', '{\\bfseries ?}', '{}', '}']

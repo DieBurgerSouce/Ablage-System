@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\rag\chat.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 200, 255, 500, 1000, 15000, '\n\n---\n\n', '"', "'", '...', '.pdf', '/chat', '/sessions', '/sessions/shared', '/stream', '20/minute', '30/minute', '60/minute', 'Cache-Control', 'Chat mit Streaming', 'Connection', 'Session geloescht', 'Session teilen', 'Unbekannt', 'X-Accel-Buffering', 'Zugriff entziehen', 'Zugriff entzogen', 'active', 'chat_message_failed', 'chat_message_request', 'chat_session_created', 'chat_session_deleted', 'chunk_id', 'chunk_index', 'chunk_text', 'content', 'document_context_set', 'document_id', 'invalid_context_id', 'keep-alive', 'message', 'new', 'no', 'no-cache', 'none', 'page_number', 'rag-chat', 'rag_chat_no_context', 'rerank_score', 'role', 'section_type', 'session_id', 'similarity', 'source', 'success', 'system', 'text', 'text/event-stream', 'type', 'user', 'user_id', 'view']

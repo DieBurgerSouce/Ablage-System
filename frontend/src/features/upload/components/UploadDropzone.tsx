@@ -1,20 +1,34 @@
 import { useDropzone } from 'react-dropzone';
-import { motion } from 'framer-motion';
-import { Upload } from 'lucide-react';
-
-const dropzoneVariants = {
-    idle: { borderColor: 'var(--border)', scale: 1 },
-    active: {
-        borderColor: 'var(--primary)',
-        backgroundColor: 'oklch(0.35 0.08 250 / 0.05)',
-        scale: 1.01
-    },
-    reject: { borderColor: 'var(--destructive)' }
-};
+import { motion, type Variants } from 'framer-motion';
+import { Upload, FileType, AlertCircle } from 'lucide-react';
+import { motionTokens } from '@/lib/motion-tokens';
+import { cn } from '@/lib/utils';
 
 interface UploadDropzoneProps {
     onFilesAdd: (files: File[]) => void;
 }
+
+const dropzoneVariants: Variants = {
+    idle: {
+        borderColor: 'var(--border)',
+        scale: 1,
+        backgroundColor: 'transparent'
+    },
+    active: {
+        borderColor: 'var(--primary)',
+        backgroundColor: 'oklch(0.35 0.08 250 / 0.05)',
+        scale: 1.01,
+        transition: motionTokens.spring.snappy
+    },
+    reject: {
+        borderColor: 'var(--destructive)',
+        backgroundColor: 'oklch(0.55 0.22 25 / 0.05)',
+        scale: 1,
+        transition: motionTokens.spring.snappy
+    }
+};
+
+const MotionDiv = motion.div;
 
 export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
     const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
@@ -22,24 +36,65 @@ export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
         accept: {
             'application/pdf': ['.pdf'],
             'image/png': ['.png'],
-            'image/jpeg': ['.jpg', '.jpeg']
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/tiff': ['.tif', '.tiff'],
+            'image/bmp': ['.bmp'],
+            'image/gif': ['.gif'],
+            'image/webp': ['.webp'],
+            'image/heic': ['.heic', '.heif']
         },
         maxSize: 50 * 1024 * 1024
     });
 
     return (
-        <motion.div
+        // @ts-expect-error: Dropzone props conflict with motion props
+        <MotionDiv
             {...getRootProps()}
             variants={dropzoneVariants}
             animate={isDragReject ? 'reject' : isDragActive ? 'active' : 'idle'}
-            className="border-2 border-dashed rounded-xl p-12 cursor-pointer flex flex-col items-center justify-center text-center transition-colors bg-card"
+            data-tour="upload-dropzone"
+            className={cn(
+                "border-2 border-dashed rounded-xl p-12 cursor-pointer flex flex-col items-center justify-center text-center transition-colors relative overflow-hidden group",
+                "hover:border-primary/50 hover:bg-muted/30"
+            )}
         >
-            <input {...getInputProps()} />
-            <Upload className="w-16 h-16 text-primary mb-4" />
-            <p className="text-lg font-medium">
-                {isDragActive ? 'Dateien hier ablegen' : 'Dateien hierher ziehen oder klicken'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">PDF, PNG, JPG • Max. 50MB</p>
-        </motion.div>
+            <input {...getInputProps()} aria-label="Datei zum Hochladen auswählen" />
+
+            <div className="relative z-10 flex flex-col items-center gap-4">
+                <div className={cn(
+                    "w-20 h-20 rounded-2xl flex items-center justify-center transition-colors duration-300",
+                    isDragReject ? "bg-destructive/10 text-destructive" :
+                        isDragActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary"
+                )}>
+                    {isDragReject ? (
+                        <AlertCircle className="w-10 h-10" />
+                    ) : (
+                        <Upload className="w-10 h-10" />
+                    )}
+                </div>
+
+                <div className="space-y-1">
+                    <h3 className="text-xl font-display font-medium">
+                        {isDragReject ? 'Dateityp nicht unterstützt' :
+                            isDragActive ? 'Dateien hier ablegen' : 'Dokumente hochladen'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        {isDragReject ? 'Bitte nur unterstützte Dateiformate hochladen (PDF, Bilder).' :
+                            'Drag & Drop oder klicken zum Auswählen'}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 font-mono bg-muted/50 px-3 py-1.5 rounded-full border">
+                    <span className="flex items-center gap-1.5">
+                        <FileType className="w-3 h-3" /> PDF, PNG, JPG, TIF, BMP, GIF, WEBP, HEIC
+                    </span>
+                    <span className="w-px h-3 bg-border" />
+                    <span>Max. 50MB</span>
+                </div>
+            </div>
+
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none noise-overlay" />
+        </MotionDiv>
     );
 }

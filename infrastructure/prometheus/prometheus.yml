@@ -27,8 +27,10 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # Ablage-System Backend API
+  # Verwendet /internal Endpoint der ohne User-Auth funktioniert
+  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
   - job_name: 'ablage-backend'
-    metrics_path: '/metrics'
+    metrics_path: '/api/v1/metrics/internal'
     static_configs:
       - targets: ['backend:8000']
     relabel_configs:
@@ -47,24 +49,28 @@ scrape_configs:
         replacement: 'ablage-worker'
 
   # PostgreSQL Metrics (via postgres_exporter)
+  # ENTERPRISE FIX: Container-Name statt Service-Name fuer DNS-Aufloesung
   - job_name: 'postgres'
     static_configs:
-      - targets: ['postgres_exporter:9187']
+      - targets: ['ablage-postgres-exporter:9187']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'postgres'
 
   # Redis Metrics (via redis_exporter)
+  # ENTERPRISE FIX: Container-Name statt Service-Name fuer DNS-Aufloesung
   - job_name: 'redis'
     static_configs:
-      - targets: ['redis_exporter:9121']
+      - targets: ['ablage-redis-exporter:9121']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'redis'
 
   # MinIO Metrics
+  # ENTERPRISE FIX: MinIO 2023+ erfordert MINIO_PROMETHEUS_AUTH_TYPE=public
+  # Aktiviert: Env-Variable in docker-compose.yml gesetzt
   - job_name: 'minio'
     metrics_path: '/minio/v2/metrics/cluster'
     static_configs:
@@ -84,17 +90,24 @@ scrape_configs:
         replacement: 'host'
 
   # NVIDIA GPU Metrics (via dcgm-exporter Container)
-  - job_name: 'nvidia-gpu'
-    static_configs:
-      - targets: ['dcgm-exporter:9400']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'rtx4080'
+  # ENTERPRISE FIX: dcgm-exporter erfordert --profile gpu
+  # Aktiviere mit: docker-compose --profile gpu up -d
+  # 2026-05-06: Job auskommentiert, weil dcgm-exporter Container nicht laeuft
+  # und Job sonst dauerhaft up=0 -> ServiceDown-Alert. Bei GPU-Bedarf
+  # wieder einkommentieren UND `docker-compose --profile gpu up -d dcgm-exporter`.
+  # - job_name: 'nvidia-gpu'
+  #   static_configs:
+  #     - targets: ['dcgm-exporter:9400']
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       replacement: 'rtx4080'
 
   # Ablage-System Backup Metrics (separate registry)
+  # Verwendet /internal/backup Endpoint mit Token-Auth (kein Superuser noetig)
+  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
   - job_name: 'ablage-backup'
-    metrics_path: '/api/v1/metrics/backup'
+    metrics_path: '/api/v1/metrics/internal/backup'
     scrape_interval: 60s
     static_configs:
       - targets: ['backend:8000']
@@ -102,3 +115,42 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'ablage-backup'
+
+  # Qdrant Vector Database Metrics
+  # Qdrant /metrics ist durch QDRANT__SERVICE__API_KEY abgesichert.
+  # Token-Datei wird ueber docker-compose ins Prometheus-Image gemountet.
+  # Datei NICHT in Git committen (siehe .gitignore).
+  - job_name: 'qdrant'
+    metrics_path: '/metrics'
+    bearer_token_file: /etc/prometheus/qdrant_metrics_token
+    static_configs:
+      - targets: ['qdrant:6333']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'qdrant-vector-db'
+
+  # A/B Testing Metrics (Vector Search)
+  # Verwendet /internal/ab-testing Endpoint mit Token-Auth (kein Superuser noetig)
+  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
+  - job_name: 'ab-testing'
+    metrics_path: '/api/v1/metrics/internal/ab-testing'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['backend:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'vector-ab-testing'
+
+  # Loki Log Aggregation Metrics
+  # Wichtig fuer Retention-Monitoring und Disk-Usage-Alerts
+  - job_name: 'loki'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['loki:3100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'loki-logs'

@@ -113,7 +113,7 @@ def init_telemetry(
         )
 
     except Exception as e:
-        logger.error("telemetry_init_failed", error=str(e))
+        logger.error("telemetry_init_failed", **safe_error_log(e))
 
 
 # =============================================================================
@@ -504,6 +504,7 @@ def traced(
 
         # Return appropriate wrapper based on function type
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

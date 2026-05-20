@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\sparse\nn\functional\__init__.py
+# hypothesis_version: 6.148.7
+
+['attention', 'conv2d', 'conv3d', 'leaky_relu', 'max_pool3d', 'relu', 'relu6', 'softmax', 'subm_conv2d', 'subm_conv2d_igemm', 'subm_conv3d', 'subm_conv3d_igemm']

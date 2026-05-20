@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\langdetect\lang_detect_exception.py
+# hypothesis_version: 6.148.7
+
+['CantDetectError', 'CantOpenTrainData', 'DuplicateLangError', 'ErrorCode', 'FileLoadError', 'FormatError', 'InitParamError', 'NeedLoadProfileError', 'NoTextError', 'TrainDataFormatError']

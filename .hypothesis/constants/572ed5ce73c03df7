@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\surya_docling_enhanced_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.3, 0.5, 300, 1000, '.pdf', 'RGB', 'bbox', 'caption', 'col_span', 'cols', 'confidence', 'config', 'de', 'default_language', 'detect_columns', 'extract_figures', 'extract_tables', 'full_text', 'gpu_required', 'grid', 'has_header', 'has_tables', 'image_path', 'is_header', 'language', 'layout_analysis_used', 'layout_summary', 'markdown', 'name', 'not_loaded', 'num_columns', 'options', 'page_number', 'pages', 'ready', 'row_span', 'rows', 'status', 'surya_models_loaded', 'table_count', 'tables', 'text', 'text_blocks', 'text_lines', 'vram_gb', 'Ä', 'Ö', 'Ü', 'ß', 'ä', 'ö', 'ü']

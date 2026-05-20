@@ -23,8 +23,18 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models import User, Document, APIKey, AuditLog
 from app.core.exceptions import GDPRError, UserNotFoundError
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
+
+# Import Storage Service für MinIO-Löschung
+try:
+    from app.services.storage_service import get_storage_service
+
+    STORAGE_AVAILABLE = True
+except ImportError:
+    STORAGE_AVAILABLE = False
+    logger.warning("storage_service_not_available", message="MinIO deletion disabled")
 
 # GDPR Configuration
 DELETION_GRACE_PERIOD_DAYS = 30  # 30 Tage Widerrufsfrist
@@ -188,6 +198,7 @@ class GDPRService:
 
         stats: Dict[str, int] = {
             "documents": 0,
+            "minio_files": 0,
             "api_keys": 0,
             "audit_logs": 0
         }
@@ -199,10 +210,37 @@ class GDPRService:
         documents = docs_result.scalars().all()
         stats["documents"] = len(documents)
 
+        # Storage Service für MinIO-Löschung holen
+        storage_service = None
+        if STORAGE_AVAILABLE and hard_delete:
+            try:
+                storage_service = get_storage_service()
+            except Exception as e:
+                logger.warning(
+                    "storage_service_init_failed",
+                    **safe_error_log(e),
+                    message="MinIO-Löschung wird übersprungen"
+                )
+
         for doc in documents:
             if hard_delete:
-                # TODO: MinIO-Datei löschen via storage_service
-                # await storage_service.delete_file(doc.file_path)
+                # MinIO-Datei löschen
+                if storage_service and doc.file_path:
+                    try:
+                        await storage_service.delete_document(doc.file_path)
+                        stats["minio_files"] += 1
+                        logger.debug(
+                            "minio_document_deleted",
+                            document_id=str(doc.id)[:8] + "...",
+                            file_path=doc.file_path[:30] + "..." if len(doc.file_path) > 30 else doc.file_path
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "minio_deletion_failed",
+                            document_id=str(doc.id)[:8] + "...",
+                            **safe_error_log(e)
+                        )
+                        # Fortfahren mit DB-Löschung auch wenn MinIO fehlschlägt
                 await db.delete(doc)
             else:
                 # Soft-Delete / Anonymisierung

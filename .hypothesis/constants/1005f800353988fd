@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\request_size.py
+# hypothesis_version: 6.148.7
+
+[413, 1024, '/api/v1/ocr/process', '/documents/upload', '/ocr/process', 'Anfrage zu groß', 'GET', 'HEAD', 'OPTIONS', 'TRACE', 'X-Max-Content-Length', 'content-length', 'details', 'empfangen_bytes', 'empfangen_formatiert', 'fehler', 'max_bytes', 'max_formatiert', 'nachricht', 'request_too_large', 'status_code', 'unknown']

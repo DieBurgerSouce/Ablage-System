@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\fused_matmul_bias.py
+# hypothesis_version: 6.148.7
+
+['Bias', 'Out', 'X', 'Y', 'activation', 'fused_gemm_epilogue', 'fused_matmul_bias', 'gelu', 'none', 'relu', 'trans_x', 'trans_y']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\dygraph\tracer.py
+# hypothesis_version: 6.148.7
+
+['Dst_count', 'Dst_index', 'Input', 'Num', 'Out', 'ROIs', 'RoisNum', 'Src_index', 'Var', 'X', 'Y', 'abs', 'aligned', 'axis1', 'axis2', 'boxes', 'boxes_num', 'diagonal', 'digamma', 'dst_count', 'dst_index', 'final_op_name', 'graph_send_recv', 'int', 'list', 'load_combine', 'matmul', 'matmul_v2', 'offset', 'out', 'pooled_height', 'pooled_width', 'roi_align', 'sampling_ratio', 'spatial_scale', 'src_index', 'tensor', 'trans_x', 'trans_y', 'transpose_x', 'transpose_y', 'trunc', 'x', 'y']

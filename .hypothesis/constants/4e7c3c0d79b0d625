@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\detection\zoo.py
+# hypothesis_version: 6.148.7
+
+['batch_size', 'db_resnet34', 'db_resnet50', 'detection_predictor', 'fast_base', 'fast_small', 'fast_tiny', 'input_shape', 'linknet_resnet18', 'linknet_resnet34', 'linknet_resnet50', 'mean', 'pretrained_backbone', 'std']

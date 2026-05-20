@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\chains.py
+# hypothesis_version: 6.148.7
+
+['chain_decomposition', 'directed', 'forward', 'multigraph', 'nontree', 'parent']

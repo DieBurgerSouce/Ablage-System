@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\sparse\nn\functional\conv.py
+# hypothesis_version: 6.148.7
+
+['NDHWC', 'NHWC', 'counter', 'dilation', 'dilations', 'groups', 'int32', 'kernel', 'key', 'out', 'paddings', 'rulebook', 'sparse_conv3d', 'stride', 'strides', 'subm', 'x']

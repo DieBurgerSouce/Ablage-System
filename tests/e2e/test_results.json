@@ -1,0 +1,199 @@
+{
+  "start": "2026-01-08T03:12:14.277701",
+  "tests": [
+    {
+      "time": "2026-01-08T03:12:14.277701",
+      "msg": "=== PRIVAT-MODUL MANUELLER TEST START ==="
+    },
+    {
+      "time": "2026-01-08T03:12:14.834781",
+      "msg": "--- SCHRITT 1: Login ---"
+    },
+    {
+      "time": "2026-01-08T03:12:24.193804",
+      "msg": "Screenshot: 01_login_page.png"
+    },
+    {
+      "time": "2026-01-08T03:12:24.202334",
+      "msg": "Login-Formular gefunden"
+    },
+    {
+      "time": "2026-01-08T03:12:24.538876",
+      "msg": "Screenshot: 02_login_filled.png"
+    },
+    {
+      "time": "2026-01-08T03:12:33.440500",
+      "msg": "Screenshot: 03_login_failed.png"
+    },
+    {
+      "time": "2026-01-08T03:12:33.440500",
+      "msg": "--- SCHRITT 2: Navigation zu /privat ---"
+    },
+    {
+      "time": "2026-01-08T03:12:36.188798",
+      "msg": "Aktuelle URL: http://localhost/privat"
+    },
+    {
+      "time": "2026-01-08T03:12:36.255020",
+      "msg": "Screenshot: 04_privat_page.png"
+    },
+    {
+      "time": "2026-01-08T03:12:36.255020",
+      "msg": "Privat-Seite geladen"
+    },
+    {
+      "time": "2026-01-08T03:12:36.257533",
+      "msg": "Seiteninhalt (erste 500 Zeichen): Zum Hauptinhalt springen\nAblage-System\n0 ungelesene Benachrichtigungen\n\nEnterprise Document Management\n\nSpargelmesser Firmenich GmbH\nDashboard\nChat\nUpload Wizard\nJob Queue\nValidierung\nDokumentgruppen\nDATEV Export\nABLAGE\nKunden\nLieferanten\nFinanzen\nKassenbuch\nSpesen\nStreckengeschaeft\nPersonal\nPrivat\nAdministration\nEinstellungen\nSA\nSystem Administrator\nAdmin\nPrivat\nÜbersicht\nBereiche\nPrivat\n\nIhre persönliche Dokumentenverwaltung\n\nDokumente\n\n0\n\nImmobilien\n\n0\n\nFahrzeuge\n\n0\n\nVersicherungen\n\n0\n\nFinanz"
+    },
+    {
+      "time": "2026-01-08T03:12:36.257533",
+      "msg": "--- SCHRITT 3: Spaces/Bereiche ---"
+    },
+    {
+      "time": "2026-01-08T03:12:36.259532",
+      "msg": "Gefundene Cards: 10"
+    },
+    {
+      "time": "2026-01-08T03:12:36.261027",
+      "msg": "  Card 1: Dokumente  0"
+    },
+    {
+      "time": "2026-01-08T03:12:36.263029",
+      "msg": "  Card 2: Immobilien  0"
+    },
+    {
+      "time": "2026-01-08T03:12:36.264028",
+      "msg": "  Card 3: Fahrzeuge  0"
+    },
+    {
+      "time": "2026-01-08T03:12:36.265035",
+      "msg": "  Card 4: Versicherungen  0"
+    },
+    {
+      "time": "2026-01-08T03:12:36.267549",
+      "msg": "  Card 5: Finanzübersicht  Ihre Vermögensposition auf einen Blick  Nettovermögen  0,00 €  Gesamt Investments  "
+    },
+    {
+      "time": "2026-01-08T03:12:36.267549",
+      "msg": "Klicke auf erste Card..."
+    },
+    {
+      "time": "2026-01-08T03:13:06.272809",
+      "msg": "--- SCHRITT 4: Tabs pruefen ---"
+    },
+    {
+      "time": "2026-01-08T03:13:06.274789",
+      "msg": "Gefundene Tabs: 4"
+    },
+    {
+      "time": "2026-01-08T03:13:06.281721",
+      "msg": "Tab-Namen: Einstellungen, Übersicht, Bereiche"
+    },
+    {
+      "time": "2026-01-08T03:13:06.285521",
+      "msg": "  Klicke Tab: Einstellungen"
+    },
+    {
+      "time": "2026-01-08T03:13:36.291992",
+      "msg": "  Klicke Tab: Übersicht"
+    },
+    {
+      "time": "2026-01-08T03:14:06.302673",
+      "msg": "  Klicke Tab: Bereiche"
+    },
+    {
+      "time": "2026-01-08T03:14:36.314404",
+      "msg": "--- SCHRITT 5: Create-Buttons ---"
+    },
+    {
+      "time": "2026-01-08T03:14:36.319827",
+      "msg": "Gefundene Create-Buttons: 0"
+    },
+    {
+      "time": "2026-01-08T03:14:36.319827",
+      "msg": "--- SCHRITT 6: Immobilien-Modul ---"
+    },
+    {
+      "time": "2026-01-08T03:14:38.018053",
+      "msg": "Immobilien-Tab nicht gefunden"
+    },
+    {
+      "time": "2026-01-08T03:14:38.018053",
+      "msg": "--- SCHRITT 7: Fahrzeuge-Modul ---"
+    },
+    {
+      "time": "2026-01-08T03:14:38.020690",
+      "msg": "Fahrzeuge-Tab nicht gefunden"
+    },
+    {
+      "time": "2026-01-08T03:14:38.020690",
+      "msg": "--- SCHRITT 8: Versicherungen-Modul ---"
+    },
+    {
+      "time": "2026-01-08T03:14:38.023048",
+      "msg": "Versicherungen-Tab nicht gefunden"
+    },
+    {
+      "time": "2026-01-08T03:14:38.023048",
+      "msg": "--- SCHRITT 9: Finanzen-Modul ---"
+    },
+    {
+      "time": "2026-01-08T03:14:38.025331",
+      "msg": "Finanzen-Tab nicht gefunden"
+    },
+    {
+      "time": "2026-01-08T03:14:38.025331",
+      "msg": "--- SCHRITT 10: Fristen-Modul ---"
+    },
+    {
+      "time": "2026-01-08T03:14:38.026386",
+      "msg": "Fristen-Tab nicht gefunden"
+    },
+    {
+      "time": "2026-01-08T03:14:38.026386",
+      "msg": "--- SCHRITT 11: Notfall-Modul ---"
+    },
+    {
+      "time": "2026-01-08T03:14:38.028898",
+      "msg": "Notfall-Tab nicht gefunden"
+    },
+    {
+      "time": "2026-01-08T03:14:38.028898",
+      "msg": "=== TEST ABGESCHLOSSEN ==="
+    },
+    {
+      "time": "2026-01-08T03:14:38.028898",
+      "msg": "Console-Errors: 0"
+    }
+  ],
+  "errors": [
+    {
+      "time": "2026-01-08T03:12:26.578163",
+      "msg": "Login fehlgeschlagen! Noch auf: http://localhost/login"
+    },
+    {
+      "time": "2026-01-08T03:13:06.272809",
+      "msg": "Klick fehlgeschlagen: Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"[class*='card'], [class*='Card']\").first\n    - locator resolved to <div class=\"rounded-xl border bg-card text-card-foreground shadow hover:shadow-md transition-shadow\">…</div>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is visible, enabled and stable\n       - scrolling into view if needed\n       - done scrolling\n       - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n     - retrying click action\n       - waiting 500ms\n"
+    },
+    {
+      "time": "2026-01-08T03:13:36.289525",
+      "msg": "Tab-Klick fehlgeschlagen: Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"[role='tab'], button[data-state], [class*='TabsTrigger']\").nth(1)\n    - locator resolved to <button type=\"button\" data-state=\"closed\" aria-expanded=\"false\" aria-haspopup=\"dialog\" aria-controls=\"radix-_r_5_\" aria-label=\"Einstellungen öffnen\" class=\"w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground\">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is visible, enabled and stable\n       - scrolling into view if needed\n       - done scrolling\n       - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n     - retrying click action\n       - waiting 500ms\n"
+    },
+    {
+      "time": "2026-01-08T03:14:06.298648",
+      "msg": "Tab-Klick fehlgeschlagen: Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"[role='tab'], button[data-state], [class*='TabsTrigger']\").nth(2)\n    - locator resolved to <button role=\"tab\" type=\"button\" tabindex=\"-1\" data-state=\"active\" aria-selected=\"true\" data-orientation=\"horizontal\" data-radix-collection-item=\"\" id=\"radix-_r_8_-trigger-dashboard\" aria-controls=\"radix-_r_8_-content-dashboard\" class=\"inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none di…>Übersicht</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n      - waiting 100ms\n    57 × waiting for element to be visible, enabled and stable\n       - element is visible, enabled and stable\n       - scrolling into view if needed\n       - done scrolling\n       - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n     - retrying click action\n       - waiting 500ms\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n"
+    },
+    {
+      "time": "2026-01-08T03:14:36.314404",
+      "msg": "Tab-Klick fehlgeschlagen: Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"[role='tab'], button[data-state], [class*='TabsTrigger']\").nth(3)\n    - locator resolved to <button role=\"tab\" type=\"button\" tabindex=\"-1\" aria-selected=\"false\" data-state=\"inactive\" data-orientation=\"horizontal\" data-radix-collection-item=\"\" id=\"radix-_r_8_-trigger-spaces\" aria-controls=\"radix-_r_8_-content-spaces\" class=\"inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disab…>Bereiche</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n    - retrying click action\n      - waiting 100ms\n    57 × waiting for element to be visible, enabled and stable\n       - element is visible, enabled and stable\n       - scrolling into view if needed\n       - done scrolling\n       - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0\"></div> intercepts pointer events\n     - retrying click action\n       - waiting 500ms\n"
+    }
+  ],
+  "screenshots": [
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/01_login_page.png",
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/02_login_filled.png",
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/03_login_failed.png",
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/04_privat_page.png"
+  ],
+  "console_errors": [],
+  "end": "2026-01-08T03:14:38.028898"
+}

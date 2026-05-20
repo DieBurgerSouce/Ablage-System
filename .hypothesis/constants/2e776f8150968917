@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\enum\text.py
+# hypothesis_version: 6.148.7
+
+['Center align', 'Left aligned', 'Right aligned', 'Thai distributed', 'b', 'ctr', 'dash', 'dashHeavy', 'dashLong', 'dashLongHeavy', 'dbl', 'dist', 'dotDash', 'dotDashHeavy', 'dotDotDash', 'dotDotDashHeavy', 'dotted', 'dottedHeavy', 'heavy', 'just', 'justLow', 'l', 'none', 'r', 'sng', 't', 'thaiDist', 'wavy', 'wavyDbl', 'wavyHeavy', 'words']

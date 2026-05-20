@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\loop_body.py
+# hypothesis_version: 6.148.7
+
+[';[^\\n]*', 'CaptureIndexing', 'T', 'block', 'body', 'call_method', 'call_module', 'def forward(', 'get_index', 'load', 'masked_subblock', 'ops', 'output', 'p', 'placeholder', 'scan', 'store', 't']

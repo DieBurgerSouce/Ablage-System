@@ -7,13 +7,14 @@ Enables recovery from failures during multi-page document processing.
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 
 from app.core.redis_state import RedisStateManager
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -50,8 +51,8 @@ class PartialResult:
     failed_items: List[PartialResultItem] = field(default_factory=list)
     pending_items: List[PartialResultItem] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     @property
     def progress_percent(self) -> float:
@@ -139,8 +140,8 @@ class PartialResult:
                 for item in data.get("pending_items", [])
             ],
             metadata=data.get("metadata", {}),
-            created_at=data.get("created_at", datetime.utcnow().isoformat()),
-            updated_at=data.get("updated_at", datetime.utcnow().isoformat()),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            updated_at=data.get("updated_at", datetime.now(timezone.utc).isoformat()),
         )
 
 
@@ -239,7 +240,7 @@ class PartialResultHandler:
                     item_id=item.get("item_id", str(i)),
                     status="success",
                     result=item.get("result"),
-                    processed_at=datetime.utcnow().isoformat(),
+                    processed_at=datetime.now(timezone.utc).isoformat(),
                 )
                 for i, item in enumerate(successful_items or [])
             ],
@@ -248,7 +249,7 @@ class PartialResultHandler:
                     item_id=item.get("item_id", str(i)),
                     status="failed",
                     error=item.get("error"),
-                    processed_at=datetime.utcnow().isoformat(),
+                    processed_at=datetime.now(timezone.utc).isoformat(),
                 )
                 for i, item in enumerate(failed_items or [])
             ],
@@ -311,7 +312,7 @@ class PartialResultHandler:
             return None
 
         # Find and update item
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         # Remove from pending
         current.pending_items = [
@@ -387,7 +388,7 @@ class PartialResultHandler:
                 "partial_result_parse_error",
                 document_id=document_id,
                 phase=phase,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -444,7 +445,7 @@ class PartialResultHandler:
 
         # Update status to resuming
         result.status = PartialResultStatus.RESUMING
-        result.updated_at = datetime.utcnow().isoformat()
+        result.updated_at = datetime.now(timezone.utc).isoformat()
 
         redis = await self._get_redis()
         key = self._make_key(document_id, phase)

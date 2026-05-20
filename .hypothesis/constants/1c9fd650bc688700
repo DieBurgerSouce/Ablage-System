@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\models\_teacher_forcing.py
+# hypothesis_version: 6.148.7
+
+[128, 'attention_mask', 'batch_size', 'bos_token_id', 'decoder', 'device', 'float64', 'input_ids', 'is_decoder', 'is_encoder_decoder', 'keep_prefix', 'keep_suffix', 'left', 'pad_token', 'position_ids', 'pt', 'right', 'similarity_model', 'similarity_tokenizer', 'tf', 'tokenizer']

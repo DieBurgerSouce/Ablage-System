@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\tiktoken_ext\openai_public.py
+# hypothesis_version: 6.148.7
+
+[50256, 50257, 50281, 50282, 50283, 100257, 100258, 100259, 100260, 100276, 199998, 199999, 200000, 200001, 200002, 200003, 200004, 200005, 200006, 200007, 200008, 200009, 200010, 200011, 200012, 200013, 200018, 201088, '<|call|>', '<|channel|>', '<|constrain|>', '<|endofprompt|>', '<|endoftext|>', '<|end|>', '<|fim_middle|>', '<|fim_prefix|>', '<|fim_suffix|>', '<|message|>', '<|reserved_200000|>', '<|reserved_200001|>', '<|reserved_200004|>', '<|reserved_200009|>', '<|reserved_200010|>', '<|reserved_200011|>', '<|return|>', '<|startoftext|>', '<|start|>', '\\p{N}{1,3}', '\\s*[\\r\\n]+', '\\s+', '\\s+(?!\\S)', 'cl100k_base', 'explicit_n_vocab', 'gpt2', 'mergeable_ranks', 'name', 'o200k_base', 'o200k_harmony', 'p50k_base', 'p50k_edit', 'pat_str', 'r50k_base', 'special_tokens', '|']

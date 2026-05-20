@@ -1,0 +1,20 @@
+# Production Backend-Konfiguration für Terraform State
+# Kopieren nach backend.prod.hcl und anpassen
+#
+# Verwendung:
+#   terraform init -backend-config=backend.prod.hcl
+#
+# WICHTIG: Diese Datei NIEMALS committen wenn echte Credentials enthalten!
+
+# HTTPS-Endpoint für MinIO (Production)
+endpoints = {
+  s3 = "https://minio.ablage-system.local:9000"
+}
+
+# Optional: Access Credentials (besser via Environment)
+# access_key = "ablage-terraform-user"
+# secret_key = "GEHEIM_HIER_NICHT_COMMITTEN"
+
+# Alternative: Credentials via Environment setzen:
+#   export AWS_ACCESS_KEY_ID="ablage-terraform-user"
+#   export AWS_SECRET_ACCESS_KEY="sicheres-passwort"

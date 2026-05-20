@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\quantization\adaround.py
+# hypothesis_version: 6.148.7
+
+[-0.1, 0.0, 0.001, 0.01, 0.1, 0.5, 0.99, 1.1, 1000, '.alpha', 'adaround_out_tensor', 'beta', 'bool', 'fetch', 'float32', 'loss', 'orig_out_tensor', 'recon_loss', 'round_loss', 'warm_start']

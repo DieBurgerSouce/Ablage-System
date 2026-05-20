@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\device\__init__.py
+# hypothesis_version: 6.148.7
+
+[',', ', ', '0', ':', 'Allocated', 'Event', 'FLAGS_selected_xpus', 'IPUPlace', 'Reserved', 'Stream', 'XPUPlace', 'cpu', 'cuda', 'current_stream', 'dcu', 'dcu:\\d+', 'device_guard', 'get_all_device_type', 'get_available_device', 'get_cudnn_version', 'get_device', 'gpu', 'gpu:', 'gpu:\\d+', 'ipu', 'is_compiled_with_ipu', 'is_compiled_with_xpu', 'npu', 'set_device', 'set_stream', 'stream_guard', 'synchronize', 'xpu', 'xpu:', 'xpu:\\d+']

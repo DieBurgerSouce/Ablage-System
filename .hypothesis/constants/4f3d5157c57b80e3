@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\schemas\__init__.py
+# hypothesis_version: 6.148.7
+
+['COMMON_RESPONSES', 'Currency', 'ERROR_CODES', 'ErrorResponse', 'ExtractedAddress', 'ExtractedBankAccount', 'ExtractedInvoiceData', 'ExtractedLineItem', 'ExtractedOrderData', 'HealthResponse', 'OCRResultResponse', 'PaginatedResponse', 'SuccessResponse', 'TagBase', 'TagCreate', 'TagListResponse', 'TagResponse', 'TagUpdate', 'TuneBase', 'TuneCreate', 'TuneResponse', 'TuneUpdate']

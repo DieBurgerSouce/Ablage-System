@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\logging_utils.py
+# hypothesis_version: 6.148.7
+
+[100, 'Dynamic-to-Static', 'ERROR: ', 'INFO: ', 'TRANSLATOR_VERBOSITY', 'WARNING: ', '_instance']

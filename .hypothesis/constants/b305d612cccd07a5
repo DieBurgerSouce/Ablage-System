@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\contextual_umlaut_restorer.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.6, 0.7, 0.8, 0.9, 1.0, 512, '\\b\\w+\\b', 'ae', 'aero', 'aerob', 'aerodynamik', 'aerosol', 'bert', 'bert_model_loaded', 'blues', 'boeing', 'confidence', 'corrected', 'corrections', 'cpu', 'cruise', 'cuda', 'dictionary', 'duell', 'duellist', 'ff', 'ffi', 'ffl', 'fi', 'fl', 'fuel', 'fuer', 'für', 'input_ids', 'israel', 'israelisch', 'koeln', 'köln', 'loading_bert_model', 'manuel', 'method', 'michael', 'muenchen', 'münchen', 'none', 'oe', 'original', 'phoenix', 'poem', 'poesie', 'poet', 'position', 'pt', 'queen', 'queue', 'raphael', 's', 'simple', 'ss', 'st', 'text', 'ue', 'ueber', 'word', 'ä', 'ö', 'ü', 'über', 'ſ', 'ẞ', 'ﬀ', 'ﬁ', 'ﬂ', 'ﬃ', 'ﬄ', 'ﬅ', 'ﬆ']

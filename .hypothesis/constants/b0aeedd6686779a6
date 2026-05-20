@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\nn\modules.py
+# hypothesis_version: 6.148.7
+
+[0.0, 2.0, 127.0, 128, '.*inference.', 'Embedding4bit', 'Linear4bit', 'Params4bit', 'SCB', 'T', 'blocksize', 'bnb_quantized', 'compress_statistics', 'cpu', 'cuda', 'data', 'fp4', 'ignore', 'meta', 'module', 'nf4', 'optim_bits', 'quant_state', 'quant_storage', 'quant_type', 'requires_grad', 'row', 'torch.nn.Module', 'weight', 'weight.', 'weight_format', 'xpu']

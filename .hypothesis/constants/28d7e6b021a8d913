@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\app\task.py
+# hypothesis_version: 6.148.7
+
+[1024, ' ({})', ', ', '@', 'Context', 'Replaced by new task', 'Task', 'Task can be retried', '__wrapped__', 'acks_late', 'app', 'argsrepr', 'callbacks', 'celery.accumulate', 'chain', 'chord', 'compression', 'delivery_info', 'delivery_mode', 'errbacks', 'exchange', 'expires', 'group_id', 'group_index', 'headers', 'hostname', 'id', 'ignore_result', 'immediate', 'is_eager', 'kwargsrepr', 'lang', 'link', 'link_error', 'logfile', 'loglevel', 'mandatory', 'origin', 'parent_id', 'priority', 'queue', 'rate_limit', 'reply_to', 'retries', 'root_id', 'routing_key', 'serializer', 'shadow', 'soft_time_limit', 'stamped_headers', 'stamps', 'store_eager_result', 'task', 'task_acks_late', 'task_id', 'task_ignore_result', 'task_serializer', 'task_track_started', 'tasks', 'time_limit', 'track_started', 'v2 compatible']

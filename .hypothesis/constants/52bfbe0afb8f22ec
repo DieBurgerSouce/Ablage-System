@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\features\layers.py
+# hypothesis_version: 6.148.7
+
+[1e-10, 1.0, 2.0, 50.0, 512, 2048, 22050, 'bartlett', 'blackman', 'bohman', 'cosine', 'dct_matrix', 'exponential', 'fbank_matrix', 'fft_window', 'float32', 'gaussian', 'hamming', 'hann', 'kaiser', 'nuttall', 'reflect', 'slaney', 'taylor', 'triang', 'tukey']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\Cython\Compiler\StringEncoding.py
+# hypothesis_version: 6.148.7
+
+[b'\\%03o', 127, 1024, 2000, 55296, 56320, 57343, 65536, '\x07', '\x08', '\n\r\t\\', '"', '""', '"%s"', "'", '(%s)', ',', '??', 'ASCII', 'ISO-8859-1', 'UTF-8', '[%s]', '\\', '\\"', "\\'", '\\\\', '\\a', '\\b', '\\f', '\\n', '\\r', '\\t', '\\v', '\\x%02X', 'utf8', '|']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\int_bincount.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'add', 'dtype', 'high', 'int32', 'int64', 'int_bincount', 'low', 'x', 'y']

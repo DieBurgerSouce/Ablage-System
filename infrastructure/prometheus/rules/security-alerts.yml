@@ -1,0 +1,219 @@
+# Prometheus Alerting Rules fuer Sicherheits-Metriken
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: security_alerts
+    rules:
+      # ===================================================================
+      # Authentication & Authorization Alerts
+      # ===================================================================
+
+      # Warnung: Viele fehlgeschlagene Logins
+      - alert: HighFailedLoginAttempts
+        expr: |
+          sum(rate(http_requests_total{endpoint="/api/v1/auth/login", status=~"401|403"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+          category: authentication
+        annotations:
+          summary: "Erhoehte fehlgeschlagene Login-Versuche"
+          description: "{{ $value }} fehlgeschlagene Login-Versuche pro Sekunde. Moeglicherweise Brute-Force-Angriff."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/brute-force"
+
+      # Kritisch: Sehr viele fehlgeschlagene Logins (Brute Force)
+      - alert: PossibleBruteForceAttack
+        expr: |
+          sum(rate(http_requests_total{endpoint="/api/v1/auth/login", status=~"401|403"}[5m])) > 50
+        for: 2m
+        labels:
+          severity: critical
+          component: security
+          category: authentication
+        annotations:
+          summary: "MOEGLICHERWEISE BRUTE-FORCE-ANGRIFF"
+          description: "{{ $value }} fehlgeschlagene Login-Versuche pro Sekunde! Sofortige Ueberpruefung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/brute-force-critical"
+
+      # Warnung: Ungewoehnlich viele 403 Forbidden Responses
+      - alert: HighAuthorizationFailures
+        expr: |
+          sum(rate(http_requests_total{status="403"}[5m])) > 20
+        for: 10m
+        labels:
+          severity: warning
+          component: security
+          category: authorization
+        annotations:
+          summary: "Viele Autorisierungsfehler"
+          description: "{{ $value }} 403-Fehler pro Sekunde. Moeglicherweise Privilege-Escalation-Versuch."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/auth-failures"
+
+      # ===================================================================
+      # Rate Limiting Alerts
+      # ===================================================================
+
+      # Warnung: Rate Limit haeufig erreicht
+      - alert: RateLimitFrequentlyHit
+        expr: |
+          sum(rate(http_requests_total{status="429"}[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: security
+          category: rate_limit
+        annotations:
+          summary: "Rate Limit wird haeufig erreicht"
+          description: "{{ $value }} Rate-Limit-Responses pro Sekunde. Moeglicherweise DoS-Versuch oder legitimer Traffic-Spike."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/rate-limit"
+
+      # Kritisch: Massiver Rate Limit Hit (moeglicherweise DDoS)
+      - alert: PossibleDDoSAttack
+        expr: |
+          sum(rate(http_requests_total{status="429"}[5m])) > 100
+        for: 2m
+        labels:
+          severity: critical
+          component: security
+          category: ddos
+        annotations:
+          summary: "MOEGLICHERWEISE DDOS-ANGRIFF"
+          description: "{{ $value }} Rate-Limit-Responses pro Sekunde! Sofortige Ueberpruefung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ddos"
+
+      # ===================================================================
+      # Input Validation & Injection Alerts
+      # ===================================================================
+
+      # Warnung: Verdaechtige Request Patterns erkannt
+      - alert: SuspiciousRequestPatterns
+        expr: |
+          sum(rate(http_requests_total{status="400"}[5m])) > 30
+        for: 10m
+        labels:
+          severity: warning
+          component: security
+          category: input_validation
+        annotations:
+          summary: "Viele ungueltige Requests"
+          description: "{{ $value }} 400-Bad-Request-Responses pro Sekunde. Moeglicherweise Injection-Versuche."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/bad-requests"
+
+      # ===================================================================
+      # API Security Alerts
+      # ===================================================================
+
+      # Warnung: Ungewoehnlich hohe API-Nutzung von einzelner IP
+      - alert: APIAbuseFromSingleSource
+        expr: |
+          max(rate(http_requests_total[5m])) by (client_ip) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+          category: abuse
+        annotations:
+          summary: "Ungewoehnlich hohe API-Nutzung"
+          description: "IP {{ $labels.client_ip }} sendet {{ $value }} Requests pro Sekunde."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-abuse"
+
+      # ===================================================================
+      # Token & Session Security
+      # ===================================================================
+
+      # Warnung: Viele Token-Refreshes (moeglicherweise Token Theft)
+      - alert: HighTokenRefreshRate
+        expr: |
+          sum(rate(http_requests_total{endpoint="/api/v1/auth/refresh"}[5m])) > 20
+        for: 10m
+        labels:
+          severity: warning
+          component: security
+          category: tokens
+        annotations:
+          summary: "Viele Token-Refresh-Anfragen"
+          description: "{{ $value }} Token-Refreshes pro Sekunde. Moeglicherweise Token-Theft-Versuch."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/token-refresh"
+
+      # ===================================================================
+      # File Upload Security
+      # ===================================================================
+
+      # Warnung: Malware erkannt
+      - alert: MalwareDetected
+        expr: |
+          increase(malware_scan_detections_total[1h]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+          category: malware
+        annotations:
+          summary: "MALWARE ERKANNT"
+          description: "{{ $value }} Malware-Detektionen in der letzten Stunde. Sofortige Ueberpruefung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/malware"
+
+      # ===================================================================
+      # TLS/SSL Alerts
+      # ===================================================================
+
+      # Warnung: TLS-Zertifikat laeuft bald ab
+      - alert: TLSCertificateExpiringSoon
+        expr: |
+          probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+        for: 1h
+        labels:
+          severity: warning
+          component: security
+          category: tls
+        annotations:
+          summary: "TLS-Zertifikat laeuft bald ab"
+          description: "Zertifikat fuer {{ $labels.instance }} laeuft in {{ $value | humanizeDuration }} ab."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cert-expiry"
+
+      # Kritisch: TLS-Zertifikat laeuft in 7 Tagen ab
+      - alert: TLSCertificateExpiringCritical
+        expr: |
+          probe_ssl_earliest_cert_expiry - time() < 86400 * 7
+        for: 1h
+        labels:
+          severity: critical
+          component: security
+          category: tls
+        annotations:
+          summary: "KRITISCH: TLS-Zertifikat laeuft sehr bald ab"
+          description: "Zertifikat fuer {{ $labels.instance }} laeuft in {{ $value | humanizeDuration }} ab!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cert-expiry-critical"
+
+      # ===================================================================
+      # Audit & Compliance
+      # ===================================================================
+
+      # Info: Admin-Aktionen erkannt
+      - alert: AdminActionPerformed
+        expr: |
+          increase(admin_actions_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: info
+          component: security
+          category: audit
+        annotations:
+          summary: "Viele Admin-Aktionen"
+          description: "{{ $value }} Admin-Aktionen in den letzten 5 Minuten. Ueberpruefen ob autorisiert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/admin-audit"
+
+      # Warnung: Sensitive Daten exportiert
+      - alert: SensitiveDataExport
+        expr: |
+          increase(data_export_requests_total{type="bulk"}[1h]) > 5
+        for: 1m
+        labels:
+          severity: warning
+          component: security
+          category: data_protection
+        annotations:
+          summary: "Mehrere Bulk-Datenexporte"
+          description: "{{ $value }} Bulk-Datenexporte in der letzten Stunde. GDPR-Compliance pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/data-export"

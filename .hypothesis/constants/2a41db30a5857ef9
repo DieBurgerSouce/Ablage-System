@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\tiling_utils.py
+# hypothesis_version: 6.148.7
+
+['FusedSchedulerNode', 'SchedulerNode', 'T', 'U', 'loop_tiling', 'n']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\constant.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'Out', 'dtype', 'fill_constant', 'force_cpu', 'shape', 'str_value', 'value']

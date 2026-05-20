@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\time.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 24.0, 60.0, 3600, 86400, '.2f', '/', 'C_REMDEBUG', 'LocalTimezone', 'UTC', 'adjust_timestamp', 'apr', 'aug', 'day', 'dec', 'delta_resolution', 'feb', 'ffwd', 'fri', 'h', 'hour', 'humanize_seconds', 'is_ambiguous', 'is_naive', 'jan', 'jul', 'jun', 'localize', 'm', 'make_aware', 'mar', 'may', 'maybe_iso8601', 'maybe_make_aware', 'maybe_timedelta', 'microsecond', 'minute', 'mon', 'month', 'nov', 'now', 'oct', 'rate', 'remaining', 's', 'sat', 'second', 'sep', 'sun', 'thu', 'timezone', 'to_utc', 'tue', 'utcoffset', 'wed', 'weekday', 'year', '{}{}{} {}']

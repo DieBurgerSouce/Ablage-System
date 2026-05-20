@@ -2,18 +2,49 @@ version: '3.8'
 
 services:
   # PostgreSQL Database (Data-Network only - kein externer Zugriff in Production)
+  # pgvector/pgvector:pg16 Image enthält pgvector Extension für RAG Vector Search
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: ablage-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ablage_system}
       POSTGRES_USER: ${POSTGRES_USER:-ablage_admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      POSTGRES_MAX_CONNECTIONS: 100
-      POSTGRES_SHARED_BUFFERS: 256MB
+      # Optimierte PostgreSQL-Konfiguration für Production (16GB RAM Host)
+      POSTGRES_MAX_CONNECTIONS: "300"
+      POSTGRES_SHARED_BUFFERS: "4GB"
+    # PostgreSQL Performance-Tuning via Command-Line Args
+    # SSL/TLS Configuration:
+    # To enable SSL, mount server certificates to /var/lib/postgresql/server.crt and server.key
+    # Example: ./infrastructure/postgres/certs/server.crt:/var/lib/postgresql/server.crt:ro
+    entrypoint: >
+      bash -c "
+        cp /tmp/ssl/server.crt /var/lib/postgresql/server.crt &&
+        cp /tmp/ssl/server.key /var/lib/postgresql/server.key &&
+        chown postgres:postgres /var/lib/postgresql/server.crt /var/lib/postgresql/server.key &&
+        chmod 600 /var/lib/postgresql/server.key &&
+        chmod 644 /var/lib/postgresql/server.crt &&
+        exec docker-entrypoint.sh postgres
+        -c shared_buffers=4GB
+        -c max_connections=300
+        -c effective_cache_size=12GB
+        -c maintenance_work_mem=1GB
+        -c wal_buffers=64MB
+        -c checkpoint_completion_target=0.9
+        -c wal_level=replica
+        -c max_wal_senders=3
+        -c wal_keep_size=1GB
+        -c ssl=on
+        -c ssl_cert_file=/var/lib/postgresql/server.crt
+        -c ssl_key_file=/var/lib/postgresql/server.key
+        -c hba_file=/etc/postgresql/pg_hba.conf
+      "
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./infrastructure/postgres/certs/server.crt:/tmp/ssl/server.crt:ro
+      - ./infrastructure/postgres/certs/server.key:/tmp/ssl/server.key:ro
+      - ./infrastructure/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     ports:
       - "127.0.0.1:5434:5432"  # Port 5434 (5433 von Hyper-V reserviert)
     healthcheck:
@@ -35,6 +66,64 @@ services:
           cpus: '0.5'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=postgres"
+    networks:
+      - data-network
+
+  # PgBouncer Connection Pooling für PostgreSQL
+  # Verhindert Connection Exhaustion bei hoher Last
+  pgbouncer:
+    # B7 (2026-05-19): edoburu/pgbouncer:latest war Mutable-Tag in prod.
+    # Pin auf v1.25.1-p0 (2025-12-20) + SHA256 digest fuer Reproduzierbarkeit.
+    image: edoburu/pgbouncer:v1.25.1-p0@sha256:85d1e38593617af1b5f7f285e97d407e56c29939683cc7cfe4c8f6dc19f1268b
+    container_name: ablage-pgbouncer
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_IDLE_TIMEOUT: 600
+      SERVER_LIFETIME: 3600
+      LOG_CONNECTIONS: 0
+      LOG_DISCONNECTIONS: 0
+      STATS_PERIOD: 60
+    ports:
+      - "127.0.0.1:6432:5432"  # Nur localhost - Connection Pooling Port (edoburu nutzt 5432 intern)
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U ${POSTGRES_USER:-ablage_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=pgbouncer"
     networks:
       - data-network
 
@@ -42,13 +131,18 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ablage-redis
-    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-}
+    # SECURITY: REDIS_PASSWORD muss in .env gesetzt sein! Leer = unsicher
+    # Memory erhöht auf 4GB für bessere Performance mit Celery + Cache + Vector-Operationen
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 4gb --maxmemory-policy allkeys-lfu --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
       - redis_data:/data
     ports:
       - "127.0.0.1:6380:6379"  # Nur localhost in Production!
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # SECURITY FIX: Redis Healthcheck mit Passwort-Authentifizierung
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-} ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,23 +152,171 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 2G
+          memory: 5G  # Erhöht von 2G für 4GB Redis + Overhead
         reservations:
           cpus: '0.25'
-          memory: 512M
+          memory: 1G
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=redis"
+    networks:
+      - data-network
+
+  # Redis Replica (HA Profile - Sentinel-Architektur)
+  redis-replica:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-replica
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 4gb --maxmemory-policy allkeys-lfu --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env} --replicaof redis 6379 --masterauth ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    volumes:
+      - redis_replica_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 5G
+        reservations:
+          cpus: '0.25'
+          memory: 1G
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=redis-replica"
+    networks:
+      - data-network
+
+  # Redis Sentinel 1 (HA Profile - Automatic Failover)
+  redis-sentinel-1:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-sentinel-1
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./infrastructure/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:26379:26379"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-sentinel-1"
+    networks:
+      - data-network
+
+  # Redis Sentinel 2 (HA Profile)
+  redis-sentinel-2:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-sentinel-2
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./infrastructure/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:26380:26379"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-sentinel-2"
+    networks:
+      - data-network
+
+  # Redis Sentinel 3 (HA Profile)
+  redis-sentinel-3:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-sentinel-3
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./infrastructure/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:26381:26379"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-sentinel-3"
     networks:
       - data-network
 
   # MinIO Object Storage (Data-Network only)
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
     container_name: ablage-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
       MINIO_DEFAULT_BUCKETS: documents,processed,backups
+      # Prometheus Metrics ohne Bearer Token erreichbar (internes Netz)
+      MINIO_PROMETHEUS_AUTH_TYPE: public
     volumes:
       - minio_data:/data
     ports:
@@ -96,8 +338,200 @@ services:
           cpus: '0.5'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=minio"
     networks:
       - data-network
+
+  # ClamAV Antivirus Scanner (Data-Network für Security Scanning)
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: ablage-clamav
+    environment:
+      # Automatische Updates deaktivieren (manuell via Cron)
+      CLAMAV_NO_FRESHCLAMD: "false"
+      # Daemon-Konfiguration
+      CLAMD_STARTUP_TIMEOUT: 1800  # 30 Minuten für Datenbank-Download
+    volumes:
+      - clamav_data:/var/lib/clamav
+    ports:
+      - "127.0.0.1:3310:3310"  # Nur localhost - ClamAV Daemon Port
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "3"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 300s  # 5 Minuten für initialen DB-Download
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G  # ClamAV braucht viel RAM für Signaturen
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=clamav"
+    networks:
+      - data-network
+
+  # Qdrant Vector Database - Parallele Vector-DB fuer A/B Testing
+  # Rust-basiert, 48% bessere p99-Latenz als pgvector
+  # SECURITY: API-Key Authentifizierung aktiviert
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: ablage-qdrant
+    environment:
+      # SECURITY: API-Key Authentifizierung (ERFORDERLICH in Production!)
+      # Generiere mit: openssl rand -hex 32
+      # SECURITY FIX: Qdrant darf NICHT ohne API-Key gestartet werden
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY muss gesetzt sein}
+      # gRPC und HTTP Ports
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      # Performance-Optimierung fuer mittlere Datenmengen
+      QDRANT__STORAGE__ON_DISK_PAYLOAD: "true"
+      QDRANT__STORAGE__OPTIMIZERS__INDEXING_THRESHOLD_KB: 20000
+      # HNSW Index Konfiguration
+      QDRANT__STORAGE__HNSW_INDEX__M: 16
+      QDRANT__STORAGE__HNSW_INDEX__EF_CONSTRUCT: 128
+      # Telemetry deaktivieren
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "127.0.0.1:6333:6333"  # REST API (nur localhost)
+      - "127.0.0.1:6334:6334"  # gRPC (nur localhost)
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=qdrant"
+    networks:
+      - data-network
+
+  # BGE-Reranker Cross-Encoder via HuggingFace Text Embeddings Inference
+  # CPU-only (GPU reserviert fuer OCR), verbessert Suchrelevanz signifikant
+  # HINWEIS: Optional - Starten mit: docker-compose --profile gpu up -d
+  reranker:
+    profiles: ["gpu"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: ablage-reranker
+    command: --model-id BAAI/bge-reranker-v2-m3 --port 8090
+    environment:
+      # CPU-only: GPU fuer OCR reserviert
+      CUDA_VISIBLE_DEVICES: ""
+      # HuggingFace Cache
+      HF_HOME: /data
+    volumes:
+      - reranker_cache:/data
+    ports:
+      - "127.0.0.1:8090:8090"  # Nur localhost
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # 2 Minuten fuer Model-Download
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=reranker"
+    networks:
+      - backend-network
+
+  # Mustang E-Invoice Service (ZUGFeRD/XRechnung)
+  # Java-basiert fuer vollstaendige XRechnung 3.0.2 Unterstuetzung inkl. UBL
+  # Siehe: https://github.com/ZUGFeRD/mustangproject
+  # HINWEIS: Optional - Starten mit: docker-compose --profile optional up -d
+  einvoice-mustang:
+    profiles: ["optional"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mustang
+    container_name: ablage-einvoice-mustang
+    environment:
+      # Server-Konfiguration
+      SERVER_PORT: 8091
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+      # Temp-Verzeichnis
+      TEMP_DIR: /app/temp
+    volumes:
+      - einvoice_temp:/app/temp
+      - einvoice_output:/app/output
+    ports:
+      - "127.0.0.1:8091:8091"  # Nur localhost - interner Service
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8091/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # 1 Minute fuer Java-Startup
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=einvoice-mustang"
+    networks:
+      - backend-network
 
   # FastAPI Backend Application (Backend + Data Networks)
   backend:
@@ -106,19 +540,31 @@ services:
       dockerfile: Dockerfile
     container_name: ablage-backend
     environment:
-      # Vault Configuration (secrets loaded from Vault when enabled)
-      # SECURITY FIX: Default auf true geändert für Production-Sicherheit
-      VAULT_ENABLED: ${VAULT_ENABLED:-true}
+      # Vault Configuration (disabled by default - enable when Vault container is running)
+      # Set VAULT_ENABLED=true in .env when using HashiCorp Vault for secrets
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
       VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
       VAULT_MOUNT_POINT: secret
       VAULT_CACERT: /app/certs/ca.crt
+      # Sentry (Sprint 0 / G10) - 2026-05-04
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE:-0.1}
+      SENTRY_ENABLE_TRACING: ${SENTRY_ENABLE_TRACING:-true}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      VERSION: ${VERSION:-0.1.0}
       # Database (Secrets aus .env)
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
-      # Redis (mit optionalem Passwort)
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      # Redis (SECURITY: Passwort ist erforderlich!)
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       # MinIO (Secrets aus .env)
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
@@ -130,12 +576,48 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 8000
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEBUG: ${DEBUG:-false}
+      # Qdrant Vector Database
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-false}
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+      QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
+      QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+      QDRANT_PREFER_GRPC: ${QDRANT_PREFER_GRPC:-true}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
+      QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
+      # A/B Testing (pgvector vs Qdrant)
+      VECTOR_AB_TESTING_ENABLED: ${VECTOR_AB_TESTING_ENABLED:-false}
+      VECTOR_AB_TRAFFIC_SPLIT: ${VECTOR_AB_TRAFFIC_SPLIT:-10}
+      VECTOR_AB_METRICS_ENABLED: ${VECTOR_AB_METRICS_ENABLED:-true}
+      VECTOR_AB_CONTROL_BACKEND: ${VECTOR_AB_CONTROL_BACKEND:-pgvector}
+      VECTOR_AB_TREATMENT_BACKEND: ${VECTOR_AB_TREATMENT_BACKEND:-qdrant}
+      VECTOR_AB_CONTROL_EMBEDDING: ${VECTOR_AB_CONTROL_EMBEDDING:-intfloat/multilingual-e5-large}
+      VECTOR_AB_TREATMENT_EMBEDDING: ${VECTOR_AB_TREATMENT_EMBEDDING:-intfloat/multilingual-e5-large}
+      # Dual-Write Sync
+      VECTOR_DUAL_WRITE_ENABLED: ${VECTOR_DUAL_WRITE_ENABLED:-false}
+      VECTOR_DUAL_WRITE_ASYNC: ${VECTOR_DUAL_WRITE_ASYNC:-true}
+      VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
+      # Ollama LLM Service (host.docker.internal für Host-Zugriff)
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      # OpenTelemetry Tracing
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-jaeger:4317}
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
     volumes:
       - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
+      # Sprint 0 / G10 (2026-05-05): infrastructure-Package mounten damit
+      # `from infrastructure.sentry.init_sentry import ...` in app/main.py:73 funktioniert.
+      # Das Package war nicht ins Image kopiert -> sentry_not_configured: ModuleNotFoundError
+      # Ganzes Verzeichnis mounten, damit __init__.py-Hierarchie greift (sentry, vault, etc).
+      - ./infrastructure:/app/infrastructure:ro
+      - ./Trainings_Data:/app/Trainings_Data:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage
+      - model_cache:/home/ablage/.cache  # Persistent HuggingFace/Surya Model Cache
     ports:
       - "8000:8000"
     depends_on:
@@ -145,8 +627,10 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      vault:
+      qdrant:
         condition: service_healthy
+      # vault: (disabled for development - VAULT_ENABLED=false)
+      #   condition: service_healthy
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -154,6 +638,7 @@ services:
     tmpfs:
       - /tmp:size=1G,mode=1777
       - /app/cache:size=2G,mode=1777
+      # Model Cache ist jetzt als persistentes Volume (model_cache) gemountet
     deploy:
       resources:
         limits:
@@ -162,18 +647,27 @@ services:
         reservations:
           cpus: '1.0'
           memory: 2G
+          # GPU für Health-Checks und Status-Abfragen
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
     # SECURITY FIX: Healthcheck für Backend
+    # GPU-Inference braucht 10-15s, Model-Loading 60-90s
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=30).raise_for_status()"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      timeout: 35s  # ENTERPRISE FIX: Erhöht für GPU-Inference + Netzwerk-Latenz
+      retries: 5  # Sprint 0 / G05-vorbereitend: mehr Retries fuer langsames Init
+      start_period: 600s  # Sprint 0 / G05-vorbereitend: 10 Min - 797 Services brauchen lange beim Init (statt 180s)
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=backend"
     networks:
       - backend-network
       - data-network
@@ -184,38 +678,84 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ablage-worker
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -Q ocr_high,ocr_normal,embedding_high,embedding_normal,embedding_low,validation,metadata,maintenance,metrics,backup,dlq
     ports:
       - "127.0.0.1:8001:8001"  # Prometheus Metrics
     environment:
       # Vault Configuration
       # SECURITY FIX: Default auf true geändert für Production-Sicherheit
-      VAULT_ENABLED: ${VAULT_ENABLED:-true}
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
       VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
       VAULT_MOUNT_POINT: secret
       VAULT_CACERT: /app/certs/ca.crt
       # Database (Secrets aus .env)
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (mit optionalem Passwort)
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       # MinIO (Secrets aus .env)
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+      # JWT/Auth (fehlte - gleiche wie Backend)
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      # Development/Production Mode
+      DEBUG: ${DEBUG:-false}
       # Non-secret configuration
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
+      # CUDA Library Path für bitsandbytes
+      LD_LIBRARY_PATH: /usr/local/cuda-12.1/lib64:/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # GPU Memory Limits (85% von 16GB = 13.6GB)
       GPU_MEMORY_LIMIT_GB: ${GPU_MEMORY_LIMIT_GB:-13.6}
+      # HuggingFace/PyTorch Model Cache - persistiert zwischen Neustarts
+      HF_HOME: /home/ablage/.cache/huggingface
+      TRANSFORMERS_CACHE: /home/ablage/.cache/huggingface
+      TORCH_HOME: /home/ablage/.cache/torch
+      # Qdrant Vector Database
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+      QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
+      QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+      QDRANT_PREFER_GRPC: ${QDRANT_PREFER_GRPC:-true}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
+      QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
+      # A/B Testing (pgvector vs Qdrant)
+      VECTOR_AB_TESTING_ENABLED: ${VECTOR_AB_TESTING_ENABLED:-true}
+      VECTOR_AB_TRAFFIC_SPLIT: ${VECTOR_AB_TRAFFIC_SPLIT:-10}
+      VECTOR_AB_METRICS_ENABLED: ${VECTOR_AB_METRICS_ENABLED:-true}
+      VECTOR_AB_CONTROL_BACKEND: ${VECTOR_AB_CONTROL_BACKEND:-pgvector}
+      VECTOR_AB_TREATMENT_BACKEND: ${VECTOR_AB_TREATMENT_BACKEND:-qdrant}
+      VECTOR_AB_CONTROL_EMBEDDING: ${VECTOR_AB_CONTROL_EMBEDDING:-intfloat/multilingual-e5-large}
+      VECTOR_AB_TREATMENT_EMBEDDING: ${VECTOR_AB_TREATMENT_EMBEDDING:-intfloat/multilingual-e5-large}
+      # Dual-Write (pgvector + Qdrant Synchronisation)
+      VECTOR_DUAL_WRITE_ENABLED: ${VECTOR_DUAL_WRITE_ENABLED:-true}
+      VECTOR_DUAL_WRITE_ASYNC: ${VECTOR_DUAL_WRITE_ASYNC:-true}
+      VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
+      # Ollama LLM Service (host.docker.internal für Host-Zugriff)
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      # OpenTelemetry Tracing
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-jaeger:4317}
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
     volumes:
       - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./scripts:/app/scripts:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
+      - ./Trainings_Data:/app/Trainings_Data:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage
+      - model_cache:/home/ablage/.cache  # Persistenter OCR Model Cache (Surya, HuggingFace)
     depends_on:
       postgres:
         condition: service_healthy
@@ -223,10 +763,13 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      vault:
+      qdrant:
         condition: service_healthy
+      # vault: (disabled for development - VAULT_ENABLED=false)
+      #   condition: service_healthy
+      # FAANG-AUDIT FIX: Worker wartet auf gesundes Backend
       backend:
-        condition: service_started
+        condition: service_healthy
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -234,6 +777,7 @@ services:
     tmpfs:
       - /tmp:size=2G,mode=1777
       - /app/cache:size=4G,mode=1777
+      # Model cache jetzt als persistentes Volume (model_cache) statt tmpfs
     deploy:
       resources:
         limits:
@@ -247,17 +791,218 @@ services:
               count: 1
               capabilities: [gpu]
     # SECURITY FIX: Healthcheck für Worker
+    # 2026-05-12: `celery inspect ping` schlaegt mit --pool=solo waehrend
+    # laufender Task fehl (broadcast bekommt keine Antwort). Stattdessen
+    # pruefen wir den Celery-Metrics-Server auf Port 8001 — der laeuft im
+    # eigenen Thread und antwortet auch waehrend der Worker einen Task
+    # ausfuehrt. Wenn /metrics liefert + ein "celery worker" Prozess existiert,
+    # ist der Worker gesund.
     healthcheck:
-      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
+      test: ["CMD-SHELL", "curl -fsS --max-time 5 http://localhost:8001/metrics >/dev/null && pgrep -f 'celery.*worker' >/dev/null"]
       interval: 60s
-      timeout: 30s
+      timeout: 15s
       retries: 3
-      start_period: 120s
+      start_period: 600s  # 10 Minuten für Modell-Download (Surya ~1.34GB)
     restart: unless-stopped
+    stop_grace_period: 120s  # ENTERPRISE FIX: 2 Minuten für laufende OCR-Tasks
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=worker"
     networks:
       - backend-network
       - data-network
       - monitoring-network  # Für Prometheus Metrics Scraping
+
+  # Celery Worker CPU-only (für nicht-GPU Tasks)
+  worker-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ablage-worker-cpu
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --pool=prefork -n cpu_worker@%h -Q validation,metadata,maintenance,metrics,backup,dlq,workflow,approval,orchestration,tracking,privat
+    environment:
+      # Vault Configuration
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
+      VAULT_ADDR: https://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_SECRET_PATH: ablage-system
+      VAULT_MOUNT_POINT: secret
+      VAULT_CACERT: /app/certs/ca.crt
+      # Database
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      # MinIO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+      # JWT/Auth
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      # Development/Production Mode
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # HuggingFace/PyTorch Model Cache
+      HF_HOME: /home/ablage/.cache/huggingface
+      TRANSFORMERS_CACHE: /home/ablage/.cache/huggingface
+      TORCH_HOME: /home/ablage/.cache/torch
+      # CPU-only: keine GPU
+      CUDA_VISIBLE_DEVICES: ""
+      # Qdrant Vector Database
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+      QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
+      QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+      QDRANT_PREFER_GRPC: ${QDRANT_PREFER_GRPC:-true}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
+      QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
+      # A/B Testing (pgvector vs Qdrant)
+      VECTOR_AB_TESTING_ENABLED: ${VECTOR_AB_TESTING_ENABLED:-true}
+      VECTOR_AB_TRAFFIC_SPLIT: ${VECTOR_AB_TRAFFIC_SPLIT:-10}
+      VECTOR_AB_METRICS_ENABLED: ${VECTOR_AB_METRICS_ENABLED:-true}
+      VECTOR_AB_CONTROL_BACKEND: ${VECTOR_AB_CONTROL_BACKEND:-pgvector}
+      VECTOR_AB_TREATMENT_BACKEND: ${VECTOR_AB_TREATMENT_BACKEND:-qdrant}
+      VECTOR_AB_CONTROL_EMBEDDING: ${VECTOR_AB_CONTROL_EMBEDDING:-intfloat/multilingual-e5-large}
+      VECTOR_AB_TREATMENT_EMBEDDING: ${VECTOR_AB_TREATMENT_EMBEDDING:-intfloat/multilingual-e5-large}
+      # Dual-Write (pgvector + Qdrant Synchronisation)
+      VECTOR_DUAL_WRITE_ENABLED: ${VECTOR_DUAL_WRITE_ENABLED:-true}
+      VECTOR_DUAL_WRITE_ASYNC: ${VECTOR_DUAL_WRITE_ASYNC:-true}
+      VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
+      # Ollama LLM Service (host.docker.internal für Host-Zugriff)
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      # OpenTelemetry Tracing
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-jaeger:4317}
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
+    volumes:
+      - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./scripts:/app/scripts:ro
+      - ./infrastructure/vault/config/certs:/app/certs:ro
+      - ./Trainings_Data:/app/Trainings_Data:ro
+      - uploads:/app/uploads
+      - outputs:/app/outputs
+      - backups:/var/backups/ablage
+      - model_cache:/home/ablage/.cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      # FAANG-AUDIT FIX: CPU-Worker wartet auf gesundes Backend
+      backend:
+        condition: service_healthy
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=2G,mode=1777
+      - /app/cache:size=4G,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    healthcheck:
+      # Vereinfachter Health-Check: prüft nur ob Celery-Prozess läuft
+      test: ["CMD-SHELL", "pgrep -f 'celery.*worker' > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=worker-cpu"
+    networks:
+      - backend-network
+      - data-network
+
+  # Celery Beat Scheduler (Distributed via RedBeat)
+  # RedBeat speichert Schedule in Redis - nur eine Beat-Instanz haelt den Lock.
+  # Bei Multi-Node: Mehrere Beat-Instanzen starten, nur eine ist aktiv.
+  beat:
+    # 2026-05-06: image statt build - nutzt fertig gebautes Backend-Image
+    # (verhindert Rebuild-Loop wegen Janus/dataclass-Bug; Backend-Image hat
+    # bereits alle benoetigten celery-Module, Beat braucht nur celery + app/).
+    image: ablage_system-backend:latest
+    container_name: ablage-beat
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CUDA_VISIBLE_DEVICES: ""
+    volumes:
+      - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=beat"
+    networks:
+      - backend-network
+      - data-network
 
   # Frontend Application (React + Vite) - Frontend + Backend Networks
   frontend:
@@ -268,9 +1013,10 @@ services:
     ports:
       - "80:80"
       - "443:443"  # HTTPS Port
+    # FAANG-AUDIT FIX: Frontend wartet auf gesundes Backend
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -278,6 +1024,13 @@ services:
       - /tmp
       - /var/cache/nginx
       - /var/run
+    # SECURITY FIX: Healthcheck für Frontend (Nginx)
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -287,31 +1040,40 @@ services:
           cpus: '0.2'
           memory: 128M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=frontend"
     networks:
       - frontend-network
       - backend-network
 
   # Prometheus Metrics Collection (Monitoring Network)
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.0
     container_name: ablage-prometheus
     user: "65534:65534"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.time=90d'  # Erhöht von 30d für Trend-Analyse
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infrastructure/prometheus/rules:/etc/prometheus/rules:ro
+      - ./infrastructure/prometheus/qdrant_metrics_token:/etc/prometheus/qdrant_metrics_token:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"  # Nur localhost - Zugriff über Nginx Proxy
+    # FAANG-AUDIT FIX: Prometheus wartet auf gesundes Backend
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
@@ -329,13 +1091,30 @@ services:
           cpus: '0.25'
           memory: 512M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=prometheus"
     networks:
       - monitoring-network
       - backend-network
+      - data-network  # ENTERPRISE FIX: Prometheus muss minio/qdrant scrapen koennen
 
   # Grafana Dashboards (Monitoring Network)
+  # INFRASTRUCTURE HARDENING: IP-Whitelisting implementiert
+  # Konfiguration: infrastructure/nginx/conf.d/ablage-system.conf
+  # Dokumentation: .claude/Docs/INFRASTRUCTURE_HARDENING.md
+  #
+  # Erlaubte Netzwerke:
+  #   - 127.0.0.0/8     (Localhost)
+  #   - 172.16.0.0/12   (Docker Networks)
+  #   - 10.0.0.0/8      (Interne Netzwerke)
+  #   - 192.168.0.0/16  (Private Netzwerke)
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.3.0
     container_name: ablage-grafana
     user: "472:472"
     environment:
@@ -353,10 +1132,11 @@ services:
       - ./infrastructure/grafana/dashboards:/etc/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "127.0.0.1:3000:3000"  # Nur localhost - Zugriff über Nginx Proxy
+      - "127.0.0.1:3002:3000"  # Port 3002 (3000/3001 belegt)
+    # FAANG-AUDIT FIX: Grafana wartet auf gesunden Prometheus
     depends_on:
       prometheus:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
@@ -374,12 +1154,19 @@ services:
           cpus: '0.25'
           memory: 256M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=grafana"
     networks:
       - monitoring-network
 
   # Loki for Log Aggregation (Monitoring Network)
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.2.0
     container_name: ablage-loki
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
@@ -404,6 +1191,13 @@ services:
           cpus: '0.25'
           memory: 512M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=loki"
     networks:
       - monitoring-network
 
@@ -429,12 +1223,19 @@ services:
     volumes:
       - ./infrastructure/alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - ./infrastructure/alerting/templates:/etc/alertmanager/templates:ro
+      # Sprint 0 / G01: Slack-Webhook-URL als Datei (in .gitignore!)
+      # Erstelle: infrastructure/alerting/slack-webhook.url (eine Zeile, kein Newline)
+      - ./infrastructure/alerting/slack-webhook.url:/etc/alertmanager/slack-webhook.url:ro
+      # Task D (2026-05-19): SMTP-Passwort als Datei (in .gitignore!)
+      # Erstelle: echo 'DEIN_PASSWORD' > infrastructure/alerting/smtp-password && chmod 600 ...
+      - ./infrastructure/alerting/smtp-password:/etc/alertmanager/smtp-password:ro
       - alertmanager_data:/alertmanager
     ports:
       - "127.0.0.1:9093:9093"  # Nur localhost
+    # FAANG-AUDIT FIX: AlertManager wartet auf gesunden Prometheus
     depends_on:
       prometheus:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
       interval: 30s
@@ -454,15 +1255,66 @@ services:
           cpus: '0.1'
           memory: 64M
     restart: unless-stopped
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=alertmanager"
     networks:
       - monitoring-network
 
+  # Jaeger Distributed Tracing (OpenTelemetry Collector + UI)
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: ablage-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    volumes:
+      - jaeger_data:/badger
+    ports:
+      - "127.0.0.1:16686:16686"  # Jaeger UI
+      - "127.0.0.1:4317:4317"    # OTLP gRPC
+      - "127.0.0.1:4318:4318"    # OTLP HTTP
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:14269/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=jaeger"
+    networks:
+      - monitoring-network
+      - backend-network
+
   # PostgreSQL Exporter for Prometheus (Monitoring + Data Networks)
   postgres_exporter:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: ablage-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
     ports:
       - "127.0.0.1:9187:9187"  # Nur localhost
     depends_on:
@@ -471,6 +1323,12 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    # SECURITY FIX: Healthcheck für Postgres Exporter
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -480,17 +1338,24 @@ services:
           cpus: '0.05'
           memory: 32M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=postgres-exporter"
     networks:
       - monitoring-network
       - data-network
 
   # Redis Exporter for Prometheus (Monitoring + Data Networks)
   redis_exporter:
-    image: oliver006/redis_exporter:latest
+    image: oliver006/redis_exporter:v1.63.0
     container_name: ablage-redis-exporter
     environment:
       REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}
     ports:
       - "127.0.0.1:9121:9121"  # Nur localhost
     depends_on:
@@ -499,6 +1364,10 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    # Hinweis: redis_exporter Scratch-Image hat keine Shell/Tools
+    # Health wird durch Prometheus Scrape-Status überwacht
+    healthcheck:
+      disable: true
     deploy:
       resources:
         limits:
@@ -508,24 +1377,39 @@ services:
           cpus: '0.05'
           memory: 32M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-exporter"
     networks:
       - monitoring-network
       - data-network
 
   # Promtail for Log Shipping to Loki (Monitoring Network)
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.2.0
     container_name: ablage-promtail
     volumes:
       - ./infrastructure/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     command: -config.file=/etc/promtail/config.yml
+    # FAANG-AUDIT FIX: Promtail wartet auf gesunden Loki
     depends_on:
       loki:
-        condition: service_started
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
+    # FAANG-AUDIT FIX: Health-Check fuer Promtail
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9080/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -535,6 +1419,13 @@ services:
           cpus: '0.1'
           memory: 64M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=promtail"
     networks:
       - monitoring-network
 
@@ -542,11 +1433,12 @@ services:
   vault:
     image: hashicorp/vault:1.15.4
     container_name: ablage-vault
-    command: server -config=/vault/config/vault.hcl
+    # Entrypoint fügt automatisch -config=/vault/config hinzu, daher kein command nötig
+    entrypoint: ["vault", "server", "-config=/vault/config/vault.hcl"]
     ports:
-      - "8200:8200"
+      - "127.0.0.1:8200:8200"  # Nur localhost - Vault API
     volumes:
-      - ./infrastructure/vault/config:/vault/config:ro
+      - ./infrastructure/vault/config:/vault/config
       - vault_data:/vault/data
       - vault_logs:/vault/logs
     environment:
@@ -569,18 +1461,29 @@ services:
           cpus: '0.1'
           memory: 128M
     healthcheck:
-      test: ["CMD", "vault", "status", "-address=https://127.0.0.1:8200", "-ca-cert=/vault/config/certs/ca.crt"]
+      # Vault gibt Exit-Code 2 wenn sealed - das ist OK beim Start
+      test: ["CMD-SHELL", "vault status -address=https://127.0.0.1:8200 -ca-cert=/vault/config/certs/ca.crt || [ $? -eq 2 ]"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=vault"
     networks:
       - backend-network
       - data-network
 
   # NVIDIA GPU Exporter für Prometheus-Metriken
+  # HINWEIS: Optional - Starten mit: docker-compose --profile gpu up -d
+  # Erfordert NVIDIA Container Runtime und DCGM auf dem Host
   dcgm-exporter:
+    profiles: ["gpu"]
     image: nvidia/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
     container_name: ablage-dcgm-exporter
     deploy:
@@ -597,7 +1500,8 @@ services:
       # Standard GPU-Metriken
       DCGM_EXPORTER_COLLECTORS: 'default'
     ports:
-      - "9400:9400"
+      # SECURITY FIX: Bind to localhost only to prevent external access to GPU metrics
+      - "127.0.0.1:9400:9400"
     cap_add:
       - SYS_ADMIN
     security_opt:
@@ -609,6 +1513,13 @@ services:
       retries: 3
       start_period: 15s
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=dcgm-exporter"
     networks:
       - monitoring-network
 
@@ -645,22 +1556,94 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=node-exporter"
     networks:
       - monitoring-network
+
+  # =========================================================================
+  # Backend Watchdog (Sprint 0 / G05)
+  # =========================================================================
+  # Sidecar-Container der periodisch /health pollt und bei N Failures
+  # automatisch `docker restart ablage-backend` ausfuehrt + Slack-Alert.
+  # Doku: scripts/backup/DR_RUNBOOK.md "Backend-Watchdog"
+  watchdog:
+    build:
+      context: ./scripts/watchdog
+      dockerfile: Dockerfile
+    image: ablage-watchdog:latest
+    container_name: ablage-watchdog
+    restart: unless-stopped
+    user: "0:0"  # root - braucht Zugriff auf docker.sock
+    environment:
+      CONTAINER: ablage-backend
+      HEALTH_URL: http://backend:8000/health  # Internes Docker-DNS
+      HEALTH_TIMEOUT: 15
+      RESTART_THRESHOLD: 3
+      ESCALATE_THRESHOLD: 5
+      LOOP_INTERVAL: 60
+      SIDECAR_MODE: "true"
+      STATE_FILE: /state/watchdog.state
+      LOG_DIR: /state/logs
+      SLACK_WEBHOOK_FILE: /app/slack-webhook.url
+    volumes:
+      # Watchdog-Script (read-only)
+      - ./scripts/watchdog/backend_watchdog.sh:/app/backend_watchdog.sh:ro
+      # Slack-Webhook-File (read-only) - Sprint 0 / G01
+      - ./infrastructure/alerting/slack-webhook.url:/app/slack-webhook.url:ro
+      # Docker-Socket fuer `docker restart` (root-Privileg!)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # State + Logs persistent
+      - watchdog_state:/state
+    depends_on:
+      backend:
+        condition: service_started  # NICHT service_healthy - Watchdog soll auch bei start-failures helfen
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"
+        reservations:
+          memory: 16M
+          cpus: "0.01"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=watchdog"
+    networks:
+      # Sprint 0 / G05: Backend-Network damit `http://backend:8000` aufloesbar
+      - backend-network
 
 volumes:
   postgres_data:
   redis_data:
+  redis_replica_data:  # Redis Replica Storage (HA Profile)
   minio_data:
+  clamav_data:  # ClamAV Virus-Signaturen
+  qdrant_data:  # Qdrant Vector Database Storage
+  reranker_cache:  # BGE-Reranker Model Cache
+  einvoice_temp:  # Mustang E-Invoice temporaere Dateien
+  einvoice_output:  # Mustang E-Invoice generierte Dateien
   uploads:
   outputs:
   backups:
+  quarantine:  # Quarantaene fuer erkannte Malware
   prometheus_data:
   grafana_data:
   loki_data:
   alertmanager_data:
+  jaeger_data:  # Jaeger Distributed Tracing Storage
   vault_data:
   vault_logs:
+  watchdog_state:  # Sprint 0 / G05 - Watchdog State + Logs persistent
+  model_cache:  # OCR model cache (Surya, HuggingFace, DeepSeek)
 
 networks:
   # Frontend-Netzwerk: Nur für externe Zugriffe (Nginx)

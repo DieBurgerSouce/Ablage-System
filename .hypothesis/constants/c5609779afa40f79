@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\favorites.py
+# hypothesis_version: 6.148.7
+
+[100, '/', '/check/{document_id}', '/favorites', '/{favorite_id}', 'Favorit entfernen', 'Favorit hinzufügen', 'Favorit-Details', 'Favoriten auflisten', 'Prüfen ob Favorit', 'Sortierung', 'created_at', 'document_id', 'favorite_added', 'favorite_id', 'favorite_removed', 'favorite_updated', 'favorites', 'file_size', 'filename', 'id', 'is_favorite', 'mime_type', 'note', 'ocr_confidence', 'priority', 'status']

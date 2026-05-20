@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\token_counter.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.05, 0.1, 0.15, 0.2, 0.9, 0.92, 0.95, 1.0, 3.5, 3.6, 3.7, 3.8, 4.0, 4.2, 4.5, 500, '(', '(^|\\n)#{1,6}\\s', ';', '\\*\\*\\w+\\*\\*', '^\\s*[\\[{]', '__main__', 'code_generic', 'code_javascript', 'code_python', 'from_cost', 'from_tier', 'haiku', 'json', 'markdown', 'mixed', 'opus', 'prose_english', 'prose_german', 'savings_pct', 'sonnet', 'to_cost', 'to_tier', 'tokens', '{', 'ß', 'ä', 'ö', 'ü']

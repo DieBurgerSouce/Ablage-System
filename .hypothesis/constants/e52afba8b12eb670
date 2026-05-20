@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\core\typing\builtins.py
+# hypothesis_version: 6.148.7
+
+['IndexValue(%f, %f)', 'IndexValueType({})', '__class__', 'complex.conjugate', 'getiter', 'index', 'iternext', 'kws not supported', 'not in', 'ns', 'number.item', 'pair_first', 'pair_second', 'print_item', 'pysig', 'slice.indices', 'static_getitem', 'underlying_float', 'value']

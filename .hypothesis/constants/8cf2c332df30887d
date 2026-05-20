@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\flex\flex_attention.py
+# hypothesis_version: 6.148.7
+
+[128, "'ieee'", "'tf32'", 'BLOCK_M', 'BLOCK_M1', 'BLOCK_M2', 'BLOCK_N', 'BLOCK_N1', 'BLOCK_N2', 'FLOAT32_PRECISION', 'GQA_SHARED_HEADS', 'HAS_FULL_BLOCKS', 'IS_DIVISIBLE', 'SM_SCALE', 'SPARSE_KV_BLOCK_SIZE', 'SPARSE_Q_BLOCK_SIZE', 'USE_TMA', 'b', 'bwd_', 'call_function', 'common', 'cpu', 'flex_attention', 'flex_backwards', 'fwd_', 'grad_score_mod', 'h', 'highest', 'ieee', 'kpack', 'm', 'matrix_instr_nonkdim', 'n', 'none', 'num_consumer_groups', 'num_stages', 'num_warps', 'output', 'score', 'utilities', 'waves_per_eu']

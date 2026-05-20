@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\ps\utils\ps_factory.py
+# hypothesis_version: 6.148.7
+
+['FlPsProgramBuilder', 'GeoPsProgramBuilder', 'GpuPsProgramBuilder', 'NuPsProgramBuilder', 'PsProgramBuilder', 'is_fl_ps_mode', 'is_heter_ps_mode', 'local_sparse', 'ps_mode', 'use_ps_gpu']

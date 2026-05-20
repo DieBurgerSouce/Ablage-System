@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\layer\conv.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 2.0, ', groups={_groups}', ', padding={_padding}', ', stride={_stride}', 'NCDHW', 'NCHW', 'NCL', 'NDHWC', 'NHWC', 'NLC', 'circular', 'conv', 'conv2d', 'd', 'depthwise_conv2d', 'dilation', 'input', 'kernel_size', 'padding', 'reflect', 'replicate', 'stride', 'x', 'zeros']

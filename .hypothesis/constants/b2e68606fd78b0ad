@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\patterns\date_patterns.py
+# hypothesis_version: 6.148.7
+
+[0.1, 0.3, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99, 100, 1900, 2000, 'apr', 'april', 'aug', 'august', 'augustus', 'dashed_date', 'date', 'datum', 'day', 'december', 'delivery_date', 'dez', 'dezember', 'due_date', 'feb', 'februar', 'februari', 'february', 'fällig', 'generic_date', 'german_date', 'german_date_named', 'invoice_date', 'iso_date', 'jan', 'januar', 'januari', 'january', 'jul', 'juli', 'july', 'jun', 'june', 'juni', 'maart', 'maerz', 'mai', 'mar', 'march', 'may', 'mei', 'month', 'mär', 'märz', 'nov', 'november', 'october', 'okt', 'oktober', 'order_date', 'rechnung', 'sep', 'september', 'tel|fax|art|nr\\.', 'year']

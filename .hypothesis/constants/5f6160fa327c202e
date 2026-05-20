@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen2_vl\image_processing_qwen2_vl.py
+# hypothesis_version: 6.148.7
+
+[200, 255, 1280, 'image_grid_thw', 'longest_edge', 'max_pixels', 'merge_size', 'min_pixels', 'patch_size', 'pixel_values', 'pixel_values_videos', 'shortest_edge', 'video_grid_thw']

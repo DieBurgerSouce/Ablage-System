@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\einvoice\mapping\__init__.py
+# hypothesis_version: 6.148.7
+
+['XRechnungUBLMapper', 'ZUGFeRDMapper', 'get_ubl_mapper', 'get_zugferd_mapper']

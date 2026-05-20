@@ -1,0 +1,340 @@
+# German Business Frequency Dictionary for SymSpell
+# Format: word<tab>frequency
+# Optimized for German business document OCR correction
+# Version: 1.0 | Last Updated: 2026-01-23
+
+# --- High-frequency business terms (100000+) ---
+Rechnung	500000
+Betrag	450000
+Datum	400000
+Nummer	380000
+Euro	350000
+Kunde	320000
+Lieferant	300000
+Artikel	280000
+Preis	260000
+Menge	240000
+Summe	220000
+Netto	200000
+Brutto	190000
+Steuer	180000
+Zahlung	170000
+Bank	160000
+Konto	150000
+Vertrag	140000
+Auftrag	130000
+Bestellung	120000
+Lieferung	110000
+Angebot	100000
+
+# --- Business document types ---
+Rechnungsnummer	95000
+Rechnungsdatum	94000
+Rechnungsbetrag	93000
+Kundennummer	92000
+Bestellnummer	91000
+Lieferschein	90000
+Auftragsbestaetigung	89000
+Gutschrift	88000
+Mahnung	87000
+Quittung	86000
+Anschreiben	85000
+Protokoll	84000
+Bericht	83000
+
+# --- Financial terms ---
+Mehrwertsteuer	82000
+Umsatzsteuer	81000
+Vorsteuer	80000
+Skonto	79000
+Rabatt	78000
+Zahlungsziel	77000
+Faelligkeit	76000
+Ueberweisung	75000
+Lastschrift	74000
+Einzahlung	73000
+Auszahlung	72000
+Saldo	71000
+Kontostand	70000
+Guthaben	69000
+Schulden	68000
+Zinsen	67000
+Gebuehr	66000
+Provision	65000
+
+# --- Company forms and titles ---
+Gesellschaft	64000
+Geschaeftsfuehrer	63000
+Vorstand	62000
+Handelsregister	61000
+Amtsgericht	60000
+Steuernummer	59000
+Firmenstempel	58000
+Unterschrift	57000
+
+# --- Address terms ---
+Strasse	56000
+Hausnummer	55000
+Postleitzahl	54000
+Stadt	53000
+Land	52000
+Adresse	51000
+Anschrift	50000
+
+# --- Common business adjectives ---
+gesamt	49000
+einzeln	48000
+brutto	47000
+netto	46000
+offen	45000
+bezahlt	44000
+unbezahlt	43000
+faellig	42000
+ueberfaellig	41000
+
+# --- Verbs ---
+bezahlen	40000
+ueberweisen	39000
+bestellen	38000
+liefern	37000
+senden	36000
+erhalten	35000
+pruefen	34000
+genehmigen	33000
+ablehnen	32000
+stornieren	31000
+
+# --- German umlauts - business terms ---
+fuer	95000
+ueber	90000
+Gebuehr	85000
+Gebuehren	84000
+Waehrung	80000
+Erklaerung	78000
+Aenderung	76000
+Pruefung	74000
+Gueltigkeit	72000
+Verguetung	70000
+Erlaeuterung	68000
+Begruendung	66000
+Verfuegung	64000
+Zustaendig	62000
+Ruecksendung	60000
+Rueckgabe	58000
+
+# --- German umlauts - common words ---
+koennen	55000
+muessen	54000
+moechten	53000
+moeglich	52000
+natuerlich	51000
+oeffentlich	50000
+voellig	49000
+hoechst	48000
+naechst	47000
+frueher	46000
+
+# --- Units and measurements ---
+Stueck	45000
+Packung	44000
+Karton	43000
+Palette	42000
+Kilogramm	41000
+Gramm	40000
+Liter	39000
+Meter	38000
+
+# --- Time-related ---
+Monat	37000
+Jahr	36000
+Woche	35000
+Tag	34000
+Quartal	33000
+Halbjahr	32000
+
+# --- Common German words with special characters ---
+Groesse	31000
+groesser	30500
+Strasse	30000
+Hauptstrasse	29500
+Gruss	29000
+Gruesse	28500
+Fuss	28000
+Fuesse	27500
+Mass	27000
+Massnahme	26500
+weiss	26000
+heiss	25500
+aussen	25000
+ausserdem	24500
+schliessen	24000
+schliesslich	23500
+gemaess	23000
+
+# --- Months (German) ---
+Januar	22000
+Februar	21900
+Maerz	21800
+April	21700
+Mai	21600
+Juni	21500
+Juli	21400
+August	21300
+September	21200
+Oktober	21100
+November	21000
+Dezember	20900
+
+# --- Days (German) ---
+Montag	20000
+Dienstag	19900
+Mittwoch	19800
+Donnerstag	19700
+Freitag	19600
+Samstag	19500
+Sonntag	19400
+
+# --- Common prepositions ---
+mit	90000
+von	88000
+bei	86000
+nach	84000
+aus	82000
+seit	80000
+durch	78000
+ohne	76000
+
+# --- Common conjunctions ---
+und	95000
+oder	85000
+aber	75000
+sondern	65000
+weil	55000
+wenn	50000
+dass	48000
+obwohl	46000
+
+# --- Common articles ---
+der	98000
+die	97000
+das	96000
+ein	94000
+eine	93000
+einer	92000
+einem	91000
+einen	90000
+
+# --- Numbers as words ---
+eins	15000
+zwei	14900
+drei	14800
+vier	14700
+fuenf	14600
+sechs	14500
+sieben	14400
+acht	14300
+neun	14200
+zehn	14100
+hundert	14000
+tausend	13900
+million	13800
+milliarde	13700
+
+# --- Common last names (German) ---
+Mueller	20000
+Schmidt	19500
+Schneider	19000
+Fischer	18500
+Weber	18000
+Meyer	17500
+Wagner	17000
+Becker	16500
+Schulz	16000
+Hoffmann	15500
+Schaefer	15000
+Koch	14500
+Bauer	14000
+Richter	13500
+Klein	13000
+Wolf	12500
+Schroeder	12000
+Neumann	11500
+Schwarz	11000
+Zimmermann	10500
+Braun	10000
+Krueger	9500
+Hofmann	9000
+Hartmann	8500
+Lange	8000
+Schmitt	7500
+Werner	7000
+Schmitz	6500
+Krause	6000
+Meier	5500
+
+# --- German cities ---
+Berlin	18000
+Hamburg	17500
+Muenchen	17000
+Koeln	16500
+Frankfurt	16000
+Stuttgart	15500
+Duesseldorf	15000
+Dortmund	14500
+Essen	14000
+Leipzig	13500
+Bremen	13000
+Dresden	12500
+Hannover	12000
+Nuernberg	11500
+Duisburg	11000
+
+# --- Industry-specific: Agriculture (Spargel) ---
+Spargel	8000
+Spargelfolie	7500
+Spargelstecher	7000
+Ernte	6500
+Anbau	6000
+Saison	5500
+Folie	5000
+Messer	4500
+Stecher	4000
+Gemuese	3500
+
+# --- Industry-specific: Logistics ---
+Versand	25000
+Fracht	24000
+Spedition	23000
+Lager	22000
+Bestand	21000
+Logistik	20000
+Transport	19000
+Sendung	18000
+Zustellung	17000
+Abholung	16000
+Retoure	15000
+Ruecksendung	14000
+
+# --- Business positions ---
+Mitarbeiter	12000
+Angestellter	11500
+Sachbearbeiter	11000
+Buchhalter	10500
+Controller	10000
+Manager	9500
+Direktor	9000
+Leiter	8500
+Assistent	8000
+Sekretaer	7500
+
+# --- Document workflow ---
+erstellt	7000
+geprueft	6500
+genehmigt	6000
+abgelehnt	5500
+storniert	5000
+archiviert	4500
+versendet	4000
+empfangen	3500
+bearbeitet	3000
+abgeschlossen	2500

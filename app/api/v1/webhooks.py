@@ -13,16 +13,24 @@ Feinpoliert und durchdacht - Enterprise-grade Webhooks.
 
 import secrets
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 
-from app.db.models import User, WebhookSubscription, WebhookDelivery
+# SECURITY FIX 27-8: Rate Limiting für Webhook Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
+
+from app.db.models import User, WebhookSubscription, WebhookSubscriptionDelivery
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.core.webhook_signature import (
+    generate_signature_header,
+    SIGNATURE_HEADER_NAME,
+)
 from app.db.schemas import (
     WebhookSubscriptionCreate,
     WebhookSubscriptionUpdate,
@@ -46,6 +54,8 @@ def generate_webhook_secret() -> str:
     return f"whsec_{secrets.token_urlsafe(32)}"
 
 
+# SECURITY FIX 27-8: Rate-Limit für Webhook-Erstellung
+@limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post(
     "/",
     response_model=WebhookSubscriptionWithSecret,
@@ -54,6 +64,7 @@ def generate_webhook_secret() -> str:
     description="Erstellt ein neues Webhook-Abonnement für Event-Benachrichtigungen."
 )
 async def create_webhook(
+    request: Request,  # SECURITY FIX 27-8: Required for rate limiter
     webhook_data: WebhookSubscriptionCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -104,8 +115,8 @@ async def create_webhook(
     description="Gibt alle Webhook-Abonnements des aktuellen Benutzers zurück."
 )
 async def list_webhooks(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -129,7 +140,7 @@ async def list_webhooks(
     total = total_result.scalar() or 0
 
     # Fetch webhooks
-    query = query.order_by(WebhookSubscription.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(WebhookSubscription.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
     result = await db.execute(query)
     webhooks = result.scalars().all()
 
@@ -216,6 +227,7 @@ async def update_webhook(
 @router.delete(
     "/{webhook_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Webhook löschen",
     description="Löscht ein Webhook-Abonnement und alle zugehörigen Zustellungsprotokolle."
 )
@@ -223,7 +235,7 @@ async def delete_webhook(
     webhook_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-) -> None:
+) -> Response:
     """Webhook löschen."""
     result = await db.execute(
         select(WebhookSubscription).where(
@@ -247,6 +259,8 @@ async def delete_webhook(
         webhook_id=str(webhook_id),
         user_id=str(current_user.id)
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -290,7 +304,7 @@ async def rotate_webhook_secret(
     return WebhookSecretRotateResponse(
         id=webhook.id,
         secret=new_secret,
-        rotated_at=datetime.utcnow()
+        rotated_at=datetime.now(timezone.utc)
     )
 
 
@@ -308,8 +322,6 @@ async def test_webhook(
 ) -> WebhookTestResponse:
     """Test-Webhook an den Endpoint senden."""
     import httpx
-    import hmac
-    import hashlib
     import json
     import time
 
@@ -328,10 +340,11 @@ async def test_webhook(
         )
 
     # Test-Payload erstellen
+    timestamp = int(time.time())
     payload = {
         "event_id": f"test_{secrets.token_hex(8)}",
         "event_type": test_data.event_type,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "api_version": "v1",
         "test": True,
         "data": {
@@ -341,24 +354,39 @@ async def test_webhook(
         }
     }
 
-    # Signatur generieren
+    # Signatur generieren (neues Format mit Timestamp-Schutz)
     payload_bytes = json.dumps(payload, separators=(',', ':')).encode('utf-8')
-    signature = hmac.new(
-        webhook.secret.encode('utf-8'),
-        payload_bytes,
-        hashlib.sha256
-    ).hexdigest()
+    signature = generate_signature_header(payload_bytes, webhook.secret, timestamp)
 
     # Headers vorbereiten
     headers = {
         "Content-Type": "application/json",
-        "X-Webhook-Signature": signature,
+        SIGNATURE_HEADER_NAME: signature,
         "X-Webhook-Delivery-ID": payload["event_id"],
+        "X-Webhook-Timestamp": str(timestamp),
         "X-Webhook-Test": "true",
         "User-Agent": "Ablage-Webhook/1.0"
     }
     if webhook.headers:
         headers.update(webhook.headers)
+
+    # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
+    from app.core.security import validate_url_for_ssrf_async
+
+    is_valid, ssrf_error = await validate_url_for_ssrf_async(webhook.url)
+    if not is_valid:
+        logger.warning(
+            "webhook_test_ssrf_blocked",
+            webhook_id=str(webhook_id),
+            url=webhook.url[:50],
+            error=ssrf_error
+        )
+        return WebhookTestResponse(
+            success=False,
+            status_code=None,
+            response_time_ms=0,
+            error=f"SSRF-Schutz: {ssrf_error}"
+        )
 
     # Webhook senden
     start_time = time.time()
@@ -396,21 +424,21 @@ async def test_webhook(
         )
 
     except httpx.ConnectError as e:
-        logger.warning("webhook_test_connection_error", webhook_id=str(webhook_id), error=str(e))
+        logger.warning("webhook_test_connection_error", webhook_id=str(webhook_id), **safe_error_log(e))
         return WebhookTestResponse(
             success=False,
             status_code=None,
             response_time_ms=None,
-            error=f"Verbindungsfehler: {str(e)}"
+            error=safe_error_detail(e, "Vorgang")
         )
 
     except Exception as e:
-        logger.error("webhook_test_error", webhook_id=str(webhook_id), error=str(e))
+        logger.error("webhook_test_error", webhook_id=str(webhook_id), **safe_error_log(e))
         return WebhookTestResponse(
             success=False,
             status_code=None,
             response_time_ms=None,
-            error=f"Fehler: {str(e)}"
+            error=safe_error_detail(e, "Vorgang")
         )
 
 
@@ -422,8 +450,8 @@ async def test_webhook(
 )
 async def list_webhook_deliveries(
     webhook_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     status_filter: Optional[str] = Query(None, alias="status", description="Nach Status filtern"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -445,25 +473,25 @@ async def list_webhook_deliveries(
         )
 
     # Query deliveries
-    query = select(WebhookDelivery).where(
-        WebhookDelivery.subscription_id == webhook_id
+    query = select(WebhookSubscriptionDelivery).where(
+        WebhookSubscriptionDelivery.subscription_id == webhook_id
     )
 
     if status_filter:
-        query = query.where(WebhookDelivery.status == status_filter)
+        query = query.where(WebhookSubscriptionDelivery.status == status_filter)
 
     # Total count
-    count_query = select(func.count(WebhookDelivery.id)).where(
-        WebhookDelivery.subscription_id == webhook_id
+    count_query = select(func.count(WebhookSubscriptionDelivery.id)).where(
+        WebhookSubscriptionDelivery.subscription_id == webhook_id
     )
     if status_filter:
-        count_query = count_query.where(WebhookDelivery.status == status_filter)
+        count_query = count_query.where(WebhookSubscriptionDelivery.status == status_filter)
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
     # Fetch deliveries
-    query = query.order_by(WebhookDelivery.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(WebhookSubscriptionDelivery.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
     result = await db.execute(query)
     deliveries = result.scalars().all()
 

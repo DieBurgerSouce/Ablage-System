@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\pipeline_scheduler_pass\pipeline_pass_base.py
+# hypothesis_version: 6.148.7
+
+['FLAGS_enable_pir_api', 'backward', 'event_to_record', 'events_to_wait', 'force_record_event', 'forward', 'num_micro_batches', 'optimizer', 'plan', 'recv_forward', 'send_backward']

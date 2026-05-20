@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\tensor\compat.py
+# hypothesis_version: 6.148.7
+
+[', ', 'axis', 'dilations', 'dim', 'keepdim', 'kernel_sizes', 'max', 'min', 'name', 'num_or_sections', 'other', 'paddings', 'paddle.compat.Unfold', 'paddle.compat.max', 'paddle.compat.median', 'paddle.compat.min', 'paddle.compat.sort', 'paddle.compat.split', 'paddle.max', 'paddle.median', 'paddle.min', 'paddle.nanmedian', 'paddle.nn.Unfold', 'paddle.sort', 'paddle.split', 'strides', 'x']

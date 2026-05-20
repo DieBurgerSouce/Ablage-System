@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\device\cuda\cuda_graphed_layer.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, ' | ', '-', '0', 'Backward input', 'Backward output', 'Forward input', 'Forward output', 'Unnamed', 'float32', 'printer']

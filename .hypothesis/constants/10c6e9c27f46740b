@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pypdfium2\internal\consts.py
+# hypothesis_version: 6.148.7
+
+[180, 270, '3D annotation', '?', 'AcroForm', 'Attachments', 'BGR', 'BGRA', 'BGRX', 'CalGray', 'CalRGB', 'Data format error', 'DeviceCMYK', 'DeviceGray', 'DeviceN', 'DeviceRGB', 'File access error', 'Fit', 'FitB', 'FitBH', 'FitBV', 'FitH', 'FitR', 'FitV', 'Full-screen', 'ICCBased', 'Indexed', 'L', 'Lab', 'Layers', 'Layout error', 'Load error', 'Movie annotation', 'None', 'Outline', 'Pattern', 'Portable collection', 'RGB', 'RGBA', 'RGBX', 'Security', 'Separation', 'Shared form (email)', 'Shared review', 'Signature annotation', 'Sound annotation', 'Success', 'Thumbnails', 'Unhandled constant', 'Unknown error', 'XFA', 'XFA form', 'XFAF', 'XYZ', 'form', 'image', 'path', 'shading', 'text']

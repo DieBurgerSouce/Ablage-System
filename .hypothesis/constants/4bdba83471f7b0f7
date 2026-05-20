@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\utils\_clustering.py
+# hypothesis_version: 6.148.7
+
+[1e-08, 0.0001, 0.6, 1.0, 100, 10000, 'auto', 'average', 'complete', 'correlation', 'cosine', 'single', 'sqeuclidean', 'xgboost_distances_r2']

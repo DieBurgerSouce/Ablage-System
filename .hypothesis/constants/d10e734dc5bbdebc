@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\chart\axis.py
+# hypothesis_version: 6.148.7
+
+[100, 'c:auto', 'c:axId', 'c:axPos', 'c:baseTimeUnit', 'c:crossAx', 'c:crossBetween', 'c:crosses', 'c:crossesAt', 'c:delete', 'c:dispUnits', 'c:extLst', 'c:lblAlgn', 'c:lblOffset', 'c:logBase', 'c:majorGridlines', 'c:majorTickMark', 'c:majorTimeUnit', 'c:majorUnit', 'c:max', 'c:min', 'c:minorGridlines', 'c:minorTickMark', 'c:minorTimeUnit', 'c:minorUnit', 'c:noMultiLvlLbl', 'c:numFmt', 'c:orientation', 'c:scaling', 'c:spPr', 'c:tickLblPos', 'c:tickLblSkip', 'c:tickMarkSkip', 'c:title', 'c:txPr', 'val']

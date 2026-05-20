@@ -2,17 +2,410 @@
 
 All notable changes to the Ablage System will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## \[Unreleased\]
+
+### Security
+
+- **S1.1 (HIGH, 2026-05-20)** `app/api/v1/trash.py` Multi-Tenant-Filter und Audit-Lueckenfix: `permanently_delete_document` und `empty_trash` filterten nur `Document.owner_id`, nicht `company_id` — User die zwischen Companies wechseln konnten fremde Dokumente PERMANENT hart loeschen. Hard-Delete-Kaskade ohne Audit-Eintrag. Plus: `empty_trash` machte N+1 `await db.delete(doc)` in Schleife. Fix: lokale Helper `_get_user_company_id` + `_require_user_company_id_dep` (Pattern analog F3), `Document.company_id == company_id` zum WHERE, Audit-Event `document_permanently_deleted` via `emit_domain_event` VOR der Delete-Kaskade, Bulk-`delete(Document).where(and_(*conditions))` statt Schleife, try/except mit `await db.rollback()`. Defense-in-Depth: `owner_id` bleibt als zweiter Filter. Commit `e8f6badb`.
+- **S1.2 (HIGH, 2026-05-20)** `app/api/v1/retention_admin.py` `safe_error_detail` Args-Reihenfolge: 3 Stellen (164, 263, 366) riefen `safe_error_detail(string, exception)` statt `safe_error_detail(e, context)` auf. `type(e).__name__` lief auf einem String → `SAFE_EXCEPTION_TYPES`-Whitelist griff nicht, PII-Schutz fiel auf generischen Fallback. Args geswapped. Sanity-Grep: kein anderer Aufruf in `app/api/v1/` hat String-Literal als erstes Arg. Commit `59a5702f`.
+- **S1.3 (HIGH, 2026-05-20, CWE-89)** `app/api/v1/graphql_api.py` Filter-Allow-List pro Entity: `QueryBuilder._apply_filters` lief ohne Whitelist über alle filters und holte Felder via `getattr(model_class, field_name)` — Boolean-based Field-Oracle-Attacks auf PII (`iban`, `vat_id`, `tax_id`) und Auth-Daten (`password_hash`, `totp_secret`) moeglich. Fix: neue Klassen-Variable `ALLOWED_FILTER_FIELDS: Dict[str, Set[str]]` pro `entity_type` mit konservativer Whitelist (analog `ALLOWED_ORDER_FIELDS`), fail-closed bei unbekanntem `entity_type`, rejected Felder werden geloggt (`graphql_filter_field_rejected`). Whitelist enthaelt bewusst KEIN: iban, vat_id, tax_id, password_hash, totp_secret. Commit `cf062e80`.
+- **S1.4 (HIGH, 2026-05-20)** `app/api/v1/nlq.py` `generated_sql` Admin-Gate: NLQ-API exposed `generated_sql` in Response immer — Angreifer konnten durch iterierte Queries den SQL-Generator/Sanitizer profilen und Injection-Patterns finden. Fix: `NLQQueryResponse.generated_sql: str → Optional[str] = None`, in `execute_nlq_query` nur returnt wenn `current_user.is_superuser`. Rate-Limit (`10/minute`) + SQL-Sanitizer (Phase B4) waren bereits aktiv — dies ist die letzte Schicht. `/query/stream` exposed nie SQL, war nicht betroffen. Commit `dd693f14`.
+
+- **F3 (CRITICAL, 2026-05-19)** Invoice-API User-Lock-In via `Document.owner_id` aufgeloest. 19 Endpoints in `app/api/v1/invoices.py` filterten ueber `Document.owner_id == current_user.id` — Kollegen in derselben Firma sahen ihre Rechnungen NICHT gegenseitig. Pattern analog 2026-01-18 Workflow/Banking-Fixes: neue FastAPI-Dependency `get_user_company_id_dep`, alle Filter auf `Document.company_id == company_id` umgestellt. 16 Filter-Stellen + 12 latent broken `current_user.company_id`-Referenzen (User-Model hat KEIN company_id-Feld) aufgeloest, 5 dead `if not company_id`-Bloecke entfernt. Audit-Felder bleiben user-scoped. Commit `e1e99825`.
+- **F2 (HIGH, 2026-05-19)** Runtime-Bomben in `business_intelligence_service.py` aufgeloest. 7 Stellen referenzierten nicht-existente Spalten (`Invoice.entity_id` 5x, `Document.entity_id` 2x). Code-Path lebt (8 rag-API-Aufrufer). Loesung: JOIN Document via `Invoice.document_id`, entity-Bezug via `Document.business_entity_id`. Folge-Drift dokumentiert (InvoiceTracking-Model exposiert DB-Spalte `entity_id` aus Migration 094 nicht — F4 als separater Cleanup). Commit `7badff26`.
+- **K4 (CRITICAL)** Multi-Tenant-Bypass in `app/api/v1/dpia.py` geschlossen. Fuenf Endpoints (`get_dpia`, `update_dpia_status`, `add_dpo_consultation`, `get_recommendations`, `get_audit_trail`) lieferten cross-tenant DPIAs aus, weil die Service-Methoden ohne `company_id`-Filter im SELECT-WHERE arbeiteten und der Router nur einen Post-Fetch-Check mit `if dpia.company_id and ...` machte (NULL-company_id auf Legacy-Rows wurde durchgelassen). Service-Layer filtert jetzt im WHERE, Router-Check ohne `and`-Shortcircuit, 404 statt 403 gegen Info-Leak. 11 Unit-Tests in `tests/unit/api/test_dpia_api.py`.
+- **K5 (CRITICAL)** DoS-Schutz fuer `POST /api/v1/notification-rules/test`. Pydantic-konstrainte Validierung (max_depth=5, max_total_nodes=200, max_string=10_000, max 100 Keys/Items pro Container), Operator-Whitelist (`eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `contains`, `starts_with`, `ends_with`, `in`, `not_in`, `AND`/`OR`/`NOT`), Rate-Limit `30/minute` pro User. 15 Tests in `tests/unit/api/test_notification_rules_api.py`.
+- **K6 (CRITICAL)** Whitelist fuer `aggregate_type`-Pfadparameter in `app/api/v1/event_sourcing.py` (3 Endpoints). Frozenset `{document, invoice, payment, entity, alert, workflow}` abgestimmt mit `snapshot_service.py:66`. Unbekannte Typen -> 400 vor Service-Call (kein Reach-Through). 11 Tests in `tests/unit/api/test_event_sourcing_api.py`.
+
+### Fixed
+
+- **Task B (2026-05-19)** Invoice-Model an DB-Schema angeglichen. `app/db/models_invoice.py` deklarierte `company_id` nicht obwohl DB-Spalte seit Migration 022 existiert (FK-Constraint via Migration 057). `business_intelligence_service.py:362,547,788` nutzte `Invoice.company_id` — haette zur Laufzeit AttributeError geworfen. Column + Index `ix_invoices_company_id` + Docstring ergaenzt. Drift-Report `docs/drift/invoice-model-drift.md` mit Delta-Tabelle + Follow-ups F1-F4. Commit `37baeb94`.
+- **F1 (2026-05-19)** `business_contact_id` Phantom-Column aus Invoice-Model entfernt. DB-Tabelle `invoices` hatte die Spalte nie (Migration 022 + Folge: 0 ALTER-Statements). Im Model deklariert + `business_contact` relationship + Index `ix_invoices_contact_date` — Dead Code: 0 Code-Usage ausserhalb des Models verifiziert. Commit `81ff78c1`.
+- **S1.5 F4 (2026-05-20)** `InvoiceTracking.entity_id` Column im Model nachgezogen. DB-Spalte existiert seit Migration 094 (`add_skonto_and_partial_payments.py:242-252`, FK `business_entities`, ondelete SET NULL, nullable, indexed). Das SQLAlchemy-Model deklarierte sie nicht, obwohl 50+ Service-Stellen (Fraud-Detection, Cashflow-Predictor, Knowledge-Graph, Holding-KPIs, Portal-Invoices, Customer-LTV) sie nutzen. Drift-Pattern analog Task B (`Invoice.company_id`). Fix: Column + `relationship('BusinessEntity', backref='invoice_trackings')` + Index `ix_invoice_tracking_entity_id`. Keine Migration noetig (DB hat die Spalte). `docs/drift/invoice-model-drift.md` um F4-DONE-Block ergaenzt. Commit `d56cd145`.
+- **Task D (2026-05-19)** Alertmanager SMTP-Auth wieder scharf. `infrastructure/alerting/alertmanager.yml` hatte 3x `auth_password: ''` hardcoded — Mail-Alerts erreichten niemanden, obwohl Slack-Routing laufenfaehig war. Pattern analog Slack-G01: file-mount `/etc/alertmanager/smtp-password` (gitignored), Docker-Volume-Mount in `docker-compose.yml`, Setup-Anleitung in `.env.example` und alertmanager.yml-Header. Commit `1b0c76d3`.
+- **K1 (CRITICAL)** Alembic-Migration-Graph konsolidiert: 15 dangling Heads (014_add_email_verification, 021, 054, 066, 100_slack_integration, 111_add_delegation_tables, 115, 137, 147, 151, 203, 208, 211, 213, 261) zu einer Merge-Revision `262_merge_all_dangling_heads` zusammengefuehrt. `alembic upgrade head` lieferte vorher "Multiple head revisions are present" - jetzt genau 1 Head. CI-Job `alembic-heads-check` (AST-basiert, DB-frei) in `.github/workflows/ci.yml` enforced die Invariante. 3 Tests in `tests/unit/test_alembic_heads_invariant.py`.
+- **K2 (CRITICAL)** `deploy.yml` Test-Gate. Vor diesem Fix konnte Deploy bei jedem Push auf `main` starten - auch bei rotem CI. Trigger umgestellt von `push:branches:[main]` auf `workflow_run:workflows:[CI]:types:[completed]`, `pre-deploy-checks.if` blockiert wenn `conclusion != success`. Tags und `workflow_dispatch` bleiben (Tags impliziert CI-Erfolg auf merge commit). Leerer `Run Pre-deployment Tests` TODO-Stub entfernt.
+- **K3** Notiz: Im Master-Review als ImportError gemeldet (`build_content_disposition` in `app/api/v1/privat.py:29`), beim Verify als False-Positive identifiziert - `app/core/security/__init__.py:71,126` re-exportiert die Funktion korrekt aus `security_auth`. Kein Code-Change.
+
+### Fixed
+
+- Alerting: Slack-Spam-Sweep - 7 stale Critical/Warning Alerts feuerten seit 2026-05-10 jede Stunde, obwohl alle 21 Container healthy. Wurzelursachen behoben:
+  - Prometheus konnte Qdrant `/metrics` nicht scrapen (403 Forbidden) - `bearer_token_file` ergaenzt in `prometheus.yml`, Token-Datei `infrastructure/prometheus/qdrant_metrics_token` (gitignored) in Container gemountet.
+  - `ablage-worker` healthcheck schlug fehl trotz laufendem Worker - `celery inspect ping` ist inkompatibel mit `--pool=solo` waehrend laufender Task. Healthcheck umgestellt auf HTTP-Check (`curl /metrics + pgrep celery`).
+  - `RedisReplicationBroken` Rule auskommentiert (Single-Node-Setup, kein Replica).
+  - `BackupEncryptionDisabled` Rule auskommentiert (Feature aus Sprint-0 noch nicht implementiert).
+  - `RedisLowCacheHitRate` Schwellwert 0.9 -> 0.7 + Min-Sample-Filter `> 1000` (zu strikt fuer Pilot mit hauptsaechlich File-Operations).
+  - `CeleryNoActivity` Window 30m -> 2h, `for: 1h -> 4h` (Single-User-Idle-Phasen tolerieren).
+  - `ABTestingNoMetrics` rate-basiert statt `absent()` (feuert nur wenn vorher Traffic war und ploetzlich abreisst).
+
+### Added
+- **Task A (2026-05-19)** `.env.example` um 37 undokumentierte Variablen ergaenzt. Drift zwischen `.env` (66 Vars) und `.env.example` (vorher 105) geschlossen — 5 neue Sektionen: Infrastructure-URLs (DATABASE_URL, REDIS_URL, CELERY_*), MinIO Connection (ACCESS_KEY/SECRET_KEY/ENDPOINT/SECURE), Qdrant Detailed Config (HOST/PORTS/COLLECTIONS/API_KEY), Vector-DB A/B-Testing + Dual-Write (10 VECTOR_*-Vars), OCR/GPU Performance-Limits, Security (RATE_LIMIT_FAIL_CLOSED_*), Monitoring (PROMETHEUS_USER/PASSWORD, SLACK_WEBHOOK_URL). Verifikation: `comm -23 <(.env vars) <(.env.example vars)` → leer. Commit `74210d8e`.
+- API: GET /api/v1/metrics/internal/ab-testing - A/B-Testing-Metriken als Prometheus-Format (enabled, traffic_split, requests, latency, errors per Variant)
+- Frontend: SpotlightDialog als globale Komponente in AppLayout (verfuegbar auf jeder Seite)
+- Frontend: features/spotlight Feature-Modul (SpotlightDialog, SpotlightResults, RecentSearches, use-spotlight, use-recent-searches, spotlight-api, spotlight-types)
+- Tests: test_threat_detection_service.py, test_carrier_detection.py, test_signature_verification.py, test_tenant_config_service.py, test_webhook_verification.py
+
+### Fixed
+
+- Database: Migration 260 Domain Constraints - required_columns Idempotenz-Verbesserung, confidence_score Spaltenname korrigiert (ocr_results), redundante Constraints entfernt
+- Infrastructure: Prometheus ablage-backup + ab-testing Scrape-Jobs aktiviert (waren als TODO-Kommentar deaktiviert)
 
 ### Added
 
+- Database: Migration 257 - Missing Constraints (document_tags UniqueConstraint, chain_integrity CheckConstraint, priority/progress CheckConstraints)
+- Database: Migration 258 - Missing Query Performance Indexes
+- Database: Migration 259 - Seed Default Roles
+- Database: Migration 260 - Domain Constraints
+- Database: Migration 261 - Additional Query Performance Indexes
+- Frontend: Dokumenten-Graph Feature-Modul (document-graph/) mit Route, API-Layer, Komponenten und Hooks
+- Frontend: Sidebar-Link "Dokumenten-Graph" (GitCompareArrows Icon)
+- Infrastructure: Docker Multi-Stage Builds fuer worker + backend Dockerfiles (Build-Tools aus Produktions-Images entfernt, Digest-Pinning)
+- Infrastructure: Resource-Limits (cpus/memory), Logging-Config und stop_grace_period fuer alle Docker-Compose Services
+- Infrastructure: cluster/docker-compose.cluster.yml - Netzwerk-Segmentierung (cluster-backend, cluster-storage), Port-Binding auf 127.0.0.1
+- Orchestration: prompt_guard_hook.py - Shell-Command-Detection (PowerShell, Bash, venv Aktivierung) als Cross-Instance Interference Guard
+- Orchestration: [ralph-loop.md](http://ralph-loop.md) Slash-Command
+- Config: [CLAUDE.md](http://CLAUDE.md) Roadmap Tracking Protocol (Cross-Instance Status-Tracking via [breezy-napping-hare.md](http://breezy-napping-hare.md))
+- Tests: 30+ neue Unit-Tests fuer OCR (cross-backend, cross-validation, DNA, formula, semantic, supplier-template, table), Banking (auto-reconciliation, CSV-Parser, CAMT053, dunning, MT940, SEPA, payment-initiation, smart-reconciliation), API (clustering, contracts, review-queue, websocket), Security (threat-detection), Services (incident-response, inkasso, lexware, permission-audit), DATEV (auth)
+- Tests: Integration-Test test_index_verification.py fuer Datenbank-Index-Verifikation
+
+### Fixed
+
+- Database: Migration 232 Banking Multi-Tenant Backfill - nutzt jetzt user_companies (Many-to-Many) statt veraltetes users.company_id
+- Database: Migration 235 EventStore Unique-Sequence - korrigierte Constraint-Logik
+- Infrastructure: GitHub Actions Digest-Pinning fuer alle Workflows (Supply Chain Security, CIS-Supply-Chain-L1)
+- Infrastructure: GitHub Actions artifact retention-days auf 30 gesetzt
+
+### Changed
+
+- Infrastructure: GitHub Actions von Mutable-Tag-Referenzen (v4, v5) auf unveraenderliche SHA-Digest-Referenzen umgestellt
+- Orchestration: team_router_hook.py Trivial-Prompt-Filter um Shell-Command-Patterns erweitert (Backup fuer prompt_guard_hook)
+
+### Added
+
+- Database: DomainEvent SHA-256 Hash-Chain (event_hash, previous_hash, chain_hash Spalten) in models_misc.py fuer kryptografische Event-Integritaet
+- Database: Migration 254 - DomainEvent Hash-Chain Spalten (event_hash, previous_hash, chain_hash mit Index)
+- Database: Migration 255 - EntitySeasonalPattern Tabelle fuer saisonale Zahlungsmuster pro Entity/Monat
+- Database: models_predictions.py - EntitySeasonalPattern SQLAlchemy Model
+- Services: EventStore SHA-256 Hash-Chain-Berechnung bei jedem append() (GENESIS_PREVIOUS_HASH, \_calculate_event_hash, \_calculate_chain_hash)
+- Services: event_emitter.py - emit_domain_event() Hilfsfunktion fuer Domain-Event-Emission aus API-Endpoints
+- Services: event_sourcing/**init**.py - emit_domain_event Export hinzugefuegt
+- Services: CashflowPredictionService - SEASONAL_DELAY_FACTORS in Monte Carlo Simulation eingebunden (saisonale Gewichtung)
+- Workers: recompute_seasonal_patterns Celery-Task (woechentlich Sonntag 03:00 via Beat-Schedule)
+- Workers: celery_app.py - recompute-seasonal-patterns Beat-Schedule (Maintenance Queue)
+- API: Domain Events in [documents.py](http://documents.py) (document_created bei upload + upload_complete, document_deleted, document_exported)
+- API: Domain Events in [entities.py](http://entities.py) (entity_modified bei update_entity)
+- API: Domain Events in [invoices.py](http://invoices.py) (invoice_status_changed bei update_invoice + mark_invoice_paid)
+- Frontend: WebSocket RealtimeWebSocketClient - onRawMessage() Handler fuer ungefiltertes Message-Listening
+- Frontend: WebSocket RealtimeWebSocketClient - sendMessage() public Methode fuer JSON-Versand
+- Frontend: useRawMessage() React Hook fuer typ-gefilterte Raw-Message-Subscriptions
+- Frontend: TypingIndicator Komponente (collaboration/components/TypingIndicator.tsx)
+- Frontend: useTypingIndicator Hook (collaboration/hooks/useTypingIndicator.ts)
+- Frontend: SplitDocumentViewer - TypingIndicator, AnnotationOverlay, AnnotationSidebar, useAnnotations integriert
+- Frontend: collaboration/index.ts - TypingIndicator und useTypingIndicator Exports
+- Backend: RealtimeWebSocketManager - typing_start + typing_stop Message-Handler mit Room-Broadcast
+- Workers: trigger_auto_filing_pipeline_task - vollautomatische Dokumenten-Ablage-Pipeline nach OCR-Abschluss (Redis Pub/Sub Progress, DSGVO-konform, PII wird NIEMALS geloggt)
+- Workers: ocr_tasks.py - Auto-Filing Pipeline wird nach OCR-Erfolg automatisch getriggert (filing_pipeline_task_id im Task-Result)
+- API: review_queue.py - Review Queue Endpoints (GET /review-queue, POST /documents/{id}/confirm-filing) fuer Dokumente mit unsicherer Auto-Zuordnung
+- Services: DocumentPipelineOrchestrator Step 2b - Smart Document Matching via SmartMatchingService (max 5 Matches, Konfidenz-Scoring, Feature-Erklaerung)
+- Services: event_broadcaster.py - 10 neue Pipeline-EventTypes (PIPELINE_STARTED, PIPELINE_STEP\_*, PIPELINE_AUTO_ASSIGNED, PIPELINE_REVIEW_NEEDED, DOCUMENT_PIPELINE\_*, DOCUMENT_AUTO_FILED) + broadcast_pipeline_progress() Hilfsfunktion
+- Frontend: websocket.ts - 5 neue RealtimeEventType-Werte fuer Pipeline-Events + Invalidation-Mapping fuer review-queue TanStack Query Cache
+- Frontend: use-auto-filing-progress.ts - React Hook fuer Echtzeit-Verfolgung des Pipeline-Fortschritts (Schritte, Konfidenz, Status)
+- OCR: Document DNA Service (document_dna_service.py) - Layout-Fingerprinting und adaptives Matching fuer Dokument-Wiedererkennung
+- OCR: Cross-Validation Service (cross_validation_service.py) - Feld-Plausibilitaetspruefung fuer OCR-extrahierte Felder
+- OCR: OCR Pipeline - Document DNA und Cross-Validation als neue Pipeline-Stufen (5.5 und 6.5)
+- OCR: OCR Feedback Service - Auto-Template-Update bei Benutzer-Korrekturen mit Bounding-Box-Daten
+- OCR: ocr_learning_tasks.py - Celery-Tasks fuer Correction-Queue-Consumer und Pattern-Apply
+- OCR: Celery Beat - ocr-learning-consume-correction-queue (alle 30min) und ocr-learning-apply-patterns (03:00 daily)
+- API: DATEV Zero-Touch-Stats Endpoint (GET /datev/zero-touch-stats) - Buchungsquoten-Dashboard
+- API: Scan-to-Buchung ProcessBookingResponse - manuelle Buchungsausloesung per API
+- API: Steuer-Assistent Endpoints in [tax.py](http://tax.py) (Kategorisierung, Elster-Export, StreamingResponse)
+- Services: DATEV Plausibility Service (plausibility_service.py) - Plausibilitaetspruefung vor DATEV-Buchung
+- Services: Scan-to-Booking Orchestrator (scan_to_booking_orchestrator.py) - Zero-Touch-Pipeline-Koordination
+- Services: Privat Contract Management Service (contract_management_service.py) - P5.1 Vertragsmanagement
+- Services: Tax Assistant Service (tax_assistant_service.py) - P5.2 Steuer-Assistent mit Elster-Export
+- Services: Monitoring Prometheus Metrics (app/services/monitoring/prometheus_metrics.py)
+- Database: models_privat_contracts.py - PrivatContract, PrivatContractReminder, PrivatContractCategory, PrivatContractStatus
+- Database: [models.py](http://models.py) - Re-Export fuer Privat-Contract-Models
+- Workers: booking_tasks.py - Scan-to-Buchung Auto-Booking Tasks (process_auto_booking, batch_process_all_companies)
+- Workers: celery_app.py - datev-batch-auto-booking Beat-Schedule (alle 15min)
+- Workers: privat_tasks.py - send_contract_reminders Task (idempotent, taeglich 08:00)
+- Frontend: OnboardingWizard in \__root.tsx integriert (P4.1 - 5-step First-Login-Experience)
+- Frontend: Product-Tour modularisiert - Tours-Exports, GettingStartedConfig, HelpTooltips
+- Frontend: API v1 contracts_private.py - Vertragsmanagement-API registriert in [main.py](http://main.py)
+- Infrastructure: ocr-self-learning.json Grafana-Dashboard fuer OCR-Lernfortschritt
+- Infrastructure: ablage-backup-monitoring.json Grafana-Dashboard erweitert
+- Operations: [disaster-recovery.md](http://disaster-recovery.md) Runbook + 8 Backup-Skripte (pg_backup, minio_backup, redis_backup, volume_backup, pg_restore, pg_verify, restore_test, backup_all, backup_metrics)
+- Workers: Prometheus-Metriken fuer gdpr_tasks.py (6 Metriken: gdpr_deletion_requests_pending Gauge, gdpr_deletion_processing_duration_seconds Histogram, gdpr_deletion_completed_total/gdpr_deletion_errors_total Counter mit source-Label, gdpr_breach_notifications_total Counter mit type-Label, gdpr_compliance_score Gauge)
+- Workers: Prometheus-Metriken fuer retention_enforcement_tasks.py (7 Metriken: scanned/marked/deleted/errors Counter mit Labels, scan_duration_seconds Histogram, documents_by_category/pending_reviews Gauge)
+- Infrastructure: Neues Grafana-Dashboard infrastructure/grafana/dashboards/ablage-retention-enforcement.json fuer Retention-Enforcement-Monitoring
+- Tests: frontend/src/features/chat/**tests**/use-chat-websocket.test.ts - Tests fuer Chat-WebSocket-Hook
+- Tests: frontend/src/features/portal/**tests**/portal-api.test.ts - Tests fuer Portal-API
+- Core: ConflictError (E409) und ServiceUnavailableError (E503) Exception-Klassen mit ERROR_CODE_REGISTRY-Eintraegen
+- Core: ConflictError und ServiceUnavailableError in EXCEPTION_STATUS_CODES Handler registriert (409/503)
+
+### Fixed
+
+- DB: WebhookDelivery umbenannt zu WebhookSubscriptionDelivery (Tablename webhook_subscription_deliveries, neue Index-Namen)
+- DB: [models.py](http://models.py) und webhook_dispatcher.py + [webhooks.py](http://webhooks.py) auf WebhookSubscriptionDelivery aktualisiert
+- Services: PaymentService - company_id durch user_id ersetzt in 9 Methoden (create, get, list, approve, cancel, submit, confirm_with_tan, get_pending, create_batch, get_skonto_opportunities)
+- Services: LiquidityForecastService - duplizierten company_id Parameter aus \_create_rolling_forecast() und \_detect_payment_anomalies() entfernt
+- API: annotations_enhanced.py - response_model=None fuer 204 No Content DELETE-Endpoint
+- Orchestration: team_router_hook.py - Trivial-Prompt-Filter vereinfacht (Fragen/Exploration-Keywords nicht mehr blockiert)
+
+### Refactored
+
+- DB: 8 Satellite-Model-Dateien nutzen Re-Exporte statt Duplikat-**tablename**-Definitionen (contract, document_template, models_annotations_extended, models_clustering, models_collaboration, models_integrity, models_learning_autonomy, models_signature)
+
+### Added
+
+- Database: Migration 253 - GoBD/DSGVO Compliance SQL Views (gobd_audit_summary: monatliche Audit-Statistiken pro Company aus audit_logs; gdpr_deletion_status: Uebersicht DSGVO-Loeschanfragen mit Status, Frist und verbleibenden Tagen)
+- Database: Migration 252 - GoBD Audit-Felder (created_by_id, updated_by_id) fuer payment_batches und dunning_records mit FK auf users (SET NULL)
+- Services: DunningService - user_id Parameter fuer GoBD-Audit in create_dunning_record(), escalate_dunning(), close_dunning() und \_map_to_response()
+- API: Visual Diff - POST /api/v1/visual-diff/compare/documents Endpunkt fuer zeilenweisen Text-Diff per Dokument-ID mit Multi-Tenant-Isolation
+- Tests: test_inbound_webhook_service.py (InboundWebhookService vollstaendig mit Mocks) und test_webhooks_receive_api.py (3 API-Endpunkte)
+- Database: [models.py](http://models.py) refactored - Basistypen (Base, CrossDBJSON, CrossDBTSVector, CrossDBVector) in models_base.py ausgelagert (Circular Import Prevention)
+- Database: 20 neue Satellite-Model-Dateien fuer alle Domaenen (ai_ml, auth_access, banking, cash_company, datev, dropship_tax, entity_business, erp_import, gdpr_compliance, hr, integration, misc, notification, ocr_validation, privat_enterprise, privat_space, rag, report, surya_training, template_knowledge, workflow)
+- Frontend: Custom Fields Admin-Feature (/admin/custom-fields Route, CRUD-UI, API-Layer, TypeScript-Typen)
+- Frontend: Sidebar-Link "Eigene Felder" fuer Admin-Benutzer
+- Frontend: DocumentCustomFields-Komponente in SplitDocumentViewer Cockpit-Tab integriert
+- Tests: Unit-Tests fuer BarcodesPipelineService und DocumentSummaryService
+- Database: Migrationen 238-250 (CDC, Table Partitioning, Optimistic Locking, Field-Level Encryption, Anomaly Detection, Document Summaries, Document Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Event Platform, Feature Toggle History)
+- Database: 9 neue Satellite-Models (models_cdc, models_clustering, models_partitioning, models_encryption, models_anomaly, models_active_learning, models_webhooks, models_integration_sync, models_dashboard)
+- Database: Document-Model Auto-Summary Felder (summary, keywords, one_liner, summary_model, summary_generated_at) mit Partial Index
+- Database: alembic/env.py - Imports fuer alle neuen Satellite-Models (CDC, Clustering, Partitioning, Encryption, Anomaly, Active Learning, Webhooks, Integration Sync, Dashboard)
+- API: 13 neue Router in [main.py](http://main.py) (webhooks_outbound, role_dashboards, explainability, morning_briefing, ai_chat, dashboard_builder, clustering, anomalies, active_learning, cdc, encryption, feature_toggles, integration_sync)
+- Services: Document Timeline Service umfangreich erweitert (Aktivitaets-Tracking, Timeline-Aggregation)
+- Workers: Outbound Webhook Event Platform Tasks (webhook_tasks: delivery, retry, DLQ, cleanup)
+- Workers: Partition Maintenance Tasks (ensure_partitions, archive_old, update_stats, health_check)
+- Workers: Beat-Schedules fuer Webhook-Retry (5min), Webhook-Cleanup (03:30), Partition-Ensure (01:30), Partition-Archive (Sonntag 02:00), Partition-Stats (05:15)
+- Frontend: use-auto-save-draft Hook fuer automatisches Speichern von Entwuerfen
+- API: HTTPException Handler mit StandardErrorResponse (correlation_id, timestamp, path, German message support)
+- API: Search "Meinten Sie?" Suggestion via pg_trgm bei 0 Suchergebnissen (Dateinamen, Tags, Text)
+- API: app/core/pagination.py - wiederverwendbare Pagination-Helper fuer alle Endpoints
+- Services: GoBD Compliance Service - Protocol-Klasse (\_BuchungProtocol), TypedDicts (GoBDFinding, GoBDStatistics)
+- Tests: 4 neue Unit-Tests (test_crud_service, test_dunning_service, test_retention_service, test_search_suggestions)
+- Frontend: InvoiceWorkflowPage - data-tour Attribute fuer Onboarding-Tour-Integration (workflow-approval, workflow-review Cards)
+
+### Changed
+
+- Infrastructure: Dockerfile auf Multi-Stage Build umgestellt (builder-Stage mit uv, production-Stage ohne Build-Tools)
+- Infrastructure: Alertmanager Email-Routing nach Schweregrad (critical 15min, high 1h, warning konfigurierbar)
+- API: build_content_disposition aus app.core.security_auth importiert (zentralisiert, vorher inline in [accounting.py](http://accounting.py))
+- Services: Viele API-Endpoints - konsistentes Import-Muster fuer build_content_disposition
+
+### Fixed
+
+- Frontend: AppLayout.tsx - id-Prop auf semantisch korrektes main-Element verschoben (Accessibility, WCAG 2.1 AA)
+- API: .env.example - neue Environment-Variablen dokumentiert
+- Security: Migration 251 - company_id zu document_groups hinzugefuegt (Multi-Tenant Isolation statt User-Isolation). Backfill via user_companies, NOT NULL Constraint, FK zu companies, Composite Index (company_id, group_type)
+- API: DocumentGroup 11 Endpoints in [groups.py](http://groups.py) auf company_id Isolation umgestellt (require_company Dependency, owner_id Filter durch company_id Filter ersetzt)
+- API: Transactions 6 Endpoints auf company_id Filter umgestellt (list, get, create, update, update_step, delete)
+- Services: DocumentGroupingService create_group/confirm_group/split_group/get_review_queue migriert auf company_id (Backward-Compatibility via owner_id Fallback)
+- Security: DunningService - 11 Stellen von owner_id/user_id auf company_id umgestellt (Multi-Tenant Isolation in Banking-Services)
+- Security: ReconciliationService - 8 Stellen von Document.owner_id auf Document.company_id umgestellt (5 Match-Strategien + 3 Service-Methoden)
+- Security: CWE-113 CRLF-Injection Prevention - X-Company-ID Header in personal-api.ts + client.ts sanitisiert (`.replace(/[\r\n]/g, '')`)
+- Frontend: auth.ts refreshToken() - Return-Statement in if-Block verschoben, || '' Fallback fuer refresh_token, throw bei fehlendem access_token (Fixes T1 MITTEL + T2 NIEDRIG)
+- Frontend: auth.ts Token-Refresh Mutex via refreshPromise - verhindert parallele 401-Race-Condition (Fix RC1)
+
+### Added
+
+- Services: Zero-Touch End-to-End Pipeline Chain (OCR -&gt; Klassifizierung -&gt; Entity-Linking -&gt; Kontierung -&gt; 3-Way-Matching -&gt; Ablage) mit Confidence-Scoring und Graceful Degradation
+- Services: Auto-Kontierung Service fuer DATEV SKR03/SKR04 mit GoBD-konformer Buchungslogik (kein PII-Logging)
+- Services: 3-Way-Matching Service (Bestellung &lt;-&gt; Lieferschein &lt;-&gt; Rechnung, Auto-Freigabe &gt;= 95% Confidence)
+- Services: Image Diff Service fuer pixelweisen Dokumentenvergleich (Diff-Bild, Overlay, Similarity-Score)
+- API: Knowledge Graph Endpoints (Entity-Graph mit konfigurierbarer Tiefe, Shortest-Path, Community Detection)
+- API: Saga Monitoring API (7 Endpoints: Liste, Statistiken, Details, Logs, Diagram, Retry, DLQ-Management)
+- API: Pipeline API (manueller Trigger und Status-Abfrage fuer Zero-Touch-Pipeline)
+- Workers: Pipeline Celery Tasks (process_document_pipeline, retry_pipeline_step)
+- Workers: Saga Tasks fuer Saga-Pattern-Ausfuehrung via Celery
+- Workers: Vault Tasks fuer periodische Secret-Rotation via HashiCorp Vault (maintenance-Queue)
+- Database: Migration 151 - GoBD INSERT-only Triggers fuer domain_events (vollstaendig immutable) und gobd_audit_chain (Verifikations-Felder ausgenommen)
+- Security: Vault Client Haertung mit TTL-basiertem Caching, AppRole Auth und Retry mit exponentiellem Backoff
+- Frontend: Knowledge Graph UI-Overhaul (GraphCanvas refactored, GraphToolbar, Views-Directory)
+- Frontend: Product Tour Erweiterung (HelpTooltip, UserModeToggle, use-checklist-events, use-user-mode Hooks)
+- Frontend: Visual Diff ImageDiffViewer Komponente
+- Frontend: Workflow Builder BlockNode Komponente (WorkflowBlockNode)
+
+### Fixed
+- Security: Duplicate Detection API - company_id wird aus Auth-Context abgeleitet, nicht mehr aus Request-Body (IDOR-Prevention, Multi-Tenant Enforcement)
+- Security: Banking FinTS API - 12 Service-Call-Sites korrigiert von user_id auf company_id Parameter
+- Security: BatchScanRequest.company_id als Optional/Deprecated markiert (company_id kommt jetzt aus Auth)
+- API: Transactions - Pydantic v2 Migration (ConfigDict statt class Config)
+- Workers: Approval Tasks - structlog statt logging, TypedDict Return Types fuer alle Tasks, Celery Zeitlimits (soft 300s, hard 360s)
+- Workers: Folder Import Rule Tasks - safe_error_log fuer alle Error-Handler, Celery Zeitlimits
+
+### Changed
+
+- Refactor: Systematische Unicode-Normalisierung über 1168 Dateien (ae→ä, oe→ö, ue→ü, ss→ß, fuer→für) für konsistente deutsche Sprachqualität
+
+### Added
+
+- Database: Migration 225 Next Generation Features (automation_rules, annotation_tasks)
+- Database: Migration 226 Inbound Webhook Events (webhook_inbound_events)
+- Database: Migration 227 Mention Notifications (mention_notifications, notification_preferences)
+- Database: 10 Satellite Models (adhoc_reporting, annotations, approval, finance, ki-pipeline, webhooks)
+- API: 12 neue Endpoints (adhoc-reports, annotations, approval, automation, german-finance, ki-pipeline, proactive-assistant, smart-dashboard, terminology, webhooks)
+- Services: 15 neue Feature-Services (Ad-Hoc Reporting, Annotation, Approval Enhanced, Auto-Filing/Matching, BWA, Cashflow, USt, Confidence, Cross-Document Intelligence, Document Progress/Summary, Extraction Learning, German Terminology, Proactive Assistant, Smart Dashboard, Webhooks)
+- Workers: 10 neue Celery Task-Module (adhoc_report, annotation, approval, auto_filing, german_finance, ki_pipeline, proactive_assistant, smart_dashboard, webhook_inbound)
+- Frontend: 7 Feature-Module mit 115 Komponenten (adhoc-reporting, annotations-extended, approval-enhanced, german-finance, ki-pipeline, proactive-assistant, smart-dashboard)
+- Frontend: 14 neue Routes (/adhoc-reporting, /admin/annotation-tasks, /admin/approval-rules, /german-finance/\*, /ki-pipeline, /proactive-assistant, /smart-dashboard)
+- Frontend: Command Palette + Sidebar Navigation für neue Features
+- Services: Duplicate Detection (Visual + Text via imagehash + TF-IDF)
+- Services: Event-driven Import (IMPORT_STARTED/COMPLETED Events für Email/Folder Import)
+- Dependencies: imagehash&gt;=4.3.1, scikit-learn&gt;=1.3.0
+- Docs: 2026-Q1 Feature Roadmap (15 Features mit technischen Spezifikationen)
+
+### Added
+
+- Database: Migration 222 Folder Hierarchy (folders, folder_permissions, folder_documents)
+- Database: Migration 223 Knowledge Graph Autonomy + Comment Threads
+- Services: FolderService - Hierarchische Ordnerverwaltung mit Materialized Path
+- Services: BookingSuggestionService - AI-gestützte Buchungsvorschläge
+- Services: LearningAutonomyService - Selbstlernende OCR-Optimierung
+- Services: SummarizationService - Dokument-Zusammenfassungen
+- Services: ThreatDetectionService - Bedrohungserkennung
+- API: 5 neue Endpoints (folders, booking_suggestions, comment_threads, learning_autonomy, summarization)
+- Frontend: Vitest Test-Setup mit Browser API Mocks (matchMedia, ResizeObserver, IntersectionObserver)
+- Tests: 10 E2E Tests (auth, banking, batch, chains, errors, folders, invoices, permissions, search, upload)
+- Tests: Chaos Engineering Framework für Fault Injection
+- Infrastructure: Compliance Package (GDPR, GoBD, ISO27001 Gap Analysis)
+- Frontend: 8 neue Enterprise Feature Routes (data-quality, digital-twin, document-hints, invoice-workflow, ml-dashboard, tax-package, trust-dashboard, visual-diff)
+- Frontend: 8 Feature-Directories mit Components, Hooks, API Layer (\~195KB neuer UI-Code)
+- Frontend: Product Tour Data-Attributes für Onboarding (nav-dashboard, nav-upload, nav-admin, etc.)
+- Tests: Unit Tests für 8 neue Enterprise Services (\~230KB Test-Coverage)
+- API: 10 neue Enterprise Endpoints (collaboration, data_quality, digital_twin, document_hints, invoice_pipeline, ml_dashboard, smart_search, trust_dashboard)
+- Services: 9 neue Enterprise Services für Data Quality, Digital Twin, Collaboration, Document Hints
+- Frontend: CEO Dashboard Components (DataQualityCockpit, DigitalTwinDashboard, ComplianceCard, RiskOverviewCard)
+- Frontend: Collaboration Features (ActivityTimeline, DocumentLockBanner, MentionsBadge, PresenceIndicator)
+- Frontend: Smart Search mit Autocomplete und Hooks
+- Database: Migration 220 Collaboration Tables, Migration 221 Merge Heads
+- Tests: 6 neue Tests (psd2_banking_flow, autonomous_trust_upgrades, smart_search_service, retention_enforcement)
+- Docs: Auto-Invoice-Pipeline Feature-Doc, Document-Hints Feature-Doc
+- Frontend: 5 neue Enterprise Features (CEO Dashboard, Smart Inbox, Knowledge Graph, Compliance Center, OCR Suite)
+- Frontend: AI Assistant Context für alle neuen Pages mit spezifischen Suggestions und Placeholders
+- Frontend: WebSocket Init Hook für zentrale WebSocket-Initialisierung
+
+### Fixed
+
+- Database: Migration 210 - Idempotente RLS Policies mit \_table_exists() und \_column_exists() Helpers
+- Services: Enterprise Services Schema-Migration (category→document_type, file_hash→checksum, title→original_filename)
+- Services: Data Quality \_fix_uncategorized() implementiert (setzt "unknown" type)
+- Services: Collaboration get_all_mentions() Methode implementiert
+- API: [collaboration.py](http://collaboration.py) get_mentions() nutzt jetzt get_all_mentions() statt nur unread
+- API: [entities.py](http://entities.py) category_id→document_type Migration für Cross-Company Queries
+- Workers: Celery Tasks Schema-Anpassungen (4 Task-Dateien)
+- Workers: Celery Task Names auf Full-Path migriert (87 Dateien) - `risk_scoring.calculate_all` → `app.workers.tasks.risk_scoring_tasks.calculate_all_risk_scores_task`
+- Alembic: Migrationen 208, 209, 215, 216 asyncpg-hardened
+- Frontend: WebSocket Token-Storage von localStorage auf sessionStorage migriert (5 Dateien)
+- Frontend: Chat WebSocket nutzte falschen Storage (localStorage → sessionStorage)
+- Frontend: RAG WebSocket nutzte falschen Key und Storage (access_token → auth_token, localStorage → sessionStorage)
+- Frontend: BI API nutzte falschen Key und Storage (access_token → auth_token)
+- Frontend: WebSocket reconnectAttempts werden jetzt bei connect() zurückgesetzt
+- Frontend: Frischer Token wird aus sessionStorage in createConnection() geholt
+
+### Changed
+
+- Dependencies: requirements.txt - aiohttp&gt;=3.9.0, reportlab\[rlPyCairo\]
+- Core: [cache.py](http://cache.py) - get_cache_stats() deprecated (use get_cache_metrics())
+
+### Removed
+
+- Services: portfolio/financial_goals_service.py, portfolio/portfolio_service.py (deprecated)
+
+## \[Previous Releases\]
+
+### Added
+
+- Migration 215: Document Integrity Tables (Hash-Chain, Merkle-Tree, Verification)
+- Migration 216: QES/eIDAS Electronic Signature Tables (Certificate, Signature, Verification)
+- Migration 217: Year-End Closing Assistant Tables (Period, Task, Template, Document Link)
+- Migration 218: OCR Template Auto-Generation (Pattern Learning, Entity Mapping)
+- Migration 219: Prediction Feedback Tracking (Corrections, Confidence, Self-Learning)
+- API Endpoints: integrity, signatures, year_end, ocr_templates
+- Lineage API: PDF-Export mit Report Templates (Platzhalter entfernt)
+- OCR Instant Feedback Path: edit_distance &lt;= 2 direkter Self-Learning Service (keine Batch-Queue)
+- Enterprise Services: Document Integrity, QES/eIDAS Signatures, Year-End Assistant
+- Frontend: Document Tasks Panel, Lifecycle Visualization, Paper Dimming Popover
+- Frontend: Finanzen Format Utils, Banking Reconciliation Components
+- Frontend: Admin Dunning Templates Management, Notification Preferences
+- Frontend: Skeleton Components (CardGrid, DetailView, DocumentList, StatCard)
+- Unit Tests: auto_template_service, integrity_service, signature_service, year_end_service
+- Migration 212: ChatToolAction Tabelle für RAG Tool-Execution Tracking
+- Dashboard KPI Widgets: DSO Tracker, Margin Analyzer, Revenue Trend mit Prognosen
+- Workflow Execution Viewer: Real-time Timeline mit Step-Details und Multi-Tenant Security
+- RAG Chat Tool Actions: Integration von search, export, summarize Tools mit Action Cards
+- Cache Admin API: L1/L2 Cache Metrics, Pattern-based Invalidation, Warming
+- Feature Flags Service: Gradual Rollout Support mit User/Tenant-spezifischen Flags
+- Cross-Tenant Reports: Company-übergreifende Reporting Views
+- Document Quality Management UI: Quality Score Tracking und Verbesserung
+- PO Matching Interface: Purchase Order Matching und Reconciliation
+- Recurring Invoices Management: Wiederkehrende Rechnungen mit Scheduling
+- Search Facets: Faceted Search mit dynamischen Kategorien, Tags, Types
+- Notification Toast Provider: Real-time Benachrichtigungen via WebSocket
+- Jaeger distributed tracing mit OpenTelemetry (OTLP gRPC:4317, UI:16686, badger storage)
+- Migrationen 207-210 (Saved Searches, Notification Templates, Dashboard Shares, RLS Policies)
+- Satellite models: NotificationMessageTemplate, SavedSearch, DashboardShare, TenantConfig
+- TenantContextMiddleware fuer Multi-Tenancy Row-Level Security propagation
+- Resilience Patterns (Circuit Breaker, Retry, Bulkhead) mit Prometheus Metrics Integration
+- L1 LRU Cache (sub-ms latency) + L2 Redis Cache im [cache.py](http://cache.py) (2-tier caching architecture)
+- Cache Warming Service mit async preloading patterns
+- Tenant Config Service, OCR Confidence Service, Document Comparison Service
+- Dashboard Period Comparison + Sharing Service
+- Notification Dedup + Escalation Chain + Template Engine Services
+- API Endpoints: ocr_confidence, document_comparison, saved_searches, period_comparison, notification_templates, tenant_admin
+- Makefile Targets: dev-setup (one-command onboarding), db-seed, coverage
+- Enterprise DB models: AutonomousTrustConfig, satellite models (banking, einvoice, esg, fx, gl_posting, portal, workflow_stage)
+- Migrations 148, 202-208 (einvoice transmission, autonomous trust, contract V2, PSD2, portal/ESG, retention, GL posting, FX, kanban)
+- mTLS Service and Certificate Authority for internal PKI
+- Enterprise services: trust levels, PSD2 banking, ESG compliance, contract analysis, portal, accounting (GL/FX/EUeR/USt)
+- OCR A/B testing support and ML router training pipeline
+- API endpoints: banking PSD2, portal, ESG, kanban, executive dashboard, cashflow prediction, autonomous trust
+- Celery tasks: banking, trust, FX rates, GL posting, mTLS rotation, OCR router training, retention enforcement
+- Frontend: portal (invoices, documents, complaints), ESG dashboard, kanban board, executive dashboard, mobile features
+- Accessibility E2E tests, offline indicator, service worker enhancements
+- Session-documenter agent and /docu slash command
+- Unit Tests fuer get_cache_metrics() Funktion (L1/L2 cache metrics retrieval)
+
+### Fixed
+
+- Alembic [env.py](http://env.py): asyncpg multi-statement SQL splitting workaround, lazy model loading (saves 2-3GB RAM)
+- 17 alembic migrations hardened for asyncpg: text() wrapping, checkfirst=True enums, conditional FKs, column/table existence checks
+- Migration 110: RLS policies now verify FK column existence before creating parent-join policies
+- Migration 121: All index creation guarded by column/table/index existence checks
+- Migration 134: company_id backfill now checks users.company_id column exists
+- Migration 135: kostenstellen FK added conditionally (table may not exist)
+- Migration 146: folders FK added conditionally (table may not exist)
+- Migrations 148, 150: Removed hard FKs to tables that may not exist (workflow_executions, bpmn_process\_\*)
+- Migrations 200-203: Deferred FKs for tables not yet created (erp_connections, ai_decisions, bank_accounts)
+- Migration 128: Removed duplicate company_id indexes (already created by column definition)
+- Alembic migration down_revision chain references (13 migrations)
+- Type safety: removed Any types across all agents, services, core modules
+- Team workflow quality gates and router hook hardening
+- Chandra OCR Agent: PII-sicheres Error-Handling mit safe_error_log() und error_info Dictionary
+- Banking API: router in **all** exportiert fuer korrekte Import-Visibility
+- OCR Cache Service: dataclasses.asdict Import nach oben verschoben (PEP8 compliance)
+- Chandra Agent Tests: Striktere Assertions fuer Error-Result Validation
+- L1 Cache Tests: Evictions-Reset bei clear() + None-Value Size Verification
+
+### Changed
+
+- Docker Compose: Jaeger service mit OTLP collector, badger persistence, health checks
+- Environment Variables: TRACING_ENABLED, OTLP_ENDPOINT, TRACING_CONSOLE_EXPORT
+- app/core/cache.py: Erweitert um LRUCache Klasse (thread-safe, TTL, pattern-based invalidation)
+- app/main.py: TenantContextMiddleware registriert, 7 neue API Router eingebunden
+- app/db/models.py: Import fuer NotificationMessageTemplate hinzugefuegt
+- Celery worker settings: task timeouts, prefetch tuning, retry delay configuration
+- Docker Compose: new service configurations, Redis tuning
+- Helm values: HPA scaling config, production tuning
+
 #### Two-Factor Authentication (2FA/TOTP) - Security Enhancement
+
 - **TOTP Implementation** (`app/core/totp.py`)
+
   - RFC 6238 compliant Time-based One-Time Password
   - Compatible with Google Authenticator, Authy, Microsoft Authenticator
   - 6-digit codes with 30-second intervals
@@ -442,83 +835,90 @@ This is the first production-ready release of the Ablage System, representing 12
       except Exception as exc:
           # Update status
           document.status = "failed"
-          document.error_message = str(exc)
-          db.commit()
+```
+      document.error_message = str(exc)
+      db.commit()
 
-          # Retry with exponential backoff
-          raise self.retry(exc=exc, countdown=2 ** self.request.retries)
-  ```
+      # Retry with exponential backoff
+      raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+```
+
+```
 
 - **Celery Beat Scheduler** for periodic tasks
-  - Hourly: Cleanup failed tasks, refresh materialized views
-  - Daily: Generate usage reports, archive old documents
-  - Weekly: Database optimization, backup verification
-  - Monthly: Aggregate analytics, license compliance checks
+- Hourly: Cleanup failed tasks, refresh materialized views
+- Daily: Generate usage reports, archive old documents
+- Weekly: Database optimization, backup verification
+- Monthly: Aggregate analytics, license compliance checks
 
 #### Monitoring & Observability
 - **Prometheus Metrics** with 100+ custom metrics
-  - HTTP request metrics (count, duration, status codes)
-  - OCR processing metrics (throughput, latency, accuracy)
-  - GPU utilization metrics (VRAM usage, temperature, power)
-  - Database metrics (connections, query performance)
-  - Cache hit rates
-  - Task queue metrics (pending, processing, failed)
+- HTTP request metrics (count, duration, status codes)
+- OCR processing metrics (throughput, latency, accuracy)
+- GPU utilization metrics (VRAM usage, temperature, power)
+- Database metrics (connections, query performance)
+- Cache hit rates
+- Task queue metrics (pending, processing, failed)
 
-  ```python
-  # Example: Custom Metrics
-  from prometheus_client import Counter, Histogram, Gauge
+```python
+# Example: Custom Metrics
+from prometheus_client import Counter, Histogram, Gauge
 
-  # Request metrics
-  http_requests_total = Counter(
-      'http_requests_total',
-      'Total HTTP requests',
-      ['method', 'endpoint', 'status']
-  )
+# Request metrics
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
 
-  http_request_duration = Histogram(
-      'http_request_duration_seconds',
-      'HTTP request duration',
-      ['method', 'endpoint'],
-      buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.5, 5.0, 10.0]
-  )
+http_request_duration = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration',
+    ['method', 'endpoint'],
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.5, 5.0, 10.0]
+)
 
-  # OCR metrics
-  ocr_processing_duration = Histogram(
-      'ocr_processing_duration_seconds',
-      'OCR processing duration',
-      ['backend', 'document_type'],
-      buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0]
-  )
+# OCR metrics
+ocr_processing_duration = Histogram(
+    'ocr_processing_duration_seconds',
+    'OCR processing duration',
+    ['backend', 'document_type'],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0]
+)
 
-  ocr_confidence_score = Histogram(
-      'ocr_confidence_score',
-      'OCR confidence scores',
-      ['backend', 'document_type'],
-      buckets=[0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.99, 1.0]
-  )
+ocr_confidence_score = Histogram(
+    'ocr_confidence_score',
+    'OCR confidence scores',
+    ['backend', 'document_type'],
+    buckets=[0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.99, 1.0]
+)
 
-  # GPU metrics
-  gpu_vram_usage_bytes = Gauge(
-      'gpu_vram_usage_bytes',
-      'GPU VRAM usage in bytes',
-      ['gpu_id']
-  )
-  ```
+# GPU metrics
+gpu_vram_usage_bytes = Gauge(
+    'gpu_vram_usage_bytes',
+    'GPU VRAM usage in bytes',
+    ['gpu_id']
+)
+```
 
 - **Grafana Dashboards** (4 pre-configured dashboards)
+
   - System Overview: CPU, RAM, Disk, Network
   - OCR Processing: Throughput, latency, accuracy by backend
   - API Performance: Request rates, response times, error rates
   - Business Metrics: Documents processed, users, storage usage
 
 - **Alert Manager Integration**
+
   - Critical: GPU failure, database down, disk full
   - Warning: High error rates, slow responses, queue backlog
   - Info: Daily reports, batch job completion
   - Multiple notification channels (email, Slack, PagerDuty)
 
 #### Security Features
+
 - **Authentication & Authorization**
+
   - JWT tokens with RS256 signing
   - Refresh token rotation
   - Two-factor authentication (TOTP)
@@ -536,7 +936,7 @@ This is the first production-ready release of the Ablage System, representing 12
       expires = datetime.utcnow() + (
           expires_delta or timedelta(minutes=30)
       )
-
+  
       payload = {
           "sub": user_id,
           "scopes": scopes,
@@ -544,7 +944,7 @@ This is the first production-ready release of the Ablage System, representing 12
           "iat": datetime.utcnow(),
           "jti": str(uuid.uuid4())
       }
-
+  
       return jwt.encode(
           payload,
           PRIVATE_KEY,
@@ -553,6 +953,7 @@ This is the first production-ready release of the Ablage System, representing 12
   ```
 
 - **OWASP Top 10 Protection**
+
   - SQL injection prevention (parameterized queries)
   - XSS protection (content security policy)
   - CSRF tokens for state-changing operations
@@ -561,6 +962,7 @@ This is the first production-ready release of the Ablage System, representing 12
   - Output encoding
 
 - **Encryption**
+
   - TLS 1.3 for all connections
   - Database encryption at rest
   - S3 server-side encryption
@@ -568,7 +970,9 @@ This is the first production-ready release of the Ablage System, representing 12
   - Secure key management with HashiCorp Vault integration
 
 #### Documentation
+
 - **Comprehensive User Documentation**
+
   - Getting started guide
   - Feature tutorials with screenshots
   - API reference with examples
@@ -576,6 +980,7 @@ This is the first production-ready release of the Ablage System, representing 12
   - FAQ section
 
 - **Developer Documentation**
+
   - Architecture overview
   - API documentation (OpenAPI 3.1)
   - Database schema documentation
@@ -586,38 +991,46 @@ This is the first production-ready release of the Ablage System, representing 12
 ### Changed
 
 #### Performance Improvements
+
 - **OCR Processing Speed**
+
   - DeepSeek: 1-2s per page (previously 3-4s)
   - GOT-OCR: 0.3-0.5s per page (previously 0.8-1.2s)
   - Batch processing: 2400-3000 pages/hour (previously 1200-1800)
   - GPU utilization: 85-95% (previously 60-70%)
 
 - **API Response Times**
-  - Document list endpoint: <100ms (previously ~300ms)
-  - Document upload: <200ms (previously ~500ms)
-  - Search endpoint: <150ms (previously ~400ms)
+
+  - Document list endpoint: &lt;100ms (previously \~300ms)
+  - Document upload: &lt;200ms (previously \~500ms)
+  - Search endpoint: &lt;150ms (previously \~400ms)
   - Reduced database query count by 40% through better caching
 
 - **Database Optimization**
+
   - Added 25 strategic indexes
   - Implemented connection pooling (50 connections)
   - Query optimization reduced slow queries by 80%
   - Partitioned large tables by date
 
 - **Frontend Loading Times**
+
   - Initial page load: 1.2s (previously 3.5s)
   - Code splitting reduced bundle size by 60%
   - Lazy loading for non-critical components
   - Image optimization with WebP format
 
 #### UI/UX Improvements
+
 - **Redesigned Dashboard**
+
   - Card-based layout for better scanability
   - Real-time statistics with live updates
   - Quick actions panel
   - Recent documents widget
 
 - **Enhanced Document Viewer**
+
   - Side-by-side view (original + OCR text)
   - Confidence highlighting (color-coded)
   - In-place text editing
@@ -625,6 +1038,7 @@ This is the first production-ready release of the Ablage System, representing 12
   - Zoom and pan controls
 
 - **Improved Upload Experience**
+
   - Drag-and-drop with preview
   - Bulk upload support (up to 100 files)
   - Progress indicators per file
@@ -634,11 +1048,13 @@ This is the first production-ready release of the Ablage System, representing 12
 ### Deprecated
 
 - **Legacy OCR Backend API** (v1)
+
   - Will be removed in v2.0.0
   - Use new multi-backend API instead
   - Migration guide: See [Migration from v0.9 to v1.0](#migration-from-v09-to-v10)
 
 - **XML Export Format**
+
   - Will be removed in v1.2.0
   - Use JSON export instead
   - JSON provides better structure and is more widely supported

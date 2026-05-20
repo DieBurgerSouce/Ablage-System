@@ -6,4 +6,6 @@ export interface Document {
     thumbnail?: string;
     ocrStatus: 'pending' | 'processing' | 'completed' | 'failed';
     ocrConfidence?: number;
+    detectedLanguage?: string;
+    languageConfidence?: number;
 }

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\_aot_autograd\frontend_utils.py
+# hypothesis_version: 6.148.7
+
+['_backward_hooks', '_backward_pre_hooks', '_buffers', '_dynamo_source', '_forward_hooks', '_forward_pre_hooks', '_initialize_hook', '_load_hook', '_modules', '_parameters', '_state_dict_hooks', 'attribute', 'attributes', 'dynamo_compile_id', 'placeholder', 'tensor_dict', 'training', 'was', 'were']

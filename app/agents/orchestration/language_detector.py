@@ -162,6 +162,7 @@ class LanguageDetector:
         try:
             from lingua import Language, LanguageDetectorBuilder
 
+
             # Build detector for relevant languages
             self._lingua_detector = (
                 LanguageDetectorBuilder.from_languages(
@@ -344,7 +345,7 @@ class LanguageDetector:
                 )
 
         except Exception as e:
-            logger.debug("langdetect_error", error=str(e))
+            logger.debug("langdetect_error", **safe_error_log(e))
 
         return LanguageDetectionResult(
             primary_language=LanguageCode.UNKNOWN,
@@ -380,7 +381,7 @@ class LanguageDetector:
                 )
 
         except Exception as e:
-            logger.debug("lingua_error", error=str(e))
+            logger.debug("lingua_error", **safe_error_log(e))
 
         return LanguageDetectionResult(
             primary_language=LanguageCode.UNKNOWN,
@@ -389,7 +390,7 @@ class LanguageDetector:
             detection_method="lingua_failed",
         )
 
-    def _lingua_to_code(self, lingua_lang: Any) -> LanguageCode:
+    def _lingua_to_code(self, lingua_lang: "lingua.Language") -> LanguageCode:
         """Convert lingua Language to LanguageCode."""
         mapping = {
             "GERMAN": LanguageCode.GERMAN,

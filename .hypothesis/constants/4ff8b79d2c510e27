@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\adadelta.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 0.001, 0.95, 'AvgSquaredGrad', 'AvgSquaredGradOut', 'AvgSquaredUpdate', 'AvgSquaredUpdateOut', 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Param', 'ParamOut', '_avg_squared_grad', '_avg_squared_update', 'adadelta', 'epsilon', 'epsilon is not set.', 'multi_precision', 'params', 'rho', 'rho is not set.']

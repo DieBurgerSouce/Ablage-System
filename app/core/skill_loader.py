@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.agents.base import BaseAgent
 from app.core.hooks import BaseHook, HookRegistry, HookType
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -148,7 +149,7 @@ class LoadedSkill:
             self.logger.error(
                 "skill_execution_failed",
                 skill=self.definition.name,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
 
@@ -230,7 +231,7 @@ class SkillLoader:
                 self.logger.error(
                     "skill_load_failed",
                     file=str(yaml_file),
-                    error=str(e),
+                    **safe_error_log(e),
                     exc_info=True,
                 )
 

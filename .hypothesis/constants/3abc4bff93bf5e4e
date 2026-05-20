@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\normal.py
+# hypothesis_version: 6.148.7
+
+[-2.0, 0.0, 1.0, 2.0, '.', 'Out', 'X', 'a', 'a should not be None', 'b', 'b should not be None', 'cast', 'complex128', 'complex64', 'dtype', 'float16', 'float32', 'float64', 'gaussian_random', 'in_dtype', 'mean', 'out_dtype', 'seed', 'shape', 'std', 'tmp', 'uint16']

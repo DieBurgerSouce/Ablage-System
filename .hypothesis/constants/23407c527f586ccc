@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\file_lock.py
+# hypothesis_version: 6.148.7
+
+['.lock', 'lock_release_failed', 'r', 'unix', 'w', 'win32', 'windows']

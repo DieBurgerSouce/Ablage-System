@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\optimizer\gradient_merge.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '@GRAD@GradientMerge', 'Out', 'X', 'Y', 'axis', 'bias', 'bias_after_scale', 'bool', 'cpu', 'dtype', 'elementwise_add', 'elementwise_mod', 'equal', 'fill_constant', 'grad_merge_cond_name', 'gradient_merge', 'gradient_merge_cond', 'gradient_merge_k', 'gradient_merge_step', 'gradient_merge_zero', 'int32', 'scale', 'shape', 'value']

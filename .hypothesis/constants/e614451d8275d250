@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ai\ollama_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.3, 0.5, 1.0, 120.0, 200, 2000, 3000, 4000, ', ', '...', '/api/chat', '/api/tags', 'OLLAMA_BASE_URL', 'OLLAMA_MODEL', '\\{.*\\}', 'auf Deutsch', 'auto_renewal', 'category', 'confidence', 'content', 'contract_numbers', 'contract_type', 'dates', 'de', 'end_date', 'format', 'in English', 'json', 'locations', 'message', 'messages', 'milestones', 'mistral', 'model', 'models', 'money_amounts', 'name', 'notice_period_days', 'options', 'organizations', 'parties', 'payment_terms', 'persons', 'role', 'start_date', 'stream', 'system', 'temperature', 'unknown', 'user']

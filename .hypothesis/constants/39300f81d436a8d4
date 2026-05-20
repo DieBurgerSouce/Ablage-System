@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\rmsprop.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 0.95, 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'MeanGrad', 'MeanGradOut', 'MeanSquare', 'MeanSquareOut', 'Moment', 'MomentOut', 'Param', 'ParamOut', 'centered', 'decay', 'epsilon', 'epsilon is not set.', 'mean_grad', 'mean_square', 'momentum', 'momentum is not set.', 'params', 'rho', 'rho is not set.', 'rmsprop']

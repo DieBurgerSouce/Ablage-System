@@ -1,0 +1,307 @@
+# Prometheus Alerting Rules fuer Loki Log-Aggregation
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+#
+# Loki-Metriken Referenz:
+# - loki_ingester_*: Ingester-Metriken
+# - loki_compactor_*: Compactor/Retention-Metriken
+# - loki_distributor_*: Distributor-Metriken
+# - loki_request_duration_*: Request-Latenz
+
+groups:
+  - name: loki_alerts
+    rules:
+      # ==============================================================
+      # DISK & STORAGE ALERTS
+      # ==============================================================
+
+      # Kritisch: Loki Disk Space sehr hoch (>80%)
+      - alert: LokiDiskUsageHigh
+        expr: |
+          (node_filesystem_size_bytes{mountpoint="/loki"} - node_filesystem_avail_bytes{mountpoint="/loki"})
+          / node_filesystem_size_bytes{mountpoint="/loki"} * 100 > 80
+        for: 10m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki Speicherplatz kritisch - ueber 80% belegt"
+          description: |
+            Der Loki-Speicher ist zu {{ printf "%.1f" $value }}% belegt.
+            Retention-Policy pruefen und ggf. aeltere Logs loeschen.
+            Aktuelle Retention: 30 Tage (720h)
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-disk-high"
+
+      # Warnung: Loki Disk Space erhoeht (>60%)
+      - alert: LokiDiskUsageWarning
+        expr: |
+          (node_filesystem_size_bytes{mountpoint="/loki"} - node_filesystem_avail_bytes{mountpoint="/loki"})
+          / node_filesystem_size_bytes{mountpoint="/loki"} * 100 > 60
+        for: 30m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Speicherplatz erhoet - ueber 60% belegt"
+          description: |
+            Der Loki-Speicher ist zu {{ printf "%.1f" $value }}% belegt.
+            Beobachten und bei Bedarf Retention anpassen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-disk-warning"
+
+      # Alternative: Disk-Nutzung ueber Loki-interne Metriken
+      - alert: LokiChunkStoreSizeTooLarge
+        expr: sum(loki_ingester_memory_chunks{state="active"}) > 100000
+        for: 15m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Chunk Store ungewoehnlich gross"
+          description: |
+            Die Anzahl aktiver Chunks ({{ $value }}) ist ungewoehnlich hoch.
+            Dies kann auf hohe Log-Ingestion-Rate oder Speicherprobleme hinweisen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-chunks-high"
+
+      # ==============================================================
+      # RETENTION & COMPACTION ALERTS
+      # ==============================================================
+
+      # Kritisch: Retention/Compaction nicht aktiv
+      - alert: LokiCompactorNotRunning
+        expr: |
+          absent(loki_boltdb_shipper_compactor_running) == 1
+          or loki_boltdb_shipper_compactor_running == 0
+        for: 30m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki Compactor nicht aktiv - Retention funktioniert nicht"
+          description: |
+            Der Loki Compactor ist nicht aktiv. Dies bedeutet:
+            - Alte Logs werden nicht geloescht
+            - Speicherplatz wird nicht freigegeben
+            - Index-Compaction findet nicht statt
+            Sofortige Pruefung des Compactor-Service erforderlich.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-compactor-down"
+
+      # Warnung: Compaction fehlgeschlagen
+      - alert: LokiCompactionFailed
+        expr: increase(loki_compactor_compaction_runs_failed_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Compaction fehlgeschlagen"
+          description: |
+            Eine oder mehrere Compaction-Laeufe sind in der letzten Stunde fehlgeschlagen.
+            Logs werden moeglicherweise nicht korrekt aufbereitet.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-compaction-failed"
+
+      # Kritisch: Retention Delete fehlgeschlagen
+      - alert: LokiRetentionDeleteFailed
+        expr: increase(loki_compactor_deleted_files_total{status="error"}[1h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Retention Delete fehlgeschlagen"
+          description: |
+            Das Loeschen von Logs gemaess Retention-Policy ist fehlgeschlagen.
+            Aeltere Logs werden nicht entfernt - Speicherplatz kann volllaufen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-retention-failed"
+
+      # Info: Keine Compaction in letzten 2 Stunden
+      - alert: LokiCompactionStale
+        expr: |
+          time() - max(loki_compactor_compaction_runs_completed_total) > 7200
+        for: 15m
+        labels:
+          severity: info
+          component: loki
+        annotations:
+          summary: "Loki Compaction seit ueber 2 Stunden inaktiv"
+          description: |
+            Die letzte erfolgreiche Compaction liegt mehr als 2 Stunden zurueck.
+            Bei normaler Konfiguration sollte alle 10 Minuten compactiert werden.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-compaction-stale"
+
+      # ==============================================================
+      # INGESTION RATE ALERTS
+      # ==============================================================
+
+      # Kritisch: Log Ingestion Rate extrem hoch
+      - alert: LokiIngestionRateCritical
+        expr: |
+          sum(rate(loki_distributor_bytes_received_total[5m])) / 1024 / 1024 > 50
+        for: 10m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki Log-Ingestion kritisch hoch - ueber 50 MB/s"
+          description: |
+            Die aktuelle Log-Ingestion-Rate betraegt {{ printf "%.1f" $value }} MB/s.
+            Dies kann auf einen Log-Storm hinweisen (z.B. Endlosschleife, Fehlkonfiguration).
+            Rate-Limiting oder Log-Filterung sollte geprueft werden.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-ingestion-high"
+
+      # Warnung: Log Ingestion Rate erhoeht
+      - alert: LokiIngestionRateHigh
+        expr: |
+          sum(rate(loki_distributor_bytes_received_total[5m])) / 1024 / 1024 > 16
+        for: 30m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Log-Ingestion erhoeht - ueber 16 MB/s"
+          description: |
+            Die aktuelle Log-Ingestion-Rate ({{ printf "%.1f" $value }} MB/s)
+            ueberschreitet das konfigurierte Limit von 16 MB/s.
+            Einige Logs koennten verworfen werden.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-ingestion-warning"
+
+      # Warnung: Streams pro User zu hoch
+      - alert: LokiTooManyStreams
+        expr: |
+          sum(loki_ingester_streams_created_total)
+          - sum(loki_ingester_streams_removed_total) > 8000
+        for: 15m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Stream-Anzahl naehert sich Limit"
+          description: |
+            Die aktuelle Anzahl aktiver Streams ({{ $value }}) naehert sich dem
+            konfigurierten Limit von 10.000. Bei Ueberschreitung werden neue
+            Logs abgelehnt.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-streams-high"
+
+      # ==============================================================
+      # CHUNK STORE & WRITE ERRORS
+      # ==============================================================
+
+      # Kritisch: Chunk Store Write Errors
+      - alert: LokiChunkStoreWriteErrors
+        expr: |
+          rate(loki_ingester_chunk_stored_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki Chunk Store Schreibfehler"
+          description: |
+            Es treten Fehler beim Schreiben von Chunks auf.
+            Logs koennten verloren gehen. Speicher und Berechtigungen pruefen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-chunk-write-error"
+
+      # Warnung: WAL Write Errors
+      - alert: LokiWALWriteErrors
+        expr: |
+          rate(loki_ingester_wal_write_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki WAL Schreibfehler"
+          description: |
+            Das Write-Ahead-Log kann nicht geschrieben werden.
+            Bei Neustart koennten Logs verloren gehen.
+            Speicherplatz und I/O-Performance pruefen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-wal-error"
+
+      # ==============================================================
+      # SERVICE HEALTH ALERTS
+      # ==============================================================
+
+      # Kritisch: Loki Service nicht erreichbar
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki Log-Service nicht erreichbar"
+          description: |
+            Der Loki-Service antwortet nicht auf Health-Checks.
+            Log-Aggregation ist nicht verfuegbar.
+            Container-Status und Netzwerk pruefen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-down"
+
+      # Warnung: Loki hohe Latenz
+      - alert: LokiHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(loki_request_duration_seconds_bucket{route=~"loki_api_v1_push|loki_api_v1_query.*"}[5m]))
+            by (le, route)
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Anfragen sehr langsam"
+          description: |
+            Die 99. Perzentile der Loki-Anfragen (Route: {{ $labels.route }})
+            liegt bei {{ printf "%.1f" $value }}s. Normal sind < 1s.
+            Moegliche Ursachen: Speicher-I/O, zu viele Chunks, komplexe Queries.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-latency"
+
+      # Warnung: Loki Push Requests scheitern
+      - alert: LokiPushRequestsFailing
+        expr: |
+          sum(rate(loki_distributor_ingester_append_failures_total[5m]))
+          / sum(rate(loki_distributor_ingester_appends_total[5m])) * 100 > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki verliert Logs - Push-Fehlerrate ueber 1%"
+          description: |
+            {{ printf "%.2f" $value }}% der Log-Push-Anfragen scheitern.
+            Logs koennten verloren gehen. Ingester-Status pruefen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-push-failing"
+
+      # ==============================================================
+      # QUERY PERFORMANCE ALERTS
+      # ==============================================================
+
+      # Warnung: Queries zu komplex/langsam
+      - alert: LokiSlowQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(loki_request_duration_seconds_bucket{route="loki_api_v1_query_range"}[5m]))
+            by (le)
+          ) > 30
+        for: 15m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki Queries langsam - 95. Perzentile ueber 30s"
+          description: |
+            Log-Queries dauern sehr lange (p95: {{ printf "%.1f" $value }}s).
+            Moegliche Ursachen: Zu grosse Zeitbereiche, fehlende Labels, zu viele Streams.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-query-slow"
+
+      # Info: Query Queue voll
+      - alert: LokiQueryQueueFull
+        expr: |
+          loki_querier_query_queue_length > 50
+        for: 5m
+        labels:
+          severity: info
+          component: loki
+        annotations:
+          summary: "Loki Query-Queue gefuellt"
+          description: |
+            {{ $value }} Queries warten auf Ausfuehrung.
+            Bei anhaltendem Problem Query-Parallelitaet erhoehen.
+          runbook_url: "https://wiki.ablage-system.local/runbooks/loki-queue-full"

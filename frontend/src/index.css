@@ -1,6 +1,10 @@
 @import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
+/* WCAG 2.1 AA High Contrast Support */
+@import './styles/high-contrast.css';
+@import './styles/design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -27,27 +31,6 @@
         --warning: oklch(0.82 0.15 75);
         --success: oklch(0.72 0.17 145);
 
-        /* Secondary */
-        --secondary: oklch(0.96 0.01 250);
-        --secondary-foreground: oklch(0.145 0.004 250);
-
-        /* Muted */
-        --muted: oklch(0.96 0.01 250);
-        --muted-foreground: oklch(0.55 0.02 250);
-
-        /* Popover */
-        --popover: oklch(1 0 0);
-        --popover-foreground: oklch(0.145 0.004 250);
-
-        /* Card */
-        --card: oklch(1 0 0);
-        --card-foreground: oklch(0.145 0.004 250);
-
-        /* Border/Input/Ring */
-        --border: oklch(0.92 0.01 250);
-        --input: oklch(0.92 0.01 250);
-        --ring: oklch(0.35 0.08 250);
-
         /* Chart Colors */
         --chart-1: oklch(0.55 0.18 250);
         --chart-2: oklch(0.72 0.17 145);
@@ -60,34 +43,138 @@
         --sidebar-foreground: oklch(0.92 0.01 250);
         --sidebar-primary: oklch(0.88 0.16 85);
         --sidebar-primary-foreground: oklch(0.12 0.02 250);
-        --sidebar-accent: oklch(0.15 0.02 250);
+        --sidebar-accent: oklch(0.25 0.04 250);
         --sidebar-accent-foreground: oklch(0.985 0 0);
-        --sidebar-border: oklch(0.2 0.02 250);
+        --sidebar-border: oklch(0.25 0.04 250);
         --sidebar-ring: oklch(0.88 0.16 85);
+
+        /* Shadcn UI Variables mapped to OKLCH */
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0.145 0.004 250);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0.145 0.004 250);
+        --muted: oklch(0.96 0.002 250);
+        --muted-foreground: oklch(0.40 0.02 250);  /* WCAG AA compliant contrast */
+        --border: oklch(0.92 0.005 250);
+        --input: oklch(0.92 0.005 250);
+        --ring: oklch(0.35 0.08 250);
+
+        /* Typography */
+        --font-display: 'Clash Display', sans-serif;
+        --font-body: 'Satoshi', sans-serif;
     }
 
     .dark {
         --background: oklch(0.12 0.02 250);
         --foreground: oklch(0.92 0.01 250);
-
         --primary: oklch(0.88 0.16 85);
         --primary-foreground: oklch(0.12 0.02 250);
 
-        --secondary: oklch(0.15 0.02 250);
-        --secondary-foreground: oklch(0.985 0 0);
-
-        --muted: oklch(0.15 0.02 250);
+        --card: oklch(0.14 0.02 250);
+        --card-foreground: oklch(0.98 0.01 250);
+        --popover: oklch(0.14 0.02 250);
+        --popover-foreground: oklch(0.98 0.01 250);
+        --muted: oklch(0.2 0.02 250);
         --muted-foreground: oklch(0.7 0.02 250);
-
-        --popover: oklch(0.12 0.02 250);
-        --popover-foreground: oklch(0.985 0 0);
-
-        --card: oklch(0.12 0.02 250);
-        --card-foreground: oklch(0.985 0 0);
-
-        --border: oklch(0.2 0.02 250);
-        --input: oklch(0.2 0.02 250);
+        --border: oklch(0.25 0.02 250);
+        --input: oklch(0.25 0.02 250);
         --ring: oklch(0.88 0.16 85);
+
+        /* Chart Colors - brighter for dark mode visibility */
+        --chart-1: oklch(0.70 0.18 250);
+        --chart-2: oklch(0.80 0.20 145);
+        --chart-3: oklch(0.85 0.18 75);
+        --chart-4: oklch(0.65 0.25 25);
+        --chart-5: oklch(0.75 0.15 320);
+
+        /* Semantic Colors for dark mode */
+        --success: oklch(0.80 0.20 145);
+        --warning: oklch(0.85 0.18 75);
+        --destructive: oklch(0.65 0.25 25);
+    }
+
+    /* ACCESSIBILITY: Whitescreen Mode - High Contrast (WCAG AAA)
+     * Use case: Visual impairments, maximum readability
+     * Pure white background, pure black text, high contrast ratios */
+    .whitescreen {
+        --background: oklch(1 0 0);          /* Pure white #FFFFFF */
+        --foreground: oklch(0 0 0);          /* Pure black #000000 */
+        --primary: oklch(0.45 0.31 264);     /* Pure blue #0000FF */
+        --primary-foreground: oklch(1 0 0);  /* Pure white */
+
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0 0 0);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0 0 0);
+        --muted: oklch(0.95 0 0);
+        --muted-foreground: oklch(0.25 0 0);
+        --border: oklch(0 0 0);              /* Black borders for max contrast */
+        --input: oklch(0.95 0 0);
+        --ring: oklch(0.45 0.31 264);
+
+        --accent: oklch(0.45 0.31 264);      /* Blue accent */
+        --accent-foreground: oklch(1 0 0);
+        --destructive: oklch(0.5 0.3 29);    /* High contrast red */
+        --destructive-foreground: oklch(1 0 0);
+
+        /* Semantic colors for whitescreen - darker for high contrast */
+        --warning: oklch(0.65 0.2 75);       /* Darker orange for visibility */
+        --success: oklch(0.45 0.25 145);     /* Darker green for WCAG AAA */
+        --info: oklch(0.45 0.31 264);        /* Same as primary */
+
+        /* Sidebar in whitescreen mode */
+        --sidebar: oklch(0.95 0 0);
+        --sidebar-foreground: oklch(0 0 0);
+        --sidebar-border: oklch(0 0 0);
+
+        /* Chart Colors - high contrast for accessibility */
+        --chart-1: oklch(0.45 0.31 264);       /* Deep blue */
+        --chart-2: oklch(0.45 0.25 145);       /* Dark green */
+        --chart-3: oklch(0.55 0.25 75);        /* Dark orange */
+        --chart-4: oklch(0.5 0.3 29);          /* Dark red */
+        --chart-5: oklch(0.5 0.2 320);         /* Dark magenta */
+    }
+
+    /* ACCESSIBILITY: Blackscreen Mode - Inverted High Contrast
+     * Use case: OLED displays, extreme low-light, photosensitivity
+     * Pure black background, pure white text, bright green accents */
+    .blackscreen {
+        --background: oklch(0 0 0);          /* Pure black #000000 */
+        --foreground: oklch(1 0 0);          /* Pure white #FFFFFF */
+        --primary: oklch(0.87 0.3 142);      /* Bright green #00FF00 */
+        --primary-foreground: oklch(0 0 0);  /* Pure black */
+
+        --card: oklch(0.08 0 0);             /* Near-black card */
+        --card-foreground: oklch(1 0 0);
+        --popover: oklch(0.08 0 0);
+        --popover-foreground: oklch(1 0 0);
+        --muted: oklch(0.15 0 0);
+        --muted-foreground: oklch(0.8 0 0);
+        --border: oklch(1 0 0);              /* White borders for visibility */
+        --input: oklch(0.1 0 0);
+        --ring: oklch(0.87 0.3 142);
+
+        --accent: oklch(0.87 0.3 142);       /* Green accent */
+        --accent-foreground: oklch(0 0 0);
+        --destructive: oklch(0.65 0.3 29);   /* Bright red on black */
+        --destructive-foreground: oklch(0 0 0);
+
+        /* Semantic colors for blackscreen - brighter for visibility on black */
+        --warning: oklch(0.9 0.2 75);        /* Bright orange/amber */
+        --success: oklch(0.87 0.3 142);      /* Same as primary (bright green) */
+        --info: oklch(0.7 0.25 264);         /* Bright blue */
+
+        /* Sidebar in blackscreen mode */
+        --sidebar: oklch(0 0 0);
+        --sidebar-foreground: oklch(1 0 0);
+        --sidebar-border: oklch(0.3 0 0);
+
+        /* Chart Colors - bright for visibility on black background */
+        --chart-1: oklch(0.7 0.25 264);        /* Bright blue */
+        --chart-2: oklch(0.87 0.3 142);        /* Bright green */
+        --chart-3: oklch(0.9 0.2 75);          /* Bright orange */
+        --chart-4: oklch(0.65 0.3 29);         /* Bright red */
+        --chart-5: oklch(0.8 0.2 320);         /* Bright magenta */
     }
 }
 
@@ -106,6 +193,269 @@
     h4,
     h5,
     h6 {
-        @apply font-display tracking-tight;
+        @apply font-display;
+    }
+}
+
+@layer utilities {
+    /* ACCESSIBILITY: Reduced Motion Support (WCAG 2.1 AA - 2.3.3)
+     * Respects user's system preference for reduced motion.
+     * Disables animations, transitions, and scrolling behaviors that could
+     * cause vestibular disorders or motion sickness. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+
+        /* Disable spinning animations */
+        .animate-spin {
+            animation: none !important;
+        }
+
+        /* Disable pulse animations */
+        .animate-pulse {
+            animation: none !important;
+        }
+
+        /* Disable bounce animations */
+        .animate-bounce {
+            animation: none !important;
+        }
+
+        /* Disable ping animations */
+        .animate-ping {
+            animation: none !important;
+        }
+    }
+
+    /* Status Badge Utilities - Theme-aware colors for all display modes */
+    .badge-success {
+        background-color: oklch(from var(--success) l c h / 0.15);
+        color: var(--success);
+        border-color: oklch(from var(--success) l c h / 0.3);
+    }
+
+    .badge-destructive-outline {
+        background-color: oklch(from var(--destructive) l c h / 0.15);
+        color: var(--destructive);
+        border-color: oklch(from var(--destructive) l c h / 0.3);
+    }
+
+    .badge-warning {
+        background-color: oklch(from var(--warning) l c h / 0.15);
+        color: var(--warning);
+        border-color: oklch(from var(--warning) l c h / 0.3);
+    }
+
+    .badge-info {
+        background-color: oklch(from var(--primary) l c h / 0.15);
+        color: var(--primary);
+        border-color: oklch(from var(--primary) l c h / 0.3);
+    }
+
+    /* Tier badges with theme-aware accent colors */
+    .badge-premium {
+        background-color: oklch(from var(--accent) l c h / 0.15);
+        color: var(--accent-foreground);
+        border-color: oklch(from var(--accent) l c h / 0.5);
+    }
+
+    .badge-admin-tier {
+        background-color: oklch(from var(--primary) l c h / 0.15);
+        color: var(--primary);
+        border-color: oklch(from var(--primary) l c h / 0.3);
+    }
+
+    .noise-overlay::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        opacity: 0.03;
+        pointer-events: none;
+        z-index: 50;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .dark .glass-card {
+        background: rgba(30, 30, 30, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+}
+
+/* =============================================================================
+ * MOBILE-FIRST UTILITIES
+ * WCAG 2.1 AA compliant touch targets and mobile optimizations
+ * ============================================================================= */
+
+@layer utilities {
+    /* Touch Target Minimum Sizes (WCAG 2.1 AA: 44x44px) */
+    .touch-target {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .touch-target-lg {
+        min-height: 48px;
+        min-width: 48px;
+    }
+
+    .touch-target-xl {
+        min-height: 56px;
+        min-width: 56px;
+    }
+
+    /* Touch Manipulation (prevents zoom on double-tap) */
+    .touch-manipulation {
+        touch-action: manipulation;
+    }
+
+    /* Prevent text selection on touch */
+    .no-select {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    /* Safe Area Padding (for notch/home indicator) */
+    .p-safe {
+        padding-top: env(safe-area-inset-top, 0);
+        padding-right: env(safe-area-inset-right, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        padding-left: env(safe-area-inset-left, 0);
+    }
+
+    .pt-safe {
+        padding-top: env(safe-area-inset-top, 0);
+    }
+
+    .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    /* Smooth Scrolling on iOS */
+    .scroll-smooth-touch {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+
+    /* Hide scrollbar on mobile */
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Active state for touch feedback */
+    .active-scale:active {
+        transform: scale(0.97);
+    }
+
+    /* Swipe indicator styles */
+    .swipe-left-indicator {
+        background: linear-gradient(to left, transparent, hsl(var(--destructive) / 0.2));
+    }
+
+    .swipe-right-indicator {
+        background: linear-gradient(to right, transparent, hsl(var(--success) / 0.2));
+    }
+
+    /* Paper Dimming Presets */
+    .paper-dimming-light {
+        filter: brightness(0.85) contrast(1.05);
+    }
+
+    .paper-dimming-medium {
+        filter: brightness(0.70) contrast(1.10);
+    }
+
+    .paper-dimming-strong {
+        filter: brightness(0.55) contrast(1.15);
+    }
+
+    .paper-dimming-sepia {
+        filter: brightness(0.80) contrast(1.05) sepia(0.3);
+    }
+}
+
+/* Mobile-specific overrides */
+@media (max-width: 767px) {
+    /* Ensure buttons meet touch target requirements */
+    button:not(.inline-btn),
+    [role="button"]:not(.inline-btn),
+    a[href]:not(.inline-link) {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Larger checkbox/radio on mobile */
+    input[type="checkbox"],
+    input[type="radio"] {
+        min-height: 24px;
+        min-width: 24px;
+    }
+
+    /* Stack form labels on mobile */
+    .form-stack-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    /* Hide desktop-only elements */
+    .desktop-only {
+        display: none !important;
+    }
+}
+
+/* Tablet and up: show desktop elements */
+@media (min-width: 768px) {
+    .mobile-only {
+        display: none !important;
+    }
+}
+
+@layer utilities {
+    /* Skeleton Shimmer Animation */
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    .skeleton-shimmer {
+        background: linear-gradient(
+            90deg,
+            transparent 25%,
+            rgba(255, 255, 255, 0.05) 50%,
+            transparent 75%
+        );
+        background-color: var(--muted);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    .dark .skeleton-shimmer {
+        background: linear-gradient(
+            90deg,
+            transparent 25%,
+            rgba(255, 255, 255, 0.08) 50%,
+            transparent 75%
+        );
+        background-color: var(--muted);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
     }
 }

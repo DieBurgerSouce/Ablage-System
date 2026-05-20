@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\schemas\contract.py
+# hypothesis_version: 6.148.7
+
+[-100, 100, 120, 200, 255, 365, 500, 600, 'Deutsches Recht', 'EUR', '^(asc|desc)$', '^(exercise|decline)$', 'active', 'approved', 'asc', 'audit', 'available', 'before', 'consulting', 'contract_end', 'contract_start', 'cooperation', 'custom', 'declined', 'deliverable_due', 'draft', 'end_date', 'exercised', 'expired', 'expiring_soon', 'framework', 'lease', 'license', 'maintenance', 'nda', 'notice_deadline', 'other', 'payment_due', 'pending', 'pending_approval', 'pending_signature', 'price_adjustment', 'purchase', 'rejected', 'reminder_days', 'renewal_option', 'renewed', 'service', 'service_level_review', 'superseded', 'supply', 'suspended', 'terminated']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\dashboard.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 500, '/dashboard', '/list', '/templates', '/widgets/available', '/{dashboard_id}', 'Layout aktualisiert', 'Maximale Breite', 'Maximale Hoehe', 'Minimale Breite', 'Minimale Hoehe', 'X-Position im Grid', 'Y-Position im Grid', 'admin', 'admin.system.view', 'dashboard', 'documents.create', 'documents.view', 'editor', 'finance.reports.view', 'finance.view', 'id', 'message', 'role', 'success', 'template_applied', 'viewer']

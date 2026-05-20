@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\dygraph_optimizer\heter_parallel_optimizer.py
+# hypothesis_version: 6.148.7
+
+['_param_groups', 'params']

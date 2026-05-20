@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_matmul.py
+# hypothesis_version: 6.148.7
+
+['/', 'Out', 'Out@GRAD', 'X', 'X@GRAD', 'Y', 'Y@GRAD', 'all_reduce', 'alpha', 'broadcast', 'c_allreduce_sum', 'c_identity', 'column_parallel', 'matmul', 'matmul_grad', 'matmul_v2', 'matmul_v2_grad', 'mul', 'nop', 'op_namescope', 'op_role', 'out', 'reduce_type', 'replicate_parallel', 'ring_id', 'root', 'row_parallel', 'trans_x', 'trans_y', 'transpose_X', 'transpose_Y', 'use_calc_stream', 'use_model_parallel', 'x']

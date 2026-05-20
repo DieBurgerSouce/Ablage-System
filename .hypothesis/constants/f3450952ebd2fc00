@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\trainer_factory.py
+# hypothesis_version: 6.148.7
+
+['Hogwild', 'MultiTrainer', 'None.var', 'adjust_ins_weight', 'check_nan_var_names', 'copy_table', 'device_worker', 'dump_converter', 'dump_fields', 'dump_fields_mode', 'dump_fields_path', 'dump_file_num', 'dump_interval', 'dump_num_decimals', 'dump_param', 'dump_slot', 'enable_random_dump', 'fleet_desc', 'loss_names', 'mpi_rank', 'mpi_size', 'no_cvm', 'random_with_lineid', 'scale_datanorm', 'trainer', 'trainer_id', 'trainers', 'use_cvm', 'use_gpu_graph', 'use_ps_gpu', 'worker_places']

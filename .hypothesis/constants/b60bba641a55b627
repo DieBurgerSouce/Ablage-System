@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\limits\__init__.py
+# hypothesis_version: 6.148.7
+
+['RateLimitItem', 'RateLimitItemPerDay', 'RateLimitItemPerHour', 'RateLimitItemPerYear', 'WindowStats', 'aio', 'parse', 'parse_many', 'storage', 'strategies']

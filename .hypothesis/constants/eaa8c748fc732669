@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\__init__.py
+# hypothesis_version: 6.148.7
+
+['TranslatedLayer', 'enable_to_static', 'ignore_module', 'load', 'not_to_static', 'save', 'set_code_level', 'set_verbosity', 'to_static']

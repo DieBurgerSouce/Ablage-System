@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\backend\html_backend.py
+# hypothesis_version: 6.148.7
+
+[128, '"', '$$', "'", '-', '...', '.svg', '//', '1', 'AnnotatedTextList', '\\d+', '\\s+|\\n+', 'a', 'address', 'alt', 'b', 'bold', 'br', 'code', 'colspan', 'data:', 'del', 'details', 'dpi', 'em', 'figcaption', 'figure', 'file', 'file://', 'footer', 'ftp', 'gs', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'href', 'html.parser', 'http', 'http://', 'https', 'https:', 'https://', 'i', 'img', 'inline-formula', 'ins', 'italic', 'kbd', 'li', 'list', 'noscript', 'ol', 'ordered list', 'p', 'pre', 'rb', 'rowspan', 's', 's3', 'samp', 'script', 'src', 'start', 'strikethrough', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'text/html', 'th', 'thead', 'tr', 'u', 'ul', 'underline', 'var', '\xad', '\u200b', '\u200c', '\u200d', '‐', '‑', '‒', '–', '—', '―', '‘', '’', '“', '”', '…', '\u2060', '\ufeff']

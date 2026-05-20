@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\billiard\util.py
+# hypothesis_version: 6.148.7
+
+['-', '-W', '3', 'B', 'E', 'Finalize', 'ForkAwareLocal', 'ForkAwareThreadLock', 'O', 'R', 'S', 'SUBDEBUG', 'SUBWARNING', 'b', 'bytes_warning', 'cffi', 'd', 'debug', 'dont_write_bytecode', 'get_logger', 'get_temp_dir', 'hash_randomization', 'ignore_environment', 'info', 'int', 'int *', 'is_exiting', 'libc.so.6', 'linux', 'log_to_stderr', 'multiprocessing', 'no_site', 'no_user_site', 'optimize', 'py3k_warning', 'register_after_fork', 's', 'sub_debug', 'sub_warning', 'unregister', 'v', 'verbose']

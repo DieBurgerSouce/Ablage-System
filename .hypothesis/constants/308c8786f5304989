@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\classification\magc_resnet\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.0625, 0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 128, 256, 512, '13.bias', '13.weight', 'classes', 'french', 'input_shape', 'magc_resnet31', 'mean', 'num_classes', 'std', 'url']

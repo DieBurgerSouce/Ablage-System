@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\nn\__init__.py
+# hypothesis_version: 6.148.7
+
+['batch_norm', 'case', 'cond', 'conv2d', 'conv2d_transpose', 'conv3d', 'conv3d_transpose', 'deform_conv2d', 'embedding', 'fc', 'group_norm', 'instance_norm', 'layer_norm', 'nce', 'prelu', 'py_func', 'row_conv', 'sequence_conv', 'sequence_expand', 'sequence_first_step', 'sequence_last_step', 'sequence_pool', 'sequence_softmax', 'sparse_embedding', 'spectral_norm', 'static_pylayer', 'switch_case', 'while_loop']

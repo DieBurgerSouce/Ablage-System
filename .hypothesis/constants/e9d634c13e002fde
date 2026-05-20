@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\schemas\document_template.py
+# hypothesis_version: 6.148.7
+
+[100, 255, 500, 'A4', '^[A-Z0-9_-]+$', 'boolean', 'certificate', 'confirmation', 'contract', 'currency', 'date', 'datetime', 'document', 'docx', 'dunning', 'entity', 'general', 'html', 'invoice', 'letter', 'markdown', 'number', 'offer', 'other', 'pdf', 'portrait', 'reminder', 'report', 'select', 'text']

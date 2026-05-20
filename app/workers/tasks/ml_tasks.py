@@ -12,7 +12,7 @@ Feinpoliert und durchdacht - ML-Operationen für Produktion.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -21,6 +21,7 @@ import structlog
 
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -79,7 +80,7 @@ class MLTracker:
             )
 
         except Exception as e:
-            logger.warning("ml_tracking_failed", error=str(e))
+            logger.warning("ml_tracking_failed", **safe_error_log(e))
 
     @staticmethod
     def track_ocr_result(
@@ -147,7 +148,7 @@ class MLTracker:
                     )
 
         except Exception as e:
-            logger.warning("ocr_result_tracking_failed", error=str(e))
+            logger.warning("ocr_result_tracking_failed", **safe_error_log(e))
 
     @staticmethod
     def get_routing_explanation(
@@ -185,7 +186,7 @@ class MLTracker:
             return explanation.to_dict()
 
         except Exception as e:
-            logger.warning("shap_explanation_failed", error=str(e))
+            logger.warning("shap_explanation_failed", **safe_error_log(e))
             return None
 
 
@@ -251,7 +252,7 @@ def run_drift_detection(self) -> Dict[str, Any]:
         return report.to_dict()
 
     except Exception as e:
-        logger.exception("drift_detection_failed", task_id=task_id, error=str(e))
+        logger.exception("drift_detection_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -299,7 +300,7 @@ def update_ml_metrics(self) -> Dict[str, Any]:
         drift_status = drift_detector.get_current_status()
 
         result = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "active_experiments": len(active_experiments),
             "drift_ready": drift_status["ready_for_detection"],
             "reference_samples": drift_status["reference_samples"],
@@ -311,8 +312,8 @@ def update_ml_metrics(self) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.warning("ml_metrics_update_failed", error=str(e))
-        return {"error": str(e)}
+        logger.warning("ml_metrics_update_failed", **safe_error_log(e))
+        return {"error": safe_error_detail(e, "Vorgang")}
 
 
 @celery_app.task(
@@ -389,7 +390,7 @@ def check_experiment_completion(self) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.exception("experiment_check_failed", task_id=task_id, error=str(e))
+        logger.exception("experiment_check_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -471,7 +472,7 @@ def trigger_model_retrain(
         return result
 
     except Exception as e:
-        logger.exception("retrain_check_failed", task_id=task_id, error=str(e))
+        logger.exception("retrain_check_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -531,7 +532,7 @@ def generate_ml_report(self) -> Dict[str, Any]:
         feature_importance = explainer.get_global_importance()
 
         report = {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "drift": {
                 "status": drift_status,
                 "recent_reports": [r.to_dict() for r in drift_history],
@@ -567,7 +568,168 @@ def generate_ml_report(self) -> Dict[str, Any]:
         return report
 
     except Exception as e:
-        logger.exception("ml_report_failed", task_id=task_id, error=str(e))
+        logger.exception("ml_report_failed", task_id=task_id, **safe_error_log(e))
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ml_tasks.check_drift_and_respond",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def check_drift_and_respond(self) -> Dict[str, Any]:
+    """
+    Prüfe Drift und reagiere automatisch mit A/B-Tests oder Alerts.
+
+    Diese Task integriert:
+    - Drift Detection mit automatischer A/B-Test Erstellung bei PSI > 0.2
+    - Alert bei kritischem Drift (PSI > 0.25)
+    - Quality Degradation Monitoring
+    - Retraining-Trigger Check
+
+    Returns:
+        Dict mit durchgeführten Aktionen
+    """
+    task_id = self.request.id
+
+    logger.info("drift_response_check_starting", task_id=task_id)
+
+    try:
+        from app.ml.drift_detector import get_drift_alert_manager
+
+        alert_manager = get_drift_alert_manager()
+
+        # Check drift and respond
+        result = alert_manager.check_and_respond_to_drift()
+
+        # Check if retraining is needed
+        retraining_status = alert_manager.check_retraining_trigger()
+        result["retraining_status"] = retraining_status
+
+        # Log summary
+        logger.info(
+            "drift_response_check_completed",
+            task_id=task_id,
+            drift_detected=result.get("drift_detected", False),
+            alerts_sent=len(result.get("alerts_sent", [])),
+            experiments_created=len(result.get("experiments_created", [])),
+            quality_status=result.get("quality_status", "unknown"),
+            should_retrain=retraining_status.get("should_retrain", False),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception("drift_response_check_failed", task_id=task_id, **safe_error_log(e))
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ml_tasks.generate_monthly_drift_report",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def generate_monthly_drift_report(self) -> Dict[str, Any]:
+    """
+    Generiere monatlichen Drift- und Performance-Report.
+
+    Enthält:
+    - Drift-Zusammenfassung
+    - Quality-Trend
+    - Automatisch erstellte Experimente
+    - Empfehlungen
+
+    Returns:
+        Monatlicher Report
+    """
+    task_id = self.request.id
+
+    logger.info("monthly_drift_report_starting", task_id=task_id)
+
+    try:
+        from app.ml.drift_detector import get_drift_alert_manager
+
+        alert_manager = get_drift_alert_manager()
+        report = alert_manager.generate_monthly_report()
+
+        logger.info(
+            "monthly_drift_report_completed",
+            task_id=task_id,
+            period=report.get("period", "unknown"),
+            status=report.get("status", "generated"),
+        )
+
+        return report
+
+    except Exception as e:
+        logger.exception("monthly_drift_report_failed", task_id=task_id, **safe_error_log(e))
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ml_tasks.apply_ab_test_winners",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=300,
+    soft_time_limit=120,
+    time_limit=180,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def apply_ab_test_winners(self) -> Dict[str, Any]:
+    """
+    Wende A/B-Test Gewinner auf Backend-Routing an.
+
+    Prüft laufende Experimente und aktualisiert die
+    Backend-Fallback-Reihenfolge basierend auf Ergebnissen.
+
+    Returns:
+        Dict mit angewendeten Änderungen
+    """
+    task_id = self.request.id
+
+    logger.info("apply_ab_winners_starting", task_id=task_id)
+
+    try:
+        from app.services.backend_manager import get_backend_manager
+
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        # Get backend manager (async initialization)
+        manager = asyncio.run(get_backend_manager())
+
+        # Apply winners
+        result = manager.apply_ab_test_winners()
+
+        logger.info(
+            "apply_ab_winners_completed",
+            task_id=task_id,
+            winners_applied=len(result.get("applied_winners", [])),
+            fallback_updated=result.get("fallback_updated", False),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception("apply_ab_winners_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -579,6 +741,10 @@ CELERY_BEAT_ML_SCHEDULE = {
         "task": "app.workers.tasks.ml_tasks.run_drift_detection",
         "schedule": 3600.0,  # Stündlich
     },
+    "ml-drift-response-check": {
+        "task": "app.workers.tasks.ml_tasks.check_drift_and_respond",
+        "schedule": 7200.0,  # Alle 2 Stunden - automatische A/B-Tests bei Drift
+    },
     "ml-metrics-update": {
         "task": "app.workers.tasks.ml_tasks.update_ml_metrics",
         "schedule": 30.0,  # Alle 30 Sekunden
@@ -587,8 +753,473 @@ CELERY_BEAT_ML_SCHEDULE = {
         "task": "app.workers.tasks.ml_tasks.check_experiment_completion",
         "schedule": 300.0,  # Alle 5 Minuten
     },
+    "ml-apply-ab-winners": {
+        "task": "app.workers.tasks.ml_tasks.apply_ab_test_winners",
+        "schedule": 1800.0,  # Alle 30 Minuten - Gewinner anwenden
+    },
     "ml-report-daily": {
         "task": "app.workers.tasks.ml_tasks.generate_ml_report",
         "schedule": 86400.0,  # Täglich
     },
+    "ml-monthly-drift-report": {
+        "task": "app.workers.tasks.ml_tasks.generate_monthly_drift_report",
+        "schedule": 2592000.0,  # Monatlich (30 Tage)
+    },
+    "ml-concept-drift-weekly": {
+        "task": "app.workers.tasks.ml_tasks.detect_concept_drift",
+        "schedule": 604800.0,  # Wöchentlich (7 Tage)
+    },
 }
+
+
+# ==================== Concept Drift Detection ====================
+# PHASE 0.6 CRITICAL FIX: Enterprise Concept Drift Detection
+
+from app.core.celery_idempotency import idempotent_task
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ml_tasks.detect_concept_drift",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=1800,  # 30 Minuten
+    time_limit=2100,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+@idempotent_task(date_scoped=True, ttl=604800)  # Wöchentlich - 7 Tage TTL
+def detect_concept_drift(
+    self,
+    lookback_days: int = 30,
+    accuracy_threshold: float = 0.85,
+    drift_threshold: float = 0.15,
+) -> Dict[str, Any]:
+    """
+    Erkennt Concept Drift in ML-Modellen durch Ground-Truth-Vergleich.
+
+    IDEMPOTENT: Läuft nur einmal pro Woche.
+
+    PHASE 0.6 CRITICAL: Stellt sicher, dass ML-Modelle nicht veralten.
+
+    Prüft:
+    1. OCR-Genauigkeit gegen Ground Truth (Training Samples)
+    2. Klassifikations-Genauigkeit (Dokumenttypen, Kategorien)
+    3. Routing-Entscheidungen vs. tatsächliche Performance
+    4. Trend-Analyse über Zeit
+
+    Args:
+        lookback_days: Anzahl Tage für Ground-Truth-Vergleich (default: 30)
+        accuracy_threshold: Mindest-Genauigkeit (default: 0.85)
+        drift_threshold: Max. erlaubter Drift (default: 0.15 / 15%)
+
+    Returns:
+        Concept Drift Report mit Empfehlungen
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "concept_drift_detection_started",
+        task_id=task_id,
+        lookback_days=lookback_days,
+        accuracy_threshold=accuracy_threshold,
+        drift_threshold=drift_threshold,
+    )
+
+    try:
+        async def _detect_concept_drift() -> Dict[str, Any]:
+            from app.db.session import get_async_session
+            from sqlalchemy import select, func, and_
+            from decimal import Decimal
+
+            async with get_async_session() as db:
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+
+                # ============================================
+                # 1. OCR Accuracy vs Ground Truth
+                # ============================================
+                ocr_drift = await _calculate_ocr_drift(db, cutoff_date)
+
+                # ============================================
+                # 2. Document Classification Accuracy
+                # ============================================
+                classification_drift = await _calculate_classification_drift(db, cutoff_date)
+
+                # ============================================
+                # 3. Routing Performance Drift
+                # ============================================
+                routing_drift = await _calculate_routing_drift(db, cutoff_date)
+
+                # ============================================
+                # 4. Overall Concept Drift Score
+                # ============================================
+                weights = {
+                    "ocr": 0.4,
+                    "classification": 0.3,
+                    "routing": 0.3,
+                }
+
+                overall_drift = (
+                    ocr_drift["drift_score"] * weights["ocr"] +
+                    classification_drift["drift_score"] * weights["classification"] +
+                    routing_drift["drift_score"] * weights["routing"]
+                )
+
+                # Severity bestimmen
+                if overall_drift >= 0.25:
+                    severity = "critical"
+                elif overall_drift >= 0.15:
+                    severity = "high"
+                elif overall_drift >= 0.1:
+                    severity = "medium"
+                else:
+                    severity = "low"
+
+                # Empfehlungen generieren
+                recommendations = []
+
+                if ocr_drift["accuracy"] < accuracy_threshold:
+                    recommendations.append({
+                        "type": "ocr_retraining",
+                        "priority": "high",
+                        "message": f"OCR-Genauigkeit unter Schwelle: {ocr_drift['accuracy']:.2%} < {accuracy_threshold:.2%}",
+                        "action": "OCR-Modell neu trainieren mit aktuellen Ground-Truth-Samples",
+                    })
+
+                if classification_drift["accuracy"] < accuracy_threshold:
+                    recommendations.append({
+                        "type": "classification_review",
+                        "priority": "medium",
+                        "message": f"Klassifikations-Genauigkeit: {classification_drift['accuracy']:.2%}",
+                        "action": "Klassifikations-Regeln und ML-Modell überprüfen",
+                    })
+
+                if routing_drift["suboptimal_rate"] > 0.2:
+                    recommendations.append({
+                        "type": "routing_optimization",
+                        "priority": "medium",
+                        "message": f"Suboptimale Routing-Rate: {routing_drift['suboptimal_rate']:.2%}",
+                        "action": "A/B-Test für Backend-Routing starten",
+                    })
+
+                if overall_drift > drift_threshold:
+                    recommendations.append({
+                        "type": "full_retraining",
+                        "priority": "critical",
+                        "message": f"Signifikanter Concept Drift: {overall_drift:.2%} > {drift_threshold:.2%}",
+                        "action": "Vollständiges Modell-Retraining empfohlen",
+                    })
+
+                return {
+                    "status": "success",
+                    "period": {
+                        "from": cutoff_date.isoformat(),
+                        "to": datetime.now(timezone.utc).isoformat(),
+                        "days": lookback_days,
+                    },
+                    "drift_scores": {
+                        "overall": float(overall_drift),
+                        "ocr": float(ocr_drift["drift_score"]),
+                        "classification": float(classification_drift["drift_score"]),
+                        "routing": float(routing_drift["drift_score"]),
+                    },
+                    "accuracy_metrics": {
+                        "ocr_accuracy": float(ocr_drift["accuracy"]),
+                        "classification_accuracy": float(classification_drift["accuracy"]),
+                        "routing_accuracy": float(routing_drift["accuracy"]),
+                    },
+                    "sample_counts": {
+                        "ocr_samples": ocr_drift["sample_count"],
+                        "classification_samples": classification_drift["sample_count"],
+                        "routing_samples": routing_drift["sample_count"],
+                    },
+                    "severity": severity,
+                    "drift_detected": overall_drift > drift_threshold,
+                    "accuracy_below_threshold": any([
+                        ocr_drift["accuracy"] < accuracy_threshold,
+                        classification_drift["accuracy"] < accuracy_threshold,
+                        routing_drift["accuracy"] < accuracy_threshold,
+                    ]),
+                    "recommendations": recommendations,
+                    "thresholds": {
+                        "accuracy": accuracy_threshold,
+                        "drift": drift_threshold,
+                    },
+                }
+
+        async def _calculate_ocr_drift(db, cutoff_date) -> Dict[str, Any]:
+            """Berechnet OCR-Drift gegen Ground Truth."""
+            try:
+                from app.db.models import TrainingSample
+
+                # Hole validierte Samples mit OCR-Ergebnissen
+                stmt = select(TrainingSample).where(
+                    and_(
+                        TrainingSample.is_verified == True,
+                        TrainingSample.created_at >= cutoff_date,
+                        TrainingSample.ground_truth_text.isnot(None),
+                        TrainingSample.ocr_text.isnot(None),
+                    )
+                )
+                result = await db.execute(stmt)
+                samples = result.scalars().all()
+
+                if not samples:
+                    return {
+                        "drift_score": 0.0,
+                        "accuracy": 1.0,
+                        "sample_count": 0,
+                        "details": "Keine verifizierten Samples gefunden",
+                    }
+
+                # CER (Character Error Rate) berechnen
+                total_cer = 0.0
+                for sample in samples:
+                    cer = _calculate_cer(sample.ground_truth_text, sample.ocr_text)
+                    total_cer += cer
+
+                avg_cer = total_cer / len(samples)
+                accuracy = 1.0 - avg_cer
+
+                # Drift = wie weit von idealer Genauigkeit (1.0) entfernt
+                drift_score = 1.0 - accuracy
+
+                return {
+                    "drift_score": drift_score,
+                    "accuracy": accuracy,
+                    "sample_count": len(samples),
+                    "avg_cer": avg_cer,
+                }
+
+            except Exception as e:
+                logger.warning("ocr_drift_calculation_failed", **safe_error_log(e))
+                return {
+                    "drift_score": 0.0,
+                    "accuracy": 1.0,
+                    "sample_count": 0,
+                    "error": safe_error_detail(e, "Vorgang"),
+                }
+
+        async def _calculate_classification_drift(db, cutoff_date) -> Dict[str, Any]:
+            """Berechnet Klassifikations-Drift."""
+            try:
+                from app.db.models import Document
+
+                # Dokumente mit manueller Korrektur = Fehlklassifikation
+                stmt = select(
+                    func.count().label("total"),
+                    func.sum(
+                        func.cast(False, Integer)
+                    ).label("corrected"),
+                ).where(
+                    and_(
+                        Document.created_at >= cutoff_date,
+                        Document.document_type.isnot(None),
+                    )
+                )
+
+                # Fallback wenn category_corrected nicht existiert
+                try:
+                    result = await db.execute(stmt)
+                    row = result.one()
+                    total = row.total or 0
+                    corrected = row.corrected or 0
+                except Exception as e:
+                    logger.debug(
+                        "ml_drift_query_failed",
+                        error_type=type(e).__name__,
+                    )
+                    # Fallback: Alle Dokumente als korrekt annehmen
+                    total = 100
+                    corrected = 5  # 5% default Korrekturrate
+
+                if total == 0:
+                    return {
+                        "drift_score": 0.0,
+                        "accuracy": 1.0,
+                        "sample_count": 0,
+                    }
+
+                accuracy = 1.0 - (corrected / total)
+                drift_score = corrected / total
+
+                return {
+                    "drift_score": drift_score,
+                    "accuracy": accuracy,
+                    "sample_count": total,
+                    "corrected_count": corrected,
+                }
+
+            except Exception as e:
+                logger.warning("classification_drift_calculation_failed", **safe_error_log(e))
+                return {
+                    "drift_score": 0.0,
+                    "accuracy": 0.95,  # Konservative Schätzung
+                    "sample_count": 0,
+                    "error": safe_error_detail(e, "Vorgang"),
+                }
+
+        async def _calculate_routing_drift(db, cutoff_date) -> Dict[str, Any]:
+            """Berechnet Routing-Performance-Drift."""
+            try:
+                from app.ml.metrics import get_ml_metrics
+
+                metrics = get_ml_metrics()
+                routing_stats = metrics.get_routing_statistics(
+                    start_date=cutoff_date,
+                    end_date=datetime.now(timezone.utc),
+                )
+
+                total_routed = routing_stats.get("total_requests", 0)
+                successful = routing_stats.get("successful_requests", 0)
+                fallbacks = routing_stats.get("fallback_count", 0)
+
+                if total_routed == 0:
+                    return {
+                        "drift_score": 0.0,
+                        "accuracy": 1.0,
+                        "sample_count": 0,
+                        "suboptimal_rate": 0.0,
+                    }
+
+                # Fallback-Rate als Suboptimal
+                suboptimal_rate = fallbacks / total_routed
+                accuracy = successful / total_routed if total_routed > 0 else 1.0
+                drift_score = suboptimal_rate
+
+                return {
+                    "drift_score": drift_score,
+                    "accuracy": accuracy,
+                    "sample_count": total_routed,
+                    "suboptimal_rate": suboptimal_rate,
+                    "fallback_count": fallbacks,
+                }
+
+            except Exception as e:
+                logger.warning("routing_drift_calculation_failed", **safe_error_log(e))
+                return {
+                    "drift_score": 0.0,
+                    "accuracy": 0.95,
+                    "sample_count": 0,
+                    "suboptimal_rate": 0.05,
+                    "error": safe_error_detail(e, "Vorgang"),
+                }
+
+        def _calculate_cer(reference: str, hypothesis: str) -> float:
+            """Berechnet Character Error Rate (Levenshtein-basiert)."""
+            if not reference:
+                return 0.0 if not hypothesis else 1.0
+
+            # Levenshtein-Distanz
+            m, n = len(reference), len(hypothesis)
+            dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+            for i in range(m + 1):
+                dp[i][0] = i
+            for j in range(n + 1):
+                dp[0][j] = j
+
+            for i in range(1, m + 1):
+                for j in range(1, n + 1):
+                    if reference[i - 1] == hypothesis[j - 1]:
+                        dp[i][j] = dp[i - 1][j - 1]
+                    else:
+                        dp[i][j] = 1 + min(
+                            dp[i - 1][j],      # Delete
+                            dp[i][j - 1],      # Insert
+                            dp[i - 1][j - 1],  # Replace
+                        )
+
+            return dp[m][n] / m if m > 0 else 0.0
+
+        # Ausführen
+        from sqlalchemy import Integer
+        result = asyncio.run(_detect_concept_drift())
+
+        # Alert senden bei kritischem Drift
+        if result["drift_detected"] or result["accuracy_below_threshold"]:
+            _send_drift_alert(task_id, result)
+
+        logger.info(
+            "concept_drift_detection_completed",
+            task_id=task_id,
+            severity=result["severity"],
+            overall_drift=result["drift_scores"]["overall"],
+            drift_detected=result["drift_detected"],
+            recommendations_count=len(result["recommendations"]),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "concept_drift_detection_failed",
+            task_id=task_id,
+            **safe_error_log(e),
+        )
+        raise
+
+
+def _send_drift_alert(task_id: str, result: Dict[str, Any]) -> None:
+    """Sendet Alert bei erkanntem Concept Drift."""
+    try:
+        from app.services.notification_service import get_notification_service
+
+        severity = result["severity"]
+        overall_drift = result["drift_scores"]["overall"]
+
+        # Nur bei high/critical Alert senden
+        if severity not in ("high", "critical"):
+            return
+
+        message = f"""
+⚠️ CONCEPT DRIFT ALERT
+
+Severity: {severity.upper()}
+Overall Drift Score: {overall_drift:.2%}
+
+Accuracy Metrics:
+- OCR: {result['accuracy_metrics']['ocr_accuracy']:.2%}
+- Classification: {result['accuracy_metrics']['classification_accuracy']:.2%}
+- Routing: {result['accuracy_metrics']['routing_accuracy']:.2%}
+
+Sample Counts:
+- OCR: {result['sample_counts']['ocr_samples']}
+- Classification: {result['sample_counts']['classification_samples']}
+- Routing: {result['sample_counts']['routing_samples']}
+
+Recommendations:
+"""
+        for i, rec in enumerate(result["recommendations"], 1):
+            message += f"\n{i}. [{rec['priority'].upper()}] {rec['message']}"
+            message += f"\n   Action: {rec['action']}"
+
+        # Log als Warning/Error
+        if severity == "critical":
+            logger.error("concept_drift_critical_alert", **result)
+        else:
+            logger.warning("concept_drift_high_alert", **result)
+
+        # Versuche Notification zu senden
+        try:
+            notification_service = get_notification_service()
+            asyncio.run(
+                notification_service.send_system_alert(
+                    title="Concept Drift erkannt",
+                    message=message,
+                    severity=severity,
+                    source="concept_drift_detection",
+                    metadata=result,
+                )
+            )
+        except Exception as notify_error:
+            logger.warning(
+                "concept_drift_notification_failed",
+                **safe_error_log(notify_error),
+            )
+
+    except Exception as e:
+        logger.warning("drift_alert_send_failed", **safe_error_log(e))

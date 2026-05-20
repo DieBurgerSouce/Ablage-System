@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\vision_encoder_decoder\modeling_vision_encoder_decoder.py
+# hypothesis_version: 6.148.7
+
+[-100, '/', 'attn_implementation', 'config', 'decoder', 'decoder_', 'enc_to_dec_proj', 'encoder', 'encoder_', 'from_tf', 'model', 'num_items_in_batch', 'pixel_values']

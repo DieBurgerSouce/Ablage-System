@@ -1,0 +1,82 @@
+{
+    "_version": "1.0",
+    "_description": "Deutsche Geschaeftsbegriffe und Synonyme fuer Query-Expansion",
+    "_last_updated": "2026-01-16",
+
+    "document_types": {
+        "rechnung": ["invoice", "faktura", "abrechnung", "kostennote", "honorarnote", "rechnungsbeleg"],
+        "quittung": ["beleg", "kassenbon", "kassenbeleg", "zahlungsbeleg", "empfangsbestaetigung"],
+        "vertrag": ["kontrakt", "vereinbarung", "abkommen", "contract", "agreement"],
+        "angebot": ["offerte", "kostenvoranschlag", "quotation", "proposal"],
+        "bestellung": ["auftrag", "order", "purchase order", "auftragsbestaetigung"],
+        "lieferschein": ["warenbegleitschein", "versandschein", "delivery note", "packing slip"],
+        "mahnung": ["zahlungserinnerung", "erinnerung", "reminder", "dunning"],
+        "gutschrift": ["credit note", "credit memo", "erstattung", "rueckerstattung"],
+        "bericht": ["report", "auswertung", "analyse", "uebersicht"],
+        "protokoll": ["minutes", "niederschrift", "mitschrift", "aufzeichnung"]
+    },
+
+    "financial_terms": {
+        "betrag": ["summe", "amount", "wert", "preis", "kosten"],
+        "brutto": ["gross", "gesamt", "inklusive", "inkl"],
+        "netto": ["net", "ohne mwst", "exklusive", "exkl"],
+        "mehrwertsteuer": ["mwst", "umsatzsteuer", "ust", "vat", "steuer"],
+        "rabatt": ["discount", "nachlass", "ermaessigung", "abzug", "skonto"],
+        "skonto": ["schnellzahlerrabatt", "zahlungsabzug", "barzahlungsrabatt"],
+        "zahlung": ["payment", "ueberweisung", "bezahlung", "entgelt"],
+        "faellig": ["due", "zahlbar", "zahlungstermin", "faelligkeit"],
+        "offen": ["ausstehend", "unbezahlt", "outstanding", "pending"],
+        "bezahlt": ["paid", "beglichen", "ausgeglichen", "erledigt"]
+    },
+
+    "business_entities": {
+        "kunde": ["customer", "client", "kaeufer", "auftraggeber", "abnehmer"],
+        "lieferant": ["supplier", "vendor", "anbieter", "lieferfirma", "zulieferer"],
+        "firma": ["unternehmen", "company", "gesellschaft", "betrieb", "geschaeft"],
+        "gmbh": ["gesellschaft mit beschraenkter haftung", "limited"],
+        "ag": ["aktiengesellschaft", "corporation", "corp"],
+        "kontakt": ["ansprechpartner", "contact", "verbindung", "kontaktperson"]
+    },
+
+    "dates_and_periods": {
+        "datum": ["date", "tag", "zeitpunkt"],
+        "monat": ["month", "monatlich"],
+        "quartal": ["quarter", "vierteljahr", "q1", "q2", "q3", "q4"],
+        "jahr": ["year", "jahrlich", "annual", "jaehrlich"],
+        "faelligkeit": ["due date", "faelligkeitsdatum", "zahlungsziel", "zahlungsfrist"]
+    },
+
+    "status_terms": {
+        "genehmigt": ["approved", "freigegeben", "bestaetigt", "akzeptiert"],
+        "abgelehnt": ["rejected", "abgewiesen", "verweigert", "declined"],
+        "ausstehend": ["pending", "offen", "wartend", "in bearbeitung"],
+        "erledigt": ["completed", "done", "fertig", "abgeschlossen", "beendet"],
+        "storniert": ["cancelled", "annulliert", "aufgehoben", "zurueckgezogen"]
+    },
+
+    "common_abbreviations": {
+        "nr": ["nummer", "number", "no"],
+        "re": ["rechnung", "rechnungsnummer"],
+        "kd": ["kunde", "kundennummer"],
+        "lief": ["lieferant", "lieferantennummer"],
+        "iban": ["bankverbindung", "kontonummer", "bankkonto"],
+        "bic": ["swift", "bankleitzahl", "blz"],
+        "ust": ["umsatzsteuer", "mehrwertsteuer", "mwst"],
+        "hrb": ["handelsregister", "registernummer"]
+    },
+
+    "actions": {
+        "erstellen": ["create", "anlegen", "generieren", "erzeugen"],
+        "bearbeiten": ["edit", "aendern", "modifizieren", "anpassen"],
+        "loeschen": ["delete", "entfernen", "remove", "eliminieren"],
+        "suchen": ["search", "finden", "durchsuchen", "recherchieren"],
+        "exportieren": ["export", "herunterladen", "download", "ausgeben"],
+        "importieren": ["import", "einlesen", "hochladen", "upload"]
+    },
+
+    "product_terms": {
+        "spargel": ["asparagus", "weisser spargel", "gruener spargel", "spargelgemuese"],
+        "folie": ["film", "abdeckfolie", "mulchfolie", "spargelfolie", "plastikfolie"],
+        "messer": ["knife", "spargelmesser", "stechmesser", "erntemesser", "spargelstecher"]
+    }
+}

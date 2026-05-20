@@ -1,0 +1,192 @@
+/**
+ * Dashboard Grid Custom Styles
+ *
+ * Zusätzliche Styles für react-grid-layout
+ */
+
+/* Grid Container */
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+}
+
+/* Grid Item */
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top, width, height;
+}
+
+.react-grid-item img {
+  pointer-events: none;
+  user-select: none;
+}
+
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-right: 2px solid rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.4);
+}
+
+/* Dark Mode Resize Handle */
+.dark .react-grid-item > .react-resizable-handle::after {
+  border-right-color: rgba(255, 255, 255, 0.4);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Dragging State */
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 100;
+  opacity: 0.8;
+}
+
+.react-grid-item.dropping {
+  visibility: hidden;
+}
+
+/* Resizing State */
+.react-grid-item.resizing {
+  z-index: 100;
+  opacity: 0.9;
+}
+
+/* Placeholder */
+.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.2);
+  opacity: 0.2;
+  transition-duration: 100ms;
+  z-index: 2;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+  border-radius: 0.5rem;
+  border: 2px dashed hsl(var(--primary));
+}
+
+/* Drag Handle Cursor */
+.drag-handle {
+  cursor: move;
+}
+
+.react-grid-item.static .drag-handle {
+  cursor: default;
+}
+
+/* No User Select during drag */
+.react-grid-layout.react-draggable-dragging .drag-handle {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Compact Mode */
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+
+.react-grid-item.resizing {
+  transition: none;
+  z-index: 100;
+  will-change: width, height;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 100;
+  will-change: transform;
+}
+
+.react-grid-item.dropping {
+  visibility: hidden;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.1);
+  opacity: 0.2;
+  transition-duration: 100ms;
+  z-index: 2;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .react-grid-item {
+    /* Disable dragging on mobile by default */
+    touch-action: pan-y;
+  }
+
+  .react-grid-item > .react-resizable-handle {
+    /* Larger resize handle on mobile */
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* Widget Card Styles */
+.react-grid-item .drag-handle > div {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prevent text selection during drag */
+.react-grid-layout.react-draggable-dragging {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Animation for new widgets */
+@keyframes widget-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.react-grid-item.new-widget {
+  animation: widget-appear 300ms ease-out;
+}
+
+/* Hover State for Edit Mode */
+.react-grid-item:hover .drag-handle {
+  cursor: move;
+}
+
+/* Focus Ring for Accessibility */
+.react-grid-item:focus-within {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Disabled State */
+.react-grid-item.static {
+  cursor: default;
+}
+
+.react-grid-item.static .react-resizable-handle {
+  display: none;
+}

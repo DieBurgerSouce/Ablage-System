@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\tasks\notification_tasks.py
+# hypothesis_version: 6.148.7
+
+[100, 300, '%d.%m.%Y', '< 5 Sekunden', 'benutzer_insgesamt', 'completed', 'cutoff_datum', 'daily', 'email_digest', 'failed', 'fehlgeschlagen', 'geloescht', 'gesendet', 'notifications', 'success_rate', 'successful', 'total', 'uebersprungen', 'user_has_no_email', 'weekly', '📬', '📭']

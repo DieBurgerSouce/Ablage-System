@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\api_keys.py
+# hypothesis_version: 6.148.7
+
+['...', '/api-keys', '/revoke-all', '/{key_id}', 'API Keys', 'API-Key Details', 'API-Key erstellen', 'API-Key löschen', 'API-Keys auflisten', 'ablage_']

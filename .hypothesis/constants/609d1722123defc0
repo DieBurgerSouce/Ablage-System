@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\reranker_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.01, 0.85, 1.0, 512, 1000, 1024, 'CrossEncoder', 'ENABLE_GPU', 'GPU_MEMORY_FRACTION', 'OutOfMemoryError', 'RAG_RERANK_ENABLED', 'RAG_RERANK_TOP_K', 'RERANKER_BATCH_SIZE', 'RERANKER_CPU_MODEL', 'RERANKER_GPU_MODEL', 'RERANKER_GPU_VRAM_GB', 'RERANKER_MAX_LENGTH', 'RerankerService', 'cpu', 'cpu_loaded', 'cpu_model', 'cpu_model_loaded', 'cpu_rerank_count', 'cpu_reranker_loaded', 'cpu_reranker_loading', 'cuda', 'device', 'error', 'gpu', 'gpu_available', 'gpu_fallback_count', 'gpu_loaded', 'gpu_model', 'gpu_model_loaded', 'gpu_rerank_count', 'gpu_reranker_error', 'gpu_reranker_loaded', 'gpu_reranker_loading', 'gpu_reranker_oom', 'gpu_vram_mb', 'oom', 'rerank_complete', 'success', 'total_queries', 'warmup document', 'warmup query']

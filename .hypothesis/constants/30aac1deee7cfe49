@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\text\datasets\movielens.py
+# hypothesis_version: 6.148.7
+
+[0.1, 5.0, '::', 'F', 'M', '^(.*)\\((\\d+)\\)$', 'latin', 'ml-1m/movies.dat', 'ml-1m/ratings.dat', 'ml-1m/users.dat', 'sentiment', 'test', 'train', '|']

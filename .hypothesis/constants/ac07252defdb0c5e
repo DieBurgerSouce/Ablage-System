@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\vehicle_calculation_service.py
+# hypothesis_version: 6.148.7
+
+[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 100, 15000, 20000, 30000, '0', '0.95', '1.05', '200', '25', '35', '365.25', '45', '500', '52', '58', '63', '68', '72', '75', '78', '85', 'batch_all', 'calculated', 'calculation_type', 'decreasing', 'default', 'depreciation', 'diesel', 'electric', 'errors', 'fuel', 'fuel_consumption', 'hybrid', 'increasing', 'inspection', 'insurance', 'km', 'maintenance', 'months', 'scheduled', 'service_prediction', 'skipped', 'stable', 'tax', 'tco', 'total', 'tuev']

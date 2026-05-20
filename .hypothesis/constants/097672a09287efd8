@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\_exact.py
+# hypothesis_version: 6.148.7
+
+[100000, 'auto', 'clustering', 'expected_values', 'main_effects', 'mask_shapes', 'shap', 'values']

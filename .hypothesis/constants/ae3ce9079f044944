@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\backend\asciidoc_backend.py
+# hypothesis_version: 6.148.7
+
+[128, '*', ',', '-', '/', '//', '=', 'InputDocument', '^(=+)\\s+(.*)', '^= ', '^==+\\s+', '^\\.(.+)', '^\\|.*\\|', '^image::', 'alt', 'caption', 'file', 'file:', 'file:/', 'file://', 'header', 'height', 'http', 'image/png', 'indent', 'level', 'list', 'list_item', 'marker', 'numbered', 'picture', 'text', 'text/asciidoc', 'title', 'type', 'uri', 'utf-8', 'width', '|', '|===']

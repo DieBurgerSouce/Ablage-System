@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\pir_translated_layer.py
+# hypothesis_version: 6.148.7
+
+['.', '.json', '_', 'builtin.parameter', 'forward', 'model', 'name', 'output_', 'pd_op.data', 'pd_op.feed', 'pd_op.fetch']

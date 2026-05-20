@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\backend\webvtt_backend.py
+# hypothesis_version: 6.148.7
+
+[1000.0, 3600, ' |\t', '&', '-->', '.', ': ', '<', '</b>', '</c>', '</i>', '</u>', '</v', '</v>', '<b>', '<c>', '<i>', '<u>', '<v', '>', 'The cue payload', 'WEBVTT', 'WebVTT cue block', '\\n\\s*\\n', '^(?!.*-->)[^\\n\\r]+$', '_WebVTTCueBlock', '_WebVTTCueComponent', '_WebVTTFile', 'after', 'annotation', 'b', 'c', 'class', 'classes', 'file', 'i', 'payload', 'python-re', 'span_type', 'text', 'text/vtt', 'u', 'utf-8', 'v']

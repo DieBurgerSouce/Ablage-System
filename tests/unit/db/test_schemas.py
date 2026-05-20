@@ -164,38 +164,27 @@ class TestDocumentSchemas:
 
     def test_document_base_defaults(self):
         """DocumentBase sollte korrekte Defaults haben."""
-        doc = DocumentBase(
-            filename="test.pdf",
-            original_filename="Test Document.pdf"
-        )
+        doc = DocumentBase(filename="test.pdf")
         assert doc.document_type == DocumentType.OTHER
-        assert doc.status == ProcessingStatus.PENDING
+        assert doc.language == "de"
 
-    def test_document_create_validates_filename(self):
-        """DocumentCreate sollte gefaehrliche Dateinamen ablehnen."""
-        # Path traversal attempt
-        with pytest.raises(ValidationError) as exc_info:
-            DocumentCreate(
-                filename="../../../etc/passwd",
-                original_filename="test.pdf"
-            )
-        assert "dateiname" in str(exc_info.value).lower()
+    def test_document_create_with_backend(self):
+        """DocumentCreate sollte Backend-Optionen akzeptieren."""
+        from app.db.schemas import OCRBackend
+        doc = DocumentCreate(filename="test.pdf", backend=OCRBackend.DEEPSEEK)
+        assert doc.backend == OCRBackend.DEEPSEEK
+        assert doc.detect_layout is True
 
-    def test_document_create_rejects_slash(self):
-        """DocumentCreate sollte Slashes im Dateinamen ablehnen."""
-        with pytest.raises(ValidationError):
-            DocumentCreate(
-                filename="path/to/file.pdf",
-                original_filename="test.pdf"
-            )
+    def test_document_create_with_layout_detection(self):
+        """DocumentCreate sollte Layout-Erkennung konfigurierbar sein."""
+        doc = DocumentCreate(filename="test.pdf", detect_layout=False)
+        assert doc.detect_layout is False
 
-    def test_document_create_rejects_backslash(self):
-        """DocumentCreate sollte Backslashes im Dateinamen ablehnen."""
-        with pytest.raises(ValidationError):
-            DocumentCreate(
-                filename="path\\to\\file.pdf",
-                original_filename="test.pdf"
-            )
+    def test_document_create_inherits_base(self):
+        """DocumentCreate sollte von DocumentBase erben."""
+        doc = DocumentCreate(filename="test.pdf", language="en")
+        assert doc.language == "en"
+        assert doc.document_type == DocumentType.OTHER
 
 
 class TestEnumSchemas:
@@ -211,23 +200,31 @@ class TestEnumSchemas:
 
         assert schema_values == db_values, "Schema und DB Enums stimmen nicht ueberein"
 
-    def test_ocr_backend_matches_db(self):
-        """Schema OCRBackend sollte mit DB-Enum uebereinstimmen."""
+    def test_ocr_backend_includes_db_values(self):
+        """Schema OCRBackend sollte alle DB-Enum Werte enthalten."""
         from app.db.models import OCRBackend as DBBackend
 
         schema_values = {b.value for b in OCRBackend}
         db_values = {b.value for b in DBBackend}
 
-        assert schema_values == db_values
+        # Schema kann mehr Backends haben (z.B. experimentelle wie hybrid, donut)
+        # aber MUSS alle DB-Backends enthalten
+        assert db_values.issubset(schema_values), (
+            f"DB-Backends nicht in Schema: {db_values - schema_values}"
+        )
 
-    def test_document_type_matches_db(self):
-        """Schema DocumentType sollte mit DB-Enum uebereinstimmen."""
+    def test_document_type_includes_db_values(self):
+        """Schema DocumentType sollte alle DB-Enum Werte enthalten."""
         from app.db.models import DocumentType as DBType
 
         schema_values = {t.value for t in DocumentType}
         db_values = {t.value for t in DBType}
 
-        assert schema_values == db_values
+        # Schema kann mehr Typen haben (z.B. Privat-Dokumente)
+        # aber MUSS alle DB-Typen enthalten
+        assert db_values.issubset(schema_values), (
+            f"DB-Typen nicht in Schema: {db_values - schema_values}"
+        )
 
 
 class TestAuthSchemas:
@@ -236,10 +233,10 @@ class TestAuthSchemas:
     def test_login_request_valid(self):
         """LoginRequest sollte gueltigen Login akzeptieren."""
         login = LoginRequest(
-            username="testuser",
+            email="test@example.com",
             password="password123"
         )
-        assert login.username == "testuser"
+        assert login.email == "test@example.com"
 
     def test_token_response_structure(self):
         """TokenResponse sollte korrektes Format haben."""

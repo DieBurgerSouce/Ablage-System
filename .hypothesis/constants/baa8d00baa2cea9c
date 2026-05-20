@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\oneclick.py
+# hypothesis_version: 6.148.7
+
+[',', '/action-types', '/decide', '/decide/batch', '/oneclick', '/queue', '/shortcuts', '/stats', '/swipe', 'Ablagevorschlag', 'Entity-Zuweisung', 'OCR-Korrektur', 'Rechnungsfreigabe', 'Stammdaten-Korrektur', 'action', 'action_types', 'approve', 'decision', 'down', 'error', 'error_count', 'item_id', 'item_type', 'label', 'left', 'message', 'oneclick', 'reject', 'results', 'right', 'show_details', 'skip', 'success', 'success_count', 'total', 'up', 'value']

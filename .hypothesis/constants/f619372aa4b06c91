@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\orchestration\personalized_thresholds_db_service.py
+# hypothesis_version: 6.148.7
+
+[0.8, 0.9, 1.2, 1.5, '0.7', '0.75', '0.8', '1.0', '31-45', 'User-Praeferenz', 'adjustment_reason', 'adjustment_source', 'age_group', 'all_thresholds_reset', 'at', 'confidence', 'current_value', 'customized_count', 'default_value', 'dti_ratio', 'effectiveness_score', 'expires_at', 'feedback_history', 'has_dependents', 'has_pension_plan', 'household_size', 'income_stability', 'is_homeowner', 'last_used_at', 'monthly_savings_rate', 'new_value', 'potential_impact', 'previous_value', 'profession_type', 'reason', 'recommended_value', 'risk_tolerance', 'threshold_set', 'threshold_type', 'times_acted_on', 'times_triggered', 'total_actions', 'total_thresholds', 'total_triggers', 'type', 'user_id', 'user_profile_created', 'user_profile_updated']

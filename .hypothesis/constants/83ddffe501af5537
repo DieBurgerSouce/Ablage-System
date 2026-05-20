@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\classes\graphviews.py
+# hypothesis_version: 6.148.7
+
+['generic_graph_view', 'reverse_view', 'subgraph_view', 'undirected']

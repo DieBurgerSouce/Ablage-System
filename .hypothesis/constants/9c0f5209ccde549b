@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\__init__.py
+# hypothesis_version: 6.148.7
+
+[',', '--tryfromenv=', '1', 'Darwin', 'FLAGS_', 'OMP_NUM_THREADS', 'core.', 'nt', 'pyd', 'so', 'unittest', 'use_pinned_memory']

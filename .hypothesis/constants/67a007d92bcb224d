@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\fused_bias_act.py
+# hypothesis_version: 6.148.7
+
+['act_method', 'bf16', 'bias', 'compute_dtype', 'default', 'dequant_scales', 'float16', 'float32', 'fp16', 'fp32', 'fused_bias_act', 'gelu', 'int32', 'out', 'quant_max_bound', 'quant_min_bound', 'quant_round_type', 'quant_scale', 'shift', 'smooth', 'uint16', 'x']

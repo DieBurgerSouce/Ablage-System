@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\personal\department_service.py
+# hypothesis_version: 6.148.7
+
+[100, 500, 'IntegrityError', 'changed_fields', 'children', 'company_id', 'cost_center', 'count', 'created_at', 'department', 'department_created', 'department_deleted', 'department_updated', 'description', 'employee_count', 'filters', 'id', 'include_inactive', 'is_active', 'manager_id', 'name', 'page', 'parent_id', 'per_page', 'root_departments', 'search', 'short_name', 'sort_order', 'total', 'total_departments', 'tree', 'updated_at', 'view_type', 'warning']

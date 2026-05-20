@@ -26,6 +26,7 @@ import structlog
 
 from app.agents.base import PostprocessingAgent
 from app.german_validator import GermanValidator
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -271,7 +272,7 @@ class EntityExtractionAgent(PostprocessingAgent):
                                     "Installieren mit: python -m spacy download de_core_news_lg",
                         )
         except Exception as e:
-            self.logger.warning("spacy_init_failed", error=str(e))
+            self.logger.warning("spacy_init_failed", **safe_error_log(e))
             self._nlp = None
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -982,7 +983,7 @@ class EntityExtractionAgent(PostprocessingAgent):
                     })
 
         except Exception as e:
-            self.logger.warning("spacy_ner_error", error=str(e))
+            self.logger.warning("spacy_ner_error", **safe_error_log(e))
 
         return entities
 
@@ -1113,3 +1114,37 @@ class EntityExtractionAgent(PostprocessingAgent):
             "address_extraction": True,
             "contract_fields": list(CONTRACT_FIELD_PATTERNS.keys()),
         }
+
+    # =========================================================================
+    # PUBLIC NER API (für externe Nutzung ohne full process())
+    # =========================================================================
+
+    def extract_named_entities(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extrahiert Named Entities (Personen, Organisationen) aus Text.
+
+        Öffentliche API für NER-Extraktion ohne vollständige process()-Pipeline.
+        Nutzt spaCy wenn verfügbar, sonst Pattern-Matching Fallback.
+
+        Args:
+            text: Text zur Analyse (max. 100.000 Zeichen)
+
+        Returns:
+            Liste von Entity-Dicts mit:
+                - type: "PERSON" oder "ORGANIZATION"
+                - value: Extrahierter Name
+                - confidence: Konfidenzwert (0.0-1.0)
+                - source: Extraktionsmethode
+        """
+        entities: List[Dict[str, Any]] = []
+
+        # spaCy NER (wenn verfügbar)
+        spacy_entities = self._extract_named_entities_spacy(text)
+        entities.extend(spacy_entities)
+
+        # Pattern-Matching Fallback für Personen (wenn spaCy keine fand)
+        if not any(e["type"] == "PERSON" for e in entities):
+            person_entities = self._extract_persons_fallback(text)
+            entities.extend(person_entities)
+
+        return entities

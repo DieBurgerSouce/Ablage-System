@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\intermediate\context_parallel.py
+# hypothesis_version: 6.148.7
+
+['all2all', 'backend', 'p2p', 'sep']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\dlq.py
+# hypothesis_version: 6.148.7
+
+[100, 500, 2000, 3600, '/bulk/retry', '/dlq', '/purge', '/stats', '/tasks', '/{task_id}/retry', 'DLQ ist bereits leer', 'DLQ leeren', 'DLQ-Statistiken', 'DLQ-Task wiederholen', 'DLQ-Tasks auflisten', 'Eintraege pro Seite', 'Fehlermeldung', 'Fehlertyp', 'Seitennummer', 'Stack-Trace', 'Status-Nachricht', 'Task-Argumente', 'Task-ID', 'Task-Name', 'Tasks nach Fehlertyp', 'Tasks nach Task-Name', 'Unknown', 'Urspruengliche Queue', 'admin_id', 'body', 'celery', 'critical', 'deleted_count', 'delivery_info', 'dlq', 'dlq_list_error', 'dlq_purged', 'error', 'exception_message', 'exception_type', 'failed_count', 'failed_ids', 'headers', 'healthy', 'id', 'new_task_id', 'original_queue', 'properties', 'retries', 'routing_key', 'success_count', 'task', 'task_name', 'timestamp', 'traceback', 'unknown', 'warning']

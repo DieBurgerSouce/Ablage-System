@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\transformers\utils.py
+# hypothesis_version: 6.148.7
+
+["'", "'{}'", '({}, )', ',', '.', 'None', '[', "\\'", '__args', '__for_loop_iter_var', '__for_loop_iter_zip', '__for_loop_var_index', '__for_loop_var_len', '_jst', 'append', 'false_fn', 'for_loop_body', 'for_loop_condition', 'get_args', 'global', 'nonlocal', 'nonlocal {}', 'np', 'paddle', 'pd_scope', 'pop', 'set_args', 'to_tensor', 'true_fn', 'visit_', 'while_body', 'while_condition']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\enum\action.py
+# hypothesis_version: 6.148.7
+
+[101, 102, 'Hyperlink.', 'OLE Verb.', 'Runs a macro.', 'Runs a program.', 'Runs the slideshow.', 'Slide show ends.']

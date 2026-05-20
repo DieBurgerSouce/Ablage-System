@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\geometric\functional.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-08, 1e-06, 0.32, 0.5, 1.0, 2.0, 255, 360, 'bboxes', 'bottom_left', 'bottom_right', 'center', 'constant', 'constant_values', 'dilation', 'e', 'edge', 'ellipse', 'erosion', 'gaussian', 'grid_shape', 'h', 'hvt', 'keypoints', 'largest_box', 'original_position', 'points', 'r180', 'r270', 'r90', 'random', 'reflect', 'steps_x', 'steps_y', 'symmetric', 't', 'top_left', 'top_right', 'tuple[int, int]', 'uniform', 'v', 'wrap', 'x', 'y']

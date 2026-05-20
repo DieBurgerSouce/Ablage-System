@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\ml\ab_testing.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.01, 0.1, 0.5, 0.95, 1.0, 5.0, 100, 365, 500, 10000, 1000000, '%Y%m%d_%H%M%S', '_', '__dict__', 'avg_accuracy', 'avg_cer', 'avg_latency_ms', 'avg_umlaut_accuracy', 'avg_wer', 'backend', 'benchmark_samples', 'cancelled', 'completed', 'config', 'control', 'control_rate', 'conversion_rate', 'conversions', 'data/ab_tests', 'description', 'draft', 'end_time', 'error_rate', 'exp_*.json', 'experiment_count', 'experiment_erstellt', 'experiment_gestartet', 'experiment_id', 'experimente_geladen', 'improvement_percent', 'metrics', 'name', 'paused', 'quality_metrics', 'r', 'random', 'round_robin', 'running', 'samples', 'significance_reached', 'start_time', 'status', 'sticky', 'total_rate', 'total_samples', 'treatment', 'unbekannte_variante', 'utf-8', 'variants', 'w', 'weight', 'winner', 'winner_backend', 'winner_rate', 'winner_variant', 'wins']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\sparse\unary.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 180.0, '.', 'False', 'axes', 'axis', 'bool', 'dtype', 'ends', 'float16', 'float32', 'float64', 'in_dtype', 'input', 'int16', 'int32', 'int64', 'keepdim', 'out', 'out_dtype', 'reshape', 'shape', 'sparse_isnan', 'sparse_reshape', 'sparse_slice', 'sparse_sum', 'starts', 'uint16', 'x']

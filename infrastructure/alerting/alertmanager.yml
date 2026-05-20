@@ -1,171 +1,194 @@
 # Alertmanager Configuration - Ablage-System OCR
-# Multi-channel alerting: Email + MS Teams
-# German language alerts for on-premises deployment
+# Produktionskonfiguration mit Email-Routing nach Schweregrad
+# Konfiguration: Platzhalter durch echte Werte in .env ersetzen
+#
+# SMTP-Setup (Task D, 2026-05-19):
+#   SMTP-Passwort liegt als Datei: /etc/alertmanager/smtp-password
+#   Lokal: infrastructure/alerting/smtp-password (in .gitignore!)
+#   Setup-Befehl:
+#     echo 'DEIN_SMTP_PASSWORD' > infrastructure/alerting/smtp-password
+#     chmod 600 infrastructure/alerting/smtp-password
+#     docker-compose restart alertmanager
+#   Pattern analog zu slack-webhook.url (G01).
+#   auth_username sollte i.d.R. mit "from" identisch sein - bei abweichender
+#   Provider-Konvention hier anpassen.
 
 global:
-  resolve_timeout: 5m
-  # SMTP Configuration for Email alerts
-  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
-  smtp_from: '${SMTP_FROM:-alertmanager@ablage-system.local}'
-  smtp_auth_username: '${SMTP_USERNAME}'
-  smtp_auth_password: '${SMTP_PASSWORD}'
-  smtp_require_tls: true
+  # 2026-05-06: 5m -> 1m, damit "Resolved"-State schneller propagiert
+  # und die Slack-Spam-Loop bei flapping Alerts kuerzer ist.
+  resolve_timeout: 1m
 
-# Templates for alert messages
-templates:
-  - '/etc/alertmanager/templates/*.tmpl'
-
-# Routing tree
+# Routing-Baum: Alerts werden nach Schweregrad weitergeleitet
+# Sprint 0 / G01: Critical+High gehen ZUSAETZLICH an Slack (Out-of-Hours-Pager)
 route:
-  receiver: 'default-email-teams'
+  receiver: 'email-receiver'
   group_by: ['alertname', 'cluster', 'service', 'severity']
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
 
-  # Child routes based on severity and service
+  # Unterrouten nach Schweregrad
   routes:
-    # Critical alerts - immediate notification
+    # Kritische Alerts - sofortige Benachrichtigung an Email + Slack
+    # 2026-05-06: repeat_interval 15m -> 1h. 15 Min war Ursache fuer
+    # 96 Slack-Notifications/Tag bei persistenten Alerts (48h Spam-Loop).
+    # 1h ist noch haeufig genug fuer echte Outages, aber nicht spammy.
     - match:
         severity: critical
-      receiver: 'critical-email-teams'
+      receiver: 'critical-multi'
       group_wait: 10s
-      repeat_interval: 15m
+      repeat_interval: 1h
       continue: false
 
-    # High severity alerts
+    # Hohe Prioritaet - Email + Slack, kurze Verzoegerung
     - match:
         severity: high
-      receiver: 'high-email-teams'
+      receiver: 'high-multi'
       group_wait: 1m
       repeat_interval: 1h
       continue: false
 
-    # Warning severity - Teams only
+    # Warnungen - nur Email, gebuendelt
     - match:
         severity: warning
-      receiver: 'warning-teams'
+      receiver: 'email-receiver'
       group_wait: 5m
       repeat_interval: 4h
 
-    # GPU alerts - special handling
-    - match_re:
-        alertname: GPU.*
-      receiver: 'gpu-email-teams'
-      group_wait: 1m
-      repeat_interval: 30m
-
-    # Database alerts
-    - match_re:
-        service: postgres|database
-      receiver: 'database-teams'
-      group_wait: 1m
-      repeat_interval: 2h
-
-    # OCR alerts - special handling
-    - match:
-        component: ocr
-      receiver: 'ocr-teams'
-      group_wait: 1m
-      repeat_interval: 1h
-      routes:
-        # OCR Critical (no backends available)
-        - match:
-            alertname: NoOCRBackendAvailable
-          receiver: 'critical-email-teams'
-          group_wait: 10s
-
-# Alert receivers
+# Empfaenger-Konfiguration
 receivers:
-  # Default receiver - Email + Teams
-  - name: 'default-email-teams'
+  # Email-Empfaenger (Haupt-Benachrichtigungskanal)
+  # SMTP-Konfiguration: Werte in .env anpassen (SMTP_HOST, SMTP_PORT, etc.)
+  - name: 'email-receiver'
     email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
+      - smarthost: 'localhost:587'
+        # Absender-Adresse (konfigurierbar via SMTP_FROM in .env)
+        from: 'alertmanager@ablage-system.local'
+        # Authentifizierung: SMTP_USERNAME und SMTP_PASSWORD in .env setzen
+        auth_username: 'alertmanager@ablage-system.local'
+        auth_password_file: '/etc/alertmanager/smtp-password'
+        # Empfaenger: EMAIL_RECIPIENTS in .env konfigurieren
+        to: 'ops-team@internal.local'
+        # TLS aktivieren (empfohlen fuer Production)
+        require_tls: true
+        # Alert-Zusammenfassung als Betreff
         headers:
-          Subject: '[Ablage-System] {{ .GroupLabels.alertname }} - {{ .Status | toUpper }}'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-        http_config:
-          tls_config:
-            insecure_skip_verify: false
+          subject: '[Ablage-System] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+        # Deutschsprachiger Email-Text
+        html: |
+          <h2>Ablage-System Alert</h2>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <p><strong>Alert:</strong> {{ .CommonLabels.alertname }}</p>
+          <p><strong>Schweregrad:</strong> {{ .CommonLabels.severity }}</p>
+          {{ range .Alerts }}
+          <hr>
+          <p><strong>Zusammenfassung:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Beschreibung:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Beginn:</strong> {{ .StartsAt }}</p>
+          {{ end }}
 
-  # Critical alerts - Email + Teams with urgency
-  - name: 'critical-email-teams'
+  # Slack-Empfaenger (Sprint 0 / G01)
+  # Webhook-URL liegt als Datei: /etc/alertmanager/slack-webhook.url
+  # Lokal: infrastructure/alerting/slack-webhook.url (in .gitignore!)
+  # Erstellung: https://api.slack.com/apps -> Incoming Webhooks -> Channel #ablage-alerts
+  - name: 'slack-receiver'
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/slack-webhook.url'
+        channel: '#ablage-alerts'
+        send_resolved: true
+        title: '[Ablage-System] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+        title_link: '{{ .ExternalURL }}'
+        text: |
+          *Severity:* `{{ .CommonLabels.severity }}`
+          *Service:* `{{ .CommonLabels.service }}`
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+
+  # Multi-Receiver: Critical -> Email + Slack
+  - name: 'critical-multi'
     email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
+      - smarthost: 'localhost:587'
+        from: 'alertmanager@ablage-system.local'
+        auth_username: 'alertmanager@ablage-system.local'
+        auth_password_file: '/etc/alertmanager/smtp-password'
+        to: 'ops-team@internal.local'
+        require_tls: true
         headers:
-          Subject: '[KRITISCH] Ablage-System: {{ .GroupLabels.alertname }}'
-          X-Priority: '1'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
+          subject: '[CRITICAL][Ablage-System] {{ .CommonLabels.alertname }}'
+        html: |
+          <h2>KRITISCH: Ablage-System Alert</h2>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <p><strong>Alert:</strong> {{ .CommonLabels.alertname }}</p>
+          {{ range .Alerts }}<hr>
+          <p><strong>Beschreibung:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Beginn:</strong> {{ .StartsAt }}</p>
+          {{ end }}
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/slack-webhook.url'
+        channel: '#ablage-alerts'
         send_resolved: true
+        color: 'danger'
+        title: ':rotating_light: [CRITICAL] {{ .CommonLabels.alertname }}'
+        title_link: '{{ .ExternalURL }}'
+        text: |
+          *Service:* `{{ .CommonLabels.service }}`
+          {{ range .Alerts }}*Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
 
-  # High severity - Email + Teams
-  - name: 'high-email-teams'
+  # Multi-Receiver: High -> Email + Slack
+  - name: 'high-multi'
     email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
+      - smarthost: 'localhost:587'
+        from: 'alertmanager@ablage-system.local'
+        auth_username: 'alertmanager@ablage-system.local'
+        auth_password_file: '/etc/alertmanager/smtp-password'
+        to: 'ops-team@internal.local'
+        require_tls: true
         headers:
-          Subject: '[HOCH] Ablage-System: {{ .GroupLabels.alertname }}'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
+          subject: '[HIGH][Ablage-System] {{ .CommonLabels.alertname }}'
+        html: |
+          <h2>Hoch: Ablage-System Alert</h2>
+          <p><strong>Alert:</strong> {{ .CommonLabels.alertname }}</p>
+          {{ range .Alerts }}<p>{{ .Annotations.description }}</p>{{ end }}
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/slack-webhook.url'
+        channel: '#ablage-alerts'
         send_resolved: true
+        color: 'warning'
+        title: ':warning: [HIGH] {{ .CommonLabels.alertname }}'
+        text: |
+          *Service:* `{{ .CommonLabels.service }}`
+          {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
 
-  # Warning - Teams only
-  - name: 'warning-teams'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # GPU alerts - Email + Teams
-  - name: 'gpu-email-teams'
-    email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
-        headers:
-          Subject: '[GPU] Ablage-System: {{ .GroupLabels.alertname }}'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # Database alerts - Teams
-  - name: 'database-teams'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # OCR alerts - Teams
-  - name: 'ocr-teams'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-# Inhibition rules (suppress less severe alerts when more severe are firing)
+# Inhibierungsregeln: Verhindern redundante Benachrichtigungen
 inhibit_rules:
-  # Critical alerts suppress warnings
+  # Kritische Alerts unterdruecken Warnungen fuer denselben Service
   - source_match:
       severity: 'critical'
     target_match:
       severity: 'warning'
     equal: ['alertname', 'cluster', 'service']
 
-  # High alerts suppress warnings
+  # Hohe Prioritaet unterdrueckt Warnungen fuer denselben Service
   - source_match:
       severity: 'high'
     target_match:
       severity: 'warning'
     equal: ['alertname', 'cluster', 'service']
 
-  # Service down suppresses all other alerts for that service
-  - source_match_re:
-      alertname: '.*Down'
+  # 2026-05-06: BackupDisk voll -> Loki-Compactor kann nicht arbeiten
+  # (Alert-Loop verhindern: erst BackupDisk fixen, dann verschwindet Loki-Alert eh)
+  - source_match:
+      alertname: 'BackupDiskCritical'
+    target_match:
+      alertname: 'LokiCompactorNotRunning'
+
+  # 2026-05-06: HostDiskSpaceLow unterdrueckt BackupDisk-Alerts (selbe Wurzel)
+  - source_match:
+      alertname: 'HostDiskSpaceLow'
     target_match_re:
-      alertname: '.*'
-    equal: ['service']
+      alertname: 'BackupDisk(Critical|Low)'

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\__init__.py
+# hypothesis_version: 6.148.7
+
+['ChandraOCRAgent', 'DeepSeekAgent', 'DocTRAgent', 'DonutOCRAgent', 'GOTOCRAgent', 'HybridOCRAgent', 'OlmOCRAgent', 'PaddleOCRAgent', 'QwenOCRAgent', 'SuryaDoclingAgent', 'is_doctr_available', 'is_donut_available']

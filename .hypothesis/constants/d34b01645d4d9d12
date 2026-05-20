@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\cost\base_cost.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.65, 0.9, 0.98, 1.0, 3.4, 5.7, 8.4, 9.6, 10.0, 7800, '*', ',', 'A100', 'COMM', 'COMP', 'Out', 'V100', 'W', 'X', '[', ']', '_', '_grad', 'all_gather', 'all_reduce', 'attrs', 'broadcast', 'c_allreduce_sum', 'c_embedding', 'c_embedding_grad', 'c_identity', 'dtype', 'float16', 'float32', 'group_ranks', 'inputs', 'int32', 'int64', 'lookup_table_v2', 'lookup_table_v2_grad', 'op', 'outputs', 'recv_v2', 'ring_id', 'scale', 'send_v2', 'shape', 'start_index', 'unit8', 'while', 'x']

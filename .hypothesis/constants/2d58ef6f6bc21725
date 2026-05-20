@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\version\__init__.py
+# hypothesis_version: 6.148.7
+
+['0', '2', '3', '3.2.2', 'False', 'None', 'OFF', 'ON', 'cinn:', 'commit:', 'cuda', 'cuda:', 'cuda_archs', 'cuda_archs:', 'cudnn', 'cudnn:', 'full_version:', 'major:', 'minor:', 'nccl', 'nccl:', 'patch:', 'rc:', 'show', 'tensorrt', 'tensorrt:', 'xpu', 'xpu_xccl', 'xpu_xccl:', 'xpu_xhpc', 'xpu_xhpc:', 'xpu_xre', 'xpu_xre:']

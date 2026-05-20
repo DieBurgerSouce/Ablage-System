@@ -19,7 +19,7 @@ import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 
@@ -120,8 +120,11 @@ def get_git_commit() -> str:
         )
         if result.returncode == 0:
             return result.stdout.strip()[:12]
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        logger.debug(
+            "git_commit_hash_failed",
+            error_type=type(e).__name__,
+        )
     return "unknown"
 
 
@@ -209,7 +212,7 @@ class ModelRegistry:
 
     def register_model(
         self,
-        model: Any,  # XGBoost model
+        model: "xgboost.XGBClassifier",
         feature_names: List[str],
         training_samples: int,
         validation_accuracy: float,
@@ -275,8 +278,8 @@ class ModelRegistry:
     def load_model(
         self,
         version: Optional[str] = None,
-        model_class: Optional[Any] = None,
-    ) -> tuple[Any, ModelVersion]:
+        model_class: Optional[type] = None,
+    ) -> Tuple["xgboost.XGBClassifier", ModelVersion]:
         """
         Lädt ein Modell aus der Registry.
 
@@ -389,7 +392,7 @@ class ModelRegistry:
         self._registry["versions"].remove(version)
         self._save_registry()
 
-        logger.info("version_geloescht", version=version)
+        logger.info("version_gelöscht", version=version)
         return True
 
     def get_version_info(self, version: str) -> Optional[ModelVersion]:
@@ -456,7 +459,7 @@ class ModelRegistry:
                     self.delete_version(version)
                     deleted += 1
                 except Exception as e:
-                    logger.warning("version_loeschen_fehlgeschlagen", version=version, error=str(e))
+                    logger.warning("version_löschen_fehlgeschlagen", version=version, **safe_error_log(e))
 
         return deleted
 
@@ -507,12 +510,13 @@ def migrate_pickle_to_registry(
     import pickle
     import warnings
 
+
     # Audit Log - wer hat wann eine pickle-Migration durchgeführt?
     logger.warning(
         "pickle_migration_started",
         pickle_path=str(pickle_path),
         force_allow=force_allow,
-        security_warning="pickle.load kann beliebigen Code ausfuehren!",
+        security_warning="pickle.load kann beliebigen Code ausführen!",
     )
 
     warnings.warn(
@@ -569,7 +573,7 @@ def migrate_pickle_to_registry(
     except Exception as e:
         logger.exception(
             "pickle_migration_failed",
-            error=str(e),
+            **safe_error_log(e),
             pickle_path=str(pickle_path),
         )
         return None

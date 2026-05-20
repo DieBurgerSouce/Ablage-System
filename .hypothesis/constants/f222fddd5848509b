@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cuda\cuda_template.py
+# hypothesis_version: 6.148.7
+
+['1', '1L', 'Generated Code:\n%s', 'autotuning', 'bool', 'buf_out', 'const uint8_t', 'cute::Int<1>{}', 'cutlass::bfloat16_t', 'cutlass::half_t', 'cutlass_gemm', 'double', 'float', 'get_dtype', 'int16_t', 'int32_t', 'int8_t', 'op', 'swizzle', 'uint16_t', 'uint32_t', 'uint8_t', 'utf-8']

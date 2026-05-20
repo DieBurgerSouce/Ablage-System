@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\remote_cache.py
+# hypothesis_version: 6.148.7
+
+[6379, ' None', 'Cache Metrics:%s', 'JsonDataTy', '_T', '_U', 'ascii', 'localhost']

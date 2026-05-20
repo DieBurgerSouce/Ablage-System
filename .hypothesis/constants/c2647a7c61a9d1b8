@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\build_src_rank_and_local_expert_id.py
+# hypothesis_version: 6.148.7
+
+['expert_num_global', 'local_expert_id', 'num_local_experts', 'vector']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\utils\transform_parameters.py
+# hypothesis_version: 6.148.7
+
+['Out', 'X', 'XShape', 'axis', 'concat', 'int64', 'reshape2', 'sections', 'shape', 'split']

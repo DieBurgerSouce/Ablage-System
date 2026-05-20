@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\io\matlab\_miobase.py
+# hypothesis_version: 6.148.7
+
+[b'I', 124, 'F', 'MatReadError', 'MatReadWarning', 'MatWriteError', 'MatWriteWarning', 'append_arg', 'column', 'do_compression', 'file_arg', 'load_args', 'long_fields', 'matstream_arg', 'oned_as', 'row', 'struct_arg', 'unicode_strings']

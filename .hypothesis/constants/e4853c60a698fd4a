@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\schemas\datev.py
+# hypothesis_version: 6.148.7
+
+[100, 255, 2000, '0', '10', '13', '1400', '1600', '2', '3', '8', '9', '91', '93', '94', 'Belegdatum', 'Buchungstext', 'EUR', 'Export-Typ', 'Gesamtbetrag', 'H', 'Kontobezeichnung', 'Kontokategorie', 'Kontonummer', 'Kostenstelle', 'Kostentraeger', 'S', 'S = Soll, H = Haben', 'SKR03', 'SKR04', 'Skonto-Betrag', 'Waehrungskennzeichen', '[\\s\\-.]', '\\s', '^[0-9]{4,10}$', 'before', 'berater_nr', 'buchungsstapel', 'completed', 'creditor_account', 'expense_account', 'export_type', 'failed', 'mandanten_nr', 'partial', 'stammdaten', 'status', 'vendor_iban', 'vendor_vat_id', 'wj_beginn', '{invoice_number}']

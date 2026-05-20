@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\magic_buttons.py
+# hypothesis_version: 6.148.7
+
+[0.0, 2020, 2100, '/buttons', '/daily-close/execute', '/daily-close/preview', '/magic', 'CheckCircle', 'Dokument-ID', 'FileText', 'Jahr', 'Kontakt erstellen', 'Magic Buttons', 'Mahnstufen erhoehen', 'Monat', 'Monats-Report', 'Name ueberschreiben', 'Offene Posten', 'PDF-Archiv erstellen', 'RefreshCw', 'Tages-Abschluss', 'UserPlus', 'amount', 'blue', 'clear_open_items', 'company_id', 'count', 'create_contact', 'daily_close', 'document_count', 'document_linked', 'entity_id', 'entity_name', 'entity_type', 'export_id', 'field', 'filename', 'green', 'increased', 'label', 'linked', 'matched', 'monthly_report', 'orange', 'processed', 'purple', 'skipped', 'step', 'supplier', 'type', 'unknown', 'value']

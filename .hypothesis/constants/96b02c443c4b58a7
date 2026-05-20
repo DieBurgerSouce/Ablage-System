@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\method_framing.py
+# hypothesis_version: 6.148.7
+
+[206, '>BHI%dsB', '>HH', '>HHQ', 'content_encoding', 'frame_handler', 'frame_writer', 'utf-8']

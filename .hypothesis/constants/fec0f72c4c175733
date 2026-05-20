@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\app\annotations.py
+# hypothesis_version: 6.148.7
+
+['*', 'MapAnnotation', 'annotate', 'annotate_any', 'prepare', 'resolve_all']

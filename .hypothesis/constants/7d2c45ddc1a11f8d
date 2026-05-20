@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\__init__.py
+# hypothesis_version: 6.148.7
+
+['CSRFMiddleware', 'CSRF_COOKIE_NAME', 'CSRF_HEADER_NAME', 'IPBlockingMiddleware', 'PIIFilterConfig', 'PrometheusMiddleware', 'RateLimitMiddleware', 'filter_pii_from_dict', 'filter_pii_from_text', 'get_rate_limit_stats', 'http_errors_total', 'http_requests_total']

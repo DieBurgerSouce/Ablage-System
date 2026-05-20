@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albucore\functions.py
+# hypothesis_version: 6.148.7
+
+[0.0001, 256, 512, 'add', 'image', 'image_per_channel', 'min_max', 'min_max_per_channel', 'multiply', 'power']

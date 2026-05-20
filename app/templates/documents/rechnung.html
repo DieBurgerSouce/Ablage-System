@@ -1,0 +1,119 @@
+{% extends "documents/base_document.html" %}
+
+{% block page_title %}Rechnung {{ data.rechnungsnummer }}{% endblock %}
+
+{% block title %}Rechnung {{ data.rechnungsnummer }}{% endblock %}
+
+{% block intro_text %}
+<p>Sehr geehrte Damen und Herren,</p>
+<p>vielen Dank für Ihren Auftrag. Wir erlauben uns, wie folgt abzurechnen:</p>
+{% if data.leistungszeitraum %}
+<p><strong>Leistungszeitraum:</strong> {{ data.leistungszeitraum }}</p>
+{% endif %}
+{% endblock %}
+
+{% block positions_table %}
+<table class="document-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">Pos.</th>
+            <th style="width: 45%;">Bezeichnung</th>
+            <th class="right" style="width: 10%;">Menge</th>
+            <th class="right" style="width: 20%;">Einzelpreis</th>
+            <th class="right" style="width: 20%;">Gesamtpreis</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pos in data.positionen %}
+        <tr>
+            <td class="center">{{ loop.index }}</td>
+            <td>{{ pos.bezeichnung }}</td>
+            <td class="right">{{ pos.menge | number_de }}</td>
+            <td class="right">{{ pos.einzelpreis | currency }}</td>
+            <td class="right">{{ pos.gesamtpreis | currency }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="totals-section">
+    <table>
+        <tr>
+            <td>Nettobetrag:</td>
+            <td class="right">{{ data.nettobetrag | currency }}</td>
+        </tr>
+        <tr>
+            <td>zzgl. {{ data.umsatzsteuer_satz }}% USt:</td>
+            <td class="right">{{ data.umsatzsteuer | currency }}</td>
+        </tr>
+        <tr class="total-row">
+            <td>Bruttobetrag:</td>
+            <td class="right">{{ data.bruttobetrag | currency }}</td>
+        </tr>
+    </table>
+</div>
+
+<div style="clear: both;"></div>
+
+{% if data.skonto_prozent and data.skonto_frist %}
+<div class="highlight">
+    <strong>Skontoabzug möglich:</strong> Bei Zahlung innerhalb von {{ data.skonto_frist }} Tagen gewähren wir {{ data.skonto_prozent }}% Skonto.
+    Zahlbetrag dann: {{ (data.bruttobetrag * (1 - data.skonto_prozent / 100)) | currency }}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block payment_section %}
+<div class="payment-section">
+    <h2>Zahlungsinformationen</h2>
+    <p><strong>Zahlungsziel:</strong> {{ data.zahlungsziel | date }}</p>
+    <p>Bitte überweisen Sie den Betrag von <strong>{{ data.bruttobetrag | currency }}</strong> unter Angabe der Rechnungsnummer auf folgendes Konto:</p>
+
+    <div class="bank-details">
+        <table>
+            <tr>
+                <td>Kontoinhaber:</td>
+                <td>{{ data.company_name }}</td>
+            </tr>
+            <tr>
+                <td>IBAN:</td>
+                <td>{{ data.company_iban }}</td>
+            </tr>
+            <tr>
+                <td>BIC:</td>
+                <td>{{ data.company_bic }}</td>
+            </tr>
+            <tr>
+                <td>Bank:</td>
+                <td>{{ data.company_bank_name }}</td>
+            </tr>
+            <tr>
+                <td>Verwendungszweck:</td>
+                <td><strong>{{ data.rechnungsnummer }}</strong></td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block closing_text %}
+<p>Wir bedanken uns für Ihren Auftrag und freuen uns auf die weitere Zusammenarbeit.</p>
+<p>Mit freundlichen Grüßen</p>
+{% endblock %}
+
+{% block legal_notice %}
+{% if data.steuernummer %}
+Steuernummer: {{ data.steuernummer }}
+{% endif %}
+{% if data.ust_idnr %}
+&bull; USt-IdNr: {{ data.ust_idnr }}
+{% endif %}
+{% if data.leistungszeitraum %}
+&bull; Leistungszeitraum: {{ data.leistungszeitraum }}
+{% endif %}
+<br>
+Geschäftsführer: {{ data.geschaeftsfuehrer | default('') }}
+{% if data.handelsregister %}
+&bull; {{ data.handelsregister }}
+{% endif %}
+{% endblock %}

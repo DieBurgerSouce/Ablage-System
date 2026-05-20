@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\fx_minifier.py
+# hypothesis_version: 6.148.7
+
+[1000000000.0, 'Consolidate Inputs', 'Delta Debugging', 'Eliminate dead code', 'Remove outputs', 'Remove unused inputs', 'Truncate suffix', 'XLA_HLO_DEBUG', 'call_function', 'concrete_value', 'device', 'dtype', 'eager', 'output', 'placeholder']

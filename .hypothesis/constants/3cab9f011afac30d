@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\blur\functional.py
+# hypothesis_version: 6.148.7
+
+[-1.0, -0.5, 1.0, 3.5, 100, 'box_blur', 'central_zoom', 'defocus', 'exact', 'fast', 'glass_blur', 'median_blur', 'zoom_blur']

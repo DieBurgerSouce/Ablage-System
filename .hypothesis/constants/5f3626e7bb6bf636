@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\workflow\workflow_trigger_service.py
+# hypothesis_version: 6.148.7
+
+[',', ':', 'UTC', 'X-Hub-Signature-256', 'X-Webhook-Signature', 'allow_manual_trigger', 'changed_fields', 'condition', 'conditions', 'created', 'cron', 'cron_parse_error', 'document_event', 'document_id', 'document_types', 'error', 'event', 'events', 'failed', 'file_extensions', 'folder_ids', 'global', 'has_secret', 'headers', 'manual', 'new', 'new_status', 'ocr_result', 'old', 'old_status', 'path', 'payload', 'processed', 'rules', 'schedule', 'scheduled_at', 'scope', 'sha256=', 'status_changed', 'timezone', 'triggered_at', 'triggered_by', 'type', 'watch_fields', 'webhook', 'webhook_path', 'webhook_secret', 'webhook_url', 'x-']

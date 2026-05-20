@@ -285,6 +285,15 @@ markers = [
     "metrics: Backend metrics tests",
     "fallback: GPU fallback scenario tests",
     "windows: Windows-specific tests",
+    "experimental: Experimental features under evaluation",
+    "gpu_required: Tests that require GPU (will skip if not available)",
+    "docker: Docker container health tests",
+    "critical: Critical service tests (must pass)",
+    "gpu_optional: GPU tests (skip if no GPU available)",
+    "connectivity: Service connectivity tests",
+    "prometheus: Prometheus target tests",
+    "logs: Container log scanning tests",
+    "chaos: Chaos Engineering tests for fault injection",
 ]
 
 # Addopts - options to always use
@@ -320,8 +329,9 @@ parallel = true
 precision = 2
 show_missing = true
 skip_covered = false
-# Phase 1.3: Coverage-Schwelle auf 80% setzen
-fail_under = 80
+# Enterprise-Grade: Coverage-Schwelle auf 90% für Production-Qualität
+# Critical Paths sollten 95%+ haben (separat validiert)
+fail_under = 90
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

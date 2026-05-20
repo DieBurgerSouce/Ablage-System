@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\utils\layout_postprocessor.py
+# hypothesis_version: 6.148.7
+
+[0.05, 0.1, 0.2, 0.3, 0.45, 0.5, 0.8, 0.9, 1.3, 2.0, 'area_threshold', 'conf_threshold', 'id', 'lrtb', 'picture', 'regular', 'tblr', 'wrapper']

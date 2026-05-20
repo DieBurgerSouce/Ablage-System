@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\signal.py
+# hypothesis_version: 6.148.7
+
+[1e-11, 'NLC', 'Out', 'X', 'axis', 'backward', 'complex128', 'complex64', 'constant', 'float16', 'float32', 'float64', 'frame', 'frame_length', 'hop_length', 'int32', 'int64', 'istft', 'ortho', 'overlap_add', 'reflect', 'stft', 'uint16', 'x']

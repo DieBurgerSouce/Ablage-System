@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\graph.py
+# hypothesis_version: 6.148.7
+
+[0.725, 0.783, 0.823, 1.358, 100, 300, '  via %s', '"""', '"""\n', '***\n', '+', '.', '.debug', 'GraphLowering.run', 'No current device', 'Output code: \n%s', '\\"\\"\\"', '_', '_overloadpacket', 'backward', 'call_function', 'code_gen', 'constant_args_idx', 'cpu', 'cuda', 'darwin', 'default', 'dislike_padding', 'eager_input_vals', 'fallback_handler', 'filename', 'flexible_layout', 'forward', 'grid', 'grouped', 'in_out', 'inductor', 'inductor_output_code', 'inference', 'is_magic_method', 'kernel_idx', 'kwargs', 'linux', 'list_', 'lowering %s %s', 'lowerings', 'meta', 'mutation_real_name', 'origin_node', 'output', 'perf_hints', 'placeholder', 'small', 'triton.store_cubin', 'unbacked_bindings', 'val', 'win32', 'xpu']

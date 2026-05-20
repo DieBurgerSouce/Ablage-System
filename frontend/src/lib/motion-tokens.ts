@@ -1,4 +1,3 @@
-// src/lib/motion-tokens.ts
 export const motionTokens = {
     duration: {
         instant: 0,

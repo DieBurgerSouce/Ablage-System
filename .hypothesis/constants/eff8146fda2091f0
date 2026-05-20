@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\bank_csv\sparkasse.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 0.8, 0.95, 'Auftragskonto', 'BIC (SWIFT-Code)', 'Betrag', 'Buchungstag', 'Buchungstext', 'Glaeubiger ID', 'Info', 'Kontonummer/IBAN', 'Mandatsreferenz', 'Sammlerreferenz', 'Valutadatum', 'Verwendungszweck', 'Waehrung', 'amount', 'auftragskonto', 'beguenstigter', 'begünstigter', 'betrag', 'bic', 'booking_date', 'booking_text', 'buchungstag', 'buchungstext', 'counterparty_bic', 'counterparty_iban', 'counterparty_name', 'currency', 'glaeubiger id', 'iban', 'kontonummer', 'mandatsreferenz', 'reference_text', 'sparkasse', 'swift', 'ursprung', 'value_date', 'valuta', 'verwendungszweck', 'waehrung', 'währung']

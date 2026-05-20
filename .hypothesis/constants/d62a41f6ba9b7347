@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\elastic\manager.py
+# hypothesis_version: 6.148.7
+
+[b'0', b'1', 101, 102, 6170, ',', '/endpoints', '/nodes', '/np', '/paddle/', '0', '127.0.0.1', '6170', ':', 'ELASTIC', 'FLAGS_START_PORT', 'INFO', 'PADDLE_ELASTIC_FORCE', 'PADDLE_ELASTIC_NP', 'PADDLE_ELASTIC_SCALE', 'PADDLE_ELASTIC_TTL', 'PADDLE_PORT', 'PADDLE_TRAINERS', 'PADDLE_TRAINER_ID', 'POD_IP', 'completed', 'error', 'execute pre_hook...', 'exit', 'hold', 'hosts empty', 'latin-1', 'lease_heartbeat', 'nt', 'pre_hook exec failed', 'restart', 'skip pre_hook', '{}:{}', '|']

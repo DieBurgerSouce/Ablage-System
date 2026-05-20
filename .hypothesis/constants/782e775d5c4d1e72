@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\mixing\transforms.py
+# hypothesis_version: 6.148.7
+
+[0.3, 0.5, 0.7, 512, 'BboxProcessor', 'KeypointsProcessor', 'Mosaic', 'OverlayElements', 'after', 'bbox', 'bbox_id', 'bboxes', 'contain', 'cover', 'depth', 'height', 'image', 'keypoints', 'mask', 'mask_id', 'mosaic_metadata', 'offset', 'overlay_data', 'overlay_image', 'overlay_mask', 'overlay_metadata', 'processed_cells', 'shape', 'target_mask_shape', 'target_shape', 'width']

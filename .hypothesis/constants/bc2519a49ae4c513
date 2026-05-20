@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\connectivity\cuts.py
+# hypothesis_version: 6.148.7
+
+['G', 'auxiliary', 'auxiliary?', 'capacity', 'flow_func', 'id', 'inf', 'mapping', 'minimum_edge_cut', 'minimum_node_cut', 'minimum_st_edge_cut', 'minimum_st_node_cut', 'residual']

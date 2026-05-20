@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\_lower_to_native_backend.py
+# hypothesis_version: 6.148.7
+
+['/', ':', 'B', '_', '_packed_weight', '_packed_weight_', 'bias', 'call_function', 'call_method', 'call_module', 'clamp', 'contiguous', 'dequantize', 'detach', 'detach_', 'get_attr', 'hardsigmoid', 'hardsigmoid_', 'inplace', 'mean', 'momentum', 'output_scale', 'output_zero_point', 'permute', 'relu', 'relu_', 'repeat', 'repeat_interleave', 'reshape', 'resize_', 'running_mean', 'running_var', 'shape', 'sigmoid', 'sigmoid_', 'size', 'squeeze', 'squeeze_', 'tanh', 'tanh_', 'to', 'transpose', 'unsqueeze', 'unsqueeze_', 'use_input_stats', 'view', '|']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\mixing\domain_adaptation.py
+# hypothesis_version: 6.148.7
+
+[0.1, 0.25, 0.5, 1.0, 'FDA', 'HistogramMatching', 'after', 'beta', 'beta_limit', 'blend_ratio', 'fda_metadata', 'hm_metadata', 'minmax', 'pca', 'pda_metadata', 'reference_image', 'shape', 'standard', 'target_image', 'tuple[float, float]']

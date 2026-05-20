@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\reduce.py
+# hypothesis_version: 6.148.7
+
+[1.0, 21000, 'reduce_type', 'ring_id', 'root_id']

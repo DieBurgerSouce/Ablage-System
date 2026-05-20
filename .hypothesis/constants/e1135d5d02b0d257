@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\classification\zoo.py
+# hypothesis_version: 6.148.7
+
+[128, 'batch_size', 'crop', 'input_shape', 'magc_resnet31', 'mean', 'mobilenet_v3_large', 'mobilenet_v3_large_r', 'mobilenet_v3_small', 'mobilenet_v3_small_r', 'page', 'resnet18', 'resnet31', 'resnet34', 'resnet34_wide', 'resnet50', 'std', 'textnet_base', 'textnet_small', 'textnet_tiny', 'vgg16_bn_r', 'vip_base', 'vip_tiny', 'vit_b', 'vit_s']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\modules\transformer\pytorch.py
+# hypothesis_version: 6.148.7
+
+[1e-05, 0.1, 0.2, 10000.0, 2048, 5000, '-inf', 'Decoder', 'EncoderBlock', 'MultiHeadAttention', 'PositionalEncoding', 'pe']

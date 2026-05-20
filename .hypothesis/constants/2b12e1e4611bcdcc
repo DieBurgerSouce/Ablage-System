@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\import_service.py
+# hypothesis_version: 6.148.7
+
+[0.3, 0.7, 1.0, 100, 1000, 'CAMT.053 (ISO 20022)', 'Commerzbank CSV', 'DKB CSV', 'Deutsche Bank CSV', 'Generisches CSV', 'ING CSV', 'MT940 (SWIFT)', 'N26 CSV', 'Sparkasse CSV', 'Unbekannt', 'amount', 'booking_date', 'completed', 'counterparty_name', 'description', 'error', 'extensions', 'format', 'name', 'processing', 'reference_text', 'transaction_id', 'unknown', 'utf-8', 'variant']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_fused_feedforward.py
+# hypothesis_version: 6.148.7
+
+['Linear1Bias', 'Linear1Weight', 'Linear2Bias', 'Linear2Weight', 'Out', 'X', 'fused_feedforward', 'ring_id', 'tensor_parallel']

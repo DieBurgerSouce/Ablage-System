@@ -13,6 +13,7 @@ Features:
 import structlog
 from datetime import datetime
 from difflib import unified_diff, HtmlDiff
+from functools import lru_cache
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 
@@ -21,7 +22,9 @@ from sqlalchemy import select, update, func
 from sqlalchemy.orm import selectinload
 
 from app.db.models import Document, OCRResult, OCRResultVersion, User
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
+
     OCRVersionResponse,
     OCRVersionSummary,
     OCRVersionListResponse,
@@ -36,9 +39,25 @@ logger = structlog.get_logger(__name__)
 class VersionService:
     """Service for managing OCR result versions."""
 
+    # Max extracted text size (10MB) - prevents database bloat from oversized OCR results
+    MAX_EXTRACTED_TEXT_SIZE = 10 * 1024 * 1024  # 10MB
+
     def __init__(self) -> None:
         """Initialize version service."""
         self._html_differ = HtmlDiff(wrapcolumn=80)
+
+    def _validate_text_size(self, text: Optional[str]) -> str:
+        """Validate and truncate extracted text if too large."""
+        if text is None:
+            return ""
+        if len(text) > self.MAX_EXTRACTED_TEXT_SIZE:
+            logger.warning(
+                "extracted_text_truncated",
+                original_size=len(text),
+                max_size=self.MAX_EXTRACTED_TEXT_SIZE
+            )
+            return text[:self.MAX_EXTRACTED_TEXT_SIZE] + "\n\n[TEXT TRUNCATED - exceeded 10MB limit]"
+        return text
 
     async def create_version_from_dict(
         self,
@@ -79,7 +98,8 @@ class VersionService:
 
         # Extract data from dictionary
         backend = ocr_data.get("backend") or ocr_data.get("metadata", {}).get("backend_used", "unknown")
-        text = ocr_data.get("text") or ocr_data.get("extracted_text", "")
+        raw_text = ocr_data.get("text") or ocr_data.get("extracted_text", "")
+        text = self._validate_text_size(raw_text)
         confidence = ocr_data.get("confidence_score") or ocr_data.get("confidence", 0.0)
         metadata = ocr_data.get("metadata", {})
 
@@ -176,6 +196,7 @@ class VersionService:
         )
 
         # Create new version from OCR result
+        validated_text = self._validate_text_size(ocr_result.extracted_text)
         version = OCRResultVersion(
             document_id=document_id,
             ocr_result_id=ocr_result.id,
@@ -183,7 +204,7 @@ class VersionService:
             is_current=True,
             is_rollback=False,
             backend=ocr_result.backend,
-            extracted_text=ocr_result.extracted_text,
+            extracted_text=validated_text,
             confidence_score=ocr_result.confidence_score,
             word_count=ocr_result.word_count,
             char_count=ocr_result.char_count,
@@ -373,7 +394,7 @@ class VersionService:
                     numlines=3
                 )
             except Exception as e:
-                logger.warning("html_diff_failed", error=str(e))
+                logger.warning("html_diff_failed", **safe_error_log(e))
 
             # Unified diff like git
             unified = list(unified_diff(
@@ -550,17 +571,12 @@ class VersionService:
         return max_version + 1
 
 
-# Singleton instance
-_version_service: Optional[VersionService] = None
-
-
+# Thread-safe singleton via lru_cache
+@lru_cache(maxsize=1)
 def get_version_service() -> VersionService:
-    """Get singleton version service instance.
+    """Get singleton version service instance (thread-safe).
 
     Returns:
         VersionService instance
     """
-    global _version_service
-    if _version_service is None:
-        _version_service = VersionService()
-    return _version_service
+    return VersionService()

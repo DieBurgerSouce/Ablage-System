@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\prometheus_client\validation.py
+# hypothesis_version: 6.148.7
+
+[128, '"', '1', 'False', '^__.*$', 'invalid metric name ', 't', 'true', 'utf-8']

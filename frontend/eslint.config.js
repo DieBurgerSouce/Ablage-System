@@ -19,5 +19,25 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // B2 (2026-05-19): Verbiete ALLE direkten console.* Aufrufe - auch
+      // console.warn/error koennen PII leaken (CLAUDE.md Rule 1).
+      // Nutze stattdessen `import { logger } from '@/lib/logger'`.
+      'no-console': 'error',
+      // Erlaube _-prefixed Variablen (bewusst ungenutzt)
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        destructuredArrayIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+    },
+  },
+  // Ausnahme fuer logger.ts - darf console.* verwenden
+  {
+    files: ['**/lib/logger.ts'],
+    rules: {
+      'no-console': 'off',
+    },
   },
 ])

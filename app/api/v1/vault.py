@@ -8,8 +8,10 @@ Art. 32 DSGVO - Sicherheit der Verarbeitung:
 Überwachung der Geheimnismanagement-Infrastruktur.
 """
 
-from typing import Dict, Any, Optional
-from datetime import datetime
+from typing import Optional
+from datetime import datetime, timezone
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
@@ -17,8 +19,9 @@ from pydantic import BaseModel
 import structlog
 
 from app.core.config import settings, VaultClient
-from app.core.security import get_current_admin_user
+from app.api.dependencies import get_current_superuser
 from app.db.models import User
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -68,7 +71,7 @@ class SecretMetadataResponse(BaseModel):
     description="Zeigt den aktuellen Vault-Verbindungsstatus an.",
 )
 async def get_vault_status(
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_superuser),
 ) -> VaultStatusResponse:
     """
     Ruft den aktuellen Vault-Status ab.
@@ -80,7 +83,7 @@ async def get_vault_status(
             enabled=False,
             connected=False,
             authenticated=False,
-            last_check=datetime.utcnow().isoformat(),
+            last_check=datetime.now(timezone.utc).isoformat(),
             message="Vault-Integration ist deaktiviert",
         )
 
@@ -110,17 +113,17 @@ async def get_vault_status(
                     version=health.get("version", None) if isinstance(health, dict) else None,
                     cluster_name=health.get("cluster_name", None) if isinstance(health, dict) else None,
                     address=settings.VAULT_ADDR,
-                    last_check=datetime.utcnow().isoformat(),
+                    last_check=datetime.now(timezone.utc).isoformat(),
                 )
             except Exception as e:
-                logger.warning("vault_health_check_partial", error=str(e))
+                logger.warning("vault_health_check_partial", **safe_error_log(e))
                 return VaultStatusResponse(
                     enabled=True,
                     connected=True,
                     authenticated=vault._authenticated,
                     address=settings.VAULT_ADDR,
-                    last_check=datetime.utcnow().isoformat(),
-                    error=f"Teilweise Statusabfrage fehlgeschlagen: {str(e)}",
+                    last_check=datetime.now(timezone.utc).isoformat(),
+                    error=safe_error_detail(e, "Vorgang"),
                 )
         else:
             return VaultStatusResponse(
@@ -128,19 +131,19 @@ async def get_vault_status(
                 connected=False,
                 authenticated=False,
                 address=settings.VAULT_ADDR,
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 error="Verbindung zu Vault fehlgeschlagen",
             )
 
     except Exception as e:
-        logger.error("vault_status_check_failed", error=str(e))
+        logger.error("vault_status_check_failed", **safe_error_log(e))
         return VaultStatusResponse(
             enabled=True,
             connected=False,
             authenticated=False,
             address=settings.VAULT_ADDR,
-            last_check=datetime.utcnow().isoformat(),
-            error=str(e),
+            last_check=datetime.now(timezone.utc).isoformat(),
+            **safe_error_log(e),
         )
 
 
@@ -189,20 +192,36 @@ async def vault_health_check() -> VaultHealthResponse:
         # Prüfe KV-Engine
         secrets_status = "unknown"
         try:
-            vault._client.secrets.kv.v2.list_secrets(
-                path="",
-                mount_point=settings.VAULT_MOUNT_POINT,
-            )
-            secrets_status = "healthy"
-        except Exception:
+            # Safe check for client existence
+            if not hasattr(vault, '_client') or vault._client is None:
+                secrets_status = "unhealthy"
+                logger.warning("vault_client_not_initialized")
+            else:
+                vault._client.secrets.kv.v2.list_secrets(
+                    path="",
+                    mount_point=settings.VAULT_MOUNT_POINT,
+                )
+                secrets_status = "healthy"
+        except PermissionError as e:
+            logger.warning("vault_kv_permission_denied", **safe_error_log(e))
+            secrets_status = "permission_denied"
+        except Exception as e:
+            logger.warning("vault_kv_check_failed", error_type=type(e).__name__, **safe_error_log(e))
             secrets_status = "unhealthy"
 
         # Prüfe Transit-Engine
         transit_status = "unknown"
         try:
-            vault._client.secrets.transit.list_keys()
-            transit_status = "healthy"
-        except Exception:
+            if hasattr(vault, '_client') and vault._client is not None:
+                vault._client.secrets.transit.list_keys()
+                transit_status = "healthy"
+            else:
+                transit_status = "client_unavailable"
+        except PermissionError as e:
+            logger.debug("vault_transit_permission_denied", **safe_error_log(e))
+            transit_status = "not_configured"
+        except Exception as e:
+            logger.debug("vault_transit_check_failed", error_type=type(e).__name__, **safe_error_log(e))
             transit_status = "not_configured"
 
         # Bestimme Gesamtstatus
@@ -226,14 +245,14 @@ async def vault_health_check() -> VaultHealthResponse:
         )
 
     except Exception as e:
-        logger.error("vault_health_check_failed", error=str(e))
+        logger.error("vault_health_check_failed", **safe_error_log(e))
         return VaultHealthResponse(
             status="unhealthy",
             vault_enabled=True,
             vault_connected=False,
             secrets_engine_status="unknown",
             transit_engine_status="unknown",
-            message=f"Health-Check fehlgeschlagen: {str(e)}",
+            message=safe_error_detail(e, "Health-Check"),
         )
 
 
@@ -245,7 +264,7 @@ async def vault_health_check() -> VaultHealthResponse:
 )
 async def get_secret_metadata(
     path: str,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_superuser),
 ) -> SecretMetadataResponse:
     """
     Ruft Metadaten eines Secrets ab.
@@ -322,10 +341,11 @@ async def get_secret_metadata(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("vault_metadata_fetch_failed", path=path, error=str(e))
+        # SECURITY FIX 29: Generic error message - no internal details (vault is sensitive!)
+        logger.error("vault_metadata_fetch_failed", path=path, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Abrufen der Metadaten: {str(e)}",
+            detail="Fehler beim Abrufen der Metadaten. Bitte erneut versuchen.",
         )
 
 
@@ -335,8 +355,8 @@ async def get_secret_metadata(
     description="Lädt Secrets aus Vault neu (für Runtime-Rotation).",
 )
 async def refresh_secrets(
-    current_user: User = Depends(get_current_admin_user),
-) -> Dict[str, Any]:
+    current_user: User = Depends(get_current_superuser),
+) -> JSONDict:
     """
     Lädt Secrets aus Vault neu.
 
@@ -360,18 +380,19 @@ async def refresh_secrets(
             return {
                 "status": "success",
                 "message": "Secrets wurden erfolgreich aktualisiert",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         else:
             return {
                 "status": "no_change",
                 "message": "Keine neuen Secrets geladen",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
     except Exception as e:
-        logger.error("vault_secrets_refresh_failed", error=str(e))
+        # SECURITY FIX 29: Generic error message - no internal details (vault is sensitive!)
+        logger.error("vault_secrets_refresh_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Aktualisieren der Secrets: {str(e)}",
+            detail="Fehler beim Aktualisieren der Secrets. Bitte erneut versuchen.",
         )

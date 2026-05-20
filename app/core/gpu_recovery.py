@@ -147,7 +147,7 @@ class GPURecoveryManager:
             return stats
 
         except Exception as e:
-            logger.warning("gpu_memory_stats_failed", error=str(e))
+            logger.warning("gpu_memory_stats_failed", **safe_error_log(e))
             return GPUMemoryStats()
 
     async def clear_gpu_memory(self) -> GPUMemoryStats:
@@ -186,7 +186,7 @@ class GPURecoveryManager:
             return after
 
         except Exception as e:
-            logger.error("gpu_memory_clear_failed", error=str(e))
+            logger.error("gpu_memory_clear_failed", **safe_error_log(e))
             return self.get_memory_stats()
 
     def get_optimal_batch_size(self, backend: str) -> int:
@@ -276,7 +276,7 @@ class GPURecoveryManager:
         backend: str,
         batch: List[Any],
         max_retries: int = 3,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> List[T]:
         """
         Execute batch processing with OOM recovery.
@@ -351,6 +351,15 @@ class GPURecoveryManager:
                         max_retries=max_retries,
                     )
 
+                    # SECURITY FIX: Bei wiederholten OOM-Fehlern Incident melden
+                    # Könnte auf Resource-Exhaustion-Angriff hindeuten
+                    if oom_count >= 2 or self._oom_count[backend] >= 5:
+                        await self._report_oom_incident(
+                            backend=backend,
+                            oom_count=self._oom_count[backend],
+                            batch_size=current_batch_size,
+                        )
+
                     # Clear memory
                     await self.clear_gpu_memory()
 
@@ -391,6 +400,82 @@ class GPURecoveryManager:
         )
 
         return results
+
+    async def _report_oom_incident(
+        self,
+        backend: str,
+        oom_count: int,
+        batch_size: int,
+    ) -> None:
+        """
+        Report repeated OOM errors as security incident.
+
+        Repeated GPU OOM could indicate:
+        - Resource exhaustion attack
+        - Malicious oversized documents
+        - System configuration issues
+
+        Args:
+            backend: OCR backend with OOM
+            oom_count: Total OOM count for this backend
+            batch_size: Batch size at time of OOM
+        """
+        try:
+            from app.services.incident_response_service import (
+
+                get_incident_response_service,
+                Incident,
+                IncidentType,
+                IncidentSeverity,
+            )
+
+            # Determine severity based on OOM frequency
+            if oom_count >= 10:
+                severity = IncidentSeverity.HIGH
+            elif oom_count >= 5:
+                severity = IncidentSeverity.MEDIUM
+            else:
+                severity = IncidentSeverity.LOW
+
+            # Create incident
+            incident = Incident(
+                incident_type=IncidentType.RATE_LIMIT_ABUSE,  # Closest type for resource abuse
+                severity=severity,
+                description=f"GPU Resource Exhaustion: {oom_count} OOM-Fehler bei {backend}-Backend",
+                details={
+                    "backend": backend,
+                    "oom_count": oom_count,
+                    "batch_size": batch_size,
+                    "memory_stats": (
+                        {
+                            "allocated_gb": self._last_memory_stats.allocated_gb,
+                            "utilization": self._last_memory_stats.utilization_percent,
+                        }
+                        if self._last_memory_stats
+                        else None
+                    ),
+                    "incident_category": "gpu_resource_exhaustion",
+                },
+            )
+
+            service = get_incident_response_service()
+            service.active_incidents[incident.id] = incident
+
+            logger.warning(
+                "gpu_oom_incident_reported",
+                incident_id=incident.id,
+                backend=backend,
+                oom_count=oom_count,
+                severity=severity.value,
+                security_event=True,
+            )
+
+        except ImportError:
+            # IncidentResponseService not available
+            logger.debug("incident_response_service_not_available")
+        except Exception as e:
+            # Don't let incident reporting break recovery
+            logger.warning("oom_incident_report_failed", **safe_error_log(e))
 
     def get_stats(self) -> Dict[str, Any]:
         """Get recovery statistics."""

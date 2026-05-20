@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\tax_advisor_packages.py
+# hypothesis_version: 6.148.7
+
+[100, 1024, '/configurations', '/statistics/summary', '/{package_id}', '/{package_id}/remind', '/{package_id}/send', 'Content-Disposition', 'E-Mail fuer Versand', 'Erinnerung senden', 'Nach Status filtern', 'PackageResponse', 'Paket abrufen', 'Paket erstellen', 'Paket herunterladen', 'Paket nicht gefunden', 'Paket versenden', 'Paket-Statistiken', 'Pakete auflisten', 'Steuerberater-Pakete', 'all', 'by_status', 'completion_rate', 'datev', 'description', 'document_type', 'expected_date', 'importance', 'missing_count', 'monthly', 'notes', 'other', 'package_downloaded', 'package_id', 'package_sent_via_api', 'pdf', 'reminder_sent_at', 'report', 'required', 'sent_at', 'text/plain', 'total_documents', 'total_packages', 'total_size_bytes', 'total_size_mb']

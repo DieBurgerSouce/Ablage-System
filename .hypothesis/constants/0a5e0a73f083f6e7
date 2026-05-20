@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\mm_common.py
+# hypothesis_version: 6.148.7
+
+['BLOCK_M', 'BLOCK_N', 'Expect 3D tensors', 'NUM_SMS', 'tl.float32', 'torch.']

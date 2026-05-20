@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\huggingface_hub\repository.py
+# hypothesis_version: 6.148.7
+
+[127, 256, 1024, ' --rebase', '(https?)://.*@', ', ...]', '-a', '-d', '-m', '.', '.git', '/', '1', '1.0', 'B', 'D', 'GIT_LFS_PROGRESS', 'GIT_LFS_SKIP_SMUDGE', 'HEAD', 'Pulling changes ...', '\\1://', 'api_org', 'bar', 'diff', 'email', 'filter', 'fullname', 'git', 'git --version', 'git add -v', 'git branch', 'git check-attr -a', 'git check-ignore', 'git commit -v -m', 'git config user.name', 'git lfs install', 'git lfs pull', 'git lfs untrack', 'git pull', 'git push', 'git remote -v', 'git rev-parse HEAD', 'git status -s', 'git tag', 'git-lfs --version', 'http', 'https://', 'https://.*@', 'lfs', 'lfs_progress', 'merge', 'nothing to commit', 'past_bytes', 'push', 'r', 'rb', 'running', 'tag', 'utf-8']

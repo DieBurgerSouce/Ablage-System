@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\rag\chat_ws.py
+# hypothesis_version: 6.148.7
+
+[4001, 4003, '/chat/{session_id}', '/ws', 'Benutzer deaktiviert', 'JWT Access Token', 'Ungültiger Token', 'chat-websocket', 'chat_websocket_error', 'get_presence', 'message', 'ping', 'pong', 'require_exp', 'sub', 'type', 'typing_start', 'typing_stop', 'verify_exp', 'websocket_auth_error']

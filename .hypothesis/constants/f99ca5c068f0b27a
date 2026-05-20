@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\surya\encoder\__init__.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 1.0, 10000.0, 1152, '-inf', 'constant', 'cpu', 'eager', 'flash_attention_2', 'model', 'past_key_values', 'sdpa']

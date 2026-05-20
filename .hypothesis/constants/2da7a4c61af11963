@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\pir_io.py
+# hypothesis_version: 6.148.7
+
+[1.0, '.json', '.pdiparams', '.pdopt', '.pdparams', ':', '__model__', '__model__.json', 'builtin.parameter', 'darwin', 'feed_name_', 'feed_vars', 'fetch_name_', 'fetch_vars', 'is_test', 'latin1', 'model_filename', 'name', 'params_filename', 'pd_op.auc', 'pd_op.batch_norm', 'pd_op.data', 'pd_op.feed', 'pd_op.fetch', 'pd_op.scale', 'pickle_protocol', 'program', 'pserver_endpoints', 'rb', 'readable', 'saved_params', 'separate_parameters', 'skip_prune_program', 'trainable', 'value', 'wb']

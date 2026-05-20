@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\backend_config\native.py
+# hypothesis_version: 6.148.7
+
+['_native_and_fp16', 'native']

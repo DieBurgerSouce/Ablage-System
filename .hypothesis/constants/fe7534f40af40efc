@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\callbacks.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '%.5f samples/sec', '%.5f sec', '_learning_rate', 'acc_step', 'avg_batch_cost', 'avg_reader_cost', 'batch_data_end_time', 'batch_size', 'batch_start_time', 'batch_time', 'count', 'data_time', 'epochs', 'eval', 'fetches', 'ips', 'lr', 'metrics', 'outputs', 'samples', 'step {}:{}', 'steps', 'test', 'train', 'verbose']

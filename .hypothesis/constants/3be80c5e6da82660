@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\validators\card.py
+# hypothesis_version: 6.148.7
+
+['^(220[0-4])', '^(30|36|38|39)', '^(34|37)', '^(60|64|65)', '^35', '^4', '^62']

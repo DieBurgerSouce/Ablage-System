@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sentence_transformers\readers\STSDataReader.py
+# hypothesis_version: 6.148.7
+
+['.gz', 'rt', 'utf-8', 'utf8']

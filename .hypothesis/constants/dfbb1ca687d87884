@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\models.py
+# hypothesis_version: 6.148.7
+
+[140, 168, 255, 500, '0', 'EUR', 'PAIN.001', 'PAIN.008', 'actual', 'amount', 'approved', 'batch', 'booking_date', 'business', 'camt053', 'cancelled', 'card', 'cash', 'checking', 'completed', 'confirmed', 'counterparty_name', 'created_at', 'credit', 'csv_commerzbank', 'csv_deutsche_bank', 'csv_dkb', 'csv_generic', 'csv_ing', 'csv_n26', 'csv_sparkasse', 'csv_volksbank', 'direct_debit', 'draft', 'expected', 'failed', 'fee', 'iban', 'ignored', 'inflow', 'interest', 'invoice_payable', 'invoice_receivable', 'legal', 'level_1_sent', 'level_2_sent', 'level_3_sent', 'manual', 'matched', 'mt940', 'other', 'outflow', 'paid', 'partial', 'partially_paid', 'pdf', 'pending', 'pending_approval', 'pending_tan', 'recurring', 'reference', 'rejected', 'savings', 'submitted', 'transfer', 'unmatched', 'updated_at', 'value_date', 'written_off']

@@ -1,0 +1,194 @@
+{
+  "title": "Administration",
+  "subtitle": "System management",
+  "users": {
+    "title": "User Management",
+    "subtitle": "Manage users and permissions",
+    "list": "User list",
+    "add": "Add user",
+    "edit": "Edit user",
+    "delete": "Delete user",
+    "noUsers": "No users available",
+    "fields": {
+      "email": "Email",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "role": "Role",
+      "company": "Company",
+      "status": "Status",
+      "lastLogin": "Last login",
+      "createdAt": "Created at"
+    },
+    "roles": {
+      "admin": "Administrator",
+      "manager": "Manager",
+      "editor": "Editor",
+      "viewer": "Viewer",
+      "guest": "Guest"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "pending": "Pending",
+      "blocked": "Blocked"
+    },
+    "actions": {
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "block": "Block",
+      "unblock": "Unblock",
+      "resetPassword": "Reset password",
+      "impersonate": "Sign in as user"
+    }
+  },
+  "companies": {
+    "title": "Company Management",
+    "subtitle": "Manage tenants",
+    "list": "Company list",
+    "add": "Add company",
+    "edit": "Edit company",
+    "delete": "Delete company",
+    "fields": {
+      "name": "Company name",
+      "identifier": "Identifier",
+      "vatId": "VAT ID",
+      "address": "Address",
+      "users": "Users",
+      "documents": "Documents",
+      "status": "Status"
+    }
+  },
+  "system": {
+    "title": "System",
+    "subtitle": "System status and configuration",
+    "health": {
+      "title": "System Status",
+      "status": "Status",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "unhealthy": "Unhealthy",
+      "components": {
+        "api": "API Server",
+        "database": "Database",
+        "redis": "Redis",
+        "minio": "MinIO",
+        "ocr": "OCR Service",
+        "gpu": "GPU",
+        "celery": "Celery Workers"
+      }
+    },
+    "metrics": {
+      "title": "Metrics",
+      "cpu": "CPU usage",
+      "memory": "Memory",
+      "disk": "Disk",
+      "gpu": "GPU memory",
+      "requests": "Requests/sec",
+      "documents": "Documents processed",
+      "errors": "Errors"
+    },
+    "logs": {
+      "title": "Logs",
+      "level": "Log level",
+      "source": "Source",
+      "message": "Message",
+      "timestamp": "Timestamp",
+      "filter": "Filter",
+      "download": "Download",
+      "levels": {
+        "debug": "Debug",
+        "info": "Info",
+        "warning": "Warning",
+        "error": "Error",
+        "critical": "Critical"
+      }
+    }
+  },
+  "backup": {
+    "title": "Backup",
+    "subtitle": "Manage data backups",
+    "create": "Create backup",
+    "restore": "Restore backup",
+    "schedule": "Schedule",
+    "history": "Backup history",
+    "noBackups": "No backups available",
+    "fields": {
+      "name": "Name",
+      "size": "Size",
+      "date": "Date",
+      "type": "Type",
+      "status": "Status"
+    },
+    "types": {
+      "full": "Full",
+      "database": "Database",
+      "documents": "Documents",
+      "config": "Configuration"
+    },
+    "status": {
+      "pending": "Pending",
+      "inProgress": "In progress",
+      "completed": "Completed",
+      "failed": "Failed"
+    }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "subtitle": "Connect external services",
+    "datev": {
+      "title": "DATEV",
+      "status": "Connection status",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "sync": "Synchronize",
+      "lastSync": "Last synchronization"
+    },
+    "slack": {
+      "title": "Slack",
+      "enabled": "Enabled",
+      "webhook": "Webhook URL",
+      "channel": "Channel",
+      "test": "Send test notification"
+    },
+    "teams": {
+      "title": "Microsoft Teams",
+      "enabled": "Enabled",
+      "webhook": "Webhook URL",
+      "test": "Send test notification"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "save": "Save settings",
+    "reset": "Reset to defaults",
+    "categories": {
+      "general": "General",
+      "security": "Security",
+      "notifications": "Notifications",
+      "processing": "Processing",
+      "storage": "Storage"
+    }
+  },
+  "audit": {
+    "title": "Audit Log",
+    "subtitle": "System activities",
+    "fields": {
+      "action": "Action",
+      "user": "User",
+      "resource": "Resource",
+      "timestamp": "Timestamp",
+      "details": "Details",
+      "ip": "IP address"
+    },
+    "actions": {
+      "create": "Created",
+      "update": "Updated",
+      "delete": "Deleted",
+      "login": "Signed in",
+      "logout": "Signed out",
+      "export": "Exported",
+      "approve": "Approved",
+      "reject": "Rejected"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\dist_op.py
+# hypothesis_version: 6.148.7
+
+['Unrecognized output.', '_serial_inputs', '_serial_op', '_serial_outputs', 'annotated', 'chunk_id', 'create_py_reader', 'dims_mapping', 'non-annotated', 'non-parameter', 'parameter', 'process_mesh', 'read', 'while']

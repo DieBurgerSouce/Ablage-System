@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\core\event.py
+# hypothesis_version: 6.148.7
+
+[1000000, 'B', 'E', 'None', '_duration', 'name', 'numba:', 'numba:compile', 'numba:compiler_lock', 'numba:llvm_lock', 'numba:run_pass', 'unreachable', 'w']

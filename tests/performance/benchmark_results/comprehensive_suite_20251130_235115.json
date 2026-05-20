@@ -1,0 +1,23 @@
+{
+  "name": "comprehensive_suite",
+  "count": 0,
+  "mean": 0,
+  "median": 0,
+  "stdev": 0,
+  "min": 0,
+  "max": 0,
+  "p50": 0,
+  "p95": 0,
+  "p99": 0,
+  "errors": 0,
+  "duration_seconds": 0.0,
+  "metadata": {
+    "deepseek_throughput": 2.434200887397496,
+    "got_ocr_throughput": 6.296742115005547,
+    "surya_throughput": 1.6459841936535466,
+    "latency_p50": 156.55839443206787,
+    "latency_p95": 173.62427711486816,
+    "latency_p99": 178.68304252624512,
+    "concurrent_16_time": 0.1697237491607666
+  }
+}

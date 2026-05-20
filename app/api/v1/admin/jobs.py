@@ -6,8 +6,14 @@ Provides job management for admins:
 - Cancel running/pending jobs
 - Retry failed jobs
 - Clear job queue
+
+Enterprise Features:
+- Request timeouts for long-running operations
+- Max batch size limits for bulk operations
+- Structured error responses
 """
 
+import asyncio
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
@@ -15,7 +21,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_superuser
+from app.api.dependencies import get_db, get_current_superuser, check_destructive_admin_rate_limit
 from app.db.models import User, ProcessingStatus
 from app.db.schemas import (
     JobAdminView,
@@ -23,9 +29,20 @@ from app.db.schemas import (
     JobListResponse,
     JobActionResponse,
     QueueClearResponse,
+    JobSortField,
     SortOrder,
 )
 from app.services.admin.job_admin_service import JobAdminService
+from app.core.audit_logger import SecurityAuditLogger, SecurityEventType
+
+
+# ==================== Constants ====================
+
+# Maximum timeout for bulk operations (seconds)
+BULK_OPERATION_TIMEOUT = 60
+
+# Maximum number of jobs per bulk operation
+MAX_BULK_JOBS = 100
 
 
 router = APIRouter(prefix="/jobs", tags=["Admin - Auftragsverwaltung"])
@@ -36,41 +53,48 @@ router = APIRouter(prefix="/jobs", tags=["Admin - Auftragsverwaltung"])
 @router.get(
     "",
     response_model=JobListResponse,
-    summary="Auftraege auflisten",
-    description="Listet alle Verarbeitungsauftraege mit Filter- und Paginierungsoptionen auf"
+    summary="Aufträge auflisten",
+    description="Listet alle Verarbeitungsaufträge mit Filter- und Paginierungsoptionen auf"
 )
 async def list_jobs(
+    request: Request,
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     status_filter: Optional[ProcessingStatus] = Query(None, alias="status", description="Nach Status filtern"),
     backend: Optional[str] = Query(None, description="Nach Backend filtern"),
     user_id: Optional[UUID] = Query(None, description="Nach Benutzer filtern"),
-    priority: Optional[int] = Query(None, ge=1, le=10, description="Nach Prioritaet filtern"),
-    has_error: Optional[bool] = Query(None, description="Nur Auftraege mit/ohne Fehler"),
+    priority: Optional[int] = Query(None, ge=1, le=10, description="Nach Priorität filtern"),
+    has_error: Optional[bool] = Query(None, description="Nur Aufträge mit/ohne Fehler"),
     created_from: Optional[datetime] = Query(None, description="Erstellt ab (ISO-Format)"),
     created_to: Optional[datetime] = Query(None, description="Erstellt bis (ISO-Format)"),
-    sort_by: str = Query("created_at", description="Sortierfeld"),
-    sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
+    sort_by: JobSortField = Query(JobSortField.CREATED_AT, description="Sortierfeld"),
+    sort_order_raw: str = Query("desc", alias="sort_order", description="Sortierrichtung (asc/desc)"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> JobListResponse:
     """
-    Listet alle Verarbeitungsauftraege im System auf.
+    Listet alle Verarbeitungsaufträge im System auf.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
 
     **Filter:**
     - **status**: pending, queued, processing, completed, failed, cancelled
     - **backend**: deepseek, got_ocr, surya, surya_gpu
     - **user_id**: UUID des Dokumenteigentuemers
-    - **priority**: 1-10 (1 = hoechste Prioritaet)
-    - **has_error**: true = nur fehlgeschlagene Auftraege
+    - **priority**: 1-10 (1 = hoechste Priorität)
+    - **has_error**: true = nur fehlgeschlagene Aufträge
     - **created_from/to**: Zeitraumfilter
 
     **Sortierung:**
     - Standardmaessig nach Erstellungsdatum absteigend
     - Sortierbare Felder: created_at, started_at, completed_at, priority
+
+    **Audit Logging:**
+    - Alle Auflistungen werden für GDPR Art. 30 protokolliert
     """
+    # Case-insensitive sort_order parsing (accepts both "DESC" and "desc")
+    sort_order = SortOrder.DESC if sort_order_raw.lower() == "desc" else SortOrder.ASC
+
     filters = JobListFilters(
         status=status_filter,
         backend=backend,
@@ -81,7 +105,7 @@ async def list_jobs(
         created_to=created_to,
     )
 
-    return await JobAdminService.list_jobs(
+    result = await JobAdminService.list_jobs(
         db=db,
         page=page,
         per_page=per_page,
@@ -89,6 +113,35 @@ async def list_jobs(
         sort_by=sort_by,
         sort_order=sort_order,
     )
+
+    # GDPR Art. 30: Audit Log für Admin-Zugriff auf Job-Liste
+    # Fix 6: Filter-Parameter maskieren - user_id nicht vollständig loggen
+    ip_address = request.client.host if request.client else None
+    audit = SecurityAuditLogger(db)
+    await audit.log_event(
+        event_type=SecurityEventType.ADMIN_JOBS_LISTED,
+        user_id=str(admin.id),
+        ip_address=ip_address,
+        resource_type="job_queue",
+        details={
+            "page": page,
+            "per_page": per_page,
+            "total_jobs": result.total,
+            "filters_applied": {
+                "status": status_filter.value if status_filter else None,
+                "backend": backend,
+                # user_id maskiert: nur ob Filter gesetzt wurde, nicht der Wert
+                "user_id_filtered": user_id is not None,
+                "priority": priority,
+                "has_error": has_error,
+            },
+            "sort_by": sort_by.value,
+            "sort_order": sort_order.value,
+        },
+        severity="info",
+    )
+
+    return result
 
 
 # ==================== Get Single Job ====================
@@ -101,13 +154,17 @@ async def list_jobs(
 )
 async def get_job(
     job_id: UUID,
+    request: Request,
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> JobAdminView:
     """
     Ruft detaillierte Informationen zu einem bestimmten Auftrag ab.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
+
+    **Audit Logging:**
+    - Alle Einzelabrufe werden für GDPR Art. 30 protokolliert
     """
     job = await JobAdminService.get_job(db, job_id)
 
@@ -116,6 +173,24 @@ async def get_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Auftrag nicht gefunden",
         )
+
+    # GDPR Art. 30: Audit Log für Admin-Zugriff auf einzelnen Job
+    ip_address = request.client.host if request.client else None
+    audit = SecurityAuditLogger(db)
+    await audit.log_event(
+        event_type=SecurityEventType.ADMIN_JOB_ACCESSED,
+        user_id=str(admin.id),
+        ip_address=ip_address,
+        resource_type="processing_job",
+        resource_id=str(job_id),
+        details={
+            "job_status": job.status,
+            "job_backend": job.backend,
+            "document_id": str(job.document_id) if job.document_id else None,
+            "owner_email": job.owner_email,
+        },
+        severity="info",
+    )
 
     return job
 
@@ -131,8 +206,8 @@ async def get_job(
 async def cancel_job(
     job_id: UUID,
     request: Request,
-    reason: Optional[str] = Query(None, description="Grund fuer Abbruch"),
-    admin: User = Depends(get_current_superuser),
+    reason: Optional[str] = Query(None, description="Grund für Abbruch"),
+    admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> JobActionResponse:
     """
@@ -140,7 +215,7 @@ async def cancel_job(
 
     Der Auftrag wird als 'cancelled' markiert und nicht weiter verarbeitet.
 
-    **Hinweis:** Bereits abgeschlossene Auftraege koennen nicht abgebrochen werden.
+    **Hinweis:** Bereits abgeschlossene Aufträge können nicht abgebrochen werden.
     """
     ip_address = request.client.host if request.client else None
 
@@ -164,22 +239,22 @@ async def cancel_job(
 async def retry_job(
     job_id: UUID,
     request: Request,
-    priority: Optional[int] = Query(None, ge=1, le=10, description="Neue Prioritaet"),
+    priority: Optional[int] = Query(None, ge=1, le=10, description="Neue Priorität"),
     backend: Optional[str] = Query(None, description="Anderes Backend verwenden"),
-    admin: User = Depends(get_current_superuser),
+    admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> JobActionResponse:
     """
     Erstellt einen neuen Auftrag basierend auf einem fehlgeschlagenen Auftrag.
 
-    Der urspruengliche Auftrag bleibt unveraendert. Es wird ein neuer
+    Der urspruengliche Auftrag bleibt unverändert. Es wird ein neuer
     Auftrag mit denselben Parametern erstellt.
 
     **Optionen:**
-    - **priority**: Neue Prioritaet setzen (1-10)
+    - **priority**: Neue Priorität setzen (1-10)
     - **backend**: Anderes OCR-Backend verwenden
 
-    **Hinweis:** Nur fehlgeschlagene Auftraege koennen wiederholt werden.
+    **Hinweis:** Nur fehlgeschlagene Aufträge können wiederholt werden.
     """
     ip_address = request.client.host if request.client else None
 
@@ -195,40 +270,55 @@ async def retry_job(
 
 # ==================== Clear Queue ====================
 
+# Longer timeout for clear_queue as it may affect many jobs
+CLEAR_QUEUE_TIMEOUT = 120  # 2 minutes
+
 @router.post(
     "/queue/clear",
     response_model=QueueClearResponse,
     summary="Warteschlange leeren",
-    description="Loescht alle wartenden Auftraege aus der Warteschlange"
+    description="Löscht alle wartenden Aufträge aus der Warteschlange"
 )
 async def clear_queue(
     request: Request,
     status_filter: ProcessingStatus = Query(
         ProcessingStatus.PENDING,
         alias="status",
-        description="Status der zu loeschenden Auftraege"
+        description="Status der zu löschenden Aufträge"
     ),
-    admin: User = Depends(get_current_superuser),
+    admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> QueueClearResponse:
     """
-    Loescht alle Auftraege mit dem angegebenen Status aus der Warteschlange.
+    Löscht alle Aufträge mit dem angegebenen Status aus der Warteschlange.
 
-    **WARNUNG:** Diese Aktion kann nicht rueckgaengig gemacht werden!
+    **WARNUNG:** Diese Aktion kann nicht rückgängig gemacht werden!
 
-    Standardmaessig werden nur wartende (pending) Auftraege geloescht.
-    Es koennen auch Auftraege im Status 'queued' geloescht werden.
+    **Limits:**
+    - Timeout: 120 Sekunden
+    - Rate Limit: 10/Minute, 50/Stunde (destruktive Operation)
 
-    Laufende oder abgeschlossene Auftraege koennen nicht geloescht werden.
+    Standardmaessig werden nur wartende (pending) Aufträge gelöscht.
+    Es können auch Aufträge im Status 'queued' gelöscht werden.
+
+    Laufende oder abgeschlossene Aufträge können nicht gelöscht werden.
     """
     ip_address = request.client.host if request.client else None
 
-    return await JobAdminService.clear_queue(
-        db=db,
-        admin=admin,
-        status=status_filter,
-        ip_address=ip_address,
-    )
+    try:
+        async with asyncio.timeout(CLEAR_QUEUE_TIMEOUT):
+            return await JobAdminService.clear_queue(
+                db=db,
+                admin=admin,
+                status=status_filter,
+                ip_address=ip_address,
+            )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Operation nach {CLEAR_QUEUE_TIMEOUT} Sekunden abgebrochen. "
+                   "Bitte versuchen Sie es erneut oder wenden Sie sich an den Support."
+        )
 
 
 # ==================== Bulk Cancel ====================
@@ -236,22 +326,35 @@ async def clear_queue(
 @router.post(
     "/bulk/cancel",
     response_model=dict,
-    summary="Mehrere Auftraege abbrechen",
-    description="Bricht mehrere Auftraege gleichzeitig ab"
+    summary="Mehrere Aufträge abbrechen",
+    description="Bricht mehrere Aufträge gleichzeitig ab (max. 100 Jobs)"
 )
 async def bulk_cancel_jobs(
     job_ids: list[UUID],
     request: Request,
-    reason: Optional[str] = Query(None, description="Grund fuer Abbruch"),
-    admin: User = Depends(get_current_superuser),
+    reason: Optional[str] = Query(None, description="Grund für Abbruch"),
+    admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Bricht mehrere Auftraege gleichzeitig ab.
+    Bricht mehrere Aufträge gleichzeitig ab.
 
-    Gibt eine Zusammenfassung zurueck, welche Auftraege erfolgreich
+    **Limits:**
+    - Maximal 100 Jobs pro Anfrage
+    - Timeout: 60 Sekunden
+    - Rate Limit: 10/Minute, 50/Stunde (destruktive Operation)
+
+    Gibt eine Zusammenfassung zurück, welche Aufträge erfolgreich
     abgebrochen wurden und welche nicht.
     """
+    # Enforce max batch size
+    if len(job_ids) > MAX_BULK_JOBS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximal {MAX_BULK_JOBS} Aufträge pro Anfrage erlaubt. "
+                   f"Erhalten: {len(job_ids)}"
+        )
+
     ip_address = request.client.host if request.client else None
 
     results = {
@@ -260,25 +363,53 @@ async def bulk_cancel_jobs(
         "total": len(job_ids),
     }
 
-    for job_id in job_ids:
-        response = await JobAdminService.cancel_job(
-            db=db,
-            job_id=job_id,
-            admin=admin,
-            reason=reason,
-            ip_address=ip_address,
-        )
+    try:
+        async with asyncio.timeout(BULK_OPERATION_TIMEOUT):
+            for job_id in job_ids:
+                response = await JobAdminService.cancel_job(
+                    db=db,
+                    job_id=job_id,
+                    admin=admin,
+                    reason=reason,
+                    ip_address=ip_address,
+                )
 
-        if response.success:
-            results["success"].append(str(job_id))
-        else:
-            results["failed"].append({
-                "job_id": str(job_id),
-                "reason": response.message,
-            })
+                if response.success:
+                    results["success"].append(str(job_id))
+                else:
+                    results["failed"].append({
+                        "job_id": str(job_id),
+                        "reason": response.message,
+                    })
+    except asyncio.TimeoutError:
+        # Operation timed out - return partial results
+        results["timeout"] = True
+        results["timeout_message"] = (
+            f"Operation nach {BULK_OPERATION_TIMEOUT} Sekunden abgebrochen. "
+            f"Teilweise verarbeitet: {len(results['success'])} erfolgreich, "
+            f"{len(results['failed'])} fehlgeschlagen."
+        )
 
     results["success_count"] = len(results["success"])
     results["failed_count"] = len(results["failed"])
+
+    # GDPR Art. 30: Audit Log für Bulk-Cancel-Operation
+    audit = SecurityAuditLogger(db)
+    await audit.log_event(
+        event_type=SecurityEventType.ADMIN_JOBS_BULK_ACTION,
+        user_id=str(admin.id),
+        ip_address=ip_address,
+        resource_type="job_queue",
+        details={
+            "action": "bulk_cancel",
+            "total_requested": len(job_ids),
+            "success_count": results["success_count"],
+            "failed_count": results["failed_count"],
+            "reason": reason,
+            "timed_out": results.get("timeout", False),
+        },
+        severity="warning",  # Destruktive Operation
+    )
 
     return results
 
@@ -288,25 +419,262 @@ async def bulk_cancel_jobs(
 @router.get(
     "/stats/summary",
     summary="Auftragsstatistiken",
-    description="Ruft zusammenfassende Statistiken zu Auftraegen ab"
+    description="Ruft zusammenfassende Statistiken zu Aufträgen ab"
 )
 async def get_job_stats(
+    request: Request,
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Ruft zusammenfassende Statistiken zu Auftraegen ab.
+    Ruft zusammenfassende Statistiken zu Aufträgen ab.
 
     Zeigt:
-    - Anzahl Auftraege nach Status
+    - Anzahl Aufträge nach Status
     - Durchschnittliche Verarbeitungszeit
     - Durchschnittliche Wartezeit
-    - Auftraege nach Backend
-    """
-    # Get basic job list with stats
-    response = await JobAdminService.list_jobs(db, page=1, per_page=1)
+    - Aufträge nach Backend
 
-    return {
-        "status_summary": response.status_summary,
-        "total_jobs": response.total,
+    **Audit Logging:**
+    - Alle Statistik-Abfragen werden für GDPR Art. 30 protokolliert
+    """
+    result = await JobAdminService.get_job_stats(db)
+
+    # GDPR Art. 30: Audit Log für Statistik-Abfragen (Fix 1)
+    ip_address = request.client.host if request.client else None
+    audit = SecurityAuditLogger(db)
+    await audit.log_event(
+        event_type=SecurityEventType.ADMIN_JOB_ACCESSED,  # Job stats viewing
+        user_id=str(admin.id),
+        ip_address=ip_address,
+        resource_type="job_statistics",
+        details={
+            "action": "job_stats_viewed",
+            "total_jobs": result.get("total_jobs", 0),
+            "active_jobs": result.get("active_jobs", 0),
+        },
+        severity="info",
+    )
+
+    return result
+
+
+# ==================== Bulk Retry ====================
+
+@router.post(
+    "/bulk/retry",
+    response_model=dict,
+    summary="Mehrere Aufträge wiederholen",
+    description="Wiederholt mehrere fehlgeschlagene Aufträge gleichzeitig (max. 100 Jobs)"
+)
+async def bulk_retry_jobs(
+    job_ids: list[UUID],
+    request: Request,
+    priority: Optional[int] = Query(None, ge=1, le=10, description="Neue Priorität für alle"),
+    backend: Optional[str] = Query(None, description="Anderes Backend verwenden"),
+    admin: User = Depends(check_destructive_admin_rate_limit),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Wiederholt mehrere fehlgeschlagene Aufträge gleichzeitig.
+
+    **Limits:**
+    - Maximal 100 Jobs pro Anfrage
+    - Timeout: 60 Sekunden
+    - Rate Limit: 10/Minute, 50/Stunde (destruktive Operation)
+
+    Gibt eine Zusammenfassung zurück, welche Aufträge erfolgreich
+    wiederholt wurden und welche nicht.
+    """
+    # Enforce max batch size
+    if len(job_ids) > MAX_BULK_JOBS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximal {MAX_BULK_JOBS} Aufträge pro Anfrage erlaubt. "
+                   f"Erhalten: {len(job_ids)}"
+        )
+
+    ip_address = request.client.host if request.client else None
+
+    results = {
+        "success": [],
+        "failed": [],
+        "total": len(job_ids),
     }
+
+    try:
+        async with asyncio.timeout(BULK_OPERATION_TIMEOUT):
+            for job_id in job_ids:
+                response = await JobAdminService.retry_job(
+                    db=db,
+                    job_id=job_id,
+                    admin=admin,
+                    priority=priority,
+                    backend=backend,
+                    ip_address=ip_address,
+                )
+
+                if response.success:
+                    results["success"].append({
+                        "original_job_id": str(job_id),
+                        "new_job_id": str(response.job_id),
+                    })
+                else:
+                    results["failed"].append({
+                        "job_id": str(job_id),
+                        "reason": response.message,
+                    })
+    except asyncio.TimeoutError:
+        # Operation timed out - return partial results
+        results["timeout"] = True
+        results["timeout_message"] = (
+            f"Operation nach {BULK_OPERATION_TIMEOUT} Sekunden abgebrochen. "
+            f"Teilweise verarbeitet: {len(results['success'])} erfolgreich, "
+            f"{len(results['failed'])} fehlgeschlagen."
+        )
+
+    results["success_count"] = len(results["success"])
+    results["failed_count"] = len(results["failed"])
+
+    # GDPR Art. 30: Audit Log für Bulk-Retry-Operation
+    audit = SecurityAuditLogger(db)
+    await audit.log_event(
+        event_type=SecurityEventType.ADMIN_JOBS_BULK_ACTION,
+        user_id=str(admin.id),
+        ip_address=ip_address,
+        resource_type="job_queue",
+        details={
+            "action": "bulk_retry",
+            "total_requested": len(job_ids),
+            "success_count": results["success_count"],
+            "failed_count": results["failed_count"],
+            "priority_override": priority,
+            "backend_override": backend,
+            "timed_out": results.get("timeout", False),
+        },
+        severity="warning",  # Destruktive Operation
+    )
+
+    return results
+
+
+# ==================== Change Priority ====================
+
+@router.patch(
+    "/{job_id}/priority",
+    response_model=JobActionResponse,
+    summary="Priorität ändern",
+    description="Ändert die Priorität eines wartenden Auftrags"
+)
+async def change_job_priority(
+    job_id: UUID,
+    priority: int = Query(..., ge=1, le=10, description="Neue Priorität (1-10, 1=hoechste)"),
+    request: Request = None,
+    admin: User = Depends(check_destructive_admin_rate_limit),
+    db: AsyncSession = Depends(get_db),
+) -> JobActionResponse:
+    """
+    Ändert die Priorität eines wartenden oder in Warteschlange befindlichen Auftrags.
+
+    **Hinweis:** Nur Aufträge im Status 'pending' oder 'queued' können priorisiert werden.
+    """
+    ip_address = request.client.host if request and request.client else None
+
+    return await JobAdminService.change_priority(
+        db=db,
+        job_id=job_id,
+        priority=priority,
+        admin=admin,
+        ip_address=ip_address,
+    )
+
+
+# ==================== Force Kill ====================
+
+@router.post(
+    "/{job_id}/force-kill",
+    response_model=JobActionResponse,
+    summary="Auftrag erzwungen beenden",
+    description="Beendet einen feststeckenden Auftrag erzwungen (SIGKILL)"
+)
+async def force_kill_job(
+    job_id: UUID,
+    request: Request,
+    admin: User = Depends(check_destructive_admin_rate_limit),
+    db: AsyncSession = Depends(get_db),
+) -> JobActionResponse:
+    """
+    Beendet einen feststeckenden Auftrag erzwungen.
+
+    **WARNUNG:** Diese Aktion sendet ein SIGKILL an den Celery Worker Task.
+    Dies sollte nur verwendet werden, wenn ein Auftrag nicht auf normale
+    Abbruch-Anfragen reagiert.
+
+    Die GPU-Sperre wird ebenfalls freigegeben, falls vorhanden.
+    """
+    ip_address = request.client.host if request.client else None
+
+    return await JobAdminService.force_kill_job(
+        db=db,
+        job_id=job_id,
+        admin=admin,
+        ip_address=ip_address,
+    )
+
+
+# ==================== Pause Job ====================
+
+@router.post(
+    "/{job_id}/pause",
+    response_model=JobActionResponse,
+    summary="Auftrag pausieren",
+    description="Pausiert einen laufenden Auftrag"
+)
+async def pause_job(
+    job_id: UUID,
+    request: Request,
+    admin: User = Depends(check_destructive_admin_rate_limit),
+    db: AsyncSession = Depends(get_db),
+) -> JobActionResponse:
+    """
+    Pausiert einen laufenden oder wartenden Auftrag.
+
+    Der Auftrag kann später mit /resume fortgesetzt werden.
+    """
+    ip_address = request.client.host if request.client else None
+
+    return await JobAdminService.pause_job(
+        db=db,
+        job_id=job_id,
+        admin=admin,
+        ip_address=ip_address,
+    )
+
+
+# ==================== Resume Job ====================
+
+@router.post(
+    "/{job_id}/resume",
+    response_model=JobActionResponse,
+    summary="Auftrag fortsetzen",
+    description="Setzt einen pausierten Auftrag fort"
+)
+async def resume_job(
+    job_id: UUID,
+    request: Request,
+    admin: User = Depends(check_destructive_admin_rate_limit),
+    db: AsyncSession = Depends(get_db),
+) -> JobActionResponse:
+    """
+    Setzt einen pausierten Auftrag fort.
+
+    Der Auftrag wird wieder in die Warteschlange eingereiht.
+    """
+    ip_address = request.client.host if request.client else None
+
+    return await JobAdminService.resume_job(
+        db=db,
+        job_id=job_id,
+        admin=admin,
+        ip_address=ip_address,
+    )

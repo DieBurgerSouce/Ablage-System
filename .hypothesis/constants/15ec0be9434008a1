@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\distributed\fsdp\_debug_utils.py
+# hypothesis_version: 6.148.7
+
+[' FULLY SHARDED', '%s %s', '.', 'D2H', 'H2D', '[', ']', 'all', 'all_gather', 'all_gather_object', 'resharding']

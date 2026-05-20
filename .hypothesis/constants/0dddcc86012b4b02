@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\limits\typing.py
+# hypothesis_version: 6.148.7
+
+['Any', 'AsyncRedisClient', 'Awaitable', 'Callable', 'ClassVar', 'Counter', 'Iterable', 'Literal', 'MemcachedClientP', 'MongoClient', 'MongoCollection', 'MongoDatabase', 'NamedTuple', 'P', 'ParamSpec', 'Protocol', 'R', 'R_co', 'RedisClient', 'Serializable', 'TYPE_CHECKING', 'TypeAlias', 'TypeVar', 'cast']

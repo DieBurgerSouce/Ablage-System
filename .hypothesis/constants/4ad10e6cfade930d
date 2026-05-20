@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\analyze_preserves_zero_mask.py
+# hypothesis_version: 6.148.7
+
+['SchedulerNode', 'StoreMode', 'constant', 'to_dtype', 'where']

@@ -420,25 +420,25 @@ class EnhancedUmlautHandler:
     # Wörter die definitiv Umlaute haben sollten
     DEFINITE_UMLAUTS: Dict[str, str] = {
         # ae -> ä
-        "aerger": "Ärger", "aenderung": "Änderung", "aerztlich": "ärztlich",
-        "aesthetik": "Ästhetik", "aequivalent": "äquivalent",
+        "ärger": "Ärger", "änderung": "Änderung", "aerztlich": "ärztlich",
+        "aesthetik": "Ästhetik", "äquivalent": "äquivalent",
         "muenchen": "München", "nuernberg": "Nürnberg",
-        "geschaeftsfuehrer": "Geschäftsführer", "geschaeft": "Geschäft",
-        "taetigkeit": "Tätigkeit", "waehrung": "Währung",
-        "naechste": "nächste", "spaeter": "später",
-        "staerke": "Stärke", "laenge": "Länge",
+        "geschäftsführer": "Geschäftsführer", "geschäft": "Geschäft",
+        "tätigkeit": "Tätigkeit", "währung": "Währung",
+        "nächste": "nächste", "später": "später",
+        "stärke": "Stärke", "länge": "Länge",
         # oe -> ö
         "oesterreich": "Österreich", "koeln": "Köln",
         "goettingen": "Göttingen", "moenchengladbach": "Mönchengladbach",
-        "oeffnung": "Öffnung", "moechte": "möchte",
-        "koennen": "können", "hoeren": "hören",
-        "groesse": "Größe", "schoenheit": "Schönheit",
+        "öffnung": "Öffnung", "moechte": "möchte",
+        "können": "können", "hoeren": "hören",
+        "größe": "Größe", "schoenheit": "Schönheit",
         # ue -> ü
         "muenster": "Münster", "duesseldorf": "Düsseldorf",
         "zuerich": "Zürich", "gruende": "Gründe",
-        "pruefung": "Prüfung", "verfuegung": "Verfügung",
-        "fuehrung": "Führung", "begruendung": "Begründung",
-        "ueberpruefen": "überprüfen", "uebersicht": "Übersicht",
+        "prüfung": "Prüfung", "verfügung": "Verfügung",
+        "führung": "Führung", "begruendung": "Begründung",
+        "überprüfen": "überprüfen", "übersicht": "Übersicht",
         # ss -> ß
         "strasse": "Straße", "gruss": "Gruß", "fuss": "Fuß",
         "mass": "Maß", "spass": "Spaß", "gross": "groß",
@@ -450,7 +450,7 @@ class EnhancedUmlautHandler:
     SAFE_PATTERNS: Dict[str, List[Tuple[str, bool]]] = {
         "ae": [
             # Sichere Konvertierungen
-            (r'(?<=[bcdfghjklmnprstvwxz])ae(?=[lnrst])', True),  # z.B. "Aenderung"
+            (r'(?<=[bcdfghjklmnprstvwxz])ae(?=[lnrst])', True),  # z.B. "Änderung"
             (r'^ae(?=[gmnrst])', True),  # Wortanfang mit ae
             (r'(?<=sch)ae(?=[ft])', True),  # z.B. "Geschäft"
             # Unsichere/False Positives

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\xpu\memory.py
+# hypothesis_version: 6.148.7
+
+['.', 'empty_cache', 'max_memory_allocated', 'max_memory_reserved', 'mem_get_info', 'memory_allocated', 'memory_reserved', 'memory_stats']

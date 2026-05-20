@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\version_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1000, 1024, 'backend', 'backend_used', 'bounding_boxes', 'business_terms', 'char_count', 'confidence', 'confidence_score', 'detected_amounts', 'detected_dates', 'extracted_text', 'german_validation', 'has_umlauts', 'html_diff_failed', 'ibans', 'layout', 'metadata', 'ocr_version_created', 'processing_time_ms', 'quality_score', 'text', 'unknown', 'vat_ids', 'version_rollback', 'versions_compared', 'word_count']

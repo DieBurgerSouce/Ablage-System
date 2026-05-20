@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\h5py\_hl\filters.py
+# hypothesis_version: 6.148.7
+
+[0.5, 2.0, 1024.0, 1024, '=f8', 'Empty', 'Scalar', 'alloc', 'chunks', 'compression', 'compression_opts', 'ec', 'f', 'fletcher32', 'gzip', 'i', 'ifset', 'lzf', 'maxshape', 'never', 'nn', 'scaleoffset', 'shuffle', 'szip', 'u']

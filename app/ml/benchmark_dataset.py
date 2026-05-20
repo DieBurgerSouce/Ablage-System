@@ -14,6 +14,7 @@ Feinpoliert und durchdacht - Wissenschaftliche Qualitätsbewertung.
 import json
 import threading
 import uuid
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -23,6 +24,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional
 import structlog
 
 from app.ml.quality_metrics import (
+
     OCRQualityCalculator,
     OCRQualityMetrics,
     get_quality_calculator,
@@ -451,7 +453,7 @@ class BenchmarkDataset:
         samples = list(self.get_samples(**filter_kwargs))
 
         if not samples:
-            logger.warning("keine_samples_fuer_evaluierung")
+            logger.warning("keine_samples_für_evaluierung")
             return results
 
         logger.info(
@@ -476,11 +478,11 @@ class BenchmarkDataset:
 
             except Exception as e:
                 success = False
-                error_message = str(e)
+                error_message = safe_error_detail(e, "Benchmark")
                 logger.error(
                     "ocr_evaluierung_fehlgeschlagen",
                     sample_id=sample.id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
             processing_time_ms = (time.time() - start_time) * 1000
@@ -674,7 +676,7 @@ class BenchmarkDataset:
                 logger.warning(
                     "sample_laden_fehlgeschlagen",
                     filepath=str(filepath),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     def save_all(self) -> None:

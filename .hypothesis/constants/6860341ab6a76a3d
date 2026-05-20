@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\onnx\_internal\_lazy_import.py
+# hypothesis_version: 6.148.7
+
+['.', 'onnx', 'onnx_ir', 'onnxscript']

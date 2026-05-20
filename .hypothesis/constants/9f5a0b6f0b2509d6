@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\rpc\rpc.py
+# hypothesis_version: 6.148.7
+
+[0.1, 1000, 99999999, 2147483647, '/', '900', ':', 'Barrier/', 'PADDLE_TRAINERS_NUM', 'PADDLE_TRAINER_ID', 'WorkerInfo', '_RetT', 'ip', 'name', 'port', 'rank']

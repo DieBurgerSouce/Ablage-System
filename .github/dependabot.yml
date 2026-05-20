@@ -62,3 +62,42 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "chore(ci)"
+
+  # Terraform dependencies
+  - package-ecosystem: "terraform"
+    directory: "/infrastructure/terraform"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "terraform"
+    commit-message:
+      prefix: "chore(terraform)"
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "npm"
+    commit-message:
+      prefix: "chore(frontend)"
+    groups:
+      frontend-dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "typescript"
+          - "vite"
+          - "vitest"
+      frontend-prod-dependencies:
+        patterns:
+          - "react*"
+          - "@tanstack/*"

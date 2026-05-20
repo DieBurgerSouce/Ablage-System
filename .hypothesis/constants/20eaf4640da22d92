@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\confidence_calibration.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-10, 0.001, 0.1, 0.5, 0.999, 1.0, 5.0, -500, 100, 500, ':', 'actuals', 'backend', 'calibrated_mean', 'calibrated_std', 'calibration_stats', 'calibrator_trained', 'confidences', 'contract', 'doc_type', 'ece', 'form', 'fraktur', 'handwritten', 'has_calibrator', 'histogram', 'inf', 'invoice', 'isotonic', 'letter', 'mce', 'method', 'no_training_data', 'platt', 'r', 'raw_mean', 'raw_std', 'samples', 'samples_count', 'samples_since_train', 'stats', 'temperature', 'training_data', 'unknown', 'utf-8', 'w']

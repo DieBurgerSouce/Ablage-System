@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\stream\send.py
+# hypothesis_version: 6.148.7
+
+['X', 'float16', 'float32', 'float64', 'int32', 'int64', 'peer', 'ring_id', 'send', 'send_v2', 'tensor', 'uint16', 'use_calc_stream']

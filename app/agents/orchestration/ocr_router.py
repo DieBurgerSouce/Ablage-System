@@ -7,19 +7,31 @@ Enterprise-grade OCR backend routing with ML-based selection:
 - Performance requirements matching (SLA, throughput)
 - ML model for optimal backend prediction
 - Historical performance tracking
+- Self-learning from user corrections (feedback loop)
 
 Feinpoliert und durchdacht - Intelligente Backend-Auswahl für optimale Ergebnisse.
 """
 
+import copy
+import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional, Union
+from datetime import datetime, timezone
 
 import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.gpu_manager import GPUManager
+from app.ml.metrics import get_ml_metrics
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
+audit_logger = structlog.get_logger("audit.ocr_routing")
+
+# Cache for learned weights
+_learned_weights_cache: Optional[Dict[str, object]] = None
+_learned_weights_cache_time: Optional[datetime] = None
+_LEARNED_WEIGHTS_CACHE_TTL_SECONDS = 300  # 5 minutes
 
 
 class OCRBackendRouter(OrchestrationAgent):
@@ -142,13 +154,64 @@ class OCRBackendRouter(OrchestrationAgent):
                 logger.info("ML-Routing initialisiert - Modell wird trainiert wenn Daten verfügbar")
 
         except ImportError as e:
-            logger.warning("ml_routing_nicht_verfuegbar", error=str(e))
+            logger.warning("ml_routing_nicht_verfügbar", **safe_error_log(e))
             self.use_ml_routing = False
         except Exception as e:
-            logger.error("ml_routing_init_fehler", error=str(e))
+            logger.error("ml_routing_init_fehler", **safe_error_log(e))
             self.use_ml_routing = False
 
-    def _get_resource_status(self) -> Dict[str, Any]:
+    def _audit_log_routing_decision(
+        self,
+        result: Dict[str, object],
+        metadata: Dict[str, object],
+        resource_status: Dict[str, object],
+        learned_weights_used: Optional[Dict[str, float]] = None,
+        latency_ms: float = 0,
+    ) -> None:
+        """
+        Erstellt einen detaillierten Audit-Log-Eintrag für Routing-Entscheidungen.
+
+        Dient der Nachvollziehbarkeit und Compliance. Logs werden an den
+        separaten audit.ocr_routing Logger gesendet.
+
+        Args:
+            result: Das Routing-Ergebnis
+            metadata: Dokument-Metadaten
+            resource_status: Ressourcen-Status zum Zeitpunkt der Entscheidung
+            learned_weights_used: Verwendete gelernte Gewichte (falls vorhanden)
+            latency_ms: Routing-Latenz in Millisekunden
+        """
+        try:
+            audit_logger.info(
+                "routing_decision",
+                # Entscheidung
+                backend_selected=result.get("backend"),
+                routing_method=result.get("routing_method", "rule_based"),
+                confidence=round(result.get("confidence", 0.0), 3),
+                reason=result.get("reason"),
+                alternatives=result.get("alternatives", []),
+                # Dokument-Kontext
+                document_type=metadata.get("document_type"),
+                document_complexity=metadata.get("complexity"),
+                has_tables=metadata.get("has_tables", False),
+                has_handwriting=metadata.get("has_handwriting", False),
+                language=metadata.get("language", "de"),
+                # Ressourcen
+                gpu_available=resource_status.get("gpu_available", False),
+                gpu_memory_gb=round(resource_status.get("gpu_memory_available_gb", 0), 1),
+                total_queue_length=resource_status.get("queue_length", 0),
+                # Learning
+                learned_weights_applied=learned_weights_used is not None,
+                learned_weights=learned_weights_used,
+                # Performance
+                latency_ms=round(latency_ms, 2),
+                # Timestamp wird automatisch von structlog hinzugefügt
+            )
+        except Exception as e:
+            # Audit-Logging darf die Haupt-Logik nie unterbrechen
+            logger.debug("audit_log_failed", **safe_error_log(e))
+
+    def _get_resource_status(self) -> Dict[str, object]:
         """Get current resource availability status (sync, without queue lengths)."""
         gpu_status = self.gpu_manager.check_availability()
 
@@ -159,7 +222,7 @@ class OCRBackendRouter(OrchestrationAgent):
             "queue_lengths": {},
         }
 
-    async def _get_resource_status_async(self) -> Dict[str, Any]:
+    async def _get_resource_status_async(self) -> Dict[str, object]:
         """Get current resource availability with queue lengths from Redis."""
         gpu_status = self.gpu_manager.check_availability()
 
@@ -172,7 +235,7 @@ class OCRBackendRouter(OrchestrationAgent):
             queue_lengths = await redis_manager.get_queue_lengths()
             queue_length = sum(queue_lengths.values())
         except Exception as e:
-            logger.warning("queue_length_fetch_failed", error=str(e))
+            logger.warning("queue_length_fetch_failed", **safe_error_log(e))
 
         return {
             "gpu_available": gpu_status.get("available", False),
@@ -183,11 +246,11 @@ class OCRBackendRouter(OrchestrationAgent):
 
     async def _check_load_balancing(
         self,
-        resource_status: Dict[str, Any],
-        metadata: Dict[str, Any],
-        sla: Dict[str, Any],
-        preferences: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        resource_status: Dict[str, object],
+        metadata: Dict[str, object],
+        sla: Dict[str, object],
+        preferences: Dict[str, object],
+    ) -> Optional[Dict[str, object]]:
         """
         Check if load balancing should override normal backend selection.
 
@@ -244,21 +307,45 @@ class OCRBackendRouter(OrchestrationAgent):
         total_ocr_queue = ocr_high_queue + ocr_normal_queue
 
         if total_ocr_queue >= settings.QUEUE_LENGTH_THRESHOLD_HIGH:
-            # Prefer got_ocr for faster throughput when queues are high
+            # Get learned weights to select best fast backend
+            learned_weights = {}
+            try:
+                learned_weights = await self.get_learned_backend_weights()
+            except Exception as e:
+                logger.debug(
+                    "learned_weights_fetch_failed",
+                    error_type=type(e).__name__,
+                    fallback="using_defaults",
+                )
+
             if gpu_available:
+                # Rank fast GPU backends by learned weights
+                fast_gpu_backends = ["got_ocr", "surya_gpu"]
+                if learned_weights:
+                    fast_gpu_backends.sort(
+                        key=lambda b: learned_weights.get(b, 1.0),
+                        reverse=True
+                    )
+
+                best_backend = fast_gpu_backends[0]
+                alternatives = fast_gpu_backends[1:] + ["surya"]
+
                 logger.info(
                     "load_balancing_high",
                     ocr_queue_length=total_ocr_queue,
                     threshold=settings.QUEUE_LENGTH_THRESHOLD_HIGH,
-                    action="switch_to_fast_gpu"
+                    action="switch_to_fast_gpu",
+                    selected=best_backend,
+                    learned_weights_applied=bool(learned_weights),
                 )
                 return {
-                    "backend": "got_ocr",
+                    "backend": best_backend,
                     "reason": f"queue_overload_high ({total_ocr_queue} OCR jobs)",
                     "confidence": 0.8,
-                    "alternatives": ["surya_gpu", "surya"],
+                    "alternatives": alternatives,
                     "routing_method": "load_balancing",
                     "load_balanced": True,
+                    "learned_weights_applied": bool(learned_weights),
                 }
             else:
                 logger.info(
@@ -279,7 +366,7 @@ class OCRBackendRouter(OrchestrationAgent):
         # No load balancing needed
         return None
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Select optimal OCR backend.
 
@@ -296,6 +383,9 @@ class OCRBackendRouter(OrchestrationAgent):
             routing_method: str - "ml" or "rule_based"
         """
         self.validate_input(input_data, ["document_metadata"])
+
+        # Zeitmessung für Metriken starten
+        start_time = time.time()
 
         metadata = input_data["document_metadata"]
         sla = input_data.get("sla_requirements", {})
@@ -321,6 +411,28 @@ class OCRBackendRouter(OrchestrationAgent):
         )
         if load_balanced_result:
             self._routing_stats["backend_selections"][load_balanced_result["backend"]] += 1
+            latency = time.time() - start_time
+            # Prometheus-Metriken für Load-Balanced Routing
+            try:
+                metrics = get_ml_metrics()
+                metrics.record_routing_request(
+                    method="load_balanced",
+                    backend=load_balanced_result["backend"],
+                    confidence=load_balanced_result.get("confidence", 0.8),
+                    latency_seconds=latency,
+                )
+            except Exception as e:
+                logger.debug(
+                    "load_balanced_metrics_failed",
+                    error_type=type(e).__name__,
+                )
+            # Audit-Log für Load-Balanced Routing
+            self._audit_log_routing_decision(
+                result=load_balanced_result,
+                metadata=metadata,
+                resource_status=resource_status,
+                latency_ms=latency * 1000,
+            )
             return load_balanced_result
 
         # Try ML-based selection first if enabled
@@ -332,7 +444,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 )
                 self._routing_stats["ml_predictions"] += 1
             except Exception as e:
-                logger.warning("ml_routing_failed_fallback", error=str(e))
+                logger.warning("ml_routing_failed_fallback", **safe_error_log(e))
                 self._routing_stats["rule_fallbacks"] += 1
 
         # Fallback to rule-based selection
@@ -353,15 +465,57 @@ class OCRBackendRouter(OrchestrationAgent):
             method=result.get("routing_method", "rule_based"),
         )
 
+        # Prometheus-Metriken aufzeichnen
+        latency = time.time() - start_time
+        try:
+            metrics = get_ml_metrics()
+            routing_method = result.get("routing_method", "rule_based")
+            metrics.record_routing_request(
+                method=routing_method,
+                backend=result["backend"],
+                confidence=result.get("confidence", 0.0),
+                latency_seconds=latency,
+            )
+        except Exception as e:
+            logger.debug(
+                "routing_metrics_recording_failed",
+                error_type=type(e).__name__,
+            )
+
+        # Audit-Logging für Nachvollziehbarkeit
+        # Hole verwendete Learned Weights falls vorhanden
+        learned_weights_used = None
+        try:
+            if result.get("learned_weights_applied"):
+                learned_weights_used = await self.get_learned_backend_weights()
+        except Exception as e:
+            logger.debug(
+                "audit_learned_weights_fetch_failed",
+                error_type=type(e).__name__,
+            )
+
+        self._audit_log_routing_decision(
+            result=result,
+            metadata=metadata,
+            resource_status=resource_status,
+            learned_weights_used=learned_weights_used,
+            latency_ms=latency * 1000,
+        )
+
         return result
 
     async def _rule_based_selection(
         self,
-        metadata: Dict[str, Any],
-        sla: Dict[str, Any],
-        preferences: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """Rule-based backend selection."""
+        metadata: Dict[str, object],
+        sla: Dict[str, object],
+        preferences: Dict[str, object],
+        use_learned_weights: bool = True,
+    ) -> Dict[str, object]:
+        """
+        Rule-based backend selection with learned weight adjustments.
+
+        Combines static rules with dynamic learning from user corrections.
+        """
         # Priority 1: User preference (if valid)
         if preferences.get("preferred_backend") in self.BACKEND_CAPABILITIES:
             return {
@@ -371,43 +525,146 @@ class OCRBackendRouter(OrchestrationAgent):
                 "alternatives": [],
             }
 
+        # Get learned weights for adjustment (if enabled)
+        learned_weights: Dict[str, float] = {}
+        if use_learned_weights:
+            try:
+                learned_weights = await self.get_learned_backend_weights()
+            except Exception as e:
+                logger.debug("learned_weights_not_applied", **safe_error_log(e))
+
+        def apply_weight(backend: str, base_confidence: float) -> float:
+            """Apply learned weight to confidence score."""
+            if not learned_weights:
+                return base_confidence
+            weight = learned_weights.get(backend, 1.0)
+            # Weight adjusts confidence: >1.0 increases, <1.0 decreases
+            return min(base_confidence * weight, 1.0)
+
+        def select_best_backend(candidates: list[str], base_confidences: Dict[str, float], reason: str) -> Dict[str, object]:
+            """Select best backend from candidates using learned weights."""
+            if not candidates:
+                return {"backend": "got_ocr", "reason": reason, "confidence": 0.5, "alternatives": []}
+
+            if not learned_weights:
+                # No learning data - use first candidate
+                return {
+                    "backend": candidates[0],
+                    "reason": reason,
+                    "confidence": base_confidences.get(candidates[0], 0.8),
+                    "alternatives": candidates[1:],
+                }
+
+            # Score candidates with learned weights
+            scored = []
+            for backend in candidates:
+                base_conf = base_confidences.get(backend, 0.8)
+                weighted_conf = apply_weight(backend, base_conf)
+                scored.append((backend, weighted_conf))
+
+            # Sort by weighted confidence
+            scored.sort(key=lambda x: x[1], reverse=True)
+
+            return {
+                "backend": scored[0][0],
+                "reason": f"{reason}_with_learning",
+                "confidence": scored[0][1],
+                "alternatives": [s[0] for s in scored[1:]],
+                "learned_weights_applied": True,
+            }
+
         # Priority 2: Document characteristics
         if metadata.get("has_tables"):
-            return {
-                "backend": "deepseek",
-                "reason": "complex_layout_with_tables",
-                "confidence": 0.95,
-                "alternatives": ["hybrid"],
-            }
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.95, "hybrid": 0.90, "got_ocr": 0.75},
+                "complex_layout_with_tables",
+            )
 
         if metadata.get("has_handwriting"):
-            return {
-                "backend": "deepseek",
-                "reason": "handwriting_detected",
-                "confidence": 0.9,
-                "alternatives": ["hybrid"],
-            }
+            return select_best_backend(
+                ["deepseek", "hybrid"],
+                {"deepseek": 0.90, "hybrid": 0.85},
+                "handwriting_detected",
+            )
 
-        if metadata.get("document_type") == "contract":
-            # Critical documents -> highest accuracy
-            return {
-                "backend": "hybrid",
-                "reason": "critical_document_type",
-                "confidence": 0.98,
-                "alternatives": ["deepseek"],
-            }
+        # Phase 1.2: Document Type-Based Routing (15 Types)
+        doc_type = metadata.get("document_type", "unknown")
+
+        if doc_type == "contract":
+            # Verträge: Höchste Genauigkeit (rechtlich relevant)
+            return select_best_backend(
+                ["hybrid", "deepseek"],
+                {"hybrid": 0.98, "deepseek": 0.95},
+                "contract_type_critical",
+            )
+
+        if doc_type == "tax_document":
+            # Steuerdokumente: Höchste Genauigkeit (Finanzamt!)
+            return select_best_backend(
+                ["hybrid", "deepseek"],
+                {"hybrid": 0.98, "deepseek": 0.96},
+                "tax_document_critical",
+            )
+
+        if doc_type == "bank_statement":
+            # Kontoauszuege: Strukturierte Daten, Tabellen
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.95, "hybrid": 0.92, "got_ocr": 0.80},
+                "bank_statement_structured",
+            )
+
+        if doc_type in ("invoice", "credit_note"):
+            # Rechnungen/Gutschriften: Hohe Genauigkeit, strukturiert
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.94, "hybrid": 0.90, "got_ocr": 0.78},
+                "invoice_type_financial",
+            )
+
+        if doc_type == "dunning":
+            # Mahnungen: Standard-Text, moderate Anforderungen
+            return select_best_backend(
+                ["got_ocr", "deepseek", "surya_gpu"],
+                {"got_ocr": 0.88, "deepseek": 0.85, "surya_gpu": 0.75},
+                "dunning_letter_standard",
+            )
+
+        if doc_type == "delivery_note":
+            # Lieferscheine: Oft schlecht gescannt, braucht Robustheit
+            return select_best_backend(
+                ["deepseek", "got_ocr", "surya_gpu"],
+                {"deepseek": 0.90, "got_ocr": 0.85, "surya_gpu": 0.72},
+                "delivery_note_robust",
+            )
+
+        if doc_type in ("order", "purchase_order", "offer"):
+            # Bestelldokumente: Wichtig aber standardisiert
+            return select_best_backend(
+                ["got_ocr", "deepseek", "surya_gpu"],
+                {"got_ocr": 0.88, "deepseek": 0.86, "surya_gpu": 0.74},
+                "order_type_standard",
+            )
+
+        if doc_type == "receipt":
+            # Quittungen: Oft schlecht lesbar (Thermopapier!)
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.92, "hybrid": 0.88, "got_ocr": 0.70},
+                "receipt_low_quality_expected",
+            )
 
         # Priority 3: Quality and complexity
         complexity = metadata.get("complexity", "medium")
         quality_score = metadata.get("quality_score", 0.8)
 
         if complexity == "high" or quality_score < 0.7:
-            return {
-                "backend": "deepseek",
-                "reason": "high_complexity_or_low_quality",
-                "confidence": 0.85,
-                "alternatives": ["hybrid", "got_ocr"],
-            }
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.85, "hybrid": 0.80, "got_ocr": 0.70},
+                "high_complexity_or_low_quality",
+            )
 
         # Priority 4: Resource availability
         gpu_status = self.gpu_manager.check_availability()
@@ -421,33 +678,28 @@ class OCRBackendRouter(OrchestrationAgent):
 
         # Priority 5: SLA requirements
         if sla.get("max_processing_time_seconds", 999) < 10:
-            # Need fast processing
-            return {
-                "backend": "got_ocr",
-                "reason": "fast_sla_requirement",
-                "confidence": 0.9,
-                "alternatives": ["surya"],
-            }
+            # Need fast processing - select fastest with learning adjustment
+            return select_best_backend(
+                ["got_ocr", "surya_gpu", "surya"],
+                {"got_ocr": 0.90, "surya_gpu": 0.85, "surya": 0.70},
+                "fast_sla_requirement",
+            )
 
-        # Priority 6: Queue load balancing (async resource status needed)
-        # Note: This is called from process() which fetches queue lengths async
-        # For sync fallback, queue length is 0 and load balancing is skipped
-
-        # Default: GOT-OCR for standard documents
-        return {
-            "backend": "got_ocr",
-            "reason": "standard_document",
-            "confidence": 0.85,
-            "alternatives": ["deepseek", "surya"],
-        }
+        # Priority 6: Default selection with learning
+        # For standard documents, use learned weights to pick best option
+        return select_best_backend(
+            ["got_ocr", "deepseek", "surya_gpu", "surya"],
+            {"got_ocr": 0.85, "deepseek": 0.80, "surya_gpu": 0.75, "surya": 0.65},
+            "standard_document",
+        )
 
     async def _ml_based_selection(
         self,
-        metadata: Dict[str, Any],
-        sla: Dict[str, Any],
-        preferences: Dict[str, Any],
-        resource_status: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: Dict[str, object],
+        sla: Dict[str, object],
+        preferences: Dict[str, object],
+        resource_status: Optional[Dict[str, object]] = None,
+    ) -> Dict[str, object]:
         """
         ML-based backend selection using trained XGBoost model.
 
@@ -494,6 +746,48 @@ class OCRBackendRouter(OrchestrationAgent):
         if backend not in self.BACKEND_CAPABILITIES:
             backend = "got_ocr"  # Safe default
 
+        # Apply learned weights to ML prediction
+        learned_weights_applied = False
+        try:
+            learned_weights = await self.get_learned_backend_weights()
+            if learned_weights:
+                # Adjust primary backend confidence
+                weight = learned_weights.get(backend, 1.0)
+                prediction["confidence"] = min(prediction["confidence"] * weight, 1.0)
+
+                # Check if alternatives would score higher with weights
+                alternatives = prediction.get("alternatives", [])
+                if alternatives and len(alternatives) > 0:
+                    scored_alternatives = []
+                    for alt in alternatives:
+                        alt_backend = alt.get("backend", alt) if isinstance(alt, dict) else alt
+                        alt_conf = alt.get("confidence", 0.7) if isinstance(alt, dict) else 0.7
+                        alt_weight = learned_weights.get(alt_backend, 1.0)
+                        scored_alternatives.append({
+                            "backend": alt_backend,
+                            "confidence": min(alt_conf * alt_weight, 1.0),
+                        })
+
+                    # If best alternative scores higher, switch
+                    if scored_alternatives:
+                        best_alt = max(scored_alternatives, key=lambda x: x["confidence"])
+                        if best_alt["confidence"] > prediction["confidence"]:
+                            logger.info(
+                                "ml_routing_override_by_learning",
+                                original=backend,
+                                new=best_alt["backend"],
+                                reason="learned_weights",
+                            )
+                            # Move original to alternatives
+                            original_backend = backend
+                            backend = best_alt["backend"]
+                            prediction["confidence"] = best_alt["confidence"]
+                            prediction["reason"] = f"ML + Learned Weights (ursprünglich: {original_backend})"
+
+                learned_weights_applied = True
+        except Exception as e:
+            logger.debug("ml_learned_weights_not_applied", **safe_error_log(e))
+
         # Check resource constraints
         backend_requirements = self.BACKEND_CAPABILITIES[backend]
         resource_status = resource_status or self._get_resource_status()
@@ -515,9 +809,10 @@ class OCRBackendRouter(OrchestrationAgent):
             "routing_method": "ml",
             "model_version": prediction.get("model_version"),
             "probabilities": prediction.get("probabilities"),
+            "learned_weights_applied": learned_weights_applied,
         }
 
-    def get_backend_info(self, backend: str) -> Dict[str, Any]:
+    def get_backend_info(self, backend: str) -> Dict[str, object]:
         """Get backend capabilities and characteristics."""
         return self.BACKEND_CAPABILITIES.get(backend, {})
 
@@ -542,10 +837,10 @@ class OCRBackendRouter(OrchestrationAgent):
     def collect_training_feedback(
         self,
         document_id: str,
-        document_metadata: Dict[str, Any],
+        document_metadata: Dict[str, object],
         selected_backend: str,
-        processing_result: Dict[str, Any],
-        sla_requirements: Optional[Dict[str, Any]] = None,
+        processing_result: Dict[str, object],
+        sla_requirements: Optional[Dict[str, object]] = None,
     ) -> None:
         """
         Collect training feedback from processing result.
@@ -583,9 +878,9 @@ class OCRBackendRouter(OrchestrationAgent):
                 )
 
         except Exception as e:
-            logger.warning("training_feedback_collection_failed", error=str(e))
+            logger.warning("training_feedback_collection_failed", **safe_error_log(e))
 
-    async def train_model(self, force: bool = False) -> Dict[str, Any]:
+    async def train_model(self, force: bool = False) -> Dict[str, object]:
         """
         Train or retrain the ML model.
 
@@ -625,7 +920,7 @@ class OCRBackendRouter(OrchestrationAgent):
         self._ml_trainer.generate_synthetic_training_data(num_samples)
         logger.info("bootstrap_data_generated", num_samples=num_samples)
 
-    def get_routing_stats(self) -> Dict[str, Any]:
+    def get_routing_stats(self) -> Dict[str, object]:
         """
         Get routing statistics.
 
@@ -645,8 +940,8 @@ class OCRBackendRouter(OrchestrationAgent):
 
     def get_backend_recommendations(
         self,
-        document_metadata: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        document_metadata: Dict[str, object],
+    ) -> Dict[str, object]:
         """
         Get backend recommendations for a document without making final selection.
 
@@ -726,10 +1021,132 @@ class OCRBackendRouter(OrchestrationAgent):
             self._ml_model.is_trained
         )
 
+    async def get_learned_backend_weights(
+        self,
+        force_refresh: bool = False,
+    ) -> Dict[str, float]:
+        """
+        Get learned backend weights from feedback learning service.
+
+        Uses cached weights with 5-minute TTL to avoid excessive database queries.
+        Weights are derived from user corrections and benchmark results.
+
+        Args:
+            force_refresh: Force fetching fresh weights from database
+
+        Returns:
+            Dictionary mapping backend names to weight scores (0.0 - 2.0)
+            Higher weights indicate better historical performance.
+        """
+        global _learned_weights_cache, _learned_weights_cache_time
+
+        # Check cache validity
+        now = datetime.now(timezone.utc)
+        if (
+            not force_refresh
+            and _learned_weights_cache is not None
+            and _learned_weights_cache_time is not None
+        ):
+            age_seconds = (now - _learned_weights_cache_time).total_seconds()
+            if age_seconds < _LEARNED_WEIGHTS_CACHE_TTL_SECONDS:
+                # WICHTIG: Kopie zurückgeben um Cache-Korrumpierung zu verhindern
+                cached_weights = _learned_weights_cache.get("weights", {})
+                return copy.copy(cached_weights) if cached_weights else {}
+
+        # Fetch fresh weights from feedback learning service
+        try:
+            from app.services.feedback_learning_service import get_feedback_learning_service
+            from app.db.session import get_async_session_context
+
+
+            async with get_async_session_context() as session:
+                feedback_service = get_feedback_learning_service()
+                learned_weights = await feedback_service.get_learned_weights(
+                    db=session,
+                    force_refresh=force_refresh
+                )
+
+                # Update cache
+                _learned_weights_cache = {
+                    "weights": learned_weights.weights,
+                    "confidence": learned_weights.confidence,
+                    "samples_analyzed": learned_weights.samples_analyzed,
+                }
+                _learned_weights_cache_time = now
+
+                logger.debug(
+                    "learned_weights_fetched",
+                    weights=learned_weights.weights,
+                    confidence=learned_weights.confidence,
+                )
+
+                return learned_weights.weights
+
+        except Exception as e:
+            logger.warning("learned_weights_fetch_failed", **safe_error_log(e))
+            # Return neutral weights on error
+            return {
+                "deepseek": 1.0,
+                "got_ocr": 1.0,
+                "surya": 1.0,
+                "surya_gpu": 1.0,
+            }
+
+    async def get_backend_recommendation_with_learning(
+        self,
+        document_metadata: Dict[str, object],
+        use_learned_weights: bool = True,
+    ) -> Dict[str, object]:
+        """
+        Get backend recommendations with learned weight adjustments.
+
+        Combines rule-based scoring with learned weights from user feedback.
+
+        Args:
+            document_metadata: Document classification info
+            use_learned_weights: Apply learned weights to scores
+
+        Returns:
+            Recommendations with adjusted scores based on learning
+        """
+        # Get base recommendations
+        recommendations = self.get_backend_recommendations(document_metadata)
+
+        if not use_learned_weights:
+            return recommendations
+
+        # Apply learned weights
+        try:
+            learned_weights = await self.get_learned_backend_weights()
+
+            if learned_weights:
+                for backend, rec in recommendations["recommendations"].items():
+                    weight = learned_weights.get(backend, 1.0)
+                    # Apply weight adjustment (neutral at 1.0)
+                    adjusted_score = rec["score"] * weight
+                    rec["score"] = min(adjusted_score, 1.0)
+                    rec["learned_weight"] = weight
+
+                # Re-sort by adjusted scores
+                sorted_recs = sorted(
+                    recommendations["recommendations"].items(),
+                    key=lambda x: x[1]["score"],
+                    reverse=True,
+                )
+                recommendations["recommendations"] = dict(sorted_recs)
+                recommendations["best_backend"] = sorted_recs[0][0] if sorted_recs else "got_ocr"
+                recommendations["learning_applied"] = True
+
+        except Exception as e:
+            logger.warning("learned_weight_application_failed", **safe_error_log(e))
+            recommendations["learning_applied"] = False
+
+        return recommendations
+
     def get_available_backends(
         self,
         gpu_required: Optional[bool] = None,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> Dict[str, Dict[str, object]]:
         """
         Get available backends with optional filtering.
 

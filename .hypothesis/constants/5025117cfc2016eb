@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\schemas\rag.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 1.0, 100, 255, 512, 1000, 4096, 8192, 10000, 'Anzahl Collaborators', 'Anzahl Tokens', 'Reranking Score', 'Session ist geteilt', 'Typ der Sektion', 'assistant', 'cancelled', 'chunk_documents', 'completed', 'contribute', 'customer', 'customer_card_sync', 'document', 'error', 'failed', 'footer', 'general', 'header', 'hybrid', 'keyword', 'list', 'manage', 'paragraph', 'pending', 'reembedding', 'report', 'report_generation', 'running', 'semantic', 'syncing', 'system', 'table', 'unknown', 'user', 'view']

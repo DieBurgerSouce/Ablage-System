@@ -6,11 +6,13 @@ Provides abstract base classes and common functionality for all agents.
 
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -126,7 +128,7 @@ class BaseAgent(ABC):
                     if attempt < self.max_retries - 1:
                         # Retry with exponential backoff
                         delay = self.retry_delay * (2**attempt)
-                        self.logger.warning("agent_task_retry", task_id=task_id, attempt=attempt + 1, max_retries=self.max_retries, delay_seconds=delay, error=str(e))
+                        self.logger.warning("agent_task_retry", task_id=task_id, attempt=attempt + 1, max_retries=self.max_retries, delay_seconds=delay, **safe_error_log(e))
                         # Metrics removed for POC
                         time.sleep(delay)
                     else:
@@ -138,7 +140,7 @@ class BaseAgent(ABC):
             status = AgentStatus.FAILED
             error_type = type(e).__name__
 
-            self.logger.error("agent_task_failed", task_id=task_id, error_type=error_type, error=str(e), exc_info=True)
+            self.logger.error("agent_task_failed", task_id=task_id, error_type=error_type, **safe_error_log(e), exc_info=True)
 
             # Error metrics removed for POC
 
@@ -161,7 +163,7 @@ class BaseAgent(ABC):
                 "category": self.category.value,
                 "status": status.value,
                 "duration_seconds": duration,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "task_id": task_id,
             },
         }
@@ -180,6 +182,114 @@ class BaseAgent(ABC):
         missing_keys = [key for key in required_keys if key not in input_data]
         if missing_keys:
             raise ValueError(f"Missing required input keys: {missing_keys}")
+
+
+@dataclass
+class OCRResult:
+    """
+    Standardisiertes OCR-Ergebnis für alle Backends.
+
+    Alle OCR-Agents sollten dieses Format zurückgeben für Konsistenz.
+    """
+
+    success: bool
+    text: str
+    confidence: float  # 0.0 - 1.0, kalibriert
+    backend: str
+    processing_time_ms: int = 0
+
+    # Optional Metadata
+    word_count: int = 0
+    char_count: int = 0
+    page_count: int = 1
+    language: str = "de"
+
+    # Layout Information (optional)
+    bounding_boxes: Optional[List[Dict[str, Any]]] = None
+    layout: Optional[Dict[str, Any]] = None
+    pages: Optional[List[Dict[str, Any]]] = None
+
+    # Quality Metrics (optional)
+    has_umlauts: bool = False
+    german_validation_score: float = 0.0
+
+    # Error Information (wenn success=False)
+    error: Optional[str] = None
+    error_code: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Konvertiere zu Dictionary."""
+        result = {
+            "success": self.success,
+            "text": self.text,
+            "confidence": round(self.confidence, 4),
+            "backend": self.backend,
+            "processing_time_ms": self.processing_time_ms,
+            "metadata": {
+                "word_count": self.word_count,
+                "char_count": self.char_count,
+                "page_count": self.page_count,
+                "language": self.language,
+                "has_umlauts": self.has_umlauts,
+                "german_validation_score": round(self.german_validation_score, 4),
+            },
+        }
+
+        # Optional Fields
+        if self.bounding_boxes:
+            result["bounding_boxes"] = self.bounding_boxes
+        if self.layout:
+            result["layout"] = self.layout
+        if self.pages:
+            result["pages"] = self.pages
+
+        # Error Fields
+        if not self.success:
+            result["error"] = self.error
+            result["error_code"] = self.error_code
+
+        return result
+
+    @classmethod
+    def from_legacy(
+        cls,
+        legacy_result: Dict[str, Any],
+        backend: str,
+        processing_time_ms: int = 0
+    ) -> "OCRResult":
+        """
+        Konvertiere Legacy-Result-Format zu standardisiertem OCRResult.
+
+        Args:
+            legacy_result: Altes Result-Dictionary
+            backend: Backend-Name
+            processing_time_ms: Verarbeitungszeit
+
+        Returns:
+            Standardisiertes OCRResult
+        """
+        text = legacy_result.get("text", "")
+        confidence = legacy_result.get("confidence", 0.0)
+        success = legacy_result.get("success", bool(text))
+
+        return cls(
+            success=success,
+            text=text,
+            confidence=confidence,
+            backend=backend,
+            processing_time_ms=processing_time_ms,
+            word_count=len(text.split()) if text else 0,
+            char_count=len(text) if text else 0,
+            page_count=legacy_result.get("page_count", 1),
+            language=legacy_result.get("language", "de"),
+            bounding_boxes=legacy_result.get("bounding_boxes"),
+            layout=legacy_result.get("layout"),
+            pages=legacy_result.get("pages"),
+            has_umlauts=legacy_result.get("has_umlauts", False),
+            german_validation_score=legacy_result.get("german_validation_score", 0.0),
+            error=legacy_result.get("error"),
+            error_code=legacy_result.get("error_code"),
+        )
 
 
 class OCRAgent(BaseAgent):
@@ -205,6 +315,92 @@ class OCRAgent(BaseAgent):
             "vram_gb": self.vram_gb,
             "initialized": self._is_initialized,
         }
+
+    def create_success_result(
+        self,
+        text: str,
+        confidence: float,
+        processing_time_ms: int = 0,
+        **kwargs: object
+    ) -> OCRResult:
+        """
+        Erstelle standardisiertes Erfolgs-Result.
+
+        Args:
+            text: Extrahierter Text
+            confidence: Confidence Score (0-1)
+            processing_time_ms: Verarbeitungszeit
+            **kwargs: Zusätzliche Metadata
+
+        Returns:
+            Standardisiertes OCRResult
+        """
+        return OCRResult(
+            success=True,
+            text=text,
+            confidence=confidence,
+            backend=self.name,
+            processing_time_ms=processing_time_ms,
+            word_count=len(text.split()) if text else 0,
+            char_count=len(text),
+            page_count=kwargs.get("page_count", 1),
+            language=kwargs.get("language", "de"),
+            bounding_boxes=kwargs.get("bounding_boxes"),
+            layout=kwargs.get("layout"),
+            pages=kwargs.get("pages"),
+            has_umlauts=kwargs.get("has_umlauts", False),
+            german_validation_score=kwargs.get("german_validation_score", 0.0),
+        )
+
+    def create_error_result(
+        self,
+        error: str,
+        error_code: str = "PROCESSING_ERROR",
+        processing_time_ms: int = 0
+    ) -> OCRResult:
+        """
+        Erstelle standardisiertes Fehler-Result.
+
+        Args:
+            error: Fehlermeldung
+            error_code: Fehlercode
+            processing_time_ms: Verarbeitungszeit
+
+        Returns:
+            Standardisiertes OCRResult mit success=False
+        """
+        return OCRResult(
+            success=False,
+            text="",
+            confidence=0.0,
+            backend=self.name,
+            processing_time_ms=processing_time_ms,
+            error=error,
+            error_code=error_code,
+        )
+
+    def normalize_legacy_result(
+        self,
+        legacy_result: Dict[str, Any],
+        processing_time_ms: int = 0
+    ) -> OCRResult:
+        """
+        Konvertiere Legacy-Result zu standardisiertem Format.
+
+        Verwende diese Methode um alte Return-Strukturen zu normalisieren.
+
+        Args:
+            legacy_result: Altes Result-Dictionary
+            processing_time_ms: Verarbeitungszeit
+
+        Returns:
+            Standardisiertes OCRResult
+        """
+        return OCRResult.from_legacy(
+            legacy_result,
+            backend=self.name,
+            processing_time_ms=processing_time_ms
+        )
 
 
 class PreprocessingAgent(BaseAgent):

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\simd.py
+# hypothesis_version: 6.148.7
+
+[1.0, 1.005, 1.025, 1000000000.0, '-inf', '1', ':', '<ARGDEFS>', '<DEF_KERNEL>', '<STORE_OUTPUT>', 'CSEVariableType', 'GraphInput', 'IntermediateBuffer', 'NYI: call_kernel', 'None', 'Schedule:\n %s', 'benchmark_kernel', 'features', 'float("-inf")', 'float("inf")', 'float("nan")', 'fusion', 'inductor', 'inf', 'intermediate_hooks', 'max', 'none', 'perf_hints', 'r0_', 'r1_', 'schedule', 'sum', 'tiling_scores', 'triton_', 'x', 'y', 'z']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\compilers.py
+# hypothesis_version: 6.148.7
+
+['backward', 'bw_compiler', 'call_function', 'decompositions', 'dtype', 'foo', 'forward', 'fw_compiler', 'joint', 'partition_fn', 'rb', 'val', 'wb']

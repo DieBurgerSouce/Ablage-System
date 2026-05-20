@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\geometric\message_passing\send_recv.py
+# hypothesis_version: 6.148.7
+
+[1e-12, 1.0, 'Dst_count', 'Dst_index', 'Out', 'Src_index', 'X', 'Y', 'add', 'div', 'dst_index', 'float16', 'float32', 'float64', 'graph_send_recv', 'graph_send_ue_recv', 'graph_send_uv', 'int32', 'int64', 'max', 'mean', 'message_op', 'min', 'mul', 'out', 'out_size', 'reduce_op', 'send_u_recv', 'send_ue_recv', 'src_index', 'sub', 'sum', 'x', 'y']

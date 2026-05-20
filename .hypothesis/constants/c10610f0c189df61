@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\datasets.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 0.01, 0.99, 224, 1000, 12500, 25000, ' >50K', '?', 'Age', 'Capital Gain', 'Capital Loss', 'Country', 'Education', 'Education-Num', 'Hours per week', 'Husband', 'Marital Status', 'NHANESI_X.csv', 'NHANESI_y.csv', 'Not-in-family', 'Occupation', 'Other-relative', 'Own-child', 'Race', 'Relationship', 'Sex', 'Target', 'Unmarried', 'Wife', 'Workclass', 'a1a.svmlight', 'adult.data', 'cached_data', 'category', 'float32', 'fnlwgt', 'imagenet50_', 'imdb_train.txt', 'rank.test', 'rank.test.query', 'rank.train', 'rank.train.query', 'utf-8', 'y']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\skimage\morphology\__init__.py
+# hypothesis_version: 6.148.7
+
+['area_closing', 'area_opening', 'ball', 'binary_closing', 'binary_dilation', 'binary_erosion', 'binary_opening', 'black_tophat', 'closing', 'convex_hull_image', 'convex_hull_object', 'diameter_closing', 'diameter_opening', 'diamond', 'dilation', 'disk', 'ellipse', 'erosion', 'flood', 'flood_fill', 'footprint_rectangle', 'h_maxima', 'h_minima', 'isotropic_closing', 'isotropic_dilation', 'isotropic_erosion', 'isotropic_opening', 'label', 'local_maxima', 'local_minima', 'max_tree', 'medial_axis', 'mirror_footprint', 'octagon', 'octahedron', 'opening', 'pad_footprint', 'reconstruction', 'remove_small_holes', 'remove_small_objects', 'skeletonize', 'star', 'thin', 'white_tophat']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\task_callbacks.py
+# hypothesis_version: 6.148.7
+
+[0.5, 0.7, 0.8, 1.0, 2.0, 100, '%d.%m.%Y %H:%M:%S', 'Datei nicht gefunden', 'FileNotFoundError', 'Laufzeitfehler', 'MemoryError', 'OutOfMemoryError', 'PROGRESS', 'RuntimeError', 'Speicherfehler', 'TimeoutError', 'Unbekannter Fehler', 'Ungültiger Wert', 'ValueError', 'Zeitüberschreitung', 'backend', 'completed', 'confidence', 'current', 'document_id', 'entity_count', 'error', 'error_message', 'failed', 'failure', 'fehler', 'filename', 'message', 'nicht', 'ocr.completed', 'ocr.failed', 'processing_time', 'processing_time_ms', 'progress', 'started', 'status', 'success', 'task_retry_callback', 'timestamp', 'total', 'umlauts_valid', 'ungültig', 'unknown', 'warning', 'word_count']

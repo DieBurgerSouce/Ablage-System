@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_arff_parser.py
+# hypothesis_version: 6.148.7
+
+['"', '%', '?', '@data', 'Int64', 'O', '\\', "^'(?P<contents>.*)'$", 'attributes', 'category', 'comment', 'contents', 'data', 'data_type', 'dtype', 'escapechar', 'float64', 'header', 'index', 'index_col', 'integer', 'keep_default_na', 'liac-arff', 'na_values', 'nominal', 'pandas', 'quotechar', 'skipinitialspace', 'sparse', 'utf-8']

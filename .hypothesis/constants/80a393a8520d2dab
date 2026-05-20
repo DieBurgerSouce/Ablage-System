@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\writer\excel.py
+# hypothesis_version: 6.148.7
+
+['/', 'anysvml', 'comments', 'customUI', 'drawing', 'vmlDrawing', 'w', 'xl/activeX', 'xl/ctrlProps', 'xl/media/.*\\.emf', 'xl/vba', '|']

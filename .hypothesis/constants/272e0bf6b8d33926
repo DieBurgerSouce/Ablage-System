@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sympy\strategies\core.py
+# hypothesis_version: 6.148.7
+
+['In:   %s\nOut:  %s\n\n', 'Rule: %s\n', '_S', '_T']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distribution\student_t.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 0.5, 1.0, 2.0, 'StudentT', 'df', 'inf', 'loc', 'nan', 'scale']

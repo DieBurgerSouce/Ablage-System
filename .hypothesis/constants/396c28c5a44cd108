@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\datamodel\pipeline_options_vlm_model.py
+# hypothesis_version: 6.148.7
+
+[0.0, 2.0, 6.0, 4096, '--', '/', 'Page', 'SegmentedPage', 'api_model_options', 'automodel', 'automodel-causallm', 'automodel-vision2seq', 'chat', 'doctags', 'html', 'inline_model_options', 'main', 'markdown', 'mlx', 'none', 'otsl', 'plaintext', 'raw', 'transformers', 'vllm']

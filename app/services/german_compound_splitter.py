@@ -407,3 +407,126 @@ def split_for_search(word: str) -> List[str]:
 def is_compound(word: str) -> bool:
     """Prüfe ob ein Wort ein Kompositum ist."""
     return get_compound_splitter().is_compound(word)
+
+
+# =============================================================================
+# Umlaut-Normalisierung für OCR-Fehlertoleranz
+# =============================================================================
+
+
+# Mapping für bidirektionale Umlaut-Expansion
+UMLAUT_EXPANSIONS: Dict[str, List[str]] = {
+    # Umlaute zu ASCII-Varianten (inkl. OCR-Fehler ohne Punkte)
+    'ä': ['ä', 'ae', 'a'],
+    'ö': ['ö', 'oe', 'o'],
+    'ü': ['ü', 'ue', 'u'],
+    'ß': ['ß', 'ss'],
+    # Grossbuchstaben
+    'Ä': ['Ä', 'Ae', 'AE', 'A'],
+    'Ö': ['Ö', 'Oe', 'OE', 'O'],
+    'Ü': ['Ü', 'Ue', 'UE', 'U'],
+}
+
+# Reverse-Mapping: ASCII-Digraphen zu Umlauten
+DIGRAPH_TO_UMLAUT: Dict[str, str] = {
+    'ae': 'ä', 'Ae': 'Ä', 'AE': 'Ä',
+    'oe': 'ö', 'Oe': 'Ö', 'OE': 'Ö',
+    'ue': 'ü', 'Ue': 'Ü', 'UE': 'Ü',
+    'ss': 'ß',
+}
+
+
+def expand_umlaut_variants(word: str) -> List[str]:
+    """Expandiert ein Wort mit möglichen Umlaut-Varianten.
+
+    Behandelt OCR-Fehler, bei denen:
+    - ä zu ae, a oder ä wird
+    - ö zu oe, o oder ö wird
+    - ü zu ue, u oder ü wird
+    - ß zu ss wird
+
+    Args:
+        word: Eingabewort (kann Umlaute oder ASCII-Digraphen enthalten)
+
+    Returns:
+        Liste aller möglichen Varianten (inkl. Original)
+
+    Example:
+        >>> expand_umlaut_variants("Größe")
+        ['größe', 'größe', 'grosse']
+        >>> expand_umlaut_variants("Mueller")
+        ['mueller', 'müller']
+    """
+    variants: Set[str] = {word.lower()}
+    word_lower = word.lower()
+
+    # 1. Forward: Umlaute zu ASCII-Varianten expandieren
+    for umlaut, replacements in UMLAUT_EXPANSIONS.items():
+        umlaut_lower = umlaut.lower()
+        if umlaut_lower in word_lower:
+            for replacement in replacements:
+                replacement_lower = replacement.lower()
+                if replacement_lower != umlaut_lower:
+                    variant = word_lower.replace(umlaut_lower, replacement_lower)
+                    variants.add(variant)
+
+    # 2. Reverse: ASCII-Digraphen zu Umlauten expandieren
+    for digraph, umlaut in DIGRAPH_TO_UMLAUT.items():
+        digraph_lower = digraph.lower()
+        if digraph_lower in word_lower:
+            variant = word_lower.replace(digraph_lower, umlaut)
+            variants.add(variant)
+
+    result = list(variants)
+    if len(result) > 1:
+        logger.debug(
+            "umlaut_expansion",
+            original=word,
+            variants=result[:5],  # Max 5 für Logging
+            total_variants=len(result)
+        )
+
+    return result
+
+
+def expand_query_with_umlauts(query: str) -> Tuple[str, List[str]]:
+    """Expandiert eine Suchanfrage mit Umlaut-Varianten.
+
+    Verarbeitet alle Woerter in der Query und generiert
+    OR-verknüpfte Varianten für bessere OCR-Fehlertoleranz.
+
+    Args:
+        query: Originale Suchanfrage
+
+    Returns:
+        Tuple von (erweiterte_query, liste_zusätzlicher_terms)
+
+    Example:
+        >>> expand_query_with_umlauts("Größe Müller")
+        ("Größe Müller größe grosse mueller müller", ["größe", "grosse", ...])
+    """
+    words = query.split()
+    all_terms: Set[str] = set(words)
+    additional_terms: List[str] = []
+
+    for word in words:
+        # Nur Woerter mit mind. 3 Zeichen expandieren
+        if len(word) >= 3:
+            variants = expand_umlaut_variants(word)
+            for variant in variants:
+                if variant not in {w.lower() for w in all_terms}:
+                    all_terms.add(variant)
+                    additional_terms.append(variant)
+
+    if additional_terms:
+        logger.debug(
+            "query_umlaut_expansion",
+            original=query,
+            additional_terms=additional_terms[:10],
+            total_additional=len(additional_terms)
+        )
+        # Erweiterte Query: Original + Varianten
+        expanded_query = query + " " + " ".join(additional_terms[:15])  # Max 15 Zusatzterms
+        return expanded_query, additional_terms
+
+    return query, []

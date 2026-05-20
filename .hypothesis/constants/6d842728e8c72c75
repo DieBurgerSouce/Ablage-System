@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pdfminer\pdftypes.py
+# hypothesis_version: 6.148.7
+
+[0.0, '<PDFObjRef:%d>', 'A85', 'AHx', 'ASCII85Decode', 'ASCIIHexDecode', 'BitsPerComponent', 'CCF', 'CCITTFaxDecode', 'Colors', 'Columns', 'Crypt', 'DCT', 'DCTDecode', 'DP', 'DecodeParms', 'Dict required: %r', 'F', 'FDecodeParms', 'Filter', 'Fl', 'FlateDecode', 'Float required: %r', 'Integer required: %r', 'JBIG2Decode', 'JPXDecode', 'LZW', 'LZWDecode', 'List required: %r', 'PDFDocument', 'PDFStream', 'Predictor', 'RL', 'RunLengthDecode', 'String required: %r']

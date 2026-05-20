@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\ps_optimizer.py
+# hypothesis_version: 6.148.7
+
+[b'MemFree:', 5.0, 800, 1024, 4096, 81920, '/proc/meminfo', '1', ':[\\s]+', '@EMPTY@', 'AMPOptimizer', 'ASPOptimizer', 'Darwin', 'FLAGS_LAUNCH_BARRIER', 'LambOptimizer', 'LarsOptimizer', 'Linux', 'Pages free', 'RecomputeOptimizer', '\\.', '_main_server', '_startup_server', 'cloned_main', 'cloned_startup', 'env', 'is_fl_ps_mode', 'is_heter_ps_mode', 'is_heter_worker', 'is_server', 'is_worker', 'k_steps', 'launch_barrier', 'launch_barrier_flag', 'local_sparse', 'loss', 'lr_decay_steps', 'min_block_size', 'origin_main_program', 'origin_main_programs', 'ps_mode', 'ps_mode: {}', 'rb', 'remote_sparse', 'role_maker', 'tensor_table', 'trainer', 'use_gpu_graph', 'use_ps_gpu', 'valid_strategy', 'vm_stat', 'with_coordinator']

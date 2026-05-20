@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\_explanation.py
+# hypothesis_version: 6.148.7
+
+[1e-08, 1e-06, ' & ', ' < ', ' >= ', '__add__', '__getitem__', '__len__', '__mul__', '__sub__', '__truediv__', 'abs', 'argsort', 'axis', 'feature_names', 'flip', 'max', 'mean', 'min', 'output_names', 'percentile', 'shap.Explanation', 'shape', 'sqeuclidean', 'sum', 'tuple[int, ...]']

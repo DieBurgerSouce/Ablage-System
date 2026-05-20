@@ -20,6 +20,8 @@ from app.db.schemas import (
     UserRole,
     ProcessingStatus,
     MessageResponse,
+    JobListResponse,
+    JobActionResponse,
 )
 
 
@@ -346,3 +348,272 @@ class TestJobQueueOperations:
             )
             assert result["cleared"] == 25
             assert "ocr" in result["queues"]
+
+
+# ==============================================================================
+# INTEGRATION TESTS - HTTP Status Codes, Edge Cases, Input Validation
+# ==============================================================================
+
+# Try to import for integration tests
+try:
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.api.dependencies import get_current_superuser, get_db, check_destructive_admin_rate_limit
+    INTEGRATION_AVAILABLE = True
+except ImportError:
+    INTEGRATION_AVAILABLE = False
+    app = None
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not INTEGRATION_AVAILABLE, reason="Integration dependencies not available")
+class TestJobsAdminAPIIntegration:
+    """Integration tests for Jobs Admin API with real HTTP requests."""
+
+    @pytest.fixture
+    def override_superuser(self, admin_user):
+        """Override superuser dependency for testing."""
+        async def _get_test_superuser():
+            return admin_user
+        return _get_test_superuser
+
+    @pytest.fixture
+    def override_db(self, mock_db):
+        """Override database dependency for testing."""
+        async def _get_test_db():
+            yield mock_db
+        return _get_test_db
+
+    @pytest.fixture
+    def override_rate_limit(self, admin_user):
+        """Override destructive rate limit dependency for testing."""
+        async def _bypass_rate_limit(request=None, admin=None):
+            return admin_user
+        return _bypass_rate_limit
+
+    @pytest.mark.asyncio
+    async def test_list_jobs_returns_200(self, admin_user, mock_db, override_superuser, override_db):
+        """GET /admin/jobs sollte 200 zurueckgeben."""
+        from app.services.admin import JobAdminService
+
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+
+        try:
+            mock_response = JobListResponse(
+                jobs=[], total=0, page=1, per_page=20, total_pages=1, status_summary={}
+            )
+            with patch.object(JobAdminService, "list_jobs", return_value=mock_response):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://test"
+                ) as client:
+                    response = await client.get("/api/v1/admin/jobs")
+                    assert response.status_code == 200
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_get_job_404_for_nonexistent(self, admin_user, mock_db, override_superuser, override_db):
+        """GET /admin/jobs/{id} sollte 404 fuer nicht existierenden Job zurueckgeben."""
+        from app.services.admin import JobAdminService
+
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+
+        try:
+            with patch.object(JobAdminService, "get_job", return_value=None):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://test"
+                ) as client:
+                    response = await client.get(f"/api/v1/admin/jobs/{uuid4()}")
+                    assert response.status_code == 404
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_cancel_job_returns_200_on_success(self, admin_user, mock_db, override_superuser, override_db, override_rate_limit):
+        """POST /admin/jobs/{id}/cancel sollte 200 bei Erfolg zurueckgeben."""
+        from app.services.admin import JobAdminService
+
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+        app.dependency_overrides[check_destructive_admin_rate_limit] = override_rate_limit
+
+        job_id = uuid4()
+        try:
+            mock_response = JobActionResponse(
+                success=True,
+                job_id=job_id,
+                action="cancel",
+                message="Auftrag erfolgreich abgebrochen"
+            )
+            with patch.object(JobAdminService, "cancel_job", return_value=mock_response):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://test",
+                    headers={"Authorization": "Bearer test_token"}  # Bypass CSRF
+                ) as client:
+                    response = await client.post(f"/api/v1/admin/jobs/{job_id}/cancel")
+                    assert response.status_code == 200
+        finally:
+            app.dependency_overrides.clear()
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not INTEGRATION_AVAILABLE, reason="Integration dependencies not available")
+class TestPaginationEdgeCases:
+    """Integration tests for pagination edge cases."""
+
+    @pytest.fixture
+    def override_superuser(self, admin_user):
+        """Override superuser dependency for testing."""
+        async def _get_test_superuser():
+            return admin_user
+        return _get_test_superuser
+
+    @pytest.fixture
+    def override_db(self, mock_db):
+        """Override database dependency for testing."""
+        async def _get_test_db():
+            yield mock_db
+        return _get_test_db
+
+    @pytest.mark.asyncio
+    async def test_list_jobs_negative_page_returns_422(self, admin_user, mock_db, override_superuser, override_db):
+        """Negative Seitenzahl sollte 422 Validation Error zurueckgeben."""
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test"
+            ) as client:
+                response = await client.get("/api/v1/admin/jobs?page=-1")
+                assert response.status_code == 422
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_list_jobs_large_page_size_rejected(self, admin_user, mock_db, override_superuser, override_db):
+        """Zu grosse Seitenzahl sollte 422 zurueckgeben (max 100)."""
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test"
+            ) as client:
+                response = await client.get("/api/v1/admin/jobs?per_page=10000")
+                # FastAPI validates per_page <= 100, returns 422 for invalid values
+                assert response.status_code == 422
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_list_jobs_page_beyond_total_returns_empty(self, admin_user, mock_db, override_superuser, override_db):
+        """Seite jenseits der Gesamtzahl sollte leere Liste zurueckgeben."""
+        from app.services.admin import JobAdminService
+
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+
+        try:
+            mock_response = JobListResponse(
+                jobs=[], total=10, page=100, per_page=20, total_pages=1, status_summary={}
+            )
+            with patch.object(JobAdminService, "list_jobs", return_value=mock_response):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://test"
+                ) as client:
+                    response = await client.get("/api/v1/admin/jobs?page=100")
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data.get("jobs", []) == []
+        finally:
+            app.dependency_overrides.clear()
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not INTEGRATION_AVAILABLE, reason="Integration dependencies not available")
+class TestInputValidation:
+    """Integration tests for input validation and malformed requests."""
+
+    @pytest.fixture
+    def override_superuser(self, admin_user):
+        """Override superuser dependency for testing."""
+        async def _get_test_superuser():
+            return admin_user
+        return _get_test_superuser
+
+    @pytest.fixture
+    def override_db(self, mock_db):
+        """Override database dependency for testing."""
+        async def _get_test_db():
+            yield mock_db
+        return _get_test_db
+
+    @pytest.fixture
+    def override_rate_limit(self, admin_user):
+        """Override destructive rate limit dependency for testing."""
+        async def _bypass_rate_limit(request=None, admin=None):
+            return admin_user
+        return _bypass_rate_limit
+
+    @pytest.mark.asyncio
+    async def test_malformed_uuid_returns_422(self, admin_user, mock_db, override_superuser, override_db):
+        """Ungueltige UUID sollte 422 zurueckgeben."""
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test"
+            ) as client:
+                response = await client.get("/api/v1/admin/jobs/not-a-valid-uuid")
+                assert response.status_code == 422
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_invalid_status_filter_returns_422(self, admin_user, mock_db, override_superuser, override_db):
+        """Ungueltiger Status-Filter sollte 422 zurueckgeben."""
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test"
+            ) as client:
+                response = await client.get("/api/v1/admin/jobs?status=invalid_status")
+                assert response.status_code == 422
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_bulk_cancel_empty_list_returns_400(self, admin_user, mock_db, override_superuser, override_db, override_rate_limit):
+        """Bulk-Cancel mit leerer Liste sollte 400 zurueckgeben."""
+        app.dependency_overrides[get_current_superuser] = override_superuser
+        app.dependency_overrides[get_db] = override_db
+        app.dependency_overrides[check_destructive_admin_rate_limit] = override_rate_limit
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": "Bearer test_token"}  # Bypass CSRF
+            ) as client:
+                response = await client.post(
+                    "/api/v1/admin/jobs/bulk/cancel",
+                    json={"job_ids": []}
+                )
+                # Could be 400 or 422 depending on validation
+                assert response.status_code in [400, 422]
+        finally:
+            app.dependency_overrides.clear()

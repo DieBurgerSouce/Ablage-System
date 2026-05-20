@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\skimage\morphology\gray.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'black_tophat', 'closing', 'constant', 'dilation', 'erosion', 'ignore', 'max', 'min', 'mirror', 'nearest', 'opening', 'reflect', 'white_tophat', 'wrap']

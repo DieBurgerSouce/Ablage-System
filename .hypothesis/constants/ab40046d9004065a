@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\fp16_allreduce_optimizer.py
+# hypothesis_version: 6.148.7
+
+['.cast_fp16', '.cast_fp32', 'DGCOptimizer', 'LambOptimizer', 'LarsOptimizer', 'LocalSGDOptimizer', 'Out', 'RecomputeOptimizer', 'X', 'cast', 'fp16_allreduce', 'in_dtype', 'out_dtype']

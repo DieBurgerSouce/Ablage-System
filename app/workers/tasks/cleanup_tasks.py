@@ -14,11 +14,12 @@ from typing import Dict, Any, List
 from uuid import UUID
 
 import structlog
-from celery import shared_task
 from sqlalchemy import select, delete, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
+from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
 
@@ -27,12 +28,15 @@ SOFT_DELETE_RETENTION_DAYS = 30  # GDPR: 30 Tage Aufbewahrung vor permanenter L�
 BATCH_SIZE = 100  # Dokumente pro Batch für schonende DB-Last
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_soft_deleted_documents",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_soft_deleted_documents",
     max_retries=3,
     default_retry_delay=300,  # 5 Minuten Retry-Delay
-    autoretry_for=(Exception,),
+    soft_time_limit=600,  # 10 Minuten Soft-Limit
+    time_limit=660,  # 11 Minuten Hard-Limit
+    acks_late=True,  # Task bleibt in Queue bis erfolgreich abgeschlossen
 )
 def cleanup_soft_deleted_documents(
     self,
@@ -52,9 +56,8 @@ def cleanup_soft_deleted_documents(
         Dict mit Statistiken über gelöschte Dokumente
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_soft_deleted_async(retention_days, dry_run)
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_soft_deleted_async(retention_days, dry_run))
 
 
 async def _cleanup_soft_deleted_async(
@@ -124,7 +127,7 @@ async def _cleanup_soft_deleted_async(
                         logger.warning(
                             "storage_delete_failed",
                             document_id=str(doc.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         # Fahre trotzdem mit DB-Löschung fort
 
@@ -133,12 +136,12 @@ async def _cleanup_soft_deleted_async(
             except Exception as e:
                 stats["errors"].append({
                     "document_id": str(doc.id),
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 })
                 logger.error(
                     "soft_delete_cleanup_document_error",
                     document_id=str(doc.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # 2. Batch-Delete aus Datenbank
@@ -160,20 +163,24 @@ async def _cleanup_soft_deleted_async(
                 await db.rollback()
                 logger.error(
                     "soft_delete_cleanup_db_error",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 stats["errors"].append({
                     "type": "database",
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 })
 
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_orphaned_files",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_orphaned_files",
     max_retries=1,
+    soft_time_limit=1800,  # 30 Minuten Soft-Limit (kann viele Dateien sein)
+    time_limit=1860,  # 31 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_orphaned_files(self) -> Dict[str, Any]:
     """
@@ -182,9 +189,8 @@ def cleanup_orphaned_files(self) -> Dict[str, Any]:
     Verwaiste Dateien: In MinIO vorhanden, aber kein DB-Eintrag.
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_orphaned_files_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_orphaned_files_async())
 
 
 async def _cleanup_orphaned_files_async() -> Dict[str, Any]:
@@ -237,7 +243,7 @@ async def _cleanup_orphaned_files_async() -> Dict[str, Any]:
             except Exception as e:
                 stats["errors"].append({
                     "file": str(file_info),
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 })
 
         logger.info(
@@ -248,15 +254,19 @@ async def _cleanup_orphaned_files_async() -> Dict[str, Any]:
         )
 
     except Exception as e:
-        logger.error("orphaned_files_cleanup_error", error=str(e))
-        stats["errors"].append({"type": "general", "error": str(e)})
+        logger.error("orphaned_files_cleanup_error", **safe_error_log(e))
+        stats["errors"].append({"type": "general", **safe_error_log(e)})
 
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_expired_cache",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_cache",
+    soft_time_limit=120,  # 2 Minuten Soft-Limit
+    time_limit=180,  # 3 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_expired_cache(self) -> Dict[str, Any]:
     """
@@ -266,15 +276,18 @@ def cleanup_expired_cache(self) -> Dict[str, Any]:
     dieser Task räumt zusätzliche Artefakte auf.
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_expired_cache_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_expired_cache_async())
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_search_analytics",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_search_analytics",
     max_retries=2,
+    soft_time_limit=600,  # 10 Minuten Soft-Limit
+    time_limit=660,  # 11 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_search_analytics(
     self,
@@ -294,9 +307,8 @@ def cleanup_search_analytics(
         Dict mit Statistiken
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_search_analytics_async(retention_months, dry_run)
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_search_analytics_async(retention_months, dry_run))
 
 
 async def _cleanup_search_analytics_async(
@@ -355,17 +367,21 @@ async def _cleanup_search_analytics_async(
 
         except Exception as e:
             await db.rollback()
-            logger.error("search_analytics_cleanup_error", error=str(e))
+            logger.error("search_analytics_cleanup_error", **safe_error_log(e))
             raise
 
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_expired_sessions",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_sessions",
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,  # 5 Minuten Soft-Limit
+    time_limit=360,  # 6 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_expired_sessions(self) -> Dict[str, Any]:
     """
@@ -381,9 +397,8 @@ def cleanup_expired_sessions(self) -> Dict[str, Any]:
         Dict mit Statistiken über gelöschte Sessions
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_expired_sessions_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_expired_sessions_async())
 
 
 async def _cleanup_expired_sessions_async() -> Dict[str, Any]:
@@ -411,17 +426,21 @@ async def _cleanup_expired_sessions_async() -> Dict[str, Any]:
         )
 
     except Exception as e:
-        logger.error("session_cleanup_error", error=str(e))
-        stats["errors"].append({"type": "general", "error": str(e)})
+        logger.error("session_cleanup_error", **safe_error_log(e))
+        stats["errors"].append({"type": "general", **safe_error_log(e)})
 
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,  # 5 Minuten Soft-Limit
+    time_limit=360,  # 6 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_expired_verification_tokens(self) -> Dict[str, Any]:
     """
@@ -437,9 +456,8 @@ def cleanup_expired_verification_tokens(self) -> Dict[str, Any]:
         Dict mit Statistiken über gelöschte Tokens
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_expired_verification_tokens_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_expired_verification_tokens_async())
 
 
 async def _cleanup_expired_verification_tokens_async() -> Dict[str, Any]:
@@ -467,8 +485,8 @@ async def _cleanup_expired_verification_tokens_async() -> Dict[str, Any]:
         )
 
     except Exception as e:
-        logger.error("verification_token_cleanup_error", error=str(e))
-        stats["errors"].append({"type": "general", "error": str(e)})
+        logger.error("verification_token_cleanup_error", **safe_error_log(e))
+        stats["errors"].append({"type": "general", **safe_error_log(e)})
 
     return stats
 
@@ -511,7 +529,7 @@ async def _cleanup_expired_cache_async() -> Dict[str, Any]:
             except Exception as e:
                 stats["errors"].append({
                     "pattern": pattern,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 })
 
         logger.info(
@@ -520,7 +538,7 @@ async def _cleanup_expired_cache_async() -> Dict[str, Any]:
         )
 
     except Exception as e:
-        logger.error("cache_cleanup_error", error=str(e))
-        stats["errors"].append({"type": "general", "error": str(e)})
+        logger.error("cache_cleanup_error", **safe_error_log(e))
+        stats["errors"].append({"type": "general", **safe_error_log(e)})
 
     return stats

@@ -11,7 +11,7 @@ Processing time target: < 500ms per document
 import asyncio
 import re
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
 import structlog
@@ -137,7 +137,7 @@ class DocumentClassifierAgent:
         document_path: str,
         use_ml: bool = True,
         confidence_threshold: float = 0.7
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Classify a document into one of the predefined categories.
 
@@ -239,7 +239,7 @@ class DocumentClassifierAgent:
         text = await quick_ocr_preview(document_path, max_pages=1)
         return text
 
-    def _classify_by_patterns(self, text: str) -> Dict[str, any]:
+    def _classify_by_patterns(self, text: str) -> Dict[str, Any]:
         """
         Classify document based on keyword pattern matching.
 
@@ -304,7 +304,7 @@ class DocumentClassifierAgent:
         self,
         text: str,
         document_path: str
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Classify document using transformer-based ML model.
 
@@ -374,7 +374,7 @@ class DocumentClassifierAgent:
         pattern_result: Dict,
         ml_result: Dict,
         weights: Dict[str, float]
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Combine pattern and ML classification results using weighted voting.
 
@@ -447,7 +447,7 @@ class DocumentClassifierAgent:
         self,
         document_paths: List[str],
         max_concurrent: int = 10
-    ) -> List[Dict[str, any]]:
+    ) -> List[Dict[str, Any]]:
         """
         Classify multiple documents concurrently.
 

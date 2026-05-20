@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\personal\__init__.py
+# hypothesis_version: 6.148.7
+
+['/personal', 'Personal', 'router']

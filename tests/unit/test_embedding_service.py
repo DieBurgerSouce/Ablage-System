@@ -248,6 +248,7 @@ class TestEmbeddingServiceIntegration:
         mock_settings.EMBEDDING_DIMENSION = 1024
         mock_settings.EMBEDDING_MAX_LENGTH = 512
         mock_settings.EMBEDDING_BATCH_SIZE = 32
+        mock_settings.EMBEDDING_MAX_BATCH_SIZE = 100
         mock_settings.ENABLE_GPU = False
         mock_settings.GPU_MEMORY_FRACTION = 0.85
 
@@ -392,6 +393,7 @@ class TestEmbeddingServiceAsync:
         mock_settings.EMBEDDING_DIMENSION = 1024
         mock_settings.EMBEDDING_MAX_LENGTH = 512
         mock_settings.EMBEDDING_BATCH_SIZE = 32
+        mock_settings.EMBEDDING_MAX_BATCH_SIZE = 100
         mock_settings.ENABLE_GPU = False
         mock_settings.GPU_MEMORY_FRACTION = 0.85
 
@@ -542,6 +544,7 @@ class TestEmbeddingServiceEdgeCases:
         mock_settings.EMBEDDING_DIMENSION = 1024
         mock_settings.EMBEDDING_MAX_LENGTH = 512
         mock_settings.EMBEDDING_BATCH_SIZE = 32
+        mock_settings.EMBEDDING_MAX_BATCH_SIZE = 100
         mock_settings.ENABLE_GPU = False
         mock_settings.GPU_MEMORY_FRACTION = 0.85
 

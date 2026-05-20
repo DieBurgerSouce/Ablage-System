@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\models\_topk_lm.py
+# hypothesis_version: 6.148.7
+
+[128, 'attention_mask', 'batch_size', 'cpu', 'cuda', 'device', 'float64', 'k', 'left', 'pad_token', 'position_ids', 'pt', 'right', 'tf', 'tokenizer']

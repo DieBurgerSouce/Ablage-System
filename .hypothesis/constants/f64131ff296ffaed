@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\utils\german_text.py
+# hypothesis_version: 6.148.7
+
+['Ae', 'NFC', 'Oe', 'Ue', '\\s+', 'ae', 'oe', 'ue', 'Ä', 'Ö', 'Ü', 'ä', 'ö', 'ü']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\decomposition\_truncated_svd.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'LU', 'OR', 'TruncatedSVD', 'algorithm', 'arpack', 'auto', 'csc', 'csr', 'float32', 'float64', 'left', 'n_components', 'n_iter', 'n_oversamples', 'none', 'random_state', 'randomized', 'tol']

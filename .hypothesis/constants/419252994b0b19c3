@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\onnx\__init__.py
+# hypothesis_version: 6.148.7
+
+['FeaturesManager', 'OnnxConfig', 'OnnxConfigWithPast', 'ParameterFormat', 'PatchingSpec', '__file__', 'config', 'convert', 'export', 'features', 'utils']

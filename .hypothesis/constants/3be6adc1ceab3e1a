@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\workbook\protection.py
+# hypothesis_version: 6.148.7
+
+['fileSharing', 'lockRevision', 'lockStructure', 'lockWindows', 'revisionsHashValue', 'revisionsPassword', 'revisionsSaltValue', 'revisionsSpinCount', 'workbookHashValue', 'workbookPassword', 'workbookPr', 'workbookSaltValue', 'workbookSpinCount']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\dygraph_optimizer\hybrid_parallel_optimizer.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 1.0, '0', '@SHARED_WEIGHT', '_inner_opt', '_multi_precision', 'broadcast', 'broadcast_group', 'color', 'dygraph-clip', 'grad_clip', 'iluvatar_gpu', 'is_firstly_shared', 'main_grad', 'metax_gpu', 'mp_configs', 'need_clip', 'npu', 'pp_configs', 'sharding_configs', 'split_norm_comm']

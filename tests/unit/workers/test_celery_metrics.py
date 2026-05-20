@@ -308,9 +308,15 @@ class TestCeleryRegistry:
     def test_registry_contains_metrics(self):
         """Registry enthält erwartete Metriken."""
         # Sammle Metrik-Namen aus Registry
-        metric_names = [m.describe()[0].name for m in CELERY_REGISTRY.collect()]
+        metric_names = []
+        for metric_family in CELERY_REGISTRY.collect():
+            # In prometheus_client, collect() returns MetricFamily objects
+            # which have a 'name' attribute directly
+            if hasattr(metric_family, 'name'):
+                metric_names.append(metric_family.name)
 
-        assert "ablage_celery_tasks_total" in metric_names
+        # Counter metrics don't have _total suffix in registry name
+        assert "ablage_celery_tasks" in metric_names
         assert "ablage_celery_task_duration_seconds" in metric_names
         assert "ablage_celery_gpu_memory_bytes" in metric_names
         assert "ablage_celery_worker_up" in metric_names
@@ -318,9 +324,6 @@ class TestCeleryRegistry:
     def test_registry_separate_from_default(self):
         """Celery Registry ist separiert von Default Registry."""
         from prometheus_client import REGISTRY
-
-        # Unsere Metriken sollten NICHT in der Default Registry sein
-        default_names = [m.describe()[0].name for m in REGISTRY.collect()]
 
         # Celery-spezifische Metriken sollten in separater Registry sein
         assert CELERY_REGISTRY is not REGISTRY

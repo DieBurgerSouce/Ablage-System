@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\dataset\flowers.py
+# hypothesis_version: 6.148.7
+
+[103.94, 116.78, 123.68, 224, 256, 1024, '2.0.0', 'float32', 'flowers', 'labels', 'scipy.io', 'trnid', 'tstid', 'valid']

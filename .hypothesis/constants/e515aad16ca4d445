@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\utils\mkldnn.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'bias', 'dilation', 'eps', 'groups', 'padding', 'running_mean', 'running_var', 'stride', 'weight']

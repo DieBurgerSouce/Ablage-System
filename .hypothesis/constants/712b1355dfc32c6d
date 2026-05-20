@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\make_shrink_map.py
+# hypothesis_version: 6.148.7
+
+[0.2, 0.4, 2.0, 'MakeShrinkMap', 'None', 'epoch', 'ignore_tags', 'image', 'polys', 'shrink_map', 'shrink_mask', 'total_epoch']

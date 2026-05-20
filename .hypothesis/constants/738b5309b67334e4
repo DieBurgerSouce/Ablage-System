@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\partitioner.py
+# hypothesis_version: 6.148.7
+
+['default', 'do_model_average', 'grad_var_to_var', 'need_clip', 'optimize_attr', 'persistable', 'regularizer', 'shape', 'trainable']

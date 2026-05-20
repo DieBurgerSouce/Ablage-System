@@ -1,0 +1,34 @@
+# docker-compose.override.yml - Local Development Overrides
+#
+# Dieses File wird automatisch von docker-compose geladen.
+# Es ueberschreibt Werte aus docker-compose.yml fuer lokale Entwicklung.
+#
+# Multi-Instanz-Test:
+#   docker-compose up --scale backend=3 --scale worker-cpu=2
+#
+# HINWEIS: --scale funktioniert nicht mit container_name.
+# Bei Skalierung werden container_name automatisch ignoriert.
+# Ports muessen dynamisch zugewiesen werden.
+
+version: '3.8'
+
+services:
+  # Backend: Einzelinstanz fuer lokale Entwicklung
+  backend:
+    deploy:
+      replicas: 1
+
+  # Worker GPU: Immer Einzelinstanz (GPU-Sharing nicht moeglich)
+  worker:
+    deploy:
+      replicas: 1
+
+  # Worker CPU: Kann lokal skaliert werden
+  worker-cpu:
+    deploy:
+      replicas: 1
+
+  # Beat: Immer Einzelinstanz (RedBeat-Lock in Redis)
+  beat:
+    deploy:
+      replicas: 1

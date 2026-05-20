@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_fused_rope.py
+# hypothesis_version: 6.148.7
+
+['cos', 'k', 'out_k', 'out_q', 'out_v', 'position_ids', 'q', 'rotary_emb_base', 'sin', 'time_major', 'v']

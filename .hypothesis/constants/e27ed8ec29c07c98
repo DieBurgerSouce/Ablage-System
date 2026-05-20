@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\cluster\_affinity_propagation.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, 100, 200, 'Did not converge', 'S', 'affinity', 'array-like', 'boolean', 'cluster_centers_', 'convergence_iter', 'copy', 'csr', 'damping', 'euclidean', 'left', 'max_iter', 'neither', 'precomputed', 'preference', 'random_state', 'return_n_iter', 'verbose']

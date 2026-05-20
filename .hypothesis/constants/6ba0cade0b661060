@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\assign.py
+# hypothesis_version: 6.148.7
+
+[1024, '.', 'Assign', 'Out', 'X', 'assign_value', 'cast', 'dtype', 'float32', 'in_dtype', 'int8_values', 'numpy_array_init', 'out_dtype', 'shape', 'tmp', 'value', 'values']

@@ -10,7 +10,6 @@ CRUD-Operationen für programmatischen API-Zugriff:
 Alle Antworten auf Deutsch.
 """
 
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -50,7 +49,7 @@ async def create_api_key(
     key_data: APIKeyCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> APIKeyCreateResponse:
     """
     Erstellt einen neuen API-Key.
 
@@ -127,7 +126,7 @@ async def create_api_key(
 async def list_api_keys(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> APIKeyListResponse:
     """
     Listet alle API-Keys des aktuellen Benutzers auf.
 
@@ -177,7 +176,7 @@ async def get_api_key(
     key_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> APIKeyResponse:
     """
     Gibt Details eines spezifischen API-Keys zurück.
 
@@ -217,7 +216,7 @@ async def update_api_key(
     update_data: APIKeyUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> APIKeyResponse:
     """
     Aktualisiert einen API-Key.
 
@@ -280,7 +279,7 @@ async def delete_api_key(
     key_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> APIKeyDeleteResponse:
     """
     Löscht einen API-Key permanent.
 
@@ -328,7 +327,7 @@ async def delete_api_key(
 async def revoke_all_api_keys(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> APIKeyDeleteResponse:
     """
     Deaktiviert alle API-Keys des aktuellen Benutzers.
 

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\table\predict_table.py
+# hypothesis_version: 6.148.7
+
+['--process_id={}', '--use_mp={}', '-u', '.', '..', '../..', '.xlsx', '</table>\n', '</table></td>\n', '</tr>\n', '<html>\n<body>\n', '<html><body><table>', '<table border="1">\n', '<td>cell box</td>', '<td>img name\n', '<td>ori image</td>', '<td>table html</td>', '<tr>\n', 'TableMaster', '[{}/{}] {}', '__main__', 'all', 'auto_growth', 'boxes', 'cell_bbox', 'det', 'excel saved to {}', 'html', 'match', 'rec', 'rec_res', 'show.html', 'table', 'utf-8', 'w']

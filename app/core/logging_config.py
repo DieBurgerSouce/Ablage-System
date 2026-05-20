@@ -5,13 +5,20 @@ Provides JSON-formatted logs with correlation IDs and context.
 """
 import sys
 import logging
-from typing import Any, Dict, Optional
+from typing import MutableMapping, Optional
 import structlog
 from structlog.processors import JSONRenderer, CallsiteParameter
 from structlog.stdlib import LoggerFactory, add_logger_name, BoundLogger
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import json
+
+from app.core.types import (
+    LogEventDict,
+    SystemMetricsDict,
+    GPUMetricsDict,
+    RequestContextDict,
+)
 
 # German log level names
 GERMAN_LOG_LEVELS = {
@@ -25,17 +32,28 @@ GERMAN_LOG_LEVELS = {
 class GermanLogLevelProcessor:
     """Convert log levels to German."""
 
-    def __call__(self, logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(
+        self,
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: MutableMapping[str, object],
+    ) -> MutableMapping[str, object]:
         """Add German log level."""
-        if "level" in event_dict:
-            event_dict["stufe"] = GERMAN_LOG_LEVELS.get(event_dict["level"], event_dict["level"])
+        level = event_dict.get("level")
+        if level and isinstance(level, str):
+            event_dict["stufe"] = GERMAN_LOG_LEVELS.get(level, level)
         return event_dict
 
 
 class CorrelationIdProcessor:
     """Add correlation ID to logs for request tracing."""
 
-    def __call__(self, logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(
+        self,
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: MutableMapping[str, object],
+    ) -> MutableMapping[str, object]:
         """Add correlation ID if available."""
         from contextvars import ContextVar
         correlation_id: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
@@ -46,49 +64,96 @@ class CorrelationIdProcessor:
 
 
 class SensitiveDataFilter:
-    """Filter sensitive data from logs (GDPR compliance)."""
+    """Filter sensitive data from logs (GDPR compliance).
 
+    Enhanced to handle Lexware PII fields (customer numbers, IBANs, etc.)
+    and apply pattern-based masking for values that match sensitive patterns.
+    """
+
+    # Fields that should always be masked (by field name)
     SENSITIVE_FIELDS = {
+        # Auth/Security
         "password", "passwort", "token", "access_token", "refresh_token",
-        "api_key", "secret", "email", "iban", "credit_card", "ssn",
-        "hashed_password", "authorization"
+        "api_key", "secret", "hashed_password", "authorization",
+        "mfa_secret", "backup_codes",
+
+        # Financial identifiers (Lexware PII)
+        "iban", "bic", "swift", "bank_account", "kontonummer",
+        "bankleitzahl", "blz", "credit_card", "kreditkarte",
+
+        # Customer/Supplier identifiers (Lexware PII)
+        "kd_nr", "kundennummer", "customer_number", "kunden_nr",
+        "lief_nr", "lieferantennummer", "supplier_number",
+        "matchcode", "debitoren_nr", "kreditoren_nr",
+
+        # Tax identifiers
+        "vat_id", "ust_id", "steuernummer", "tax_number", "tax_id",
+
+        # Personal identifiers
+        "ssn", "sozialversicherungsnummer", "personalausweis",
+
+        # Contact data
+        "email", "phone", "telefon", "mobile",
     }
 
-    def __call__(self, logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """Redact sensitive fields."""
+    # Mask value helper
+    @staticmethod
+    def _mask_value(value: object) -> str:
+        """Mask a value, keeping first 2 and last 2 characters."""
+        if value is None:
+            return "***ZENSIERT***"
+        str_val = str(value)
+        if len(str_val) <= 4:
+            return "****"
+        return f"{str_val[:2]}{'*' * (len(str_val) - 4)}{str_val[-2:]}"
+
+    def __call__(
+        self,
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: MutableMapping[str, object],
+    ) -> MutableMapping[str, object]:
+        """Redact sensitive fields with partial masking."""
         for key in list(event_dict.keys()):
-            if any(sensitive in key.lower() for sensitive in self.SENSITIVE_FIELDS):
-                event_dict[key] = "***ZENSIERT***"
+            key_lower = key.lower().replace("-", "_").replace(" ", "_")
+            if any(sensitive in key_lower for sensitive in self.SENSITIVE_FIELDS):
+                event_dict[key] = self._mask_value(event_dict[key])
         return event_dict
 
 
 class PerformanceProcessor:
     """Add performance metrics to logs."""
 
-    def __call__(self, logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(
+        self,
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: MutableMapping[str, object],
+    ) -> MutableMapping[str, object]:
         """Add timing information."""
-        import time
         import psutil
 
         # Add timestamp
-        event_dict["zeitstempel"] = datetime.utcnow().isoformat()
+        event_dict["zeitstempel"] = datetime.now(timezone.utc).isoformat()
 
         # Add system metrics
-        event_dict["system"] = {
+        system_metrics: SystemMetricsDict = {
             "cpu_prozent": psutil.cpu_percent(interval=0),
             "speicher_prozent": psutil.virtual_memory().percent,
             "festplatte_prozent": psutil.disk_usage('/').percent
         }
+        event_dict["system"] = system_metrics
 
         # Add GPU metrics if available
         try:
             import torch
             if torch.cuda.is_available():
-                event_dict["gpu"] = {
-                    "verfuegbar": True,
+                gpu_metrics: GPUMetricsDict = {
+                    "verfügbar": True,
                     "speicher_verwendet": torch.cuda.memory_allocated() / 1024**3,
                     "speicher_gesamt": torch.cuda.get_device_properties(0).total_memory / 1024**3
                 }
+                event_dict["gpu"] = gpu_metrics
         except ImportError:
             pass
 
@@ -98,7 +163,12 @@ class PerformanceProcessor:
 class RequestContextProcessor:
     """Add HTTP request context to logs."""
 
-    def __call__(self, logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(
+        self,
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: MutableMapping[str, object],
+    ) -> MutableMapping[str, object]:
         """Add request context if available."""
         from starlette.requests import Request
         from contextvars import ContextVar
@@ -106,12 +176,13 @@ class RequestContextProcessor:
         request_var: ContextVar[Optional[Request]] = ContextVar('request', default=None)
 
         if request := request_var.get():
-            event_dict["anfrage"] = {
+            request_context: RequestContextDict = {
                 "methode": request.method,
                 "pfad": request.url.path,
                 "ip": request.client.host if request.client else None,
                 "user_agent": request.headers.get("User-Agent", "Unbekannt")
             }
+            event_dict["anfrage"] = request_context
 
         return event_dict
 
@@ -229,17 +300,17 @@ def get_logger(name: str = __name__) -> BoundLogger:
 
 
 # Convenience functions for German logging
-def log_erfolg(logger: BoundLogger, nachricht: str, **kwargs: Any) -> None:
+def log_erfolg(logger: BoundLogger, nachricht: str, **kwargs: object) -> None:
     """Log success message in German."""
     logger.info(nachricht, typ="erfolg", **kwargs)
 
 
-def log_warnung(logger: BoundLogger, nachricht: str, **kwargs: Any) -> None:
+def log_warnung(logger: BoundLogger, nachricht: str, **kwargs: object) -> None:
     """Log warning message in German."""
     logger.warning(nachricht, typ="warnung", **kwargs)
 
 
-def log_fehler(logger: BoundLogger, nachricht: str, **kwargs: Any) -> None:
+def log_fehler(logger: BoundLogger, nachricht: str, **kwargs: object) -> None:
     """Log error message in German."""
     logger.error(nachricht, typ="fehler", **kwargs)
 
@@ -250,7 +321,7 @@ def log_ocr_verarbeitung(
     backend: str,
     status: str,
     dauer_ms: Optional[int] = None,
-    **kwargs: Any
+    **kwargs: object,
 ) -> None:
     """Log OCR processing event."""
     logger.info(
@@ -270,7 +341,7 @@ def log_authentifizierung(
     aktion: str,
     erfolgreich: bool,
     ip_adresse: Optional[str] = None,
-    **kwargs: Any
+    **kwargs: object,
 ) -> None:
     """Log authentication event."""
     level = "info" if erfolgreich else "warning"
@@ -292,7 +363,7 @@ def log_api_anfrage(
     status_code: int,
     dauer_ms: int,
     benutzer_id: Optional[str] = None,
-    **kwargs: Any
+    **kwargs: object,
 ) -> None:
     """Log API request."""
     logger.info(
@@ -313,7 +384,7 @@ def log_datenbank_operation(
     tabelle: str,
     dauer_ms: int,
     zeilen_betroffen: Optional[int] = None,
-    **kwargs: Any
+    **kwargs: object,
 ) -> None:
     """Log database operation."""
     logger.debug(

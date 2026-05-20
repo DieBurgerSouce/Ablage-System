@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\accounting\__init__.py
+# hypothesis_version: 6.148.7
+
+['EURCategorySummary', 'EURLineItem', 'EURReport', 'EURService', 'EntityBalance', 'ExpenseCategory', 'IncomeCategory', 'OpenItem', 'OpenItemType', 'OpenItemsReport', 'OpenItemsService', 'PaymentPriority', 'VATLineItem', 'VATRate', 'VATReport', 'VATReportPeriod', 'VATService', 'VATSummary', 'VAT_KENNZIFFERN', 'get_eur_service', 'get_vat_service']

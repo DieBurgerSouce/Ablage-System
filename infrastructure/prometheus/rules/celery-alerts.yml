@@ -281,9 +281,11 @@ groups:
       # ===================================================================
 
       # Warnung: Keine Task-Aktivitaet
+      # 2026-05-12: Window 30m -> 2h, for 1h -> 4h. Single-User-Pilot hat lange
+      # Idle-Phasen (Wochenende, Urlaub) — kuerzere Fenster waren Fehlalarm-Quelle.
       - alert: CeleryNoActivity
-        expr: sum(rate(ablage_celery_tasks_total[30m])) == 0
-        for: 1h
+        expr: sum(rate(ablage_celery_tasks_total[2h])) == 0
+        for: 4h
         labels:
           severity: warning
           component: celery

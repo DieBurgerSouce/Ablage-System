@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\operators\resnet_unit.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 0.5, 0.9, 1.0, 2.0, 'BiasX', 'BiasZ', 'BitMask', 'ConvX', 'ConvZ', 'FilterX', 'FilterZ', 'MeanX', 'MeanZ', 'NCHW', 'NHWC', 'RunningMeanX', 'RunningMeanZ', 'RunningVarX', 'RunningVarZ', 'SavedInvstdX', 'SavedInvstdZ', 'SavedMeanX', 'SavedMeanZ', 'ScaleX', 'ScaleZ', 'VarX', 'VarZ', 'X', 'Y', 'Z', 'act_type', 'data_format', 'dilation', 'epsilon', 'fuse_add', 'group', 'has_shortcut', 'is_test', 'kernel_size', 'momentum', 'padding', 'relu', 'resnet_unit', 'stride', 'stride_z', 'use_global_stats', 'z can not be None']

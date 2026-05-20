@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\collaboration\comment_service.py
+# hypothesis_version: 6.148.7
+
+['.', '@([\\w]+(?:\\.[\\w]+)?)', 'Antwort hinzugefuegt', 'comment_created', 'comment_deleted', 'comment_id', 'comment_updated', 'commentsLast30Days', 'commentsLast7Days', 'count', 'emoji', 'endIndex', 'fieldComments', 'startIndex', 'totalComments', 'totalMentions', 'totalReplies', 'uniqueCommenters', 'userId', 'userIds', 'userName']

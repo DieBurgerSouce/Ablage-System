@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\device\xpu\__init__.py
+# hypothesis_version: 6.148.7
+
+['2.5.0', 'Allocated', 'Event', 'Reserved', 'Stream', 'device_count', 'empty_cache', 'get_xpu_device_count', 'max_memory_allocated', 'max_memory_reserved', 'memory_allocated', 'memory_reserved', 'memory_total', 'memory_used', 'set_debug_level', 'synchronize', 'xpu:']

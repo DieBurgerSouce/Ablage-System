@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\companies.py
+# hypothesis_version: 6.148.7
+
+[404, 10000, ',', '/companies', '/comparison', '/current', '/dashboard', '/{company_id}', '/{company_id}/users', 'DE', 'Dokumente', 'EUR', 'Firma abrufen', 'Firma aktualisieren', 'Firmen', 'Geschaeftspartner', 'Health Score', 'Mahnbetraege', 'Neue Firma erstellen', 'Offene Forderungen', 'Rechnungsvolumen', 'SKR03', 'action', 'admin', 'alerts', 'companies', 'company_created', 'company_deleted', 'company_id', 'company_name', 'company_review', 'company_updated', 'comparison_accessed', 'critical', 'dashboard_accessed', 'data', 'description', 'documents', 'dunning', 'dunning_review', 'entities', 'entity_review', 'health', 'invoices', 'member', 'message', 'metric', 'metric_label', 'outstanding', 'overdue', 'owner', 'summary', 'type', 'user_company_updated', 'warning']

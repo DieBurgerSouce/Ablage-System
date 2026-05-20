@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\account_service.py
+# hypothesis_version: 6.148.7
+
+['100', '200', '300', '370', '500', '700', '760', 'A', 'BankAccount', 'Bundesbank', 'DE', 'Duesseldorf', 'EUR', 'Frankfurt', 'Hamburg', 'Koeln', 'Muenchen', 'Nuernberg', 'Ungueltige IBAN', 'approved', 'count', 'draft', 'fints_connection', 'inflow', 'manual', 'outflow', 'pending_approval', 'total', 'unmatched']

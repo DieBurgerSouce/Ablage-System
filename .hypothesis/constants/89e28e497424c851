@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_voting.py
+# hypothesis_version: 6.148.7
+
+['Voting', 'array-like', 'binary', 'boolean', 'continuous', 'drop', 'estimators', 'feature_names_in_', 'fit', 'flatten_transform', 'hard', 'multiclass', 'n_features_in_', 'n_jobs', 'parallel', 'sample_weight', 'soft', 'unknown', 'verbose', 'voting', 'weights', 'y']

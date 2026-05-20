@@ -1,0 +1,636 @@
+"""RAG Search Service - Semantische Chunk-Suche mit Reranking.
+
+Erweitert die bestehende Search-Funktionalität um:
+- Chunk-basierte semantische Suche
+- Hybrid Search (Semantic + Keyword)
+- Optional: Reranking mit BGE-Reranker
+- LLM-gesteuerte Query Enhancement
+"""
+
+from typing import List, Optional, Dict, Any, Tuple
+from uuid import UUID
+from datetime import datetime, timezone
+from dataclasses import dataclass
+import math
+
+import structlog
+from sqlalchemy import select, func, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.db.models import RAGDocumentChunk, Document, RAGSectionType
+from app.services.embedding_service import get_embedding_service
+from app.api.schemas.rag import RAGChunkSearchResult, RAGSearchType
+from app.core.safe_errors import safe_error_log
+
+logger = structlog.get_logger(__name__)
+
+
+@dataclass
+class SearchResult:
+    """Einzelnes Suchergebnis."""
+    chunk_id: UUID
+    document_id: UUID
+    chunk_text: str
+    chunk_index: int
+    page_number: Optional[int]
+    section_type: Optional[str]
+    similarity: float
+    rerank_score: Optional[float] = None
+
+
+@dataclass
+class SearchResponse:
+    """Antwort der Suche."""
+    query: str
+    search_type: RAGSearchType
+    results: List[SearchResult]
+    total_results: int
+    search_time_ms: int
+    embedding_time_ms: Optional[int] = None
+    rerank_time_ms: Optional[int] = None
+
+
+class RAGSearchService:
+    """Service für RAG-basierte Chunk-Suche.
+
+    Implementiert:
+    - Semantische Suche mit pgvector
+    - Hybrid Search (FTS + Semantic)
+    - Optionales Reranking
+    - Query Enhancement
+    """
+
+    def __init__(self) -> None:
+        self._embedding_service = get_embedding_service()
+        self._reranker_available: Optional[bool] = None
+
+    async def semantic_search(
+        self,
+        db: AsyncSession,
+        query: str,
+        limit: int = 20,
+        threshold: float = 0.7,
+        document_ids: Optional[List[UUID]] = None,
+        section_types: Optional[List[RAGSectionType]] = None,
+        rerank: bool = True,
+        user_id: Optional[UUID] = None
+    ) -> SearchResponse:
+        """Führt semantische Suche auf Chunks durch.
+
+        Args:
+            db: Datenbank-Session
+            query: Suchanfrage
+            limit: Maximale Anzahl Ergebnisse
+            threshold: Minimale Cosine Similarity
+            document_ids: Optional: Nur in diesen Dokumenten suchen
+            section_types: Optional: Nur diese Section-Typen
+            rerank: Ergebnisse mit Reranker verbessern
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
+
+        Returns:
+            SearchResponse mit Ergebnissen und Metriken
+        """
+        start_time = datetime.now(timezone.utc)
+
+        logger.info(
+            "rag_semantic_search_start",
+            query=query[:100],
+            limit=limit,
+            threshold=threshold,
+            document_filter=document_ids is not None,
+            section_filter=section_types is not None
+        )
+
+        # 1. Query Embedding generieren
+        embed_start = datetime.now(timezone.utc)
+        query_embedding = await self._embedding_service.generate_query_embedding_cached(query)
+        embed_time = int((datetime.now(timezone.utc) - embed_start).total_seconds() * 1000)
+
+        # 2. Vektor-Suche mit pgvector
+        # Nutze die DB-Function rag_semantic_search falls verfügbar
+        results = await self._vector_search(
+            db=db,
+            query_embedding=query_embedding,
+            limit=limit * 2 if rerank else limit,  # Mehr Kandidaten für Reranking
+            threshold=threshold,
+            document_ids=document_ids,
+            section_types=section_types,
+            user_id=user_id
+        )
+
+        # 3. Optional: Reranking
+        rerank_time = None
+        if rerank and len(results) > 1 and settings.RAG_RERANK_ENABLED:
+            rerank_start = datetime.now(timezone.utc)
+            results = await self._rerank_results(query, results, settings.RAG_RERANK_TOP_K)
+            rerank_time = int((datetime.now(timezone.utc) - rerank_start).total_seconds() * 1000)
+
+        # Auf Limit beschraenken
+        results = results[:limit]
+
+        total_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+
+        logger.info(
+            "rag_semantic_search_complete",
+            results_count=len(results),
+            total_time_ms=total_time,
+            embed_time_ms=embed_time,
+            rerank_time_ms=rerank_time
+        )
+
+        return SearchResponse(
+            query=query,
+            search_type=RAGSearchType.SEMANTIC,
+            results=results,
+            total_results=len(results),
+            search_time_ms=total_time,
+            embedding_time_ms=embed_time,
+            rerank_time_ms=rerank_time
+        )
+
+    async def hybrid_search(
+        self,
+        db: AsyncSession,
+        query: str,
+        limit: int = 20,
+        semantic_weight: float = 0.7,
+        keyword_weight: float = 0.3,
+        threshold: float = 0.5,
+        document_ids: Optional[List[UUID]] = None,
+        rerank: bool = True,
+        user_id: Optional[UUID] = None
+    ) -> SearchResponse:
+        """Führt Hybrid-Suche durch (Semantic + Keyword).
+
+        Kombiniert:
+        - Semantische Vektorsuche (pgvector)
+        - Keyword-Suche (PostgreSQL FTS)
+
+        Args:
+            db: Datenbank-Session
+            query: Suchanfrage
+            limit: Maximale Anzahl Ergebnisse
+            semantic_weight: Gewichtung semantische Suche (0-1)
+            keyword_weight: Gewichtung Keyword-Suche (0-1)
+            threshold: Minimaler kombinierter Score
+            document_ids: Optional: Nur in diesen Dokumenten
+            rerank: Ergebnisse reranken
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
+
+        Returns:
+            SearchResponse mit kombinierten Ergebnissen
+        """
+        start_time = datetime.now(timezone.utc)
+
+        logger.info(
+            "rag_hybrid_search_start",
+            query=query[:100],
+            semantic_weight=semantic_weight,
+            keyword_weight=keyword_weight
+        )
+
+        # 1. Query Embedding
+        embed_start = datetime.now(timezone.utc)
+        query_embedding = await self._embedding_service.generate_query_embedding_cached(query)
+        embed_time = int((datetime.now(timezone.utc) - embed_start).total_seconds() * 1000)
+
+        # 2. Sequenzielle Suchen (AsyncSession erlaubt nur eine Operation gleichzeitig)
+        # WICHTIG: asyncio.gather() mit gemeinsamer Session verursacht
+        # "session is provisioning a new connection; concurrent operations not permitted"
+        semantic_results = await self._vector_search(
+            db=db,
+            query_embedding=query_embedding,
+            limit=limit * 2,
+            threshold=0.5,  # Niedrigerer Threshold für Fusion
+            document_ids=document_ids,
+            user_id=user_id
+        )
+
+        keyword_results = await self._keyword_search(
+            db=db,
+            query=query,
+            limit=limit * 2,
+            document_ids=document_ids,
+            user_id=user_id
+        )
+
+        # 3. Score Fusion (Reciprocal Rank Fusion)
+        fused_results = self._fuse_results(
+            semantic_results,
+            keyword_results,
+            semantic_weight,
+            keyword_weight
+        )
+
+        # Filter nach Threshold
+        fused_results = [r for r in fused_results if r.similarity >= threshold]
+
+        # 4. Optional: Reranking
+        rerank_time = None
+        if rerank and len(fused_results) > 1 and settings.RAG_RERANK_ENABLED:
+            rerank_start = datetime.now(timezone.utc)
+            fused_results = await self._rerank_results(
+                query, fused_results, settings.RAG_RERANK_TOP_K
+            )
+            rerank_time = int((datetime.now(timezone.utc) - rerank_start).total_seconds() * 1000)
+
+        # Limit
+        fused_results = fused_results[:limit]
+
+        total_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+
+        logger.info(
+            "rag_hybrid_search_complete",
+            semantic_count=len(semantic_results),
+            keyword_count=len(keyword_results),
+            fused_count=len(fused_results),
+            total_time_ms=total_time
+        )
+
+        return SearchResponse(
+            query=query,
+            search_type=RAGSearchType.HYBRID,
+            results=fused_results,
+            total_results=len(fused_results),
+            search_time_ms=total_time,
+            embedding_time_ms=embed_time,
+            rerank_time_ms=rerank_time
+        )
+
+    async def keyword_search(
+        self,
+        db: AsyncSession,
+        query: str,
+        limit: int = 20,
+        document_ids: Optional[List[UUID]] = None,
+        user_id: Optional[UUID] = None
+    ) -> SearchResponse:
+        """Führt reine Keyword-Suche durch.
+
+        Args:
+            db: Datenbank-Session
+            query: Suchanfrage
+            limit: Maximale Anzahl Ergebnisse
+            document_ids: Optional: Nur in diesen Dokumenten
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
+
+        Returns:
+            SearchResponse mit Ergebnissen
+        """
+        start_time = datetime.now(timezone.utc)
+
+        results = await self._keyword_search(
+            db=db,
+            query=query,
+            limit=limit,
+            document_ids=document_ids,
+            user_id=user_id
+        )
+
+        total_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+
+        return SearchResponse(
+            query=query,
+            search_type=RAGSearchType.KEYWORD,
+            results=results,
+            total_results=len(results),
+            search_time_ms=total_time
+        )
+
+    async def _vector_search(
+        self,
+        db: AsyncSession,
+        query_embedding: List[float],
+        limit: int,
+        threshold: float,
+        document_ids: Optional[List[UUID]] = None,
+        section_types: Optional[List[RAGSectionType]] = None,
+        user_id: Optional[UUID] = None
+    ) -> List[SearchResult]:
+        """Interne Vektorsuche mit pgvector."""
+        # DD.1 SECURITY FIX: Validate embedding values are numeric before SQL construction
+        # Embedding kommt vom ML-Modell, aber wir validieren trotzdem zur Sicherheit
+        # EE.2 SECURITY FIX: Zusätzlich NaN/Inf Validierung hinzugefuegt
+        validated_values = []
+        for x in query_embedding:
+            if not isinstance(x, (int, float)):
+                raise ValueError(f"Invalid embedding value type: {type(x)}")
+            # Konvertiere zu float um sicherzustellen dass es numerisch ist
+            fval = float(x)
+            # EE.2: Prüfe auf NaN und Infinity - diese wuerden SQL-Syntax brechen
+            if math.isnan(fval) or math.isinf(fval):
+                raise ValueError(f"Embedding contains invalid value (NaN/Inf): {fval}")
+            validated_values.append(fval)
+
+        # Embedding als String für PostgreSQL (pgvector erwartet '[x,y,z]' Format)
+        embedding_str = "[" + ",".join(str(v) for v in validated_values) + "]"
+
+        # Base Query mit Cosine Similarity via raw SQL
+        # pgvector: <=> ist Cosine Distance, 1 - distance = similarity
+        # CrossDBVector TypeDecorator exponiert keine pgvector-Operatoren,
+        # daher direktes SQL für den Distance-Ausdruck
+        from sqlalchemy import literal_column
+        similarity_expr = literal_column(f"(1 - (embedding <=> '{embedding_str}'::vector))")
+
+        query = select(
+            RAGDocumentChunk.id,
+            RAGDocumentChunk.document_id,
+            RAGDocumentChunk.chunk_text,
+            RAGDocumentChunk.chunk_index,
+            RAGDocumentChunk.page_number,
+            RAGDocumentChunk.section_type,
+            similarity_expr.label("similarity")
+        ).where(
+            RAGDocumentChunk.embedding.isnot(None)
+        )
+
+        # SECURITY: Filter nach User (Document Owner)
+        if user_id:
+            query = query.join(
+                Document, RAGDocumentChunk.document_id == Document.id
+            ).where(
+                Document.owner_id == user_id
+            )
+
+        # Filter: Dokumente
+        if document_ids:
+            query = query.where(RAGDocumentChunk.document_id.in_(document_ids))
+
+        # Filter: Section Types
+        if section_types:
+            query = query.where(RAGDocumentChunk.section_type.in_(section_types))
+
+        # Threshold und Sortierung
+        # WICHTIG: HAVING funktioniert nicht mit Aliassen ohne GROUP BY,
+        # daher verwenden wir eine Subquery
+        from sqlalchemy import select as sa_select
+        subquery = query.subquery()
+        final_query = sa_select(subquery).where(
+            subquery.c.similarity >= threshold
+        ).order_by(
+            subquery.c.similarity.desc()
+        ).limit(limit)
+        query = final_query
+
+        result = await db.execute(query)
+        rows = result.fetchall()
+
+        return [
+            SearchResult(
+                chunk_id=row.id,
+                document_id=row.document_id,
+                chunk_text=row.chunk_text,
+                chunk_index=row.chunk_index,
+                page_number=row.page_number,
+                section_type=row.section_type.value if hasattr(row.section_type, 'value') else row.section_type,
+                similarity=float(row.similarity)
+            )
+            for row in rows
+        ]
+
+    async def _keyword_search(
+        self,
+        db: AsyncSession,
+        query: str,
+        limit: int,
+        document_ids: Optional[List[UUID]] = None,
+        user_id: Optional[UUID] = None
+    ) -> List[SearchResult]:
+        """Interne Keyword-Suche mit PostgreSQL FTS.
+
+        Args:
+            db: Datenbank-Session
+            query: Suchanfrage
+            limit: Maximale Anzahl Ergebnisse
+            document_ids: Optional: Nur in diesen Dokumenten
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
+        """
+        # Erstelle tsquery aus Query
+        # plainto_tsquery ist robuster als to_tsquery
+        search_query = select(
+            RAGDocumentChunk.id,
+            RAGDocumentChunk.document_id,
+            RAGDocumentChunk.chunk_text,
+            RAGDocumentChunk.chunk_index,
+            RAGDocumentChunk.page_number,
+            RAGDocumentChunk.section_type,
+            func.ts_rank(
+                func.to_tsvector('german', RAGDocumentChunk.chunk_text),
+                func.plainto_tsquery('german', query)
+            ).label("rank")
+        ).where(
+            # Verwende @@ Operator direkt statt .match() um doppelten tsquery-Aufruf zu vermeiden
+            func.to_tsvector('german', RAGDocumentChunk.chunk_text).op('@@')(
+                func.plainto_tsquery('german', query)
+            )
+        )
+
+        # SECURITY: Filter nach User (Document Owner)
+        if user_id:
+            search_query = search_query.join(
+                Document, RAGDocumentChunk.document_id == Document.id
+            ).where(
+                Document.owner_id == user_id
+            )
+
+        if document_ids:
+            search_query = search_query.where(
+                RAGDocumentChunk.document_id.in_(document_ids)
+            )
+
+        search_query = search_query.order_by(text("rank DESC")).limit(limit)
+
+        result = await db.execute(search_query)
+        rows = result.fetchall()
+
+        # Normalisiere Rank zu 0-1 Score
+        max_rank = max((row.rank for row in rows), default=1.0) or 1.0
+
+        return [
+            SearchResult(
+                chunk_id=row.id,
+                document_id=row.document_id,
+                chunk_text=row.chunk_text,
+                chunk_index=row.chunk_index,
+                page_number=row.page_number,
+                section_type=row.section_type.value if hasattr(row.section_type, 'value') else row.section_type,
+                similarity=float(row.rank) / max_rank  # Normalisiert
+            )
+            for row in rows
+        ]
+
+    def _fuse_results(
+        self,
+        semantic_results: List[SearchResult],
+        keyword_results: List[SearchResult],
+        semantic_weight: float,
+        keyword_weight: float
+    ) -> List[SearchResult]:
+        """Fusioniert Ergebnisse mit Reciprocal Rank Fusion.
+
+        RRF Score = sum(1 / (k + rank)) für jede Liste
+        """
+        k = 60  # RRF Konstante
+
+        # Scores sammeln
+        scores: Dict[UUID, Tuple[SearchResult, float]] = {}
+
+        # Semantic Scores
+        for rank, result in enumerate(semantic_results, 1):
+            rrf_score = semantic_weight * (1 / (k + rank))
+            scores[result.chunk_id] = (result, rrf_score)
+
+        # Keyword Scores hinzufuegen
+        for rank, result in enumerate(keyword_results, 1):
+            rrf_score = keyword_weight * (1 / (k + rank))
+            if result.chunk_id in scores:
+                existing_result, existing_score = scores[result.chunk_id]
+                scores[result.chunk_id] = (existing_result, existing_score + rrf_score)
+            else:
+                scores[result.chunk_id] = (result, rrf_score)
+
+        # Nach kombiniertem Score sortieren
+        sorted_results = sorted(
+            scores.values(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        # Score als Similarity setzen
+        return [
+            SearchResult(
+                chunk_id=r.chunk_id,
+                document_id=r.document_id,
+                chunk_text=r.chunk_text,
+                chunk_index=r.chunk_index,
+                page_number=r.page_number,
+                section_type=r.section_type,
+                similarity=score
+            )
+            for r, score in sorted_results
+        ]
+
+    async def _rerank_results(
+        self,
+        query: str,
+        results: List[SearchResult],
+        top_k: int
+    ) -> List[SearchResult]:
+        """Rerankt Ergebnisse mit Dual-Stack Cross-Encoder (GPU/CPU).
+
+        Verwendet lokalen RerankerService für integriertes Reranking:
+        - Primär: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
+        - Fallback: MiniLM Cross-Encoder (CPU, ~300MB RAM)
+
+        Falls beide fehlschlagen: Original-Reihenfolge beibehalten.
+        """
+        if not results or not settings.RAG_RERANK_ENABLED:
+            return results[:top_k]
+
+        try:
+            from app.services.reranker_service import get_reranker_service
+
+
+            reranker = get_reranker_service()
+            documents = [r.chunk_text for r in results]
+
+            # Async Reranking mit GPU/CPU Fallback
+            reranked = await reranker.rerank_async(query, documents, top_k)
+
+            # Ergebnisse mit Rerank-Scores aktualisieren und neu sortieren
+            reranked_results = []
+            for rr in reranked:
+                original = results[rr.index]
+                reranked_results.append(SearchResult(
+                    chunk_id=original.chunk_id,
+                    document_id=original.document_id,
+                    chunk_text=original.chunk_text,
+                    chunk_index=original.chunk_index,
+                    page_number=original.page_number,
+                    section_type=original.section_type,
+                    similarity=original.similarity,
+                    rerank_score=rr.score
+                ))
+
+            logger.debug(
+                "rerank_complete",
+                input_count=len(results),
+                output_count=len(reranked_results),
+                top_k=top_k,
+                backend=reranker.get_stats().get("gpu_model_loaded", False)
+                    and "gpu" or "cpu"
+            )
+
+            return reranked_results
+
+        except Exception as e:
+            logger.warning(
+                "rerank_failed",
+                **safe_error_log(e),
+                fallback="using_original_scores"
+            )
+            return results[:top_k]
+
+    async def search_for_context(
+        self,
+        db: AsyncSession,
+        query: str,
+        context_chunks: int = 5,
+        document_ids: Optional[List[UUID]] = None,
+        user_id: Optional[UUID] = None
+    ) -> List[Dict[str, Any]]:
+        """Sucht Chunks für RAG-Kontext.
+
+        Optimiert für die Verwendung mit LLM:
+        - Weniger Ergebnisse, höhere Qualität
+        - Immer mit Reranking
+        - Gibt vereinfachte Dicts zurück
+
+        Args:
+            db: Datenbank-Session
+            query: Suchanfrage
+            context_chunks: Anzahl Kontext-Chunks
+            document_ids: Optional: Nur in diesen Dokumenten
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
+
+        Returns:
+            Liste von Chunk-Dictionaries für RAG-Kontext
+        """
+        response = await self.hybrid_search(
+            db=db,
+            query=query,
+            limit=context_chunks,
+            semantic_weight=0.7,
+            keyword_weight=0.3,
+            threshold=0.0,  # Deaktiviert - RRF-Scores sind 0.01-0.02, nicht 0-1!
+            document_ids=document_ids,
+            rerank=True,
+            user_id=user_id
+        )
+
+        return [
+            {
+                "chunk_id": str(r.chunk_id),
+                "document_id": str(r.document_id),
+                "text": r.chunk_text,
+                "chunk_text": r.chunk_text,  # Alias
+                "page_number": r.page_number,
+                "section_type": r.section_type,
+                "similarity": r.similarity,
+                "rerank_score": r.rerank_score
+            }
+            for r in response.results
+        ]
+
+
+# Singleton-Instanz
+_rag_search_service: Optional[RAGSearchService] = None
+
+
+def get_rag_search_service() -> RAGSearchService:
+    """Gibt die RAG Search Service Instanz zurück."""
+    global _rag_search_service
+    if _rag_search_service is None:
+        _rag_search_service = RAGSearchService()
+    return _rag_search_service

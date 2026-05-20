@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\filetype\types\audio.py
+# hypothesis_version: 6.148.7
+
+[100, 102, 103, 104, 112, 116, 121, 241, 242, 243, 249, 251, 255, 'aac', 'aiff', 'amr', 'audio/aac', 'audio/amr', 'audio/midi', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/x-aiff', 'audio/x-flac', 'audio/x-wav', 'flac', 'm4a', 'midi', 'mp3', 'ogg', 'wav']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\qat_optimizer.py
+# hypothesis_version: 6.148.7
+
+['AMPOptimizer', 'LambOptimizer', 'LarsOptimizer', 'RecomputeOptimizer', 'abs_max', 'activation_bits', 'algo', 'channel_wise_abs_max', 'conv2d', 'depthwise_conv2d', 'matmul', 'matmul_v2', 'mul', 'not_quant_pattern', 'quantize_op_types', 'weight_bits', 'weight_quantize_type']

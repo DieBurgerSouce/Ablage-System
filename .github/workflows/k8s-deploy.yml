@@ -48,10 +48,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3.5
         with:
           version: 'v3.13.0'
 
@@ -68,11 +68,21 @@ jobs:
           # Validate with kubectl (dry-run)
           kubectl apply --dry-run=client -f /tmp/rendered.yaml
 
+      # B7 (2026-05-19): yannh/kubeconform-action ist upstream geloescht
+      # worden (gh api repos/yannh/kubeconform-action -> 404). Inline-Install
+      # via offizieller kubeconform-Releases ersetzt den Action-Aufruf.
+      - name: Install kubeconform
+        run: |
+          KUBECONFORM_VERSION="0.6.7"
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz kubeconform
+          chmod +x kubeconform
+          ./kubeconform -v
+
       - name: Validate with Kubeconform
-        uses: yannh/kubeconform-action@v0.6.0
-        with:
-          files: infrastructure/kubernetes/**/*.yaml
-          args: -strict -ignore-missing-schemas
+        run: |
+          ./kubeconform -strict -ignore-missing-schemas \
+            $(find infrastructure/kubernetes -name '*.yaml' -o -name '*.yml')
 
   # ===========================================================================
   # Security Scanning
@@ -82,15 +92,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Run Kubesec
-        uses: controlplaneio/kubesec-action@v0.0.2
+        uses: controlplaneio/kubesec-action@43d0ddff5ffee89a6bb9f29b64cd865411137b14 # v0.0.2
         with:
           input: infrastructure/kubernetes/base/
 
       - name: Run Polaris
-        uses: fairwindsops/polaris@master
+        uses: fairwindsops/polaris@6d855a0b8222e8b0c465328640a778d9cbfa1e06 # v9.5.0
         with:
           config: infrastructure/.polaris.yaml
           only-show-failed-tests: true
@@ -107,10 +117,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3.5
         with:
           version: 'v3.13.0'
 
@@ -175,7 +185,7 @@ jobs:
 
       - name: Notify success
         if: success()
-        uses: slackapi/slack-github-action@v1.25.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         with:
           payload: |
             {
@@ -195,7 +205,7 @@ jobs:
 
       - name: Notify failure
         if: failure()
-        uses: slackapi/slack-github-action@v1.25.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         with:
           payload: |
             {
@@ -230,7 +240,7 @@ jobs:
           chmod 600 ~/.kube/config
 
       - name: Setup Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3.5
 
       - name: Rollback Helm release
         run: |

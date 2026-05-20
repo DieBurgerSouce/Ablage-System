@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\utils\_content_store.py
+# hypothesis_version: 6.148.7
+
+['>', 'constant', 'cpu', 'cuda', 'i', 'mps', 'storages', 'tensors', 'xpu']

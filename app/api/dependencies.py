@@ -17,20 +17,29 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.core.security import decode_token, verify_token_type, extract_user_id_from_token
 from app.db.models import User
 from app.services.user_service import UserService
 
+# Re-export company context functions for convenient access
+from app.middleware.company_context import get_current_company_id
+
+# Alias for backwards compatibility (used in alerts.py)
+get_company_id = get_current_company_id
+
 
 # ==================== Database Dependencies ====================
 
-# Create async engine
+# Create async engine with centralized pool settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_pre_ping=settings.DB_POOL_PRE_PING,
+    pool_recycle=settings.DB_POOL_RECYCLE,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
 )
 
 # Create async session maker
@@ -58,8 +67,59 @@ async def get_db() -> Generator[AsyncSession, None, None]:
     async with AsyncSessionLocal() as session:
         try:
             yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
         finally:
             await session.close()
+
+
+async def set_rls_context(
+    session: AsyncSession,
+    user_id: str,
+    is_admin: bool = False
+) -> None:
+    """
+    Set Row Level Security context for the current session.
+
+    This must be called before any queries that are protected by RLS policies.
+    The settings are LOCAL to the current transaction.
+
+    Args:
+        session: Database session
+        user_id: Current user's UUID as string
+        is_admin: Whether user has admin privileges (bypasses RLS)
+
+    Usage:
+        async with AsyncSessionLocal() as session:
+            # WICHTIG: User-Model hat is_superuser, nicht is_admin!
+            await set_rls_context(session, str(user.id), user.is_superuser)
+            # Now RLS policies will filter results
+    """
+    from sqlalchemy import text
+    from uuid import UUID as UUIDType
+
+    # K.4 SECURITY FIX: Validiere user_id Format vor RLS-Context-Setzen
+    try:
+        validated_user_id = UUIDType(str(user_id))
+    except ValueError:
+        logger.warning(
+            "rls_context_invalid_user_id",
+            attempted_value=str(user_id)[:50]  # Trunkiert für Sicherheit
+        )
+        raise ValueError(f"Ungültige User-ID für RLS-Context: {str(user_id)[:8]}...")
+
+    # SECURITY FIX: Use parameterized queries to prevent SQL injection
+    # Previous code used f-string interpolation which was vulnerable
+    await session.execute(
+        text("SET LOCAL app.current_user_id = :user_id"),
+        {"user_id": str(validated_user_id)}
+    )
+    await session.execute(
+        text("SET LOCAL app.is_admin = :is_admin"),
+        {"is_admin": "true" if is_admin else "false"}
+    )
 
 
 # ==================== Authentication Dependencies ====================
@@ -103,7 +163,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("token_validation_failed", error=str(e), error_type=type(e).__name__)
+        logger.warning("token_validation_failed", **safe_error_log(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentifizierung fehlgeschlagen",  # Authentication failed
@@ -136,6 +196,19 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Benutzer nicht gefunden",  # User not found
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Q.1 SECURITY FIX: is_active Prüfung direkt in get_current_user()
+    # Verhindert, dass deaktivierte User mit gültigem Token API-Calls machen
+    if not user.is_active:
+        logger.warning(
+            "inactive_user_api_access_blocked",
+            user_id=str(user.id),
+            email=user.email[:20] if user.email else None
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
         )
 
     return user
@@ -200,6 +273,92 @@ async def get_current_superuser(
     return current_user
 
 
+# ==================== Multi-Tenant Company Validation ====================
+
+
+def validate_company_access(company_id: UUID, current_user: User) -> None:
+    """
+    Validate that the current user has access to the specified company.
+
+    SECURITY: Prevents Cross-Company Authorization Bypass (CWE-863).
+    Users can only access data for their own company unless they are superadmins.
+
+    Args:
+        company_id: The company ID being accessed
+        current_user: The authenticated user
+
+    Raises:
+        HTTPException: 403 if user doesn't have access to the company
+
+    Usage:
+        @app.get("/endpoint")
+        async def endpoint(
+            company_id: UUID = Query(...),
+            current_user: User = Depends(get_current_active_user),
+        ):
+            validate_company_access(company_id, current_user)
+            ...
+    """
+    # Superusers can access any company
+    if current_user.is_superuser:
+        return
+
+    # Check if user belongs to the requested company
+    if current_user.company_id is None:
+        logger.warning(
+            "user_without_company_accessing_company_data",
+            user_id=str(current_user.id),
+            requested_company_id=str(company_id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer ist keiner Firma zugeordnet",
+        )
+
+    if str(current_user.company_id) != str(company_id):
+        logger.warning(
+            "cross_company_access_attempt",
+            user_id=str(current_user.id),
+            user_company_id=str(current_user.company_id),
+            requested_company_id=str(company_id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kein Zugriff auf diese Firma",
+        )
+
+
+async def get_validated_company_id(
+    company_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+) -> UUID:
+    """
+    Dependency that validates company access and returns the company_id.
+
+    SECURITY: Use this dependency when you need validated company_id.
+
+    Args:
+        company_id: The company ID from query/path parameter
+        current_user: The authenticated user (injected)
+
+    Returns:
+        The validated company_id
+
+    Raises:
+        HTTPException: 403 if user doesn't have access
+
+    Usage:
+        @app.get("/endpoint")
+        async def endpoint(
+            validated_company_id: UUID = Depends(get_validated_company_id),
+        ):
+            # validated_company_id is safe to use
+            ...
+    """
+    validate_company_access(company_id, current_user)
+    return company_id
+
+
 # ==================== Optional Authentication ====================
 
 async def get_current_user_optional(
@@ -244,7 +403,7 @@ async def get_current_user_optional(
             return user
 
     except Exception as e:
-        logger.debug("optional_user_lookup_failed", error=str(e))
+        logger.debug("optional_user_lookup_failed", **safe_error_log(e))
 
     return None
 
@@ -292,8 +451,17 @@ async def check_rate_limit(
     # Get Redis storage
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
-        # Redis unavailable - fail open (allow request)
-        return current_user
+        # L.1 SECURITY FIX: Fail-Closed statt Fail-Open
+        # Bei Redis-Ausfall wird Anfrage abgelehnt statt durchgelassen
+        logger.error(
+            "rate_limit_redis_unavailable",
+            message="Redis nicht verfügbar - Rate Limiting nicht möglich"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Sicherheitsdienst temporär nicht verfügbar. Bitte später erneut versuchen.",
+            headers={"Retry-After": "60"}
+        )
 
     # Determine rate limit based on user tier
     user_tier = getattr(current_user, "tier", "free")
@@ -363,7 +531,17 @@ async def check_ocr_rate_limit(
     # Get Redis storage
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
-        return current_user
+        # L.1 SECURITY FIX: Fail-Closed für OCR Rate Limiting
+        # Bei Redis-Ausfall werden OCR-Requests abgelehnt um GPU-Überlastung zu verhindern
+        logger.error(
+            "ocr_rate_limit_redis_unavailable",
+            message="Redis nicht verfügbar - OCR Rate Limiting nicht möglich"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="OCR-Service temporär nicht verfügbar. Bitte später erneut versuchen.",
+            headers={"Retry-After": "60"}
+        )
 
     # Determine OCR rate limit based on user tier
     user_tier = getattr(current_user, "tier", "free")
@@ -436,7 +614,16 @@ async def check_batch_rate_limit(
 
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
-        return current_user
+        # L.1 SECURITY FIX: Fail-Closed für Batch Rate Limiting
+        logger.error(
+            "batch_rate_limit_redis_unavailable",
+            message="Redis nicht verfügbar - Batch Rate Limiting nicht möglich"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Batch-Service temporär nicht verfügbar. Bitte später erneut versuchen.",
+            headers={"Retry-After": "60"}
+        )
 
     # Batch limits
     user_tier = getattr(current_user, "tier", "free")
@@ -463,6 +650,82 @@ async def check_batch_rate_limit(
         )
 
     return current_user
+
+
+async def check_destructive_admin_rate_limit(
+    request: Request,
+    admin: User = Depends(get_current_superuser)
+) -> User:
+    """
+    Dependency for rate limiting destructive admin operations.
+
+    Destructive operations (clear_queue, bulk_cancel, bulk_retry) have
+    STRICT limits even for admins to prevent accidental or malicious
+    mass operations that could DoS the system.
+
+    Limits:
+    - 10 destructive operations per minute
+    - 50 destructive operations per hour
+
+    Args:
+        request: FastAPI request object
+        admin: Current superuser (already verified)
+
+    Returns:
+        User if within destructive operation rate limits
+
+    Raises:
+        HTTPException: If destructive operation rate limit exceeded
+    """
+    from app.core.rate_limiting import (
+        get_redis_storage,
+        rate_limit_metrics,
+    )
+
+    rate_limit_metrics.record_request()
+
+    storage = await get_redis_storage()
+    if not storage or not storage.is_available:
+        # Fail closed for destructive operations - require Redis to be available
+        raise HTTPException(
+            status_code=503,
+            detail="Rate-Limiting-Service nicht verfügbar. "
+                   "Destruktive Operationen erfordern funktionierendes Rate-Limiting."
+        )
+
+    # Strict limits for destructive operations
+    MINUTE_LIMIT = 10
+    HOURLY_LIMIT = 50
+
+    user_id = str(admin.id)
+
+    # Check per-minute limit (burst protection)
+    minute_key = f"destructive_rate_limit:{user_id}:minute"
+    minute_count = await storage.increment(minute_key, 60)
+
+    if minute_count > MINUTE_LIMIT:
+        rate_limit_metrics.record_rate_limited()
+        raise HTTPException(
+            status_code=429,
+            detail=f"Destruktive Operationen-Limit überschritten "
+                   f"({MINUTE_LIMIT}/Minute). Bitte warten Sie eine Minute.",
+            headers={"Retry-After": "60"},
+        )
+
+    # Check hourly limit (sustained protection)
+    hourly_key = f"destructive_rate_limit:{user_id}:hourly"
+    hourly_count = await storage.increment(hourly_key, 3600)
+
+    if hourly_count > HOURLY_LIMIT:
+        rate_limit_metrics.record_rate_limited()
+        raise HTTPException(
+            status_code=429,
+            detail=f"Destruktive Operationen-Stundenlimit überschritten "
+                   f"({HOURLY_LIMIT}/Stunde). Bitte versuchen Sie es später erneut.",
+            headers={"Retry-After": "3600"},
+        )
+
+    return admin
 
 
 async def get_rate_limit_status(
@@ -542,7 +805,7 @@ async def get_rate_limit_status(
             usage["batch_reset_in"] = max(0, batch_ttl) if batch_ttl > 0 else 3600
 
         except Exception as e:
-            logger.warning("rate_limit_status_error", error=str(e))
+            logger.warning("rate_limit_status_error", **safe_error_log(e))
 
     return {
         "user_id": str(current_user.id),
@@ -588,10 +851,12 @@ async def verify_document_ownership(
         return True
 
     # Check document ownership
+    # P.2 SECURITY FIX: is_deleted Prüfung hinzugefügt (GDPR Art. 17 Compliance)
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
-            Document.owner_id == current_user.id
+            Document.owner_id == current_user.id,
+            Document.deleted_at.is_(None)  # P.2 FIX: Gelöschte Dokumente ausschließen
         )
     )
     document = result.scalar_one_or_none()
@@ -738,3 +1003,221 @@ def require_api_key_permission(permission: str):
         return await get_user_with_api_key_permission(permission, credentials, db)
 
     return dependency
+
+
+# ==================== Admin Authorization ====================
+
+async def check_datev_export_rate_limit(
+    request: Request,
+    current_user: User = Depends(get_current_active_user)
+) -> User:
+    """
+    Dependency für DATEV-Export-spezifisches Rate Limiting.
+
+    DATEV-Exporte sind ressourcenintensive Operationen mit ThreadPool-Execution.
+    Limit: 10 Exports pro Stunde pro User (Admins: 100).
+
+    Args:
+        request: FastAPI request object
+        current_user: Current active user
+
+    Returns:
+        User if within DATEV rate limits
+
+    Raises:
+        HTTPException: If DATEV export rate limit exceeded
+    """
+    from app.core.rate_limiting import (
+        get_redis_storage,
+        rate_limit_metrics,
+    )
+
+    rate_limit_metrics.record_request()
+
+    storage = await get_redis_storage()
+    if not storage or not storage.is_available:
+        # L.1 SECURITY FIX: Fail-Closed für DATEV-Export Rate Limiting
+        logger.error(
+            "datev_export_rate_limit_redis_unavailable",
+            message="Redis nicht verfügbar - DATEV-Export nicht möglich"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="DATEV-Export temporär nicht verfügbar. Bitte später erneut versuchen.",
+            headers={"Retry-After": "60"}
+        )
+
+    # DATEV export limits - stricter due to CPU-intensive ThreadPool operations
+    is_admin = current_user.is_superuser
+
+    if is_admin:
+        hourly_limit = 100
+    else:
+        hourly_limit = 10
+
+    # Check hourly limit
+    hourly_key = f"datev_export_limit:{current_user.id}:hourly"
+    hourly_count = await storage.increment(hourly_key, 3600)
+
+    if hourly_count > hourly_limit:
+        rate_limit_metrics.record_rate_limited()
+        logger.warning(
+            "datev_export_rate_limited",
+            user_id=str(current_user.id),
+            count=hourly_count,
+            limit=hourly_limit,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=f"DATEV-Export-Limit erreicht ({hourly_limit} Exports/Stunde). "
+                   f"Bitte versuchen Sie es in einer Stunde erneut.",
+            headers={"Retry-After": "3600"},
+        )
+
+    return current_user
+
+
+async def require_admin(
+    current_user: User = Depends(get_current_active_user)
+) -> User:
+    """
+    Dependency für Admin-Berechtigungsprüfung.
+
+    Prüft ob der aktuelle Benutzer Admin/Superuser ist.
+
+    Args:
+        current_user: Aktueller aktiver Benutzer
+
+    Returns:
+        Admin-Benutzer
+
+    Raises:
+        HTTPException: Wenn Benutzer kein Admin ist
+
+    Usage:
+        @app.delete("/admin/users/{user_id}")
+        async def delete_user(
+            user_id: UUID,
+            admin: User = Depends(require_admin)
+        ):
+            ...
+
+        # Oder als Router-Dependency:
+        @router.post("/admin-action", dependencies=[Depends(require_admin)])
+        async def admin_action():
+            ...
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nur Administratoren haben Zugriff auf diese Funktion",
+        )
+    return current_user
+
+
+# Alias für require_admin (Backwards-Kompatibilität)
+get_current_admin_user = require_admin
+
+
+class RateLimitDependency:
+    """
+    Konfigurierbare Rate-Limit-Dependency für FastAPI.
+
+    Ermöglicht das Erstellen von benutzerdefinierten Rate-Limits
+    für verschiedene Endpunkte mit individuellen Limits und Zeitfenstern.
+
+    Usage:
+        # In Router-Datei:
+        check_read_rate_limit = RateLimitDependency(
+            requests_per_hour=100,
+            key_prefix="my_endpoint_read"
+        )
+
+        @router.get("/items", dependencies=[Depends(check_read_rate_limit)])
+        async def list_items():
+            ...
+    """
+
+    def __init__(
+        self,
+        requests_per_hour: int = 100,
+        key_prefix: str = "rate_limit",
+    ):
+        """
+        Initialisiert die Rate-Limit-Dependency.
+
+        Args:
+            requests_per_hour: Maximale Anfragen pro Stunde
+            key_prefix: Prefix für den Redis-Key
+        """
+        self.requests_per_hour = requests_per_hour
+        self.key_prefix = key_prefix
+        self.window = 3600  # 1 Stunde in Sekunden
+
+    async def __call__(
+        self,
+        request: Request,
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
+        """
+        Prüft das Rate-Limit für den aktuellen Benutzer.
+
+        Args:
+            request: FastAPI Request-Objekt
+            current_user: Aktueller aktiver Benutzer
+
+        Returns:
+            Benutzer wenn innerhalb des Limits
+
+        Raises:
+            HTTPException: Wenn Rate-Limit überschritten
+        """
+        from app.core.rate_limiting import (
+            get_redis_storage,
+            ip_whitelist,
+            get_remote_address,
+            rate_limit_metrics,
+        )
+
+        # Request in Metriken erfassen
+        rate_limit_metrics.record_request()
+
+        # Whitelist prüfen
+        ip = get_remote_address(request)
+        if ip_whitelist.is_whitelisted(ip):
+            rate_limit_metrics.record_whitelisted()
+            return current_user
+
+        # Redis-Speicher holen
+        storage = await get_redis_storage()
+        if not storage or not storage.is_available:
+            # L.1 SECURITY FIX: Fail-Closed für RateLimitDependency
+            logger.error(
+                "rate_limit_dependency_redis_unavailable",
+                key_prefix=self.key_prefix,
+                message="Redis nicht verfügbar - Rate-Limit nicht prüfbar"
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Service temporär nicht verfügbar. Bitte später erneut versuchen.",
+                headers={"Retry-After": "60"}
+            )
+
+        # Admins haben effektiv unbegrenzte Anfragen
+        if current_user.is_superuser:
+            return current_user
+
+        # Rate-Limit prüfen
+        key = f"{self.key_prefix}:{current_user.id}:{self.window}"
+        current_count = await storage.increment(key, self.window)
+
+        if current_count > self.requests_per_hour:
+            rate_limit_metrics.record_rate_limited()
+            raise HTTPException(
+                status_code=429,
+                detail=f"Ratenlimit überschritten ({self.requests_per_hour} Anfragen/Stunde). "
+                       f"Bitte versuchen Sie es später erneut.",
+                headers={"Retry-After": str(self.window)},
+            )
+
+        return current_user

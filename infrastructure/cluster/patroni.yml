@@ -1,0 +1,194 @@
+# =============================================================================
+# Patroni Configuration for PostgreSQL High Availability
+# =============================================================================
+# Ablage-System Cluster Deployment
+# Documentation: https://patroni.readthedocs.io/
+# =============================================================================
+
+scope: ablage-cluster
+name: ${PATRONI_NAME:-node1}
+
+# =============================================================================
+# REST API Configuration
+# =============================================================================
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: ${NODE_IP:-127.0.0.1}:8008
+  authentication:
+    username: admin
+    password: ${PATRONI_RESTAPI_PASSWORD:-patroni-admin}
+
+# =============================================================================
+# etcd Configuration (Distributed Consensus Store)
+# =============================================================================
+etcd3:
+  hosts:
+    - node1:2379
+    - node2:2379
+    - node3:2379
+  # Optional: Authentication
+  # username: root
+  # password: ${ETCD_PASSWORD}
+
+# =============================================================================
+# Bootstrap Configuration (Initial Cluster Setup)
+# =============================================================================
+bootstrap:
+  # DCS (Distributed Configuration Store) settings
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576  # 1MB max lag for failover
+    master_start_timeout: 300
+    synchronous_mode: false
+    synchronous_mode_strict: false
+
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+
+      parameters:
+        # Connection Settings
+        max_connections: 200
+        superuser_reserved_connections: 5
+
+        # Memory Settings (anpassen an verfuegbaren RAM)
+        shared_buffers: 4GB
+        effective_cache_size: 12GB
+        maintenance_work_mem: 1GB
+        work_mem: 20MB
+
+        # WAL Settings
+        wal_level: replica
+        wal_buffers: 64MB
+        min_wal_size: 2GB
+        max_wal_size: 8GB
+        wal_keep_size: 2GB
+
+        # Replication Settings
+        max_wal_senders: 10
+        max_replication_slots: 10
+        hot_standby: "on"
+        hot_standby_feedback: "on"
+
+        # Checkpoint Settings
+        checkpoint_completion_target: 0.9
+        checkpoint_timeout: 10min
+
+        # Parallel Query
+        max_worker_processes: 8
+        max_parallel_workers_per_gather: 4
+        max_parallel_workers: 8
+        max_parallel_maintenance_workers: 4
+
+        # Statistics
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+
+        # Logging
+        log_min_duration_statement: 1000  # Log queries > 1s
+        log_checkpoints: "on"
+        log_connections: "on"
+        log_disconnections: "on"
+        log_lock_waits: "on"
+        log_temp_files: 0
+
+        # Archive (fuer Point-in-Time Recovery)
+        archive_mode: "on"
+        archive_command: 'cp %p /var/lib/postgresql/wal_archive/%f'
+        archive_timeout: 300
+
+  # Database Initialization
+  initdb:
+    - encoding: UTF8
+    - locale: de_DE.UTF-8
+    - data-checksums
+
+  # Post-Init SQL Commands
+  post_init: /docker-entrypoint-initdb.d/post_init.sh
+
+  # pg_hba.conf (Host-Based Authentication)
+  pg_hba:
+    - local   all         all                          trust
+    - host    all         all         127.0.0.1/32     scram-sha-256
+    - host    all         all         ::1/128          scram-sha-256
+    - host    all         all         0.0.0.0/0        scram-sha-256
+    - host    replication replicator  0.0.0.0/0        scram-sha-256
+
+  # Initial Users
+  users:
+    admin:
+      password: ${POSTGRES_ADMIN_PASSWORD:-admin}
+      options:
+        - createrole
+        - createdb
+    replicator:
+      password: ${REPLICATION_PASSWORD}
+      options:
+        - replication
+
+# =============================================================================
+# PostgreSQL Configuration
+# =============================================================================
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: ${NODE_IP:-127.0.0.1}:5432
+  data_dir: /var/lib/postgresql/data
+  bin_dir: /usr/lib/postgresql/16/bin
+  config_dir: /var/lib/postgresql/data
+
+  pgpass: /tmp/pgpass
+
+  authentication:
+    replication:
+      username: replicator
+      password: ${REPLICATION_PASSWORD}
+    superuser:
+      username: postgres
+      password: ${POSTGRES_PASSWORD}
+    rewind:
+      username: postgres
+      password: ${POSTGRES_PASSWORD}
+
+  # Callbacks fuer Events
+  callbacks:
+    on_start: /etc/patroni/callbacks/on_start.sh
+    on_stop: /etc/patroni/callbacks/on_stop.sh
+    on_role_change: /etc/patroni/callbacks/on_role_change.sh
+    on_restart: /etc/patroni/callbacks/on_restart.sh
+
+  # Custom Recovery Configuration
+  recovery_conf:
+    restore_command: 'cp /var/lib/postgresql/wal_archive/%f %p'
+
+  # Custom Parameters (ueberschreiben bootstrap.dcs.postgresql.parameters)
+  parameters:
+    # Diese koennen je nach Node angepasst werden
+    unix_socket_directories: '/var/run/postgresql'
+
+  # pg_ctl Options
+  pg_ctl_timeout: 60
+
+  # Use pg_rewind for faster failover
+  use_pg_rewind: true
+
+# =============================================================================
+# Watchdog Configuration (Optional, fuer Split-Brain-Schutz)
+# =============================================================================
+# watchdog:
+#   mode: automatic
+#   device: /dev/watchdog
+#   safety_margin: 5
+
+# =============================================================================
+# Tags (Node-spezifische Konfiguration)
+# =============================================================================
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false
+  # Fuer Node-spezifische Rollen:
+  # replicatefrom: node1  # Nur von bestimmtem Node replizieren

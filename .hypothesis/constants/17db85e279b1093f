@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\_ops.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.007874015718698502, 'A must be int32', 'A must be int8', 'B must be int8', 'default', 'register_fake']

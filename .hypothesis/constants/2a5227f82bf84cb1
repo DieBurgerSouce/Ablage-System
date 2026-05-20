@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\b2b_gemm.py
+# hypothesis_version: 6.148.7
+
+[1.0, 128, 'BLOCK_SIZE_M', 'BLOCK_SIZE_N', 'BLOCK_SIZE_O', 'BLOCK_SIZE_P', 'b2b_gemm', 'b2b_gemm_left', 'b2b_gemm_pass', 'b2b_gemm_right', 'call_function', 'inductor', 'inner_mm', 'is_cuda', 'is_xpu', 'num_stages', 'num_warps', 'output', 'placeholder', 'subgraph', 'subgraph_input', 'val']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\externals\_arff.py
+# hypothesis_version: 6.148.7
+
+['\x08', ' %d.', ' %{},', '"', '"%s"', '"\'', '%', '%%', '%d %s', '%d.', '%s', '%s %s', '%s %s %s', "'", "'%s'", ',', ', ', '2.4.0', '?', '@ATTRIBUTE', '@DATA', '@RELATION', 'Error parsing %r', 'INTEGER', 'Invalid object.', 'NUMERIC', 'REAL', 'STRING', '["\'{}\\s]', '["\\\'\\\\\\s%,\\000-\\031]', '\\', '\\"', '\\%', '\\%03o', '\\%d', "\\'", '\\\\', '\\b', '\\f', '\\n', '\\r', '\\t', '^\\%( )?', '^\\s*\\{.*\\}\\s*$', 'at line %d.', 'attributes', 'coo', 'data', 'description', 'float: ', 'format', 'relation', 'u', 'value_re', '{', '{%s}', '{} ', '}']

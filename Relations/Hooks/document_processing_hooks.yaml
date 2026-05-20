@@ -57,7 +57,7 @@ document_lifecycle:
         implementation: |
           async def queue_for_ocr(event: DocumentUploadedEvent):
               task = await celery.send_task(
-                  'process_document_ocr',
+                  'app.workers.tasks.ocr_tasks.process_document_task',
                   args=[event.document_id],
                   kwargs={'backend': 'auto'}
               )
@@ -249,7 +249,7 @@ document_lifecycle:
                           to_backend=fallback
                       )
                       await celery.send_task(
-                          'process_document_ocr',
+                          'app.workers.tasks.ocr_tasks.process_document_task',
                           args=[event.document_id],
                           kwargs={'backend': fallback}
                       )
@@ -359,7 +359,7 @@ gpu_resource_hooks:
                   backend=event.backend
               )
               await celery.send_task(
-                  'process_document_ocr',
+                  'app.workers.tasks.ocr_tasks.process_document_task',
                   args=[event.document_id],
                   kwargs={'backend': 'surya', 'use_gpu': False}
               )

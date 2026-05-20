@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\mobilenetv1.py
+# hypothesis_version: 6.148.7
+
+[1.0, 128, 256, 512, 1000, 1024, 'conv2_1', 'conv2_2', 'conv3_1', 'conv3_2', 'conv4_1', 'conv4_2', 'conv5_', 'conv5_6', 'conv6', 'mobilenetv1_', 'mobilenetv1_1.0']

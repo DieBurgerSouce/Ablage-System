@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\slicer\slicer_internal.py
+# hypothesis_version: 6.148.7
+
+['DataFrame', 'Series', 'Tensor', '__len__', 'auto', 'builtins', 'columns', 'csc', 'csc_matrix', 'csr', 'csr_matrix', 'dict', 'dok', 'dok_matrix', 'index', 'int16', 'int32', 'int64', 'int8', 'lil', 'lil_matrix', 'list', 'ndarray', 'numpy', 'object', 'pandas.core.frame', 'pandas.core.series', 'scipy.sparse._csc', 'scipy.sparse._csr', 'scipy.sparse._dok', 'scipy.sparse._lil', 'scipy.sparse.csc', 'scipy.sparse.csr', 'scipy.sparse.dok', 'scipy.sparse.lil', 'torch', 'tuple', 'uint16', 'uint32', 'uint64', 'uint8']

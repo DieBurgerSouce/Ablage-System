@@ -1,0 +1,237 @@
+{
+  "tasks": {
+    "task-1771087309448-zhnrmv": {
+      "taskId": "task-1771087309448-zhnrmv",
+      "type": "research",
+      "description": "Explore: Document Summarization & Semantic Features",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [
+        "ml-gaps",
+        "summarization",
+        "semantic"
+      ],
+      "createdAt": "2026-02-14T16:41:49.448Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771087310009-hn6o65": {
+      "taskId": "task-1771087310009-hn6o65",
+      "type": "research",
+      "description": "Explore: Sentiment Analysis & Document Risk Scoring",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [
+        "ml-gaps",
+        "sentiment",
+        "risk-scoring"
+      ],
+      "createdAt": "2026-02-14T16:41:50.009Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771087310352-fjhsey": {
+      "taskId": "task-1771087310352-fjhsey",
+      "type": "research",
+      "description": "Explore: Auto-Tagging & Document Organization",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [
+        "ml-gaps",
+        "auto-tagging",
+        "metadata"
+      ],
+      "createdAt": "2026-02-14T16:41:50.352Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771087310822-bcs7kz": {
+      "taskId": "task-1771087310822-bcs7kz",
+      "type": "research",
+      "description": "Explore: Anomaly Detection & Fraud Prevention",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [
+        "ml-gaps",
+        "anomaly",
+        "security"
+      ],
+      "createdAt": "2026-02-14T16:41:50.822Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771087311327-kcl7s6": {
+      "taskId": "task-1771087311327-kcl7s6",
+      "type": "research",
+      "description": "Explore: Intelligent Search & Document Retrieval",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [
+        "ml-gaps",
+        "search",
+        "retrieval"
+      ],
+      "createdAt": "2026-02-14T16:41:51.327Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771087314516-6l5bmr": {
+      "taskId": "task-1771087314516-6l5bmr",
+      "type": "research",
+      "description": "RESEARCH ONLY: Interview Benutzer zu fehlenden ML-Features basierend auf OCR/Pipeline-Analyse",
+      "priority": "critical",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [
+        "interview",
+        "planning",
+        "ml-gaps"
+      ],
+      "createdAt": "2026-02-14T16:41:54.516Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771110398168-a0thdh": {
+      "taskId": "task-1771110398168-a0thdh",
+      "type": "research",
+      "description": "Explore missing AI/ML capabilities and advanced explainability features",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-14T23:06:38.168Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771110398663-ak0eo9": {
+      "taskId": "task-1771110398663-ak0eo9",
+      "type": "research",
+      "description": "Explore frontend UX/DX gaps and usability enhancements for document workflow",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-14T23:06:38.663Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771110399060-tkuhaf": {
+      "taskId": "task-1771110399060-tkuhaf",
+      "type": "research",
+      "description": "Explore advanced accounting and financial analysis features beyond current scope",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-14T23:06:39.060Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771110399454-a6c6nf": {
+      "taskId": "task-1771110399454-a6c6nf",
+      "type": "research",
+      "description": "Explore enterprise automation and process mining capabilities not yet implemented",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-14T23:06:39.454Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771110399864-3qzx8a": {
+      "taskId": "task-1771110399864-3qzx8a",
+      "type": "research",
+      "description": "Explore data governance, compliance, and intelligent archival strategies",
+      "priority": "high",
+      "status": "pending",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-14T23:06:39.864Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771119004596-mwkzrw": {
+      "taskId": "task-1771119004596-mwkzrw",
+      "type": "exploration",
+      "description": "Explore real-time OCR confidence visualization with WebSocket streaming and field-level heatmaps",
+      "priority": "high",
+      "status": "cancelled",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-15T01:30:04.596Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771119005064-9czjwb": {
+      "taskId": "task-1771119005064-9czjwb",
+      "type": "exploration",
+      "description": "Analyze document lineage tracking and audit trail system for regulatory compliance",
+      "priority": "high",
+      "status": "cancelled",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-15T01:30:05.064Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771119005518-mqk0cv": {
+      "taskId": "task-1771119005518-mqk0cv",
+      "type": "exploration",
+      "description": "Investigate intelligent document routing with ML-based workflow automation and approval chains",
+      "priority": "high",
+      "status": "cancelled",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-15T01:30:05.519Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771119005909-kexjcx": {
+      "taskId": "task-1771119005909-kexjcx",
+      "type": "exploration",
+      "description": "Examine multi-language document processing with cross-language deduplication and translation workflows",
+      "priority": "high",
+      "status": "cancelled",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-15T01:30:05.909Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "task-1771119006430-5fc8y9": {
+      "taskId": "task-1771119006430-5fc8y9",
+      "type": "exploration",
+      "description": "Research contextual document understanding combining OCR with knowledge graphs for business intelligence",
+      "priority": "high",
+      "status": "cancelled",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [],
+      "createdAt": "2026-02-15T01:30:06.430Z",
+      "startedAt": null,
+      "completedAt": null
+    }
+  },
+  "version": "3.0.0"
+}

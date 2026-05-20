@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\table_postprocess.py
+# hypothesis_version: 6.148.7
+
+['<EOS>', '<PAD>', '<SOS>', '<UKN>', '<td', '<td>', '<td></td>', 'bbox_batch_list', 'loc_preds', 'ori', 'pad', 'rb', 'structure_batch_list', 'structure_probs', 'utf-8']

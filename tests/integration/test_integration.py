@@ -140,7 +140,7 @@ def test_imports():
     try:
         import torch
 
-        assert True
+        assert hasattr(torch, 'cuda') and callable(torch.cuda.is_available)
         print(f"[OK] PyTorch {torch.__version__} available")
         print(f"[OK] CUDA available: {torch.cuda.is_available()}")
     except ImportError:
@@ -150,7 +150,7 @@ def test_imports():
     try:
         import fastapi
 
-        assert True
+        assert hasattr(fastapi, 'FastAPI') and callable(fastapi.FastAPI)
         print(f"[OK] FastAPI {fastapi.__version__} available")
     except ImportError:
         pytest.skip("FastAPI not installed")
@@ -159,7 +159,7 @@ def test_imports():
     try:
         import sqlalchemy
 
-        assert True
+        assert hasattr(sqlalchemy, 'create_engine') and callable(sqlalchemy.create_engine)
         print(f"[OK] SQLAlchemy {sqlalchemy.__version__} available")
     except ImportError:
         pytest.skip("SQLAlchemy not installed")
@@ -168,7 +168,7 @@ def test_imports():
     try:
         import redis
 
-        assert True
+        assert hasattr(redis, 'Redis') and callable(redis.Redis)
         print(f"[OK] Redis client available")
     except ImportError:
         pytest.skip("Redis client not installed")

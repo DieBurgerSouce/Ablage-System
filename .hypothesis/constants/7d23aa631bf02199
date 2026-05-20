@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\webhooks.py
+# hypothesis_version: 6.148.7
+
+[30.0, 100, 200, 201, 202, 204, 400, 500, 1000, 30000, ',', '/', '/webhooks', '/{webhook_id}', '/{webhook_id}/test', ':', 'Ablage-Webhook/1.0', 'Content-Type', 'Nach Status filtern', 'Secret rotieren', 'Test-Webhook senden', 'User-Agent', 'Webhook aktivieren', 'Webhook deaktivieren', 'Webhook erstellen', 'Webhook löschen', 'Webhook-Details', 'Webhooks auflisten', 'X-Webhook-Test', 'X-Webhook-Timestamp', 'Zustellungsprotokoll', 'api_version', 'application/json', 'data', 'document_id', 'event_id', 'event_type', 'filename', 'message', 'status', 'test', 'test_document.pdf', 'test_document_id', 'timestamp', 'true', 'utf-8', 'v1', 'webhook_activated', 'webhook_created', 'webhook_deactivated', 'webhook_deleted', 'webhook_test_error', 'webhook_test_sent', 'webhook_test_timeout', 'webhook_updated', 'webhooks']

@@ -14,6 +14,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 import structlog
+from slowapi.errors import RateLimitExceeded
 
 logger = structlog.get_logger(__name__)
 
@@ -122,7 +123,7 @@ class ValidationHook(BaseHook):
             return context
 
         except Exception as e:
-            self.logger.error("validation_failed", error=str(e))
+            self.logger.error("validation_failed", **safe_error_log(e))
             raise
 
 
@@ -175,7 +176,7 @@ class RateLimitHook(BaseHook):
             allowed = self.rate_limiter(user_id)
 
         if not allowed:
-            raise Exception("Rate limit exceeded")
+            raise RateLimitExceeded("Rate-Limit überschritten")
 
         return context
 
@@ -393,6 +394,7 @@ class HookRegistry:
         if cls._instance is None:
             # Import threading for sync lock
             import threading
+
             if not hasattr(cls, '_sync_lock'):
                 cls._sync_lock = threading.Lock()
 
@@ -457,7 +459,7 @@ class HookRegistry:
                 self.logger.error(
                     "hook_execution_failed",
                     hook_name=hook.name,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 # Continue or stop based on hook type
                 if hook_type == HookType.PRE_PROCESS:
@@ -497,7 +499,7 @@ class HookRegistry:
                         self.logger.error(
                             "hook_execution_failed",
                             hook_name=hook_name,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         raise
 

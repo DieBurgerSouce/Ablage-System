@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\imports.py
+# hypothesis_version: 6.148.7
+
+[100, 255, 500, 993, 1000, 1440, 3600, 65535, '/email/configs', '/folder/configs', '/imports', '/logs', '/logs/stats', '/logs/{log_id}', '/logs/{log_id}/retry', '/rules', '/rules/reorder', '/rules/schema/fields', '/rules/test-all', '/rules/{rule_id}', 'AND', 'INBOX', 'Log nicht gefunden', 'Regel aktualisiert', 'Regel erstellt', 'Regel geloescht', 'Regel nicht gefunden', '^(email|folder)$', 'completed', 'created_document_ids', 'documents_created', 'duplicates_skipped', 'email', 'emails_processed', 'error', 'errors', 'failed', 'failed_imports', 'files_moved', 'files_processed', 'folder', 'id', 'imports', 'imports_by_day', 'imports_by_source', 'message', 'pending', 'priority', 'processed', 'retry_count', 'rule_id', 'skipped', 'skipped_imports', 'successful_imports', 'total_imports']

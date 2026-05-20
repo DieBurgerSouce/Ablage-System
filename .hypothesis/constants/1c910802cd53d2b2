@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\loan_amortization_service.py
+# hypothesis_version: 6.148.7
+
+[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 100, 600, '0', '0.01', 'balance', 'batch_all', 'calculated', 'calculation_type', 'date', 'entries', 'errors', 'interest', 'loan_kpis_persisted', 'loan_not_found', 'loan_summary', 'payment', 'period', 'principal', 'skipped', 'term_months', 'total', 'total_interest', 'total_payments']

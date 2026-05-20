@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\recovery\table_process.py
+# hypothesis_version: 6.148.7
+
+[', ', '<b>%s</b>', 'Courier', 'Table Grid', '\\s*\\n+\\s*$', '\\s*\\n\\s*', '\\s+', '^\\s*\\n+\\s*', 'a', 'b', 'bold', 'code', 'colspan', 'em', 'fix-html', 'href', 'html.parser', 'i', 'images', 'italic', 'list', 'pre', 'rowspan', 's', 'soup', 'span', 'strike', 'strong', 'style', 'styles', 'sub', 'subscript', 'sup', 'superscript', 'table', 'table > tbody > tr', 'table > tfoot > tr', 'table > thead > tr', 'table > tr', 'tables', 'td', 'th', 'u', 'underline']

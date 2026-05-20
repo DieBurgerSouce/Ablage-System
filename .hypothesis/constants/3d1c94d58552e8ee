@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\lamb.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 0.001, 0.01, 0.9, 0.999, 'Beta1Pow', 'Beta1PowOut', 'Beta2Pow', 'Beta2PowOut', 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Moment1', 'Moment1Out', 'Moment2', 'Moment2Out', 'Param', 'ParamOut', 'SkipUpdate', 'always_adapt', 'beta1', 'beta1_pow_acc', 'beta2', 'beta2_pow_acc', 'cpu', 'epsilon', 'found_inf', 'lamb', 'lamb_weight_decay', 'moment1', 'moment2', 'multi_precision', 'params', 'weight_decay']

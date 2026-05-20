@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\base\util_factory.py
+# hypothesis_version: 6.148.7
+
+['-Tpdf', '-o', './temp.dot', '.bin', '.dot', '.pbtxt', '.pdf', '<br />', 'MUST in var list', '__model__', 'all', "can't not find var: ", 'dot', 'feed', 'fetch', 'lookup_table', 'max', 'min', 'r', 'rb', 'role_maker', 'server', 'some graph', 'sum', 'valid_strategy', 'w', 'wb', 'worker']

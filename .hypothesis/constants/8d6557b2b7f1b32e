@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\calendar.py
+# hypothesis_version: 6.148.7
+
+[100, 500, 2020, 2100, '/calendar', '/deadlines', '/deadlines/alerts', '/deadlines/summary', '/today', 'Calendar', 'EUR', 'Heutige Fristen', 'Jahr', 'Maximale Anzahl', 'Monat (1-12)', 'Tage im Voraus', 'company_id', 'deadlines_listed']

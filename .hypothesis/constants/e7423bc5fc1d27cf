@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\async_compile.py
+# hypothesis_version: 6.148.7
+
+[0.0, 120, 1000, '0', '1', '@triton.jit\n', 'CPP Kernel:\n%s', 'CUDA Kernel:\n%s', 'CuteDSL Kernel:\n%s', 'Halide Kernel:\n%r\n%s', 'Inductor Compilation', 'ROCm Kernel:\n%s', 'TORCH_TNT_IN_USE', 'TORCH_WARM_POOL', 'TRITON_CACHE_DIR', 'TRITON_INTERPRET', 'Triton Kernel:\n%s', 'artifact', 'async_compile.wait', 'compile_time_us', 'compile_triton', 'cuda', 'encoding', 'exe', 'inductor', 'is_backward', 'json', 'kernel_code', 'name', 'o', 'ready', 'size_hints=(\\{.*?\\})', 'spawn', 'subprocess', 'triton_kernel_info', 'win32']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\linalg.py
+# hypothesis_version: 6.148.7
+
+['cholesky', 'cholesky_inverse', 'cholesky_solve', 'cond', 'corrcoef', 'cov', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'householder_product', 'inv', 'lstsq', 'lu', 'lu_solve', 'lu_unpack', 'matmul', 'matrix_exp', 'matrix_norm', 'matrix_power', 'matrix_rank', 'matrix_transpose', 'multi_dot', 'norm', 'ormqr', 'pca_lowrank', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svd_lowrank', 'svdvals', 'triangular_solve', 'vecdot', 'vector_norm']

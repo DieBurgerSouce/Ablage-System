@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\translation_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.8, 0.82, 0.95, 1.0, 1000, 50000, 'Authorization', 'DEEPL_API_KEY', 'LIBRETRANSLATE_URL', 'TRANSLATION_PROVIDER', 'already_supported', 'argos', 'cached', 'de', 'deepl', 'disabled', 'en', 'errors', 'format', 'libretranslate', 'provider_disabled', 'q', 'skipped', 'source', 'source_lang', 'target', 'target_lang', 'text', 'text_translated', 'total', 'translated', 'translatedText', 'translation_failed', 'translations', 'unknown', 'unknown_language', 'utf-8']

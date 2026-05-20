@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\personal\position_service.py
+# hypothesis_version: 6.148.7
+
+[500, 'IntegrityError', 'changed_fields', 'company_id', 'count', 'created_at', 'department', 'department_id', 'description', 'employee_count', 'filters', 'id', 'include_inactive', 'info', 'is_active', 'is_management', 'job_family', 'level', 'max_salary', 'min_salary', 'name', 'page', 'per_page', 'position', 'position_count', 'position_created', 'position_deleted', 'position_updated', 'requirements', 'responsibilities', 'salary_band_max', 'salary_band_min', 'salary_changed', 'salary_fields', 'salary_masked', 'search', 'short_name', 'title', 'title_en', 'total', 'updated_at', 'warning']

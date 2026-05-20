@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\operators.py
+# hypothesis_version: 6.148.7
+
+[0.224, 0.225, 0.229, 0.406, 0.456, 0.485, 0.5, 1.0, 1.25, 255.0, 128, 255, 512, 640, 736, 960, 1024, 'GRAY', 'None', 'RGB', 'chw', 'fast_label', 'float32', 'image', 'image_hr', 'image_lr', 'image_shape', 'img_hr', 'img_lr', 'img_scale', 'keep_ratio', 'label', 'limit_side_len', 'limit_type', 'max', 'max_side_len', 'min', 'ori_boxes', 'ori_image', 'points', 'polys', 'resize_long', 'shape', 'src_image', 'totaltext', 'uint8', 'valid_set']

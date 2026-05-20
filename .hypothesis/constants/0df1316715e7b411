@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\mkldnn_lowerings.py
+# hypothesis_version: 6.148.7
+
+[1.0, -128, 127, 255, 'B', '_BMatrixCompens', '_x_w_compens', 'act_mapping', 'add', 'bias', 'data', 'epilogue_creator', 'grouped_gemm', 'has_bias', 'input_indices', 'linear_binary', 'linear_unary', 'mkl::_mkl_linear', 'none', 'packed_linear', 'qlinear_binary', 'qlinear_unary', 'sum', 'trans_w', 'w_zp', 'x_scale', 'x_zp']

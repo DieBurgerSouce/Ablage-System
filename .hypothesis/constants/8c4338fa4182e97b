@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\recovery\recovery_to_markdown.py
+# hypothesis_version: 6.148.7
+
+['$', '*', '\\', '\\n{3,}', '`', 'bbox', 'equation', 'figure', 'footer', 'header', 'html', 'img_idx', 'latex', 'markdown save to {}', 'res', 'table', 'text', 'text_region', 'title', 'type', 'utf-8', 'w', '{}_ocr.md', '{}_{}.jpg', '~']

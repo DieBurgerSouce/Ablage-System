@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\vault.py
+# hypothesis_version: 6.148.7
+
+['/health', '/refresh', '/status', '/vault', 'GET', 'Vault Health Check', 'Vault Status abrufen', '_client', 'client_unavailable', 'cluster_name', 'created_time', 'current_version', 'data', 'degraded', 'disabled', 'healthy', 'message', 'n/a', 'no_change', 'not_configured', 'permission_denied', 'sealed', 'status', 'success', 'timestamp', 'unhealthy', 'unknown', 'updated_time', 'vault', 'version']

@@ -1,0 +1,121 @@
+{
+  "title": "Errors",
+  "general": {
+    "unexpected": "An unexpected error occurred",
+    "unknown": "Unknown error",
+    "tryAgain": "Please try again",
+    "contactSupport": "Please contact support",
+    "technicalDetails": "Technical details"
+  },
+  "http": {
+    "400": "Bad request",
+    "401": "Unauthorized",
+    "403": "Access denied",
+    "404": "Not found",
+    "405": "Method not allowed",
+    "408": "Request timeout",
+    "409": "Conflict",
+    "413": "File too large",
+    "415": "Unsupported format",
+    "422": "Validation error",
+    "429": "Too many requests",
+    "500": "Internal server error",
+    "502": "Bad gateway",
+    "503": "Service unavailable",
+    "504": "Gateway timeout"
+  },
+  "network": {
+    "offline": "No internet connection",
+    "timeout": "Request timed out",
+    "connectionFailed": "Connection to server failed",
+    "connectionLost": "Connection to server lost",
+    "retrying": "Reconnecting...",
+    "reconnected": "Connection restored"
+  },
+  "auth": {
+    "invalidCredentials": "Invalid credentials",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "tokenExpired": "Session expired. Please sign in again.",
+    "tokenInvalid": "Invalid authentication token",
+    "notAuthenticated": "Authentication required",
+    "permissionDenied": "Access denied",
+    "insufficientPermissions": "Insufficient permissions",
+    "accountDisabled": "Account disabled",
+    "accountLocked": "Account locked. Please contact administrator.",
+    "tooManyAttempts": "Too many login attempts. Please wait {{minutes}} minutes."
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Please enter a valid email address",
+    "minLength": "Minimum {{min}} characters required",
+    "maxLength": "Maximum {{max}} characters allowed",
+    "pattern": "Invalid format",
+    "numeric": "Please enter a number",
+    "integer": "Please enter a whole number",
+    "positive": "Value must be positive",
+    "date": "Invalid date format",
+    "dateRange": "End date must be after start date",
+    "url": "Please enter a valid URL",
+    "phone": "Please enter a valid phone number",
+    "iban": "Invalid IBAN",
+    "bic": "Invalid BIC",
+    "vatId": "Invalid VAT ID",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooWeak": "Password is too weak",
+    "fileType": "Invalid file type",
+    "fileSize": "File is too large (max. {{max}})"
+  },
+  "file": {
+    "uploadFailed": "Error uploading file",
+    "downloadFailed": "Error downloading file",
+    "invalidType": "Invalid file type. Allowed: {{types}}",
+    "tooLarge": "File too large: {{size}} (max: {{max}})",
+    "corrupted": "File corrupted or unreadable",
+    "virusDetected": "Malware detected. File blocked."
+  },
+  "document": {
+    "notFound": "Document not found",
+    "uploadFailed": "Error uploading document",
+    "processingFailed": "Document processing failed",
+    "deleteFailed": "Error deleting document",
+    "accessDenied": "No access to this document"
+  },
+  "ocr": {
+    "processingFailed": "OCR processing failed",
+    "backendUnavailable": "OCR backend unavailable",
+    "gpuOom": "GPU out of memory. Falling back to CPU.",
+    "timeout": "OCR timeout",
+    "invalidDocument": "Document cannot be processed",
+    "noTextExtracted": "No text could be extracted"
+  },
+  "database": {
+    "connectionFailed": "Database connection failed",
+    "queryFailed": "Database query failed",
+    "saveFailed": "Save failed",
+    "deleteFailed": "Delete failed",
+    "duplicateEntry": "Entry already exists"
+  },
+  "entity": {
+    "notFound": "Business partner not found",
+    "createFailed": "Could not create business partner",
+    "updateFailed": "Could not update business partner",
+    "deleteFailed": "Could not delete business partner",
+    "duplicateCustomerNumber": "Customer number already exists",
+    "duplicateSupplierNumber": "Supplier number already exists"
+  },
+  "payment": {
+    "failed": "Payment failed",
+    "insufficientFunds": "Insufficient funds",
+    "invalidAccount": "Invalid account",
+    "executionFailed": "Payment execution failed"
+  },
+  "rateLimit": {
+    "exceeded": "Too many requests. Please wait {{seconds}} seconds.",
+    "quotaExceeded": "Daily quota exceeded. Please try again tomorrow."
+  },
+  "service": {
+    "unavailable": "Service temporarily unavailable",
+    "maintenance": "Maintenance in progress. Please try later.",
+    "overloaded": "System overloaded. Please try later."
+  }
+}

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\cal_aux_loss.py
+# hypothesis_version: 6.148.7
+
+['cal_aux_loss', 'ce', 'clip_min', 'dispatch_mask', 'dispatch_tokens_mask', 'float32', 'gate_prob', 'l_aux_loss', 'moe_k', 'num_experts', 'seqlen_float', 'tokens_mask', 'use_group']

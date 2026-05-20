@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\transforms\transforms.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 0.02, 0.08, 0.3, 0.33, 0.5, 1.0, 3.0, 3.3, 4.0, 255, '\n)', ' or ', '(', 'CHW', 'PILImage', 'Tensor', '_InputT', '_RetT', 'bicubic', 'bilinear', 'boxes', 'brightness', 'center', 'constant', 'contrast', 'coords', 'degrees', 'edge', 'float32', 'hue', 'image', 'inf', 'int32', 'mask', 'nearest', 'npt.NDArray[Any]', 'random', 'reflect', 'saturation', 'scale', 'shear', 'symmetric', 'translate']

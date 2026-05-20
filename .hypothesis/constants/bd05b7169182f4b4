@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\__init__.py
+# hypothesis_version: 6.148.7
+
+['0.0.0', 'PPStructure', 'PaddleOCR', 'convert_info_docx', 'draw_ocr', 'save_structure_res', 'sorted_layout_boxes', 'to_excel']

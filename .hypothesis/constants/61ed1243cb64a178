@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\deadline_service.py
+# hypothesis_version: 6.148.7
+
+[180, 365, '%Y%m%d', '%Y%m%dT%H%M%SZ', '-', 'ACTION:DISPLAY', 'BEGIN:VALARM', 'BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'END:VALARM', 'END:VCALENDAR', 'END:VEVENT', 'METHOD:PUBLISH', 'Privat-Fristen', 'VERSION:2.0', '\\n', 'annual', 'daily', 'deadline_type', 'insurance', 'loan', 'monthly', 'quarterly', 'semi_annual', 'utf-8', 'vehicle', 'weekly']

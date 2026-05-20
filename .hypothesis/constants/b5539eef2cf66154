@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\approximation\clique.py
+# hypothesis_version: 6.148.7
+
+['clique_removal', 'directed', 'large_clique_size', 'max_clique', 'multigraph']

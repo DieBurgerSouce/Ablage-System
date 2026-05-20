@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\translated_layer.py
+# hypothesis_version: 6.148.7
+
+[1.0, '.', '.info', '.meta', '.pdiparams', '.pdiparams.info', '.pdmodel', '@GRAD', 'Out', 'ReserveSpace', 'X', '_', 'assign', 'batch_norm', 'buffer', 'end_op_index', 'feed', 'fetch', 'file_path', 'forward', 'forward_global_block', 'global_block', 'is_test', 'load', 'load_combine', 'model', 'op_callstack', 'out', 'out_grad_names', 'param', 'param_grad_names', 'program_id', 'rb', 'reserve_space', 'scale', 'start_op_index', 'stop_gradient', 'sub_block', 'targets', 'tmp', 'trainable', 'use_interpretorcore', 'x', 'x_grad_names', 'x_names']

@@ -29,6 +29,9 @@ class TestRateLimitKeyFunctions:
         request.state = Mock()
         request.client = Mock()
         request.client.host = "192.168.1.100"
+        # Properly mock headers to return None for missing keys
+        request.headers = Mock()
+        request.headers.get = Mock(return_value=None)
         return request
 
     def test_get_user_identifier_with_user(self, mock_request):
@@ -36,9 +39,8 @@ class TestRateLimitKeyFunctions:
         mock_request.state.user = Mock()
         mock_request.state.user.id = "user123"
 
-        with patch("app.core.rate_limiting.get_remote_address", return_value="192.168.1.100"):
-            from app.core.rate_limiting import get_user_identifier
-            identifier = get_user_identifier(mock_request)
+        from app.core.rate_limiting import get_user_identifier
+        identifier = get_user_identifier(mock_request)
 
         assert identifier == "user:user123"
 
@@ -46,19 +48,19 @@ class TestRateLimitKeyFunctions:
         """Test user identifier falls back to IP when not authenticated."""
         mock_request.state.user = None
 
-        with patch("app.core.rate_limiting.get_remote_address", return_value="192.168.1.100"):
-            from app.core.rate_limiting import get_user_identifier
-            identifier = get_user_identifier(mock_request)
+        from app.core.rate_limiting import get_user_identifier
+        identifier = get_user_identifier(mock_request)
 
+        # Returns client.host since no X-Forwarded-For and client is not trusted proxy
         assert identifier == "ip:192.168.1.100"
 
     def test_get_ip_identifier(self, mock_request):
         """Test IP identifier extraction."""
-        with patch("app.core.rate_limiting.get_remote_address", return_value="10.0.0.1"):
-            from app.core.rate_limiting import get_ip_identifier
-            identifier = get_ip_identifier(mock_request)
+        from app.core.rate_limiting import get_ip_identifier
+        identifier = get_ip_identifier(mock_request)
 
-        assert identifier == "10.0.0.1"
+        # Returns client.host since no proxy headers
+        assert identifier == "192.168.1.100"
 
 
 class TestRateLimitTier:

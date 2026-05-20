@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\utils\cpp_extension\cpp_extension.py
+# hypothesis_version: 6.148.7
+
+['((\\-|\\/)I.*)', '--use-local-env', '-DPADDLE_WITH_CUDA', '-DPADDLE_WITH_HIP', '-Xcompiler', '-c', '-o', '.', '.cu', '.cu.cc', '.cu.o', '.cuh', '.dylib', '.o', '.pyd', '.so', '/Fo(.*)', '/MD', '/MT', '/T(p|c)(.*)', '/W0', '/W[1-4]', '/usr/local/corex/', 'COREX_HOME', 'CXX', 'DISTUTILS_USE_SDK', 'VSCMD_ARG_TGT_ARCH', '_', '_pd_', 'bin', 'build', 'build_base', 'build_ext', 'c++', 'cl', 'clang', 'clang++', 'cmdclass', 'compiler_cxx', 'compiler_so', 'cu.o', 'cu.obj', 'cxx', 'darwin', 'dylib', 'easy_install', 'ext_modules', 'hipcc', 'iluvatar_gpu', 'linux', 'module', 'msvc', 'name', 'no_python_abi_suffix', 'nvcc', 'output_dir', 'zip_safe']

@@ -27,6 +27,7 @@ import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.gpu_manager import GPUManager
+from app.core.safe_errors import safe_error_log
 from .language_detector import (
     LanguageDetector,
     LanguageDetectionResult,
@@ -181,7 +182,7 @@ class RoutingResult(BaseModel):
 class OCRBackend(Protocol):
     """Protocol for OCR backends."""
 
-    async def ocr(self, image_bytes: bytes, **kwargs: Any) -> Dict[str, Any]:
+    async def ocr(self, image_bytes: bytes, **kwargs: object) -> Dict[str, Any]:
         """Process image with OCR."""
         ...
 
@@ -348,6 +349,10 @@ class UnifiedOCRRouter(OrchestrationAgent):
         # Language detector for multilingual routing
         self._language_detector = LanguageDetector()
 
+        # A/B Testing support
+        self._ab_test_active = False
+        self._ab_test_config: Optional[Dict[str, Any]] = None
+
         # Statistics
         self._stats = {
             "total_requests": 0,
@@ -356,18 +361,21 @@ class UnifiedOCRRouter(OrchestrationAgent):
             "language_based": 0,
             "backend_selections": {b.value: 0 for b in BackendType},
             "fallback_used": 0,
+            "ab_test_assignments": 0,
         }
 
         # Initialize ML if enabled
         if self.use_ml_routing:
             self._init_ml_routing()
 
+        # Initialize A/B Testing
+        self._init_ab_testing()
+
         logger.info(
             "Unified OCR Router initialisiert",
-            extra={
-                "use_ml": self.use_ml_routing,
-                "ml_available": self._ml_model is not None,
-            },
+            use_ml=self.use_ml_routing,
+            ml_available=self._ml_model is not None,
+            ab_test_active=self._ab_test_active,
         )
 
     def _init_ml_routing(self) -> None:
@@ -383,11 +391,56 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 logger.info("ML-Routing: Modell nicht trainiert, nutze Regeln")
 
         except ImportError as e:
-            logger.warning("ml_routing_nicht_verfuegbar", error=str(e))
+            logger.warning("ml_routing_nicht_verfügbar", **safe_error_log(e))
             self.use_ml_routing = False
         except Exception as e:
-            logger.error("ml_routing_init_fehler", error=str(e))
+            logger.error("ml_routing_init_fehler", **safe_error_log(e))
             self.use_ml_routing = False
+
+    def _init_ab_testing(self) -> None:
+        """Initialize A/B Testing support."""
+        try:
+            from app.ml.ab_testing import get_ab_test_manager
+
+            ab_manager = get_ab_test_manager()
+
+            # Prüfe auf laufende OCR Router Experimente
+            active_experiments = ab_manager.get_active_experiments()
+            for experiment in active_experiments:
+                # Filter für OCR Router Experimente
+                if "ml router" in experiment.name.lower() or "ocr router" in experiment.name.lower():
+                    self._ab_test_config = {
+                        "experiment_id": experiment.experiment_id,
+                        "experiment": experiment,
+                    }
+                    self._ab_test_active = True
+                    logger.info(
+                        "A/B-Test aktiv für OCR Router",
+                        experiment_id=experiment.experiment_id,
+                    )
+                    break
+
+        except Exception as e:
+            logger.debug("A/B-Testing Initialisierung fehlgeschlagen", **safe_error_log(e))
+            self._ab_test_active = False
+
+    def activate_ab_test(self, config: Dict[str, Any]) -> None:
+        """
+        Start an A/B test.
+
+        Args:
+            config: A/B test configuration with experiment_id
+        """
+        self._ab_test_config = config
+        self._ab_test_active = True
+        logger.info("A/B-Test aktiviert", experiment_id=config.get("experiment_id"))
+
+    def deactivate_ab_test(self) -> None:
+        """End A/B test."""
+        if self._ab_test_active:
+            logger.info("A/B-Test deaktiviert", experiment_id=self._ab_test_config.get("experiment_id") if self._ab_test_config else None)
+        self._ab_test_active = False
+        self._ab_test_config = None
 
     def _detect_document_language(
         self,
@@ -506,7 +559,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
             queue_lengths = await redis_manager.get_queue_lengths()
             queue_length = sum(queue_lengths.values())
         except Exception as e:
-            logger.warning("queue_length_fetch_failed", error=str(e))
+            logger.warning("queue_length_fetch_failed", **safe_error_log(e))
 
         return {
             "gpu_available": gpu_status.get("available", False),
@@ -682,8 +735,11 @@ class UnifiedOCRRouter(OrchestrationAgent):
                         routing_method=RoutingMethod.USER_PREFERENCE,
                         fallback_chain=self._get_fallback_chain(backend),
                     )
-            except ValueError:
-                pass
+            except ValueError as e:
+                self.logger.debug(
+                    "user_preference_backend_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
         # Priority 2: Language-based routing for non-DE/EN documents
         lang_result = self._detect_document_language(analysis)
@@ -697,6 +753,12 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 self._stats["language_based"] += 1
                 return result
 
+        # Priority 2.5: A/B Test routing
+        if self._ab_test_active and self._ab_test_config:
+            result = await self._ab_test_selection(analysis, sla, resource_status)
+            if result:
+                return result
+
         # Priority 3: ML-based routing
         if self.use_ml_routing and self._ml_model and self._ml_model.is_trained:
             try:
@@ -704,11 +766,79 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 self._stats["ml_predictions"] += 1
                 return result
             except Exception as e:
-                logger.warning("ml_routing_fehlgeschlagen", error=str(e))
+                logger.warning("ml_routing_fehlgeschlagen", **safe_error_log(e))
                 self._stats["rule_fallbacks"] += 1
 
         # Priority 4: Rule-based selection
         return await self._rule_selection(analysis, sla, resource_status)
+
+    async def _ab_test_selection(
+        self,
+        analysis: DocumentAnalysis,
+        sla: SLARequirements,
+        resource_status: Dict[str, Any],
+    ) -> Optional[RoutingResult]:
+        """
+        A/B Test routing selection.
+
+        Returns None if A/B test doesn't apply, otherwise RoutingResult.
+        """
+        try:
+            from app.ml.ab_testing import get_ab_test_manager
+
+            ab_manager = get_ab_test_manager()
+            experiment_id = self._ab_test_config.get("experiment_id")
+
+            # Generate document ID for sticky allocation
+            # Use hash of document characteristics for consistency
+            import hashlib
+            doc_hash = hashlib.md5(
+                f"{analysis.document_type}_{analysis.complexity}_{analysis.quality_score}".encode()
+            ).hexdigest()[:16]
+
+            # Get variant assignment
+            variant = ab_manager.get_variant(experiment_id, doc_hash)
+
+            if variant:
+                # Get model version from variant config
+                model_version = variant.config.get("model_version")
+
+                # Use ML model if assigned to treatment with new model
+                if model_version and "treatment" in variant.name.lower():
+                    # Load specific model version if needed
+                    # For now, use current ML model
+                    if self._ml_model and self._ml_model.is_trained:
+                        prediction = self._ml_model.predict(
+                            document_metadata=analysis.to_metadata_dict(),
+                            sla_requirements=sla.model_dump(),
+                            resource_status=resource_status,
+                        )
+
+                        backend = BackendType.from_string(prediction["backend"])
+
+                        if not self._is_backend_available(backend, resource_status):
+                            backend = self._find_available_fallback(backend, resource_status)
+
+                        self._stats["ab_test_assignments"] += 1
+
+                        return RoutingResult(
+                            backend=backend,
+                            reason=f"A/B-Test: {variant.name} ({model_version})",
+                            confidence=prediction["confidence"],
+                            alternatives=[
+                                BackendType.from_string(a["backend"])
+                                for a in prediction.get("alternatives", [])
+                            ],
+                            routing_method=RoutingMethod.ML,
+                            model_version=model_version,
+                            probabilities=prediction.get("probabilities"),
+                            fallback_chain=self._get_fallback_chain(backend),
+                        )
+
+        except Exception as e:
+            logger.debug("A/B-Test Selection fehlgeschlagen", **safe_error_log(e))
+
+        return None
 
     async def _ml_selection(
         self,
@@ -716,7 +846,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
         sla: SLARequirements,
         resource_status: Dict[str, Any],
     ) -> RoutingResult:
-        """ML-based backend selection."""
+        """ML-based backend selection with confidence fallback."""
         prediction = self._ml_model.predict(
             document_metadata=analysis.to_metadata_dict(),
             sla_requirements=sla.model_dump(),
@@ -724,19 +854,38 @@ class UnifiedOCRRouter(OrchestrationAgent):
         )
 
         backend = BackendType.from_string(prediction["backend"])
+        confidence = prediction["confidence"]
 
         # Validate backend availability
         if not self._is_backend_available(backend, resource_status):
             backend = self._find_available_fallback(backend, resource_status)
 
+        # Confidence-based fallback strategy
+        alternatives = [
+            BackendType.from_string(a["backend"])
+            for a in prediction.get("alternatives", [])
+        ]
+
+        # Low confidence (< 0.7): Fall through to rule-based
+        if confidence < 0.7:
+            logger.info(
+                "ML-Confidence niedrig, verwende regelbasiertes Routing",
+                confidence=confidence,
+            )
+            return await self._rule_selection(analysis, sla, resource_status)
+
+        # Medium confidence (0.7-0.85): Add more alternatives
+        if confidence < 0.85:
+            # Add rule-based suggestions to alternatives
+            rule_result = await self._rule_selection(analysis, sla, resource_status)
+            if rule_result.backend not in [backend] + alternatives:
+                alternatives.append(rule_result.backend)
+
         return RoutingResult(
             backend=backend,
             reason=prediction.get("reason", "ML-Routing"),
-            confidence=prediction["confidence"],
-            alternatives=[
-                BackendType.from_string(a["backend"])
-                for a in prediction.get("alternatives", [])
-            ],
+            confidence=confidence,
+            alternatives=alternatives,
             routing_method=RoutingMethod.ML,
             model_version=prediction.get("model_version"),
             probabilities=prediction.get("probabilities"),
@@ -928,7 +1077,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 return ocr_result
 
             except Exception as e:
-                logger.error("backend_failed", backend=backend_type.value, error=str(e))
+                logger.error("backend_failed", backend=backend_type.value, **safe_error_log(e))
                 last_error = e
                 continue
 
@@ -989,6 +1138,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
 
             from app.agents.orchestration.ml_trainer import TrainingSample
 
+
             sample = TrainingSample(
                 sample_id=document_id,
                 document_metadata=analysis.to_metadata_dict(),
@@ -1011,7 +1161,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 )
 
         except Exception as e:
-            logger.warning("training_feedback_fehler", error=str(e))
+            logger.warning("training_feedback_fehler", **safe_error_log(e))
 
     # =========================================================================
     # INFO & STATS

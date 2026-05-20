@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\vqa\token\vqa_token_relation.py
+# hypothesis_version: 6.148.7
+
+['answer', 'empty_entity', 'end', 'end_index', 'entities', 'head', 'id2label', 'question', 'relations', 'start', 'start_index', 'tail']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\detection\__init__.py
+# hypothesis_version: 6.148.7
+
+['Detecting bboxes', 'RGB', 'bilinear', 'cpu', 'cuda', 'height', 'mps', 'pixel_values', 'width', 'xla']

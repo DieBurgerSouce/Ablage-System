@@ -30,11 +30,11 @@ services:
       - minio
 
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/ablage_ocr
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/ablage_ocr
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-devredis123}@redis:6379/0
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - ENVIRONMENT=development
       - PYTHONUNBUFFERED=1
       - CUDA_VISIBLE_DEVICES=0
@@ -46,20 +46,21 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=ablage_ocr
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-ablage_ocr}
     ports:
       - "5432:5432"
     networks:
       - ablage-dev-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # Redis cache and queue
+  # Fix 9: Dev-Passwort setzen fuer Enterprise Security
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -70,15 +71,15 @@ services:
     networks:
       - ablage-dev-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-devredis123}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-devredis123}
 
   # MinIO object storage
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
     restart: unless-stopped
     volumes:
       - minio-data:/data
@@ -88,8 +89,8 @@ services:
     networks:
       - ablage-dev-network
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -99,7 +100,7 @@ services:
 
   # MinIO client for bucket creation
   minio-setup:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2024-11-05T11-29-45Z
     depends_on:
       - minio
     networks:
@@ -107,7 +108,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 10;
-      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
       /usr/bin/mc mb --ignore-existing myminio/documents;
       /usr/bin/mc mb --ignore-existing myminio/thumbnails;
       /usr/bin/mc mb --ignore-existing myminio/exports;
@@ -117,11 +118,11 @@ services:
 
   # pgAdmin (optional, for database management)
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:8.13
     restart: unless-stopped
     environment:
-      - PGADMIN_DEFAULT_EMAIL=dev@ablage.local
-      - PGADMIN_DEFAULT_PASSWORD=devpassword
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-dev@ablage.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-devpassword}
       - PGADMIN_LISTEN_PORT=5050
     ports:
       - "5050:5050"
@@ -134,10 +135,10 @@ services:
 
   # Redis Commander (optional, for Redis management)
   redis-commander:
-    image: rediscommander/redis-commander:latest
+    image: rediscommander/redis-commander:0.8.1
     restart: unless-stopped
     environment:
-      - REDIS_HOSTS=local:redis:6379
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD:-devredis123}
     ports:
       - "8081:8081"
     networks:
@@ -147,9 +148,9 @@ services:
 
   # Flower (Celery monitoring) - will be started manually when needed
   flower:
-    image: mher/flower:latest
+    image: mher/flower:2.0.1
     restart: unless-stopped
-    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    command: celery --broker=redis://:${REDIS_PASSWORD:-devredis123}@redis:6379/0 flower --port=5555
     ports:
       - "5555:5555"
     networks:
@@ -157,8 +158,8 @@ services:
     depends_on:
       - redis
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-devredis123}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-devredis123}@redis:6379/0
     profiles:
       - monitoring
 

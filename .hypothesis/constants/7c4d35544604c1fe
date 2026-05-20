@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\expense_service.py
+# hypothesis_version: 6.148.7
+
+[3600, '0.00', '0.20', '0.30', '0.40', '0.70', '1.00', '14.00', '28.00', 'DE', 'EUR', 'approved', 'attendees', 'breakfast', 'business_reason', 'dinner', 'draft', 'expense_report_paid', 'full_day', 'host_company', 'in_review', 'lunch', 'none', 'occasion', 'paid', 'partial_day', 'rejected', 'submitted']

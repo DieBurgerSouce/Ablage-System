@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\erp\base_connector.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, '+00:00', 'T', 'Z', 'authenticating', 'bidirectional', 'completed_at', 'conflicts_detected', 'conflicts_resolved', 'connected', 'customer', 'detected_at', 'direction', 'disconnected', 'document', 'duration_seconds', 'entity', 'erp_id', 'error', 'error_message', 'id', 'invoice', 'local_data', 'local_id', 'local_modified_at', 'local_wins', 'merged', 'odoo', 'order', 'payment', 'product', 'pull', 'push', 'rate_limited', 'records_created', 'records_deleted', 'records_failed', 'records_synced', 'records_updated', 'remote_data', 'remote_id', 'remote_modified_at', 'remote_wins', 'resolution', 'resolved_at', 'started_at', 'success', 'supplier', 'sync_id', 'updated_at', 'write_date']

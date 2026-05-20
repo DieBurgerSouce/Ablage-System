@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\covering.py
+# hypothesis_version: 6.148.7
+
+['directed', 'is_edge_cover', 'min_edge_cover', 'multigraph']

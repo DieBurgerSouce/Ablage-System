@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\optimizer\modelaverage.py
+# hypothesis_version: 6.148.7
+
+[0.0, 10000, 'average_accumulates', 'average_window', 'float32', 'in_num_accumulates', 'in_num_updates', 'in_sum_1', 'in_sum_2', 'in_sum_3', 'int64', 'max_average_window', 'min_average_window', 'num_accumulates', 'num_updates', 'old_num_accumulates', 'out_num_accumulates', 'out_num_updates', 'out_sum_1', 'out_sum_2', 'out_sum_3', 'param', 'restore', 'sum_1', 'sum_2', 'sum_3']

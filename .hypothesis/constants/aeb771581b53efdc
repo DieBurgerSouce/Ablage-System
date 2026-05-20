@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\gpu_recovery.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 8.0, 10.0, 12.0, 13.6, 100, 1024, 'T', 'allocated_gb', 'backend', 'batch_size', 'batch_size_history', 'batch_size_reduced', 'cannot allocate', 'cuda out of memory', 'deepseek', 'donut', 'got_ocr', 'gpu_memory_cleared', 'gpu_oom_detected', 'gpu_recovery_failed', 'hybrid', 'incident_category', 'last_memory_stats', 'memory allocation', 'memory_stats', 'oom', 'oom_count', 'oom_counts', 'optimal_batch_sizes', 'out of memory', 'surya_gpu', 'torch_not_available', 'total_gb', 'utilization', 'utilization_percent']

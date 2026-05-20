@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\scaler.py
+# hypothesis_version: 6.148.7
+
+['_comm_buffers', '_param_groups', '_sharding_enable', 'bool', 'int32', 'main_grad', 'params', 'sharding_configs']

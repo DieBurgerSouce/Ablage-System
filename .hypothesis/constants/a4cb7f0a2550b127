@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\fce_targets.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 1e-08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.5, 0.55, 0.65, 1.0, 2.0, 4.0, 400, 'ignore_tags', 'image', 'p3_maps', 'p4_maps', 'p5_maps', 'polys']

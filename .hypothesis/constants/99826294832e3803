@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\layer\transformer.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 1e-05, 0.1, 1.0, 1000000000.0, 512, 2048, 'Cache', 'StaticCache', '_', '__class__', 'bool', 'int', 'k', 'relu', 'self', 'upscale_in_train', 'v']

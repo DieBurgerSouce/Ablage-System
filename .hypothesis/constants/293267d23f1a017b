@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\surya\encoder\config.py
+# hypothesis_version: 6.148.7
+
+[0.02, 112, 1280, 3420, 4096, 'depth', 'num_attention_heads', 'num_heads', 'num_hidden_layers', 'qwen2_5_vl', 'silu', 'vision_config']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_dropout.py
+# hypothesis_version: 6.148.7
+
+['.', 'Mask', 'Out', 'Seed', 'X', 'deterministic', 'dropout', 'fix_seed', 'force_cpu', 'op_namescope', 'random_control', 'rc_seed', 'rng_name', 'seed', 'tensor_parallel_seed', 'tmp']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen2\configuration_qwen2.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 0.02, 10000.0, 4096, 22016, 32768, 151936, 'Qwen2Config', 'attention_mask', 'colwise', 'embed_tokens', 'full_attention', 'hidden_states', 'input_ids', 'inputs_embeds', 'layers', 'layers.*.mlp.up_proj', 'norm', 'past_key_values', 'qwen2', 'rope_type', 'rowwise', 'silu', 'sliding_attention', 'type']

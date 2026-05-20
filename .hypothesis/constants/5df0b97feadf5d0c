@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\erp.py
+# hypothesis_version: 6.148.7
+
+[100, 255, 500, 1000, 1440, '/conflicts', '/connections', '/erp', '/stats', 'Konflikt aufloesen', 'Konflikte auflisten', 'Sync manuell starten', 'Verbindung testen', '^(full|delta)$', 'active_connections', 'api_key', 'bidirectional', 'customer', 'delta', 'encrypted_api_key', 'erp-admin', 'erp_sync_triggered', 'invoice', 'message', 'odoo', 'pending', 'pending_conflicts', 'status', 'supplier', 'sync_type', 'syncs_last_24h', 'task_id', 'total_connections']

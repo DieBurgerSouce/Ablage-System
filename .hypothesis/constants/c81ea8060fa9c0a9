@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\approval\approval_service.py
+# hypothesis_version: 6.148.7
+
+[3600, 'Anfrage abgelehnt', 'Anfrage storniert', 'EUR', 'amount', 'approval_role_match', 'approved', 'description', 'epoch', 'group', 'match_score', 'matched_conditions', 'name', 'rejected', 'required', 'role', 'rule_name', 'title', 'type', 'user', 'value']

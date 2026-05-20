@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\sparse\nn\__init__.py
+# hypothesis_version: 6.148.7
+
+['BatchNorm', 'Conv2D', 'Conv3D', 'LeakyReLU', 'MaxPool3D', 'ReLU', 'ReLU6', 'Softmax', 'SubmConv2D', 'SubmConv3D', 'SyncBatchNorm']

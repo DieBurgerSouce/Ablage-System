@@ -1,45 +1,58 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
-import { DocumentGrid } from '@/features/documents/components/DocumentGrid'
-import { mockDocuments } from '@/lib/mock-data'
+import { useEffect } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { usePermissions } from '@/lib/auth/hooks/use-permissions'
+import {
+    AdminDashboardView,
+    EditorDashboardView,
+    SimplifiedDashboardView
+} from '@/components/dashboard'
+import { CompanySetupWizard } from '@/components/onboarding/CompanySetupWizard'
+import { AnimatedPage } from '@/components/animations'
+import { emitChecklistComplete } from '@/features/product-tour'
 
 export const Route = createFileRoute('/')({
     component: Index,
 })
 
+/**
+ * Rollenbasiertes Dashboard
+ *
+ * - Admin/Superuser: Volles Dashboard mit KPIs, Finanz-Übersicht, Management-Tools
+ * - Editor: Workflow-fokussiert mit Validierungsaufgaben und Statistiken
+ * - Viewer/Azubi: Vereinfachte Ansicht mit Quick-Actions und Upload
+ *
+ * Der Company-Setup-Wizard wird automatisch angezeigt, wenn:
+ * - Der Benutzer Admin ist UND
+ * - Noch keine Firma existiert UND
+ * - Der Wizard noch nicht übersprungen wurde
+ */
 function Index() {
-    const navigate = useNavigate()
-    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const { user } = useAuth()
+    const { isAdmin, isEditor } = usePermissions()
 
-    const handleSelect = (id: string, selected: boolean) => {
-        if (selected) {
-            setSelectedIds(prev => [...prev, id])
-        } else {
-            setSelectedIds(prev => prev.filter(i => i !== id))
-        }
+    useEffect(() => {
+        emitChecklistComplete('view_dashboard')
+    }, [])
+
+    const userName = user?.full_name || user?.username
+
+    // Admin/Prokurist: Vollständiges Management-Dashboard
+    if (isAdmin) {
+        return (
+            <AnimatedPage>
+                {/* Company-Setup-Wizard für Admins ohne Firma */}
+                <CompanySetupWizard />
+                <AdminDashboardView userName={userName} />
+            </AnimatedPage>
+        )
     }
 
-    return (
-        <div className="h-full flex flex-col">
-            <div className="p-6 border-b flex justify-between items-center bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Dokumente</h1>
-                    <p className="text-muted-foreground">Verwalten Sie Ihre digitalen Assets.</p>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                    {mockDocuments.length} Dateien
-                </div>
-            </div>
+    // Editor: Workflow-fokussierte Ansicht
+    if (isEditor) {
+        return <AnimatedPage><EditorDashboardView userName={userName} /></AnimatedPage>
+    }
 
-            <div className="flex-1 overflow-hidden">
-                <DocumentGrid
-                    documents={mockDocuments}
-                    viewMode="grid"
-                    selectedIds={selectedIds}
-                    onSelect={handleSelect}
-                    onDocumentClick={(id) => navigate({ to: '/documents/$documentId', params: { documentId: id } })}
-                />
-            </div>
-        </div>
-    )
+    // Viewer/Azubi: Vereinfachte Ansicht
+    return <AnimatedPage><SimplifiedDashboardView userName={userName} /></AnimatedPage>
 }

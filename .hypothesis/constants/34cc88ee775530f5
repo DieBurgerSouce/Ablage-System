@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\pipeline.py
+# hypothesis_version: 6.148.7
+
+[', ...]', '-%d', 'FeatureUnion', 'Pipeline', '__', 'boolean', 'cache', 'decision_function', 'drop', 'fit', 'fit_predict', 'fit_transform', 'inverse_transform', 'location', 'make_pipeline', 'make_union', 'memory', 'one-to-one', 'parallel', 'passthrough', 'predict', 'predict_log_proba', 'predict_proba', 'sample_weight', 'score', 'score_samples', 'serial', 'shape', 'steps', 'transform', 'transform_input', 'transformer_list', 'verbose']

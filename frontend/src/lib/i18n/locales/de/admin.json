@@ -1,0 +1,194 @@
+{
+  "title": "Administration",
+  "subtitle": "Systemverwaltung",
+  "users": {
+    "title": "Benutzerverwaltung",
+    "subtitle": "Benutzer und Berechtigungen verwalten",
+    "list": "Benutzerliste",
+    "add": "Benutzer hinzufügen",
+    "edit": "Benutzer bearbeiten",
+    "delete": "Benutzer löschen",
+    "noUsers": "Keine Benutzer vorhanden",
+    "fields": {
+      "email": "E-Mail",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "role": "Rolle",
+      "company": "Firma",
+      "status": "Status",
+      "lastLogin": "Letzte Anmeldung",
+      "createdAt": "Erstellt am"
+    },
+    "roles": {
+      "admin": "Administrator",
+      "manager": "Manager",
+      "editor": "Bearbeiter",
+      "viewer": "Betrachter",
+      "guest": "Gast"
+    },
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "pending": "Ausstehend",
+      "blocked": "Gesperrt"
+    },
+    "actions": {
+      "activate": "Aktivieren",
+      "deactivate": "Deaktivieren",
+      "block": "Sperren",
+      "unblock": "Entsperren",
+      "resetPassword": "Passwort zurücksetzen",
+      "impersonate": "Als Benutzer anmelden"
+    }
+  },
+  "companies": {
+    "title": "Firmenverwaltung",
+    "subtitle": "Mandanten verwalten",
+    "list": "Firmenliste",
+    "add": "Firma hinzufügen",
+    "edit": "Firma bearbeiten",
+    "delete": "Firma löschen",
+    "fields": {
+      "name": "Firmenname",
+      "identifier": "Kennung",
+      "vatId": "USt-IdNr.",
+      "address": "Adresse",
+      "users": "Benutzer",
+      "documents": "Dokumente",
+      "status": "Status"
+    }
+  },
+  "system": {
+    "title": "System",
+    "subtitle": "Systemstatus und Konfiguration",
+    "health": {
+      "title": "Systemstatus",
+      "status": "Status",
+      "healthy": "Gesund",
+      "degraded": "Eingeschränkt",
+      "unhealthy": "Nicht verfügbar",
+      "components": {
+        "api": "API-Server",
+        "database": "Datenbank",
+        "redis": "Redis",
+        "minio": "MinIO",
+        "ocr": "OCR-Dienst",
+        "gpu": "GPU",
+        "celery": "Celery Workers"
+      }
+    },
+    "metrics": {
+      "title": "Metriken",
+      "cpu": "CPU-Auslastung",
+      "memory": "Speicher",
+      "disk": "Festplatte",
+      "gpu": "GPU-Speicher",
+      "requests": "Anfragen/Sek",
+      "documents": "Dokumente verarbeitet",
+      "errors": "Fehler"
+    },
+    "logs": {
+      "title": "Protokolle",
+      "level": "Log-Level",
+      "source": "Quelle",
+      "message": "Nachricht",
+      "timestamp": "Zeitstempel",
+      "filter": "Filtern",
+      "download": "Herunterladen",
+      "levels": {
+        "debug": "Debug",
+        "info": "Info",
+        "warning": "Warnung",
+        "error": "Fehler",
+        "critical": "Kritisch"
+      }
+    }
+  },
+  "backup": {
+    "title": "Backup",
+    "subtitle": "Datensicherung verwalten",
+    "create": "Backup erstellen",
+    "restore": "Backup wiederherstellen",
+    "schedule": "Zeitplan",
+    "history": "Backup-Verlauf",
+    "noBackups": "Keine Backups vorhanden",
+    "fields": {
+      "name": "Name",
+      "size": "Größe",
+      "date": "Datum",
+      "type": "Typ",
+      "status": "Status"
+    },
+    "types": {
+      "full": "Vollständig",
+      "database": "Datenbank",
+      "documents": "Dokumente",
+      "config": "Konfiguration"
+    },
+    "status": {
+      "pending": "Ausstehend",
+      "inProgress": "Wird erstellt",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen"
+    }
+  },
+  "integrations": {
+    "title": "Integrationen",
+    "subtitle": "Externe Dienste verbinden",
+    "datev": {
+      "title": "DATEV",
+      "status": "Verbindungsstatus",
+      "connect": "Verbinden",
+      "disconnect": "Trennen",
+      "sync": "Synchronisieren",
+      "lastSync": "Letzte Synchronisation"
+    },
+    "slack": {
+      "title": "Slack",
+      "enabled": "Aktiviert",
+      "webhook": "Webhook-URL",
+      "channel": "Kanal",
+      "test": "Testbenachrichtigung senden"
+    },
+    "teams": {
+      "title": "Microsoft Teams",
+      "enabled": "Aktiviert",
+      "webhook": "Webhook-URL",
+      "test": "Testbenachrichtigung senden"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "save": "Einstellungen speichern",
+    "reset": "Auf Standard zurücksetzen",
+    "categories": {
+      "general": "Allgemein",
+      "security": "Sicherheit",
+      "notifications": "Benachrichtigungen",
+      "processing": "Verarbeitung",
+      "storage": "Speicher"
+    }
+  },
+  "audit": {
+    "title": "Audit-Log",
+    "subtitle": "Systemaktivitäten",
+    "fields": {
+      "action": "Aktion",
+      "user": "Benutzer",
+      "resource": "Ressource",
+      "timestamp": "Zeitstempel",
+      "details": "Details",
+      "ip": "IP-Adresse"
+    },
+    "actions": {
+      "create": "Erstellt",
+      "update": "Aktualisiert",
+      "delete": "Gelöscht",
+      "login": "Angemeldet",
+      "logout": "Abgemeldet",
+      "export": "Exportiert",
+      "approve": "Genehmigt",
+      "reject": "Abgelehnt"
+    }
+  }
+}

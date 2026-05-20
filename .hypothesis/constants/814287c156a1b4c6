@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\admin\user_admin_service.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, 10000, 100000, '%', '\\', '\\%', '\\\\', '\\_', '_', 'activate_user', 'admin', 'api_per_minute', 'batch_hourly', 'change_role', 'changes', 'create_user', 'created_at', 'deactivate_user', 'delete_user', 'deleted_user_email', 'deleted_user_id', 'email', 'free', 'is_superuser', 'new', 'new_is_superuser', 'ocr_daily', 'ocr_hourly', 'old', 'old_is_superuser', 'premium', 'reason', 'reset_password', 'tier', 'update_user', 'user_activated', 'user_deactivated', 'user_role_changed', 'username', 'value']

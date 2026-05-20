@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\skimage\util\dtype.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.5, 1.0, 2.0, 'b', 'bool8', 'dtype_limits', 'f', 'float64', 'i', 'ignore', 'img_as_bool', 'img_as_float', 'img_as_float32', 'img_as_float64', 'img_as_int', 'img_as_ubyte', 'img_as_uint', 'u', 'ui', 'unsafe']

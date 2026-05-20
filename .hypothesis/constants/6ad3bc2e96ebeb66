@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\vqa\token\vqa_token_chunk.py
+# hypothesis_version: 6.148.7
+
+[512, 'ANSWER', 'HEADER', 'QUESTION', 'attention_mask', 'bbox', 'end', 'end_index', 'entities', 'head', 'input_ids', 'label', 'labels', 'relations', 'start', 'start_index', 'tail', 'token_type_ids']

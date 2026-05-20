@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\document_templates.py
+# hypothesis_version: 6.148.7
+
+[200, 500, '.docx', '.html', '/brief', '/categories', '/document-templates', '/generate', '/generated', '/snippets', '/{template_id}', 'Content-Disposition', 'Dokumentvorlagen', 'Filter nach Vorlage', 'Suche in Name, Code', 'application/pdf', 'bottom', 'category', 'count', 'create_new_version', 'default_template_id', 'document_generated', 'errors', 'html', 'left', 'model_dump', 'name', 'required', 'required_variables', 'right', 'snippet_created', 'template_created', 'template_id', 'template_name', 'template_updated', 'text/html', 'top', 'valid', 'variables']

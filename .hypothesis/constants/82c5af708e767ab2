@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_awq.py
+# hypothesis_version: 6.148.7
+
+['0.2.0', '0.2.6', 'PreTrainedModel', 'accelerate', 'autoawq', 'awq', 'cpu', 'disk']

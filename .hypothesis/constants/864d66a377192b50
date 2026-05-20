@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_lfw.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 255.0, 172, 195, 250, 1000, '%s is missing', '10_folds', 'Different persons', 'Same person', 'UTF-8', '_', 'boolean', 'color', 'data_home', 'delay', 'download_if_missing', 'funneled', 'invalid line %d: %r', 'left', 'lfw', 'lfw-funneled.tgz', 'lfw.rst', 'lfw.tgz', 'lfw_funneled', 'lfw_home', 'min_faces_per_person', 'n_retries', 'neither', 'pairs.txt', 'pairsDevTest.txt', 'pairsDevTrain.txt', 'r:gz', 'rb', 'resize', 'return_X_y', 'slice_', 'subset', 'test', 'train']

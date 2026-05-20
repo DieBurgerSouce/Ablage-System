@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\tensor\search.py
+# hypothesis_version: 6.148.7
+
+['Condition', 'Index', 'Indices', 'K', 'Mask', 'Out', 'SortedSequence', 'Values', 'X', 'Y', 'arg_max', 'arg_min', 'argmax', 'argmin', 'argsort', 'axis', 'bool', 'complex128', 'complex64', 'condition', 'descending', 'dim', 'dtype', 'flatten', 'float16', 'float32', 'float64', 'ids', 'index', 'index_sample', 'index_select', 'input', 'int16', 'int32', 'int64', 'k', 'keepdim', 'keepdims', 'kthvalue', 'largest', 'mask', 'masked_select', 'mode', 'non-truncated', 'other', 'out', 'out_int32', 'paddle.argmax', 'paddle.argmin', 'paddle.compat.sort', 'paddle.searchsorted', 'paddle.sort', 'ps', 'right', 'searchsorted', 'seed', 'sort', 'sorted', 'stable', 'threshold', 'top_k_v2', 'top_p_sampling', 'topk_ids', 'topk_scores', 'topp_seed', 'torch/torch.sort', 'truncated', 'uint16', 'uint8', 'where', 'where_index', 'x', 'y']

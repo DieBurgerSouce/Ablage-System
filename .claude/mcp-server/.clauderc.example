@@ -1,0 +1,100 @@
+{
+  "_comment": "Claude Code Configuration - MCP Server Registration",
+  "_instructions": "Copy relevant sections to C:\\Users\\benfi\\.clauderc",
+
+  "mcp_servers": {
+    "orchestration": {
+      "command": "python",
+      "args": ["C:\\Users\\benfi\\Ablage_System\\.claude\\mcp-server\\orchestration_server.py"],
+      "enabled": true,
+      "auto_start": true,
+      "env": {
+        "_comment": "Optional environment variables for the MCP server",
+        "LOG_LEVEL": "INFO",
+        "CACHE_ENABLED": "true"
+      }
+    }
+  },
+
+  "orchestration": {
+    "_comment": "Orchestration system configuration",
+    "enabled": true,
+    "cache_enabled": true,
+    "auto_routing": true,
+    "specialized_agents_enabled": true,
+    "quality_gate_enabled": true,
+    "auto_escalation": true,
+
+    "thresholds": {
+      "_comment": "Quality thresholds for each tier",
+      "haiku_quality_min": 0.95,
+      "sonnet_quality_min": 0.85,
+      "opus_quality_min": 0.80,
+      "cache_ttl_days": 7
+    },
+
+    "performance": {
+      "_comment": "Performance targets (informational)",
+      "routing_latency_ms": 100,
+      "token_savings_pct": 40,
+      "escalation_rate_pct": 10,
+      "cache_hit_rate_pct": 30
+    }
+  },
+
+  "specialized_agents": {
+    "_comment": "Configuration for specialized domain expert agents",
+
+    "refactoring-expert": {
+      "enabled": true,
+      "model": "opus",
+      "priority": 1,
+      "keywords": ["refactor", "migrate", "modernize", "umstruktur", "migration", "transition"],
+      "min_files": 5
+    },
+
+    "ocr-specialist": {
+      "enabled": true,
+      "model": "opus",
+      "priority": 1,
+      "keywords": ["ocr", "deepseek", "got-ocr", "surya", "gpu", "vram", "batch", "fraktur"],
+      "file_patterns": ["app/agents/ocr/*", "app/services/ocr_service.py"]
+    },
+
+    "testing-expert": {
+      "enabled": true,
+      "model": "sonnet",
+      "priority": 2,
+      "keywords": ["test", "pytest", "coverage", "fixture", "integration test", "unit test"],
+      "file_patterns": ["tests/*"]
+    },
+
+    "database-expert": {
+      "enabled": true,
+      "model": "sonnet",
+      "priority": 2,
+      "keywords": ["database", "sqlalchemy", "alembic", "migration", "postgres", "pgvector", "schema"],
+      "file_patterns": ["app/db/models.py", "alembic/versions/*"]
+    }
+  },
+
+  "metrics": {
+    "_comment": "Metrics collection and reporting",
+    "enabled": true,
+    "collection_interval_minutes": 15,
+    "retention_days": 30,
+    "export_format": "json",
+    "export_path": "C:\\Users\\benfi\\Ablage_System\\.claude\\mcp-server\\metrics\\"
+  },
+
+  "logging": {
+    "_comment": "Logging configuration for MCP server",
+    "level": "INFO",
+    "format": "json",
+    "output": "C:\\Users\\benfi\\Ablage_System\\.claude\\mcp-server\\logs\\orchestration.log",
+    "rotation": {
+      "max_size_mb": 10,
+      "backup_count": 5
+    }
+  }
+}

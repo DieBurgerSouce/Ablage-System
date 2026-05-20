@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\slide.py
+# hypothesis_version: 6.148.7
+
+['a', 'a:blipFill', 'a:effectDag', 'a:effectLst', 'a:extLst', 'a:gradFill', 'a:grpFill', 'a:noFill', 'a:pattFill', 'a:solidFill', 'name', 'notes', 'notesMaster', 'p', 'p:bg', 'p:bgPr', 'p:bgRef', 'p:bldLst', 'p:cMediaNode', 'p:cSld', 'p:clrMap', 'p:clrMapOvr', 'p:controls', 'p:custDataLst', 'p:extLst', 'p:hf', 'p:notesStyle', 'p:sldLayoutId', 'p:sldLayoutIdLst', 'p:spTree', 'p:timing', 'p:tnLst', 'p:transition', 'p:txStyles', 'r', 'r:id']

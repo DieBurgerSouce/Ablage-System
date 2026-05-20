@@ -14,6 +14,7 @@ import io
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any
 import structlog
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -286,8 +287,8 @@ def validate_pdf_security(
                 # Extrahiere Text um dekomprimierte Größe zu schätzen
                 text = page.extract_text() or ""
                 estimated_decompressed += len(text.encode('utf-8'))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("pdf_text_extraction_failed", error_type=type(e).__name__)
 
         if estimated_decompressed > 0 and total_compressed > 0:
             # Schätze Verhältnis basierend auf Sample
@@ -319,9 +320,9 @@ def validate_pdf_security(
         logger.error(
             "pdf_validation_error",
             filename=filename,
-            error=str(e)
+            **safe_error_log(e)
         )
-        return False, f"PDF-Validierung fehlgeschlagen: {str(e)}", metadata
+        return False, safe_error_detail(e, "PDF-Validierung"), metadata
 
 
 # ==================== Image Validierung ====================
@@ -346,6 +347,7 @@ def validate_image_security(
     """
     try:
         from PIL import Image
+
     except ImportError:
         logger.warning("pillow_not_available", filename=filename)
         return True, "", {"warning": "Pillow nicht verfügbar für erweiterte Validierung"}
@@ -408,7 +410,7 @@ def validate_image_security(
         logger.warning(
             "image_decompression_bomb",
             filename=filename,
-            error=str(e)
+            **safe_error_log(e)
         )
         return False, "Sicherheitswarnung: Mögliche Bild-Dekompressions-Bombe erkannt.", metadata
 
@@ -416,9 +418,9 @@ def validate_image_security(
         logger.error(
             "image_validation_error",
             filename=filename,
-            error=str(e)
+            **safe_error_log(e)
         )
-        return False, f"Bild-Validierung fehlgeschlagen: {str(e)}", metadata
+        return False, safe_error_detail(e, "Bild-Validierung"), metadata
 
 
 # ==================== Magic Bytes Validierung ====================

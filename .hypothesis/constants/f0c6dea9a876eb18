@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\detection\processor.py
+# hypothesis_version: 6.148.7
+
+[255, 512, 'data_format', 'do_normalize', 'do_reduce_labels', 'do_rescale', 'do_resize', 'height', 'image_mean', 'image_std', 'images', 'input_data_format', 'pixel_values', 'reduce_labels', 'resample', 'rescale_factor', 'return_tensors', 'segmentation_maps', 'size', 'width']

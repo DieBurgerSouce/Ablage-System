@@ -9,8 +9,9 @@ Provides high-level interface for:
 """
 
 import structlog
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone
+from app.core.datetime_utils import utc_now
+from typing import Dict, Any, List, Optional, Union
 from uuid import UUID
 
 from celery.result import AsyncResult
@@ -101,7 +102,7 @@ class TaskService:
 
         # Update job with task ID
         job.worker_id = task.id
-        job.started_at = datetime.utcnow()
+        job.started_at = utc_now()
         await session.commit()
 
         logger.info("document_task_submitted", document_id=str(document_id), task_id=task.id, backend=backend, priority=priority)
@@ -112,7 +113,7 @@ class TaskService:
             "document_id": str(document_id),
             "status": "queued",
             "priority": priority,
-            "submitted_at": datetime.utcnow().isoformat(),
+            "submitted_at": utc_now().isoformat(),
         }
 
     async def submit_batch_task(
@@ -157,8 +158,46 @@ class TaskService:
             "document_count": len(document_ids),
             "status": "queued",
             "priority": priority,
-            "submitted_at": datetime.utcnow().isoformat(),
+            "submitted_at": utc_now().isoformat(),
         }
+
+    async def verify_task_ownership(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        user_id: UUID
+    ) -> bool:
+        """Verify that a task belongs to a user.
+
+        Y.1-Y.2 SECURITY FIX: Task-Ownership-Prüfung hinzugefuegt.
+
+        Checks via ProcessingJob -> Document -> owner_id chain.
+
+        Args:
+            session: Database session
+            task_id: Celery task ID (worker_id in ProcessingJob)
+            user_id: User UUID to verify against
+
+        Returns:
+            True if task belongs to user or user is admin, False otherwise
+        """
+        result = await session.execute(
+            select(ProcessingJob)
+            .join(Document, ProcessingJob.document_id == Document.id)
+            .where(ProcessingJob.worker_id == task_id)
+            .where(Document.owner_id == user_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if job:
+            return True
+
+        logger.warning(
+            "task_ownership_denied",
+            task_id=task_id,
+            user_id=str(user_id),
+        )
+        return False
 
     def get_task_status(self, task_id: str) -> Dict[str, Any]:
         """Get current status of a task.
@@ -180,7 +219,7 @@ class TaskService:
         }
 
         # Add progress info if available
-        if task_result.state == states.PROGRESS or task_result.state == "PROGRESS":
+        if task_result.state == "PROGRESS":
             info = task_result.info or {}
             status_info.update({
                 "progress": info.get("progress", 0),
@@ -231,7 +270,7 @@ class TaskService:
                 "state": task_result.state,
             }
 
-    def get_task_result(self, task_id: str, timeout: Optional[float] = None) -> Any:
+    def get_task_result(self, task_id: str, timeout: Optional[float] = None) -> Union[Dict[str, Any], List[Any], str, int, float, bool, None]:
         """Get task result (blocks until complete if timeout specified).
 
         Args:
@@ -239,7 +278,7 @@ class TaskService:
             timeout: Optional timeout in seconds
 
         Returns:
-            Task result
+            Task result (type depends on the task, commonly Dict or serializable types)
 
         Raises:
             TimeoutError: If timeout is reached

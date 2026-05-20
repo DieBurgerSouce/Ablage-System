@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\skimage\morphology\misc.py
+# hypothesis_version: 6.148.7
+
+['C', 'binary_closing', 'binary_dilation', 'binary_erosion', 'binary_opening', 'black_tophat', 'closing', 'dilation', 'erosion', 'grey_', 'opening', 'safe', 'stable', 'white_tophat']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\emergency_service.py
+# hypothesis_version: 6.148.7
+
+[1000, '%d.%m.%Y %H:%M UTC', '@', 'Jetzt', 'Nicht angegeben', '[no-email]', 'admin', 'approved_at', 'contact_email', 'contact_name', 'contact_not_found', 'contact_relationship', 'owner_name', 'reason', 'request_id', 'space_name', 'waiting_days', 'waiting_until']

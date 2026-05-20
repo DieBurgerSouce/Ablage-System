@@ -1,0 +1,263 @@
+# PR Security Scan - Ablage-System OCR
+# Trivy Scanning mit PR Kommentaren fuer schnelles Feedback
+
+name: PR Security
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  # Job 1: Trivy Filesystem Scan mit PR Kommentar
+  trivy-scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 # v0.31.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          output: 'trivy-results.txt'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      - name: Run Trivy (JSON for processing)
+        uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 # v0.31.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      - name: Process Trivy Results
+        id: trivy-process
+        run: |
+          # Count vulnerabilities
+          CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-results.json 2>/dev/null || echo "0")
+          HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-results.json 2>/dev/null || echo "0")
+          TOTAL=$((CRITICAL + HIGH))
+
+          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "high=$HIGH" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+          if [ "$TOTAL" -gt 0 ]; then
+            echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR Comment (Vulnerabilities Found)
+        if: steps.trivy-process.outputs.has_vulnerabilities == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const fs = require('fs');
+            const trivyResults = fs.readFileSync('trivy-results.txt', 'utf8');
+
+            const comment = `## :shield: Security Scan Results
+
+            **Trivy hat Sicherheitslücken gefunden:**
+
+            | Severity | Count |
+            |----------|-------|
+            | :red_circle: Critical | ${{ steps.trivy-process.outputs.critical }} |
+            | :orange_circle: High | ${{ steps.trivy-process.outputs.high }} |
+            | **Total** | **${{ steps.trivy-process.outputs.total }}** |
+
+            <details>
+            <summary>Details anzeigen</summary>
+
+            \`\`\`
+            ${trivyResults.substring(0, 60000)}
+            \`\`\`
+
+            </details>
+
+            > :warning: **Bitte beheben Sie kritische und hohe Schwachstellen vor dem Merge.**
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Create PR Comment (No Vulnerabilities)
+        if: steps.trivy-process.outputs.has_vulnerabilities == 'false'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const comment = `## :shield: Security Scan Results
+
+            :white_check_mark: **Keine kritischen oder hohen Schwachstellen gefunden!**
+
+            Der Trivy Security Scan hat keine Sicherheitsprobleme in diesem PR identifiziert.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Run Trivy (SARIF)
+        uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 # v0.31.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+        continue-on-error: true
+
+      - name: Fail on Critical Vulnerabilities
+        if: steps.trivy-process.outputs.critical > 0
+        run: |
+          echo "::error::Kritische Schwachstellen gefunden! Bitte beheben Sie diese vor dem Merge."
+          exit 1
+
+  # Job 2: Dependency License Check
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-licenses
+        run: |
+          pip install pip-licenses
+          pip install -r requirements.txt
+
+      - name: Check Licenses
+        id: licenses
+        run: |
+          echo "## License Report" > license-report.md
+          echo "" >> license-report.md
+          pip-licenses --format=markdown >> license-report.md
+
+          # Check for problematic licenses
+          COPYLEFT=$(pip-licenses --fail-on="GPL;LGPL;AGPL" 2>&1 || true)
+          if echo "$COPYLEFT" | grep -q "fail"; then
+            echo "has_copyleft=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_copyleft=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on Copyleft Licenses
+        if: steps.licenses.outputs.has_copyleft == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const comment = `## :page_facing_up: License Check Warning
+
+            :warning: **Copyleft-Lizenzen entdeckt!**
+
+            Einige Abhängigkeiten verwenden GPL/LGPL/AGPL Lizenzen.
+            Bitte überprüfen Sie die Lizenzkompatibilität.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Job 3: Secret Detection
+  secret-detection:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@2a454e7e8188b0777e98c5b1d9e0c48ddb773de1 # v3.88.26
+        with:
+          extra_args: --only-verified --fail
+
+      - name: Comment on Secrets Found
+        if: failure()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const comment = `## :rotating_light: Secret Detection Alert
+
+            :x: **Verifizierte Secrets im Code gefunden!**
+
+            Der TruffleHog Scanner hat Geheimnisse (API Keys, Passwörter, etc.) im Code entdeckt.
+
+            **Sofortige Maßnahmen erforderlich:**
+            1. Entfernen Sie die Secrets aus dem Code
+            2. Rotieren Sie die betroffenen Credentials
+            3. Verwenden Sie Umgebungsvariablen oder Secret Manager
+
+            > :warning: **Dieser PR kann nicht gemergt werden, bis die Secrets entfernt wurden.**
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Job 4: Security Summary
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [trivy-scan, license-check, secret-detection]
+    if: always()
+
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## PR Security Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Vulnerability Scan | ${{ needs.trivy-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Compliance | ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Detection | ${{ needs.secret-detection.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.trivy-scan.result }}" == "failure" || \
+                "${{ needs.secret-detection.result }}" == "failure" ]]; then
+            echo ":x: **Security checks failed - PR cannot be merged**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo ":white_check_mark: **All security checks passed**" >> $GITHUB_STEP_SUMMARY
+          fi

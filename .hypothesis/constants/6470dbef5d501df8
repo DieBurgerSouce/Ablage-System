@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\spawn.py
+# hypothesis_version: 6.148.7
+
+[',', '127.0.0.1', ':', 'CUDA_VISIBLE_DEVICES', 'FLAGS_selected_gpus', 'FLAGS_selected_xpus', 'XPU_VISIBLE_DEVICES', 'auto', 'backend', 'bkcl', 'cluster_node_ips', 'cpu', 'fork', 'forkserver', 'gloo', 'gpu', 'gpus', 'http_proxy', 'https_proxy', 'ips', 'nccl', 'node_ip', 'print_config', 'selected_devices', 'spawn', 'start_method', 'started_port', 'use_paddlecloud', 'xccl', 'xpu', 'xpus']

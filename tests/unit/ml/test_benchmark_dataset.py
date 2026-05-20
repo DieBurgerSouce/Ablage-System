@@ -80,6 +80,10 @@ class TestBenchmarkResult:
             wer=0.1,
             char_accuracy=0.95,
             word_accuracy=0.9,
+            levenshtein_distance=2,
+            insertions=0,
+            deletions=1,
+            substitutions=1,
             umlaut_accuracy=1.0
         )
 
@@ -106,6 +110,10 @@ class TestBenchmarkResult:
             wer=0.1,
             char_accuracy=0.95,
             word_accuracy=0.9,
+            levenshtein_distance=2,
+            insertions=0,
+            deletions=1,
+            substitutions=1,
             umlaut_accuracy=1.0
         )
 
@@ -180,106 +188,92 @@ class TestBenchmarkDataset:
 
     def test_add_sample(self):
         """Test adding a sample to dataset."""
-        sample = BenchmarkSample(
-            id="test_001",
+        # add_sample nimmt einzelne Parameter
+        sample = self.dataset.add_sample(
             image_path="/path/to/image.png",
-            ground_truth_text="Test Text",
-            document_type=DocumentType.INVOICE,
-            language=Language.DE,
-            difficulty=Difficulty.MEDIUM,
+            ground_truth="Test Text",
+            document_type="invoice",
+            language="de",
+            difficulty="medium",
             has_fraktur=False,
-            expected_umlauts=[],
         )
 
-        self.dataset.add_sample(sample)
-
-        assert len(self.dataset.samples) == 1
-        assert self.dataset.get_sample("test_001") is not None
+        # Prüfe Sample
+        assert sample is not None
+        assert sample.ground_truth_text == "Test Text"  # ground_truth_text statt ground_truth
+        all_samples = list(self.dataset.get_samples())  # Generator zu Liste
+        assert len(all_samples) == 1
 
     def test_filter_by_type(self):
         """Test filtering samples by document type."""
         # Add samples of different types
-        self.dataset.add_sample(BenchmarkSample(
-            id="invoice_001",
+        self.dataset.add_sample(
             image_path="/path/1.png",
-            ground_truth_text="Rechnung",
-            document_type=DocumentType.INVOICE,
-            language=Language.DE,
-            difficulty=Difficulty.EASY,
-            has_fraktur=False,
-            expected_umlauts=[],
-        ))
-        self.dataset.add_sample(BenchmarkSample(
-            id="contract_001",
+            ground_truth="Rechnung",
+            document_type="invoice",
+            language="de",
+            difficulty="easy",
+        )
+        self.dataset.add_sample(
             image_path="/path/2.png",
-            ground_truth_text="Vertrag",
-            document_type=DocumentType.CONTRACT,
-            language=Language.DE,
-            difficulty=Difficulty.MEDIUM,
-            has_fraktur=False,
-            expected_umlauts=[],
-        ))
+            ground_truth="Vertrag",
+            document_type="contract",
+            language="de",
+            difficulty="medium",
+        )
 
-        invoices = self.dataset.filter_by_type(DocumentType.INVOICE)
+        # Nutze get_samples mit document_type Filter, Generator zu Liste
+        invoices = list(self.dataset.get_samples(document_type="invoice"))
 
         assert len(invoices) == 1
-        assert invoices[0].id == "invoice_001"
+        assert invoices[0].ground_truth_text == "Rechnung"
 
     def test_filter_by_difficulty(self):
         """Test filtering samples by difficulty."""
-        self.dataset.add_sample(BenchmarkSample(
-            id="easy_001",
+        self.dataset.add_sample(
             image_path="/path/1.png",
-            ground_truth_text="Einfach",
-            document_type=DocumentType.LETTER,
-            language=Language.DE,
-            difficulty=Difficulty.EASY,
-            has_fraktur=False,
-            expected_umlauts=[],
-        ))
-        self.dataset.add_sample(BenchmarkSample(
-            id="hard_001",
+            ground_truth="Einfach",
+            document_type="letter",
+            language="de",
+            difficulty="easy",
+        )
+        self.dataset.add_sample(
             image_path="/path/2.png",
-            ground_truth_text="Schwierig",
-            document_type=DocumentType.HISTORICAL,
-            language=Language.DE,
-            difficulty=Difficulty.HARD,
+            ground_truth="Schwierig",
+            document_type="fraktur",
+            language="de",
+            difficulty="hard",
             has_fraktur=True,
-            expected_umlauts=[],
-        ))
+        )
 
-        hard_samples = self.dataset.filter_by_difficulty(Difficulty.HARD)
+        # Nutze get_samples mit difficulty Filter, Generator zu Liste
+        hard_samples = list(self.dataset.get_samples(difficulty="hard"))
 
         assert len(hard_samples) == 1
         assert hard_samples[0].has_fraktur
 
     def test_filter_fraktur_samples(self):
         """Test filtering Fraktur samples."""
-        self.dataset.add_sample(BenchmarkSample(
-            id="modern_001",
+        self.dataset.add_sample(
             image_path="/path/1.png",
-            ground_truth_text="Modern",
-            document_type=DocumentType.INVOICE,
-            language=Language.DE,
-            difficulty=Difficulty.EASY,
+            ground_truth="Modern",
+            document_type="invoice",
+            difficulty="easy",
             has_fraktur=False,
-            expected_umlauts=[],
-        ))
-        self.dataset.add_sample(BenchmarkSample(
-            id="fraktur_001",
+        )
+        self.dataset.add_sample(
             image_path="/path/2.png",
-            ground_truth_text="Fraktur",
-            document_type=DocumentType.HISTORICAL,
-            language=Language.DE,
-            difficulty=Difficulty.HARD,
+            ground_truth="Fraktur",
+            document_type="fraktur",
+            difficulty="hard",
             has_fraktur=True,
-            expected_umlauts=[],
-        ))
+        )
 
-        fraktur_samples = self.dataset.get_fraktur_samples()
+        # Nutze get_samples mit has_fraktur Filter, Generator zu Liste
+        fraktur_samples = list(self.dataset.get_samples(has_fraktur=True))
 
         assert len(fraktur_samples) == 1
-        assert fraktur_samples[0].id == "fraktur_001"
+        assert fraktur_samples[0].has_fraktur is True
 
     def test_get_sample_not_found(self):
         """Test getting non-existent sample."""
@@ -290,19 +284,19 @@ class TestBenchmarkDataset:
         """Test getting dataset statistics."""
         # Add multiple samples
         for i in range(5):
-            self.dataset.add_sample(BenchmarkSample(
-                id=f"sample_{i:03d}",
+            self.dataset.add_sample(
                 image_path=f"/path/{i}.png",
-                ground_truth_text=f"Text {i}",
-                document_type=DocumentType.INVOICE if i < 3 else DocumentType.CONTRACT,
-                language=Language.DE,
-                difficulty=Difficulty.MEDIUM,
-                has_fraktur=i == 4,
-                expected_umlauts=["ü"] if i % 2 == 0 else [],
-            ))
+                ground_truth=f"Text {i}",
+                document_type="invoice" if i < 3 else "contract",
+                language="de",
+                difficulty="medium",
+                has_fraktur=(i == 4),
+                expected_umlauts=["ü"] if i % 2 == 0 else None,
+            )
 
-        stats = self.dataset.get_stats()
+        # Nutze get_statistics
+        stats = self.dataset.get_statistics()
 
         assert stats["total_samples"] == 5
-        assert "by_document_type" in stats
+        assert "by_type" in stats  # by_type statt by_document_type
         assert "by_difficulty" in stats

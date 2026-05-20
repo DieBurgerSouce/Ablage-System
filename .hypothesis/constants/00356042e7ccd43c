@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\geometric\distortion.py
+# hypothesis_version: 6.148.7
+
+[-0.3, -0.05, 0.03, 0.05, 0.2, 0.3, 0.4, 0.5, 'ElasticTransform', 'GridDistortion', 'OpticalDistortion', 'PiecewiseAffine', 'ThinPlateSpline', 'camera', 'direct', 'distort_limit', 'fisheye', 'gaussian', 'map_x', 'map_y', 'mask', 'nb_cols', 'nb_rows', 'shape', 'spatial', 'steps_x', 'steps_y', 'tuple[float, float]', 'tuple[int, int]', 'uniform']

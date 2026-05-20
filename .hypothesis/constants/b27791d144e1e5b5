@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\base\topology.py
+# hypothesis_version: 6.148.7
+
+['CommunicateTopology', 'Coordinate', 'commName', 'context', 'cp not exist', 'cp_configs', 'cp_mp', 'cp_mp_configs', 'cp_sharding', 'cp_sharding_configs', 'data', 'data_check', 'dense_sharding', 'dp', 'dp_check', 'dp_configs', 'dp_sep', 'dp_sep_configs', 'ep', 'ep_configs', 'expert', 'int32', 'model', 'moe_sharding', 'moe_sharding_check', 'moe_sharding_configs', 'mp_configs', 'nccl', 'next_rank', 'pipe', 'pp_coll', 'pp_configs', 'pp_p2p', 'pp_tp', 'pp_tp_configs', 'prev_rank', 'sep', 'sep not exist', 'sep_configs', 'sharding', 'sharding_check', 'sharding_configs', 'tp']

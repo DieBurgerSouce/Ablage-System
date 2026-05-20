@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\log_analytics_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 2.0, 5.0, 10.0, 20.0, 100.0, 100, 100000, 'Durchsatz', 'Error Rate', 'Warning Rate', 'alerts', 'anomaly', 'by_level', 'change_percent', 'count', 'critical', 'current', 'debug', 'decreasing', 'direction', 'elevated_error_rate', 'entries_per_minute', 'error', 'error_count', 'error_rate_percent', 'high_error_rate', 'high_warning_rate', 'increasing', 'info', 'is_anomaly', 'last_occurrence', 'level', 'message', 'metric', 'period_minutes', 'previous', 'recommendations', 'severity', 'source', 'source_stats', 'stable', 'summary', 'threshold', 'timestamp', 'top_errors', 'total', 'total_entries', 'trends', 'type', 'volatile', 'volume_timeline', 'warning', 'warning_count', 'warning_rate_percent']

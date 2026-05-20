@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\quant\quant_layers.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.9, 'FakeQuantAbsMax', 'InAccum', 'InScale', 'InState', 'MAOutputScaleLayer', 'Out', 'OutAccum', 'OutScale', 'OutState', 'QuantStub', 'QuantizedConv2D', 'QuantizedLinear', 'QuantizedMatmul', 'X', 'abs_max', 'all_positive', 'bit_length', 'channel_num', 'channel_wise_abs_max', 'dtype', 'float32', 'float64', 'input', 'is_test', 'lsq_act', 'lsq_weight', 'max', 'moving_rate', 'name', 'outscale.accum', 'outscale.scale', 'outscale.state', 'per_channel', 'quant_axis', 'quant_bits', 'quant_dequant.accum', 'quant_dequant.scale', 'quant_dequant.state', 'quant_linear', 'quant_on_weight', 'reduce_type', 'round_type', 'symmetric', 'zeros']

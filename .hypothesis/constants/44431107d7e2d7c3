@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\models\page_preprocessing_model.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 1.0, '(?:/G\\d+){2,}', '(?:/\\w+\\s*){2,}', 'GLYPH<[0-9A-Fa-f]+>', 'Mean of empty slice', 'ignore', 'numpy', 'page_parse', 'png', 'red', '�']

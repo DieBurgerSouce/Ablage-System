@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\_additive.py
+# hypothesis_version: 6.148.7
+
+['clustering', 'expected_values', 'main_effects', 'mask_shapes', 'values']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\datasets\svhn.py
+# hypothesis_version: 6.148.7
+
+['SVHN', 'digitStruct.mat', 'digitStruct/bbox', 'digitStruct/name', 'height', 'label', 'left', 'r', 'svhn_test.tar', 'svhn_train.tar', 'test', 'top', 'train', 'width']

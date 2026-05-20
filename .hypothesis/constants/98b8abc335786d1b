@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\functional\functional.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-10, 0.5, 1.0, 2.0, 6.4, 10.0, 27.0, 80.0, 200.0, 700.0, 1000.0, 2595.0, 11025.0, '_TensorOrFloat', 'float32', 'ortho', 'slaney']

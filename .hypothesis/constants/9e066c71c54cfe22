@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\fx\passes\utils\common.py
+# hypothesis_version: 6.148.7
+
+['.', 'GraphModule', 'HolderModule', 'call_module', 'compare_graphs', 'get_attr']

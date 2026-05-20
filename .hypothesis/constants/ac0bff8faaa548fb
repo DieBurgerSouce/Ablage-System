@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\readwrite\sparse6.py
+# hypothesis_version: 6.148.7
+
+[b'\n', b':', b'>>sparse6<<', 'directed', 'from_sparse6_bytes', 'rb', 'read_sparse6', 'sorted', 'to_sparse6_bytes', 'wb', 'write_sparse6']

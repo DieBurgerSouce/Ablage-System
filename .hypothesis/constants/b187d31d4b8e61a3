@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\datasets\iiit5k.py
+# hypothesis_version: 6.148.7
+
+['IIIT5K', 'RGB', 'testCharBound', 'trainCharBound']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\core\analysis.py
+# hypothesis_version: 6.148.7
+
+['*', '-', 'Pruning %s', 'after', 'before', 'binop', 'call', 'dead_maps_result', 'getattr', 'literal_type', 'ndim', 'none', 'nullified', 'op', 'phi', 'typed_getitem', 'unreachable', 'use_defs_result', 'usemap,defmap', 'value']

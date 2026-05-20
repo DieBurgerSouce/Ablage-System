@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\validators\url.py
+# hypothesis_version: 6.148.7
+
+['#', '&', '/', ':', ';', '?', '@', '[', '\\s', ']', ']:', 'ftp', 'ftps', 'git', 'http', 'https', 'irc', 'rtmp', 'rtmps', 'rtsp', 'sftp', 'ssh', 'telnet']

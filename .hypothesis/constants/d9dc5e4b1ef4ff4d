@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\rapidfuzz\process_py.py
+# hypothesis_version: 6.148.7
+
+[100, '_RF_ScorerPy', 'cdist', 'extract', 'extractOne', 'extract_iter', 'flags', 'get_scorer_flags', 'items', 'optimal_score', 'worst_score']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\centrality\flow_matrix.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'Implement solver', 'cg', 'csc', 'full', 'lu', 'weight']

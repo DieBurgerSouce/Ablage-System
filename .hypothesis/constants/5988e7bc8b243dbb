@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\matching.py
+# hypothesis_version: 6.148.7
+
+[2.0, "'", 'childs', 'directed', 'edges', 'int', 'is_matching', 'is_maximal_matching', 'is_perfect_matching', 'long', 'max_weight_matching', 'maximal_matching', 'min_weight_matching', 'multigraph', 'mybestedges', 'weight']

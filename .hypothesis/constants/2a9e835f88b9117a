@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\layer\norm.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-12, 1e-05, 0.0001, 0.75, 0.9, 1.0, 'BatchNorm', 'BatchNorm Base error', 'Bias', 'C', 'Mean', 'MeanOut', 'NC', 'NCDHW', 'NCHW', 'NCL', 'NCWH', 'NDHWC', 'NHWC', 'NLC', 'Out', 'ReserveSpace', 'SavedMean', 'SavedVariance', 'Scale', 'SpectralNorm', 'SyncBatchNorm', 'U', 'V', 'Variance', 'VarianceOut', 'Weight', 'X', 'Y', '_mean', '_sync', '_variance', 'batch_norm', 'data_layout', 'dim', 'eps', 'epsilon', 'float16', 'float32', 'float64', 'fuse_with_relu', 'input', 'is_test', 'learning_rate', 'momentum', 'npu', 'power_iters', 'spectral_norm', 'sync_batch_norm', 'trainable_statistics', 'uint16', 'use_global_stats', 'weight']

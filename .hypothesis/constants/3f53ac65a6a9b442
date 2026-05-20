@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\dropout\mask_dropout.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'BboxProcessor', 'KeypointsProcessor', 'MaskDropout', 'bboxes', 'dropout_mask', 'inpaint_ns', 'inpaint_telea', 'keypoints', 'mask', 'shape', 'tuple[int, int]']

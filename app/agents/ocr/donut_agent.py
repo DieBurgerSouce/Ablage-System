@@ -27,6 +27,7 @@ from PIL import Image
 
 from app.agents.base import AgentResourceError, OCRAgent
 from app.gpu_manager import GPUManager
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -205,7 +206,7 @@ class DonutOCRAgent(OCRAgent):
             self.logger.error(
                 "donut_processing_error",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
             raise
@@ -254,7 +255,7 @@ class DonutOCRAgent(OCRAgent):
             )
         except Exception as e:
             # Fallback to standard loading
-            logger.warning("safetensors_unavailable_fallback", error=str(e))
+            logger.warning("safetensors_unavailable_fallback", **safe_error_log(e))
             self.model = VisionEncoderDecoderModel.from_pretrained(
                 self.model_name,
             )
@@ -361,7 +362,7 @@ class DonutOCRAgent(OCRAgent):
 
         return await asyncio.to_thread(_inference)
 
-    def _calculate_confidence(self, outputs: Any) -> float:
+    def _calculate_confidence(self, outputs: object) -> float:
         """Calculate confidence score from model outputs."""
         try:
             import torch
@@ -373,8 +374,11 @@ class DonutOCRAgent(OCRAgent):
                 max_probs = probs.max(dim=-1).values
                 confidence = max_probs.mean().item()
                 return min(max(confidence, 0.0), 1.0)
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.debug(
+                "confidence_calculation_failed",
+                error_type=type(e).__name__,
+            )
 
         return 0.85  # Default confidence
 
@@ -392,8 +396,11 @@ class DonutOCRAgent(OCRAgent):
                 json_match = re.search(r"\{.*\}", text, re.DOTALL)
                 if json_match:
                     structure["parsed"] = json.loads(json_match.group())
-            except (json.JSONDecodeError, AttributeError):
-                pass
+            except (json.JSONDecodeError, AttributeError) as e:
+                self.logger.debug(
+                    "json_parse_structure_failed",
+                    error_type=type(e).__name__,
+                )
 
         return structure
 
@@ -406,7 +413,7 @@ class DonutOCRAgent(OCRAgent):
             try:
                 await self._ensure_model_loaded()
             except Exception as e:
-                logger.error("donut_health_check_failed", error=str(e))
+                logger.error("donut_health_check_failed", **safe_error_log(e))
                 return False
 
         return self.model is not None and self.processor is not None

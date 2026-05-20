@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\shortest_paths\dense.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'floyd_warshall', 'floyd_warshall_numpy', 'inf', 'reconstruct_path', 'weight']

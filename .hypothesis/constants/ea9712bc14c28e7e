@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\events\event_bus.py
+# hypothesis_version: 6.148.7
+
+[1.0, 100, 1000, '*', '*.', '.', '.*', 'Event', 'REDIS_URL', 'ablage:event_history', 'ablage:events:', 'channel', 'correlation_id', 'data', 'deadline.approaching', 'deadline.completed', 'deadline.overdue', 'document.categorized', 'document.deleted', 'document.uploaded', 'event_id', 'event_type', 'events_published', 'events_received', 'handler_errors', 'handlers_executed', 'loan.kpis_calculated', 'loan.payment_due', 'payload', 'pmessage', 'source', 'space_id', 'system', 'system.error', 'timestamp', 'type', 'unknown', 'user_id', 'utf-8', 'vehicle.fuel_logged', 'vehicle.service_due']

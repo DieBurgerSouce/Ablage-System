@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\datasets\mnist.py
+# hypothesis_version: 6.148.7
+
+[100, '>', '>II', '>IIII', 'B', 'L', '_ImageDataType', 'cv2', 'fashion-mnist', 'float32', 'int64', 'mnist', 'pil', 'rb', 'test', 'train', 'uint8']

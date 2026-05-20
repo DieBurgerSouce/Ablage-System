@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\surya\processor\__init__.py
+# hypothesis_version: 6.148.7
+
+[0.224, 0.225, 0.229, 0.406, 0.456, 0.485, 0.5, 255.0, -100, 168, '</S>', '</math>', '<BEACON>', '<BLOCKS-WOB>', '<EOI>', '<IMAGE>', '<LAYOUT>', '<NO-MATH>', '<NOP>', '<OCR-WB>', '<OCR-WOB>', '<PAD>', '<REG1>', '<REG2>', '<REG3>', '<REG4>', '<ROT>', '<TABLE-STRUCTURE>', 'BaseImageProcessor', 'PreTrainedTokenizer', 'attention_mask', 'block_without_boxes', 'cuda', 'grid_thw', 'image', 'image_processor', 'image_tiles', 'input_ids', 'inputs', 'layout', 'left', 'math', 'math_external', 'ocr', 'ocr_tokenizer', 'ocr_without_boxes', 'position_ids', 'rotated', 'table_structure', 'task', 'text', 'tokenizer', 'type']

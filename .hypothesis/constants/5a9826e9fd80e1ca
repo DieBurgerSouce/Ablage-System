@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numpy\f2py\diagnose.py
+# hypothesis_version: 6.148.7
+
+['(ignore it)', '------', ':', 'CPU information:', 'Running %r:', '_', '__main__', 'error:', 'ok', 'os.name=%r', 'sys.path=%r', 'sys.platform=%r', 'sys.prefix:', 'sys.version:']

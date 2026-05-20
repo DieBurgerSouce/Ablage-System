@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\collective.py
+# hypothesis_version: 6.148.7
+
+[1800, '0', 'UTF-8', '_default_pg', 'bkcl', 'flagcx', 'gloo', 'heter', 'int32', 'nccl', 'no cuda device found', 'ring_id:{}', 'xccl']

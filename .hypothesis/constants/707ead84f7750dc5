@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\east_postprocess.py
+# hypothesis_version: 6.148.7
+
+[0.1, 0.2, 0.8, 'f_geo', 'f_score', 'lanms', 'lanms-nova', 'points']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\qconfig_mapping_utils.py
+# hypothesis_version: 6.148.7
+
+["' instead.", ". But found '", 'Expected ', 'call_function', 'call_method', 'call_module', 'get_attr']

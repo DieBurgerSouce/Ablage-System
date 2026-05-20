@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\lr.py
+# hypothesis_version: 6.148.7
+
+[-1.5, -0.5, 0.0, 1e-08, 0.0001, 0.1, 0.3, 0.5, 1.0, 2.0, 25.0, ' is unknown!', '@LR_DECAY_COUNTER@', '@STEP_COUNTER@', 'CosineAnnealingDecay', 'CyclicLR', 'ExponentialDecay', 'InverseTimeDecay', 'LRScheduler', 'LambdaDecay', 'LinearLR', 'LinearWarmup', 'LinearWarmup_LR', 'MultiStepDecay', 'MultiplicativeDecay', 'NaturalExpDecay', 'NoamDecay', 'OneCycleLR', 'Out', 'PiecewiseDecay', 'PolynomialDecay', 'ReduceOnPlateau', 'StepDecay', 'X', '_get_closed_form_lr', 'abs', 'best', 'cooldown_counter', 'cos', 'cosine_decay', 'cycle', 'exp_range', 'float32', 'global_step_counter', 'increment', 'int64', 'iterations', 'last_epoch', 'last_lr', 'learning_rate', 'learning_rate_warmup', 'linear', 'max', 'min', 'mode: ', 'num_bad_epochs', 'rel', 'step', 'threshold mode: ', 'triangular', 'triangular2']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\tools\infer\predict_system.py
+# hypothesis_version: 6.148.7
+
+[255, 640, 1000, '--process_id={}', '--use_mp={}', '-u', '../..', '.pdf', '.png', '_', '__main__', 'all', 'auto_growth', 'cls', 'det', 'horizontal_stride', 'merge_x_thres', 'merge_y_thres', 'png', 'points', 'quad', 'rec', 'system_results.txt', 'transcription', 'utf-8', 'vertical_stride', 'w', '{}, {:.3f}']

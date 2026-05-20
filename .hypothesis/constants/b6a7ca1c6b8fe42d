@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\models\_text_generation.py
+# hypothesis_version: 6.148.7
+
+['device', 'input_ids', 'is_decoder', 'is_encoder_decoder', 'keep_prefix', 'keep_suffix', 'left', 'pt', 'right', 'task_specific_params', 'text-generation', 'tf', 'tokenizer']

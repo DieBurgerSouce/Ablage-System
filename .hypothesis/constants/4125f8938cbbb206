@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\_aot_autograd\graph_compile.py
+# hypothesis_version: 6.148.7
+
+['%s', 'Backward graph', 'Forward graph', 'Joint graph', '_boxed_call', '_fx_graph_cache_key', '_time_taken_ns', 'aot_backward_graph', 'aot_forward_graph', 'aot_graphs', 'aot_joint_graph', 'artifact', 'autograd', 'backend_compile', 'backward', 'bw', 'call_function', 'donated', 'eager_input_vals', 'encoding', 'export', 'forward', 'fw', 'fwd_rng_state', 'inference', 'joint', 'meta', 'name', 'no_static', 'output', 'placeholder', 'string', 'val']

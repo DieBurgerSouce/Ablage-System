@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\impute\_knn.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'allow-nan', 'boolean', 'copy', 'distance', 'left', 'metric', 'n_features_in_', 'n_neighbors', 'nan_euclidean', 'uniform', 'weights']

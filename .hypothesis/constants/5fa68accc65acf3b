@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\make_pse_gt.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 0.4, 1.0, 640, 'MakePseGt', 'float32', 'gt_kernels', 'gt_text', 'ignore_tags', 'image', 'mask', 'polys', 'uint8']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\collaboration\__init__.py
+# hypothesis_version: 6.148.7
+
+['DigestService', 'DocumentTaskService', 'get_digest_service']

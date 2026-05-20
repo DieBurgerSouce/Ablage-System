@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\ua_parser\utils.py
+# hypothesis_version: 6.148.7
+
+['*', '+', '0', '0-9', 'A-Za-z0-9_', 'GraalVM', '[0-9]', '[A-Za-z0-9_]', '\\$(\\d)', '\\d', '\\w']

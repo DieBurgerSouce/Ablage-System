@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\rocm\rocm_kernel.py
+# hypothesis_version: 6.148.7
+
+[',', '-', '.item()', 'ArgInfo', 'KERNEL_NAME', 'None', 'ROCm', 'ROCmTemplate', 'ROCmTemplateBuffer', 'backend', 'int', 'name', 'nullptr', 'op', 'size_t*', 'uint8_t*']

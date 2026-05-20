@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\docling_layout_analyzer.py
+# hypothesis_version: 6.148.7
+
+[0.9, 100, 612, 792, 'b', 'bbox', 'capabilities', 'captionitem', 'codeitem', 'col_index', 'col_span', 'confidence', 'data', 'export_to_plaintext', 'extract_figures', 'extract_tables', 'figure_detection', 'figureitem', 'footer', 'footnoteitem', 'formulaitem', 'grid', 'header', 'header_footer', 'height', 'is_header', 'is_loaded', 'l', 'label', 'listitem', 'multi_column', 'name', 'number', 'page', 'page_no', 'pages', 'prov', 'r', 'reading_order', 'row_index', 'row_span', 'sectionheaderitem', 'size', 't', 'table_cells', 'table_extraction', 'tableitem', 'text', 'textitem', 'width']

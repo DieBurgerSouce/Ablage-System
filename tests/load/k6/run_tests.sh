@@ -8,7 +8,11 @@
 #   ./run_tests.sh auth               # Run auth flow tests
 #   ./run_tests.sh upload             # Run document upload tests
 #   ./run_tests.sh search             # Run search stress tests
+#   ./run_tests.sh search-latency     # Run search latency tests (p99 < 200ms)
 #   ./run_tests.sh ocr                # Run OCR processing tests
+#   ./run_tests.sh ocr-queue          # Run OCR queue management tests
+#   ./run_tests.sh ocr-backpressure   # Run OCR backpressure tests
+#   ./run_tests.sh concurrent         # Run 100 concurrent users test
 #   ./run_tests.sh all                # Run all tests sequentially
 #
 # Environment variables:
@@ -106,8 +110,20 @@ case "$TEST_TYPE" in
     search)
         run_test "search_stress" "${SCRIPT_DIR}/scenarios/search_stress.js"
         ;;
+    search-latency)
+        run_test "search_latency" "${SCRIPT_DIR}/scenarios/search_latency.js"
+        ;;
     ocr)
         run_test "ocr_processing" "${SCRIPT_DIR}/scenarios/ocr_processing.js"
+        ;;
+    ocr-queue)
+        run_test "ocr_queue" "${SCRIPT_DIR}/scenarios/ocr_queue.js"
+        ;;
+    ocr-backpressure)
+        run_test "ocr_backpressure" "${SCRIPT_DIR}/scenarios/ocr_backpressure.js"
+        ;;
+    concurrent)
+        run_test "concurrent_users" "${SCRIPT_DIR}/scenarios/concurrent_users.js"
         ;;
     all)
         echo -e "${YELLOW}Running all load tests...${NC}"
@@ -118,9 +134,17 @@ case "$TEST_TYPE" in
         sleep 5
         run_test "document_upload" "${SCRIPT_DIR}/scenarios/document_upload.js"
         sleep 5
+        run_test "concurrent_users" "${SCRIPT_DIR}/scenarios/concurrent_users.js"
+        sleep 5
         run_test "search_stress" "${SCRIPT_DIR}/scenarios/search_stress.js"
         sleep 5
+        run_test "search_latency" "${SCRIPT_DIR}/scenarios/search_latency.js"
+        sleep 5
         run_test "ocr_processing" "${SCRIPT_DIR}/scenarios/ocr_processing.js"
+        sleep 5
+        run_test "ocr_queue" "${SCRIPT_DIR}/scenarios/ocr_queue.js"
+        sleep 5
+        run_test "ocr_backpressure" "${SCRIPT_DIR}/scenarios/ocr_backpressure.js"
         ;;
     smoke)
         echo -e "${YELLOW}Running smoke tests (quick validation)...${NC}"
@@ -131,13 +155,17 @@ case "$TEST_TYPE" in
         echo -e "${RED}Unknown test type: ${TEST_TYPE}${NC}"
         echo ""
         echo "Available tests:"
-        echo "  health  - Health check endpoint"
-        echo "  auth    - Authentication flow"
-        echo "  upload  - Document upload"
-        echo "  search  - Search stress test"
-        echo "  ocr     - OCR processing"
-        echo "  all     - Run all tests"
-        echo "  smoke   - Quick smoke test (default)"
+        echo "  health           - Health check endpoint"
+        echo "  auth             - Authentication flow"
+        echo "  upload           - Document upload"
+        echo "  concurrent       - 100 concurrent users"
+        echo "  search           - Search stress test"
+        echo "  search-latency   - Search latency (p99 < 200ms)"
+        echo "  ocr              - OCR processing"
+        echo "  ocr-queue        - OCR queue management"
+        echo "  ocr-backpressure - OCR backpressure handling"
+        echo "  all              - Run all tests"
+        echo "  smoke            - Quick smoke test (default)"
         exit 1
         ;;
 esac

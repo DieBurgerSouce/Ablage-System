@@ -1,0 +1,100 @@
+{% extends "documents/base_document.html" %}
+
+{% block page_title %}Angebot {{ data.angebotsnummer }}{% endblock %}
+
+{% block title %}Angebot {{ data.angebotsnummer }}{% endblock %}
+
+{% block intro_text %}
+<p>Sehr geehrte Damen und Herren,</p>
+<p>vielen Dank für Ihre Anfrage. Gerne unterbreiten wir Ihnen folgendes Angebot:</p>
+{% endblock %}
+
+{% block positions_table %}
+<table class="document-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">Pos.</th>
+            <th style="width: 45%;">Bezeichnung</th>
+            <th class="right" style="width: 10%;">Menge</th>
+            <th class="right" style="width: 20%;">Einzelpreis</th>
+            <th class="right" style="width: 20%;">Gesamtpreis</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pos in data.positionen %}
+        <tr>
+            <td class="center">{{ loop.index }}</td>
+            <td>{{ pos.bezeichnung }}</td>
+            <td class="right">{{ pos.menge | number_de }}</td>
+            <td class="right">{{ pos.einzelpreis | currency }}</td>
+            <td class="right">{{ pos.gesamtpreis | currency }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="totals-section">
+    <table>
+        <tr>
+            <td>Nettobetrag:</td>
+            <td class="right">{{ data.nettobetrag | currency }}</td>
+        </tr>
+        <tr>
+            <td>zzgl. {{ data.umsatzsteuer_satz }}% USt:</td>
+            <td class="right">{{ data.umsatzsteuer | currency }}</td>
+        </tr>
+        <tr class="total-row">
+            <td>Bruttobetrag:</td>
+            <td class="right">{{ data.bruttobetrag | currency }}</td>
+        </tr>
+    </table>
+</div>
+
+<div style="clear: both;"></div>
+
+<div class="highlight">
+    <p><strong>Gültigkeit:</strong> Dieses Angebot ist gültig bis {{ data.gueltig_bis | date }}</p>
+    {% if data.lieferzeit %}
+    <p><strong>Lieferzeit:</strong> {{ data.lieferzeit }}</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block payment_section %}
+<div class="payment-section">
+    <h2>Konditionen</h2>
+
+    {% if data.zahlungsbedingungen %}
+    <p><strong>Zahlungsbedingungen:</strong></p>
+    <p>{{ data.zahlungsbedingungen }}</p>
+    {% endif %}
+
+    {% if data.lieferzeit %}
+    <p><strong>Lieferzeit:</strong> {{ data.lieferzeit }}</p>
+    {% endif %}
+
+    <p><strong>Preise:</strong> Alle Preise verstehen sich zzgl. der gesetzlichen Umsatzsteuer.</p>
+</div>
+{% endblock %}
+
+{% block closing_text %}
+<p>Wir würden uns freuen, Sie als Kunden zu gewinnen und stehen für Rückfragen gerne zur Verfügung.</p>
+<p>Für die Auftragserteilung senden Sie uns bitte eine kurze schriftliche Bestätigung.</p>
+<p>Mit freundlichen Grüßen</p>
+{% endblock %}
+
+{% block legal_notice %}
+{% if data.steuernummer %}
+Steuernummer: {{ data.steuernummer }}
+{% endif %}
+{% if data.ust_idnr %}
+&bull; USt-IdNr: {{ data.ust_idnr }}
+{% endif %}
+<br>
+Geschäftsführer: {{ data.geschaeftsfuehrer | default('') }}
+{% if data.handelsregister %}
+&bull; {{ data.handelsregister }}
+{% endif %}
+<br>
+Dieses Angebot ist freibleibend und unverbindlich.
+{% endblock %}

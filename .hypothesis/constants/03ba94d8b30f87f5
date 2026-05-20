@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\orchestrator.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 7.5, 30.0, 100, 300, 500, 1000, 1000000, '%Y-%m-%d', '%Y-%m-%d-%H', '.claude/cache/locks', 'active_instances', 'actual_cost', 'auto', 'avg_execution_time', 'by_model', 'cache_hits', 'cache_performance', 'cost', 'cost_analysis', 'daily_stats', 'error', 'escalation_rate', 'escalations', 'force_haiku', 'force_opus', 'force_sonnet', 'haiku', 'hit_rate', 'hits', 'hourly_stats', 'last_seen', 'model_distribution', 'opus', 'opus_only_cost', 'orchestration', 'overview', 'quality_failure_rate', 'quality_failures', 'r', 'savings', 'savings_percent', 'skipped', 'sonnet', 'started_at', 'task_assignments', 'task_execution', 'tasks', 'total_cost', 'total_tasks', 'total_tokens', 'unknown.py', 'w']

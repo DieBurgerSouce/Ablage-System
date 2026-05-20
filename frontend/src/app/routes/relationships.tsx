@@ -1,0 +1,17 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { lazy, Suspense } from 'react'
+import { LazyLoadFallback } from '@/components/LazyLoadFallback'
+
+const CrossCompanyPage = lazy(() => import('@/features/relationships/components/CrossCompanyPage').then(m => ({ default: m.CrossCompanyPage })))
+
+export const Route = createFileRoute('/relationships')({
+  component: RouteComponent,
+})
+
+function RouteComponent() {
+  return (
+    <Suspense fallback={<LazyLoadFallback />}>
+      <CrossCompanyPage />
+    </Suspense>
+  )
+}

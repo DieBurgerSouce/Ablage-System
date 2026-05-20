@@ -12,21 +12,60 @@ Arbeitspaket 6: Audit Log Immutabilität
 - Sequenznummern für Ordering
 - Verifikationsfunktionen für Tamper-Detection
 
+Phase 1.4: Audit-Log Encryption (Januar 2026)
+- AES-256-GCM Verschlüsselung für sensitive Metadaten
+- Versionierte Encryption für Key-Rotation
+- Encryption-at-rest für GDPR Art. 32 Compliance
+
 Feinpoliert und durchdacht - Enterprise-grade Audit Logging.
 """
 
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Tuple
-from enum import Enum
-import uuid
+import base64
 import hashlib
 import json
+import uuid
+from datetime import datetime, timezone
+from enum import Enum
+from typing import List, Optional, Tuple
 
 import structlog
-from sqlalchemy import select, func, desc
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.encryption import (
+    DecryptionError,
+    EncryptionError,
+    decrypt_data,
+    encrypt_data,
+    is_encrypted,
+)
+from app.core.types import JSONDict
+
 logger = structlog.get_logger(__name__)
+
+# ==================== Encryption Configuration (Phase 1.4) ====================
+
+# Flag um Encryption zu aktivieren/deaktivieren (für Migrations-Kompatibilität)
+AUDIT_ENCRYPTION_ENABLED = True
+
+# Felder die IMMER verschlüsselt werden sollten (PII, sensitive data)
+SENSITIVE_FIELDS = {
+    "ip_address",
+    "user_agent",
+    "email",
+    "phone",
+    "address",
+    "iban",
+    "vat_id",
+    "customer_number",
+    "supplier_number",
+    "session_id",
+    "device_id",
+    "location",
+}
+
+# Encryption prefix für verschlüsselte Werte
+ENCRYPTION_PREFIX = "ENC:"
 
 # Genesis-Hash für den ersten Eintrag in der Kette
 GENESIS_HASH = "0" * 64  # 64 Nullen als Genesis-Block-Hash
@@ -80,6 +119,166 @@ class SecurityEventType(str, Enum):
     ADMIN_USER_DELETED = "admin_user_deleted"
     ADMIN_FORCE_LOGOUT = "admin_force_logout"
 
+    # Admin Job Queue Actions (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
+    ADMIN_JOBS_LISTED = "admin_jobs_listed"
+    ADMIN_JOB_ACCESSED = "admin_job_accessed"
+    ADMIN_JOB_CANCELLED = "admin_job_cancelled"
+    ADMIN_JOB_RETRIED = "admin_job_retried"
+    ADMIN_QUEUE_CLEARED = "admin_queue_cleared"
+    ADMIN_JOBS_BULK_ACTION = "admin_jobs_bulk_action"
+
+    # Document Classification Events (Quick Classification)
+    DOCUMENT_TAG_AUTO_ASSIGNED = "document_tag_auto_assigned"
+    DOCUMENT_TAG_MANUAL_CHANGED = "document_tag_manual_changed"
+    DOCUMENT_RENAMED = "document_renamed"
+
+    # Privat Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
+    PRIVAT_DOCUMENT_CREATED = "privat_document_created"
+    PRIVAT_DOCUMENT_ACCESSED = "privat_document_accessed"
+    PRIVAT_DOCUMENT_UPDATED = "privat_document_updated"
+    PRIVAT_DOCUMENT_DELETED = "privat_document_deleted"
+    PRIVAT_DOCUMENT_RESTORED = "privat_document_restored"
+    PRIVAT_DOCUMENT_DOWNLOADED = "privat_document_downloaded"
+    PRIVAT_DOCUMENT_DECRYPTED = "privat_document_decrypted"
+    PRIVAT_SPACE_CREATED = "privat_space_created"
+    PRIVAT_SPACE_ACCESS_GRANTED = "privat_space_access_granted"
+    PRIVAT_SPACE_ACCESS_REVOKED = "privat_space_access_revoked"
+    PRIVAT_EMERGENCY_ACCESS_USED = "privat_emergency_access_used"
+
+    # Personal/HR Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
+    # Employee Events
+    EMPLOYEE_CREATED = "employee_created"
+    EMPLOYEE_ACCESSED = "employee_accessed"
+    EMPLOYEE_UPDATED = "employee_updated"
+    EMPLOYEE_DELETED = "employee_deleted"
+    EMPLOYEE_PII_ACCESSED = "employee_pii_accessed"
+    EMPLOYEE_EXPORTED = "employee_exported"
+
+    # Department Events
+    DEPARTMENT_CREATED = "department_created"
+    DEPARTMENT_ACCESSED = "department_accessed"
+    DEPARTMENT_UPDATED = "department_updated"
+    DEPARTMENT_DELETED = "department_deleted"
+
+    # Position Events
+    POSITION_CREATED = "position_created"
+    POSITION_ACCESSED = "position_accessed"
+    POSITION_UPDATED = "position_updated"
+    POSITION_DELETED = "position_deleted"
+    POSITION_SALARY_ACCESSED = "position_salary_accessed"
+
+    # List Operations (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
+    # CRITICAL: Diese Events sind für Massenexfiltrations-Erkennung erforderlich!
+    EMPLOYEES_LISTED = "employees_listed"
+    DEPARTMENTS_LISTED = "departments_listed"
+    POSITIONS_LISTED = "positions_listed"
+
+
+# ==================== Encryption Functions (Phase 1.4) ====================
+
+def encrypt_audit_metadata(
+    metadata: JSONDict,
+    entry_id: str,
+) -> JSONDict:
+    """
+    Verschlüsselt sensitive Felder in Audit-Metadaten.
+
+    Verwendet AES-256-GCM mit entry_id als AAD (Additional Authenticated Data)
+    um sicherzustellen, dass verschlüsselte Daten nicht zwischen Einträgen
+    kopiert werden können.
+
+    Args:
+        metadata: Die zu verschlüsselnden Metadaten
+        entry_id: Audit-Log-Entry-ID als AAD
+
+    Returns:
+        Dict mit verschlüsselten sensitiven Feldern
+    """
+    if not AUDIT_ENCRYPTION_ENABLED:
+        return metadata
+
+    encrypted = {}
+    for key, value in metadata.items():
+        key_lower = key.lower()
+
+        # Prüfe ob Feld verschlüsselt werden soll
+        should_encrypt = any(s in key_lower for s in SENSITIVE_FIELDS)
+
+        if should_encrypt and value is not None and isinstance(value, str):
+            try:
+                # Verschlüssele mit Entry-ID als AAD
+                encrypted_value = encrypt_data(value, associated_data=f"audit:{entry_id}")
+                encrypted[key] = f"{ENCRYPTION_PREFIX}{encrypted_value}"
+            except EncryptionError as e:
+                # Bei Fehler: Wert maskieren statt Klartext speichern
+                logger.warning(
+                    "audit_metadata_encryption_failed",
+                    field=key,
+                    **safe_error_log(e),
+                )
+                encrypted[key] = "[ENCRYPTION_FAILED]"
+        else:
+            encrypted[key] = value
+
+    return encrypted
+
+
+def decrypt_audit_metadata(
+    metadata: JSONDict,
+    entry_id: str,
+) -> JSONDict:
+    """
+    Entschlüsselt sensitive Felder in Audit-Metadaten.
+
+    Args:
+        metadata: Die verschlüsselten Metadaten
+        entry_id: Audit-Log-Entry-ID als AAD
+
+    Returns:
+        Dict mit entschlüsselten Feldern
+    """
+    if not metadata:
+        return metadata
+
+    decrypted = {}
+    for key, value in metadata.items():
+        if isinstance(value, str) and value.startswith(ENCRYPTION_PREFIX):
+            try:
+                # Entferne Prefix und entschlüssele
+                encrypted_value = value[len(ENCRYPTION_PREFIX):]
+                decrypted[key] = decrypt_data(encrypted_value, associated_data=f"audit:{entry_id}")
+            except DecryptionError as e:
+                logger.warning(
+                    "audit_metadata_decryption_failed",
+                    field=key,
+                    **safe_error_log(e),
+                )
+                decrypted[key] = "[DECRYPTION_FAILED]"
+        else:
+            decrypted[key] = value
+
+    return decrypted
+
+
+def is_audit_metadata_encrypted(metadata: JSONDict) -> bool:
+    """
+    Prüft ob Audit-Metadaten verschlüsselte Felder enthalten.
+
+    Args:
+        metadata: Die zu prüfenden Metadaten
+
+    Returns:
+        True wenn mindestens ein Feld verschlüsselt ist
+    """
+    if not metadata:
+        return False
+
+    for value in metadata.values():
+        if isinstance(value, str) and value.startswith(ENCRYPTION_PREFIX):
+            return True
+
+    return False
+
 
 # ==================== Integrity Functions (AP6) ====================
 
@@ -91,7 +290,7 @@ def calculate_entry_hash(
     resource_id: Optional[str],
     ip_address: Optional[str],
     created_at: datetime,
-    metadata: Dict[str, Any],
+    metadata: JSONDict,
     previous_hash: str,
 ) -> str:
     """
@@ -180,7 +379,7 @@ async def verify_audit_chain(
     start_sequence: Optional[int] = None,
     end_sequence: Optional[int] = None,
     batch_size: int = 1000,
-) -> Tuple[bool, List[Dict[str, Any]]]:
+) -> Tuple[bool, List[JSONDict]]:
     """
     Verifiziert die Integrität der gesamten Audit-Log-Kette.
 
@@ -202,7 +401,7 @@ async def verify_audit_chain(
     """
     from app.db.models import AuditLog
 
-    errors: List[Dict[str, Any]] = []
+    errors: List[JSONDict] = []
 
     # Query vorbereiten
     query = select(AuditLog).order_by(AuditLog.sequence_number)
@@ -300,14 +499,34 @@ async def get_next_sequence_number(db: AsyncSession) -> int:
     """
     Holt die nächste Sequenznummer für einen neuen Eintrag.
 
-    Verwendet SELECT FOR UPDATE um Race Conditions zu vermeiden.
+    SECURITY FIX: Verwendet PostgreSQL SEQUENCE für atomare Sequenznummern.
+    Fallback auf MAX() + 1 für SQLite (Tests) mit Advisory Lock.
 
     Returns:
         Nächste Sequenznummer
     """
+    from sqlalchemy import text
+
+    from app.core.config import settings
+
+    # PostgreSQL: Verwende SEQUENCE (atomar, keine Race Condition)
+    if "postgresql" in str(settings.DATABASE_URL).lower():
+        try:
+            result = await db.execute(text("SELECT nextval('audit_log_seq')"))
+            seq = result.scalar_one()
+            return int(seq)
+        except Exception as e:
+            # SEQUENCE existiert noch nicht - Fallback mit Warnung
+            logger.warning(
+                "audit_log_sequence_not_found",
+                **safe_error_log(e),
+                message="Fallback auf MAX()+1 - bitte Migration 019 ausführen!"
+            )
+
+    # Fallback für SQLite (Tests) oder wenn SEQUENCE nicht existiert
+    # WARNUNG: Hat Race Condition in Multi-Worker-Deployments!
     from app.db.models import AuditLog
 
-    # Hole maximale Sequenznummer
     query = select(func.max(AuditLog.sequence_number))
     result = await db.execute(query)
     max_seq = result.scalar_one_or_none()
@@ -342,7 +561,7 @@ class SecurityAuditLogger:
         user_agent: Optional[str] = None,
         resource_type: Optional[str] = None,
         resource_id: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[JSONDict] = None,
         severity: str = "info",
     ) -> Optional[str]:
         """
@@ -363,7 +582,7 @@ class SecurityAuditLogger:
         """
         # Strukturiertes Logging (immer)
         log_data = {
-            "event": event_type.value,
+            "event_type": event_type.value,
             "user_id": user_id[:8] + "..." if user_id else None,
             "ip": ip_address,
             "resource_type": resource_type,
@@ -400,7 +619,7 @@ class SecurityAuditLogger:
             except Exception as e:
                 logger.error(
                     "audit_log_db_error",
-                    error=str(e),
+                    **safe_error_log(e),
                     event_type=event_type.value,
                 )
 
@@ -414,7 +633,7 @@ class SecurityAuditLogger:
         user_agent: Optional[str],
         resource_type: Optional[str],
         resource_id: Optional[str],
-        details: Dict[str, Any],
+        details: JSONDict,
     ) -> str:
         """
         Speichert Event in AuditLog-Tabelle mit Immutabilitäts-Features.
@@ -423,61 +642,115 @@ class SecurityAuditLogger:
         - Sequenznummer für Reihenfolge
         - previous_hash für Verkettung (Blockchain-artig)
         - integrity_hash für Tamper-Detection
+
+        I.4 CRITICAL: Race Condition Fix
+        - Verwendet FOR UPDATE SKIP LOCKED für atomare Verkettung
+        - Retry-Logik bei Konflikten
         """
+        from sqlalchemy import text
+
+        from app.core.config import settings
         from app.db.models import AuditLog
 
-        # AP6: Hole letzte Sequenz und Hash für Verkettung
-        sequence = await get_next_sequence_number(self.db)
-        last_entry = await get_last_audit_entry(self.db)
-        previous_hash = last_entry.integrity_hash if last_entry else GENESIS_HASH
+        max_retries = 3
+        retry_count = 0
 
-        # Timestamp festlegen
-        created_at = datetime.now(timezone.utc)
-        filtered_details = self._filter_sensitive_data(details)
+        while retry_count < max_retries:
+            try:
+                # I.4 CRITICAL: Atomar Sequenz UND letzten Hash holen
+                # PostgreSQL: Advisory Lock für Audit-Log-Chain
+                if "postgresql" in str(settings.DATABASE_URL).lower():
+                    # Advisory Lock auf Audit-Chain (Lock-ID: 1)
+                    await self.db.execute(text("SELECT pg_advisory_xact_lock(1)"))
 
-        # AP6: Berechne Integrity-Hash
-        integrity_hash = calculate_entry_hash(
-            sequence_number=sequence,
-            user_id=user_id,
-            action=event_type.value,
-            resource_type=resource_type or "security",
-            resource_id=resource_id,
-            ip_address=ip_address,
-            created_at=created_at,
-            metadata=filtered_details,
-            previous_hash=previous_hash,
-        )
+                # Hole Sequenznummer (atomar durch SEQUENCE oder Lock)
+                sequence = await get_next_sequence_number(self.db)
 
-        audit_log = AuditLog(
-            id=uuid.uuid4(),
-            user_id=uuid.UUID(user_id) if user_id else None,
-            action=event_type.value,
-            resource_type=resource_type or "security",
-            resource_id=uuid.UUID(resource_id) if resource_id else None,
-            ip_address=ip_address,
-            user_agent=user_agent[:255] if user_agent else None,
-            request_method=None,
-            request_path=None,
-            audit_metadata=filtered_details,
-            created_at=created_at,
-            # AP6: Immutabilitäts-Felder
-            sequence_number=sequence,
-            integrity_hash=integrity_hash,
-            previous_hash=previous_hash,
-        )
+                # Hole letzten Eintrag mit FOR UPDATE (verhindert Race Condition)
+                if "postgresql" in str(settings.DATABASE_URL).lower():
+                    query = select(AuditLog).order_by(desc(AuditLog.sequence_number)).limit(1).with_for_update(skip_locked=True)
+                    result = await self.db.execute(query)
+                    last_entry = result.scalar_one_or_none()
+                else:
+                    # SQLite Fallback (Tests)
+                    last_entry = await get_last_audit_entry(self.db)
 
-        self.db.add(audit_log)
-        await self.db.flush()
+                previous_hash = last_entry.integrity_hash if last_entry else GENESIS_HASH
 
-        logger.debug(
-            "audit_log_saved_with_integrity",
-            sequence=sequence,
-            integrity_hash=integrity_hash[:16] + "...",
-        )
+                # Timestamp festlegen
+                created_at = datetime.now(timezone.utc)
+                filtered_details = self._filter_sensitive_data(details)
 
-        return str(audit_log.id)
+                # Phase 1.4: Verschlüssele sensitive Metadaten
+                entry_id = str(uuid.uuid4())
+                if AUDIT_ENCRYPTION_ENABLED:
+                    filtered_details = encrypt_audit_metadata(filtered_details, entry_id)
 
-    def _filter_sensitive_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+                # AP6: Berechne Integrity-Hash
+                integrity_hash = calculate_entry_hash(
+                    sequence_number=sequence,
+                    user_id=user_id,
+                    action=event_type.value,
+                    resource_type=resource_type or "security",
+                    resource_id=resource_id,
+                    ip_address=ip_address,
+                    created_at=created_at,
+                    metadata=filtered_details,
+                    previous_hash=previous_hash,
+                )
+
+                audit_log = AuditLog(
+                    id=uuid.UUID(entry_id),  # Phase 1.4: Verwende vorher generierte ID für AAD
+                    user_id=uuid.UUID(user_id) if user_id else None,
+                    action=event_type.value,
+                    resource_type=resource_type or "security",
+                    resource_id=uuid.UUID(resource_id) if resource_id else None,
+                    ip_address=ip_address,
+                    user_agent=user_agent[:255] if user_agent else None,
+                    request_method=None,
+                    request_path=None,
+                    audit_metadata=filtered_details,
+                    created_at=created_at,
+                    # AP6: Immutabilitäts-Felder
+                    sequence_number=sequence,
+                    integrity_hash=integrity_hash,
+                    previous_hash=previous_hash,
+                )
+
+                self.db.add(audit_log)
+                await self.db.flush()
+
+                logger.debug(
+                    "audit_log_saved_with_integrity",
+                    sequence=sequence,
+                    integrity_hash=integrity_hash[:16] + "...",
+                    encrypted=AUDIT_ENCRYPTION_ENABLED,
+                )
+
+                return str(audit_log.id)
+
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error(
+                        "audit_log_save_failed_after_retries",
+                        error_type=type(e).__name__,
+                        retries=retry_count,
+                    )
+                    raise
+                logger.warning(
+                    "audit_log_save_retry",
+                    error_type=type(e).__name__,
+                    retry=retry_count,
+                )
+                # Kurze Pause vor Retry
+                import asyncio
+                await asyncio.sleep(0.01 * retry_count)
+
+        # Sollte nie erreicht werden
+        raise RuntimeError("Audit log save failed unexpectedly")
+
+    def _filter_sensitive_data(self, data: JSONDict) -> JSONDict:
         """
         Filtert sensitive Daten aus dem Details-Dict.
 
@@ -518,7 +791,7 @@ class SecurityAuditLogger:
         user_id: str,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[JSONDict] = None,
     ) -> Optional[str]:
         """Protokolliert erfolgreichen Login."""
         return await self.log_event(
@@ -663,6 +936,108 @@ class SecurityAuditLogger:
         )
 
 
+# ==================== Audit Log Retrieval with Decryption (Phase 1.4) ====================
+
+async def get_audit_log_decrypted(
+    db: AsyncSession,
+    log_id: uuid.UUID,
+) -> Optional[JSONDict]:
+    """
+    Holt einen Audit-Log-Eintrag und entschlüsselt die Metadaten.
+
+    Args:
+        db: Datenbank-Session
+        log_id: ID des Audit-Log-Eintrags
+
+    Returns:
+        Dict mit entschlüsselten Audit-Log-Daten oder None
+    """
+    from app.db.models import AuditLog
+
+    result = await db.execute(
+        select(AuditLog).where(AuditLog.id == log_id)
+    )
+    entry = result.scalar_one_or_none()
+
+    if not entry:
+        return None
+
+    # Entschlüssele Metadaten
+    decrypted_metadata = decrypt_audit_metadata(
+        entry.audit_metadata or {},
+        str(entry.id),
+    )
+
+    return {
+        "id": str(entry.id),
+        "user_id": str(entry.user_id) if entry.user_id else None,
+        "action": entry.action,
+        "resource_type": entry.resource_type,
+        "resource_id": str(entry.resource_id) if entry.resource_id else None,
+        "ip_address": entry.ip_address,
+        "user_agent": entry.user_agent,
+        "metadata": decrypted_metadata,
+        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+        "sequence_number": entry.sequence_number,
+        "integrity_hash": entry.integrity_hash,
+        "is_encrypted": is_audit_metadata_encrypted(entry.audit_metadata or {}),
+    }
+
+
+async def get_audit_logs_for_export(
+    db: AsyncSession,
+    start_date: datetime,
+    end_date: datetime,
+    decrypt: bool = True,
+    limit: int = 10000,
+) -> List[JSONDict]:
+    """
+    Holt Audit-Logs für Export mit optionaler Entschlüsselung.
+
+    Args:
+        db: Datenbank-Session
+        start_date: Startdatum
+        end_date: Enddatum
+        decrypt: Ob Metadaten entschlüsselt werden sollen
+        limit: Maximale Anzahl Einträge
+
+    Returns:
+        Liste von Audit-Log-Dicts
+    """
+    from app.db.models import AuditLog
+
+
+    result = await db.execute(
+        select(AuditLog)
+        .where(
+            AuditLog.created_at >= start_date,
+            AuditLog.created_at <= end_date,
+        )
+        .order_by(AuditLog.sequence_number)
+        .limit(limit)
+    )
+    entries = result.scalars().all()
+
+    logs = []
+    for entry in entries:
+        metadata = entry.audit_metadata or {}
+        if decrypt:
+            metadata = decrypt_audit_metadata(metadata, str(entry.id))
+
+        logs.append({
+            "id": str(entry.id),
+            "user_id": str(entry.user_id) if entry.user_id else None,
+            "action": entry.action,
+            "resource_type": entry.resource_type,
+            "ip_address": entry.ip_address,
+            "metadata": metadata,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            "sequence_number": entry.sequence_number,
+        })
+
+    return logs
+
+
 # Singleton-Instance für globalen Zugriff (ohne DB)
 _global_audit_logger: Optional[SecurityAuditLogger] = None
 
@@ -688,3 +1063,8 @@ def get_audit_logger(db: Optional[AsyncSession] = None) -> SecurityAuditLogger:
         _global_audit_logger = SecurityAuditLogger()
 
     return _global_audit_logger
+
+
+# Backwards compatibility aliases
+AuditLogger = SecurityAuditLogger
+AuditEventType = SecurityEventType

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\recognition\zoo.py
+# hypothesis_version: 6.148.7
+
+[128, 'batch_size', 'crnn_vgg16_bn', 'input_shape', 'master', 'mean', 'parseq', 'pretrained_backbone', 'sar_resnet31', 'std', 'viptr_tiny', 'vitstr_base', 'vitstr_small']

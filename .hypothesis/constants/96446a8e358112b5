@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\ml\quality_metrics.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.05, 0.1, 1.0, 'A', 'AE', 'Ae', 'B', 'O', 'OE', 'Oe', 'SS', 'U', 'UE', 'Ue', 'a', 'accuracy', 'ae', 'avg_cer', 'avg_umlaut_accuracy', 'avg_wer', 'cer', 'char_accuracy', 'correct_umlauts', 'deletion', 'deletions', 'false_positives', 'hypothesis_length', 'insertion', 'insertions', 'levenshtein_distance', 'match', 'missed_umlauts', 'o', 'oe', 'reference_length', 'sample_count', 'ss', 'substitution', 'substitutions', 'sz', 'total_umlauts', 'u', 'ue', 'umlaut_accuracy', 'wer', 'word_accuracy', 'Ã', 'Ã¤', 'Ã¶', 'Ã¼', 'Ãœ', 'Ã–', 'Ã„', 'Ä', 'Ö', 'Ü', 'ß', 'ä', 'äöüÄÖÜß', 'ö', 'ü']

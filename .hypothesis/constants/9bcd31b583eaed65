@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\text\transforms.py
+# hypothesis_version: 6.148.7
+
+[0.5, 0.8, 0.9, 1.0, ' +', 'TextImage', 'at', 'bbox', 'bbox_coords', 'bbox_index', 'deletion', 'font', 'font_color', 'image', 'images', 'in', 'insertion', 'is', 'of', 'original_text', 'overlay_data', 'swap', 'text', 'textimage_metadata', 'the']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\personal\departments.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 1000, '/departments', '/tree', '/{department_id}', 'Abteilung abrufen', 'Abteilung anlegen', 'Abteilung loeschen', 'Abteilungsleiter', 'Abteilungsname', 'Aktiv', 'Beschreibung', 'DepartmentResponse', 'DepartmentTreeItem', 'Inaktive einbeziehen', 'Kostenstelle', 'Kurzname/Kuerzel', 'Seitennummer', 'Sortierreihenfolge', 'Suche (Name)', 'before', 'berechtigung', 'bereits vorhanden', 'children', 'cost_center', 'created_at', 'cycle', 'description', 'duplicate', 'eigenes elternteil', 'employee_count', 'existiert bereits', 'format', 'id', 'invalid', 'is_active', 'kinder', 'manager_id', 'name', 'nicht gefunden', 'nicht leer', 'not found', 'parent_id', 'permission', 'short_name', 'sort_order', 'ungueltig', 'unterabteilung', 'updated_at', 'zugriff', 'zyklisch']

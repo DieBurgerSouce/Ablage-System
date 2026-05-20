@@ -12,6 +12,7 @@ Feinpoliert und durchdacht - Enterprise-grade Fallback Management.
 
 import asyncio
 import time
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -25,6 +26,7 @@ from app.services.confidence_service import (
     get_confidence_service
 )
 from app.services.circuit_breaker import (
+
     CircuitBreakerRegistry,
     CircuitBreakerError,
     CircuitState,
@@ -58,6 +60,8 @@ class FallbackResult:
     total_time_ms: int
     confidence_metrics: Optional[ConfidenceMetrics] = None
     error: Optional[str] = None
+    # Docling-Tabellen (für strukturierte Extraktion)
+    tables: Optional[List[Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -71,6 +75,7 @@ class FallbackResult:
             "total_time_ms": self.total_time_ms,
             "confidence_metrics": self.confidence_metrics.to_dict() if self.confidence_metrics else None,
             "error": self.error,
+            "tables_count": len(self.tables) if self.tables else 0,
         }
 
 
@@ -119,8 +124,17 @@ class FallbackChain:
             strengths=["formulas", "tables", "markdown", "fast"]
         ),
         BackendConfig(
-            name="surya-gpu",
+            name="donut",
             priority=3,
+            requires_gpu=True,
+            vram_gb=8.0,
+            min_confidence_threshold=0.60,
+            timeout_seconds=90.0,
+            strengths=["multilingual", "100_languages", "cyrillic", "polish", "russian"]
+        ),
+        BackendConfig(
+            name="surya-gpu",
+            priority=4,
             requires_gpu=True,
             vram_gb=4.0,
             min_confidence_threshold=0.60,
@@ -129,7 +143,7 @@ class FallbackChain:
         ),
         BackendConfig(
             name="surya",
-            priority=4,
+            priority=5,
             requires_gpu=False,
             vram_gb=0.0,
             min_confidence_threshold=0.50,
@@ -347,7 +361,10 @@ class FallbackChain:
                     document_type=document_type
                 )
 
-                if should_fallback and i < len(available_backends) - 1:
+                # Fallback nur wenn noch weitere Versuche möglich sind
+                # (sowohl innerhalb max_fallbacks als auch verfügbare Backends)
+                max_attempts = min(len(available_backends), self.max_fallbacks + 1)
+                if should_fallback and i < max_attempts - 1:
                     fallback_reasons.append({
                         "backend": backend_name,
                         "reason": FallbackReason.LOW_CONFIDENCE.value,
@@ -368,6 +385,10 @@ class FallbackChain:
                 self._success_counts[backend_name] = self._success_counts.get(backend_name, 0) + 1
 
                 total_time = int((time.perf_counter() - start_time) * 1000)
+
+                # Tabellen aus Docling/Surya-Ergebnis extrahieren (falls vorhanden)
+                tables = result.get("tables", None)
+
                 return FallbackResult(
                     success=True,
                     text=result.get("text", ""),
@@ -377,7 +398,8 @@ class FallbackChain:
                     fallbacks_occurred=len(fallback_reasons),
                     fallback_reasons=fallback_reasons,
                     total_time_ms=total_time,
-                    confidence_metrics=metrics
+                    confidence_metrics=metrics,
+                    tables=tables
                 )
 
             except asyncio.TimeoutError:
@@ -423,14 +445,14 @@ class FallbackChain:
                 fallback_reasons.append({
                     "backend": backend_name,
                     "reason": reason.value,
-                    "details": str(e)
+                    "details": safe_error_detail(e, "Fallback")
                 })
                 self._fallback_counts[backend_name] = self._fallback_counts.get(backend_name, 0) + 1
                 logger.error(
                     "fallback_chain_error",
                     document_id=document_id,
                     backend=backend_name,
-                    error=str(e),
+                    **safe_error_log(e),
                     error_type=error_type
                 )
 
@@ -454,6 +476,7 @@ class FallbackChain:
                 fallback_reasons=fallback_reasons,
                 total_time_ms=total_time,
                 confidence_metrics=last_metrics,
+                tables=last_result.get("tables", None),
                 error="Alle primären Backends fehlgeschlagen, verwende bestes verfügbares Ergebnis"
             )
 

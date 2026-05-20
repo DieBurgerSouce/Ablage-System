@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\datev\export_service.py
+# hypothesis_version: 6.148.7
+
+[1000, '%Y%m%d_%H%M%S', '0', ': ', 'Keine Rechnungsdaten', 'SKR03', 'SKR04', 'Unbekannter Fehler', 'belegdatum', 'belegfeld_1', 'bu_schluessel', 'buchungsstapel', 'buchungstext', 'datev_', 'extracted_data', 'gegenkonto', 'id', 'invoice', 'invoice_date', 'konto', 'soll_haben', 'umsatz']

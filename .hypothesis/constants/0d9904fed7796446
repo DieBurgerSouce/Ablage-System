@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\recovery\recovery_to_doc.py
+# hypothesis_version: 6.148.7
+
+[0.25, 6.5, './w:cols', '1', '2', 'Normal', 'TableGrid', 'Times New Roman', 'bbox', 'docx save to {}', 'double', 'equation', 'figure', 'html', 'img_idx', 'latex', 'layout', 'res', 'single', 'table', 'text', 'title', 'type', 'w:eastAsia', 'w:num', '{}_ocr.docx', '{}_{}.jpg', '宋体']

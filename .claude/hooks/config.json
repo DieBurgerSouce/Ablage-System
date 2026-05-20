@@ -1,0 +1,31 @@
+{
+  "settings": {
+    "plan_freshness_minutes": 5,
+    "feature_count_threshold": 3,
+    "phase_count_threshold": 2,
+    "task_count_threshold": 1,
+    "max_spec_lines": 500,
+    "enable_logging": true,
+    "log_level": "INFO",
+    "max_plans_to_scan": 1000
+  },
+  "feature_detection": {
+    "keywords": {
+      "api": ["endpoint", "api", "rest", "graphql", "route", "controller", "http"],
+      "ui": ["component", "page", "display", "frontend", "view", "react", "vue", "angular", "svelte"],
+      "db": ["schema", "migration", "model", "database", "table", "sql", "postgres", "mongodb"],
+      "service": ["service", "business logic", "process", "workflow", "handler"],
+      "test": ["test", "testing", "pytest", "unittest", "e2e", "integration test"],
+      "infra": ["docker", "kubernetes", "ci", "cd", "deployment", "infrastructure", "terraform", "ansible"],
+      "docs": ["documentation", "readme", "guide", "manual", "wiki"],
+      "auth": ["authentication", "authorization", "login", "jwt", "oauth", "session"],
+      "security": ["security", "encryption", "ssl", "tls", "firewall", "vulnerability"]
+    },
+    "default_type": "service",
+    "confidence_thresholds": {
+      "high": 5,
+      "medium": 3,
+      "low": 0
+    }
+  }
+}

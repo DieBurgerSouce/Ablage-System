@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\reconciliation_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 100, '%Y-%m-%d', '%d.%m.%Y', '-', '.', '0.01', '[^a-zA-Z0-9]', 'amount', 'amount_date', 'amount_exact', 'amounts', 'brutto', 'customer_number', 'date_proximity', 'days_diff', 'doc_invoice', 'doc_name', 'document_id', 'due_date', 'fuzzy_name', 'gross', 'iban', 'iban_amount', 'iban_match', 'invoice', 'invoice_date', 'invoice_number', 'manual', 'manual_match_success', 'manual_split', 'matched_customer', 'matched_invoice', 'name', 'name_similarity', 'payment_details', 'sender', 'total', 'tx_name', 'unmatch_success']

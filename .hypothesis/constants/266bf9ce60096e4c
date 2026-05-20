@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\got_ocr2\modeling_got_ocr2.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 1e-06, 1.0, 'GotOcr2Model', '^vision_tower', 'attentions', 'bhwc,hkc->bhwk', 'bhwc,wkc->bhwk', 'channels_first', 'channels_last', 'hidden_states', 'language_model', 'language_model.model', 'linear', 'lm_head', 'lm_head.weight', 'model.language_model', 'model.vision_tower', 'past_key_values', 'pixel_values']

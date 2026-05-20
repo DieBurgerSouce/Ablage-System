@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\functional\conv.py
+# hypothesis_version: 6.148.7
+
+['EXPLICIT', 'Filter', 'Input', 'NCDHW', 'NCHW', 'NCL', 'NDHWC', 'NHWC', 'NLC', 'Out', 'Output', 'SAME', 'VALID', 'X', 'Y', 'axis', 'conv2d', 'conv2d_transpose', 'conv3d', 'conv3d_transpose', 'cpu', 'data_format', 'depthwise_conv2d', 'dilation', 'dilations', 'elementwise_add', 'float16', 'float32', 'float64', 'groups', 'input', 'int32', 'int64', 'npu', 'output_padding', 'output_size', 'padding', 'padding_algorithm', 'paddings', 'stride', 'strides', 'uint16', 'use_cudnn', 'x']

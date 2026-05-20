@@ -20,6 +20,10 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 import json
 
 
+# Test-Konstanten fuer gueltige UUIDs (Service erfordert UUID-Validierung)
+TEST_USER_UUID = "00000000-0000-0000-0000-000000000001"
+
+
 # ========================= Test Fixtures =========================
 
 
@@ -91,6 +95,14 @@ class TestNotificationType:
         assert NotificationType.GERMAN_VALIDATION_WARNING == "german_validation_warning"
         assert NotificationType.BATCH_COMPLETED == "batch_completed"
         assert NotificationType.SYSTEM_ALERT == "system_alert"
+
+    def test_approval_notification_types_defined(self):
+        """Approval-Benachrichtigungstypen sollten definiert sein."""
+        from app.services.notification_service import NotificationType
+
+        assert NotificationType.APPROVAL_ESCALATED == "approval_escalated"
+        assert NotificationType.APPROVAL_REMINDER == "approval_reminder"
+        assert NotificationType.APPROVAL_ACTION_REQUIRED == "approval_action_required"
 
 
 class TestNotificationChannel:
@@ -323,7 +335,9 @@ class TestWebhookNotifier:
         mock_response.status_code = 200
         mock_response.raise_for_status = Mock()
 
-        with patch('httpx.AsyncClient') as MockClient:
+        with patch('httpx.AsyncClient') as MockClient, \
+             patch('app.core.security.validate_url_for_ssrf_async',
+                   new_callable=AsyncMock, return_value=(True, None)):
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -362,7 +376,9 @@ class TestWebhookNotifier:
         mock_response.status_code = 200
         mock_response.raise_for_status = Mock()
 
-        with patch('httpx.AsyncClient') as MockClient:
+        with patch('httpx.AsyncClient') as MockClient, \
+             patch('app.core.security.validate_url_for_ssrf_async',
+                   new_callable=AsyncMock, return_value=(True, None)):
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -425,7 +441,7 @@ class TestInAppNotificationStore:
 
         with patch.object(store, '_get_redis', return_value=mock_redis):
             notification_id = await store.store(
-                user_id="user-123",
+                user_id=TEST_USER_UUID,
                 notification={
                     "type": "processing_completed",
                     "title": "Verarbeitung abgeschlossen",
@@ -443,7 +459,7 @@ class TestInAppNotificationStore:
 
         stored_notification = json.dumps({
             "id": "notif-123",
-            "user_id": "user-123",
+            "user_id": TEST_USER_UUID,
             "type": "test",
             "read": False
         })
@@ -452,7 +468,7 @@ class TestInAppNotificationStore:
         store = InAppNotificationStore()
 
         with patch.object(store, '_get_redis', return_value=mock_redis):
-            notifications = await store.get_notifications("user-123")
+            notifications = await store.get_notifications(TEST_USER_UUID)
 
             assert len(notifications) == 1
             assert notifications[0]["id"] == "notif-123"
@@ -472,7 +488,7 @@ class TestInAppNotificationStore:
         store = InAppNotificationStore()
 
         with patch.object(store, '_get_redis', return_value=mock_redis):
-            result = await store.get_notifications("user-123", unread_only=True)
+            result = await store.get_notifications(TEST_USER_UUID, unread_only=True)
 
             assert len(result) == 2
 
@@ -490,7 +506,7 @@ class TestInAppNotificationStore:
         store = InAppNotificationStore()
 
         with patch.object(store, '_get_redis', return_value=mock_redis):
-            result = await store.mark_read("user-123", "notif-123")
+            result = await store.mark_read(TEST_USER_UUID, "notif-123")
 
             assert result is True
             mock_redis.client.lset.assert_called_once()
@@ -505,7 +521,7 @@ class TestInAppNotificationStore:
         store = InAppNotificationStore()
 
         with patch.object(store, '_get_redis', return_value=mock_redis):
-            result = await store.mark_read("user-123", "nonexistent")
+            result = await store.mark_read(TEST_USER_UUID, "nonexistent")
 
             assert result is False
 
@@ -524,7 +540,7 @@ class TestInAppNotificationStore:
         store = InAppNotificationStore()
 
         with patch.object(store, '_get_redis', return_value=mock_redis):
-            count = await store.get_unread_count("user-123")
+            count = await store.get_unread_count(TEST_USER_UUID)
 
             assert count == 2
 
@@ -562,7 +578,7 @@ class TestNotificationService:
             result = await service.notify(
                 notification_type=NotificationType.PROCESSING_COMPLETED,
                 context=sample_context,
-                user_id="user-123",
+                user_id=TEST_USER_UUID,
                 email="user@test.local",
                 webhook_url="https://webhook.test.local",
                 channels=[
@@ -616,7 +632,7 @@ class TestNotificationService:
                     "entity_count": 5,
                     "umlauts_valid": True
                 },
-                user_id="user-123",
+                user_id=TEST_USER_UUID,
                 email="user@test.local"
             )
 
@@ -635,7 +651,7 @@ class TestNotificationService:
                 document_id="doc-123",
                 filename="test.pdf",
                 error_message="OCR-Fehler aufgetreten",
-                user_id="user-123"
+                user_id=TEST_USER_UUID
             )
 
             assert result is not None
@@ -652,7 +668,7 @@ class TestNotificationService:
                 document_id="doc-123",
                 confidence=0.65,
                 recommendation="Manuelle Überprüfung empfohlen",
-                user_id="user-123"
+                user_id=TEST_USER_UUID
             )
 
             # Quality warnings should only go to in-app
@@ -677,7 +693,7 @@ class TestNotificationService:
             result = await service.notify(
                 notification_type=NotificationType.PROCESSING_COMPLETED,
                 context=sample_context,
-                user_id="user-123",
+                user_id=TEST_USER_UUID,
                 email="user@test.local"
             )
 
@@ -783,7 +799,7 @@ class TestNotificationServiceEdgeCases:
             result = await service.notify(
                 notification_type=NotificationType.PROCESSING_COMPLETED,
                 context=sample_context,
-                user_id="user-123",
+                user_id=TEST_USER_UUID,
                 channels=[NotificationChannel.IN_APP]
             )
 

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\jit\inference_decorator.py
+# hypothesis_version: 6.148.7
+
+[1000, '*', ',', '.cache', '.pdmodel', ':', '_', '_InputT', '_LayerT', '_RetT', '__name__', '_d2s_input_info.txt', '_package.so', 'bfloat16', 'cache_static_model', 'collect_shape', 'def', 'delete_pass_lists', 'enable_cinn', 'enable_new_ir', 'float16', 'float32', 'gpu', 'infer', 'infer.json', 'infer.pdiparams', 'infer.pdmodel', 'inference_models', 'innermost_decorator', 'input_specs: ', 'paddle', 'precision_mode', 'r', 'save_model_dir', 'self', 'skip_prune_program', 'switch_ir_debug', 'switch_ir_optim', 'trt_precision_mode', 'trt_shape.txt', 'trt_use_static', 'w', 'with_trt', 'xpu']

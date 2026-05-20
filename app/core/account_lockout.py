@@ -14,10 +14,11 @@ Feinpoliert und durchdacht - Enterprise-grade Sicherheit.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Tuple, Union
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -39,13 +40,22 @@ MAX_LOCKOUT_DURATION = 3600  # Maximale Sperrzeit: 1 Stunde
 FAILED_ATTEMPTS_PREFIX = "login:failed:"
 LOCKOUT_PREFIX = "login:lockout:"
 
-# In-Memory-Fallback (wenn Redis nicht verfügbar)
-# WARNUNG: In-Memory ist prozesslokal und nur für Single-Worker-Deployments sicher!
+# FAANG-AUDIT FIX: In-Memory-Fallback (wenn Redis nicht verfügbar)
+# SICHERHEITSWARNUNG: In-Memory ist prozesslokal!
+# Bei Multi-Worker-Deployments:
+# - Brute-Force kann über verschiedene Worker verteilt werden
+# - Lockout-Status ist nicht synchronisiert
+# EMPFEHLUNG: fail_closed=True in Production (Default), dann wird In-Memory nicht genutzt
+import asyncio
 _failed_attempts_fallback: Dict[str, int] = {}
 _lockout_until_fallback: Dict[str, datetime] = {}
+_fallback_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety für Fallback-Dicts
+
+# Flag um einmalig vor In-Memory Fallback zu warnen
+_fallback_warned: bool = False
 
 # Redis-Client (lazy-loaded)
-_redis_client: Optional[Any] = None
+_redis_client: Optional[object] = None
 _redis_available: Optional[bool] = None
 
 
@@ -59,7 +69,7 @@ class AccountLockoutStorageError(Exception):
     pass
 
 
-async def _get_redis_client() -> Optional[Any]:
+async def _get_redis_client() -> Optional[object]:
     """
     Hole Redis-Client für Account-Lockout-Operationen.
 
@@ -78,6 +88,7 @@ async def _get_redis_client() -> Optional[Any]:
 
     try:
         from app.core.redis_state import RedisStateManager
+
         manager = RedisStateManager.get_instance()
         await manager.connect()
 
@@ -95,7 +106,7 @@ async def _get_redis_client() -> Optional[Any]:
     except Exception as e:
         _redis_available = False
         logger.warning("account_lockout_redis_unavailable",
-                      error=str(e),
+                      **safe_error_log(e),
                       message="Fallback auf In-Memory-Tracking")
         return None
 
@@ -231,27 +242,33 @@ async def check_account_lockout(
         )
 
     # Fallback auf In-Memory (nur wenn fail_closed=False)
-    # WARNUNG: Unsicher bei Multi-Worker-Deployments!
-    logger.warning(
-        "account_lockout_using_memory_fallback",
-        identifier=identifier[:30] + "...",
-        message="In-Memory-Fallback ist prozesslokal und unsicher!"
-    )
+    # FAANG-AUDIT: Thread-Safety mit Lock + einmalige Warnung
+    global _fallback_warned
+    if not _fallback_warned:
+        logger.warning(
+            "account_lockout_using_memory_fallback",
+            identifier=identifier[:30] + "...",
+            message="SICHERHEITSWARNUNG: In-Memory-Fallback ist prozesslokal! "
+                    "Bei Multi-Worker-Deployments kann Brute-Force verteilt werden. "
+                    "Empfehlung: Redis verfügbar machen oder fail_closed=True setzen."
+        )
+        _fallback_warned = True
 
-    if identifier in _lockout_until_fallback:
-        lockout_until = _lockout_until_fallback[identifier]
-        now = datetime.now(timezone.utc)
+    async with _fallback_lock:
+        if identifier in _lockout_until_fallback:
+            lockout_until = _lockout_until_fallback[identifier]
+            now = datetime.now(timezone.utc)
 
-        if lockout_until > now:
-            remaining = int((lockout_until - now).total_seconds())
-            return (
-                True,
-                remaining,
-                _format_lockout_message(remaining)
-            )
-        else:
-            # Lockout abgelaufen, entfernen
-            del _lockout_until_fallback[identifier]
+            if lockout_until > now:
+                remaining = int((lockout_until - now).total_seconds())
+                return (
+                    True,
+                    remaining,
+                    _format_lockout_message(remaining)
+                )
+            else:
+                # Lockout abgelaufen, entfernen
+                del _lockout_until_fallback[identifier]
 
     return (False, None, None)
 
@@ -337,13 +354,10 @@ async def record_failed_attempt(
                 "Bitte versuchen Sie es in wenigen Minuten erneut."
             )
         else:
-            # In-Memory Fallback (unsicher!)
-            logger.warning(
-                "record_failed_attempt_using_memory_fallback",
-                identifier=identifier[:30] + "..."
-            )
-            attempts = _failed_attempts_fallback.get(identifier, 0) + 1
-            _failed_attempts_fallback[identifier] = attempts
+            # FAANG-AUDIT: In-Memory Fallback mit Lock (unsicher bei Multi-Worker!)
+            async with _fallback_lock:
+                attempts = _failed_attempts_fallback.get(identifier, 0) + 1
+                _failed_attempts_fallback[identifier] = attempts
 
     # Logge den Fehlversuch
     logger.warning(
@@ -379,10 +393,12 @@ async def record_failed_attempt(
                     lockout_until.isoformat()
                 )
             except Exception as e:
-                logger.warning("set_lockout_redis_error", error=str(e))
-                _lockout_until_fallback[identifier] = lockout_until
+                logger.warning("set_lockout_redis_error", **safe_error_log(e))
+                async with _fallback_lock:
+                    _lockout_until_fallback[identifier] = lockout_until
         else:
-            _lockout_until_fallback[identifier] = lockout_until
+            async with _fallback_lock:
+                _lockout_until_fallback[identifier] = lockout_until
 
         logger.warning(
             "account_locked",
@@ -421,13 +437,14 @@ async def reset_failed_attempts(
             logger.debug("failed_attempts_reset", identifier=identifier[:30] + "...")
             return True
         except Exception as e:
-            logger.warning("reset_attempts_redis_error", error=str(e))
+            logger.warning("reset_attempts_redis_error", **safe_error_log(e))
 
-    # Fallback
-    if identifier in _failed_attempts_fallback:
-        del _failed_attempts_fallback[identifier]
-    if identifier in _lockout_until_fallback:
-        del _lockout_until_fallback[identifier]
+    # FAANG-AUDIT: Fallback mit Lock
+    async with _fallback_lock:
+        if identifier in _failed_attempts_fallback:
+            del _failed_attempts_fallback[identifier]
+        if identifier in _lockout_until_fallback:
+            del _lockout_until_fallback[identifier]
 
     return True
 
@@ -462,7 +479,7 @@ async def admin_unlock_account(
 async def get_lockout_status(
     ip: Optional[str] = None,
     username: Optional[str] = None
-) -> Dict[str, Any]:
+) -> Dict[str, Union[str, int, bool, None]]:
     """
     Hole detaillierten Lockout-Status für Admin-Dashboard.
 
@@ -499,17 +516,18 @@ async def get_lockout_status(
                     remaining_seconds = int((lockout_until - now).total_seconds())
 
         except Exception as e:
-            logger.warning("get_status_redis_error", error=str(e))
+            logger.warning("get_status_redis_error", **safe_error_log(e))
 
-    # Fallback-Werte wenn Redis nicht verfügbar
+    # FAANG-AUDIT: Fallback-Werte mit Lock wenn Redis nicht verfügbar
     if redis is None or attempts == 0:
-        attempts = _failed_attempts_fallback.get(identifier, 0)
-        if identifier in _lockout_until_fallback:
-            lockout_until = _lockout_until_fallback[identifier]
-            now = datetime.now(timezone.utc)
-            if lockout_until > now:
-                is_locked = True
-                remaining_seconds = int((lockout_until - now).total_seconds())
+        async with _fallback_lock:
+            attempts = _failed_attempts_fallback.get(identifier, 0)
+            if identifier in _lockout_until_fallback:
+                lockout_until = _lockout_until_fallback[identifier]
+                now = datetime.now(timezone.utc)
+                if lockout_until > now:
+                    is_locked = True
+                    remaining_seconds = int((lockout_until - now).total_seconds())
 
     return {
         "identifier": identifier,

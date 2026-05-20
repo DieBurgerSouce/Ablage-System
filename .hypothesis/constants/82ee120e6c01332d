@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\training.py
+# hypothesis_version: 6.148.7
+
+['-mean', '-std', 'CVPack', 'PdDataFrame', 'best_iteration', 'best_score', 'eval_metric', 'group_ptr', 'test', 'train']

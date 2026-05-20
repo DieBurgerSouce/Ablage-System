@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\dist_tensor.py
+# hypothesis_version: 6.148.7
+
+['_local_tensor_map', '_serial_tensor', 'annotated', 'block', 'capacity', 'dims_mapping', 'do_model_average', 'dtype', 'is_distributed', 'is_parameter', 'lod_level', 'name', 'need_check_feed', 'need_clip', 'non-annotated', 'optimize_attr', 'persistable', 'process_mesh', 'regularizer', 'self', 'shape', 'stop_gradient', 'trainable', 'type']

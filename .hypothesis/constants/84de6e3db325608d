@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\model_preloader.py
+# hypothesis_version: 6.148.7
+
+[8.0, 10.0, 12.0, 600, 1024, 'ModelPreloader', 'cleanup', 'cuda', 'deepseek', 'enabled', 'error', 'failed', 'got_ocr', 'load_time_seconds', 'loaded', 'loading', 'model_preload_failed', 'model_preloaded', 'models', 'pending', 'preload_completed', 'preload_started', 'skipped', 'status', 'summary', 'surya_docling', 'surya_gpu', 'total', 'vram_check_failed']

@@ -1,0 +1,147 @@
+# Prometheus Alerting Rules fuer MinIO Object Storage
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: minio_alerts
+    rules:
+      # Kritisch: MinIO nicht erreichbar
+      - alert: MinIODown
+        expr: minio_cluster_health_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: minio
+        annotations:
+          summary: "MinIO Storage nicht erreichbar"
+          description: "Der MinIO Object Storage ist seit mehr als 1 Minute nicht erreichbar."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-down"
+
+      # Kritisch: MinIO API nicht erreichbar (Fallback wenn kein Exporter)
+      - alert: MinIOAPIDown
+        expr: probe_success{job="minio-probe"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: minio
+        annotations:
+          summary: "MinIO API nicht erreichbar"
+          description: "Die MinIO API antwortet nicht auf Health-Checks."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-api-down"
+
+      # Warnung: Speicherplatz niedrig (>85%)
+      - alert: MinIOStorageHigh
+        expr: |
+          (minio_cluster_capacity_usable_total_bytes - minio_cluster_capacity_usable_free_bytes)
+          / minio_cluster_capacity_usable_total_bytes > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO Speicher hoch (>85%)"
+          description: "MinIO Speicherauslastung bei {{ $value | humanizePercentage }}. Kapazitaet erweitern."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-storage-high"
+
+      # Kritisch: Speicherplatz kritisch (>95%)
+      - alert: MinIOStorageCritical
+        expr: |
+          (minio_cluster_capacity_usable_total_bytes - minio_cluster_capacity_usable_free_bytes)
+          / minio_cluster_capacity_usable_total_bytes > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          component: minio
+        annotations:
+          summary: "KRITISCH: MinIO Speicher fast voll"
+          description: "MinIO Speicher bei {{ $value | humanizePercentage }}. Uploads werden fehlschlagen!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-storage-critical"
+
+      # Warnung: Hohe Request-Fehlerrate
+      - alert: MinIOHighErrorRate
+        expr: |
+          sum(rate(minio_s3_requests_errors_total[5m]))
+          / sum(rate(minio_s3_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "Hohe MinIO Fehlerrate"
+          description: "Mehr als 5% der MinIO Requests schlagen fehl ({{ $value | humanizePercentage }})."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-error-rate"
+
+      # Warnung: Langsame MinIO Operationen
+      - alert: MinIOHighLatency
+        expr: |
+          histogram_quantile(0.95, sum(rate(minio_s3_requests_duration_seconds_bucket[5m])) by (le, api))
+          > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "Langsame MinIO Operationen"
+          description: "95% der MinIO {{ $labels.api }} Operationen dauern laenger als 2 Sekunden."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-latency"
+
+      # Warnung: Offline Disks (Distributed Mode)
+      - alert: MinIOOfflineDisks
+        expr: minio_cluster_disk_offline_total > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO Offline Disks"
+          description: "{{ $value }} MinIO Disks sind offline. Redundanz pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-offline-disks"
+
+      # Kritisch: Healing erforderlich
+      - alert: MinIOHealingRequired
+        expr: minio_heal_objects_total > 0
+        for: 30m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO Healing laeuft"
+          description: "{{ $value }} Objekte muessen repariert werden. Healing-Fortschritt pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-healing"
+
+      # Warnung: Bucket-spezifisch - Documents Bucket gross
+      - alert: MinIODocumentsBucketLarge
+        expr: |
+          minio_bucket_usage_object_total{bucket="documents"} > 100000
+        for: 1h
+        labels:
+          severity: info
+          component: minio
+        annotations:
+          summary: "Documents Bucket hat viele Objekte"
+          description: "Der Documents Bucket enthaelt {{ $value | humanize }} Objekte. Archivierung pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-archiving"
+
+      # Warnung: Hohe Concurrent Requests
+      - alert: MinIOHighConcurrency
+        expr: minio_s3_requests_inflight > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "Hohe MinIO Parallelitaet"
+          description: "{{ $value }} gleichzeitige MinIO Requests. Moegliche Ueberlast."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-concurrency"
+
+      # Info: Viele GET Requests (potentielle DDoS)
+      - alert: MinIOUnusualTraffic
+        expr: |
+          rate(minio_s3_requests_total{api="getobject"}[5m]) > 1000
+        for: 10m
+        labels:
+          severity: info
+          component: minio
+        annotations:
+          summary: "Ungewoehnlich hoher MinIO Traffic"
+          description: "Mehr als 1000 GET Requests/Sekunde. Missbrauch oder unerwartete Last?"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/minio-traffic"

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\websocket_manager.py
+# hypothesis_version: 6.148.7
+
+['ai_chunk', 'ai_done', 'ai_streaming', 'chunk', 'connected_at', 'content', 'created_at', 'error', 'full_content', 'id', 'is_typing', 'message', 'message_id', 'message_updated', 'new_message', 'presence', 'role', 'timestamp', 'type', 'typing_start', 'typing_stop', 'user', 'user_id', 'user_joined', 'user_left', 'username', 'users', 'websocket_connected']

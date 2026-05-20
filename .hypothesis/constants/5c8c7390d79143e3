@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\filetype\types\video.py
+# hypothesis_version: 6.148.7
+
+[b'\x1aE\xdf\xa3', b'B\x82\x84webm', b'B\x82\x88matroska', 102, 103, 112, 116, 117, 121, 142, 166, 176, 178, 191, 207, 217, '3gp', 'avi', 'flv', 'isom', 'm4v', 'mkv', 'mov', 'mp4', 'mp41', 'mp42', 'mpg', 'qt  ', 'video/3gpp', 'video/mp4', 'video/mpeg', 'video/quicktime', 'video/webm', 'video/x-flv', 'video/x-m4v', 'video/x-matroska', 'video/x-ms-wmv', 'video/x-msvideo', 'webm', 'wmv']

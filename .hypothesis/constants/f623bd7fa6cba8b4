@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\launch\context\node.py
+# hypothesis_version: 6.148.7
+
+[100, '127.0.0.1', '35100:64000', ':', 'FLAGS_FIXED_PORT', 'PORT_RANGE', 'SO_REUSEPORT', 'ii']

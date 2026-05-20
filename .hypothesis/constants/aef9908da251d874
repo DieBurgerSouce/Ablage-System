@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\utils\transformers.py
+# hypothesis_version: 6.148.7
+
+['None', 'bos_token', 'decode', 'eos_token', 'input_ids', 'keep_prefix', 'keep_suffix', 'null_tokens', 'special_tokens_map', 'verbose']

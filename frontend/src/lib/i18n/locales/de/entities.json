@@ -1,0 +1,163 @@
+{
+  "title": "Geschäftspartner",
+  "subtitle": "Kunden- und Lieferantenverwaltung",
+  "entity": "Geschäftspartner",
+  "entities": "Geschäftspartner",
+  "customer": "Kunde",
+  "customers": "Kunden",
+  "supplier": "Lieferant",
+  "suppliers": "Lieferanten",
+  "partner": "Partner",
+  "partners": "Partner",
+  "list": {
+    "title": "Geschäftspartnerliste",
+    "empty": "Keine Geschäftspartner vorhanden",
+    "searchPlaceholder": "Geschäftspartner suchen...",
+    "columns": {
+      "name": "Name",
+      "type": "Typ",
+      "customerNumber": "Kundennummer",
+      "supplierNumber": "Lieferantennummer",
+      "vatId": "USt-IdNr.",
+      "taxNumber": "Steuernummer",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "address": "Adresse",
+      "city": "Stadt",
+      "country": "Land",
+      "status": "Status",
+      "riskScore": "Risiko-Score",
+      "balance": "Saldo",
+      "documents": "Dokumente",
+      "lastActivity": "Letzte Aktivität"
+    }
+  },
+  "type": {
+    "customer": "Kunde",
+    "supplier": "Lieferant",
+    "both": "Kunde & Lieferant",
+    "prospect": "Interessent",
+    "partner": "Partner",
+    "other": "Sonstiges"
+  },
+  "status": {
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "blocked": "Gesperrt",
+    "prospect": "Interessent",
+    "archived": "Archiviert"
+  },
+  "detail": {
+    "title": "Geschäftspartnerdetails",
+    "overview": "Übersicht",
+    "documents": "Dokumente",
+    "transactions": "Transaktionen",
+    "invoices": "Rechnungen",
+    "contacts": "Kontakte",
+    "notes": "Notizen",
+    "history": "Verlauf",
+    "riskAnalysis": "Risikoanalyse"
+  },
+  "fields": {
+    "companyName": "Firmenname",
+    "legalForm": "Rechtsform",
+    "customerNumber": "Kundennummer",
+    "supplierNumber": "Lieferantennummer",
+    "vatId": "USt-IdNr.",
+    "taxNumber": "Steuernummer",
+    "commercialRegister": "Handelsregister",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "fax": "Fax",
+    "website": "Website",
+    "address": {
+      "title": "Adresse",
+      "street": "Straße",
+      "houseNumber": "Hausnummer",
+      "postalCode": "Postleitzahl",
+      "city": "Stadt",
+      "state": "Bundesland",
+      "country": "Land"
+    },
+    "bankDetails": {
+      "title": "Bankverbindung",
+      "bankName": "Bankname",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "accountHolder": "Kontoinhaber"
+    },
+    "paymentTerms": {
+      "title": "Zahlungsbedingungen",
+      "paymentDays": "Zahlungsziel (Tage)",
+      "skontoDays": "Skonto-Frist (Tage)",
+      "skontoPercent": "Skonto (%)",
+      "creditLimit": "Kreditlimit"
+    }
+  },
+  "actions": {
+    "create": "Geschäftspartner anlegen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "archive": "Archivieren",
+    "restore": "Wiederherstellen",
+    "block": "Sperren",
+    "unblock": "Entsperren",
+    "merge": "Zusammenführen",
+    "linkDocument": "Dokument verknüpfen",
+    "sendEmail": "E-Mail senden",
+    "exportData": "Daten exportieren"
+  },
+  "risk": {
+    "title": "Risiko-Score",
+    "score": "Score: {{score}}/100",
+    "low": "Niedriges Risiko",
+    "medium": "Mittleres Risiko",
+    "high": "Hohes Risiko",
+    "critical": "Kritisches Risiko",
+    "factors": {
+      "paymentDelay": "Zahlungsverzögerung",
+      "defaultRate": "Ausfallrate",
+      "invoiceVolume": "Rechnungsvolumen",
+      "documentFrequency": "Dokumenthäufigkeit",
+      "relationshipAge": "Beziehungsdauer"
+    },
+    "lastCalculated": "Zuletzt berechnet: {{date}}",
+    "recalculate": "Neu berechnen"
+  },
+  "import": {
+    "title": "Geschäftspartner importieren",
+    "lexware": "Aus Lexware importieren",
+    "csv": "CSV-Import",
+    "excel": "Excel-Import",
+    "mapping": "Felderzuordnung",
+    "preview": "Vorschau",
+    "conflicts": "Konflikte",
+    "success": "{{count}} Geschäftspartner importiert",
+    "duplicates": "{{count}} Duplikate gefunden",
+    "errors": "{{count}} Fehler"
+  },
+  "linking": {
+    "title": "Automatische Verknüpfung",
+    "subtitle": "Dokumente automatisch Geschäftspartnern zuordnen",
+    "confidence": "Sicherheit: {{percent}}%",
+    "matchBy": "Erkannt anhand:",
+    "matchTypes": {
+      "customerNumber": "Kundennummer",
+      "supplierNumber": "Lieferantennummer",
+      "vatId": "USt-IdNr.",
+      "iban": "IBAN",
+      "email": "E-Mail",
+      "name": "Name"
+    },
+    "approve": "Verknüpfung bestätigen",
+    "reject": "Verknüpfung ablehnen",
+    "manual": "Manuell zuordnen"
+  },
+  "validation": {
+    "vatIdInvalid": "Ungültige USt-IdNr.",
+    "ibanInvalid": "Ungültige IBAN",
+    "emailInvalid": "Ungültige E-Mail-Adresse",
+    "customerNumberExists": "Kundennummer bereits vergeben",
+    "supplierNumberExists": "Lieferantennummer bereits vergeben"
+  }
+}

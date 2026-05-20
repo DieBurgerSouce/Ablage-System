@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shapely\coordinates.py
+# hypothesis_version: 6.148.7
+
+['count_coordinates', 'get_coordinates', 'include_z', 'return_index', 'set_coordinates', 'transform']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\operators\graph_reindex.py
+# hypothesis_version: 6.148.7
+
+['2.4.0', 'Count', 'HashTable_Index', 'HashTable_Value', 'Neighbors', 'Out_Nodes', 'Reindex_Dst', 'Reindex_Src', 'X', 'graph_reindex', 'int32', 'int64']

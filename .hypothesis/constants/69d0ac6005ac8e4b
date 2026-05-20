@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\operators\graph_khop_sampler.py
+# hypothesis_version: 6.148.7
+
+['Col_Ptr', 'Eids', 'Out_Dst', 'Out_Eids', 'Out_Src', 'Reindex_X', 'Row', 'Sample_Index', 'X', 'graph_khop_sampler', 'int32', 'int64', 'return_eids', 'sample_sizes']

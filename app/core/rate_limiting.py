@@ -14,6 +14,7 @@ Features:
 from typing import Optional, Callable
 from functools import wraps
 from datetime import datetime, timezone, timedelta
+import asyncio
 
 import structlog
 from fastapi import Request, Response, HTTPException
@@ -24,6 +25,7 @@ from slowapi.errors import RateLimitExceeded
 import redis.asyncio as aioredis
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -58,8 +60,8 @@ def get_user_identifier(request: Request) -> str:
     if user and hasattr(user, "id"):
         return f"user:{user.id}"
 
-    # Fall back to IP address
-    return f"ip:{get_remote_address(request)}"
+    # Fall back to IP address (mit sicherer Extraktion)
+    return f"ip:{get_secure_remote_address(request)}"
 
 
 def get_ip_identifier(request: Request) -> str:
@@ -73,17 +75,112 @@ def get_ip_identifier(request: Request) -> str:
     Returns:
         IP address string
     """
-    return get_remote_address(request)
+    return get_secure_remote_address(request)
+
+
+def get_secure_remote_address(request: Request) -> str:
+    """
+    Securely extract client IP address with X-Forwarded-For validation.
+
+    SECURITY: X-Forwarded-For kann gespooft werden.
+    Diese Funktion validiert die Header und erlaubt nur trusted Proxies.
+
+    Priorität:
+    1. X-Real-IP (von trusted Proxy gesetzt)
+    2. Erster valider IP aus X-Forwarded-For (wenn trusted Proxy)
+    3. Client-IP aus Connection
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        Validated client IP address
+    """
+    import ipaddress
+
+    # Trusted Proxy IPs (Nginx, Load Balancer, etc.)
+    TRUSTED_PROXIES = {
+        ipaddress.ip_network("127.0.0.0/8"),      # Localhost
+        ipaddress.ip_network("10.0.0.0/8"),       # Private Class A
+        ipaddress.ip_network("172.16.0.0/12"),    # Private Class B
+        ipaddress.ip_network("192.168.0.0/16"),   # Private Class C
+        ipaddress.ip_network("::1/128"),          # IPv6 Localhost
+        ipaddress.ip_network("fc00::/7"),         # IPv6 Private
+    }
+
+    def is_trusted_proxy(ip: str) -> bool:
+        """Prüfe ob IP ein trusted Proxy ist."""
+        try:
+            addr = ipaddress.ip_address(ip)
+            return any(addr in net for net in TRUSTED_PROXIES)
+        except ValueError:
+            return False
+
+    def is_valid_ip(ip: str) -> bool:
+        """Prüfe ob IP-String eine valide IP-Adresse ist."""
+        try:
+            ipaddress.ip_address(ip.strip())
+            return True
+        except ValueError:
+            return False
+
+    # Direct connection IP
+    client_host = request.client.host if request.client else "127.0.0.1"
+
+    # Only process proxy headers if request comes from trusted proxy
+    if is_trusted_proxy(client_host):
+        # Option 1: X-Real-IP (gesetzt von Nginx)
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip and is_valid_ip(real_ip):
+            logger.debug(
+                "rate_limit_ip_from_real_ip",
+                real_ip=real_ip,
+                proxy=client_host
+            )
+            return real_ip.strip()
+
+        # Option 2: X-Forwarded-For (erste IP in der Kette)
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # Format: client, proxy1, proxy2, ...
+            ips = [ip.strip() for ip in forwarded_for.split(",")]
+
+            # Finde die erste nicht-Proxy-IP
+            for ip in ips:
+                if is_valid_ip(ip) and not is_trusted_proxy(ip):
+                    logger.debug(
+                        "rate_limit_ip_from_forwarded",
+                        forwarded_ip=ip,
+                        proxy=client_host,
+                        full_chain=forwarded_for
+                    )
+                    return ip
+
+            # Wenn alle IPs Proxies sind, nimm die erste
+            if ips and is_valid_ip(ips[0]):
+                return ips[0]
+    else:
+        # SECURITY: X-Forwarded-For von nicht-trusted Source ignorieren
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            logger.warning(
+                "rate_limit_untrusted_proxy_header_ignored",
+                client_host=client_host,
+                x_forwarded_for=forwarded_for
+            )
+
+    # Fallback: Direct connection IP
+    return client_host
 
 
 # ==================== Redis Backend Configuration ====================
 
 class RedisRateLimitStorage:
-    """Redis backend for rate limit storage with graceful degradation."""
+    """Redis backend for rate limit storage with connection pooling and graceful degradation."""
 
     def __init__(self, redis_url: str):
         """
-        Initialize Redis storage backend.
+        Initialize Redis storage backend with connection pooling.
 
         Args:
             redis_url: Redis connection URL
@@ -91,29 +188,43 @@ class RedisRateLimitStorage:
         self.redis_url = redis_url
         self._redis: Optional[aioredis.Redis] = None
         self._available = False
+        self._connect_lock = asyncio.Lock()
 
     async def connect(self) -> None:
-        """Connect to Redis with error handling."""
-        try:
-            self._redis = await aioredis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5
-            )
-            # Test connection
-            await self._redis.ping()
-            self._available = True
-            logger.info("rate_limit_redis_connected")
-        except Exception as e:
-            logger.warning(
-                "rate_limit_redis_unavailable",
-                error=str(e),
-                fallback="in-memory"
-            )
-            self._available = False
-            self._redis = None
+        """Connect to Redis with connection pooling and error handling."""
+        async with self._connect_lock:
+            if self._redis is not None:
+                return  # Already connected
+            try:
+                # Nutze Connection Pool Settings aus Config
+                self._redis = await aioredis.from_url(
+                    self.redis_url,
+                    encoding="utf-8",
+                    decode_responses=True,
+                    # Connection Pool Settings
+                    max_connections=settings.REDIS_POOL_MAX_SIZE,
+                    socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
+                    socket_connect_timeout=settings.REDIS_SOCKET_CONNECT_TIMEOUT,
+                    socket_keepalive=settings.REDIS_SOCKET_KEEPALIVE,
+                    health_check_interval=settings.REDIS_HEALTH_CHECK_INTERVAL,
+                    retry_on_timeout=True,
+                )
+                # Test connection
+                await self._redis.ping()
+                self._available = True
+                logger.info(
+                    "rate_limit_redis_connected",
+                    max_connections=settings.REDIS_POOL_MAX_SIZE,
+                    socket_timeout=settings.REDIS_SOCKET_TIMEOUT
+                )
+            except Exception as e:
+                logger.warning(
+                    "rate_limit_redis_unavailable",
+                    **safe_error_log(e),
+                    fallback="in-memory"
+                )
+                self._available = False
+                self._redis = None
 
     async def disconnect(self) -> None:
         """Close Redis connection."""
@@ -162,7 +273,7 @@ class RedisRateLimitStorage:
             results = await pipe.execute()
             return int(results[0])
         except Exception as e:
-            logger.error("rate_limit_redis_error", key=key, error=str(e))
+            logger.error("rate_limit_redis_error", key=key, **safe_error_log(e))
             if fail_closed:
                 raise RateLimitStorageError(
                     "Rate-Limiting-Service vorübergehend nicht verfügbar. "
@@ -197,7 +308,9 @@ limiter = Limiter(
     # Storage backend will be set during app startup
     storage_uri=settings.REDIS_URL if settings.RATE_LIMIT_ENABLED else None,
     strategy="fixed-window",  # Can be: fixed-window, moving-window
-    headers_enabled=True,  # Add X-RateLimit-* headers
+    # FIX: Headers disabled - causes errors when endpoints return None/non-Response
+    # SlowAPI's _inject_headers fails with "parameter `response` must be an instance of Response"
+    headers_enabled=False,
 )
 
 
@@ -426,6 +539,9 @@ def bypass_rate_limit_if_whitelisted(func: Callable) -> Callable:
     """
     Decorator to bypass rate limiting for whitelisted IPs.
 
+    Markiert Requests von whitelisted IPs, sodass nachfolgende
+    Rate-Limit-Checks diese überspringen können.
+
     Args:
         func: Function to decorate
 
@@ -442,9 +558,12 @@ def bypass_rate_limit_if_whitelisted(func: Callable) -> Callable:
                 ip=get_remote_address(request),
                 path=request.url.path
             )
-            # Skip rate limit check
-            return await func(*args, **kwargs)
+            # Markiere Request als whitelisted für nachfolgende Checks
+            request.state.rate_limit_whitelisted = True
+        else:
+            request.state.rate_limit_whitelisted = False
 
+        # Funktion wird genau einmal aufgerufen
         return await func(*args, **kwargs)
 
     return wrapper
@@ -555,8 +674,20 @@ async def check_rate_limit_budget(
     storage = await get_redis_storage()
 
     if not storage or not storage.is_available:
+        # SECURITY: Fail-Closed bei Redis-Ausfall wenn konfiguriert
+        if settings.RATE_LIMIT_FAIL_CLOSED:
+            logger.error(
+                "rate_limit_check_redis_unavailable_fail_closed",
+                user_id=user_id,
+                limit_type=limit_type
+            )
+            raise RateLimitStorageError(
+                "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                "Bitte versuchen Sie es später erneut."
+            )
+
         logger.warning(
-            "rate_limit_check_redis_unavailable",
+            "rate_limit_check_redis_unavailable_fail_open",
             user_id=user_id,
             limit_type=limit_type
         )
@@ -675,14 +806,20 @@ async def check_rate_limit_budget(
             "rate_limit_check_failed",
             user_id=user_id,
             limit_type=limit_type,
-            error=str(e)
+            **safe_error_log(e)
         )
-        # Fail-open: allow request on error
+
+        # SECURITY: Fail-Closed bei Fehler wenn konfiguriert
+        if settings.RATE_LIMIT_FAIL_CLOSED:
+            raise RateLimitStorageError(
+                "Rate-Limiting-Prüfung fehlgeschlagen. "
+                "Bitte versuchen Sie es später erneut."
+            ) from e
+
+        # Fail-open: allow request on error (nur wenn RATE_LIMIT_FAIL_CLOSED=False)
         return {
             "available": True,
-            "reason": "check_failed",
-            "error": str(e)
-        }
+            "reason": "check_failed", **safe_error_log(e)}
 
 
 async def increment_rate_limit_usage(
@@ -732,7 +869,7 @@ async def increment_rate_limit_usage(
             "rate_limit_increment_failed",
             user_id=user_id,
             limit_type=limit_type,
-            error=str(e)
+            **safe_error_log(e)
         )
         return False
 

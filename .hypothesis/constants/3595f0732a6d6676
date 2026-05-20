@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\tuner\profiler.py
+# hypothesis_version: 6.148.7
+
+[1.0, '--ctx_filename', '--device_id', '--profile_end_step', '--profile_start_step', '--rank', '0', '1', 'AlreadyExistsError', 'ErrorType', 'ExternalError', 'FatalError', 'InvalidArgumentError', 'NotFoundError', 'OutOfRangeError', 'Throughput', 'UnavailableError', 'UnimplementedError', '__main__', 'create_py_reader', 'dataset', 'distributed_env', 'f', 'false', 'group_map', 'latin1', 'loss_var_name', 'main_program_decs', 'n', 'no', 'rb', 'result_filename', 'startup_program_decs', 't', 'true', 'w', 'y', 'yes']

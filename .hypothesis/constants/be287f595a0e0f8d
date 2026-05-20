@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\asp\asp.py
+# hypothesis_version: 6.148.7
+
+[1.0, '.', 'FLAGS_selected_gpus', 'Out', 'X', 'Y', '_', 'asp_mask', 'axis', 'distributed_info_', 'elementwise_mul', 'mask_1d', 'mask_2d_best', 'mask_2d_greedy', 'sharding_degree', 'w_']

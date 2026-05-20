@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\_loss\link.py
+# hypothesis_version: 6.148.7
+
+[-10000000000.0, 0.5, 10000000000.0, 'half_logit', 'identity', 'log', 'logit', 'multinomial_logit']

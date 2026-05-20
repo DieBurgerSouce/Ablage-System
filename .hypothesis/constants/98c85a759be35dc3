@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\sharding\utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 32.0, 1024.0, '.cast_fp16', '.cast_fp16@GRAD', '@', '@BroadCast', '@GRAD', '@GRAD@MERGED', '@GRAD@MERGED@FP16', '@GradientMerge', '@offload_0', 'FusedMergedGrad_', 'FusedOutput', 'Grad', 'Input', 'Out', 'Output', 'PADDLE_TRAINER_ID', 'Param', 'X', '_beta1_pow_acc_0', '_beta2_pow_acc_0', '_ema_0', '_moment1_0', '_moment2_0', '_velocity_0', 'all_reduce', 'broadcast', 'broadcast_pos', 'c_allreduce', 'c_broadcast', 'c_sync_calc_stream', 'c_sync_comm_stream', 'cast', 'coalesce_tensor', 'copy_data', 'dtype', 'fill_constant', 'fill_constant_pos', 'in_dtype', 'nccl_size.txt', 'op_role', 'op_type', 'out', 'out_dtype', 'reduce', 'reduce_type', 'ring_id', 'root', 'root_id', 'section_program', 'shape', 'sum', 'use_align', 'use_calc_stream', 'value', 'w', 'x']

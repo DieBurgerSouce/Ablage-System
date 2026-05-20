@@ -25,9 +25,11 @@ from app.core.rate_limiting import (
     ip_whitelist,
     rate_limit_metrics,
     get_remote_address,
-    RedisRateLimitStorage
+    RedisRateLimitStorage,
+    RateLimitStorageError
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -70,10 +72,36 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         Args:
             app: ASGI application
-            redis_storage: Optional Redis storage backend
+            redis_storage: Optional Redis storage backend (can also be set via app.state.redis_storage)
         """
         super().__init__(app)
-        self.redis_storage = redis_storage
+        self._redis_storage = redis_storage
+
+    @property
+    def redis_storage(self) -> Optional[RedisRateLimitStorage]:
+        """
+        Get Redis storage, falling back to app.state.redis_storage if not set directly.
+
+        This property enables late binding of the Redis storage, which is necessary
+        because the middleware is created before the lifespan startup initializes Redis.
+
+        Returns:
+            RedisRateLimitStorage instance or None if unavailable
+        """
+        if self._redis_storage is not None:
+            return self._redis_storage
+        # Note: self.app points to next middleware, not FastAPI app.
+        # We need to access redis_storage via the request in dispatch().
+        return None
+
+    def _get_redis_storage_from_request(self, request: Request) -> Optional[RedisRateLimitStorage]:
+        """Get Redis storage from request.app.state (the actual FastAPI app)."""
+        if self._redis_storage is not None:
+            return self._redis_storage
+        # Access via request.app which is the actual FastAPI application
+        if hasattr(request.app, 'state') and hasattr(request.app.state, 'redis_storage'):
+            return request.app.state.redis_storage
+        return None
 
     def is_excluded_path(self, path: str) -> bool:
         """
@@ -165,11 +193,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         )
 
         # Check rate limit
-        is_allowed, retry_after = await self._check_rate_limit(
-            request=request,
-            rate_limit=rate_limit,
-            user=user
-        )
+        try:
+            is_allowed, retry_after = await self._check_rate_limit(
+                request=request,
+                rate_limit=rate_limit,
+                user=user
+            )
+        except RateLimitStorageError as e:
+            # Fail-closed: Return 503 Service Unavailable
+            return self._create_fail_closed_error_response(request, safe_error_detail(e, "Rate-Limit"))
 
         if not is_allowed:
             rate_limit_metrics.record_rate_limited()
@@ -248,6 +280,263 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if path.startswith("/gpu/status"):
             return {"limit": 60, "window": 60}  # 60 per minute
 
+        # Personal Module (HR) Endpoints - A.2 CRITICAL: Rate Limiting
+        # Diese Limits schuetzen sensitive Mitarbeiterdaten vor Massenexfiltration
+        if path.startswith("/api/v1/personal/employees"):
+            if user_tier == "admin":
+                return {"limit": 500, "window": 60}  # Admin: 500/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium/HR: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        if path.startswith("/api/v1/personal/departments"):
+            if user_tier == "admin":
+                return {"limit": 300, "window": 60}  # Admin: 300/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium/HR: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        if path.startswith("/api/v1/personal/positions"):
+            if user_tier == "admin":
+                return {"limit": 300, "window": 60}  # Admin: 300/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium/HR: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        # Orchestration Module Endpoints - PHASE 0 CRITICAL: Rate Limiting
+        # Diese Limits schuetzen die Cross-Module Decision Engine vor Missbrauch
+        # Write-Endpoints (approve/reject/trigger) - striktere Limits
+        if path.startswith("/api/v1/orchestration") and any(
+            action in path for action in ["/approve", "/reject", "/trigger", "/execute"]
+        ):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 20, "window": 60}  # Premium: 20/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Orchestration Read-Endpoints (decisions, summary, metrics, etc.)
+        if path.startswith("/api/v1/orchestration"):
+            if user_tier == "admin":
+                return {"limit": 300, "window": 60}  # Admin: 300/min
+            elif user_tier == "premium":
+                return {"limit": 120, "window": 60}  # Premium: 120/min
+            else:
+                return {"limit": 60, "window": 60}  # Standard: 60/min
+
+        # Privat-Modul Endpoints (Intelligence Layer) - PHASE 0 CRITICAL
+        if path.startswith("/api/v1/privat"):
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        # GDPR Endpoints - PHASE 0 CRITICAL: Schutz vor Massen-Datenlöschung
+        # Deletion und Export Requests sind besonders sensitiv
+        if path.startswith("/api/v1/gdpr"):
+            if any(action in path for action in ["/delete", "/export", "/anonymize"]):
+                if user_tier == "admin":
+                    return {"limit": 30, "window": 60}  # Admin: 30/min
+                elif user_tier == "premium":
+                    return {"limit": 10, "window": 60}  # Premium: 10/min
+                else:
+                    return {"limit": 5, "window": 60}  # Standard: 5/min
+            # GDPR Read-Endpoints
+            if user_tier == "admin":
+                return {"limit": 120, "window": 60}  # Admin: 120/min
+            elif user_tier == "premium":
+                return {"limit": 60, "window": 60}  # Premium: 60/min
+            else:
+                return {"limit": 30, "window": 60}  # Standard: 30/min
+
+        # Vault Endpoints - PHASE 0 CRITICAL: Secrets Management
+        # Strenge Limits um Brute-Force auf verschlüsselte Daten zu verhindern
+        if path.startswith("/api/v1/vault"):
+            if any(action in path for action in ["/decrypt", "/unlock", "/keys"]):
+                if user_tier == "admin":
+                    return {"limit": 30, "window": 60}  # Admin: 30/min
+                elif user_tier == "premium":
+                    return {"limit": 10, "window": 60}  # Premium: 10/min
+                else:
+                    return {"limit": 5, "window": 60}  # Standard: 5/min
+            # Vault Read-Endpoints
+            if user_tier == "admin":
+                return {"limit": 100, "window": 60}  # Admin: 100/min
+            elif user_tier == "premium":
+                return {"limit": 50, "window": 60}  # Premium: 50/min
+            else:
+                return {"limit": 20, "window": 60}  # Standard: 20/min
+
+        # API Keys Endpoints - PHASE 0 CRITICAL: Schutz vor API-Key-Flut
+        if path.startswith("/api/v1/api-keys"):
+            if user_tier == "admin":
+                return {"limit": 30, "window": 60}  # Admin: 30/min
+            elif user_tier == "premium":
+                return {"limit": 10, "window": 60}  # Premium: 10/min
+            else:
+                return {"limit": 5, "window": 60}  # Standard: 5/min
+
+        # Admin Endpoints - PHASE 0 CRITICAL: Administrative Operationen
+        if path.startswith("/api/v1/admin"):
+            # Destructive Admin Operations
+            if any(action in path for action in ["/delete", "/purge", "/reset", "/wipe"]):
+                if user_tier == "admin":
+                    return {"limit": 20, "window": 60}  # Admin: 20/min
+                else:
+                    return {"limit": 0, "window": 60}  # Non-admin: blocked
+            # Normal Admin Endpoints
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Finance Endpoints - Sensitive financial data
+        if path.startswith("/api/v1/finance"):
+            if any(action in path for action in ["/transfer", "/payment", "/reconcile"]):
+                if user_tier == "admin":
+                    return {"limit": 60, "window": 60}  # Admin: 60/min
+                elif user_tier == "premium":
+                    return {"limit": 30, "window": 60}  # Premium: 30/min
+                else:
+                    return {"limit": 10, "window": 60}  # Standard: 10/min
+            # Finance Read-Endpoints
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        # Document Endpoints - Core functionality
+        if path.startswith("/api/v1/documents"):
+            # Write operations (upload, delete, modify)
+            if any(method in path for method in ["/upload", "/delete", "/batch"]):
+                if user_tier == "admin":
+                    return {"limit": 200, "window": 60}  # Admin: 200/min
+                elif user_tier == "premium":
+                    return {"limit": 100, "window": 60}  # Premium: 100/min
+                else:
+                    return {"limit": 30, "window": 60}  # Standard: 30/min
+            # Read operations
+            if user_tier == "admin":
+                return {"limit": 500, "window": 60}  # Admin: 500/min
+            elif user_tier == "premium":
+                return {"limit": 200, "window": 60}  # Premium: 200/min
+            else:
+                return {"limit": 100, "window": 60}  # Standard: 100/min
+
+        # Search Endpoints - Potentially resource-intensive
+        if path.startswith("/api/v1/search"):
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium: 100/min
+            else:
+                return {"limit": 30, "window": 60}  # Standard: 30/min
+
+        # RAG/Chat Endpoints - LLM-intensive, costly
+        if path.startswith("/api/v1/rag"):
+            if user_tier == "admin":
+                return {"limit": 100, "window": 60}  # Admin: 100/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Reports Endpoints - Resource-intensive report generation
+        if path.startswith("/api/v1/reports"):
+            if any(action in path for action in ["/execute", "/export", "/generate"]):
+                if user_tier == "admin":
+                    return {"limit": 30, "window": 60}  # Admin: 30/min
+                elif user_tier == "premium":
+                    return {"limit": 15, "window": 60}  # Premium: 15/min
+                else:
+                    return {"limit": 5, "window": 60}  # Standard: 5/min
+            # Report configuration endpoints
+            if user_tier == "admin":
+                return {"limit": 100, "window": 60}  # Admin: 100/min
+            elif user_tier == "premium":
+                return {"limit": 50, "window": 60}  # Premium: 50/min
+            else:
+                return {"limit": 20, "window": 60}  # Standard: 20/min
+
+        # Backup Endpoints - PHASE 0 CRITICAL: Schutz vor Backup-Missbrauch
+        if path.startswith("/api/v1/backup"):
+            if user_tier == "admin":
+                return {"limit": 20, "window": 60}  # Admin: 20/min
+            else:
+                return {"limit": 5, "window": 60}  # Others: 5/min
+
+        # Import Endpoints - Rate limit bulk imports
+        if path.startswith("/api/v1/imports"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Export Endpoints - Rate limit bulk exports
+        if path.startswith("/api/v1/exports"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Workflows Endpoints - Automation can be resource-intensive
+        if path.startswith("/api/v1/workflows"):
+            if any(action in path for action in ["/trigger", "/execute", "/run"]):
+                if user_tier == "admin":
+                    return {"limit": 60, "window": 60}  # Admin: 60/min
+                elif user_tier == "premium":
+                    return {"limit": 30, "window": 60}  # Premium: 30/min
+                else:
+                    return {"limit": 10, "window": 60}  # Standard: 10/min
+            # Workflow configuration
+            if user_tier == "admin":
+                return {"limit": 120, "window": 60}  # Admin: 120/min
+            elif user_tier == "premium":
+                return {"limit": 60, "window": 60}  # Premium: 60/min
+            else:
+                return {"limit": 30, "window": 60}  # Standard: 30/min
+
+        # Webhooks Endpoints - Prevent webhook spam
+        if path.startswith("/api/v1/webhooks"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # ML/AI Endpoints - Resource-intensive
+        if path.startswith("/api/v1/ml"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Training Endpoints - OCR training operations
+        if path.startswith("/api/v1/training"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
         # General API endpoints
         return {"limit": 100, "window": 60}  # 100 per minute (default)
 
@@ -267,6 +556,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         Returns:
             Tuple of (is_allowed, retry_after_seconds)
+
+        Note:
+            - Uses settings.RATE_LIMIT_FAIL_CLOSED for general endpoints
+            - Uses settings.RATE_LIMIT_FAIL_CLOSED_CRITICAL for auth endpoints
         """
         # Build rate limit key
         if user and hasattr(user, "id"):
@@ -278,12 +571,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         window_start = int(datetime.now(timezone.utc).timestamp() / rate_limit["window"])
         rate_limit_key = f"ratelimit:{key_prefix}:{request.url.path}:{window_start}"
 
-        # Check Redis if available
-        if self.redis_storage and self.redis_storage.is_available:
+        # Determine fail_closed mode based on endpoint criticality
+        is_critical_endpoint = self._is_critical_endpoint(request.url.path)
+        fail_closed = (
+            settings.RATE_LIMIT_FAIL_CLOSED_CRITICAL if is_critical_endpoint
+            else settings.RATE_LIMIT_FAIL_CLOSED
+        )
+
+        # Check Redis if available (use request-based lookup for correct app.state access)
+        storage = self._get_redis_storage_from_request(request)
+        if storage and storage.is_available:
             try:
-                current_count = await self.redis_storage.increment(
+                current_count = await storage.increment(
                     rate_limit_key,
-                    rate_limit["window"]
+                    rate_limit["window"],
+                    fail_closed=fail_closed
                 )
 
                 if current_count > rate_limit["limit"]:
@@ -295,23 +597,151 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
                 return True, None
 
+            except RateLimitStorageError:
+                # Fail-closed: deny request when Redis unavailable for security
+                logger.warning(
+                    "rate_limit_fail_closed_triggered",
+                    path=request.url.path,
+                    is_critical=is_critical_endpoint,
+                    action="denying_request"
+                )
+                rate_limit_metrics.record_error()
+                raise  # Re-raise to be handled by exception handler in main.py
+
             except Exception as e:
                 logger.error(
                     "rate_limit_check_error",
                     key=rate_limit_key,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 rate_limit_metrics.record_error()
+                if fail_closed:
+                    raise RateLimitStorageError(
+                        "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                        "Bitte versuchen Sie es später erneut."
+                    ) from e
                 # Fail-open: allow request on error
                 return True, None
 
-        # If Redis not available, allow request (graceful degradation)
+        # If Redis not available
+        if fail_closed:
+            logger.warning(
+                "rate_limit_redis_unavailable_fail_closed",
+                path=request.url.path,
+                is_critical=is_critical_endpoint,
+                action="denying_request"
+            )
+            raise RateLimitStorageError(
+                "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                "Bitte versuchen Sie es später erneut."
+            )
+
+        # Fail-open: allow request (graceful degradation)
         logger.warning(
             "rate_limit_redis_unavailable",
             path=request.url.path,
             action="allowing_request"
         )
         return True, None
+
+    def _is_critical_endpoint(self, path: str) -> bool:
+        """
+        Check if endpoint is security-critical (requires stricter fail-closed).
+
+        Critical endpoints are those where bypassing rate limits could lead
+        to security issues (brute-force attacks, credential stuffing, etc.).
+
+        Args:
+            path: Request path
+
+        Returns:
+            True if endpoint is security-critical
+        """
+        critical_prefixes = [
+            # Authentication - Prevent brute-force
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/2fa",
+            # API Key Management - Prevent key enumeration
+            "/api/v1/api-keys",
+            # GDPR Operations - Prevent mass deletion
+            "/api/v1/gdpr/delete",
+            "/api/v1/gdpr/export",
+            "/api/v1/gdpr/anonymize",
+            # Vault Operations - Prevent brute-force on encrypted data
+            "/api/v1/vault/decrypt",
+            "/api/v1/vault/unlock",
+            "/api/v1/vault/keys",
+            # Admin Destructive Operations
+            "/api/v1/admin/delete",
+            "/api/v1/admin/purge",
+            "/api/v1/admin/reset",
+            "/api/v1/admin/wipe",
+            # Backup Operations - Prevent unauthorized backup access
+            "/api/v1/backup/restore",
+            "/api/v1/backup/delete",
+            # Orchestration Decision Endpoints - Prevent automated manipulation
+            "/api/v1/orchestration/approve",
+            "/api/v1/orchestration/reject",
+            "/api/v1/orchestration/execute",
+        ]
+        return any(path.startswith(prefix) for prefix in critical_prefixes)
+
+    def _create_fail_closed_error_response(
+        self,
+        request: Request,
+        error_message: str
+    ) -> JSONResponse:
+        """
+        Create 503 error response for fail-closed mode.
+
+        Args:
+            request: FastAPI request object
+            error_message: Error message to include
+
+        Returns:
+            JSONResponse with 503 status and German error message
+        """
+        user = getattr(request.state, "user", None)
+        user_id = user.id if user else None
+
+        # Log fail-closed event
+        logger.warning(
+            "rate_limit_fail_closed_response",
+            path=request.url.path,
+            user_id=user_id,
+            ip=get_remote_address(request)
+        )
+
+        error_response = {
+            "fehler": "Service vorübergehend nicht verfügbar",
+            "nachricht": (
+                "Der Rate-Limiting-Service ist vorübergehend nicht erreichbar. "
+                "Bitte versuchen Sie es in 60 Sekunden erneut."
+            ),
+            "details": {
+                "pfad": request.url.path,
+                "wiederholen_nach_sekunden": 60,
+                "zeitstempel": datetime.now(timezone.utc).isoformat()
+            },
+            "hinweis": (
+                "Dies ist eine Sicherheitsmaßnahme. Bei anhaltenden Problemen "
+                "kontaktieren Sie bitte den Support."
+            )
+        }
+
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=error_response,
+            headers={
+                "Retry-After": "60",
+                "X-RateLimit-Reset": str(
+                    int(datetime.now(timezone.utc).timestamp()) + 60
+                ),
+                "Content-Type": "application/json; charset=utf-8"
+            }
+        )
 
     def _create_rate_limit_error_response(
         self,
@@ -403,36 +833,36 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["X-RateLimit-Policy"] = f"{rate_limit['limit']};w={rate_limit['window']}"
 
 
-class DevelopmentRateLimitBypass(BaseHTTPMiddleware):
+class DevelopmentRateLimitBypass:
     """
     Middleware to bypass rate limiting in development mode.
 
     This middleware should be added before RateLimitMiddleware
     when running in development mode.
+
+    Uses pure ASGI pattern to properly handle WebSocket connections.
     """
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable
-    ) -> Response:
-        """
-        Bypass rate limiting in development mode.
+    def __init__(self, app: ASGIApp):
+        """Initialize with ASGI app."""
+        self.app = app
 
-        Args:
-            request: FastAPI request object
-            call_next: Next middleware/endpoint in chain
-
-        Returns:
-            Response object
+    async def __call__(self, scope: dict, receive: Callable, send: Callable):
         """
-        if settings.DEBUG:
+        Process ASGI request, bypassing rate limits in dev mode.
+
+        Properly handles both HTTP and WebSocket connections.
+        """
+        # Only log for HTTP requests, not WebSocket
+        if scope["type"] == "http" and settings.DEBUG:
+            path = scope.get("path", "")
             logger.debug(
                 "rate_limit_bypassed_development_mode",
-                path=request.url.path
+                path=path
             )
 
-        return await call_next(request)
+        # Pass through to next middleware/app
+        await self.app(scope, receive, send)
 
 
 # ==================== Role-Based Rate Limit Checker ====================
@@ -533,16 +963,14 @@ class RoleBasedRateLimitChecker:
                 "quota_check_failed",
                 user_id=user_id,
                 quota_type=quota_type,
-                error=str(e)
+                **safe_error_log(e)
             )
             # Fail-open: allow request on error
             return {
                 "allowed": True,
                 "remaining": max_quota,
                 "limit": max_quota,
-                "reason": "quota_check_error",
-                "error": str(e)
-            }
+                "reason": "quota_check_error", **safe_error_log(e)}
 
     async def _get_quota_usage(self, quota_key: str) -> int:
         """
@@ -566,7 +994,7 @@ class RoleBasedRateLimitChecker:
             logger.warning(
                 "quota_usage_query_failed",
                 key=quota_key,
-                error=str(e)
+                **safe_error_log(e)
             )
 
         return 0
@@ -616,7 +1044,7 @@ class RoleBasedRateLimitChecker:
                 "quota_increment_failed",
                 user_id=user_id,
                 quota_type=quota_type,
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 

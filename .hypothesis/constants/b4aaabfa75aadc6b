@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\operators\graph_send_recv.py
+# hypothesis_version: 6.148.7
+
+['2.4.0', 'Dst_count', 'Dst_index', 'Out', 'Src_index', 'X', 'float32', 'float64', 'graph_send_recv', 'int32', 'int64', 'max', 'mean', 'min', 'out_size', 'reduce_op', 'sum']

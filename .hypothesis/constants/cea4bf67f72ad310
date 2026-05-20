@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\abstract_channel.py
+# hypothesis_version: 6.148.7
+
+['AbstractChannel', '__dict__', '__weakref__', '_callbacks', '_pending', 'amqp', 'auto_decode', 'channel_id', 'connection', 'content_encoding', 'is_closing', 'method_queue']

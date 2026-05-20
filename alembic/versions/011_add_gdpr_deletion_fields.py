@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = '011_add_gdpr_deletion_fields'
-down_revision = '010_add_2fa_fields'
+down_revision = '010'
 branch_labels = None
 depends_on = None
 

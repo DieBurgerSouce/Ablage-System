@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\package.py
+# hypothesis_version: 6.148.7
+
+['.', 'SerializedCode', '[', ']', '_BackendId', '_FunctionId', '__compiled_fn_', 'backend_compile', 'backends', 'co_consts', 'co_filename', 'co_firstlineno', 'co_name', 'dynamo', 'entire_frame_compile', 'frame_key', 'precompile_dynamo', 'precompile_eager', 'rb', 'wb']

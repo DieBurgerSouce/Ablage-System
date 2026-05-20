@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\amp\amp_lists.py
+# hypothesis_version: 6.148.7
+
+['O1', 'O2', 'OD', 'acos', 'asin', 'atanh', 'bfloat16', 'bicubic_interp_v2', 'bilinear_interp_v2', 'conv2d', 'cosh', 'cross_entropy', 'cross_entropy2', 'cumprod', 'cumsum', 'dist', 'einsum', 'erfinv', 'exp', 'expm1', 'flash_attn', 'float16', 'frobenius_norm', 'fused_attention', 'fused_feedforward', 'fused_gemm_epilogue', 'group_norm', 'hsigmoid_loss', 'huber_loss', 'layer_norm', 'linear_interp_v2', 'log', 'log10', 'log2', 'log_loss', 'log_softmax', 'lookup_table', 'lookup_table_v2', 'margin_cross_entropy', 'matmul', 'matmul_v2', 'mean', 'mul', 'nearest_interp_v2', 'nll_loss', 'pnorm', 'pow', 'reciprocal', 'reduce_mean', 'reduce_prod', 'reduce_sum', 'renorm', 'rsqrt', 'scatter', 'sinh', 'softmax', 'softmin', 'softplus', 'square', 'tan', 'tanh_shrink', 'trilinear_interp_v2', 'triplet_margin_loss']

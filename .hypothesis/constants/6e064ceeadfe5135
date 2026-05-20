@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\non_randomness.py
+# hypothesis_version: 6.148.7
+
+['Non connected graph.', 'directed', 'multigraph', 'non_randomness', 'weight']

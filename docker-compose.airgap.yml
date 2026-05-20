@@ -1,0 +1,444 @@
+# =============================================================================
+# Ablage-System: Air-Gapped Docker Compose
+# =============================================================================
+# Fuer vollstaendig isolierte Netzwerke ohne Internetzugang.
+# KEINE externen API-Aufrufe, alle Modelle lokal.
+#
+# Verwendung: docker-compose -f docker-compose.airgap.yml up -d
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Frontend (Nginx)
+  # ===========================================================================
+  frontend:
+    image: ablage-system-frontend:latest
+    container_name: ablage-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/ssl:/etc/nginx/ssl:ro
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /var/cache/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # Backend (FastAPI)
+  # ===========================================================================
+  backend:
+    image: ablage-system-backend:latest
+    container_name: ablage-backend
+    restart: unless-stopped
+    environment:
+      # Datenbank
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-ablage}
+      - POSTGRES_USER=${POSTGRES_USER:-ablage}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD erforderlich}
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+      # MinIO
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY erforderlich}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?MINIO_SECRET_KEY erforderlich}
+      - MINIO_SECURE=false
+
+      # Air-Gapped Modus
+      - DISABLE_EXTERNAL_APIS=true
+      - DISABLE_TELEMETRY=true
+
+      # Lokaler LLM (Ollama)
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LLM_PROVIDER=ollama
+
+      # ML-Modelle (lokal)
+      - EMBEDDING_MODEL_PATH=/opt/models/sentence-transformers
+      - SPACY_MODEL_PATH=/opt/models/spacy/de_core_news_lg
+
+      # Sicherheit
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY erforderlich}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+    volumes:
+      - ./data/uploads:/app/uploads
+      - ./data/exports:/app/exports
+      - ./models:/opt/models:ro
+      - ./logs/backend:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # Worker (Celery + GPU OCR)
+  # ===========================================================================
+  worker:
+    image: ablage-system-worker:latest
+    container_name: ablage-worker
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # Datenbank
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-ablage}
+      - POSTGRES_USER=${POSTGRES_USER:-ablage}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+
+      # MinIO
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_SECURE=false
+
+      # GPU
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - GPU_MEMORY_FRACTION=${GPU_MEMORY_FRACTION:-0.85}
+
+      # OCR Modelle (lokal)
+      - DEEPSEEK_MODEL_PATH=/opt/models/deepseek-janus-pro-7b
+      - GOT_OCR_MODEL_PATH=/opt/models/got-ocr-2.0
+      - SURYA_MODEL_PATH=/opt/models/surya
+      - EMBEDDING_MODEL_PATH=/opt/models/sentence-transformers
+
+      # Air-Gapped Modus
+      - DISABLE_EXTERNAL_APIS=true
+      - DISABLE_TELEMETRY=true
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./data/uploads:/app/uploads
+      - ./models:/opt/models:ro
+      - ./logs/worker:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 120s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ===========================================================================
+  # Celery Beat (Scheduler)
+  # ===========================================================================
+  beat:
+    image: ablage-system-worker:latest
+    container_name: ablage-beat
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ===========================================================================
+  # PostgreSQL
+  # ===========================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: ablage-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-ablage}
+      - POSTGRES_USER=${POSTGRES_USER:-ablage}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ablage} -d ${POSTGRES_DB:-ablage}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # Redis
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ablage-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # MinIO (S3-kompatibler Storage)
+  # ===========================================================================
+  minio:
+    # B7 (2026-05-19): :latest -> pinned auf docker-compose.yml-Version
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: ablage-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # Ollama (Lokaler LLM fuer Air-Gapped)
+  # ===========================================================================
+  ollama:
+    # B7 (2026-05-19): :latest -> 0.5.4 (Dec 2024, GPU-faehig)
+    image: ollama/ollama:0.5.4
+    container_name: ablage-ollama
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # Grafana (Monitoring Dashboard)
+  # ===========================================================================
+  grafana:
+    # B7 (2026-05-19): :latest -> pinned auf docker-compose.yml-Version
+    image: grafana/grafana:11.3.0
+    container_name: ablage-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_INSTALL_PLUGINS=
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3002:3000"
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+
+  # ===========================================================================
+  # Prometheus (Metrics)
+  # ===========================================================================
+  prometheus:
+    # B7 (2026-05-19): :latest -> pinned auf docker-compose.yml-Version
+    image: prom/prometheus:v2.54.0
+    container_name: ablage-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - prometheus_data:/prometheus
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+
+# =============================================================================
+# Netzwerke
+# =============================================================================
+networks:
+  internal:
+    driver: bridge
+    # WICHTIG: internal=true verhindert Internetzugang
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  ollama_data:
+    driver: local
+  grafana_data:
+    driver: local
+  prometheus_data:
+    driver: local

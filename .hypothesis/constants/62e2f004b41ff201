@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\agents.py
+# hypothesis_version: 6.148.7
+
+[0.0, 400, 404, '..', '/', '/agents', '/config', '/execute/batch', '/execute/ocr', '/execute/workflow', '/route/backend', '/route/backends', '/status', '/status/{agent_id}', '/tasks/{task_id}', 'agent_id', 'agents', 'alternatives', 'auto', 'backend', 'backends', 'batch_size', 'by_accuracy', 'by_speed', 'classification', 'confidence', 'data', 'deepseek', 'default_priority', 'document_id', 'document_metadata', 'file_path', 'file_paths', 'full_processing', 'got_ocr', 'gpu_required', 'hybrid', 'max_batch_size', 'max_retries', 'message', 'name', 'ocr_agents', 'ocr_processing', 'phase', 'phases', 'postprocessing', 'preprocessing', 'progress', 'qa_check', 'reason', 'result', 'sla_requirements', 'state', 'status', 'storing', 'submitted', 'surya', 'task_id', 'total_count', 'updated_at', 'vram_required_gb', 'workflow']

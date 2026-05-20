@@ -62,7 +62,7 @@ def vault_test_config():
 def sample_secrets():
     """Provide sample secrets for testing."""
     return {
-        "secret_key": "super-secret-key-for-jwt",
+        "secret_key": "super-secret-key-for-jwt-32chars!",  # min 32 chars required
         "db_password": "database-password-123",
         "redis_password": "redis-secret-password",
         "minio_secret_key": "minio-secret-access-key",
@@ -186,12 +186,12 @@ class TestVaultConfigurationDetection:
 class TestVaultConnection:
     """Tests for Vault connection handling."""
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_connect_with_token_auth(self, vault_test_config, mock_vault_client):
         """connect sollte mit Token authentifizieren."""
         from app.core.config import VaultClient
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -205,7 +205,7 @@ class TestVaultConnection:
             assert result is True
             assert client._authenticated is True
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_connect_with_approle_auth(self, vault_test_config, mock_vault_client):
         """connect sollte mit AppRole authentifizieren."""
         from app.core.config import VaultClient
@@ -214,7 +214,7 @@ class TestVaultConnection:
             "auth": {"client_token": "new-token-from-approle"}
         }
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -228,7 +228,7 @@ class TestVaultConnection:
 
             assert result is True
 
-    @patch('app.core.config.VAULT_AVAILABLE', False)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', False)
     def test_connect_without_hvac_installed(self, vault_test_config):
         """connect sollte False zurückgeben wenn hvac nicht installiert."""
         from app.core.config import VaultClient
@@ -243,7 +243,7 @@ class TestVaultConnection:
 
         assert result is False
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_connect_authentication_failure(self, vault_test_config):
         """connect sollte False bei Auth-Fehlern zurückgeben."""
         from app.core.config import VaultClient
@@ -251,7 +251,7 @@ class TestVaultConnection:
         mock_client = Mock()
         mock_client.is_authenticated.return_value = False
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_client
 
             VaultClient._instance = None
@@ -264,12 +264,12 @@ class TestVaultConnection:
 
             assert result is False
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_connect_network_error(self, vault_test_config):
         """connect sollte Netzwerkfehler behandeln."""
         from app.core.config import VaultClient
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.side_effect = Exception("Network error")
 
             VaultClient._instance = None
@@ -289,7 +289,7 @@ class TestVaultConnection:
 class TestSecretRetrieval:
     """Tests for secret retrieval from Vault."""
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_get_secret_success(self, vault_test_config, sample_secrets, mock_vault_client):
         """get_secret sollte Secrets erfolgreich abrufen."""
         from app.core.config import VaultClient
@@ -298,7 +298,7 @@ class TestSecretRetrieval:
             "data": {"data": sample_secrets}
         }
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -313,7 +313,7 @@ class TestSecretRetrieval:
 
             assert result == sample_secrets["db_password"]
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_get_secret_all_keys(self, vault_test_config, sample_secrets, mock_vault_client):
         """get_secret sollte alle Secrets abrufen können."""
         from app.core.config import VaultClient
@@ -322,7 +322,7 @@ class TestSecretRetrieval:
             "data": {"data": sample_secrets}
         }
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -337,7 +337,7 @@ class TestSecretRetrieval:
 
             assert result == sample_secrets
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_get_secret_with_caching(self, vault_test_config, sample_secrets, mock_vault_client):
         """get_secret sollte Caching verwenden."""
         from app.core.config import VaultClient
@@ -346,7 +346,7 @@ class TestSecretRetrieval:
             "data": {"data": sample_secrets}
         }
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -367,7 +367,7 @@ class TestSecretRetrieval:
             assert mock_vault_client.secrets.kv.v2.read_secret_version.call_count == 1
             assert result1 == result2
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_get_secret_bypass_cache(self, vault_test_config, sample_secrets, mock_vault_client):
         """get_secret sollte Cache überspringen können."""
         from app.core.config import VaultClient
@@ -376,7 +376,7 @@ class TestSecretRetrieval:
             "data": {"data": sample_secrets}
         }
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -396,14 +396,14 @@ class TestSecretRetrieval:
             # Vault should be called twice
             assert mock_vault_client.secrets.kv.v2.read_secret_version.call_count == 2
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_get_secret_not_found(self, vault_test_config, mock_vault_client):
         """get_secret sollte None für nicht existierende Secrets zurückgeben."""
         from app.core.config import VaultClient
 
         mock_vault_client.secrets.kv.v2.read_secret_version.side_effect = Exception("Not found")
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -475,7 +475,7 @@ class TestSettingsVaultIntegration:
 
             assert result is False
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_load_secrets_successful(self, vault_test_config, sample_secrets, mock_vault_client):
         """load_secrets_from_vault sollte Secrets laden."""
         from app.core.config import Settings, VaultClient
@@ -484,22 +484,28 @@ class TestSettingsVaultIntegration:
             "data": {"data": sample_secrets}
         }
 
-        with patch('app.core.config.hvac') as mock_hvac:
-            mock_hvac.Client.return_value = mock_vault_client
+        # Mock get_secret to return appropriate values based on key
+        def mock_get_secret(path, key=None, mount_point=None):
+            return sample_secrets.get(key)
 
-            settings = Settings()
-            settings.VAULT_ENABLED = True
-            settings.VAULT_ADDR = vault_test_config["vault_addr"]
-            settings.VAULT_TOKEN = vault_test_config["vault_token"]
-            settings.VAULT_SECRET_PATH = "ablage-system"
+        # Set valid SECRET_KEY to pass initial validation
+        with patch.dict(os.environ, {"SECRET_KEY": "test-secret-key-with-32-chars-ok!"}, clear=False):
+            with patch('app.core.config.vault_client.hvac') as mock_hvac:
+                mock_hvac.Client.return_value = mock_vault_client
 
-            # Mock VaultClient connection
-            with patch.object(VaultClient, 'connect', return_value=True):
-                with patch.object(VaultClient, 'get_secret', return_value=sample_secrets["db_password"]):
-                    result = settings.load_secrets_from_vault()
+                settings = Settings()
+                settings.VAULT_ENABLED = True
+                settings.VAULT_ADDR = vault_test_config["vault_addr"]
+                settings.VAULT_TOKEN = vault_test_config["vault_token"]
+                settings.VAULT_SECRET_PATH = "ablage-system"
 
-                    # Should return True if any secrets loaded
-                    assert result is True
+                # Mock VaultClient connection and get_secret with proper key mapping
+                with patch.object(VaultClient, 'connect', return_value=True):
+                    with patch.object(VaultClient, 'get_secret', side_effect=mock_get_secret):
+                        result = settings.load_secrets_from_vault()
+
+                        # Should return True if any secrets loaded
+                        assert result is True
 
     def test_refresh_secrets_when_disabled(self):
         """refresh_secrets sollte False bei deaktiviertem Vault zurückgeben."""
@@ -519,7 +525,7 @@ class TestSettingsVaultIntegration:
 class TestVaultErrorHandling:
     """Tests for Vault error handling."""
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_approle_auth_failure(self, vault_test_config, mock_vault_client):
         """AppRole-Auth-Fehler sollte behandelt werden."""
         from app.core.config import VaultClient
@@ -527,7 +533,7 @@ class TestVaultErrorHandling:
         mock_vault_client.auth.approle.login.side_effect = Exception("Invalid credentials")
         mock_vault_client.is_authenticated.return_value = False
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -542,14 +548,14 @@ class TestVaultErrorHandling:
 
             assert result is False
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_secret_read_permission_denied(self, vault_test_config, mock_vault_client):
         """Permission-Denied-Fehler sollte behandelt werden."""
         from app.core.config import VaultClient
 
         mock_vault_client.secrets.kv.v2.read_secret_version.side_effect = Exception("Permission denied")
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -566,10 +572,10 @@ class TestVaultErrorHandling:
 
     def test_vault_unavailable_fallback(self, vault_test_config):
         """System sollte ohne Vault funktionieren."""
-        from app.core.config import Settings, create_settings
+        from app.core.config import Settings
 
         with patch.dict(os.environ, {"VAULT_ENABLED": "false"}, clear=False):
-            settings = create_settings()
+            settings = Settings()
 
             # Should use environment variables instead
             assert settings is not None
@@ -635,12 +641,12 @@ class TestVaultSecurity:
 class TestVaultNamespaces:
     """Tests for Vault namespace support (Enterprise)."""
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_namespace_configuration(self, vault_test_config, mock_vault_client):
         """Namespace sollte korrekt konfiguriert werden."""
         from app.core.config import VaultClient
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None
@@ -664,7 +670,7 @@ class TestVaultNamespaces:
 class TestVaultMountPoints:
     """Tests for custom Vault mount points."""
 
-    @patch('app.core.config.VAULT_AVAILABLE', True)
+    @patch('app.core.config.vault_client.VAULT_AVAILABLE', True)
     def test_custom_mount_point(self, vault_test_config, sample_secrets, mock_vault_client):
         """Benutzerdefinierter Mount-Point sollte verwendet werden."""
         from app.core.config import VaultClient
@@ -673,7 +679,7 @@ class TestVaultMountPoints:
             "data": {"data": sample_secrets}
         }
 
-        with patch('app.core.config.hvac') as mock_hvac:
+        with patch('app.core.config.vault_client.hvac') as mock_hvac:
             mock_hvac.Client.return_value = mock_vault_client
 
             VaultClient._instance = None

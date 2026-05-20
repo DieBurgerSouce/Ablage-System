@@ -1,1229 +1,504 @@
-Ablage-System: Enterprise Document Processing Platform
-Status: Production-ready intelligent document processing system with GPU-accelerated OCR
-Philosophy: Feinpoliert und durchdacht (polished and well-thought-out)
-Deployment: On-premises, no cloud dependencies
+# Ablage-System: Enterprise Document Processing Platform
 
-🚨 CRITICAL RULES
-ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
+<!-- AUTO-MANAGED: project-header -->
+**Status**: Production-Ready (E2E Tests 2026-01-10)
+**Version**: 1.1
+**Philosophy**: Feinpoliert und durchdacht
+**Deployment**: On-premises, no cloud dependencies
+<!-- /AUTO-MANAGED: project-header -->
 
-Security: NEVER log sensitive document content, API keys, or PII. All secrets in environment variables only
-German Language: ALL user-facing text MUST be in German. ALL documentation MUST support German characters (UTF-8)
-GPU Management: Monitor VRAM usage. Keep under 85%. Implement graceful fallback to CPU if OOM occurs
-Batch Operations: ALL Python operations (pip installs, migrations, tests) MUST be executed in parallel in ONE message GitHub
-Type Safety: NEVER use Any type in Python. Use proper type hints with mypy strict mode
-Testing: Tests MUST pass before any commit. No exceptions for "quick fixes"
-On-Premises: NO cloud services (AWS, GCP, Azure). All data stays on local infrastructure
+> **Schnellreferenz**: Siehe `CLAUDE.md` im Root-Verzeichnis
+> **Memory-Dateien**: `.claude/memory/` (automatisch gepflegt)
 
+---
 
-📋 PROJECT CONTEXT
-Project Overview
-Ablage-System is an intelligent document processing platform that automates German document digitization with multiple OCR backends. Built for enterprise environments requiring on-premises deployment with GPU acceleration (RTX 4080).
-Architecture at a Glance
-mermaidgraph TD
-    A[FastAPI Backend] --> B[Task Queue - Redis]
-    B --> C[OCR Workers]
-    C --> D1[DeepSeek-Janus-Pro]
-    C --> D2[GOT-OCR 2.0]
-    C --> D3[Surya + Docling]
-    D1 --> E[MinIO Storage]
-    D2 --> E
-    D3 --> E
-    A --> F[PostgreSQL]
-    E --> F
-    A --> G[Frontend - Display Modes]
-    G --> H1[Dark Mode]
-    G --> H2[Light Mode]
-    G --> H3[Whitescreen Mode]
-    G --> H4[Blackscreen Mode]
-Core Capabilities
+## CRITICAL RULES
 
-Multi-Backend OCR: DeepSeek-Janus-Pro (multimodal), GOT-OCR 2.0 (transformer-based), Surya+Docling (layout analysis)
-German Language Optimization: Specialized for German documents with Fraktur support
-Adaptive Display: 4 viewing modes optimized for different lighting conditions and accessibility needs
-GPU Acceleration: RTX 4080 optimized with CUDA 12.x for real-time processing
-Enterprise Infrastructure: Production-grade with Terraform IaC and Ansible automation
+<!-- AUTO-MANAGED: critical-rules -->
+| # | Rule | Requirement |
+|---|------|-------------|
+| 1 | **Security** | NEVER log sensitive content, API keys, PII. Secrets only in env vars |
+| 2 | **German** | ALL user-facing text MUST be German. UTF-8 for umlauts |
+| 3 | **GPU** | Monitor VRAM <85%. Graceful CPU fallback on OOM |
+| 4 | **Type Safety** | NEVER use `Any` type. Use mypy strict mode |
+| 5 | **Testing** | Tests MUST pass before commit. No exceptions |
+| 6 | **On-Premises** | NO cloud services (AWS, GCP, Azure) |
+| 7 | **shadcn/ui Select** | NIEMALS `value=""` nutzen (Crashes!) -> `value="auto"` oder `value="all"` |
+| 8 | **Lexware PII** | NEVER log customer numbers, IBANs, VAT-IDs from Lexware imports |
+| 9 | **SQL Injection** | ALWAYS validate JSONB column/key names. Use whitelists + regex patterns (CWE-89) |
+| 10 | **HTTP Headers** | ALWAYS sanitize user input in headers. Prevent CRLF injection (CWE-113) |
+<!-- /AUTO-MANAGED: critical-rules -->
 
+---
 
-🔧 TECHNOLOGY STACK
-Backend
+## Documentation Index
 
-API Framework: FastAPI 0.110+ (async/await, WebSocket support) GitHub
-Python Version: 3.11+ (required for performance improvements)
-Database: PostgreSQL 16 with pgvector extension for embeddings
-Cache/Queue: Redis 7.x (job queue + session cache)
-Storage: MinIO (S3-compatible object storage for documents)
-OCR Engines:
+### Memory Files (Auto-Managed)
 
-DeepSeek-Janus-Pro 1.0 (multimodal vision-language model)
-GOT-OCR 2.0 (600M parameter transformer)
-Surya v1.1 + Docling v1.0 (layout-aware pipeline)
+| File | Content |
+|------|---------|
+| `.claude/memory/PROJECT_STATUS.md` | Service health, deployments |
+| `.claude/memory/KNOWN_ISSUES.md` | Bugs, issues tracking |
+| `.claude/memory/RECENT_CHANGES.md` | Changelog |
+| `.claude/memory/DEPENDENCIES.md` | Tech stack versions |
 
+### Detailed Documentation
 
-Task Queue: Celery 5.3+ with Redis broker
-ORM: SQLAlchemy 2.0+ (async mode)
-Migration: Alembic
-Validation: Pydantic v2
+| Category | Path |
+|----------|------|
+| **Coding Standards** | `.claude/Docs/Guides/Coding-Standards.md` |
+| **Testing Requirements** | `.claude/Docs/Testing/Requirements.md` |
+| **Lexware Integration** | `.claude/Docs/Integrations/Lexware.md` |
+| **API Documentation** | `.claude/Docs/API/` |
+| **Architecture** | `.claude/Docs/Architecture/` |
+| **Operations/Runbooks** | `.claude/Docs/Operations/` |
+| **OCR Backends** | `.claude/Docs/OCR-Backends/` |
+| **GPU Management** | `.claude/Docs/Architecture/GPU-Resource-Management.md` |
 
-Frontend
+### Full Documentation Index
 
-Framework: [To be confirmed in repository - likely Vue.js or React]
-Display Modes: Dark, Light, Whitescreen (high contrast), Blackscreen (inverted)
-Accessibility: WCAG 2.1 AA compliant
+| Kategorie | Dokument | Pfad |
+|-----------|----------|------|
+| Architektur | Celery Task Orchestration | `.claude/Docs/Architecture/Celery-Task-Orchestration.md` |
+| | Database Schema ERD | `.claude/Docs/Architecture/Database-Schema-ERD.md` |
+| | Event-Driven Architecture | `.claude/Docs/Architecture/Event-Driven-Architecture-Guide.md` |
+| | GPU Resource Management | `.claude/Docs/Architecture/GPU-Resource-Management.md` |
+| API | API Dokumentation | `.claude/Docs/API/API_Documentation.md` |
+| | Admin API Complete | `.claude/Docs/API/Admin-API-Complete.md` |
+| | Error Catalog | `.claude/Docs/API/ErrorCatalog.md` |
+| Testing | E2E Testing (Playwright) | `.claude/Docs/Testing/E2E-Testing-Playwright.md` |
+| | GPU Testing Guide | `.claude/Docs/Testing/GPU-Testing-Guide.md` |
+| Operations | Rollback Strategies | `.claude/Docs/Operations/Rollback-Strategies.md` |
+| | Runbooks (19 Stueck) | `.claude/Docs/Operations/Runbooks/*.md` |
+| Compliance | GDPR Checklist | `.claude/Docs/Compliance/gdpr-checklist.md` |
+| Guides | Development Setup | `.claude/Docs/Guides/Development-Setup.md` |
+| | Troubleshooting | `.claude/Docs/Guides/Troubleshooting-Guide.md` |
+| Features | Entity Risk Scoring | `.claude/Docs/Features/Entity-Risk-Scoring.md` |
+| | Skonto-Tracking | `.claude/Docs/Features/Skonto-Tracking.md` |
+| | Document Lineage | `.claude/Docs/Features/Document-Lineage.md` |
+| | Document Chains | `.claude/Docs/Features/Document-Chains.md` |
+| | Email & Folder Import | `.claude/Docs/Features/Email-Folder-Import.md` |
+| | OCR Self-Learning | `.claude/Docs/Features/OCR-Self-Learning.md` |
+| | MLOps Pipeline | `.claude/Docs/Features/MLOps-Pipeline.md` |
+| | Alert Center | `.claude/Docs/Features/Alert-Center.md` |
+| | **Multi-Tenancy Security** | `.claude/Docs/Features/Multi-Tenancy-Security.md` |
+| Integrations | DATEV Connect | `.claude/Docs/Integrations/DATEV-Connect.md` |
+| | Lexware | `.claude/Docs/Integrations/Lexware.md` |
+| | Slack | `.claude/Docs/Integrations/Slack.md` |
+| | Shipment Tracking | `.claude/Docs/Integrations/ShipmentTracking.md` |
 
-Infrastructure
+---
 
-Containerization: Docker 24.x, Docker Compose
-Orchestration: [Kubernetes if applicable]
-IaC: Terraform 1.6+ for infrastructure provisioning
-Configuration Management: Ansible 2.15+ for server automation
-GPU: NVIDIA RTX 4080 (16GB VRAM, CUDA 12.x, cuDNN 8.9+)
-OS: Ubuntu 22.04 LTS (server)
+## Project Overview
 
-Development Tools
+Ablage-System is an intelligent document processing platform for German document digitization with multiple OCR backends. Built for enterprise on-premises deployment with GPU acceleration (RTX 4080).
 
-Linting: Ruff (replaces Black + isort + flake8)
-Type Checking: mypy --strict
-Testing: pytest with pytest-asyncio, pytest-cov
-API Documentation: OpenAPI 3.1 auto-generated by FastAPI
+### Architecture
 
+```
++-------------------------------------------------------------+
+|                    Ablage-System OCR                        |
++-------------------------------------------------------------+
+|  Frontend (Nginx:80)     |  Grafana (:3002)  |  Prometheus  |
++-------------------------------------------------------------+
+|                    FastAPI Backend (:8000)                  |
++-------------------------------------------------------------+
+|  Celery Workers  |  Redis (:6380)  |  PostgreSQL (:5433)    |
++-------------------------------------------------------------+
+|  OCR: DeepSeek | GOT-OCR | Surya | Surya-GPU               |
++-------------------------------------------------------------+
+|                 GPU: NVIDIA RTX 4080 (16GB)                 |
++-------------------------------------------------------------+
+```
 
-🚀 DEVELOPMENT COMMANDS
-Environment Setup
-bash# Create virtual environment
-python3.11 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate  # Windows
+### Core Capabilities
 
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt  # Development dependencies
+- **Multi-Backend OCR**: DeepSeek-Janus-Pro, GOT-OCR 2.0, Surya+Docling
+- **German Optimization**: Fraktur support, 100% umlaut accuracy
+- **4 Display Modes**: Dark, Light, Whitescreen, Blackscreen
+- **GPU Acceleration**: RTX 4080 with CUDA 12.x
+- **Cross-Module Orchestration**: Event-driven coordination
+- **Lexware Integration**: Customer/supplier import with auto-linking
 
-# Setup pre-commit hooks
-pre-commit install
-Common Commands
-bash# Development server with hot reload
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+---
 
-# Run Celery workers (GPU-accelerated tasks)
-celery -A app.celery worker --loglevel=info --concurrency=1 --pool=solo
+## Technology Stack
 
-# Run all tests
-pytest
+### Backend
 
-# Run specific test file
-pytest tests/test_ocr_pipeline.py -v
+| Component | Technology |
+|-----------|------------|
+| API Framework | FastAPI 0.110+ |
+| Python | 3.11+ |
+| Database | PostgreSQL 16 + pgvector |
+| Cache/Queue | Redis 7.x |
+| Storage | MinIO (S3-compatible) |
+| Task Queue | Celery 5.3+ |
+| ORM | SQLAlchemy 2.0+ (async) |
+| Validation | Pydantic v2 |
 
-# Run with coverage
-pytest --cov=app --cov-report=html --cov-report=term
+### OCR Backends
 
-# Type checking
-mypy app/
+| Backend | VRAM | Strengths |
+|---------|------|-----------|
+| DeepSeek-Janus-Pro | 12GB | Best umlaut accuracy, Fraktur |
+| GOT-OCR 2.0 | 10GB | Tables, formulas, fast |
+| Surya + Docling | CPU | Layout analysis, fallback |
+| Surya GPU | 4GB | Fast GPU variant |
 
-# Linting and formatting
-ruff check .
-ruff format .
+### Frontend
 
-# Database migrations
-alembic upgrade head  # Apply migrations
-alembic revision --autogenerate -m "description"  # Create new migration
+| Component | Technology |
+|-----------|------------|
+| Framework | React 18 + TypeScript 5.x |
+| Router | TanStack Router |
+| State | TanStack Query |
+| UI | shadcn/ui + Tailwind CSS |
 
-# Docker operations
-docker-compose up -d  # Start all services
-docker-compose logs -f backend  # Follow backend logs
-docker-compose down  # Stop all services
+#### Frontend Patterns
 
-# Infrastructure provisioning (Terraform)
-cd infrastructure/terraform
-terraform init
-terraform plan
-terraform apply
+> **Detaillierte Dokumentation**: `.claude/Docs/Frontend/Patterns.md`
 
-# Configuration deployment (Ansible)
-cd infrastructure/ansible
-ansible-playbook -i inventory/production playbooks/deploy.yml
-GPU Management Commands
-bash# Check GPU status
-nvidia-smi
+**Kernmuster**:
+- TanStack Query + API Layer Pattern
+- Infinite Scroll mit Pagination
+- Auto-Navigation bei Single-Folder Entities
+- Folder-spezifische Kategorien (Messer vs Folie)
+- Nested Routes mit TanStack Router
 
-# Monitor GPU usage in real-time
-watch -n 1 nvidia-smi
+#### Reusable UI Components
 
-# Check CUDA availability in Python
-python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU: {torch.cuda.get_device_name(0)}')"
+> **Detaillierte Dokumentation**: `.claude/Docs/Frontend/Components.md`
 
-# GPU memory profiling
-python -m torch.utils.bottleneck app/services/ocr_service.py
+**Core Components**: EditableField, EnterpriseDataTable, MultiStepForm
+**Ablage Components**: MoveFolderDialog, InvoiceTrackingBanner, TransactionTimeline
+**Accessibility**: WCAG 2.1 AA, Keyboard-Navigation, German Loading/Error States
 
-📁 FILE ORGANIZATION
-Project Structure
-ablage-system/
-├── CLAUDE.md                    # This file - AI development context
-├── README.md                    # Project documentation
-├── ARCHITECTURE.md              # Detailed architecture decisions
-├── DEPLOYMENT.md                # Deployment procedures
-├── CONVENTIONS.md               # Coding standards and conventions
-├── .claude/
-│   ├── Docs/                    # Additional AI context documentation
-│   └── commands/                # Custom slash commands
-├── app/
-│   ├── main.py                  # FastAPI application entry
-│   ├── api/
-│   │   ├── v1/                  # Versioned API endpoints
-│   │   │   ├── documents.py     # Document upload/management
-│   │   │   ├── ocr.py           # OCR processing endpoints
-│   │   │   └── health.py        # Health check endpoints
-│   │   └── dependencies.py      # Dependency injection
-│   ├── core/
-│   │   ├── config.py            # Configuration management
-│   │   ├── security.py          # Authentication/authorization
-│   │   └── logging.py           # Structured logging
-│   ├── db/
-│   │   ├── models.py            # SQLAlchemy models
-│   │   ├── schemas.py           # Pydantic schemas
-│   │   └── repositories.py      # Data access layer
-│   ├── services/
-│   │   ├── ocr/
-│   │   │   ├── deepseek.py      # DeepSeek-Janus-Pro integration
-│   │   │   ├── got_ocr.py       # GOT-OCR 2.0 integration
-│   │   │   ├── surya_docling.py # Surya+Docling pipeline
-│   │   │   └── orchestrator.py  # Backend selection logic
-│   │   ├── document_service.py  # Document processing workflows
-│   │   ├── storage_service.py   # MinIO integration
-│   │   └── cache_service.py     # Redis caching
-│   ├── workers/
-│   │   ├── celery_app.py        # Celery configuration
-│   │   └── ocr_tasks.py         # Async OCR tasks
-│   └── utils/
-│       ├── german_text.py       # German language utilities
-│       ├── gpu_manager.py       # GPU resource management
-│       └── image_preprocessing.py
-├── frontend/                    # Frontend application
-│   ├── components/
-│   │   └── display-modes/       # Display mode components
-│   ├── services/                # API clients
-│   └── utils/                   # Frontend utilities
-├── infrastructure/
-│   ├── terraform/               # Infrastructure as Code
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   └── modules/
-│   └── ansible/                 # Configuration management
-│       ├── playbooks/
-│       └── inventory/
-├── migrations/                  # Alembic database migrations
-├── tests/
-│   ├── unit/                    # Unit tests
-│   ├── integration/             # Integration tests
-│   └── fixtures/                # Test data and fixtures
-├── docs/                        # Additional documentation
-├── docker/
-│   ├── Dockerfile.backend
-│   ├── Dockerfile.worker
-│   └── Dockerfile.frontend
-├── docker-compose.yml
-├── requirements.txt
-├── requirements-dev.txt
-├── pyproject.toml              # Project metadata and tool configs
-└── .env.example                # Environment variable template
-File Naming Conventions
+---
 
-Python modules: snake_case.py
-Classes: PascalCase
-Functions/variables: snake_case
-Constants: UPPER_SNAKE_CASE
-Test files: test_*.py (alongside source or in tests/)
-Type stubs: *.pyi
+## Development Commands
 
+```bash
+# Docker Development (REQUIRED)
+docker-compose up -d
+docker-compose build frontend && docker-compose up -d frontend
+docker-compose build backend && docker-compose up -d backend
 
-💻 CODING STANDARDS
-Python Style Guide (PEP 8 + Project Enhancements)
-Type Hints (MANDATORY)
-python# ✅ CORRECT: Full type annotations
-from typing import Optional, List, Dict
-import asyncio
-
-async def process_document(
-    document_id: str,
-    ocr_backend: str = "deepseek",
-    enable_cache: bool = True
-) -> Dict[str, any]:
-    """Process document with specified OCR backend.
-    
-    Args:
-        document_id: Unique document identifier
-        ocr_backend: OCR engine to use (deepseek, got_ocr, surya)
-        enable_cache: Whether to cache results
-        
-    Returns:
-        Dictionary with extracted text and metadata
-        
-    Raises:
-        DocumentNotFoundError: If document doesn't exist
-        OCRProcessingError: If OCR fails
-    """
-    pass
-
-# ❌ WRONG: Missing type hints
-async def process_document(document_id, ocr_backend="deepseek"):
-    pass
-Async/Await Pattern
-python# ✅ CORRECT: Async throughout stack
-async def get_document(db: AsyncSession, doc_id: str) -> Optional[Document]:
-    result = await db.execute(select(Document).where(Document.id == doc_id))
-    return result.scalar_one_or_none()
-
-# ❌ WRONG: Blocking database calls in async function
-def get_document(db: Session, doc_id: str) -> Optional[Document]:
-    return db.query(Document).filter(Document.id == doc_id).first()
-Error Handling
-python# ✅ CORRECT: Specific exceptions with context
-from app.core.exceptions import OCRProcessingError, GPUOutOfMemoryError
-
-try:
-    result = await ocr_service.process(image)
-except torch.cuda.OutOfMemoryError as e:
-    logger.error(f"GPU OOM processing document {doc_id}", exc_info=True)
-    raise GPUOutOfMemoryError(f"Insufficient GPU memory for {doc_id}") from e
-except Exception as e:
-    logger.exception(f"Unexpected error processing {doc_id}")
-    raise OCRProcessingError(f"Failed to process {doc_id}") from e
-
-# ❌ WRONG: Bare except or generic exceptions
-try:
-    result = ocr_service.process(image)
-except:
-    print("Error occurred")
-Logging Standards
-pythonimport structlog
-
-logger = structlog.get_logger(__name__)
-
-# ✅ CORRECT: Structured logging with context
-logger.info(
-    "ocr_processing_started",
-    document_id=doc_id,
-    backend=backend_name,
-    file_size_mb=file_size / 1024 / 1024,
-    gpu_available=torch.cuda.is_available()
-)
-
-# ❌ WRONG: String concatenation or f-strings in logs
-logger.info(f"Processing document {doc_id} with {backend_name}")
-Dependency Injection (FastAPI)
-pythonfrom fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
-# ✅ CORRECT: Dependency injection
-async def get_db() -> AsyncSession:
-    async with async_session_maker() as session:
-        yield session
-
-@router.post("/documents/")
-async def create_document(
-    file: UploadFile,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-) -> DocumentResponse:
-    pass
-
-# ❌ WRONG: Global database connections
-db = create_database_connection()  # Don't do this
-Code Style Rules
-
-Line Length: Max 100 characters (configured in Ruff)
-Indentation: 4 spaces (never tabs)
-Imports: Organized with Ruff (stdlib, third-party, local)
-Docstrings: Google style for all public functions/classes
-String Quotes: Double quotes " preferred (Ruff enforced)
-
-German Language Code Comments
-python# ✅ ACCEPTABLE: Technical terms in English, explanations in German
-def extract_text_from_image(image: np.ndarray) -> str:
-    """Extrahiert Text aus Bild mit OCR.
-    
-    Verwendet GPU-beschleunigtes OCR für deutsche Dokumente,
-    inklusive Frakturschrift-Unterstützung.
-    """
-    # Preprocessing: Bild normalisieren und entrauschen
-    preprocessed = preprocess_for_german_ocr(image)
-    
-    # OCR mit DeepSeek für beste Genauigkeit bei deutschen Texten
-    text = deepseek_ocr.extract(preprocessed, language="de")
-    return text
-
-🧪 TESTING REQUIREMENTS
-Test Coverage Standards
-
-Minimum Coverage: 80% overall
-Critical Paths: 95%+ (OCR pipeline, authentication, data persistence)
-New Code: 100% coverage required before merge
-
-Testing Strategy
-Unit Tests
-python# tests/unit/services/test_ocr_orchestrator.py
-import pytest
-from unittest.mock import Mock, AsyncMock
-from app.services.ocr.orchestrator import OCROrchestrator
-
-@pytest.mark.asyncio
-async def test_backend_selection_deepseek_for_complex_layout():
-    """DeepSeek sollte für komplexe Layouts ausgewählt werden."""
-    orchestrator = OCROrchestrator()
-    
-    # Mock document with complex layout
-    doc = Mock(has_tables=True, has_images=True, language="de")
-    
-    backend = await orchestrator.select_backend(doc)
-    
-    assert backend == "deepseek"
-    assert orchestrator.last_selection_reason == "complex_layout"
-
-# ✅ CORRECT: Clear test names in German or English
-# ❌ WRONG: Vague names like test_1(), test_case_a()
-Integration Tests
-python# tests/integration/test_ocr_pipeline.py
-import pytest
-from httpx import AsyncClient
-from app.main import app
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_document_upload_and_processing_end_to_end():
-    """Vollständiger Workflow: Upload → OCR → Speicherung."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        # Upload document
-        files = {"file": ("test.pdf", open("tests/fixtures/sample_de.pdf", "rb"))}
-        response = await client.post("/api/v1/documents/", files=files)
-        assert response.status_code == 201
-        doc_id = response.json()["id"]
-        
-        # Start OCR processing
-        response = await client.post(f"/api/v1/ocr/{doc_id}/process")
-        assert response.status_code == 202
-        
-        # Poll for completion (with timeout)
-        # ... completion checking logic ...
-        
-        # Verify extracted text
-        response = await client.get(f"/api/v1/documents/{doc_id}")
-        assert "extracted_text" in response.json()
-        assert len(response.json()["extracted_text"]) > 0
-GPU Tests (Special Considerations)
-python@pytest.mark.gpu
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="GPU not available")
-def test_gpu_batch_processing_memory_efficiency():
-    """GPU-Batch-Verarbeitung sollte unter 85% VRAM bleiben."""
-    import torch
-    from app.services.ocr.deepseek import DeepSeekOCR
-    
-    ocr = DeepSeekOCR()
-    images = load_test_images(count=32)  # Large batch
-    
-    torch.cuda.reset_peak_memory_stats()
-    results = ocr.process_batch(images)
-    peak_memory = torch.cuda.max_memory_allocated() / 1024**3  # GB
-    
-    assert peak_memory < 13.6  # 85% of 16GB
-    assert len(results) == 32
-Testing Commands
-bash# Run all tests
-pytest
-
-# Run with coverage
+# Tests
+docker-compose exec backend pytest tests/unit/ -v
 pytest --cov=app --cov-report=html
 
-# Run specific test category
-pytest -m unit            # Unit tests only
-pytest -m integration     # Integration tests
-pytest -m gpu             # GPU tests (requires GPU)
+# Code Quality
+ruff check . && mypy app/
 
-# Run tests in parallel (faster)
-pytest -n auto
+# Database
+alembic upgrade head
+alembic revision --autogenerate -m "description"
 
-# Run specific test file with verbose output
-pytest tests/unit/services/test_ocr_orchestrator.py -v
+# GPU
+nvidia-smi
+```
 
-# Run tests matching pattern
-pytest -k "test_deepseek" -v
-Test Fixtures
-python# tests/conftest.py
-import pytest
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+---
 
-@pytest.fixture
-async def db_session():
-    """Provide a clean database session for each test."""
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    async with AsyncSession(engine) as session:
-        yield session
-    
-    await engine.dispose()
+## Project Structure
 
-@pytest.fixture
-def sample_german_document():
-    """Load sample German document for OCR testing."""
-    return Path("tests/fixtures/sample_de.pdf").read_bytes()
+```
+Ablage_System/
++-- CLAUDE.md                 # Quick Reference
++-- .claude/
+|   +-- CLAUDE.md             # This file (Core Reference)
+|   +-- memory/               # AUTO-MANAGED files
+|   +-- commands/             # Slash Commands
+|   +-- hooks/                # Pre/Post Hooks
+|   +-- agents/               # Subagents
+|   +-- Docs/                 # Detailed Documentation
++-- app/
+|   +-- main.py               # FastAPI Entry
+|   +-- api/v1/               # API Endpoints
+|   +-- core/                 # Config, Security
+|   +-- db/                   # SQLAlchemy Models
+|   +-- services/             # Business Logic
+|   +-- workers/              # Celery Tasks
++-- frontend/                 # React + TypeScript
++-- infrastructure/           # Terraform, Ansible
++-- tests/                    # Unit + Integration
++-- docker-compose.yml
+```
 
-🎨 FRONTEND DISPLAY MODES
-Display Mode Requirements
-All UI components MUST support four display modes:
-1. Dark Mode (default)
+---
 
-Background: #1a1a1a
-Text: #e0e0e0
-Accents: #4a9eff
-Use case: Default, low-light environments
+## Key Services
 
-2. Light Mode
+### Document Services (Canonical)
 
-Background: #ffffff
-Text: #1a1a1a
-Accents: #0066cc
-Use case: Well-lit environments, daytime use
+| Service | Path |
+|---------|------|
+| GDPR | `document_services/gdpr_service.py` |
+| Export | `document_services/export_service.py` |
+| Batch | `document_services/batch_service.py` |
+| CRUD | `document_services/crud_service.py` |
 
-3. Whitescreen Mode (High Contrast)
+### Enterprise Features
 
-Background: #ffffff
-Text: #000000 (pure black)
-Accents: #0000ff (pure blue)
-High contrast ratio (WCAG AAA)
-Use case: Visual impairments, maximum readability
+| Feature | Service |
+|---------|---------|
+| Cross-Module Orchestration | `orchestration/cross_module_orchestrator.py` |
+| Financial Health | `privat/financial_health_service.py` |
+| Portfolio Management | `privat/portfolio_service.py` |
+| Lexware Import | `lexware_import_service.py` |
+| Entity Linking | `document_entity_linker_service.py` |
+| Entity Search | `entity_search_service.py` |
+| **Risk Scoring** | `risk_scoring_service.py` |
+| **Invoice Tracking** | API: `api/v1/invoices.py` |
+| **Skonto-Tracking** | `banking/skonto_service.py` |
+| **Teilzahlungen** | `banking/partial_payment_service.py` |
+| **Document Chains** | `document_chain_service.py` |
+| **Slack Integration** | `slack_service.py` |
+| **Shipment Tracking** | `shipping/carrier_service.py` |
+| **Email Import** | `imports/email_import_service.py` |
+| **Folder Import** | `imports/folder_import_service.py` |
+| **Import Rules** | `imports/import_rule_service.py` |
+| **Alert Center** | `alert_center_service.py` |
+| **DATEV Connect** | `datev/connect/datev_connector.py` |
 
-4. Blackscreen Mode (Inverted High Contrast)
+---
 
-Background: #000000 (pure black)
-Text: #ffffff (pure white)
-Accents: #00ff00 (bright green)
-Inverted color scheme
-Use case: OLED displays, extreme low-light, accessibility
+## Feature & Integration Reference
 
-Implementation Pattern
-typescript// Example for Vue/React component
-const displayModes = {
-  dark: { bg: '#1a1a1a', text: '#e0e0e0', accent: '#4a9eff' },
-  light: { bg: '#ffffff', text: '#1a1a1a', accent: '#0066cc' },
-  whitescreen: { bg: '#ffffff', text: '#000000', accent: '#0000ff' },
-  blackscreen: { bg: '#000000', text: '#ffffff', accent: '#00ff00' }
-}
+> Detaillierte Dokumentation zu jedem Feature in `.claude/Docs/Features/` und `.claude/Docs/Integrations/`
 
-// Mode persistence in localStorage
-localStorage.setItem('displayMode', 'dark')
+| Feature | Status | Migration | Core Service | Docs |
+|---------|--------|-----------|--------------|------|
+| DATEV Connect | Production-Ready | 145 | `datev/connect/datev_connector.py` | `.claude/Docs/Integrations/DATEV-Connect.md` |
+| Lexware Import | Production-Ready | 089, 090 | `lexware_import_service.py` | `.claude/Docs/Integrations/Lexware.md` |
+| Entity Risk Scoring | Production-Ready | 092, 093 | `risk_scoring_service.py` | `.claude/Docs/Features/Entity-Risk-Scoring.md` |
+| Skonto-Tracking | Production-Ready | 094 | `banking/skonto_service.py` | `.claude/Docs/Features/Skonto-Tracking.md` |
+| Document Lineage | Production-Ready | 147 | `lineage/document_lineage_service.py` | `.claude/Docs/Features/Document-Lineage.md` |
+| Document Chains | Production-Ready | 095 | `document_chain_service.py` | `.claude/Docs/Features/Document-Chains.md` |
+| Slack | Production-Ready | 100 | `slack_service.py` | `.claude/Docs/Integrations/Slack.md` |
+| Shipment Tracking | Production-Ready | 100 | `shipping/carrier_service.py` | `.claude/Docs/Integrations/ShipmentTracking.md` |
+| Email & Folder Import | Backend Ready 95% | via Beat | `imports/email_import_service.py` | `.claude/Docs/Features/Email-Folder-Import.md` |
+| OCR Self-Learning | Production-Ready | JSONB | `ocr/self_learning_service.py` | `.claude/Docs/Features/OCR-Self-Learning.md` |
+| MLOps Pipeline | Production-Ready | JSONB | `mlops/model_registry.py` | `.claude/Docs/Features/MLOps-Pipeline.md` |
+| Alert Center | Production-Ready | 117 | `alert_center_service.py` | `.claude/Docs/Features/Alert-Center.md` |
 
-🔒 SECURITY GUIDELINES
-Authentication & Authorization
+---
 
-JWT Tokens: httpOnly cookies + CSRF protection
-Token Expiration: Access tokens 15 min, refresh tokens 7 days
-Password Hashing: bcrypt with cost factor 12
-Rate Limiting:
+## Security Guidelines
 
-Login: 5 attempts per 15 minutes per IP
-API calls: 100 requests per minute per user
-OCR processing: 10 documents per hour per user (configurable)
+| Area | Requirement |
+|------|-------------|
+| JWT Tokens | httpOnly cookies + CSRF |
+| Token Expiration | Access: 15min, Refresh: 7 days |
+| Password Hashing | bcrypt, cost factor 12 |
+| Rate Limiting | Login: 5/15min, API: 100/min |
+| Document Access | Owner check + sharing permissions |
+| GDPR | Deletion within 30 days, audit logging |
 
+**Detailed**: See `.claude/Docs/Compliance/` and `.claude/Docs/API/RateLimits.md`
 
+---
 
-Document Security
-python# ✅ CORRECT: Document access control
-@router.get("/documents/{doc_id}")
-async def get_document(
-    doc_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    document = await document_service.get(db, doc_id)
-    if not document:
-        raise HTTPException(404, "Document not found")
-    
-    # Check ownership or sharing permissions
-    if document.owner_id != current_user.id and not await has_access(current_user, document):
-        raise HTTPException(403, "Access denied")
-    
-    return document
-Data Privacy
+## GPU Optimization
 
-Sensitive Data: NEVER log document content, filenames with PII, or user data
-GDPR Compliance:
+| Metric | Target |
+|--------|--------|
+| VRAM Usage | <85% (13.6GB of 16GB) |
+| Batch Size | Dynamic based on available VRAM |
+| Fallback | Automatic CPU fallback on OOM |
 
-User data deletion within 30 days of request
-Data export functionality
-Audit logging for all document access
+**Key Patterns**: `gpu_memory_guard()`, `GPUBatchProcessor`, `ModelManager`
 
+**Detailed**: See `.claude/Docs/Architecture/GPU-Resource-Management.md`
 
-Encryption:
+---
 
-In transit: TLS 1.3 only
-At rest: MinIO server-side encryption enabled
+## German Language Processing
 
-
-
-Input Validation
-pythonfrom pydantic import BaseModel, Field, validator
-
-class DocumentUploadRequest(BaseModel):
-    filename: str = Field(..., max_length=255)
-    language: str = Field(default="de", pattern="^(de|en)$")
-    
-    @validator('filename')
-    def validate_filename(cls, v):
-        # Prevent path traversal
-        if '..' in v or '/' in v or '\\' in v:
-            raise ValueError("Invalid filename")
-        
-        # Allowed extensions
-        allowed = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff']
-        if not any(v.lower().endswith(ext) for ext in allowed):
-            raise ValueError(f"File type not allowed. Use: {allowed}")
-        
-        return v
-
-⚡ GPU OPTIMIZATION
-GPU Resource Management
-Memory Management
-pythonimport torch
-from contextlib import contextmanager
-
-@contextmanager
-def gpu_memory_guard(threshold_gb: float = 13.6):
-    """Ensure GPU memory stays below threshold (85% of 16GB)."""
-    try:
-        yield
-    finally:
-        if torch.cuda.is_available():
-            current_memory = torch.cuda.memory_allocated() / 1024**3
-            if current_memory > threshold_gb:
-                logger.warning(
-                    "gpu_memory_high",
-                    current_gb=current_memory,
-                    threshold_gb=threshold_gb
-                )
-                torch.cuda.empty_cache()
-
-# Usage
-with gpu_memory_guard():
-    results = model.process_batch(images)
-Batch Processing Strategy
-pythonclass GPUBatchProcessor:
-    """GPU-optimized batch processing with dynamic sizing."""
-    
-    def __init__(self, max_batch_size: int = 32):
-        self.max_batch_size = max_batch_size
-        self.optimal_batch_size = self._find_optimal_batch_size()
-    
-    def _find_optimal_batch_size(self) -> int:
-        """Determine optimal batch size based on available VRAM."""
-        if not torch.cuda.is_available():
-            return 1
-        
-        total_memory = torch.cuda.get_device_properties(0).total_memory
-        available = total_memory - torch.cuda.memory_allocated()
-        
-        # Heuristic: ~500MB per image for DeepSeek
-        estimated_batch = int(available * 0.7 / (500 * 1024**2))
-        return min(estimated_batch, self.max_batch_size)
-    
-    async def process_documents(self, documents: List[Document]) -> List[OCRResult]:
-        """Process documents in optimal batches."""
-        results = []
-        batch_size = self.optimal_batch_size
-        
-        for i in range(0, len(documents), batch_size):
-            batch = documents[i:i + batch_size]
-            try:
-                batch_results = await self._process_batch(batch)
-                results.extend(batch_results)
-            except torch.cuda.OutOfMemoryError:
-                # Reduce batch size and retry
-                logger.warning("gpu_oom_reducing_batch", old_size=batch_size)
-                batch_size = max(1, batch_size // 2)
-                self.optimal_batch_size = batch_size
-                # Retry with smaller batch
-                batch_results = await self._process_batch(batch[:batch_size])
-                results.extend(batch_results)
-        
-        return results
-Model Loading and Caching
-pythonclass ModelManager:
-    """Singleton for GPU model management with lazy loading."""
-    
-    _instance = None
-    _models = {}
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    def get_model(self, model_name: str) -> torch.nn.Module:
-        """Load model with caching."""
-        if model_name not in self._models:
-            logger.info("loading_model", model=model_name)
-            model = self._load_model(model_name)
-            model.eval()  # Inference mode
-            model = model.cuda()  # Move to GPU
-            
-            # Warm-up inference (compile CUDA kernels)
-            with torch.no_grad():
-                dummy_input = torch.randn(1, 3, 224, 224).cuda()
-                _ = model(dummy_input)
-            
-            self._models[model_name] = model
-            logger.info("model_loaded", model=model_name)
-        
-        return self._models[model_name]
-Performance Benchmarks
-Expected performance on RTX 4080:
-
-DeepSeek-Janus-Pro: ~2-3 pages/second (A4, 300 DPI)
-GOT-OCR 2.0: ~5-7 pages/second
-Surya+Docling: ~1-2 pages/second (with layout analysis)
-
-
-🌐 GERMAN LANGUAGE PROCESSING
-Text Processing Standards
-pythonimport unicodedata
-
-def normalize_german_text(text: str) -> str:
-    """Normalize German text for processing.
-    
-    Handles:
-    - Umlauts (ä, ö, ü, ß)
-    - Unicode normalization (NFC)
-    - Fraktur character mapping
-    - Historical orthography variants
-    """
-    # Normalize to NFC (composed form)
-    text = unicodedata.normalize('NFC', text)
-    
-    # Fraktur to modern German mapping
-    fraktur_map = {
-        '\u1E9E': 'ß',  # Capital ß
-        # ... additional mappings
-    }
-    for old, new in fraktur_map.items():
-        text = text.replace(old, new)
-    
-    return text
-
-def german_word_splitting(text: str) -> List[str]:
-    """Split German compound words for better searchability."""
-    # Use German-specific tokenization
-    # Implementation with spaCy or custom algorithm
-    pass
-OCR Configuration for German
-pythondeepseek_config = {
-    "language": "de",
-    "detect_fraktur": True,
-    "umlauts_priority": True,
-    "dictionary": "german_extended"  # Includes Swiss/Austrian variants
-}
-
-# Spell-checking and correction
-from spellchecker import SpellChecker
-
-spell = SpellChecker(language='de')
-corrected = spell.correction(word)
-User-Facing Strings (MUST be German)
-python# ✅ CORRECT: German error messages
+```python
+# User-facing messages MUST be German
 ERROR_MESSAGES = {
     "document_not_found": "Dokument nicht gefunden",
     "processing_failed": "Verarbeitung fehlgeschlagen",
-    "invalid_format": "Ungültiges Dateiformat",
-    "gpu_unavailable": "GPU nicht verfügbar - Fallback auf CPU"
+    "invalid_format": "Ungueltiges Dateiformat"
 }
+```
+
+---
+
+## Monitoring
+
+| Service | URL |
+|---------|-----|
+| Grafana | http://localhost:3002 |
+| Prometheus | http://localhost:9090 |
+| API Docs | http://localhost:8000/docs |
+| MinIO Console | http://localhost:9001 |
 
-# API response example
-{
-    "status": "erfolg",
-    "nachricht": "Dokument erfolgreich verarbeitet",
-    "ergebnis": {
-        "dokument_id": "abc123",
-        "extrahierter_text": "...",
-        "verarbeitungszeit_ms": 1234
-    }
-}
-
-# ❌ WRONG: English user-facing text
-ERROR_MESSAGES = {"not_found": "Document not found"}
-
-🐳 DOCKER & DEPLOYMENT
-Docker Compose Services
-yaml# Key services defined in docker-compose.yml
-services:
-  backend:
-    - FastAPI application
-    - Port: 8000
-    - Depends on: postgres, redis, minio
-  
-  worker:
-    - Celery worker with GPU access
-    - Requires: --gpus all flag
-    - Depends on: redis, backend
-  
-  postgres:
-    - PostgreSQL 16
-    - Port: 5432
-    - Volume: postgres_data
-  
-  redis:
-    - Redis 7.x
-    - Port: 6379
-    - Used for: cache + job queue
-  
-  minio:
-    - MinIO object storage
-    - Ports: 9000 (API), 9001 (Console)
-    - Volume: minio_data
-Deployment Checklist
-Before deploying:
-
- All tests passing (pytest --cov=app)
- Type checking clean (mypy app/)
- Linting clean (ruff check .)
- Environment variables set (check .env.example)
- Database migrations applied (alembic upgrade head)
- GPU drivers installed (CUDA 12.x + cuDNN 8.9+)
- SSL certificates configured for production
- Backup strategy tested
-
-Terraform deployment:
-bashcd infrastructure/terraform
-terraform workspace select production
-terraform plan -out=tfplan
-terraform apply tfplan
-Ansible configuration:
-bashcd infrastructure/ansible
-ansible-playbook -i inventory/production playbooks/deploy.yml --check  # Dry run
-ansible-playbook -i inventory/production playbooks/deploy.yml
-
-📊 MONITORING & OBSERVABILITY
-Logging Strategy
-
-Structured Logging: structlog with JSON output
-Log Levels:
-
-DEBUG: Development only, detailed traces
-INFO: Normal operations, request/response
-WARNING: Recoverable errors, degraded performance
-ERROR: Failures requiring attention
-CRITICAL: System failures, data loss
-
-
-
-Key Metrics to Monitor
-python# Prometheus metrics (example)
-from prometheus_client import Counter, Histogram, Gauge
-
-ocr_requests_total = Counter(
-    'ocr_requests_total',
-    'Total OCR processing requests',
-    ['backend', 'status']
-)
-
-ocr_processing_duration = Histogram(
-    'ocr_processing_duration_seconds',
-    'OCR processing time',
-    ['backend']
-)
-
-gpu_memory_usage = Gauge(
-    'gpu_memory_usage_bytes',
-    'Current GPU memory usage'
-)
-
-document_queue_length = Gauge(
-    'document_queue_length',
-    'Number of documents in processing queue'
-)
-Health Checks
-python@router.get("/health")
-async def health_check():
-    """Comprehensive health check endpoint."""
-    checks = {
-        "database": await check_database(),
-        "redis": await check_redis(),
-        "minio": await check_minio(),
-        "gpu": check_gpu_availability(),
-        "disk_space": check_disk_space()
-    }
-    
-    all_healthy = all(checks.values())
-    status_code = 200 if all_healthy else 503
-    
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "status": "healthy" if all_healthy else "unhealthy",
-            "checks": checks,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    )
-
-🔄 WORKFLOW PATTERNS
-Document Processing Workflow
-python"""Standard document processing flow:
-
-1. UPLOAD
-   - Validate file type and size
-   - Generate unique document ID
-   - Store in MinIO
-   - Create database record
-
-2. QUEUE
-   - Add to Celery queue
-   - Select appropriate OCR backend
-   - Set priority based on document type
-
-3. PROCESS
-   - Load document from MinIO
-   - Preprocess image (normalize, denoise)
-   - Run OCR with selected backend
-   - Extract text and metadata
-   - Apply post-processing (spell check, formatting)
-
-4. STORE
-   - Save extracted text to database
-   - Update document status
-   - Cache results in Redis
-   - Emit webhook/notification
-
-5. CLEANUP
-   - Log processing metrics
-   - Free GPU memory
-   - Archive original if configured
-"""
-
-# Example implementation
-@celery_app.task(bind=True, max_retries=3)
-async def process_document_task(self, document_id: str, backend: str = "auto"):
-    """Celery task for async document processing."""
-    try:
-        # 1. Load document
-        document = await storage.get_document(document_id)
-        
-        # 2. Select backend if auto
-        if backend == "auto":
-            backend = orchestrator.select_backend(document)
-        
-        # 3. Process with GPU resource management
-        with gpu_memory_guard():
-            result = await ocr_backends[backend].process(document)
-        
-        # 4. Post-process German text
-        result.text = normalize_german_text(result.text)
-        result.text = spell_check(result.text, language="de")
-        
-        # 5. Save results
-        await db.update_document(document_id, result)
-        await cache.set(f"doc:{document_id}", result, ttl=3600)
-        
-        # 6. Emit success event
-        await events.emit("document.processed", document_id)
-        
-        return {"status": "success", "document_id": document_id}
-        
-    except Exception as e:
-        logger.exception("document_processing_failed", document_id=document_id)
-        # Retry with exponential backoff
-        raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
-Error Recovery Patterns
-python# Graceful degradation: GPU → CPU fallback
-try:
-    result = gpu_ocr.process(image)
-except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
-    logger.warning("gpu_fallback_to_cpu", reason=str(e))
-    result = cpu_ocr.process(image)
-
-# Circuit breaker for external services
-from circuitbreaker import circuit
-
-@circuit(failure_threshold=5, recovery_timeout=60)
-async def call_external_api(data):
-    """Prevent cascading failures with circuit breaker."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(EXTERNAL_API_URL, json=data)
-        response.raise_for_status()
-        return response.json()
-
-📚 DOCUMENTATION REFERENCES
-Internal Documentation
-
-ARCHITECTURE.md: Detailed system architecture, design decisions, data flow
-DEPLOYMENT.md: Production deployment procedures, rollback strategies
-CONVENTIONS.md: Team coding standards, Git workflow, PR guidelines
-.claude/Docs/: Additional context for AI-assisted development
-
-External Resources
-
-FastAPI: https://fastapi.tiangolo.com/
-SQLAlchemy 2.0: https://docs.sqlalchemy.org/en/20/
-Celery: https://docs.celeryq.dev/
-PostgreSQL: https://www.postgresql.org/docs/16/
-MinIO: https://min.io/docs/minio/linux/index.html
-DeepSeek: [Model documentation URL]
-GOT-OCR 2.0: https://github.com/ucaslcl/GOT-OCR2.0
-Surya: https://github.com/VikParuchuri/surya
-Docling: https://github.com/DS4SD/docling
-
-
-🚨 KNOWN ISSUES & GOTCHAS
-GPU-Related Issues
-
-OOM on batch processing: Reduce batch size dynamically (see GPUBatchProcessor)
-CUDA initialization delay: First inference takes ~5s (kernel compilation)
-Multi-process GPU access: Celery must use --pool=solo or --concurrency=1
-
-German Text Processing
-
-ß vs ss confusion: Some OCR engines struggle with ß, implement post-correction
-Fraktur fonts: DeepSeek performs best, GOT-OCR struggles with historical fonts
-Compound words: May require custom splitting for search functionality
-
-Database Migrations
-
-Large migrations: Run during maintenance window, can lock tables
-Rollback strategy: Always test migrations on staging with production data snapshot
-
-Docker Development
-
-GPU passthrough: Requires Docker 19.03+ and NVIDIA Container Toolkit
-File permissions: Use same UID/GID in container as host to avoid permission issues
-Hot reload limitations: Model files changes require container restart (large files)
-
-
-🔍 DEBUGGING TIPS
-Common Issues and Solutions
-Issue: "GPU not detected"
-bash# Check NVIDIA drivers
-nvidia-smi
-
-# Verify CUDA availability in container
-docker exec -it ablage-backend python -c "import torch; print(torch.cuda.is_available())"
-
-# Check Docker GPU access
-docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
-Issue: "Slow OCR processing"
-python# Enable profiling
-import cProfile
-import pstats
-
-profiler = cProfile.Profile()
-profiler.enable()
-result = ocr_backend.process(image)
-profiler.disable()
-
-stats = pstats.Stats(profiler)
-stats.sort_stats('cumulative')
-stats.print_stats(20)  # Top 20 slowest functions
-Issue: "Database connection pool exhausted"
-python# Check pool status
-from sqlalchemy import inspect
-
-inspector = inspect(engine)
-pool = engine.pool
-print(f"Pool size: {pool.size()}")
-print(f"Checked out: {pool.checked_out_connections}")
-print(f"Overflow: {pool.overflow()}")
-
-# Increase pool size in config if needed
-engine = create_async_engine(
-    DATABASE_URL,
-    pool_size=20,  # Increase from default 5
-    max_overflow=40
-)
-Debugging Tools
-bash# Watch logs in real-time
-docker-compose logs -f backend worker
-
-# Database query analysis
-docker exec -it ablage-postgres psql -U postgres -d ablage -c "SELECT * FROM pg_stat_activity;"
-
-# Redis monitoring
-docker exec -it ablage-redis redis-cli MONITOR
-
-# MinIO object inspection
-mc ls local/documents/
-
-🎯 DEVELOPMENT WORKFLOW
-Feature Development Process
-
-Planning: Review requirements, check ARCHITECTURE.md for constraints
-Branch: Create feature branch (feature/TICKET-123-description)
-TDD: Write failing tests first
-Implementation: Implement minimal passing code
-Refactor: Clean up, optimize, add documentation
-Testing: Run full test suite, check coverage
-Review: Self-review checklist, then request peer review
-Merge: Squash merge to main after 2 approvals
-
-Git Commit Standards
-bash# Conventional Commits format
-<type>(<scope>): <description>
-
-[optional body]
-
-[optional footer]
-
-# Types: feat, fix, docs, style, refactor, test, chore
-# Examples:
-feat(ocr): add DeepSeek-Janus-Pro backend integration
-fix(api): prevent race condition in document upload
-docs(readme): update deployment instructions
-test(ocr): add GPU memory stress tests
-Code Review Checklist
-Reviewer should verify:
-
- Tests added/updated for changes
- Type hints present and correct
- Error handling appropriate
- Logging with structured context
- German language strings where user-facing
- Security implications considered
- Performance impact acceptable
- Documentation updated
- No secrets in code
- GPU resources properly managed
-
-
-💡 PHILOSOPHY & PRINCIPLES
-Feinpoliert und Durchdacht
-Every aspect of this system should be:
-
-Polished: Production-ready, no rough edges, comprehensive error handling
-Well-thought-out: Architectural decisions documented, trade-offs considered
-Maintainable: Clean code, clear abstractions, excellent documentation
-Performant: Optimized for GPU, async throughout, caching where beneficial
-Secure: Defense in depth, input validation, audit logging
-Accessible: 4 display modes, German language first, WCAG compliant
-
-Engineering Values
-
-Correctness over speed: Get it right, then make it fast
-Explicit over implicit: Clear intent beats clever tricks
-Simple over easy: Favor simple solutions, even if more code
-Resilience over optimization: Graceful degradation, error recovery
-Team over individual: Code for the team, not yourself
-
-
-🚀 PERFORMANCE TARGETS
-Response Time Targets (95th percentile)
-
-API Health Check: < 50ms
-Document Upload: < 500ms
-OCR Processing (single page): < 2s (GPU), < 10s (CPU fallback)
-Document Retrieval: < 100ms (cached), < 300ms (database)
-Search Query: < 500ms
-
-Throughput Targets
-
-Concurrent Users: 100+
-Documents per Hour: 500+ (GPU), 100+ (CPU fallback)
-API Requests per Second: 1000+
-
-Resource Limits
-
-Max Document Size: 50 MB
-Max Batch Size: 32 documents (GPU), 8 (CPU)
-Database Connection Pool: 20 connections
-Redis Max Memory: 2 GB
-MinIO Storage: Unlimited (hardware dependent)
-
-
-📞 SUPPORT & ESCALATION
-When to Seek Help
-
-GPU OOM errors persisting: After trying batch size reduction
-Database migration failures: Before attempting manual fixes
-Security vulnerabilities discovered: Immediately, before fixing
-Production incidents: Follow incident response playbook
-
-Escalation Path
-
-Level 1: Team lead / Senior developer
-Level 2: Architecture team / DevOps
-Level 3: CTO / Security team (for critical issues)
-
-
-✅ FINAL CHECKLIST FOR AI ASSISTANT
-Before completing any task, verify:
-
- All code has type hints
- Tests written and passing
- German language used for user-facing content
- GPU resources managed properly
- Error handling comprehensive
- Logging with structured context
- Security considerations addressed
- Documentation updated
- Performance acceptable
- Follows project conventions
-
-For pull requests, ensure:
-
- Branch name follows convention
- Commit messages are conventional commits
- All tests pass (pytest)
- Type checking clean (mypy)
- Linting clean (ruff)
- Coverage maintained/improved
- CLAUDE.md updated if needed
-
-
-📌 QUICK REFERENCE
-Most Common Commands
-bash# Start development environment
-docker-compose up -d
-
-# Run backend locally
-uvicorn app.main:app --reload
-
-# Run tests
-pytest
-
-# Check code quality
-ruff check . && mypy app/
-
-# Apply migrations
-alembic upgrade head
-
-# Check GPU
-nvidia-smi
-Most Common Imports
-python# FastAPI
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
-
-# Database
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-# Tasks
-from celery import Celery
-
-# GPU
-import torch
-from torch import nn
-
-# Utilities
-import structlog
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
-
-Version: 1.0
-Last Updated: 2025-11-21
-Maintained By: Development Team
-
-NOTES FOR CLAUDE
-This CLAUDE.md file provides comprehensive context for the Ablage-System project. When working on this codebase:
-
-Always prioritize GPU resource management - Memory leaks or OOM errors affect production
-German language is critical - User-facing content must be in German
-Security is non-negotiable - On-premises deployment means we're the last line of defense
-Tests are mandatory - Production-ready means comprehensive test coverage
-Performance matters - Users expect real-time document processing
-
-Refer to ARCHITECTURE.md for deep architectural decisions, DEPLOYMENT.md for production procedures, and CONVENTIONS.md for team standards.
-When unsure, ask for clarification rather than making assumptions. This is a production system handling sensitive documents.
+---
+
+## Performance Targets
+
+| Metric | Target |
+|--------|--------|
+| API Health Check | <50ms |
+| Document Upload | <500ms |
+| OCR (single page) | <2s GPU, <10s CPU |
+| Concurrent Users | 100+ |
+| Documents/Hour | 500+ GPU |
+
+---
+
+## Checklist for AI Assistant
+
+Before completing any task:
+
+- [ ] All code has type hints
+- [ ] Tests written and passing
+- [ ] German language for user-facing content
+- [ ] GPU resources managed properly
+- [ ] Security considerations addressed
+
+---
+
+## TEAM WORKFLOW PROTOCOL
+
+When `[TEAM_WORKFLOW_ACTIVE]` appears in context (injected by team_router_hook), follow this protocol:
+
+### Step 1: Classify
+
+Run the team executor to get detailed classification:
+```bash
+python .claude/helpers/team_executor.py classify --task "<full task description>"
+```
+
+Die Ausgabe enthaelt eine `workflow_id`. Diese MUSS bei allen Folgebefehlen mitgegeben werden:
+```json
+{ "workflow_id": "abcd1234", ... }
+```
+
+### Step 2: Phase Loop
+
+For each phase N (1 through total_phases):
+
+**a) Get phase instructions:**
+```bash
+python .claude/helpers/team_executor.py phase --number N --workflow-id <workflow_id>
+```
+
+**b) Spawn agent(s):**
+- SEQUENTIAL phase: Use `Task(prompt=..., subagent_type=..., model=...)`
+- PARALLEL phase: Spawn ALL agents in ONE message with `run_in_background: true`
+
+**c) Save result when agent(s) complete:**
+```bash
+python .claude/helpers/team_executor.py save-result --phase N --result "<output>" --workflow-id <workflow_id>
+# For parallel phases, save each agent separately:
+python .claude/helpers/team_executor.py save-result --phase N --agent coder_a --result "<output>" --workflow-id <workflow_id>
+python .claude/helpers/team_executor.py save-result --phase N --agent coder_b --result "<output>" --workflow-id <workflow_id>
+```
+
+**d) Run quality gate (if phase has one):**
+```bash
+python .claude/helpers/team_executor.py gate --name gate_X_name --phase N --workflow-id <workflow_id>
+```
+- PASSED: proceed to phase N+1
+- FAILED: fix issues and re-run the phase (see Gate Failure Recovery below)
+- WARNING: proceed but note the warnings
+
+**Gate Failure Recovery:**
+When a gate returns FAILED:
+1. Read the BLOCK findings from the gate output
+2. Spawn the phase agent AGAIN with an adjusted prompt:
+   - Include the original task description
+   - Add: "KORREKTUR ERFORDERLICH: [paste gate BLOCK findings here]"
+3. Save the new result (overwrites the old one):
+   `python .claude/helpers/team_executor.py save-result --phase N --result "<new_result>" --workflow-id <workflow_id>`
+4. Re-run the gate
+5. After 2 failed attempts: Inform the user with a summary of the
+   gate findings and ask for manual intervention
+
+### Step 3: Phase 6 Integration (Special)
+
+For templates with `requires_shared_file_integration`:
+```bash
+python .claude/helpers/team_executor.py integrate --phase 3 --workflow-id <workflow_id>
+```
+This merges parallel coder manifests and returns concrete append-only instructions for bottleneck files.
+
+### Step 4: Complete
+```bash
+python .claude/helpers/team_executor.py complete --workflow-id <workflow_id>
+```
+
+### Critical Rules
+
+- NEVER edit bottleneck files (main.py, models.py, celery_app.py, tasks/__init__.py) outside Phase 6
+- Parallel agents MUST stay in their assigned zones
+- Satellite models go in `app/db/models_{feature}.py`, NOT in models.py
+- Phase 6 integrator does ONLY append operations on shared files
+- Quality gates MUST pass before proceeding (BLOCK findings = re-run)
+
+### Team Templates
+
+| Trigger | Team | Phases | Agents |
+|---------|------|--------|--------|
+| C1 x M1 | No Team (Haiku) | 1 | 1 |
+| C1 x M2 | No Team (Sonnet) | 1 | 1 |
+| C2 x M1 | Feature Small | 3 | 3 |
+| C2 x M2/M3 | Feature Standard | 6 | 6 |
+| C3 x M2/M3 | Feature Full | 6 | 6+ |
+| C4 | Refactor | 6 | 6 |
+| Security keyword | Security Audit | 4 | 5 |
+| Review keyword | Review | 1 | 3 (parallel) |
+
+---
+
+## CLAUDE.md Maintenance
+
+Claude SOLL diese Dateien automatisch pflegen:
+
+1. **AUTO-MANAGED Sektionen**: Bei relevanten Aenderungen aktualisieren
+2. **Memory-Dateien**: `.claude/memory/*.md` fuer dynamische Infos
+
+### Wann aktualisieren:
+
+- Nach Migrationen (alembic)
+- Nach neuen Features/Services
+- Nach Bug-Fixes
+- Nach Konfigurations-Aenderungen
+
+### AUTO-MANAGED Format:
+
+```html
+<!-- AUTO-MANAGED: section-name -->
+Inhalt...
+<!-- /AUTO-MANAGED: section-name -->
+```
+
+---
+
+## ROADMAP TRACKING PROTOCOL (Cross-Instance)
+
+**Planfile**: `.claude/plans/breezy-napping-hare.md`
+
+### PFLICHT fuer JEDE Claude-Instanz:
+
+1. **VOR Arbeitsbeginn**: Plan lesen, pruefen welche Features/Sub-Features bereits als DONE markiert sind
+2. **NACH Abschluss eines Features/Sub-Features**: Im Plan den Status updaten:
+   - `[ ]` -> `[x]` fuer abgeschlossene Items
+   - Datum + kurze Notiz anhaengen: `[x] Smart Inbox Frontend (2026-03-10, Tests passing)`
+3. **BEI TEILARBEIT**: Notiz hinterlassen was gemacht wurde und was noch fehlt
+4. **NIEMALS** ein bereits als `[x]` markiertes Feature nochmal anfassen (ausser Bug-Fix)
+
+### Status-Format im Plan:
+- `[ ]` = Noch nicht begonnen
+- `[~]` = In Arbeit (Instanz hat angefangen aber nicht fertig)
+- `[x]` = DONE (Enterprise-Level abgeschlossen, Tests passing)
+- `[!]` = Blockiert (mit Erklaerung warum)
+
+---
+
+**Version**: 1.1
+**Last Updated**: 2026-03-09

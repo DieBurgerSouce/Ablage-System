@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\vehicle_service.py
+# hypothesis_version: 6.148.7
+
+[100, '0', 'avg_price', 'avg_price_per_liter', 'count', 'fill_ups', 'fuel_type', 'max_mileage', 'min_mileage', 'total_cost', 'total_kilometers', 'total_liters', 'vehicle_type', 'year']

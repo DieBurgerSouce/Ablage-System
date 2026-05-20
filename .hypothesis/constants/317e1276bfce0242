@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\_permutation.py
+# hypothesis_version: 6.148.7
+
+[500, 'auto', 'clustering', 'error_std', 'expected_values', 'main_effects', 'mask_shapes', 'output_names', 'values']

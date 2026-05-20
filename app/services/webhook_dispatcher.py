@@ -9,8 +9,6 @@ Feinpoliert und durchdacht - Enterprise-grade Event Delivery.
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import secrets
 from datetime import datetime, timezone
@@ -23,7 +21,17 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from app.db.models import WebhookSubscription, WebhookDelivery, User
+from app.db.models import WebhookSubscription, WebhookSubscriptionDelivery, User
+from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.core.webhook_signature import (
+    generate_signature,
+    SIGNATURE_HEADER_NAME,
+)
+from app.core.business_metrics import (
+    record_webhook_delivery,
+    record_circuit_breaker_transition,
+    update_circuit_breaker_metrics,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -60,6 +68,202 @@ class DeliveryStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
     RETRYING = "retrying"
+    CIRCUIT_OPEN = "circuit_open"
+
+
+class CircuitState(str, Enum):
+    """Circuit Breaker Zustaende."""
+    CLOSED = "closed"      # Normal operation
+    OPEN = "open"          # Blocking requests
+    HALF_OPEN = "half_open"  # Testing recovery
+
+
+class WebhookCircuitBreaker:
+    """
+    Circuit Breaker für Webhook-Zustellungen.
+
+    Schuetzt vor kaskadierten Fehlern durch automatisches
+    Unterbrechen bei zu vielen Fehlschlaegen.
+
+    States:
+    - CLOSED: Normale Zustellung
+    - OPEN: Webhooks blockiert (zu viele Fehler)
+    - HALF_OPEN: Test-Phase nach Timeout
+    """
+
+    # Configuration
+    FAILURE_THRESHOLD = 5      # Fehler bis zum Öffnen
+    SUCCESS_THRESHOLD = 2      # Erfolge zum Schließen
+    OPEN_TIMEOUT_SECONDS = 300  # 5 Minuten bis Half-Open
+    HALF_OPEN_MAX_CALLS = 3    # Max gleichzeitige Test-Calls
+
+    def __init__(self):
+        # State per URL (subscription endpoint)
+        self._states: Dict[str, CircuitState] = {}
+        self._failure_counts: Dict[str, int] = {}
+        self._success_counts: Dict[str, int] = {}
+        self._last_failure_time: Dict[str, datetime] = {}
+        self._half_open_calls: Dict[str, int] = {}
+
+    def get_state(self, url: str) -> CircuitState:
+        """Get circuit state for URL."""
+        state = self._states.get(url, CircuitState.CLOSED)
+
+        # Check if OPEN circuit should transition to HALF_OPEN
+        if state == CircuitState.OPEN:
+            last_failure = self._last_failure_time.get(url)
+            if last_failure:
+                elapsed = (datetime.now(timezone.utc) - last_failure).total_seconds()
+                if elapsed >= self.OPEN_TIMEOUT_SECONDS:
+                    self._states[url] = CircuitState.HALF_OPEN
+                    self._half_open_calls[url] = 0
+                    self._success_counts[url] = 0
+                    logger.info(
+                        "webhook_circuit_half_open",
+                        url=url[:50],
+                        elapsed_seconds=elapsed
+                    )
+                    # Metrik: OPEN -> HALF_OPEN
+                    record_circuit_breaker_transition("open", "half_open")
+                    self._update_open_count()
+                    return CircuitState.HALF_OPEN
+
+        return state
+
+    def is_allowed(self, url: str) -> bool:
+        """Check if request is allowed through circuit."""
+        state = self.get_state(url)
+
+        if state == CircuitState.CLOSED:
+            return True
+
+        if state == CircuitState.OPEN:
+            return False
+
+        if state == CircuitState.HALF_OPEN:
+            # Allow limited test calls
+            current_calls = self._half_open_calls.get(url, 0)
+            if current_calls < self.HALF_OPEN_MAX_CALLS:
+                self._half_open_calls[url] = current_calls + 1
+                return True
+            return False
+
+        return True
+
+    def record_success(self, url: str) -> None:
+        """Record successful delivery."""
+        state = self.get_state(url)
+
+        if state == CircuitState.HALF_OPEN:
+            self._success_counts[url] = self._success_counts.get(url, 0) + 1
+            if self._success_counts[url] >= self.SUCCESS_THRESHOLD:
+                # Close circuit
+                self._states[url] = CircuitState.CLOSED
+                self._failure_counts[url] = 0
+                self._success_counts[url] = 0
+                logger.info(
+                    "webhook_circuit_closed",
+                    url=url[:50],
+                    reason="success_threshold_reached"
+                )
+                # Metrik: HALF_OPEN -> CLOSED
+                record_circuit_breaker_transition("half_open", "closed")
+                self._update_open_count()
+        elif state == CircuitState.CLOSED:
+            # Reset failure count on success
+            self._failure_counts[url] = 0
+
+    def record_failure(self, url: str) -> None:
+        """Record failed delivery."""
+        state = self.get_state(url)
+
+        if state == CircuitState.HALF_OPEN:
+            # Immediately re-open on failure
+            self._states[url] = CircuitState.OPEN
+            self._last_failure_time[url] = datetime.now(timezone.utc)
+            logger.warning(
+                "webhook_circuit_reopened",
+                url=url[:50],
+                reason="half_open_failure"
+            )
+            # Metrik: HALF_OPEN -> OPEN
+            record_circuit_breaker_transition("half_open", "open")
+            self._update_open_count()
+        elif state == CircuitState.CLOSED:
+            self._failure_counts[url] = self._failure_counts.get(url, 0) + 1
+            self._last_failure_time[url] = datetime.now(timezone.utc)
+
+            if self._failure_counts[url] >= self.FAILURE_THRESHOLD:
+                self._states[url] = CircuitState.OPEN
+                logger.warning(
+                    "webhook_circuit_opened",
+                    url=url[:50],
+                    failures=self._failure_counts[url]
+                )
+                # Metrik: CLOSED -> OPEN
+                record_circuit_breaker_transition("closed", "open")
+                self._update_open_count()
+
+    def _update_open_count(self) -> None:
+        """Update Prometheus gauge with current open circuit count."""
+        open_count = sum(
+            1 for url in self._states
+            if self.get_state(url) in (CircuitState.OPEN, CircuitState.HALF_OPEN)
+        )
+        update_circuit_breaker_metrics(open_count)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get circuit breaker statistics."""
+        stats = {
+            "total_tracked": len(self._states),
+            "by_state": {
+                CircuitState.CLOSED.value: 0,
+                CircuitState.OPEN.value: 0,
+                CircuitState.HALF_OPEN.value: 0,
+            },
+            "open_circuits": []
+        }
+
+        for url, state in self._states.items():
+            actual_state = self.get_state(url)
+            stats["by_state"][actual_state.value] += 1
+
+            if actual_state in (CircuitState.OPEN, CircuitState.HALF_OPEN):
+                stats["open_circuits"].append({
+                    "url": url[:50],
+                    "state": actual_state.value,
+                    "failures": self._failure_counts.get(url, 0),
+                    "last_failure": self._last_failure_time.get(url, None),
+                })
+
+        return stats
+
+    def reset(self, url: Optional[str] = None) -> None:
+        """Reset circuit(s)."""
+        if url:
+            self._states.pop(url, None)
+            self._failure_counts.pop(url, None)
+            self._success_counts.pop(url, None)
+            self._last_failure_time.pop(url, None)
+            self._half_open_calls.pop(url, None)
+        else:
+            self._states.clear()
+            self._failure_counts.clear()
+            self._success_counts.clear()
+            self._last_failure_time.clear()
+            self._half_open_calls.clear()
+
+
+# Global circuit breaker instance
+_circuit_breaker: Optional[WebhookCircuitBreaker] = None
+
+
+def get_webhook_circuit_breaker() -> WebhookCircuitBreaker:
+    """Get global circuit breaker instance."""
+    global _circuit_breaker
+    if _circuit_breaker is None:
+        _circuit_breaker = WebhookCircuitBreaker()
+    return _circuit_breaker
 
 
 class WebhookDispatcher:
@@ -74,6 +278,7 @@ class WebhookDispatcher:
     """
 
     DEFAULT_TIMEOUT = 30
+    DISPATCH_TIMEOUT = 120  # Max time for all webhooks in a dispatch batch
     MAX_PAYLOAD_SIZE = 1024 * 1024  # 1MB
 
     def __init__(self):
@@ -137,7 +342,21 @@ class WebhookDispatcher:
             for subscription in subscriptions
         ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=self.DISPATCH_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "webhook_dispatch_timeout",
+                user_id=str(user_id)[:8],
+                event_type=event_type,
+                subscriptions=len(subscriptions),
+                timeout_seconds=self.DISPATCH_TIMEOUT
+            )
+            # Return 0 successful deliveries on timeout
+            return 0
 
         # Zähle erfolgreiche Zustellungen
         success_count = sum(1 for r in results if r is True)
@@ -201,13 +420,15 @@ class WebhookDispatcher:
             "metadata": metadata or {}
         }
 
-    def _sign_payload(self, payload: bytes, secret: str) -> str:
-        """Erstellt HMAC-SHA256 Signatur für Payload."""
-        return hmac.new(
-            secret.encode("utf-8"),
-            payload,
-            hashlib.sha256
-        ).hexdigest()
+    def _sign_payload(self, payload: bytes, secret: str, timestamp: int) -> str:
+        """
+        Erstellt HMAC-SHA256 Signatur für Payload.
+
+        Verwendet das neue Signaturformat mit Timestamp-Schutz:
+        Format: t=<timestamp>,v1=<signature>
+        """
+        signature_header, _ = generate_signature(payload, secret, timestamp)
+        return signature_header
 
     async def _deliver_webhook(
         self,
@@ -216,7 +437,7 @@ class WebhookDispatcher:
         payload: Dict[str, Any]
     ) -> bool:
         """
-        Liefert Webhook an Subscription mit Retry-Logik.
+        Liefert Webhook an Subscription mit Retry-Logik und Circuit Breaker.
 
         Args:
             db: Datenbank-Session
@@ -226,8 +447,61 @@ class WebhookDispatcher:
         Returns:
             True wenn erfolgreich zugestellt
         """
+        # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
+        from app.core.security import validate_url_for_ssrf_async
+
+        is_valid, ssrf_error = await validate_url_for_ssrf_async(subscription.url)
+        if not is_valid:
+            logger.warning(
+                "webhook_ssrf_blocked",
+                subscription_id=str(subscription.id)[:8],
+                url=subscription.url[:50],
+                error=ssrf_error,
+                event_type=payload["event_type"]
+            )
+            # Erstelle Delivery-Record mit SSRF_BLOCKED Status
+            delivery = WebhookSubscriptionDelivery(
+                subscription_id=subscription.id,
+                event_id=payload["event_id"],
+                event_type=payload["event_type"],
+                payload=payload,
+                status=DeliveryStatus.FAILED.value,
+                error_message=f"SSRF-Schutz: {ssrf_error}"
+            )
+            db.add(delivery)
+            await db.commit()
+            return False
+
+        # Circuit Breaker Check
+        circuit_breaker = get_webhook_circuit_breaker()
+        if not circuit_breaker.is_allowed(subscription.url):
+            logger.warning(
+                "webhook_circuit_open",
+                subscription_id=str(subscription.id)[:8],
+                url=subscription.url[:50],
+                event_type=payload["event_type"]
+            )
+            # Erstelle Delivery-Record mit CIRCUIT_OPEN Status
+            delivery = WebhookSubscriptionDelivery(
+                subscription_id=subscription.id,
+                event_id=payload["event_id"],
+                event_type=payload["event_type"],
+                payload=payload,
+                status=DeliveryStatus.CIRCUIT_OPEN.value,
+                error_message="Circuit Breaker offen - Zustellung blockiert"
+            )
+            db.add(delivery)
+            await db.commit()
+
+            # Metrik: Circuit Open
+            record_webhook_delivery(
+                status="circuit_open",
+                event_type=payload["event_type"]
+            )
+            return False
+
         # Erstelle Delivery-Record
-        delivery = WebhookDelivery(
+        delivery = WebhookSubscriptionDelivery(
             subscription_id=subscription.id,
             event_id=payload["event_id"],
             event_type=payload["event_type"],
@@ -253,16 +527,22 @@ class WebhookDispatcher:
             await db.commit()
             return False
 
-        # Signatur erstellen
-        signature = self._sign_payload(payload_bytes, subscription.secret)
+        # Timestamp für Signatur (Unix-Timestamp)
+        import time
+        signature_timestamp = int(time.time())
 
-        # Headers vorbereiten
+        # Signatur erstellen (neues Format mit Timestamp-Schutz)
+        signature = self._sign_payload(
+            payload_bytes, subscription.secret, signature_timestamp
+        )
+
+        # Headers vorbereiten (mit standardisiertem Signatur-Header)
         headers = {
             "Content-Type": "application/json",
-            "X-Webhook-Signature": signature,
+            SIGNATURE_HEADER_NAME: signature,
             "X-Webhook-Delivery-ID": payload["event_id"],
             "X-Webhook-Event": payload["event_type"],
-            "X-Webhook-Timestamp": payload["created_at"],
+            "X-Webhook-Timestamp": str(signature_timestamp),
             "User-Agent": "Ablage-Webhook/1.0"
         }
 
@@ -297,6 +577,16 @@ class WebhookDispatcher:
                     delivery.attempts = attempt + 1
                     await db.commit()
 
+                    # Circuit Breaker: Erfolg registrieren
+                    circuit_breaker.record_success(subscription.url)
+
+                    # Metrik: Erfolgreiche Zustellung
+                    record_webhook_delivery(
+                        status="success",
+                        event_type=payload["event_type"],
+                        duration_seconds=response_time_ms / 1000.0
+                    )
+
                     logger.info(
                         "webhook_delivered",
                         subscription_id=str(subscription.id)[:8],
@@ -314,6 +604,16 @@ class WebhookDispatcher:
                     delivery.error_message = f"HTTP {response.status_code}: {response.text[:500]}"
                     delivery.attempts = attempt + 1
                     await db.commit()
+
+                    # Circuit Breaker: Fehler registrieren
+                    circuit_breaker.record_failure(subscription.url)
+
+                    # Metrik: Fehlgeschlagene Zustellung
+                    record_webhook_delivery(
+                        status="failed",
+                        event_type=payload["event_type"],
+                        duration_seconds=response_time_ms / 1000.0
+                    )
 
                     logger.warning(
                         "webhook_client_error",
@@ -351,7 +651,7 @@ class WebhookDispatcher:
 
             except httpx.ConnectError as e:
                 delivery.status = DeliveryStatus.RETRYING.value
-                delivery.error_message = f"Verbindungsfehler: {str(e)[:200]}"
+                delivery.error_message = safe_error_detail(e, "Webhook")
                 delivery.attempts = attempt + 1
                 await db.commit()
 
@@ -363,18 +663,36 @@ class WebhookDispatcher:
                 logger.error(
                     "webhook_delivery_error",
                     subscription_id=str(subscription.id)[:8],
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 delivery.status = DeliveryStatus.FAILED.value
-                delivery.error_message = str(e)[:500]
+                delivery.error_message = safe_error_detail(e, "Webhook")
                 delivery.attempts = attempt + 1
                 await db.commit()
+
+                # Circuit Breaker: Fehler registrieren
+                circuit_breaker.record_failure(subscription.url)
+
+                # Metrik: Fehlgeschlagene Zustellung
+                record_webhook_delivery(
+                    status="failed",
+                    event_type=payload["event_type"]
+                )
                 return False
 
         # Alle Retries fehlgeschlagen
         delivery.status = DeliveryStatus.FAILED.value
         delivery.error_message = f"Alle {max_retries + 1} Versuche fehlgeschlagen"
         await db.commit()
+
+        # Circuit Breaker: Fehler registrieren
+        circuit_breaker.record_failure(subscription.url)
+
+        # Metrik: Fehlgeschlagene Zustellung nach allen Retries
+        record_webhook_delivery(
+            status="failed",
+            event_type=payload["event_type"]
+        )
 
         logger.warning(
             "webhook_delivery_failed_all_retries",

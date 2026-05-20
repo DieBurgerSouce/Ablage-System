@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_default.py
+# hypothesis_version: 6.148.7
+
+['@GRAD', 'Out', 'XShape', 'all_reduce', 'broadcast', 'cond', 'default', 'default_', 'expand_as_v2', 'expand_v2', 'fill_any_like', 'fill_constant', 'grad_var_to_var', 'out', 'reduce_type', 'replicate_parallel', 'ring_id', 'root', 'shape', 'slice', 'target_shape', 'use_calc_stream', 'while', 'x']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\vine\promises.py
+# hypothesis_version: 6.148.7
+
+['<{0} --> {1!r}>', '<{0}>', '__dict__', '__weakref__', '_lvpending', '_svpending', 'args', 'cancelled', 'failed', 'fun', 'ignore_result', 'kwargs', 'on_error', 'promise', 'pypy_version_info', 'ready', 'reason', 'value', 'weak']

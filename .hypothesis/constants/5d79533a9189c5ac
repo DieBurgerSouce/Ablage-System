@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\cc\ap\pir_attrs_serializer.py
+# hypothesis_version: 6.148.7
+
+[', ', 'custom_op_name', 'infer_meta_func_name']

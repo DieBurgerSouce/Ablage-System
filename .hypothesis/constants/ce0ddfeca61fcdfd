@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\multi_kernel.py
+# hypothesis_version: 6.148.7
+
+[',', ', ', '1', 'arg_index = {', 'cpp_wrapper', 'kernel_name', 'persistent_red_perf', 'picked_kernel', 'reduction_hint', 'shape', 'size_hints', '}']

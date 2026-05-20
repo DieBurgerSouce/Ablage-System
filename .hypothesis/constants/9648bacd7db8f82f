@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\externals\array_api_extra\__init__.py
+# hypothesis_version: 6.148.7
+
+['0.7.1', '__version__', 'apply_where', 'at', 'atleast_nd', 'broadcast_shapes', 'cov', 'create_diagonal', 'expand_dims', 'isclose', 'kron', 'lazy_apply', 'nunique', 'pad', 'setdiff1d', 'sinc']

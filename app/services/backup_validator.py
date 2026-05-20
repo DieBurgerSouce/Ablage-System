@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Backup-Validator fuer Ablage-System.
+Backup-Validator für Ablage-System.
 
 Tiefgreifende Validierung von Backups:
-- Strukturelle Integritaet
-- Inhaltliche Vollstaendigkeit
+- Strukturelle Integrität
+- Inhaltliche Vollständigkeit
 - Checksum-Verifizierung
 - Restore-Simulation (Dry-Run)
 
@@ -30,9 +30,9 @@ logger = structlog.get_logger(__name__)
 
 class ValidationLevel(str, Enum):
     """Validierungsstufen."""
-    QUICK = "quick"          # Nur Dateiexistenz und Groesse
-    STANDARD = "standard"    # + Strukturelle Integritaet
-    DEEP = "deep"            # + Inhaltliche Pruefung
+    QUICK = "quick"          # Nur Dateiexistenz und Größe
+    STANDARD = "standard"    # + Strukturelle Integrität
+    DEEP = "deep"            # + Inhaltliche Prüfung
     FULL = "full"            # + Restore-Simulation
 
 
@@ -93,7 +93,7 @@ class BackupValidator:
     - Redis RDB Snapshots (.rdb)
     - MinIO Bucket Archives (.tar.gz)
     - Konfigurationsarchive (.tar.gz)
-    - GPG-verschluesselte Backups (.gpg)
+    - GPG-verschlüsselte Backups (.gpg)
     """
 
     # Erwartete PostgreSQL-Tabellen (kritisch)
@@ -145,8 +145,8 @@ class BackupValidator:
             with open(self.checksum_cache_path, "r") as f:
                 self._checksum_cache = json.load(f)
             logger.debug("checksum_cache_geladen", anzahl=len(self._checksum_cache))
-        except Exception as e:
-            logger.warning("checksum_cache_laden_fehlgeschlagen", error=str(e))
+        except (IOError, OSError, json.JSONDecodeError, ValueError) as e:
+            logger.warning("checksum_cache_laden_fehlgeschlagen", **safe_error_log(e))
 
     def _save_checksum_cache(self) -> None:
         """Speichere Checksum-Cache in Datei."""
@@ -157,8 +157,8 @@ class BackupValidator:
             with open(self.checksum_cache_path, "w") as f:
                 json.dump(self._checksum_cache, f, indent=2)
             logger.debug("checksum_cache_gespeichert")
-        except Exception as e:
-            logger.warning("checksum_cache_speichern_fehlgeschlagen", error=str(e))
+        except (IOError, OSError, TypeError) as e:
+            logger.warning("checksum_cache_speichern_fehlgeschlagen", **safe_error_log(e))
 
     # =========================================================================
     # Haupt-Validierungsmethoden
@@ -182,6 +182,7 @@ class BackupValidator:
             ValidationResult mit Status und Details
         """
         import time
+
         start_time = time.perf_counter()
 
         if not path.exists():
@@ -292,7 +293,7 @@ class BackupValidator:
             expected_checksum: Erwarteter SHA256 Checksum
 
         Returns:
-            True wenn Checksum uebereinstimmt
+            True wenn Checksum übereinstimmt
         """
         if not path.exists():
             return False
@@ -323,7 +324,7 @@ class BackupValidator:
         issues: List[ValidationIssue] = []
         metadata: Dict = {}
 
-        # Quick Level: Nur Datei-Pruefung
+        # Quick Level: Nur Datei-Prüfung
         if not path.is_file():
             issues.append(ValidationIssue(
                 severity="error",
@@ -339,7 +340,7 @@ class BackupValidator:
             )
 
         file_size = path.stat().st_size
-        if file_size < 100:  # Minimal sinnvolle Groesse
+        if file_size < 100:  # Minimal sinnvolle Größe
             issues.append(ValidationIssue(
                 severity="error",
                 code="FILE_TOO_SMALL",
@@ -356,16 +357,16 @@ class BackupValidator:
                 total_size_bytes=file_size,
             )
 
-        # Standard Level: Strukturelle Pruefung
+        # Standard Level: Strukturelle Prüfung
         try:
             content = await self._read_sql_content(path, max_bytes=1024 * 1024)  # 1MB
 
-            # Pruefen ob gueltiger SQL Dump
+            # Prüfen ob gültiger SQL Dump
             if not content.strip().startswith("--") and "CREATE" not in content.upper():
                 issues.append(ValidationIssue(
                     severity="error",
                     code="INVALID_SQL_FORMAT",
-                    message="Datei scheint kein gueltiger SQL Dump zu sein",
+                    message="Datei scheint kein gültiger SQL Dump zu sein",
                 ))
 
             # Tabellen extrahieren
@@ -376,7 +377,7 @@ class BackupValidator:
             ))
             metadata["tables_found"] = list(found_tables)
 
-            # Erwartete Tabellen pruefen
+            # Erwartete Tabellen prüfen
             missing_tables = self.EXPECTED_PG_TABLES - found_tables
             if missing_tables:
                 issues.append(ValidationIssue(
@@ -394,10 +395,10 @@ class BackupValidator:
                 issues.append(ValidationIssue(
                     severity="warning",
                     code="NO_DATA",
-                    message="Backup enthaelt keine INSERT Statements (leer?)",
+                    message="Backup enthält keine INSERT Statements (leer?)",
                 ))
 
-        except Exception as e:
+        except (IOError, OSError, UnicodeDecodeError, gzip.BadGzipFile) as e:
             issues.append(ValidationIssue(
                 severity="error",
                 code="READ_ERROR",
@@ -406,19 +407,19 @@ class BackupValidator:
 
         # Deep Level: Tiefere Analyse
         if level in (ValidationLevel.DEEP, ValidationLevel.FULL) and content:
-            # Pruefen auf vollstaendige Transaktionen
+            # Prüfen auf vollständige Transaktionen
             if "BEGIN;" in content and "COMMIT;" not in content:
                 issues.append(ValidationIssue(
                     severity="warning",
                     code="INCOMPLETE_TRANSACTION",
-                    message="Unvollstaendige Transaktion gefunden",
+                    message="Unvollständige Transaktion gefunden",
                 ))
 
-            # Pruefen auf Foreign Key Constraints
+            # Prüfen auf Foreign Key Constraints
             fk_count = len(re.findall(r"FOREIGN KEY", content, re.IGNORECASE))
             metadata["foreign_key_count"] = fk_count
 
-            # Pruefen auf Extensions
+            # Prüfen auf Extensions
             extensions = set(re.findall(
                 r"CREATE EXTENSION (?:IF NOT EXISTS )?['\"]?(\w+)['\"]?",
                 content,
@@ -449,7 +450,7 @@ class BackupValidator:
         suffix = "".join(path.suffixes).lower()
 
         if ".gpg" in suffix:
-            raise ValueError("GPG-verschluesselte Dateien nicht direkt lesbar")
+            raise ValueError("GPG-verschlüsselte Dateien nicht direkt lesbar")
 
         if ".gz" in suffix:
             with gzip.open(path, "rt", encoding="utf-8") as f:
@@ -504,7 +505,7 @@ class BackupValidator:
                 total_size_bytes=file_size,
             )
 
-        # Standard Level: RDB Magic Number pruefen
+        # Standard Level: RDB Magic Number prüfen
         try:
             with open(path, "rb") as f:
                 header = f.read(9)
@@ -513,7 +514,7 @@ class BackupValidator:
                     issues.append(ValidationIssue(
                         severity="error",
                         code="INVALID_RDB_HEADER",
-                        message="Datei hat keinen gueltigen RDB Header",
+                        message="Datei hat keinen gültigen RDB Header",
                     ))
                 else:
                     # Redis Version aus Header extrahieren
@@ -521,7 +522,7 @@ class BackupValidator:
                     metadata["rdb_version"] = version
                     logger.debug("redis_rdb_version", version=version)
 
-                    # Version pruefen (mindestens 0006)
+                    # Version prüfen (mindestens 0006)
                     try:
                         if int(version) < 6:
                             issues.append(ValidationIssue(
@@ -529,17 +530,17 @@ class BackupValidator:
                                 code="OLD_RDB_VERSION",
                                 message=f"Alte RDB Version: {version}",
                             ))
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug("rdb_version_parse_failed", error_type=type(e).__name__, version=version)
 
-        except Exception as e:
+        except (IOError, OSError) as e:
             issues.append(ValidationIssue(
                 severity="error",
                 code="READ_ERROR",
                 message=f"Fehler beim Lesen der RDB Datei: {e}",
             ))
 
-        # Deep Level: Mehr Struktur-Pruefung
+        # Deep Level: Mehr Struktur-Prüfung
         if level in (ValidationLevel.DEEP, ValidationLevel.FULL):
             try:
                 with open(path, "rb") as f:
@@ -558,11 +559,11 @@ class BackupValidator:
 
                     metadata["total_size"] = total_size
 
-            except Exception as e:
+            except (IOError, OSError) as e:
                 issues.append(ValidationIssue(
                     severity="warning",
                     code="EOF_CHECK_FAILED",
-                    message=f"EOF Pruefung fehlgeschlagen: {e}",
+                    message=f"EOF Prüfung fehlgeschlagen: {e}",
                 ))
 
         return ValidationResult(
@@ -611,7 +612,7 @@ class BackupValidator:
                     total_size_bytes=total_size,
                 )
 
-            # Standard Level: Tar-Struktur pruefen
+            # Standard Level: Tar-Struktur prüfen
             try:
                 with tarfile.open(path, "r:*") as tar:
                     members = tar.getnames()
@@ -623,14 +624,14 @@ class BackupValidator:
                         parts = member.split("/")
                         if len(parts) > 1:
                             # Erstes Verzeichnis ist meist der Backup-Name
-                            # Zweites koennte der Bucket sein
+                            # Zweites könnte der Bucket sein
                             if len(parts) > 2:
                                 buckets_found.add(parts[1])
 
                     metadata["buckets_found"] = list(buckets_found)
                     metadata["file_count"] = file_count
 
-                    # Erwartete Buckets pruefen
+                    # Erwartete Buckets prüfen
                     missing_buckets = self.EXPECTED_MINIO_BUCKETS - buckets_found
                     if missing_buckets and buckets_found:
                         issues.append(ValidationIssue(
@@ -640,7 +641,7 @@ class BackupValidator:
                             details={"missing": list(missing_buckets)},
                         ))
 
-            except Exception as e:
+            except (tarfile.TarError, IOError, OSError) as e:
                 issues.append(ValidationIssue(
                     severity="error",
                     code="TAR_ERROR",
@@ -654,7 +655,7 @@ class BackupValidator:
                     file_count += 1
                     total_size += item.stat().st_size
 
-            # Bucket-Verzeichnisse pruefen
+            # Bucket-Verzeichnisse prüfen
             buckets_found = {d.name for d in path.iterdir() if d.is_dir()}
             metadata["buckets_found"] = list(buckets_found)
 
@@ -723,14 +724,14 @@ class BackupValidator:
                 total_size_bytes=total_size,
             )
 
-        # Standard Level: Tar-Inhalt pruefen
+        # Standard Level: Tar-Inhalt prüfen
         try:
             with tarfile.open(path, "r:*") as tar:
                 members = tar.getnames()
                 file_count = len(members)
                 metadata["contents"] = members[:50]  # Erste 50
 
-                # Wichtige Konfigurationsdateien pruefen
+                # Wichtige Konfigurationsdateien prüfen
                 important_files = {".env", "app", "infrastructure"}
                 found_important = set()
 
@@ -749,7 +750,7 @@ class BackupValidator:
                         message=f"Fehlende Konfigurationen: {missing}",
                     ))
 
-        except Exception as e:
+        except (tarfile.TarError, IOError, OSError) as e:
             issues.append(ValidationIssue(
                 severity="error",
                 code="TAR_ERROR",
@@ -776,7 +777,7 @@ class BackupValidator:
         path: Path,
         level: ValidationLevel,
     ) -> ValidationResult:
-        """Validiere GPG-verschluesseltes Backup."""
+        """Validiere GPG-verschlüsseltes Backup."""
         issues: List[ValidationIssue] = []
         metadata: Dict = {}
 
@@ -784,7 +785,7 @@ class BackupValidator:
             issues.append(ValidationIssue(
                 severity="error",
                 code="NOT_A_FILE",
-                message="Verschluesseltes Backup muss eine Datei sein",
+                message="Verschlüsseltes Backup muss eine Datei sein",
             ))
             return ValidationResult(
                 backup_path=path,
@@ -800,10 +801,10 @@ class BackupValidator:
             issues.append(ValidationIssue(
                 severity="error",
                 code="FILE_TOO_SMALL",
-                message=f"Verschluesselte Datei zu klein ({total_size} bytes)",
+                message=f"Verschlüsselte Datei zu klein ({total_size} bytes)",
             ))
 
-        # Standard Level: GPG Header pruefen
+        # Standard Level: GPG Header prüfen
         if level != ValidationLevel.QUICK:
             try:
                 with open(path, "rb") as f:
@@ -811,23 +812,23 @@ class BackupValidator:
 
                     # GPG Packets beginnen mit 0x85 (alt) oder 0xc0-0xff (neu)
                     if header[0] not in (0x85, 0xa3, 0xc0, 0xc1, 0xc2, 0xc5, 0xc6):
-                        # Pruefen auf ASCII-armored GPG
+                        # Prüfen auf ASCII-armored GPG
                         f.seek(0)
                         ascii_header = f.read(27)
                         if not ascii_header.startswith(b"-----BEGIN PGP MESSAGE"):
                             issues.append(ValidationIssue(
                                 severity="warning",
                                 code="UNKNOWN_GPG_FORMAT",
-                                message="Unbekanntes GPG Format - koennte keine GPG Datei sein",
+                                message="Unbekanntes GPG Format - könnte keine GPG Datei sein",
                             ))
 
                     metadata["gpg_format"] = "binary" if header[0] >= 0x80 else "ascii"
 
-            except Exception as e:
+            except (IOError, OSError) as e:
                 issues.append(ValidationIssue(
                     severity="warning",
                     code="GPG_CHECK_FAILED",
-                    message=f"GPG Format-Pruefung fehlgeschlagen: {e}",
+                    message=f"GPG Format-Prüfung fehlgeschlagen: {e}",
                 ))
 
         # Original-Typ aus Dateiname ableiten
@@ -899,7 +900,7 @@ class BackupValidator:
         name = path.name.lower()
         suffix = "".join(path.suffixes).lower()
 
-        # GPG-verschluesselt
+        # GPG-verschlüsselt
         if suffix.endswith(".gpg"):
             return "encrypted"
 
@@ -919,14 +920,14 @@ class BackupValidator:
         if "config" in name:
             return "config"
 
-        # Parent-Verzeichnis pruefen
+        # Parent-Verzeichnis prüfen
         if path.parent.name in ("postgres", "redis", "minio", "config"):
             return path.parent.name
 
         return "generic"
 
     async def _calculate_checksum(self, path: Path, algorithm: str = "sha256") -> str:
-        """Berechne Checksum fuer Datei."""
+        """Berechne Checksum für Datei."""
         hash_func = hashlib.new(algorithm)
 
         with open(path, "rb") as f:

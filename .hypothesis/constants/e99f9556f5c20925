@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\datasets\flowers.py
+# hypothesis_version: 6.148.7
+
+['.tgz', '/', '_ImageDataType', 'cv2', 'flowers', 'int64', 'jpg', 'labels', 'pil', 'scipy.io', 'test', 'train', 'trnid', 'tstid', 'valid']

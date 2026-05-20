@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_replace_with_parallel_cross_entropy.py
+# hypothesis_version: 6.148.7
+
+['ignore_index']

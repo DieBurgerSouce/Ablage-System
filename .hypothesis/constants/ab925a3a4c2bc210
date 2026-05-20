@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\hapi\static_flops.py
+# hypothesis_version: 6.148.7
+
+['+', '-', 'Bias', 'Filter', 'Flops', 'OP Type', 'Out', 'Output', 'Param name', 'X', 'Y', 'batch_norm', 'conv2d', 'depthwise_conv2d', 'element', 'matmul', 'mul', 'pool2d', '|']

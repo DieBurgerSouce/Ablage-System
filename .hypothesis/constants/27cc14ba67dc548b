@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_quantization.py
+# hypothesis_version: 6.148.7
+
+['.quantized', '@scale', '@zero_point', 'OutScale', 'Scale', 'X', 'Y', 'ZeroPoint', 'abs_max', 'activation_bits', 'channel_wise_abs_max', 'conv2d', 'default', 'depthwise_conv2d', 'dims_mapping', 'dist_context', 'loss', 'main_program', 'matmul', 'matmul_v2', 'mode', 'mul', 'not_quant_pattern', 'onnx_format', 'op_device', 'params_grads', 'process_group', 'process_shape', 'quant_axis', 'quantize', 'startup_program', 'sub_block', 'train', 'weight_bits', 'while']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\transport.py
+# hypothesis_version: 6.148.7
+
+[b'AMQP\x00\x00\t\x01', 206, 1000, 5672, 1000000, 2147483647, ':', '>BHI', 'Socket closed', 'TCP_KEEPCNT', 'TCP_KEEPIDLE', 'TCP_KEEPINTVL', 'TCP_NODELAY', 'TCP_USER_TIMEOUT', '__dict__', '__weakref__', '_read_buffer', 'connect_timeout', 'connection', 'host', 'll', 'nt', 'port', 'read_timeout', 'server_hostname', 'server_side', 'sock', 'socket_settings', 'sslopts', 'suppress_ragged_eofs', 'timed out', 'write_timeout']

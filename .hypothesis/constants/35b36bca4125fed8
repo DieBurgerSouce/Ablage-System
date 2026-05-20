@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\optim\adagrad.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-10, 0.01, 100, 4096, 'adagrad']

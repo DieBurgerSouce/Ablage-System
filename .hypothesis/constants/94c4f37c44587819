@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\stream\reduce_scatter.py
+# hypothesis_version: 6.148.7
+
+['_reduce_scatter_base', 'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'nranks', 'out', 'reduce_scatter', 'ring_id', 'tensor', 'uint16', 'uint8', 'x']

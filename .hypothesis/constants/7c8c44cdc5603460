@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_fused_linear_promotion.py
+# hypothesis_version: 6.148.7
+
+['@promote', 'Grad', 'Out', 'X', '_grad', 'adam', 'adamax', 'adamw', 'all_gather', 'all_reduce', 'amp_level', 'backward', 'broadcast', 'cast', 'clip_by_norm', 'decayed_adagrad', 'dgc_momentum', 'dist_context', 'elementwise_add', 'elementwise_add_grad', 'elementwise_mul', 'enable_sp', 'forward', 'global_rank', 'lamb', 'lars_momentum', 'matmul_v2', 'matmul_v2_grad', 'merged_momentum', 'momentum', 'nop', 'o0', 'o1', 'op_role', 'params_grads', 'reduce_scatter', 'reduce_type', 'ring_id', 'scale', 'sgd', 'squared_l2_norm', 'stack', 'update_loss_scaling']

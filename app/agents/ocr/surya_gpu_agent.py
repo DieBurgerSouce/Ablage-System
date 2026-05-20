@@ -13,7 +13,8 @@ import torch
 from PIL import Image
 import pypdfium2 as pdfium
 
-from app.agents.base import OCRAgent
+from app.agents.base import OCRAgent, OCRResult
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -21,8 +22,15 @@ logger = structlog.get_logger(__name__)
 class SuryaGPUAgent(OCRAgent):
     """Surya OCR agent with GPU acceleration optimized for RTX 4080."""
 
+    # Class-level lock to prevent race conditions during model loading
+    _model_lock: Optional[asyncio.Lock] = None
+
     def __init__(self):
         """Initialize Surya OCR models with GPU support."""
+        # Initialize class-level lock if not already done
+        if SuryaGPUAgent._model_lock is None:
+            SuryaGPUAgent._model_lock = asyncio.Lock()
+
         # Check GPU availability
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -59,8 +67,50 @@ class SuryaGPUAgent(OCRAgent):
 
         logger.info("surya_gpu_agent_initialized", device=str(self.device), dtype=str(self.dtype))
 
+    async def _load_models_async(self, timeout_seconds: float = 600.0):
+        """Load Surya models with GPU optimization (thread-safe with lock and timeout).
+
+        SECURITY FIX: Uses asyncio.Lock to prevent race conditions when
+        multiple concurrent requests try to load models simultaneously.
+
+        Args:
+            timeout_seconds: Maximum time to wait for model loading (default: 600s = 10min)
+
+        Raises:
+            asyncio.TimeoutError: If model loading exceeds timeout
+        """
+        async with SuryaGPUAgent._model_lock:
+            # Double-check pattern: re-check inside lock
+            if self._models_loaded:
+                return
+
+            loop = asyncio.get_running_loop()
+            try:
+                # Run sync loading in thread pool with timeout
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, self._load_models_sync),
+                    timeout=timeout_seconds
+                )
+            except asyncio.TimeoutError:
+                logger.error(
+                    "surya_gpu_model_loading_timeout",
+                    timeout_seconds=timeout_seconds,
+                    device=str(self.device),
+                    message="Model loading exceeded timeout - possible stuck download or GPU OOM"
+                )
+                # Clean up any partial GPU state
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                raise
+
     def _load_models(self):
-        """Load Surya models with GPU optimization."""
+        """Synchronous model loading - prefer _load_models_async() for concurrent access."""
+        if self._models_loaded:
+            return
+        self._load_models_sync()
+
+    def _load_models_sync(self):
+        """Internal synchronous model loading implementation."""
         if self._models_loaded:
             return
 
@@ -101,9 +151,53 @@ class SuryaGPUAgent(OCRAgent):
             self._models_loaded = True
             logger.info("All Surya 0.17.0 models loaded successfully with GPU optimization")
 
+            # Warm-Up: Compile CUDA kernels to avoid first-inference latency
+            self._warmup_models()
+
         except Exception as e:
-            logger.error("surya_models_load_failed", error=str(e))
+            logger.error("surya_models_load_failed", **safe_error_log(e))
             raise
+
+    def _warmup_models(self):
+        """Warm up models with dummy inference to compile CUDA kernels.
+
+        This avoids 2-3 seconds latency on first real inference by
+        pre-compiling CUDA kernels and JIT-compiling PyTorch operations.
+        """
+        if not torch.cuda.is_available():
+            return
+
+        try:
+            import time
+            start = time.perf_counter()
+            logger.info("model_warmup_starting")
+
+            # Create small dummy image (224x224 RGB)
+            dummy_image = Image.new('RGB', (224, 224), color='white')
+
+            # Run detection warmup
+            with torch.no_grad():
+                try:
+                    _ = self._det_predictor([dummy_image])
+                except Exception as e:
+                    logger.debug(
+                        "warmup_detection_failed",
+                        error_type=type(e).__name__,
+                    )
+
+            # Synchronize CUDA to ensure kernels are compiled
+            torch.cuda.synchronize()
+
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            logger.info(
+                "model_warmup_completed",
+                warmup_time_ms=round(elapsed_ms, 1),
+                message="CUDA kernels compiled - first inference will be fast"
+            )
+
+        except Exception as e:
+            # Warmup failure is not critical - just log it
+            logger.warning("model_warmup_failed", **safe_error_log(e))
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
         """Load image(s) from file path, handling both PDFs and images."""
@@ -126,7 +220,7 @@ class SuryaGPUAgent(OCRAgent):
                     logger.debug("pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error("pdf_load_failed", error=str(e))
+                logger.error("pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Handle image files (PNG, JPG, etc.)
@@ -138,7 +232,7 @@ class SuryaGPUAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error("image_load_failed", error=str(e))
+                logger.error("image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -202,8 +296,8 @@ class SuryaGPUAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error("image_processing_failed", error=str(e))
-            return {"text": "", "confidence": 0.0, "text_regions": 0, "german_chars_found": [], "error": str(e)}
+            logger.error("image_processing_failed", **safe_error_log(e))
+            return {"text": "", "confidence": 0.0, "text_regions": 0, "german_chars_found": [], **safe_error_log(e)}
 
     async def process(
         self,
@@ -276,42 +370,36 @@ class SuryaGPUAgent(OCRAgent):
 
             logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
-            return {
-                "success": True,
-                "text": full_text,
-                "confidence": avg_confidence,
-                "page_count": len(images),
-                "backend": "surya_gpu",
-                "device": str(self.device),
-                "model": "surya-ocr-0.17.0",
-                # NEW: Page-level confidence data
-                "pages": pages_data,
-                "confidence_stats": {
-                    "mean": round(avg_confidence, 3),
-                    "min": round(min_page_confidence, 3),
-                    "max": round(max_page_confidence, 3),
-                    "low_confidence_pages": low_confidence_pages,
-                },
-                "metadata": {
-                    "language": language,
-                    "gpu_accelerated": torch.cuda.is_available(),
-                    "dtype": str(self.dtype)
-                }
-            }
+            # Prüfe auf deutsche Zeichen
+            has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+
+            # Erstelle standardisiertes OCRResult
+            result = self.create_success_result(
+                text=full_text,
+                confidence=avg_confidence,
+                processing_time_ms=0,  # Could add timing if needed
+                page_count=len(images),
+                language=language,
+                pages=pages_data,
+                has_umlauts=has_umlauts,
+            )
+
+            return result.to_dict()
 
         except Exception as e:
-            logger.error("ocr_processing_failed", error=str(e))
-            # GPU memory cleanup on error
+            logger.error("ocr_processing_failed", **safe_error_log(e))
+
+            # Erstelle standardisiertes Fehler-Result
+            result = self.create_error_result(
+                **safe_error_log(e),
+                error_code="SURYA_OCR_ERROR",
+            )
+            return result.to_dict()
+
+        finally:
+            # Ensure GPU memory cleanup happens in all cases
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-
-            return {
-                "success": False,
-                "error": str(e),
-                "backend": "surya_gpu",
-                "device": str(self.device),
-                "model": "surya-ocr-0.17.0"
-            }
 
     def get_status(self) -> Dict[str, Any]:
         """Get agent status including GPU information."""

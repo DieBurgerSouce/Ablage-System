@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\neighbors\_kde.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, 'C', 'algorithm', 'atol', 'auto', 'ball_tree', 'bandwidth', 'boolean', 'breadth_first', 'cosine', 'epanechnikov', 'euclidean', 'exponential', 'gaussian', 'kd_tree', 'kernel', 'leaf_size', 'left', 'linear', 'metric', 'metric_params', 'neither', 'rtol', 'scott', 'silverman', 'tophat']

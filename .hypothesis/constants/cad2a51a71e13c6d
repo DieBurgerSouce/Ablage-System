@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\limits\aio\storage\redis\redispy.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1000, '*', ',', '/', ':', '@', 'connection_pool', 'max_connections']

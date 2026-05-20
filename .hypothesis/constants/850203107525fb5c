@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\conv.py
+# hypothesis_version: 6.148.7
+
+['ATEN', 'BLOCK_M', 'BLOCK_N', 'GROUPS', 'TRITON', 'at::convolution', 'bias', 'convolution', 'convolution2d', 'convolution3d', 'cpu', 'dilation', 'groups', 'output_padding', 'padding', 'stride', 'transposed', 'xpu']

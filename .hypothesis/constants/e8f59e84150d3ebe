@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\security.py
+# hypothesis_version: 6.148.7
+
+[100, 10000, 86400, '...', 'Bearer', 'Dict', 'TTLCache', 'Ungültiger Token-Typ', 'WWW-Authenticate', 'access', 'access_token', 'bearer', 'exp', 'fallback_count', 'fallback_max_size', 'fallback_storage', 'fallback_ttl_seconds', 'get_secret_value', 'iat', 'in-memory', 'invalid_token_type', 'jti', 'manual', 'redis', 'redis_available', 'redis_count', 'redis_error', 'refresh', 'refresh_token', 'storage_type', 'sub', 'token:blacklist:', 'token_type', 'token_type_mismatch', 'type', 'unlimited', 'utf-8']

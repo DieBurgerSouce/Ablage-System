@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\datasets\utils.py
+# hypothesis_version: 6.148.7
+
+['ImageTensor', 'NFD', 'RGB', 'ascii', 'boxes', 'decode_sequence', 'encode_sequences', 'encode_string', 'ignore', 'translate', '■']

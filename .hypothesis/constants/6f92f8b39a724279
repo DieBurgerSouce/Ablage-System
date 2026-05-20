@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\loaders\base.py
+# hypothesis_version: 6.148.7
+
+['.', '.py', ':', '=', 'BaseLoader', 'CELERY_CONFIG_MODULE', '\\((\\w+)\\)', '_', 'celery', 'dict', 'json', 'list', 'name', 'override_backends', 'tasks', 'tuple']

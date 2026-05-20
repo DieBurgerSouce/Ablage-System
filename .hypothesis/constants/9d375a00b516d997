@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ocr.py
+# hypothesis_version: 6.148.7
+
+[150, 1000, '.bmp', '.jpeg', '.jpg', '.pdf', '.png', '.tif', '.tiff', 'Image.Image', 'deu+eng', 'file_not_found', 'image_ocr_failed', 'pdf_ocr_failed', 'pdf_ocr_missing_deps', 'pdf_ocr_success', 'pillow_not_available', 'tesseract_ocr_failed']

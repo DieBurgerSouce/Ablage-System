@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\ct_postprocess.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.2, 0.85, 0.88, 4.0, 10.0, 300, 'float32', 'int32', 'maps', 'points', 'poly', 'rect', 'score', 'uint8']

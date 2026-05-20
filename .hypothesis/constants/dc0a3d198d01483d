@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pandas\_testing\_warnings.py
+# hypothesis_version: 6.148.7
+
+['always', 'default', 'error', 'ignore', 'matplotlib', 'module', 'once']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\group_batch_fusion.py
+# hypothesis_version: 6.148.7
+
+[1e-05, 300, 4096, '.', 'MTIA', '_', '__module__', '_operator', 'alpha', 'artifact', 'batch_', 'batch_aten_', 'batch_aten_add', 'batch_aten_div', 'batch_aten_mul', 'batch_aten_relu', 'batch_aten_sigmoid', 'batch_aten_sub', 'batch_aten_tanh', 'batch_clamp', 'batch_detach', 'batch_layernorm', 'batch_linear', 'batch_linear_lhs', 'batch_nan_to_num', 'batch_relu', 'batch_sigmoid', 'batch_tanh', 'beta', 'bias', 'call_function', 'dim', 'encoding', 'eps', 'example_value', 'fuse called on base', 'graph_search_options', 'group_linear', 'i', 'inductor', 'inplace', 'input', 'match called on base', 'max_fuse_set_size', 'meta', 'min_fuse_set_size', 'name', 'normalized_shape', 'require_fbgemm', 'rounding_mode', 'size', 'smart_fused', 'string', 'val', 'weight']

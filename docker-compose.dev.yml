@@ -118,9 +118,9 @@ services:
   minio:
     container_name: ablage-minio-dev
     environment:
-      # Development credentials (not secret)
-      MINIO_ROOT_USER: dev
-      MINIO_ROOT_PASSWORD: devpassword
+      # Development credentials (override via .env)
+      MINIO_ROOT_USER: ${MINIO_DEV_USER:-dev}
+      MINIO_ROOT_PASSWORD: ${MINIO_DEV_PASSWORD:-devpassword}
 
     # Expose both API and Console
     ports:
@@ -133,12 +133,12 @@ services:
 
   # Database Admin UI
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:8.13
     container_name: ablage-pgadmin-dev
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: dev@ablage.local
-      PGADMIN_DEFAULT_PASSWORD: devpassword
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEV_EMAIL:-dev@ablage.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEV_PASSWORD:-devpassword}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     volumes:
@@ -152,7 +152,7 @@ services:
 
   # Redis Admin UI
   redis-commander:
-    image: rediscommander/redis-commander:latest
+    image: rediscommander/redis-commander:0.8.1
     container_name: ablage-redis-commander-dev
     restart: unless-stopped
     environment:

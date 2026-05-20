@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\approximation\distance_measures.py
+# hypothesis_version: 6.148.7
+
+['Graph not connected.', 'approximate_diameter', 'diameter']

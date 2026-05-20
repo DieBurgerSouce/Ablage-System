@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\chart\plot.py
+# hypothesis_version: 6.148.7
+
+[100, 150, './c:ser', './c:ser[1]/c:cat', 'c:axId', 'c:barDir', 'c:bubble3D', 'c:bubbleScale', 'c:dLbls', 'c:dropLines', 'c:extLst', 'c:firstSliceAng', 'c:gapDepth', 'c:gapWidth', 'c:grouping', 'c:hiLowLines', 'c:holeSize', 'c:marker', 'c:overlap', 'c:radarStyle', 'c:scatterStyle', 'c:ser', 'c:serLines', 'c:showNegBubbles', 'c:sizeRepresents', 'c:smooth', 'c:upDownBars', 'c:varyColors', 'val']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\structlog\types.py
+# hypothesis_version: 6.148.7
+
+['BindableLogger', 'Context', 'EventDict', 'ExcInfo', 'ExceptionRenderer', 'ExceptionTransformer', 'FilteringBoundLogger', 'Processor', 'WrappedLogger']

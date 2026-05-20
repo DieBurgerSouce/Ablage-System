@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\np\ufunc\array_exprs.py
+# hypothesis_version: 6.148.7
+
+['$', '-', '.', '_', 'after-inference', 'arrayexpr', 'binop', 'body', 'call', 'def {0}(): return', 'end_lineno', 'exec', 'lineno', 'numpy', 'unary']

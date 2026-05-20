@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\marko\source.py
+# hypothesis_version: 6.148.7
+
+['(?m)[^\\n]*$\\n?', '(?m)[^\\n]*?$\\n?', '_second_prefix']

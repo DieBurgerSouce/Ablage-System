@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\tensor\to_string.py
+# hypothesis_version: 6.148.7
+
+[1000, 4294901760, ',', ',\n', ', ', '...', 'Tensor', '[', ']', 'bfloat16', 'cols=', 'crows=', 'edgeitems', 'float32', 'indices=', 'linewidth', 'precision', 'sci_mode', 'set_printoptions', 'threshold', 'uint32', 'values=']

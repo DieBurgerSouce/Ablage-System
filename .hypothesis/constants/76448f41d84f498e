@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\Execution_Layer\Validators\ocr_quality_validator.py
+# hypothesis_version: 6.148.7
+
+[0.85, 'Low OCR confidence', 'Text too short', 'confidence', 'issues', 'min_confidence', 'min_text_length', 'text', 'valid']

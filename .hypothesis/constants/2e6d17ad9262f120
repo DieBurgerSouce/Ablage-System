@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\layer_helper_base.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '.', 'Out', 'X', 'XShape', 'Xshape', '_g', '_v', 'abs', 'axis', 'b', 'bfloat16', 'dim', 'factor', 'float', 'float16', 'float32', 'float64', 'int8', 'keep_dim', 'pow', 'reduce_all', 'reduce_sum', 'reshape2', 'shape', 'tmp', 'transpose', 'w', 'weight_norm_abs', 'weight_norm_norm', 'weight_norm_pow', 'weight_norm_reshape', 'weight_norm_sum']

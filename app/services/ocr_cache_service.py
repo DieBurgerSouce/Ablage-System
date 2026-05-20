@@ -16,8 +16,14 @@ Performance: orjson für 10-15% schnellere JSON-Serialisierung.
 
 import asyncio
 import hashlib
+import sys
 import threading
-from typing import Optional, Dict, Any
+from dataclasses import asdict
+from typing import Optional, Dict, List, Union
+
+# JSON-serializable types
+JsonValue = Union[str, int, float, bool, None, Dict[str, "JsonValue"], List["JsonValue"]]
+JsonSerializable = Union[Dict[str, JsonValue], List[JsonValue], str, int, float, bool, None]
 from datetime import datetime, timezone
 from collections import OrderedDict
 import time
@@ -28,17 +34,17 @@ import structlog
 try:
     import orjson
 
-    def json_dumps(obj: Any, sort_keys: bool = False) -> str:
+    def json_dumps(obj: JsonSerializable, sort_keys: bool = False) -> str:
         """Fast JSON serialization using orjson.
 
         Args:
-            obj: Object to serialize
+            obj: Object to serialize (must be JSON-serializable)
             sort_keys: Sort dictionary keys (uses OPT_SORT_KEYS)
         """
         options = orjson.OPT_SORT_KEYS if sort_keys else 0
         return orjson.dumps(obj, option=options).decode("utf-8")
 
-    def json_loads(s: str) -> Any:
+    def json_loads(s: str) -> JsonSerializable:
         """Fast JSON deserialization using orjson."""
         return orjson.loads(s)
 
@@ -46,17 +52,18 @@ try:
 except ImportError:
     import json
 
-    def json_dumps(obj: Any, sort_keys: bool = False) -> str:
+    def json_dumps(obj: JsonSerializable, sort_keys: bool = False) -> str:
         """Fallback JSON serialization using stdlib."""
         return json.dumps(obj, sort_keys=sort_keys)
 
-    def json_loads(s: str) -> Any:
+    def json_loads(s: str) -> JsonSerializable:
         """Fallback JSON deserialization using stdlib."""
         return json.loads(s)
 
     JSON_LIB = "json"
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -67,25 +74,61 @@ logger = structlog.get_logger(__name__)
 
 class TTLCache:
     """
-    Thread-safe In-Memory Cache mit TTL.
+    Thread-safe In-Memory Cache mit TTL und Memory-Limit.
 
     Verwendet OrderedDict für LRU-Eviction und TTL-basierte Expiration.
+    Optional: Memory-basiertes Eviction wenn max_memory_mb gesetzt.
     """
 
-    def __init__(self, maxsize: int = 100, ttl: int = 300):
+    # Default memory limit: 256 MB für L1 Cache
+    DEFAULT_MAX_MEMORY_MB = 256
+
+    def __init__(
+        self,
+        maxsize: int = 100,
+        ttl: int = 300,
+        max_memory_mb: Optional[float] = None
+    ):
         """
         Initialize TTLCache.
 
         Args:
             maxsize: Maximum number of items in cache
             ttl: Time-to-live in seconds (default 5 minutes)
+            max_memory_mb: Maximum memory usage in MB (default: 256MB)
         """
-        self._cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._cache: OrderedDict[str, Dict[str, object]] = OrderedDict()
         self._maxsize = maxsize
         self._ttl = ttl
+        self._max_memory_bytes = int((max_memory_mb or self.DEFAULT_MAX_MEMORY_MB) * 1024 * 1024)
+        self._current_memory_bytes = 0
         self._lock = threading.RLock()
 
-    def get(self, key: str) -> Optional[Any]:
+    def _estimate_size(self, value: object) -> int:
+        """Estimate memory size of a value in bytes."""
+        try:
+            # sys.getsizeof gives shallow size, add estimate for nested objects
+            base_size = sys.getsizeof(value)
+            if isinstance(value, dict):
+                # Estimate dict content size
+                for k, v in value.items():
+                    base_size += sys.getsizeof(k) + self._estimate_size(v)
+            elif isinstance(value, (list, tuple)):
+                for item in value:
+                    base_size += self._estimate_size(item)
+            elif isinstance(value, str):
+                # String memory is already captured by getsizeof
+                pass
+            return base_size
+        except Exception as e:
+            logger.debug(
+                "cache_size_estimation_failed",
+                error_type=type(e).__name__,
+            )
+            # Fallback: assume 1KB per item
+            return 1024
+
+    def get(self, key: str) -> Optional[object]:
         """Get item from cache if not expired."""
         with self._lock:
             if key not in self._cache:
@@ -93,7 +136,8 @@ class TTLCache:
 
             item = self._cache[key]
             if time.time() > item['expires']:
-                # Expired
+                # Expired - update memory tracking
+                self._current_memory_bytes -= item.get('size_bytes', 0)
                 del self._cache[key]
                 return None
 
@@ -101,23 +145,43 @@ class TTLCache:
             self._cache.move_to_end(key)
             return item['value']
 
-    def set(self, key: str, value: Any) -> None:
-        """Set item in cache with TTL."""
+    def set(self, key: str, value: object) -> None:
+        """Set item in cache with TTL and memory limit enforcement."""
         with self._lock:
-            # Remove oldest if at capacity
+            # Estimate size of new item
+            item_size = self._estimate_size(value)
+
+            # Remove existing item if updating (to adjust memory tracking)
+            if key in self._cache:
+                old_item = self._cache[key]
+                self._current_memory_bytes -= old_item.get('size_bytes', 0)
+                del self._cache[key]
+
+            # Evict oldest items if at capacity (count-based)
             while len(self._cache) >= self._maxsize:
-                self._cache.popitem(last=False)
+                _, evicted = self._cache.popitem(last=False)
+                self._current_memory_bytes -= evicted.get('size_bytes', 0)
+
+            # Evict oldest items if memory limit exceeded
+            while (self._current_memory_bytes + item_size > self._max_memory_bytes
+                   and len(self._cache) > 0):
+                _, evicted = self._cache.popitem(last=False)
+                self._current_memory_bytes -= evicted.get('size_bytes', 0)
 
             self._cache[key] = {
                 'value': value,
                 'expires': time.time() + self._ttl,
-                'created': time.time()
+                'created': time.time(),
+                'size_bytes': item_size,
             }
+            self._current_memory_bytes += item_size
 
     def delete(self, key: str) -> bool:
         """Delete item from cache."""
         with self._lock:
             if key in self._cache:
+                item = self._cache[key]
+                self._current_memory_bytes -= item.get('size_bytes', 0)
                 del self._cache[key]
                 return True
             return False
@@ -126,6 +190,7 @@ class TTLCache:
         """Clear all items from cache."""
         with self._lock:
             self._cache.clear()
+            self._current_memory_bytes = 0
 
     def __contains__(self, key: str) -> bool:
         """Check if key exists and is not expired."""
@@ -138,16 +203,24 @@ class TTLCache:
             # Clean expired entries
             expired = [k for k, v in self._cache.items() if now > v['expires']]
             for k in expired:
+                item = self._cache[k]
+                self._current_memory_bytes -= item.get('size_bytes', 0)
                 del self._cache[k]
             return len(self._cache)
 
-    def stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
+    def stats(self) -> Dict[str, object]:
+        """Get cache statistics including memory usage."""
         with self._lock:
             return {
                 "size": len(self._cache),
                 "maxsize": self._maxsize,
-                "ttl_seconds": self._ttl
+                "ttl_seconds": self._ttl,
+                "memory_bytes": self._current_memory_bytes,
+                "memory_mb": round(self._current_memory_bytes / (1024 * 1024), 2),
+                "max_memory_mb": round(self._max_memory_bytes / (1024 * 1024), 2),
+                "memory_usage_percent": round(
+                    (self._current_memory_bytes / self._max_memory_bytes) * 100, 2
+                ) if self._max_memory_bytes > 0 else 0,
             }
 
 
@@ -167,18 +240,33 @@ class OCRCacheService:
     - Vereinfachtes Key-Schema (ohne options_hash)
     - Per-Backend Hit-Rate Tracking
     - LRU-Eviction im L1 Cache
+    - SECURITY FIX: Model-Version im Cache-Key (verhindert stale results nach Model-Update)
     """
 
     # Konfiguration - Performance-optimiert
     L1_MAXSIZE = 200      # Maximum L1 Cache Einträge (erhöht von 100)
     L1_TTL = 3600         # L1 TTL: 1 Stunde (erhöht von 5 Minuten für bessere Hit-Rate)
+    L1_MAX_MEMORY_MB = 256  # Maximum L1 Memory: 256 MB
     L2_TTL = 86400        # L2 TTL: 24 Stunden
+
+    # SECURITY FIX: Model-Versionen - bei Update hier inkrementieren!
+    # Alle caches für betroffenes Backend werden automatisch invalidiert
+    MODEL_VERSIONS: Dict[str, str] = {
+        "deepseek": "v1.0",      # DeepSeek-Janus-Pro
+        "got_ocr": "v2.0",       # GOT-OCR 2.0
+        "surya": "v1.1",         # Surya + Docling
+        "surya_gpu": "v1.1",     # Surya GPU Variant
+        "donut": "v1.0",         # Donut Agent
+        "hybrid": "v1.0",        # Hybrid/Ensemble
+        "easyocr": "v1.0",       # EasyOCR (wenn hinzugefügt)
+    }
 
     def __init__(
         self,
-        redis_client: Any = None,
+        redis_client: object = None,
         l1_maxsize: int = L1_MAXSIZE,
         l1_ttl: int = L1_TTL,
+        l1_max_memory_mb: float = L1_MAX_MEMORY_MB,
         l2_ttl: int = L2_TTL
     ):
         """
@@ -188,10 +276,11 @@ class OCRCacheService:
             redis_client: Redis client instance (lazy loaded wenn None)
             l1_maxsize: Maximum L1 cache entries
             l1_ttl: L1 TTL in seconds
+            l1_max_memory_mb: Maximum L1 memory in MB (default: 256MB)
             l2_ttl: L2 (Redis) TTL in seconds
         """
-        # L1 Cache (Memory)
-        self._l1_cache = TTLCache(maxsize=l1_maxsize, ttl=l1_ttl)
+        # L1 Cache (Memory) - with count AND memory limit
+        self._l1_cache = TTLCache(maxsize=l1_maxsize, ttl=l1_ttl, max_memory_mb=l1_max_memory_mb)
 
         # L2 Cache (Redis)
         self._redis = redis_client
@@ -208,17 +297,18 @@ class OCRCacheService:
             "ocr_cache_service_initialized",
             l1_maxsize=l1_maxsize,
             l1_ttl=l1_ttl,
+            l1_max_memory_mb=l1_max_memory_mb,
             l2_ttl=l2_ttl
         )
 
-    async def _get_redis(self) -> Optional[Any]:
+    async def _get_redis(self) -> Optional[object]:
         """Get Redis client, lazy loading if needed."""
         if self._redis is None:
             try:
                 from app.core.rate_limiting import get_redis_storage
                 self._redis = await get_redis_storage()
             except Exception as e:
-                logger.warning("ocr_cache_redis_unavailable", error=str(e))
+                logger.warning("ocr_cache_redis_unavailable", **safe_error_log(e))
                 return None
         return self._redis
 
@@ -244,6 +334,11 @@ class OCRCacheService:
         """
         Create cache key for OCR result.
 
+        SECURITY FIX: Inkludiert Model-Version im Key, damit bei Model-Updates
+        automatisch neue OCR-Ergebnisse generiert werden (keine stale results).
+
+        Key-Format: {prefix}:{file_hash}:{backend}:{model_version}:{language}[:options_hash]
+
         Args:
             file_hash: SHA256 hash of file content
             backend: OCR backend used
@@ -253,26 +348,21 @@ class OCRCacheService:
         Returns:
             Full cache key
         """
-        key_parts = [self._prefix, file_hash, backend, language]
+        # Model-Version aus Dictionary holen (Default "v0" falls unbekannt)
+        model_version = self.MODEL_VERSIONS.get(backend.lower(), "v0")
+
+        key_parts = [self._prefix, file_hash, backend, model_version, language]
         if options_hash:
             key_parts.append(options_hash)
         return ":".join(key_parts)
-
-    def _hash_options(self, options: Optional[Dict[str, Any]]) -> str:
-        """Hash options dict for cache key."""
-        if not options:
-            return ""
-        # Sortiere Keys für konsistente Hashes
-        sorted_opts = json_dumps(options, sort_keys=True)
-        return hashlib.md5(sorted_opts.encode()).hexdigest()[:8]
 
     async def get_cached_result(
         self,
         content: bytes,
         backend: str,
         language: str = "de",
-        options: Optional[Dict[str, Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        options: Optional[Dict[str, object]] = None
+    ) -> Optional[Dict[str, object]]:
         """
         Get cached OCR result using Multi-Level Cache.
 
@@ -346,7 +436,7 @@ class OCRCacheService:
             )
             self._record_backend_miss(backend)
         except Exception as e:
-            logger.warning("ocr_cache_get_error", error=str(e))
+            logger.warning("ocr_cache_get_error", **safe_error_log(e))
             self._record_backend_miss(backend)
 
         return None
@@ -365,6 +455,19 @@ class OCRCacheService:
             elif level == "l2":
                 self._backend_stats[backend]["l2_hits"] += 1
 
+        # Record to Prometheus
+        try:
+            from app.services.gpu_metrics_service import get_gpu_metrics_service
+            metrics = get_gpu_metrics_service()
+            metrics.record_cache_operation(operation="hit", level=level)
+        except Exception as e:
+            logger.debug(
+                "cache_metrics_recording_failed",
+                operation="hit",
+                level=level,
+                error_type=type(e).__name__,
+            )
+
     def _record_backend_miss(self, backend: str) -> None:
         """Record cache miss for specific backend."""
         with self._stats_lock:
@@ -376,13 +479,27 @@ class OCRCacheService:
                 }
             self._backend_stats[backend]["misses"] += 1
 
+        # Record to Prometheus
+        try:
+            from app.services.gpu_metrics_service import get_gpu_metrics_service
+
+            metrics = get_gpu_metrics_service()
+            metrics.record_cache_operation(operation="miss", level="l2")
+        except Exception as e:
+            logger.debug(
+                "cache_metrics_recording_failed",
+                operation="miss",
+                level="l2",
+                error_type=type(e).__name__,
+            )
+
     async def cache_result(
         self,
         content: bytes,
         backend: str,
-        result: Dict[str, Any],
+        result: Dict[str, object],
         language: str = "de",
-        options: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, object]] = None,
         ttl: Optional[int] = None
     ) -> bool:
         """
@@ -427,7 +544,7 @@ class OCRCacheService:
                 await redis.set(cache_key, json_dumps(cache_data), ex=cache_ttl)
                 l2_success = True
             except Exception as e:
-                logger.warning("ocr_cache_l2_set_error", error=str(e))
+                logger.warning("ocr_cache_l2_set_error", **safe_error_log(e))
 
         logger.debug(
             "ocr_result_cached",
@@ -496,13 +613,18 @@ class OCRCacheService:
             return deleted_count
 
         # Build pattern for deletion
+        # Key-Format: {prefix}:{file_hash}:{backend}:{model_version}:{language}[:options_hash]
         if backend and language:
+            # Spezifisch: exakte Key mit Wildcard für options
             pattern = self._make_cache_key(file_hash, backend, language, "*")
         elif backend:
+            # Alle Sprachen für dieses Backend (version ist Teil des Keys)
             pattern = f"{self._prefix}{file_hash}:{backend}:*"
         elif language:
-            pattern = f"{self._prefix}{file_hash}:*:{language}:*"
+            # Alle Backends für diese Sprache (muss alle Backends/Versionen matchen)
+            pattern = f"{self._prefix}{file_hash}:*:*:{language}*"
         else:
+            # Alle Caches für diesen File-Hash
             pattern = f"{self._prefix}{file_hash}:*"
 
         try:
@@ -522,7 +644,7 @@ class OCRCacheService:
                 )
             return deleted_count
         except Exception as e:
-            logger.warning("ocr_cache_invalidate_error", error=str(e))
+            logger.warning("ocr_cache_invalidate_error", **safe_error_log(e))
             return deleted_count
 
     async def _record_hit(self, file_hash: str) -> None:
@@ -537,7 +659,7 @@ class OCRCacheService:
                 logger.debug(
                     "ocr_cache_stats_hit_failed",
                     file_hash=file_hash[:8],
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     async def _record_miss(self, file_hash: str) -> None:
@@ -551,10 +673,10 @@ class OCRCacheService:
                 logger.debug(
                     "ocr_cache_stats_miss_failed",
                     file_hash=file_hash[:8],
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, object]:
         """
         Get comprehensive multi-level cache statistics.
 
@@ -562,7 +684,7 @@ class OCRCacheService:
             Dict with L1 stats, L2 stats, per-backend stats, and overall metrics
         """
         # L1 Cache Stats (Memory)
-        l1_stats = self._l1_cache.stats()
+        l1_stats = asdict(self._l1_cache.stats())
 
         # Per-Backend Stats (local tracking)
         with self._stats_lock:
@@ -634,10 +756,10 @@ class OCRCacheService:
                 },
             }
         except Exception as e:
-            logger.warning("ocr_cache_stats_error", error=str(e))
+            logger.warning("ocr_cache_stats_error", **safe_error_log(e))
             return {
                 "enabled": self._enabled,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "l1_cache": l1_stats,
                 "per_backend": backend_stats,
             }
@@ -660,7 +782,7 @@ class OCRCacheService:
             logger.info("ocr_cache_all_stats_cleared")
             return True
         except Exception as e:
-            logger.warning("ocr_cache_stats_clear_error", error=str(e))
+            logger.warning("ocr_cache_stats_clear_error", **safe_error_log(e))
             return False
 
 
@@ -680,8 +802,8 @@ async def get_cached_ocr_result(
     content: bytes,
     backend: str,
     language: str = "de",
-    options: Optional[Dict[str, Any]] = None
-) -> Optional[Dict[str, Any]]:
+    options: Optional[Dict[str, object]] = None
+) -> Optional[Dict[str, object]]:
     """Convenience function to get cached OCR result."""
     return await get_ocr_cache_service().get_cached_result(
         content, backend, language, options
@@ -691,9 +813,9 @@ async def get_cached_ocr_result(
 async def cache_ocr_result(
     content: bytes,
     backend: str,
-    result: Dict[str, Any],
+    result: Dict[str, object],
     language: str = "de",
-    options: Optional[Dict[str, Any]] = None,
+    options: Optional[Dict[str, object]] = None,
     ttl: Optional[int] = None
 ) -> bool:
     """Convenience function to cache OCR result."""

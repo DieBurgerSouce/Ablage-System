@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\quantization\quant_int8_onednn_pass.py
+# hypothesis_version: 6.148.7
+
+[1.0, 127, '3.1.0', 'Filter', 'InScale', 'Input', 'ONEDNNLAYOUT', 'Out', 'Output', 'Scale', 'Scale_in', 'Scale_out', 'Scale_weights', 'X', 'Y', 'conv2d', 'data_format', 'depthwise_conv2d', 'force_fp32_output', 'fused_conv2d', 'is_negative_input', 'max_range', 'mul', 'pool2d', 'quantize', 'scale_out', 'scale_x', 'scale_y', 'use_onednn']

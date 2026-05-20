@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\contracts.py
+# hypothesis_version: 6.148.7
+
+[200, 365, '/contracts', '/deadlines', '/summary', '/{contract_id}', 'Contracts', 'Filter nach Status', 'Sortierfeld', 'Tage voraus', '^(asc|desc)$', 'amendments', 'asc', 'contract_type', 'end_date', 'entity_type', 'exercise', 'id', 'name', 'status']

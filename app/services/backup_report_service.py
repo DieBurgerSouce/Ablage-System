@@ -18,7 +18,7 @@ Related:
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -29,13 +29,14 @@ try:
     from app.core.german_messages import BackupMessages
 except ImportError:
     class BackupMessages:
-        DAILY_REPORT = "Taeglicher Sicherungsbericht"
+        DAILY_REPORT = "Täglicher Sicherungsbericht"
         WEEKLY_REPORT = "Woechentlicher Sicherungsbericht"
         MONTHLY_REPORT = "Monatlicher Sicherungsbericht"
         REPORT_GENERATED = "Sicherungsbericht erstellt: {filename}"
 
 try:
     from app.services.backup_metrics_service import get_backup_metrics
+
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
@@ -121,7 +122,7 @@ class BackupReportService:
         Returns:
             BackupReportData with daily statistics
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now - timedelta(days=1)
 
         report = self._collect_report_data("daily", period_start, now)
@@ -146,7 +147,7 @@ class BackupReportService:
         Returns:
             BackupReportData with weekly statistics
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now - timedelta(days=7)
 
         report = self._collect_report_data("weekly", period_start, now)
@@ -171,7 +172,7 @@ class BackupReportService:
         Returns:
             BackupReportData with monthly statistics
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now - timedelta(days=30)
 
         report = self._collect_report_data("monthly", period_start, now)
@@ -208,7 +209,7 @@ class BackupReportService:
         """
         report = BackupReportData(
             report_type=report_type,
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(timezone.utc),
             period_start=period_start,
             period_end=period_end,
         )
@@ -245,7 +246,7 @@ class BackupReportService:
                 report.encryption_enabled = metrics_data.get("encryption_enabled", False)
 
             except Exception as e:
-                logger.warning("metrics_collection_error", error=str(e))
+                logger.warning("metrics_collection_error", **safe_error_log(e))
 
         # Collect from file system
         self._collect_storage_stats(report)
@@ -275,7 +276,7 @@ class BackupReportService:
             report.total_backup_size_gb = round(total_size / (1024**3), 2)
 
         except Exception as e:
-            logger.warning("storage_stats_error", error=str(e))
+            logger.warning("storage_stats_error", **safe_error_log(e))
 
     def _collect_backup_file_stats(
         self,
@@ -310,7 +311,7 @@ class BackupReportService:
             )
 
         except Exception as e:
-            logger.warning("backup_file_stats_error", error=str(e))
+            logger.warning("backup_file_stats_error", **safe_error_log(e))
 
     def _analyze_issues(self, report: BackupReportData) -> None:
         """Analyze report data and identify issues/recommendations."""
@@ -337,7 +338,7 @@ class BackupReportService:
                 f"Letzte Sicherung ist {report.newest_backup_hours:.1f} Stunden alt"
             )
             report.recommendations.append(
-                "Backup-Zeitplan ueberpruefen"
+                "Backup-Zeitplan überprüfen"
             )
 
         # Check disk space
@@ -346,7 +347,7 @@ class BackupReportService:
                 f"Speicherplatz kritisch: {report.disk_usage_percent}% belegt"
             )
             report.recommendations.append(
-                "Dringend: Speicherplatz erweitern oder alte Backups loeschen"
+                "Dringend: Speicherplatz erweitern oder alte Backups löschen"
             )
         elif report.disk_usage_percent > 80:
             report.warnings.append(
@@ -356,10 +357,10 @@ class BackupReportService:
         # Check encryption
         if not report.encryption_enabled:
             report.warnings.append(
-                "Backup-Verschluesselung ist nicht aktiviert"
+                "Backup-Verschlüsselung ist nicht aktiviert"
             )
             report.recommendations.append(
-                "GPG-Verschluesselung fuer Backups aktivieren"
+                "GPG-Verschlüsselung für Backups aktivieren"
             )
 
         # Check for no backups
@@ -368,7 +369,7 @@ class BackupReportService:
                 "Keine Backups im Berichtszeitraum"
             )
             report.recommendations.append(
-                "Backup-Service und Zeitplan ueberpruefen"
+                "Backup-Service und Zeitplan überprüfen"
             )
 
     def _save_report(self, report: BackupReportData, filename: str) -> Path:
@@ -450,7 +451,7 @@ class BackupReportService:
             "",
             f"| Metrik | Wert |",
             f"|--------|------|",
-            f"| Gesamt Backup-Groesse | {report.total_backup_size_gb} GB |",
+            f"| Gesamt Backup-Größe | {report.total_backup_size_gb} GB |",
             f"| Speicher belegt | {report.disk_usage_percent}% |",
             f"| Speicher frei | {report.disk_free_gb} GB |",
             f"| Aeltestes Backup | {report.oldest_backup_days} Tage |",
@@ -460,7 +461,7 @@ class BackupReportService:
             "",
             f"| Einstellung | Status |",
             f"|-------------|--------|",
-            f"| Verschluesselung | {'Aktiviert' if report.encryption_enabled else 'Deaktiviert'} |",
+            f"| Verschlüsselung | {'Aktiviert' if report.encryption_enabled else 'Deaktiviert'} |",
             "",
         ])
 
@@ -551,16 +552,27 @@ async def main():
     elif report_type == "monthly":
         report = service.generate_monthly_report()
     else:
-        print(f"Unbekannter Berichtstyp: {report_type}")
-        print("Verwendung: python backup_report_service.py [daily|weekly|monthly]")
+        logger.error("unknown_report_type", report_type=report_type)
+        sys.stderr.write(f"Unbekannter Berichtstyp: {report_type}\n")
+        sys.stderr.write("Verwendung: python backup_report_service.py [daily|weekly|monthly]\n")
         sys.exit(1)
 
-    print(f"\nBericht generiert:")
-    print(f"  Typ: {report.report_type}")
-    print(f"  Zeitraum: {report.period_start.date()} - {report.period_end.date()}")
-    print(f"  Erfolgsrate: {report.success_rate}%")
-    print(f"  Probleme: {len(report.issues)}")
-    print(f"  Warnungen: {len(report.warnings)}")
+    logger.info(
+        "backup_report_generated",
+        report_type=report.report_type,
+        period_start=report.period_start.isoformat(),
+        period_end=report.period_end.isoformat(),
+        success_rate=report.success_rate,
+        issues_count=len(report.issues),
+        warnings_count=len(report.warnings)
+    )
+    # CLI-Ausgabe für interaktive Nutzung
+    sys.stdout.write(f"\nBericht generiert:\n")
+    sys.stdout.write(f"  Typ: {report.report_type}\n")
+    sys.stdout.write(f"  Zeitraum: {report.period_start.date()} - {report.period_end.date()}\n")
+    sys.stdout.write(f"  Erfolgsrate: {report.success_rate}%\n")
+    sys.stdout.write(f"  Probleme: {len(report.issues)}\n")
+    sys.stdout.write(f"  Warnungen: {len(report.warnings)}\n")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\mix_to_dist_pass.py
+# hypothesis_version: 6.148.7
+
+['builtin.combine', 'builtin.parameter', 'builtin.split', 'cf.stack_create', 'cf.tuple_pop', 'cf.tuple_push', 'cf.yield', 'dist_op.shard_tensor', 'pd_op.data', 'pd_op.gaussian', 'pd_op.pylayer', 'pd_op.randint']

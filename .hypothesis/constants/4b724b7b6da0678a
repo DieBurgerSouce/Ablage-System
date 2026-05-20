@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\paddle_ocr_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 300.0, 300, 1000, '.pdf', 'Ae', 'Oe', 'PADDLE_OCR_ERROR', 'PP-OCRv5', 'RGB', 'Ue', 'ae', 'bbox', 'block_count', 'block_idx', 'confidence', 'de', 'default_language', 'document_id', 'error', 'full_text', 'german', 'gpu_required', 'image_path', 'max_block_confidence', 'min_block_confidence', 'model_loaded', 'model_version', 'name', 'not_loaded', 'ocr_result', 'oe', 'paddle_ocr_agent', 'page_confidence', 'page_number', 'ready', 'ss', 'status', 'text', 'text_blocks', 'text_preview', 'ue', 'unknown', 'vram_gb']

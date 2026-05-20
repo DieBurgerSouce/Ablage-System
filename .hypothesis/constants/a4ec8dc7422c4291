@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_fused_dropout_add.py
+# hypothesis_version: 6.148.7
+
+['.', 'Out', 'deterministic', 'fix_seed', 'force_cpu', 'fused_dropout_add', 'op_namescope', 'random_control', 'rc_seed', 'rng_name', 'seed', 'seed_tensor', 'tensor_parallel_seed', 'tmp', 'x']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\utils\moe_utils.py
+# hypothesis_version: 6.148.7
+
+['Out', 'X', 'float16', 'float32', 'float64', 'global_count', 'global_gather', 'global_scatter', 'int32', 'int64', 'local_count', 'pp', 'ring_id', 'uint16', 'use_calc_stream', 'x']

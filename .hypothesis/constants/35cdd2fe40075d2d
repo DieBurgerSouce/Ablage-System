@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\dataset\uci_housing.py
+# hypothesis_version: 6.148.7
+
+[0.8, './image', '2.0.0', 'AGE', 'Agg', 'B', 'CHAS', 'CRIM', 'DIS', 'INDUS', 'LSTAT', 'NOX', 'PTRATIO', 'RAD', 'RM', 'TAX', 'ZN', 'center', 'feature scale', 'fit_a_line.fluid.tar', 'image/ranges.png', 'r', 'uci_housing']

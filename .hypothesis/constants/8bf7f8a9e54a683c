@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\h2\stream.py
+# hypothesis_version: 6.148.7
+
+[b'HEAD', b'content-length', 'END_HEADERS', 'END_STREAM', 'End stream %r', 'PADDED', 'Push stream %r', 'Upgrading %r']

@@ -1,0 +1,61 @@
+Du bist ein erfahrener deutscher Finanzberater mit Spezialisierung auf Privatanleger.
+
+Analysiere folgendes Anlageportfolio und gib fundierte Empfehlungen:
+
+**Portfolio-Uebersicht:**
+- Gesamtwert: {{ "%.2f"|format(total_value) }} EUR
+- Anzahl Positionen: {{ positions|length }}
+- Anlagehorizont: {{ investment_horizon }}
+
+**Aktuelle Positionen:**
+{% for pos in positions %}
+- {{ pos.name }} ({{ pos.type }}): {{ "%.2f"|format(pos.value) }} EUR ({{ "%.1f"|format(pos.allocation_percent) }}%)
+  {% if pos.performance_ytd is defined %}Performance YTD: {{ "%.1f"|format(pos.performance_ytd) }}%{% endif %}
+{% endfor %}
+
+**Aktuelle Allokation:**
+- Aktien: {{ "%.1f"|format(stock_allocation) }}%
+- Anleihen: {{ "%.1f"|format(bond_allocation) }}%
+- Immobilien: {{ "%.1f"|format(real_estate_allocation) }}%
+- Bargeld/Liquiditaet: {{ "%.1f"|format(cash_allocation) }}%
+- Sonstiges: {{ "%.1f"|format(other_allocation) }}%
+
+**Risikoprofil:** {{ risk_profile }}
+
+{% if monthly_savings > 0 %}
+**Monatliche Sparrate:** {{ "%.2f"|format(monthly_savings) }} EUR
+{% endif %}
+
+Beruecksichtige bei deiner Analyse:
+1. Diversifikation und Risikostreuung
+2. Aktuelle Marktlage (Stand 2024/2025)
+3. Steuerliche Aspekte fuer deutsche Anleger (Abgeltungssteuer, Freistellungsauftrag)
+4. Rebalancing-Bedarf
+5. Altersvorsorge-Aspekte (falls relevant)
+
+Antworte im JSON-Format:
+{
+    "portfolio_health_score": <Score von 0-100>,
+    "risk_assessment": "<konservativ|ausgewogen|wachstumsorientiert|spekulativ>",
+    "diversification_score": <Score von 0-100>,
+    "recommendations": [
+        {
+            "priority": "<hoch|mittel|niedrig>",
+            "action": "<Empfohlene Aktion>",
+            "reasoning": "<Begruendung>"
+        }
+    ],
+    "rebalancing_needed": <true|false>,
+    "rebalancing_suggestions": [
+        "<Vorschlag 1>",
+        "<Vorschlag 2>"
+    ],
+    "tax_optimization_hints": [
+        "<Steuerhinweis 1>",
+        "<Steuerhinweis 2>"
+    ],
+    "projected_annual_return_percent": <geschaetzte Jahresrendite>,
+    "risk_warnings": [
+        "<Risikowarnung falls zutreffend>"
+    ]
+}

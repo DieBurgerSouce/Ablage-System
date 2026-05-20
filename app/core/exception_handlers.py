@@ -42,6 +42,8 @@ from app.core.exceptions import (
     UserNotFoundError,
     ExportError,
     EmailVerificationError,
+    ConflictError,
+    ServiceUnavailableError,
 )
 from app.core.file_validation import (
     FileValidationError,
@@ -66,6 +68,18 @@ from app.core.gpu_recovery import GPURecoveryError
 from app.core.retry_strategy import RetryExhaustedError
 from app.services.api_key_service import APIKeyError, APIKeyLimitError, APIKeyNotFoundError
 from app.middleware.csrf import CSRFError
+from app.core.safe_errors import safe_error_log
+from app.services.error_tracking_service import (
+    get_error_tracking_service,
+    ErrorCategory,
+    ErrorSeverity,
+)
+from sqlalchemy.orm.exc import StaleDataError
+from app.services.optimistic_lock_service import OptimisticLockError
+from app.api.middleware.optimistic_lock_handler import (
+    stale_data_exception_handler,
+    optimistic_lock_exception_handler,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -101,6 +115,7 @@ EXCEPTION_STATUS_CODES: Dict[Type[Exception], int] = {
     OCRBackendTimeoutError: 408,
 
     # 409 Conflict
+    ConflictError: 409,
     SessionLimitReachedError: 409,
 
     # 413 Payload Too Large
@@ -124,6 +139,7 @@ EXCEPTION_STATUS_CODES: Dict[Type[Exception], int] = {
     GPURecoveryError: 502,
 
     # 503 Service Unavailable
+    ServiceUnavailableError: 503,
     GPUOutOfMemoryError: 503,
     GPUNotAvailableError: 503,
     RateLimitStorageError: 503,
@@ -142,6 +158,7 @@ def create_error_response(
     details: Optional[Dict[str, Any]] = None,
     pfad: Optional[str] = None,
     retry_after: Optional[int] = None,
+    request_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Erstellt ein standardisiertes Fehler-Response-Dict.
@@ -156,6 +173,7 @@ def create_error_response(
         details: Zusätzliche technische Details (nur in DEBUG)
         pfad: Request-Pfad
         retry_after: Sekunden bis zum nächsten Versuch (für 503/429)
+        request_id: Request/Correlation ID für verteiltes Tracing
 
     Returns:
         Standardisiertes Fehler-Dict
@@ -172,6 +190,9 @@ def create_error_response(
 
     if pfad:
         response["pfad"] = pfad
+
+    if request_id:
+        response["request_id"] = request_id
 
     if details:
         # Filter sensible Daten aus Details
@@ -223,6 +244,7 @@ async def ablage_system_exception_handler(
     Nutzt user_message_de für benutzerfreundliche deutsche Meldungen.
     """
     status_code = EXCEPTION_STATUS_CODES.get(type(exc), 500)
+    request_id = getattr(request.state, "request_id", None)
 
     # Log mit strukturierten Daten (ohne sensible Informationen)
     logger.error(
@@ -235,6 +257,9 @@ async def ablage_system_exception_handler(
         # Keine exc.message - könnte PII enthalten
     )
 
+    # Track error for analytics
+    _track_exception(exc, request, status_code)
+
     response = create_error_response(
         fehler=_get_error_category(exc),
         nachricht=exc.user_message_de,
@@ -242,9 +267,12 @@ async def ablage_system_exception_handler(
         fehler_code=exc.error_code,
         details=exc.details if _should_include_details() else None,
         pfad=request.url.path,
+        request_id=request_id,
     )
 
     headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
     if status_code == 503:
         headers["Retry-After"] = "60"
 
@@ -261,12 +289,17 @@ async def file_validation_error_handler(
 ) -> JSONResponse:
     """Handler für Datei-Validierungsfehler."""
     status_code = EXCEPTION_STATUS_CODES.get(type(exc), 400)
+    request_id = getattr(request.state, "request_id", None)
 
     logger.warning(
         "file_validation_error",
         error_type=type(exc).__name__,
         path=request.url.path,
     )
+
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
 
     return JSONResponse(
         status_code=status_code,
@@ -275,7 +308,9 @@ async def file_validation_error_handler(
             nachricht=exc.user_message_de,
             status_code=status_code,
             pfad=request.url.path,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -285,6 +320,7 @@ async def totp_error_handler(
 ) -> JSONResponse:
     """Handler für TOTP/2FA-Fehler."""
     status_code = EXCEPTION_STATUS_CODES.get(type(exc), 400)
+    request_id = getattr(request.state, "request_id", None)
 
     # Spezifische Meldungen für TOTP-Fehler
     messages = {
@@ -303,6 +339,10 @@ async def totp_error_handler(
         path=request.url.path,
     )
 
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
+
     return JSONResponse(
         status_code=status_code,
         content=create_error_response(
@@ -310,7 +350,9 @@ async def totp_error_handler(
             nachricht=nachricht,
             status_code=status_code,
             pfad=request.url.path,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -320,6 +362,7 @@ async def session_error_handler(
 ) -> JSONResponse:
     """Handler für Session-Fehler."""
     status_code = EXCEPTION_STATUS_CODES.get(type(exc), 503)
+    request_id = getattr(request.state, "request_id", None)
 
     if isinstance(exc, SessionLimitReachedError):
         nachricht = "Maximale Anzahl aktiver Sitzungen erreicht. Bitte melden Sie sich von anderen Geräten ab."
@@ -332,6 +375,10 @@ async def session_error_handler(
         path=request.url.path,
     )
 
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
+
     return JSONResponse(
         status_code=status_code,
         content=create_error_response(
@@ -339,7 +386,9 @@ async def session_error_handler(
             nachricht=nachricht,
             status_code=status_code,
             pfad=request.url.path,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -349,6 +398,7 @@ async def api_key_error_handler(
 ) -> JSONResponse:
     """Handler für API-Key-Fehler."""
     status_code = EXCEPTION_STATUS_CODES.get(type(exc), 403)
+    request_id = getattr(request.state, "request_id", None)
 
     messages = {
         APIKeyLimitError: "API-Key-Limit erreicht. Bitte später erneut versuchen.",
@@ -363,6 +413,10 @@ async def api_key_error_handler(
         path=request.url.path,
     )
 
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
+
     return JSONResponse(
         status_code=status_code,
         content=create_error_response(
@@ -370,7 +424,9 @@ async def api_key_error_handler(
             nachricht=nachricht,
             status_code=status_code,
             pfad=request.url.path,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -379,11 +435,17 @@ async def csrf_error_handler(
     exc: CSRFError,
 ) -> JSONResponse:
     """Handler für CSRF-Fehler."""
+    request_id = getattr(request.state, "request_id", None)
+
     logger.warning(
         "csrf_error",
         path=request.url.path,
         client_ip=request.client.host if request.client else None,
     )
+
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
 
     return JSONResponse(
         status_code=400,
@@ -392,7 +454,9 @@ async def csrf_error_handler(
             nachricht="Ungültiger oder fehlender CSRF-Token. Bitte Seite neu laden.",
             status_code=400,
             pfad=request.url.path,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -401,10 +465,16 @@ async def circuit_breaker_error_handler(
     exc: CircuitOpenError,
 ) -> JSONResponse:
     """Handler für Circuit-Breaker-Fehler."""
+    request_id = getattr(request.state, "request_id", None)
+
     logger.warning(
         "circuit_breaker_open",
         path=request.url.path,
     )
+
+    headers = {"Retry-After": "60"}
+    if request_id:
+        headers["X-Request-ID"] = request_id
 
     return JSONResponse(
         status_code=503,
@@ -414,8 +484,9 @@ async def circuit_breaker_error_handler(
             status_code=503,
             pfad=request.url.path,
             retry_after=60,
+            request_id=request_id,
         ),
-        headers={"Retry-After": "60"},
+        headers=headers,
     )
 
 
@@ -424,6 +495,8 @@ async def encryption_error_handler(
     exc: EncryptionError,
 ) -> JSONResponse:
     """Handler für Verschlüsselungsfehler."""
+    request_id = getattr(request.state, "request_id", None)
+
     logger.error(
         "encryption_error",
         error_type=type(exc).__name__,
@@ -437,6 +510,10 @@ async def encryption_error_handler(
     else:
         nachricht = "Verschlüsselungsfehler aufgetreten"
 
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
+
     return JSONResponse(
         status_code=500,
         content=create_error_response(
@@ -444,7 +521,9 @@ async def encryption_error_handler(
             nachricht=nachricht,
             status_code=500,
             pfad=request.url.path,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -457,6 +536,8 @@ async def http_exception_handler(
 
     Überschreibt den Standard-Handler für konsistentes deutsches Format.
     """
+    request_id = getattr(request.state, "request_id", None)
+
     # Übersetze häufige HTTP-Fehler
     error_translations = {
         400: ("Ungültige Anfrage", "Die Anfrage konnte nicht verarbeitet werden"),
@@ -490,7 +571,13 @@ async def http_exception_handler(
             detail=nachricht if len(str(nachricht)) < 200 else str(nachricht)[:200],
         )
 
+    # Track error for analytics (nur bei Fehlern >= 400)
+    if exc.status_code >= 400:
+        _track_exception(exc, request, exc.status_code)
+
     headers = dict(exc.headers) if exc.headers else {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
     if exc.status_code == 503:
         headers.setdefault("Retry-After", "60")
 
@@ -501,6 +588,7 @@ async def http_exception_handler(
             nachricht=nachricht,
             status_code=exc.status_code,
             pfad=request.url.path,
+            request_id=request_id,
         ),
         headers=headers,
     )
@@ -515,6 +603,8 @@ async def validation_exception_handler(
 
     Übersetzt Validierungsfehler in benutzerfreundliches Deutsch.
     """
+    request_id = getattr(request.state, "request_id", None)
+
     # Sammle Validierungsfehler
     errors = []
     for error in exc.errors():
@@ -532,6 +622,13 @@ async def validation_exception_handler(
         error_count=len(errors),
     )
 
+    # Track error for analytics
+    _track_exception(exc, request, 422, ErrorCategory.VALIDATION)
+
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
+
     return JSONResponse(
         status_code=422,
         content=create_error_response(
@@ -540,7 +637,9 @@ async def validation_exception_handler(
             status_code=422,
             pfad=request.url.path,
             details={"fehler": errors} if _should_include_details() else None,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -553,12 +652,21 @@ async def generic_exception_handler(
 
     WICHTIG: Gibt keine internen Details preis (Sicherheit).
     """
+    request_id = getattr(request.state, "request_id", None)
+
     logger.exception(
         "unhandled_exception",
         error_type=type(exc).__name__,
         path=request.url.path,
         method=request.method,
     )
+
+    # Track critical error for analytics
+    _track_exception(exc, request, 500, ErrorCategory.SYSTEM)
+
+    headers = {}
+    if request_id:
+        headers["X-Request-ID"] = request_id
 
     return JSONResponse(
         status_code=500,
@@ -567,7 +675,9 @@ async def generic_exception_handler(
             nachricht="Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
             status_code=500,
             pfad=request.url.path,
+            request_id=request_id,
         ),
+        headers=headers,
     )
 
 
@@ -587,6 +697,75 @@ def _get_error_category(exc: AblageSystemException) -> str:
         return "Textverarbeitungsfehler"
     else:
         return "Systemfehler"
+
+
+def _get_tracking_category(exc: Exception) -> ErrorCategory:
+    """Bestimmt die Error-Tracking-Kategorie basierend auf Exception-Typ."""
+    if isinstance(exc, GPUException):
+        return ErrorCategory.GPU
+    elif isinstance(exc, OCRException):
+        return ErrorCategory.OCR
+    elif isinstance(exc, DatabaseException):
+        return ErrorCategory.DATABASE
+    elif isinstance(exc, ComplianceException):
+        return ErrorCategory.COMPLIANCE
+    elif isinstance(exc, (TOTPError, SessionError, APIKeyError)):
+        return ErrorCategory.AUTH
+    elif isinstance(exc, (FileValidationError, DocumentException)):
+        return ErrorCategory.FILE
+    elif isinstance(exc, CSRFError):
+        return ErrorCategory.AUTH
+    elif isinstance(exc, RequestValidationError):
+        return ErrorCategory.VALIDATION
+    else:
+        return ErrorCategory.SYSTEM
+
+
+def _get_tracking_severity(status_code: int) -> ErrorSeverity:
+    """Bestimmt den Schweregrad basierend auf HTTP-Status-Code."""
+    if status_code < 400:
+        return ErrorSeverity.DEBUG
+    elif status_code < 500:
+        return ErrorSeverity.WARNING
+    elif status_code < 503:
+        return ErrorSeverity.ERROR
+    else:
+        return ErrorSeverity.CRITICAL
+
+
+def _track_exception(
+    exc: Exception,
+    request: Request,
+    status_code: int,
+    category: Optional[ErrorCategory] = None,
+) -> None:
+    """Zentrale Funktion zum Tracking von Exceptions."""
+    try:
+        service = get_error_tracking_service()
+
+        # Kategorie bestimmen
+        if category is None:
+            category = _get_tracking_category(exc)
+
+        # Severity basierend auf Status-Code
+        severity = _get_tracking_severity(status_code)
+
+        # Error tracken
+        service.track_error(
+            category=category,
+            error_type=type(exc).__name__,
+            severity=severity,
+            message=str(exc)[:500],  # Truncate
+            path=request.url.path,
+            request_id=getattr(request.state, "request_id", None),
+            details={
+                "method": request.method,
+                "status_code": status_code,
+            }
+        )
+    except Exception as e:
+        # Error tracking darf nicht den Request-Flow stoeren
+        logger.debug("error_tracking_failed", **safe_error_log(e))
 
 
 def _translate_validation_error(error_type: str, msg: str) -> str:
@@ -619,6 +798,7 @@ def _translate_validation_error(error_type: str, msg: str) -> str:
 def _should_include_details() -> bool:
     """Prüft ob Details in der Response enthalten sein sollen (nur DEBUG)."""
     from app.core.config import settings
+
     return settings.DEBUG
 
 
@@ -646,6 +826,10 @@ def register_exception_handlers(app) -> None:
     app.add_exception_handler(CSRFError, csrf_error_handler)
     app.add_exception_handler(CircuitOpenError, circuit_breaker_error_handler)
     app.add_exception_handler(EncryptionError, encryption_error_handler)
+
+    # Optimistic Locking (HTTP 409 Conflict)
+    app.add_exception_handler(StaleDataError, stale_data_exception_handler)
+    app.add_exception_handler(OptimisticLockError, optimistic_lock_exception_handler)
 
     # Standard FastAPI/Starlette Exceptions
     app.add_exception_handler(HTTPException, http_exception_handler)

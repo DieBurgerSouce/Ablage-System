@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\testing.py
+# hypothesis_version: 6.148.7
+
+[0.1, 1337, '(?m)^ *#.*\\n?', '../debug', '.grad', 'ERROR', 'MaskedLMOutput', 'NOP', 'Seq2SeqLMOutput', 'SquashedNormal', '[\\r\\n]+', '^_orig_mod[.]', '_P', '_T', '_compile_fx_inner', '_id', 'call', 'cpu', 'debug_insert_nops', 'test_', 'w']

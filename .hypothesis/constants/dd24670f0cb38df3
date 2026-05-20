@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\debug_utils.py
+# hypothesis_version: 6.148.7
+
+[',', '/tmp/jit_inductor/', '0', '1', '2', '3', 'Dtype: ', 'Max: ', 'Mean: ', 'Min: ', 'Number of elements: ', 'Size: ', 'Std: ', 'Value: ', 'after_launch', 'arg', 'before_launch', 'buf', 'cpp', 'extern']

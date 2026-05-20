@@ -22,6 +22,38 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "$(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
 
 # Development Setup
+dev-setup: ## One-command developer onboarding (setup + build + migrate)
+	@echo "$(YELLOW)Starting developer onboarding...$(NC)"
+	@if [ ! -f .env ]; then \
+		echo "$(YELLOW)Creating .env from .env.example...$(NC)"; \
+		cp .env.example .env; \
+		echo "$(RED)⚠ WICHTIG: Setze die PFLICHT-Variablen in .env!$(NC)"; \
+		echo "$(YELLOW)Siehe .env fuer Details zu DB_PASSWORD, MINIO_*, SECRET_KEY, etc.$(NC)"; \
+	else \
+		echo "$(GREEN)✓ .env already exists$(NC)"; \
+	fi
+	@echo "$(YELLOW)Building Docker images...$(NC)"
+	$(DOCKER_COMPOSE) build
+	@echo "$(YELLOW)Starting services...$(NC)"
+	$(DOCKER_COMPOSE) up -d
+	@echo "$(YELLOW)Waiting for services to be healthy (30s)...$(NC)"
+	@sleep 30
+	@echo "$(YELLOW)Running database migrations...$(NC)"
+	$(MAKE) db-migrate
+	@echo ""
+	@echo "$(GREEN)✓ Developer onboarding complete!$(NC)"
+	@echo ""
+	@echo "$(GREEN)Available URLs:$(NC)"
+	@echo "  Web Interface: http://localhost"
+	@echo "  API Docs: http://localhost:8000/docs"
+	@echo "  Grafana: http://localhost:3002"
+	@echo "  Flower: http://localhost:5555"
+	@echo ""
+	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "  1. Configure .env with secure credentials"
+	@echo "  2. Run 'make db-seed' to add test data"
+	@echo "  3. Run 'make test' to verify setup"
+
 install: ## Install development dependencies
 	$(PIP) install --upgrade pip setuptools wheel
 	$(PIP) install -r requirements.txt
@@ -48,6 +80,8 @@ test-integration: ## Run integration tests
 
 test-cov: ## Run tests with coverage report
 	pytest --cov=app --cov-report=html --cov-report=term
+
+coverage: test-cov ## Alias for test-cov (generate coverage report)
 
 test-gpu: ## Run GPU-specific tests
 	pytest -v -m gpu
@@ -96,6 +130,11 @@ db-reset: ## Reset database (WARNING: destroys all data)
 	$(DOCKER_COMPOSE) run --rm backend alembic downgrade base
 	$(DOCKER_COMPOSE) run --rm backend alembic upgrade head
 	@echo "$(YELLOW)⚠ Database reset complete$(NC)"
+
+db-seed: ## Seed database with test data
+	@echo "$(YELLOW)Seeding database with test data...$(NC)"
+	$(DOCKER_COMPOSE) exec backend python -m scripts.seed_db
+	@echo "$(GREEN)✓ Database seeded successfully!$(NC)"
 
 # Production
 deploy: ## Deploy to production

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\datev.py
+# hypothesis_version: 6.148.7
+
+[100, '/config', '/config/default', '/config/{config_id}', '/datev', '/export', '/export/history', '/export/preview', '/kontenrahmen', 'Content-Disposition', 'DATEV Export', 'Eintraege pro Seite', 'Export-Historie', 'Export-Vorschau', 'Seite', 'X-DATEV-Export-ID', 'action', 'config_id', 'datev_config_created', 'datev_config_deleted', 'datev_config_updated', 'datev_export_error', 'debitor_default', 'erloese_19', 'erloese_7', 'error', 'error_type', 'kontenrahmen', 'kreditor_default', 'mapping_id', 'soft_delete', 'updated_fields', 'user_id', 'vendor_name', 'wareneingang_19', 'wareneingang_7']

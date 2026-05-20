@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\recognition\vitstr\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 128, 384, 768, '1', '<eos>', 'ViTSTR', 'features', 'french', 'head.bias', 'head.weight', 'input_shape', 'logits', 'loss', 'mean', 'none', 'out_map', 'patch_size', 'preds', 'pretrained_backbone', 'std', 'url', 'vitstr_base', 'vitstr_small', 'vocab']

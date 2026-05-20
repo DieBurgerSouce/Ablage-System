@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\quant\qat\linear.py
+# hypothesis_version: 6.148.7
+
+['activation_quanter', 'weight', 'weight_quanter']

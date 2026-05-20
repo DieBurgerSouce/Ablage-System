@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\debug_utils.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, 10000, 'input', 'output', 'tpu_metrics_debug', 'underflow_overflow']

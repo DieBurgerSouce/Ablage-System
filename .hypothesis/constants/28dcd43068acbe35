@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\distributed\fsdp\_init_utils.py
+# hypothesis_version: 6.148.7
+
+[250, 1024, '1', '_fsdp_synced', '_ignored_modules', '_ignored_params', 'cpu', 'meta']

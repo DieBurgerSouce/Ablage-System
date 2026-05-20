@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\pass_base.py
+# hypothesis_version: 6.148.7
+
+['fuse_adamw', 'fuse_all_reduce', 'fuse_bn_act', 'fuse_bn_add_act', 'fuse_gemm_epilogue', 'fuse_gradient_merge', 'fuse_optimizer', 'fuse_resunit', 'fused_attention', 'fused_feedforward']

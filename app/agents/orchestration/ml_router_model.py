@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import structlog
 
+from app.core.safe_errors import safe_error_log
 from .model_registry import (
     ModelRegistry,
     ModelVersion,
@@ -54,7 +55,7 @@ class OCRRouterFeatures:
     COMPLEXITY_LEVELS = ["low", "medium", "high"]
 
     # Backend targets for classification
-    BACKENDS = ["deepseek", "got_ocr", "surya", "hybrid"]
+    BACKENDS = ["deepseek", "got_ocr", "surya", "surya_gpu", "donut", "hybrid"]
 
     def __init__(self) -> None:
         """Initialize feature engineering component."""
@@ -73,7 +74,7 @@ class OCRRouterFeatures:
         for level in self.COMPLEXITY_LEVELS:
             self._feature_names.append(f"complexity_{level}")
 
-        # Numeric features (9 features)
+        # Numeric features (14 features)
         self._feature_names.extend([
             "quality_score",
             "has_tables",
@@ -84,6 +85,11 @@ class OCRRouterFeatures:
             "gpu_memory_available",
             "gpu_available",
             "queue_length_normalized",
+            "fraktur_score",
+            "handwriting_score",
+            "layout_complexity",
+            "dpi",
+            "available_vram_gb",
         ])
 
         # SLA features (3 features)
@@ -172,6 +178,22 @@ class OCRRouterFeatures:
         is_critical = sla.get("is_critical", False)
         features.append(1.0 if is_critical else 0.0)
 
+        # New features (mit Defaults wenn nicht vorhanden)
+        fraktur_score = document_metadata.get("fraktur_score", 0.0)
+        features.append(float(fraktur_score))
+
+        handwriting_score = document_metadata.get("handwriting_score", 0.0)
+        features.append(float(handwriting_score))
+
+        layout_complexity = document_metadata.get("layout_complexity", 0.5)
+        features.append(float(layout_complexity))
+
+        dpi = document_metadata.get("dpi", 300)
+        features.append(min(dpi / 600.0, 1.0))  # Normalize to 600 DPI
+
+        available_vram_gb = resources.get("gpu_memory_available_gb", 0.0)
+        features.append(min(available_vram_gb / 16.0, 1.0))  # Normalize to 16GB
+
         return np.array(features, dtype=np.float32)
 
     def backend_to_index(self, backend: str) -> int:
@@ -210,7 +232,7 @@ class OCRRouterModel:
         "subsample": 0.8,
         "colsample_bytree": 0.8,
         "objective": "multi:softprob",
-        "num_class": 4,  # Number of backends
+        "num_class": 6,  # Number of backends (deepseek, got_ocr, surya, surya_gpu, donut, hybrid)
         "eval_metric": "mlogloss",
         "use_label_encoder": False,
         "random_state": 42,
@@ -429,10 +451,8 @@ class OCRRouterModel:
 
         logger.info(
             "Starte Modelltraining",
-            extra={
-                "train_samples": len(X_train),
-                "val_samples": len(X_val),
-            },
+            train_samples=len(X_train),
+            val_samples=len(X_val),
         )
 
         # Train model
@@ -453,10 +473,8 @@ class OCRRouterModel:
 
         logger.info(
             "Modelltraining abgeschlossen",
-            extra={
-                "train_accuracy": train_accuracy,
-                "val_accuracy": val_accuracy,
-            },
+            train_accuracy=train_accuracy,
+            val_accuracy=val_accuracy,
         )
 
         return {
@@ -603,16 +621,46 @@ class OCRRouterModel:
             logger.info("modell_geladen", version=version_info.version)
 
         except (FileNotFoundError, ValueError) as e:
-            logger.warning("kein_modell_in_registry", error=str(e))
+            logger.warning("kein_modell_in_registry", **safe_error_log(e))
 
     def _load_legacy(self, path: Path) -> None:
         """
         Lädt Legacy pickle-Datei und migriert zur Registry.
 
         WARNUNG: pickle.load ist unsicher! Nur für eigene Dateien verwenden.
+
+        SECURITY: Erfordert ABLAGE_ALLOW_PICKLE_MIGRATION=true Environment-Variable.
+        Dies ist ein Sicherheits-Gate um versehentliche RCE zu verhindern.
         """
-        import pickle
+        import os
         import warnings
+
+        # Phase 9.1 SECURITY FIX: Require explicit opt-in for pickle deserialization
+        # Konsistent mit model_registry.py:500-505
+        if not os.getenv("ABLAGE_ALLOW_PICKLE_MIGRATION"):
+            logger.error(
+                "pickle_migration_blocked",
+                reason="Security flag not enabled",
+                hint="Set ABLAGE_ALLOW_PICKLE_MIGRATION=true if you trust the source",
+                pickle_path=str(path),
+            )
+            raise PermissionError(
+                "Legacy pickle-Migration ist aus Sicherheitsgründen deaktiviert. "
+                "Setzen Sie ABLAGE_ALLOW_PICKLE_MIGRATION=true wenn Sie der "
+                "Quelle der pickle-Datei vertrauen. WARNUNG: pickle.load kann "
+                "beliebigen Code ausführen!"
+            )
+
+        # Audit Log - wer hat wann eine pickle-Migration durchgeführt?
+        logger.warning(
+            "pickle_migration_started",
+            pickle_path=str(path),
+            security_warning="pickle.load kann beliebigen Code ausführen!",
+        )
+
+        # Import erst NACH Security-Check (Defense in Depth)
+        import pickle  # noqa: S403 - Guarded by env var check above
+
 
         warnings.warn(
             "Lade Legacy pickle-Modell. Bitte nach Registry migrieren!",
@@ -623,7 +671,7 @@ class OCRRouterModel:
             raise FileNotFoundError(f"Modelldatei nicht gefunden: {path}")
 
         with open(path, "rb") as f:
-            model_data = pickle.load(f)  # noqa: S301
+            model_data = pickle.load(f)  # noqa: S301 - Security check above (env var required)
 
         self.model = model_data["model"]
         self._is_trained = model_data.get("is_trained", True)
@@ -647,13 +695,46 @@ class OCRRouterModel:
             if active:
                 self.load(version=active)
         except Exception as e:
-            logger.debug("kein_aktives_modell", error=str(e))
+            logger.debug("kein_aktives_modell", **safe_error_log(e))
 
     def _get_model_version(self) -> str:
         """Get model version string."""
         if self._current_version:
             return f"v{self._current_version.version}"
         return f"xgboost-unversioned-{self._training_samples}"
+
+    def get_model_version(self) -> str:
+        """
+        Public method: Get model version string.
+
+        Returns:
+            Version string (e.g. "v1.2.3" or "xgboost-unversioned-1000")
+        """
+        return self._get_model_version()
+
+    def get_model_metrics(self) -> Dict[str, float]:
+        """
+        Get model training metrics.
+
+        Returns:
+            Dict with training accuracy, validation accuracy, F1 scores
+        """
+        metrics = {
+            "training_samples": self._training_samples,
+            "validation_accuracy": self._validation_accuracy,
+        }
+
+        if self._current_version:
+            metrics["model_version"] = self._current_version.version
+            metrics["created_at"] = self._current_version.created_at
+
+        # Add backend-specific accuracies
+        backend_stats = self.get_backend_stats()
+        for backend, stats in backend_stats.items():
+            metrics[f"{backend}_mean_accuracy"] = stats.get("mean_accuracy", 0.0)
+            metrics[f"{backend}_sample_count"] = stats.get("sample_count", 0)
+
+        return metrics
 
     def get_model_info(self) -> Dict[str, Any]:
         """Get model information and statistics."""
@@ -710,5 +791,5 @@ class OCRRouterModel:
             logger.info("rollback_erfolgreich", version=version)
             return True
         except Exception as e:
-            logger.error("rollback_fehlgeschlagen", error=str(e))
+            logger.error("rollback_fehlgeschlagen", **safe_error_log(e))
             return False

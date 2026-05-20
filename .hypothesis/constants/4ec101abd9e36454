@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\readwrite\json_graph\adjacency.py
+# hypothesis_version: 6.148.7
+
+['adjacency', 'adjacency_data', 'adjacency_graph', 'directed', 'graph', 'id', 'key', 'multigraph', 'nodes']

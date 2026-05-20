@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_svmlight_format_io.py
+# hypothesis_version: 6.148.7
+
+[b'\x00', b'#\n', b'# %s\n', '.bz2', '.gz', 'X', 'array-like', 'ascii', 'auto', 'boolean', 'comment', 'csr', 'dtype', 'f', 'files', 'left', 'length', 'multilabel', 'n_features', 'no_validation', 'offset', 'one', 'query_id', 'rb', 'read', 'sort_indices', 'sorted_indices', 'sparse matrix', 'utf-8', 'wb', 'write', 'y', 'zero', 'zero_based']

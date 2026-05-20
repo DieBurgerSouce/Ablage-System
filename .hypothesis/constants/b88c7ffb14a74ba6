@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\layers\mpu\mp_ops.py
+# hypothesis_version: 6.148.7
+
+[-100, 'Ids', 'Label', 'Logits', 'Loss', 'Out', 'SmoothWeight', 'Softmax', 'W', 'X', 'Y', '_c_concat', '_c_identity', '_c_split', '_parallel_embedding', 'alpha', 'axis', 'c_concat', 'c_embedding', 'c_identity', 'c_split', 'dtype', 'elementwise_add', 'embedding', 'float16', 'float32', 'float64', 'ignore_index', 'input', 'int32', 'int64', 'linear', 'matmul_v2', 'mp_allreduce_sum', 'nranks', 'rank', 'ring_id', 'start_index', 'sum_multi_label_loss', 'table', 'tensor', 'transpose_X', 'transpose_Y', 'uint16', 'use_calc_stream', 'use_model_parallel', 'vocab_size', 'x']

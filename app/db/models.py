@@ -1,56 +1,69 @@
-"""SQLAlchemy database models for Ablage-System."""
+"""SQLAlchemy database models for Ablage-System.
 
-from datetime import datetime
-from typing import Optional, List, Dict, Any
-from enum import Enum
+HINWEIS ZU RELATIONSHIPS:
+=========================
+Dieses Modul verwendet eine Mischung aus `backref` und `back_populates`.
+Beide sind funktional äquivalent.
+
+KONVENTION FÜR NEUE RELATIONSHIPS:
+- Verwende `back_populates` für explizite bidirektionale Beziehungen
+- Definiere die Relationship auf BEIDEN Seiten der Beziehung
+- `backref` ist weiterhin akzeptabel für einfache unidirektionale Referenzen
+
+Beispiel:
+    # Parent-Seite
+    class User(Base):
+        documents = relationship("Document", back_populates="owner")
+
+    # Child-Seite
+    class Document(Base):
+        owner = relationship("User", back_populates="documents")
+"""
+
 import uuid
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Boolean, Float, Text, JSON, ForeignKey, Index, Table
-from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
-from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Table,
+    Text,
+    Time,
+    UniqueConstraint,
+    event,
+    text,
+)
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import Mapped, backref, declarative_base, mapped_column, relationship
 from sqlalchemy.sql import func
+from sqlalchemy.types import TypeDecorator
 
-
-class CrossDBJSON(TypeDecorator):
-    """Cross-database JSON type - uses JSONB on PostgreSQL, JSON on SQLite."""
-    impl = JSON
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect):
-        if dialect.name == "postgresql":
-            return dialect.type_descriptor(JSONB())
-        return dialect.type_descriptor(JSON())
-
-
-class CrossDBTSVector(TypeDecorator):
-    """Cross-database TSVector type - uses TSVECTOR on PostgreSQL, Text on SQLite."""
-    impl = Text
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect):
-        if dialect.name == "postgresql":
-            return dialect.type_descriptor(TSVECTOR())
-        return dialect.type_descriptor(Text())
-
-
-class CrossDBVector(TypeDecorator):
-    """Cross-database Vector type - uses pgvector on PostgreSQL, Text on SQLite."""
-    impl = Text
-    cache_ok = True
-
-    def __init__(self, dim: int = 1024):
-        super().__init__()
-        self.dim = dim
-
-    def load_dialect_impl(self, dialect):
-        if dialect.name == "postgresql":
-            return dialect.type_descriptor(Vector(self.dim))
-        return dialect.type_descriptor(Text())
-
-
-Base = declarative_base()
+# Base, CrossDBJSON, CrossDBTSVector, CrossDBVector are defined in models_base.py
+# to avoid circular imports with domain model files (models_*.py).
+from app.db.models_base import (  # noqa: F401
+    Base,
+    CrossDBJSON,
+    CrossDBTSVector,
+    CrossDBVector,
+    SoftDeleteMixin,
+)
 
 # Association table for document tags
 document_tags = Table(
@@ -59,7 +72,8 @@ document_tags = Table(
     Column("document_id", UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE")),
     Column("tag_id", UUID(as_uuid=True), ForeignKey("tags.id", ondelete="CASCADE")),
     Index("ix_document_tags_document_id", "document_id"),
-    Index("ix_document_tags_tag_id", "tag_id")
+    Index("ix_document_tags_tag_id", "tag_id"),
+    UniqueConstraint("document_id", "tag_id", name="ix_document_tags_unique"),
 )
 
 
@@ -83,14 +97,36 @@ class OCRBackend(str, Enum):
 
 
 class DocumentType(str, Enum):
-    """Document type classification."""
-    INVOICE = "invoice"
-    CONTRACT = "contract"
-    RECEIPT = "receipt"
-    FORM = "form"
-    LETTER = "letter"
-    REPORT = "report"
-    OTHER = "other"
+    """Document type classification - 15 Types für Enterprise-Klassifikation.
+
+    Phase 1.2: Erweitert um Bank Statement, Tax Document, Dunning Letter,
+    Purchase Order, Credit Note.
+    """
+    # === RECHNUNGSWESEN ===
+    INVOICE = "invoice"              # Rechnung (Ein-/Ausgang)
+    CREDIT_NOTE = "credit_note"      # Gutschrift
+    RECEIPT = "receipt"              # Quittung/Kassenbon
+    DUNNING_LETTER = "dunning"       # Mahnung (Zahlungserinnerung bis 3. Mahnung)
+
+    # === BESTELLWESEN ===
+    ORDER = "order"                  # Bestellung (allgemein)
+    PURCHASE_ORDER = "purchase_order"  # Bestellauftrag (formell)
+    OFFER = "offer"                  # Angebot
+    DELIVERY_NOTE = "delivery_note"  # Lieferschein
+
+    # === VERTRAEGE & DOKUMENTE ===
+    CONTRACT = "contract"            # Vertrag
+    FORM = "form"                    # Formular
+    LETTER = "letter"                # Brief/Korrespondenz
+    REPORT = "report"                # Bericht
+
+    # === FINANZ & STEUER ===
+    BANK_STATEMENT = "bank_statement"  # Kontoauszug
+    TAX_DOCUMENT = "tax_document"      # Steuerdokument (USt-Voranmeldung, etc.)
+
+    # === SONSTIGES ===
+    OTHER = "other"                  # Sonstiges (bekannt aber nicht kategorisiert)
+    UNKNOWN = "unknown"              # Unbekannt (Klassifikation fehlgeschlagen)
 
 
 class UserTier(str, Enum):
@@ -100,7 +136,7 @@ class UserTier(str, Enum):
     ADMIN = "admin"
 
 
-class Document(Base):
+class Document(SoftDeleteMixin, Base):
     """Document model for storing uploaded documents."""
     __tablename__ = "documents"
 
@@ -135,7 +171,7 @@ class Document(Base):
     detected_language = Column(String(10))
 
     # Metadata and dates
-    document_metadata = Column(CrossDBJSON, default={})
+    document_metadata = Column(CrossDBJSON, default=dict)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     processed_date = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -146,8 +182,29 @@ class Document(Base):
     total_versions = Column(Integer, default=0)
 
     # Soft-Delete for GDPR (Phase 2.3)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # GoBD Archivierung (Feature 02)
+    is_archived = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="GoBD: Dokument ist revisionssicher archiviert"
+    )
+    archived_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="GoBD: Zeitpunkt der Archivierung"
+    )
+
+    # Multi-Company Support (Multi-Tenant Isolation)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        comment="Mandanten-Zuordnung für Multi-Company Isolation"
+    )
 
     # Search vectors (Full-Text Search + Semantic Search)
     search_vector = Column(CrossDBTSVector)  # PostgreSQL tsvector for FTS with german_text config
@@ -155,9 +212,90 @@ class Document(Base):
     embedding_updated_at = Column(DateTime(timezone=True))
     embedding_model = Column(String(100))  # Model used to generate embedding
 
+    # Qdrant Vector Search (A/B Testing mit Jina-DE)
+    qdrant_indexed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Business Entity and Document Group relationships
+    business_entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    group_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("document_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    page_number_in_group = Column(Integer, nullable=True)  # Seitennummer innerhalb der Gruppe
+    is_group_primary = Column(Boolean, default=False)  # Ist das primäre Dokument der Gruppe
+
+    # =========================================================================
+    # Document Chain (Auftragsketten-Tracking)
+    # Angebot -> Auftrag -> Lieferschein -> Rechnung -> Gutschrift
+    # =========================================================================
+    chain_id = Column(
+        String(100),
+        nullable=True,
+        index=True,
+        comment="Auftragsketten-ID (z.B. CHAIN-2026-00001)"
+    )
+    chain_position = Column(
+        Integer,
+        nullable=True,
+        comment="Position in Kette: 1=Angebot, 2=Auftrag, 3=Lieferschein, 4=Rechnung, 5=Gutschrift"
+    )
+    chain_root_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Erstes Dokument der Kette (Root)"
+    )
+
+    # Structured extracted data (from OCR)
+    extracted_data = Column(CrossDBJSON, default=dict)  # Strukturierte OCR-Daten (Rechnungsnr., Datum, etc.)
+
+    # Scan metadata (für Gruppierungserkennung)
+    scan_timestamp = Column(DateTime(timezone=True), nullable=True)  # Wann wurde gescannt
+    scan_batch_id = Column(String(100), nullable=True)  # Scan-Batch ID
+    original_filename_sequence = Column(Integer, nullable=True)  # Sequenznummer aus Original-Dateinamen
+
+    # Quick Classification (schnelle Klassifizierung in 2-5 Sekunden)
+    # Läuft PARALLEL zum vollständigen OCR, um sofort Tags zuzuweisen
+    quick_classification_status = Column(
+        String(20),
+        default="pending",
+        nullable=False,
+        comment="Status: pending, processing, completed, failed"
+    )
+    quick_classification_result = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Ergebnis: {direction, confidence, reason, tag_assigned, user_overridden}"
+    )
+
+    # Custom Fields (benutzerdefinierte Felder, JSONB)
+    custom_field_values = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=dict,
+        comment="Benutzerdefinierte Feldwerte (JSONB)"
+    )
+
+    # Auto-Summary (Phase 2.2: KI-generierte Zusammenfassungen)
+    summary = Column(Text, nullable=True, comment="KI-generierte Zusammenfassung (3-5 Saetze)")
+    keywords = Column(CrossDBJSON, nullable=False, server_default=text("'[]'::jsonb"), comment="Extrahierte Schluesselwoerter")
+    one_liner = Column(String(500), nullable=True, comment="Einzeilige Beschreibung")
+    summary_generated_at = Column(DateTime(timezone=True), nullable=True)
+    summary_model = Column(String(100), nullable=True, comment="LLM-Modell fuer Zusammenfassung")
+
     # Relationships
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
+    company = relationship("Company", back_populates="documents")
+    business_entity = relationship("BusinessEntity", back_populates="documents")
+    document_group = relationship("DocumentGroup", back_populates="documents", foreign_keys=[group_id])
     tags = relationship("Tag", secondary=document_tags, back_populates="documents")
     processing_jobs = relationship("ProcessingJob", back_populates="document", cascade="all, delete-orphan")
     ocr_results = relationship("OCRResult", back_populates="document", cascade="all, delete-orphan")
@@ -168,16 +306,68 @@ class Document(Base):
         order_by="OCRResultVersion.version_number.desc()"
     )
 
+    # GoBD Archive Relationship (Feature 02)
+    archive = relationship(
+        "DocumentArchive",
+        back_populates="document",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+    # Document Chain Relationship (self-referential)
+    chain_root_document = relationship(
+        "Document",
+        remote_side="Document.id",
+        foreign_keys=[chain_root_document_id],
+        backref="chain_children",
+        uselist=False
+    )
+
+    # OCR Self-Learning Feedbacks (Phase 1.3)
+    ocr_feedbacks = relationship(
+        "OCRCorrectionFeedback",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="dynamic"
+    )
+
     # Indexes
     __table_args__ = (
         Index("ix_documents_status", "status"),
         Index("ix_documents_upload_date", "upload_date"),
         Index("ix_documents_owner_id", "owner_id"),
         Index("ix_documents_checksum", "checksum"),
-        # Phase 2.3: Index fuer Soft-Delete Queries
+        # Phase 2.3: Index für Soft-Delete Queries
         Index("ix_documents_deleted_at", "deleted_at"),
-        # Phase 3: Compound Index fuer Owner + Created (haeufige Query)
+        # Phase 3: Compound Index für Owner + Created (häufige Query)
         Index("ix_documents_owner_created", "owner_id", "created_at"),
+        # Phase 8: Additional compound indexes for common query patterns
+        Index("ix_documents_status_created", "status", "created_at"),
+        Index("ix_documents_owner_status", "owner_id", "status"),
+        Index("ix_documents_deleted_owner", "deleted_at", "owner_id"),
+        # Business Entity und Group Indexes
+        Index("ix_documents_business_entity_id", "business_entity_id"),
+        Index("ix_documents_group_id", "group_id"),
+        Index("ix_documents_scan_batch_id", "scan_batch_id"),
+        Index("ix_documents_entity_created", "business_entity_id", "created_at"),
+        Index("ix_documents_group_sequence", "group_id", "page_number_in_group"),
+        # GoBD Archivierung (Feature 02)
+        Index("ix_documents_is_archived", "is_archived"),
+        # Document Chain (Auftragsketten-Tracking)
+        Index("ix_documents_chain_id", "chain_id"),
+        Index("ix_documents_chain_position", "chain_id", "chain_position"),
+        Index("ix_documents_chain_root", "chain_root_document_id"),
+        # Auto-Summary (Phase 2.2): Partial Index fuer Dokumente mit Zusammenfassung
+        Index(
+            "ix_documents_summary_generated",
+            "company_id", "summary_generated_at",
+            postgresql_where=text("summary IS NOT NULL"),
+        ),
+        # Chain integrity: chain_position und chain_root_document_id muessen beide gesetzt oder beide NULL sein
+        CheckConstraint(
+            "(chain_root_document_id IS NULL) = (chain_position IS NULL)",
+            name="ck_documents_chain_integrity",
+        ),
     )
 
     @property
@@ -213,6 +403,11 @@ class User(Base):
     totp_enabled = Column(Boolean, default=False)
     totp_backup_codes = Column(CrossDBJSON, nullable=True)  # Hashed backup codes
     totp_setup_at = Column(DateTime(timezone=True), nullable=True)
+    # MFA Rate Limiting (Brute-Force-Schutz)
+    totp_failed_attempts = Column(Integer, default=0, nullable=False,
+                                  comment="Anzahl fehlgeschlagener TOTP-Versuche")
+    totp_lockout_until = Column(DateTime(timezone=True), nullable=True,
+                               comment="Sperre bis zu diesem Zeitpunkt")
 
     # Admin Console: Tier and Rate Limit Management
     tier = Column(String(20), default=UserTier.FREE)
@@ -241,11 +436,51 @@ class User(Base):
     email_verified = Column(Boolean, default=False)
     email_verified_at = Column(DateTime(timezone=True), nullable=True)
 
+    # User preferences (display, OCR, notifications, privacy settings)
+    preferences = Column(CrossDBJSON, nullable=True)
+
+    # GoBD: Steuerberater/Prüfer zeitlich begrenzter Zugang
+    access_until = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment="Zeitliche Begrenzung des Zugangs (für Steuerberater/Prüfer)"
+    )
+    invited_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL", use_alter=True, name="fk_user_invited_by"),
+        nullable=True,
+        comment="Benutzer, der diesen Account eingeladen hat"
+    )
+    invited_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der Einladung"
+    )
+    access_scope = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Eingeschraenkter Zugriff (z.B. nur bestimmte Firmen, Zeiträume)"
+    )
+
     # Relationships
     documents = relationship("Document", back_populates="owner", foreign_keys="Document.owner_id")
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
     deactivated_by = relationship("User", remote_side="User.id", foreign_keys=[deactivated_by_id])
+    invited_by = relationship(
+        "User",
+        remote_side="User.id",
+        foreign_keys=[invited_by_id],
+        backref="invited_users"
+    )
+    roles = relationship(
+        "Role",
+        secondary="user_roles",
+        primaryjoin="User.id == user_roles.c.user_id",
+        secondaryjoin="user_roles.c.role_id == Role.id",
+        back_populates="users"
+    )
 
 
 class ProcessingJob(Base):
@@ -271,18 +506,19 @@ class ProcessingJob(Base):
     completed_at = Column(DateTime(timezone=True))
 
     # Results and errors
-    result = Column(CrossDBJSON, default={})
+    result_data = Column(CrossDBJSON, default=dict)
     error_message = Column(Text)
     worker_id = Column(String(100))
 
     # Relationships
     document = relationship("Document", back_populates="processing_jobs")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("ix_processing_jobs_status", "status"),
         Index("ix_processing_jobs_created_at", "created_at"),
         Index("ix_processing_jobs_document_id", "document_id"),
+        CheckConstraint("priority >= 1 AND priority <= 10", name="ck_processing_jobs_priority"),
     )
 
 
@@ -312,7 +548,7 @@ class BatchJob(Base):
     # Configuration
     backend = Column(String(50))
     language = Column(String(10), default="de")
-    options = Column(CrossDBJSON, default={})
+    options = Column(CrossDBJSON, default=dict)
 
     # Timing
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -325,7 +561,7 @@ class BatchJob(Base):
     total_processing_time_ms = Column(Integer)
 
     # Results
-    result_summary = Column(CrossDBJSON, default={})
+    result_summary = Column(CrossDBJSON, default=dict)
     error_message = Column(Text)
     celery_task_id = Column(String(100))
 
@@ -334,14 +570,78 @@ class BatchJob(Base):
     paused_at = Column(DateTime(timezone=True))
     resume_from_index = Column(Integer, default=0)
 
-    # Relationships
-    user = relationship("User", backref="batch_jobs")
+    # Cancellation support (Export Improvements Task 3)
+    is_cancelled = Column(Boolean, default=False)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Indexes
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="batch_jobs")
+    cancelled_by = relationship("User", foreign_keys=[cancelled_by_id])
+
+    # Indexes and constraints
     __table_args__ = (
         Index("ix_batch_jobs_status", "status"),
         Index("ix_batch_jobs_user_id", "user_id"),
         Index("ix_batch_jobs_created_at", "created_at"),
+        CheckConstraint("progress >= 0 AND progress <= 100", name="ck_batch_jobs_progress"),
+    )
+
+
+class ScheduledExport(Base):
+    """Scheduled exports for automated recurring exports.
+
+    Allows users to configure automatic exports on a schedule (cron-based).
+    Part of Export Improvements Task 4.
+    """
+    __tablename__ = "scheduled_exports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Schedule (Cron-Format)
+    cron_expression = Column(String(100), nullable=False)  # "0 8 * * 1" = Montag 08:00
+    timezone = Column(String(50), default="Europe/Berlin")
+
+    # Export-Konfiguration
+    export_type = Column(String(50), nullable=False)  # "documents", "invoices", "datev"
+    export_format = Column(String(20), nullable=False)  # "csv", "excel", "zip", "json"
+    filter_config = Column(CrossDBJSON, nullable=True)  # Date range, categories, tags, etc.
+    include_text = Column(Boolean, default=True)
+    include_metadata = Column(Boolean, default=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_run_status = Column(String(20), nullable=True)  # success, failed, partial
+    last_run_job_id = Column(UUID(as_uuid=True), ForeignKey("batch_jobs.id", ondelete="SET NULL"), nullable=True)
+
+    # Notification
+    notify_email = Column(Boolean, default=True)
+    notify_on_failure_only = Column(Boolean, default=False)
+    notification_email = Column(String(255), nullable=True)  # Override user email
+
+    # Statistics
+    total_runs = Column(Integer, default=0)
+    successful_runs = Column(Integer, default=0)
+    failed_runs = Column(Integer, default=0)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="scheduled_exports")
+    last_run_job = relationship("BatchJob", foreign_keys=[last_run_job_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_scheduled_exports_user_id", "user_id"),
+        Index("ix_scheduled_exports_is_active", "is_active"),
+        Index("ix_scheduled_exports_next_run_at", "next_run_at"),
     )
 
 
@@ -361,7 +661,7 @@ class OCRResult(Base):
     char_count = Column(Integer)
 
     # Layout detection
-    detected_layout = Column(CrossDBJSON, default={})  # Regions, tables, images
+    detected_layout = Column(CrossDBJSON, default=dict)  # Regions, tables, images
     bounding_boxes = Column(CrossDBJSON, default=[])   # Word/line bounding boxes
     page_number = Column(Integer)
 
@@ -419,7 +719,7 @@ class OCRResultVersion(Base):
     business_terms = Column(CrossDBJSON, default=[])
 
     # Layout data
-    detected_layout = Column(CrossDBJSON, default={})
+    detected_layout = Column(CrossDBJSON, default=dict)
     bounding_boxes = Column(CrossDBJSON, default=[])
 
     # Processing metadata
@@ -446,19 +746,72 @@ class OCRResultVersion(Base):
 
 
 class Tag(Base):
-    """Document tags for categorization."""
+    """Document tags for categorization with optional Tune linking."""
     __tablename__ = "tags"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(50), unique=True, nullable=False)
     description = Column(String(255))
-    color = Column(String(7))  # Hex color code
+    icon = Column(String(50), default="Tag")  # Lucide icon name
+    color = Column(String(50))  # Tailwind class (bg-*-500) or Hex color code
+
+    # Optional link to Tune for OCR fine-tuning
+    tune_id = Column(UUID(as_uuid=True), ForeignKey("tunes.id", ondelete="SET NULL"), nullable=True)
+
+    # Admin management
+    is_system = Column(Boolean, default=False)  # System tags cannot be deleted
+    is_active = Column(Boolean, default=True)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     documents = relationship("Document", secondary=document_tags, back_populates="tags")
+    tune = relationship("Tune", back_populates="tags")
+
+    # Indexes (synchron mit Migration 038)
+    __table_args__ = (
+        Index("ix_tags_is_system", "is_system"),
+        Index("ix_tags_is_active", "is_active"),
+        Index("ix_tags_tune_id", "tune_id"),
+    )
+
+
+class Tune(Base):
+    """
+    Document Context / Tune configuration.
+    Defines how a document type should be analyzed and processed.
+    """
+    __tablename__ = "tunes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False)
+    description = Column(String(500))
+    icon = Column(String(50))  # Lucide icon name
+    color = Column(String(50))  # Tailwind class or Hex
+
+    # Intelligence Configuration
+    prompt_template = Column(Text, nullable=True)  # Custom system prompt for this tune
+    default_backend = Column(String(50), nullable=True)  # Preferred OCR backend
+
+    # Metadata
+    is_system = Column(Boolean, default=False)  # System tunes cannot be deleted
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    tags = relationship("Tag", back_populates="tune")
+
+    # Indexes (synchron mit Migration 031b_fix_tunes)
+    __table_args__ = (
+        Index("ix_tunes_name", "name"),
+        Index("ix_tunes_is_active", "is_active"),
+        Index("ix_tunes_is_system", "is_system"),  # Aus Migration 031b
+        Index("ix_tunes_is_active_is_system", "is_active", "is_system"),  # Composite aus 031b
+    )
+
 
 
 class APIKey(Base):
@@ -495,13 +848,22 @@ class AuditLog(Base):
     - integrity_hash: SHA-256 Hash des Eintrags für Tamper-Detection
     - previous_hash: Hash des vorherigen Eintrags (Blockchain-ähnliche Verkettung)
 
-    SECURITY: Diese Tabelle sollte mit DB-Level-Triggers gegen
-    UPDATE/DELETE geschützt sein (siehe Migration 017).
+    SECURITY:
+    - Diese Tabelle sollte mit DB-Level-Triggers gegen UPDATE/DELETE geschützt sein (siehe Migration 017).
+    - Multi-Tenant Isolation via company_id (Migration 134)
     """
     __tablename__ = "audit_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+
+    # Multi-Tenant Support (SECURITY FIX - Migration 134)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,  # NULL für System-Events (Migrations, Cron-Jobs)
+        index=True
+    )
 
     # Action details
     action = Column(String(100), nullable=False)
@@ -514,8 +876,12 @@ class AuditLog(Base):
     request_method = Column(String(10))
     request_path = Column(String(255))
 
+    # Success/Error tracking
+    success = Column(Boolean, default=True, nullable=False)
+    error_message = Column(String(2000), nullable=True)
+
     # Additional data
-    audit_metadata = Column(CrossDBJSON, default={})
+    audit_metadata = Column(CrossDBJSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Immutability Fields (AP6: Audit Log Immutabilität)
@@ -528,6 +894,7 @@ class AuditLog(Base):
 
     # Relationships
     user = relationship("User", back_populates="audit_logs")
+    company = relationship("Company", backref="audit_logs")
 
     # Indexes
     __table_args__ = (
@@ -535,6 +902,7 @@ class AuditLog(Base):
         Index("ix_audit_logs_created_at", "created_at"),
         Index("ix_audit_logs_action", "action"),
         Index("ix_audit_logs_sequence", "sequence_number"),
+        Index("ix_audit_logs_company_created", "company_id", "created_at"),
     )
 
 
@@ -554,7 +922,7 @@ class SystemMetrics(Base):
     worker_id = Column(String(100))
 
     # Metadata
-    metric_metadata = Column(CrossDBJSON, default={})
+    metric_metadata = Column(CrossDBJSON, default=dict)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     # Indexes
@@ -575,13 +943,13 @@ class SearchAnalytics(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
 
-    # Query details
-    query = Column(String(500), nullable=False)
+    # Query details - WICHTIG: 'query' ist reservierter SQLAlchemy-Name!
+    search_query = Column(String(500), nullable=False)
     search_type = Column(String(20), nullable=False)  # fts, semantic, hybrid
     query_length = Column(Integer)
 
     # Filter tracking
-    filters_used = Column(CrossDBJSON, default={})  # Which filters were applied
+    filters_used = Column(CrossDBJSON, default=dict)  # Which filters were applied
     has_document_type_filter = Column(Boolean, default=False)
     has_date_filter = Column(Boolean, default=False)
     has_tag_filter = Column(Boolean, default=False)
@@ -602,6 +970,11 @@ class SearchAnalytics(Base):
     first_click_position = Column(Integer)  # Position of first clicked result
     downloaded_count = Column(Integer, default=0)
 
+    # Position-Weighted Click Analytics
+    # Verwendet exponentiellen Decay: Position 1=1.0, Position 5=0.55, Position 10=0.26
+    weighted_click_score = Column(Float, default=0.0)  # Kumulierter gewichteter Score
+    click_positions = Column(CrossDBJSON, default=list)  # Liste aller Klick-Positionen
+
     # Session tracking
     session_id = Column(String(100))  # To group searches in a session
     is_refinement = Column(Boolean, default=False)  # Is this a refined search?
@@ -620,7 +993,7 @@ class SearchAnalytics(Base):
         Index("ix_search_analytics_created_at", "created_at"),
         Index("ix_search_analytics_user_id", "user_id"),
         Index("ix_search_analytics_search_type", "search_type"),
-        Index("ix_search_analytics_query_pattern", "query", postgresql_ops={"query": "varchar_pattern_ops"}),
+        Index("ix_search_analytics_query_pattern", "search_query", postgresql_ops={"search_query": "varchar_pattern_ops"}),
     )
 
 
@@ -642,7 +1015,7 @@ class AdminAction(Base):
 
     # Action details
     action = Column(String(100), nullable=False)  # create_user, update_user, reset_password, etc.
-    action_details = Column(CrossDBJSON, default={})  # Specific changes made
+    action_details = Column(CrossDBJSON, default=dict)  # Specific changes made
 
     # Request context
     ip_address = Column(String(45))
@@ -704,536 +1077,579 @@ class RateLimitOverride(Base):
 
 # ==================== GDPR Compliance Models ====================
 
-class GDPRDeletionRequestStatus(str, Enum):
-    """Status für GDPR Löschanfragen (Art. 17 DSGVO)."""
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    REJECTED = "rejected"
-    CANCELLED = "cancelled"
-
-
-class GDPRDeletionRequest(Base):
-    """
-    GDPR Löschanfrage (Art. 17 DSGVO - Recht auf Löschung).
-
-    Verfolgt Löschanfragen von Benutzern und deren Bearbeitungsstatus.
-    Anfragen müssen innerhalb von 30 Tagen bearbeitet werden.
-    """
-    __tablename__ = "gdpr_deletion_requests"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-
-    # Request details
-    status = Column(String(50), default=GDPRDeletionRequestStatus.PENDING, nullable=False)
-    reason = Column(Text, nullable=True)  # Optionaler Grund des Benutzers
-    deletion_deadline = Column(DateTime(timezone=True), nullable=False)  # 30 Tage Frist
-
-    # Timestamps
-    requested_at = Column(DateTime(timezone=True), server_default=func.now())
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    # Audit
-    processed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    deletion_reason = Column(String(255), nullable=True)  # Warum abgelehnt (falls rejected)
-
-    # Statistics
-    documents_deleted = Column(Integer, default=0)
-    audit_entries_anonymized = Column(Integer, default=0)
-
-    # Relationships
-    user = relationship("User", foreign_keys=[user_id], backref="gdpr_deletion_requests")
-    processed_by = relationship("User", foreign_keys=[processed_by_id])
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_gdpr_deletion_requests_user_id", "user_id"),
-        Index("ix_gdpr_deletion_requests_status", "status"),
-        Index("ix_gdpr_deletion_requests_deadline", "deletion_deadline"),
-    )
-
-
-class GDPRBreachLog(Base):
-    """
-    GDPR Datenschutzvorfall-Log (Art. 33/34 DSGVO).
-
-    Dokumentiert Datenschutzvorfälle und deren Meldung:
-    - Art. 33: Meldung an Aufsichtsbehörde (72 Stunden)
-    - Art. 34: Meldung an betroffene Personen (bei hohem Risiko)
-    """
-    __tablename__ = "gdpr_breach_logs"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    breach_id = Column(String(32), unique=True, nullable=False)  # Eindeutige Breach-ID
-
-    # Breach details
-    breach_type = Column(String(100), nullable=False)  # unauthorized_access, data_loss, etc.
-    affected_records = Column(Integer, default=0)
-    description = Column(Text, nullable=False)
-    severity = Column(String(20), default="medium")  # low, medium, high, critical
-
-    # Detection & Timeline
-    detected_at = Column(DateTime(timezone=True), server_default=func.now())
-    notification_deadline = Column(DateTime(timezone=True), nullable=False)  # 72 Stunden
-
-    # Notification status
-    authority_notified = Column(Boolean, default=False)
-    authority_notification_date = Column(DateTime(timezone=True), nullable=True)
-    users_notified = Column(Integer, default=0)
-    user_notification_date = Column(DateTime(timezone=True), nullable=True)
-
-    # Response
-    containment_measures = Column(Text, nullable=True)
-    remediation_status = Column(String(50), default="investigating")  # investigating, contained, resolved
-    resolution_date = Column(DateTime(timezone=True), nullable=True)
-
-    # Audit
-    reported_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    # Relationships
-    reported_by = relationship("User", backref="reported_breaches")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_gdpr_breach_logs_breach_id", "breach_id"),
-        Index("ix_gdpr_breach_logs_detected_at", "detected_at"),
-        Index("ix_gdpr_breach_logs_severity", "severity"),
-        Index("ix_gdpr_breach_logs_remediation_status", "remediation_status"),
-    )
-
-
-class GDPRConsentLog(Base):
-    """
-    GDPR Einwilligungsprotokoll (Art. 7 DSGVO).
-
-    Dokumentiert Einwilligungen der Benutzer für verschiedene Zwecke.
-    """
-    __tablename__ = "gdpr_consent_logs"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
-    # Consent details
-    consent_type = Column(String(100), nullable=False)  # data_processing, marketing, analytics
-    purpose = Column(String(255), nullable=False)  # Zweck der Einwilligung
-    consent_given = Column(Boolean, nullable=False)
-    consent_text = Column(Text, nullable=True)  # Text der Einwilligung zum Zeitpunkt
-
-    # Timestamps
-    consent_date = Column(DateTime(timezone=True), server_default=func.now())
-    withdrawal_date = Column(DateTime(timezone=True), nullable=True)
-    expires_at = Column(DateTime(timezone=True), nullable=True)  # Einwilligung läuft ab
-
-    # Source
-    source = Column(String(50), default="web")  # web, api, admin
-    ip_address = Column(String(45), nullable=True)  # IPv4/IPv6
-
-    # Audit
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    # Relationships
-    user = relationship("User", backref="gdpr_consents")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_gdpr_consent_logs_user_id", "user_id"),
-        Index("ix_gdpr_consent_logs_consent_type", "consent_type"),
-        Index("ix_gdpr_consent_logs_consent_date", "consent_date"),
-    )
-
-
-# ==================== Password Reset Models ====================
-
-class PasswordResetToken(Base):
-    """
-    Password Reset Token für sicheren Passwort-Reset.
-
-    Sicherheitsmerkmale:
-    - Token wird gehasht gespeichert (SHA-256)
-    - Zeitlich begrenzte Gültigkeit (1 Stunde)
-    - Einmalige Verwendung
-    - Rate-Limiting über MAX_ACTIVE_TOKENS_PER_USER
-
-    OWASP-konform: Token-basierter Reset ohne Sicherheitsfragen.
-    """
-    __tablename__ = "password_reset_tokens"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
-    # Token (nur Hash gespeichert!)
-    token_hash = Column(String(64), nullable=False, unique=True)  # SHA-256 hash
-
-    # Validity
-    expires_at = Column(DateTime(timezone=True), nullable=False)
-    used_at = Column(DateTime(timezone=True), nullable=True)  # Null = ungenutzt
-
-    # Audit
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    ip_address = Column(String(45), nullable=True)  # IP bei Anfrage
-
-    # Relationships
-    user = relationship("User", backref="password_reset_tokens")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_password_reset_tokens_user_id", "user_id"),
-        Index("ix_password_reset_tokens_token_hash", "token_hash"),
-        Index("ix_password_reset_tokens_expires_at", "expires_at"),
-    )
-
-
-# ============================================================================
-# GDPR Art. 20 - Data Portability
-# ============================================================================
-
-class ExportStatus(str, Enum):
-    """Data export status for GDPR Art. 20."""
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    EXPIRED = "expired"
-
-
-class ExportFormat(str, Enum):
-    """Supported export formats for GDPR Art. 20."""
-    JSON = "json"
-    CSV = "csv"
-
-
-class DataExport(Base):
-    """
-    GDPR Art. 20 - Data Export Request.
-
-    Ermöglicht Benutzern den Export ihrer Daten in maschinenlesbarem Format.
-    Exports sind 7 Tage gültig und werden danach automatisch gelöscht.
-    """
-    __tablename__ = "data_exports"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    # Export Status
-    status = Column(String(50), default=ExportStatus.PENDING, nullable=False)
-    format = Column(String(20), default=ExportFormat.JSON, nullable=False)
-
-    # File Information
-    file_path = Column(String(500), nullable=True)  # MinIO path
-    file_size_bytes = Column(Integer, nullable=True)
-    error_message = Column(Text, nullable=True)
-
-    # Timestamps
-    requested_at = Column(DateTime(timezone=True), server_default=func.now())
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    expires_at = Column(DateTime(timezone=True), nullable=True)  # 7 Tage nach Erstellung
-
-    # Download Tracking
-    download_count = Column(Integer, default=0)
-
-    # Relationships
-    user = relationship("User", backref="data_exports")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_data_exports_user_id", "user_id"),
-        Index("ix_data_exports_status", "status"),
-        Index("ix_data_exports_expires_at", "expires_at"),
-    )
-
-
-# ============================================================================
-# Session Management
-# ============================================================================
-
-class UserSession(Base):
-    """
-    Active user session tracking.
-
-    Ermöglicht:
-    - Übersicht aller aktiven Sessions
-    - Logout von anderen Geräten
-    - Erkennung verdächtiger Aktivitäten
-    - Session-Widerruf bei Sicherheitsvorfällen
-    """
-    __tablename__ = "user_sessions"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    # Token Identification
-    token_jti = Column(String(64), unique=True, nullable=False)  # JWT ID für Blacklisting
-
-    # Device Information
-    device_name = Column(String(100), nullable=True)  # z.B. "Chrome auf Windows"
-    device_type = Column(String(50), nullable=True)   # desktop, mobile, tablet
-    ip_address = Column(String(45), nullable=False)   # IPv4 oder IPv6
-    user_agent = Column(String(500), nullable=True)
-    location = Column(String(100), nullable=True)     # Stadt, Land (GeoIP)
-
-    # Timestamps
-    last_activity_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    expires_at = Column(DateTime(timezone=True), nullable=False)
-
-    # Status
-    is_current = Column(Boolean, default=False)  # Markiert aktuelle Session
-    revoked = Column(Boolean, default=False)
-    revoked_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    user = relationship("User", backref="sessions")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_user_sessions_user_id", "user_id"),
-        Index("ix_user_sessions_token_jti", "token_jti"),
-        Index("ix_user_sessions_expires_at", "expires_at"),
-    )
-
-
-class EmailVerificationToken(Base):
-    """
-    Email verification tokens.
-
-    Verwendet für:
-    - Neue Benutzerregistrierung (email_verified=False)
-    - Email-Adresse ändern (new_email-Feld)
-    - Erneute Verifizierung anfordern
-    """
-    __tablename__ = "email_verification_tokens"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    # Token Data
-    token_hash = Column(String(128), nullable=False)  # SHA-256 Hash des Tokens
-    email = Column(String(255), nullable=False)  # Email bei Token-Erstellung
-    token_type = Column(String(20), nullable=False)  # 'verification' oder 'email_change'
-    new_email = Column(String(255), nullable=True)  # Nur für Email-Änderungen
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    expires_at = Column(DateTime(timezone=True), nullable=False)
-    used_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Security
-    ip_address = Column(String(45), nullable=True)
-
-    # Relationships
-    user = relationship("User", backref="email_verification_tokens")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_email_verification_tokens_user_id", "user_id"),
-        Index("ix_email_verification_tokens_token_hash", "token_hash"),
-        Index("ix_email_verification_tokens_expires_at", "expires_at"),
-    )
-
-
-# ============================================================================
-# Webhook System - Event-Driven Notifications
-# ============================================================================
-
-class WebhookEventType(str, Enum):
-    """Verfügbare Webhook Event-Typen."""
-    # Document Events
-    DOCUMENT_CREATED = "document.created"
-    DOCUMENT_PROCESSING = "document.processing"
-    DOCUMENT_COMPLETED = "document.completed"
-    DOCUMENT_FAILED = "document.failed"
-    DOCUMENT_UPDATED = "document.updated"
-    DOCUMENT_DELETED = "document.deleted"
-    # User Events
-    USER_CREATED = "user.created"
-    USER_UPDATED = "user.updated"
-    # System Events
-    SYSTEM_HEALTH_FAILED = "system.health_check_failed"
-    SYSTEM_QUOTA_EXCEEDED = "system.quota_exceeded"
-    BATCH_COMPLETED = "batch.completed"
-
-
-class WebhookDeliveryStatus(str, Enum):
-    """Status einer Webhook-Zustellung."""
-    PENDING = "pending"
-    DELIVERED = "delivered"
-    FAILED = "failed"
-    RETRYING = "retrying"
-
-
-class WebhookSubscription(Base):
-    """
-    Webhook-Abonnement für Event-Benachrichtigungen.
-
-    Ermöglicht Benutzern, HTTP-Callbacks für bestimmte Events zu registrieren.
-    Unterstützt HMAC-Signierung, Custom Headers und Retry-Konfiguration.
-    """
-    __tablename__ = "webhook_subscriptions"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    # Endpoint-Konfiguration
-    name = Column(String(100), nullable=False)  # Benutzerfreundlicher Name
-    url = Column(String(500), nullable=False)   # Webhook-Ziel-URL
-    description = Column(String(500), nullable=True)
-
-    # Event-Filter (Liste von Event-Typen)
-    event_types = Column(CrossDBJSON, nullable=False)  # ["document.created", "document.completed"]
-
-    # Sicherheit
-    secret = Column(String(100), nullable=False)  # HMAC-Secret für Signierung
-    headers = Column(CrossDBJSON, nullable=True)  # Custom Headers {"X-Custom": "value"}
-
-    # Status
-    is_active = Column(Boolean, default=True, nullable=False)
-    is_verified = Column(Boolean, default=False)  # Endpoint-Verifizierung
-
-    # Retry-Konfiguration
-    max_retries = Column(Integer, default=3)
-    retry_delay_seconds = Column(Integer, default=60)
-
-    # Statistiken
-    total_deliveries = Column(Integer, default=0)
-    successful_deliveries = Column(Integer, default=0)
-    failed_deliveries = Column(Integer, default=0)
-    last_delivery_at = Column(DateTime(timezone=True), nullable=True)
-    last_failure_at = Column(DateTime(timezone=True), nullable=True)
-    last_failure_reason = Column(Text, nullable=True)
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    # Relationships
-    user = relationship("User", backref="webhook_subscriptions")
-    deliveries = relationship("WebhookDelivery", back_populates="subscription", cascade="all, delete-orphan")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_webhook_subscriptions_user_id", "user_id"),
-        Index("ix_webhook_subscriptions_is_active", "is_active"),
-        Index("ix_webhook_subscriptions_created_at", "created_at"),
-    )
-
-
-class WebhookDelivery(Base):
-    """
-    Webhook-Zustellungsprotokoll.
-
-    Dokumentiert jeden Zustellungsversuch mit Response-Details.
-    Ermöglicht Debugging und Retry-Tracking.
-    """
-    __tablename__ = "webhook_deliveries"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    subscription_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("webhook_subscriptions.id", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    # Event-Daten
-    event_id = Column(String(64), nullable=False)  # Unique Event ID
-    event_type = Column(String(100), nullable=False)
-    payload = Column(CrossDBJSON, nullable=False)  # Gesendetes Payload
-
-    # Zustellungsstatus
-    status = Column(String(20), default="pending")  # pending, delivered, failed, retrying
-    attempt = Column(Integer, default=1)
-    max_attempts = Column(Integer, default=4)  # 1 initial + 3 retries
-
-    # Response-Details
-    response_status_code = Column(Integer, nullable=True)
-    response_body = Column(Text, nullable=True)  # Truncated auf 1000 Zeichen
-    response_time_ms = Column(Integer, nullable=True)
-
-    # Fehlerdetails
-    error_message = Column(Text, nullable=True)
-    error_type = Column(String(100), nullable=True)  # timeout, connection_error, http_error
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    delivered_at = Column(DateTime(timezone=True), nullable=True)
-    next_retry_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    subscription = relationship("WebhookSubscription", back_populates="deliveries")
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_webhook_deliveries_subscription_id", "subscription_id"),
-        Index("ix_webhook_deliveries_event_id", "event_id"),
-        Index("ix_webhook_deliveries_status", "status"),
-        Index("ix_webhook_deliveries_created_at", "created_at"),
-        Index("ix_webhook_deliveries_next_retry_at", "next_retry_at"),
-    )
-
-
-# ============================================================================
-# Favorites System - Dokument-Favoriten
-# ============================================================================
-
-class DocumentFavorite(Base):
-    """
-    Favorisierte Dokumente für schnellen Zugriff.
-
-    Ermöglicht Benutzern, Dokumente als Favoriten zu markieren
-    und optional Notizen hinzuzufügen.
-    """
-    __tablename__ = "document_favorites"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
-    )
-    document_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("documents.id", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    # Optional: Benutzernotiz zum Favorit
-    note = Column(String(500), nullable=True)
-
-    # Sortierung (höher = wichtiger)
-    priority = Column(Integer, default=0)
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Relationships
-    user = relationship("User", backref="favorites")
-    document = relationship("Document", backref="favorited_by")
-
-    # Indexes und Constraints
-    __table_args__ = (
-        Index("ix_document_favorites_user_id", "user_id"),
-        Index("ix_document_favorites_document_id", "document_id"),
-        Index("ix_document_favorites_user_document", "user_id", "document_id", unique=True),
-        Index("ix_document_favorites_created_at", "created_at"),
-    )
+# =============================================================================
+# MODULARISIERUNG PHASE 1.1 - Re-Exports
+# Alle Domain-Modelle sind in separate Dateien extrahiert.
+# Diese Re-Exports stellen volle Backward-Kompatibilitaet sicher.
+# =============================================================================
+
+
+# --- GDPR, DPIA & Compliance ---
+# --- Auth, Security, Webhooks, Access ---
+from app.db.models_auth_access import (  # noqa: E402, F401
+    AccessLevel,
+    BackupRecord,
+    BackupStatus,
+    BackupType,
+    ChatSessionAccess,
+    ChatSessionAccessLevel,
+    DataExport,
+    DocumentAccess,
+    DocumentFavorite,
+    EmailVerificationToken,
+    ExportFormat,
+    ExportStatus,
+    PasswordResetToken,
+    Permission,
+    PermissionAction,
+    ResourceType,
+    Role,
+    UserSession,
+    WebhookDeliveryStatus,
+    WebhookEventType,
+    WebhookSubscription,
+    WebhookSubscriptionDelivery,
+    role_permissions,
+    user_roles,
+)
+
+# --- Banking ---
+from app.db.models_banking import (  # noqa: E402, F401
+    BankAccount,
+    BankImport,
+    BankTransaction,
+    CashFlowEntry,
+    CustomerDunningOverride,
+    DunningRecord,
+    DunningStageConfig,
+    EInvoiceDocument,
+    EInvoiceFormat,
+    EInvoiceProfile,
+    MahnTask,
+    MahnungHistory,
+    PaymentBatch,
+    PaymentOrder,
+    PhoneCallLog,
+)
+
+# --- Cash/Company ---
+from app.db.models_cash_company import (  # noqa: E402, F401
+    CashCategory,
+    CashCount,
+    CashEntry,
+    CashEntryType,
+    CashRegister,
+    Company,
+    ExpenseItem,
+    ExpenseReport,
+    ExpenseReportStatus,
+    ExpenseType,
+    UserCompany,
+)
+
+# --- DATEV ---
+from app.db.models_datev import (  # noqa: E402, F401
+    DATEVBeleglink,
+    DATEVBuchung,
+    DATEVConfiguration,
+    DATEVConnection,
+    DATEVConnectionStatus,
+    DATEVExport,
+    DATEVKontenplan,
+    DATEVKontierungPattern,
+    DATEVKontierungStatus,
+    DATEVSyncHistory,
+    DATEVSyncType,
+    DATEVVendorMapping,
+    FinanceDocumentHistory,
+)
+
+# --- DropShipment/Tax ---
+from app.db.models_dropship_tax import (  # noqa: E402, F401
+    ClassificationAuditLog,
+    ClassificationIndicator,
+    ConfidenceLevel,
+    DatevStreckengeschaeftAccount,
+    DropShipmentClassification,
+    DropShipmentCompanyRole,
+    DropShipmentPosition,
+    MovingDelivery,
+    ProofDocument,
+    TransactionParty,
+    TransactionType,
+    VatCategoryType,
+    VatIdRegistry,
+    ZmSubmission,
+    ZmSubmissionStatus,
+)
+
+# --- Entity, Business, Contracts, Multi-Tenancy, DLP, BPMN ---
+from app.db.models_entity_business import (  # noqa: E402, F401
+    AmendmentStatus,
+    BpmnTaskStatus,
+    BusinessContact,
+    BusinessContract,
+    BusinessEntity,
+    ContactRole,
+    ContactType,
+    ContractAmendment,
+    ContractMilestone,
+    ContractRenewalOption,
+    ContractStatus,
+    ContractType,
+    DLPActionType,
+    DLPAuditLog,
+    DLPPolicyModel,
+    DocumentChainDiscrepancy,
+    DocumentContact,
+    DocumentGroup,
+    DocumentGroupType,
+    DocumentRelationship,
+    EntityType,
+    EventTrigger,
+    EventType,
+    FeatureFlag,
+    GatewayType,
+    InvoiceStatus,
+    InvoiceTracking,
+    MilestoneType,
+    Notification,
+    NotificationType,  # INFO/SUCCESS/WARNING version - overridden by notification module below
+    PaymentTransaction,
+    ProcessStatus,
+    RateLimitViolation,
+    RelationshipType,
+    RenewalOptionStatus,
+    SensitiveDataTypeEnum,
+    SubscriptionTier,
+    SubscriptionTierDefaults,
+    TaskType,
+    TenantRateLimit,
+    TenantUsageMetrics,
+)
+from app.db.models_gdpr_compliance import (  # noqa: E402, F401
+    DPIA,
+    DocumentAccessLog,
+    DocumentAccessType,
+    DocumentArchive,
+    DPIAAuditLog,
+    DPIAConsultation,
+    DPIADataSubjectGroup,
+    DPIAImplementationStatus,
+    DPIALegalBasis,
+    DPIAMeasureType,
+    DPIAMitigationMeasure,
+    DPIAProcessingOperation,
+    DPIARisk,
+    DPIARiskLevel,
+    DPIAStatus,
+    GDPRBreachLog,
+    GDPRConsentHistory,
+    GDPRConsentLog,
+    GDPRConsentScope,
+    GDPRConsentVersion,
+    GDPRDataExport,
+    GDPRDataSubjectRequest,
+    GDPRDeletionRequest,
+    GDPRDeletionRequestStatus,
+    GDPRProcessingActivity,
+    HashAlgorithm,
+    ProcedureDocumentationVersion,
+    RetentionCategory,
+    RetentionSetting,
+    TaxAdvisorAccessLog,
+    TaxAdvisorInvite,
+    TaxAdvisorInviteStatus,
+)
+
+# --- HR ---
+from app.db.models_hr import (  # noqa: E402, F401
+    Absence,
+    Department,
+    Employee,
+    EmployeeStatus,
+    EmploymentContract,
+    EmploymentType,
+    HRContractStatus,
+    HRDocument,
+    HRDocumentCategory,
+    LeaveRequest,
+    LeaveRequestStatus,
+    LeaveType,
+    OnboardingTask,
+    OnboardingTaskStatus,
+    PerformanceReview,
+    Position,
+    ReviewStatus,
+    TimeEntry,
+    Training,
+    TrainingStatus,
+)
+
+# --- Notifications, Activities, Tasks ---
+from app.db.models_notification import (  # noqa: E402, F401
+    ActivityNotificationType,
+    ActivityType,
+    DigestFrequency,
+    DocumentActivity,
+    DocumentComment,
+    DocumentTask,
+    NotificationChannel,
+    NotificationDigestQueue,
+    NotificationHistory,
+    NotificationPreference,
+    NotificationRule,
+    NotificationRuleActionType,
+    NotificationRulePriority,
+    NotificationTemplate,
+    PushSubscription,
+    TaskPriority,
+    TaskStatus,
+    UserNotification,
+)
+
+# NOTE: NotificationType from entity_business (INFO/SUCCESS/WARNING) is overridden
+# by ActivityNotificationType from notification module below (MENTION/COMMENT_REPLY).
+# This matches original models.py behavior where the 2nd definition overwrites the 1st.
+# notification's TaskType-like enums.
+# --- OCR Training & Validation ---
+from app.db.models_ocr_validation import (  # noqa: E402, F401
+    BatchStatus,
+    BatchType,
+    BulkJobStatus,
+    CorrectionType,
+    ItemStatus,
+    ModelType,
+    OCRBackendBenchmark,
+    OCRBackendStatsDaily,
+    OCRBulkProcessingJob,
+    OCRDocumentOutput,
+    OCRModelDeployment,
+    OCRQualitySnapshot,
+    OCRTrainingBatch,
+    OCRTrainingBatchItem,
+    OCRTrainingSample,
+    OCRValidationCorrection,
+    SampleSource,
+    TrainingSampleStatus,
+    ValidationAnalytics,
+    ValidationFieldReview,
+    ValidationQueueItem,
+    ValidationRule,
+    ValidationRuleType,
+    ValidationSampleConfig,
+    ValidationStatus,
+)
+
+# --- Privat Space ---
+from app.db.models_privat_space import (  # noqa: E402, F401
+    PrivatAccessLevel,
+    PrivatDeadline,
+    PrivatDeadlineNotification,
+    PrivatDeadlineType,
+    PrivatDocument,
+    PrivatDocumentType,
+    PrivatEmergencyAccessRequest,
+    PrivatEmergencyAccessStatus,
+    PrivatEmergencyContact,
+    PrivatFolder,
+    PrivatFuelLog,
+    PrivatInsurance,
+    PrivatInvestment,
+    PrivatLoan,
+    PrivatProperty,
+    PrivatRentalIncome,
+    PrivatSpace,
+    PrivatSpaceAccess,
+    PrivatSpaceType,
+    PrivatTenant,
+    PrivatUtilityStatement,
+    PrivatVehicle,
+)
+
+# --- RAG Intelligence Layer ---
+from app.db.models_rag import (  # noqa: E402, F401
+    RAGAnalytics,
+    RAGBatchJob,
+    RAGBatchJobStatus,
+    RAGBatchJobType,
+    RAGCardPriorityLevel,
+    RAGCardSyncStatus,
+    RAGChatMessage,
+    RAGChatRole,
+    RAGChatSession,
+    RAGContextType,
+    RAGCustomerCard,
+    RAGDocumentChunk,
+    RAGJobStatus,
+    RAGJobType,
+    RAGLLMModel,
+    RAGLLMModelType,
+    RAGSectionType,
+    RAGSyncStatus,
+)
+
+# --- Surya Training ---
+from app.db.models_surya_training import (  # noqa: E402, F401
+    BusinessDocumentProfile,
+    CoverageSnapshot,
+    SuryaABTest,
+    SuryaABTestStatus,
+    SuryaBenchmarkHistory,
+    SuryaModelStatus,
+    SuryaModelVersion,
+    SuryaTrainingRun,
+    SuryaTrainingRunStatus,
+)
+
+# Backward compatibility: Activity notification version (MENTION, COMMENT_REPLY, etc.)
+# overwrites core version (INFO, SUCCESS, WARNING) - matches original models.py behavior
+NotificationType = ActivityNotificationType
+
+# --- Approval Extended (EscalationRule re-export) ---
+# --- AI/ML Intelligence ---
+from app.db.models_ai_ml import (  # noqa: E402, F401
+    AIConfidenceThreshold,
+    AIDecision,
+    AILearningFeedback,
+    AutonomousProposalQueue,
+    AutonomousTrustConfig,
+    DocumentMatch,
+    PaymentPrediction,
+)
+from app.db.models_approval_extended import EscalationRule  # noqa: E402, F401
+
+# --- ERP & Import ---
+from app.db.models_erp_import import (  # noqa: E402, F401
+    EmailImportConfig,
+    ERPConflict,
+    ERPConflictResolution,
+    ERPConflictStatus,
+    ERPConnection,
+    ERPConnectionStatus,
+    ERPEntityMapping,
+    ERPEntityType,
+    ERPFieldMapping,
+    ERPSyncDirection,
+    ERPSyncHistory,
+    ERPSyncStatus,
+    ERPType,
+    FolderImportConfig,
+    ImportLog,
+    ImportRule,
+    OdooAIFeedback,
+    OdooSyncStatus,
+    OdooWebhookEvent,
+)
+
+# --- Slack & Shipment Integration ---
+from app.db.models_integration import (  # noqa: E402, F401
+    Shipment,
+    ShipmentCarrier,
+    ShipmentDirection,
+    ShipmentEvent,
+    ShipmentStatusEnum,
+    SlackChannel,
+    SlackChannelType,
+    SlackMessageLog,
+    SlackMessageStatus,
+    SlackUserMapping,
+)
+
+# --- Diverse System-Modelle ---
+from app.db.models_misc import (  # noqa: E402, F401
+    AIEthicsAudit,
+    AnnotationType,
+    AppConfig,
+    BiasReport,
+    CompanyHealthSnapshot,
+    CompanySettings,
+    DocumentAnnotation,
+    DocumentEntityLink,
+    DomainEvent,
+    EventSnapshot,
+    ExternalEnrichmentResult,
+    GraphEdge,
+    LifeEvent,
+    LifeEventStatus,
+    LifeEventType,
+    MerkleTreeNode,
+    NLQQueryLog,
+    RiskScoreHistory,
+    SavedFilter,
+    SmartInboxItem,
+    SmartInboxItemSource,
+    SmartInboxItemStatus,
+    UserBehaviorLog,
+    ZeroTouchResult,
+)
+
+# --- Privat Contracts (Vertragsmanagement) ---
+from app.db.models_privat_contracts import (  # noqa: E402, F401
+    PrivatContract,
+    PrivatContractCategory,
+    PrivatContractReminder,
+    PrivatContractStatus,
+)
+
+# --- Privat Enterprise (KPI, Goals, Approvals) ---
+from app.db.models_privat_enterprise import (  # noqa: E402, F401
+    ApprovalDelegation,
+    ApprovalPriority,
+    ApprovalRequest,
+    ApprovalRule,
+    ApprovalRuleType,
+    ApprovalStatus,
+    ApprovalStep,
+    CoverageGapSeverity,
+    CoverageGapType,
+    EventLog,
+    FinancialGoal,
+    FinancialGoalContribution,
+    FinancialGoalStatus,
+    FinancialGoalType,
+    KPIUnit,
+    LLMCache,
+    PortfolioSnapshot,
+    PrivatCoverageGap,
+    PrivatEarlyWarning,
+    PrivatKPIHistory,
+    PrivatProjection,
+    PrivatRecurringPayment,
+    PrivatTask,
+    PrivatThresholdAdjustment,
+    PrivatThresholdRecommendation,
+    PrivatUserProfile,
+    PrivatUserThreshold,
+    ProfessionType,
+    ProjectionMethod,
+    RecurringPaymentCategory,
+    RecurringPaymentFrequency,
+    RiskProfile,
+    TrendDirection,
+    WarningSeverity,
+    WarningType,
+)
+
+# --- Reports ---
+from app.db.models_report import (  # noqa: E402, F401
+    ReportChart,
+    ReportColumn,
+    ReportExecution,
+    ReportFilter,
+    ReportShare,
+    ReportTemplate,
+)
+
+# --- Templates & Knowledge Base ---
+from app.db.models_template_knowledge import (  # noqa: E402, F401
+    ContentFormat,
+    DocumentTemplate,
+    GeneratedDocument,
+    KnowledgeChecklist,
+    KnowledgeChecklistItem,
+    KnowledgeLink,
+    KnowledgeLinkType,
+    KnowledgeNote,
+    KnowledgeTag,
+    LinkableType,
+    NoteType,
+    TemplateCategory,
+    TemplateOutputFormat,
+    TemplateSnippet,
+    VariableType,
+)
+
+# --- Workflows ---
+from app.db.models_workflow import (  # noqa: E402, F401
+    Workflow,
+    WorkflowExecution,
+    WorkflowStep,
+    WorkflowStepExecution,
+)
+
+# Aliases for backward compatibility
+Comment = DocumentComment
+# Import additional model modules to ensure they are discovered by SQLAlchemy/Alembic
+# Phase 6: PSD2/FinTS Banking Integration
+# Ensure cross-referencing satellite models are all loaded before configure_mappers()
+from app.db.models_alert import Alert, AlertCategory, AlertRule, AlertSeverity  # noqa: F401
+from app.db.models_approval_matrix import (  # noqa: F401
+    ApprovalAuditLog,
+    ApprovalChainTemplate,
+    ApprovalGroup,
+    ApprovalGroupMember,
+    ApprovalMatrix,
+)
+from app.db.models_autonomy import (
+    AutonomyDecisionLog,
+    AutonomyMetrics,
+    AutonomySettings,
+    PendingAction,
+)
+from app.db.models_banking_connection import (
+    BankConnection,
+    BankSyncLog,
+    ConnectedBankAccount,
+    ImportedTransaction,
+    PaymentInitiation,
+    ReconciliationRule,
+    SupportedBank,
+    TransactionSplitAllocation,
+)
+
+# Batch 6: Satellite models from Batches 1-3 features
+from app.db.models_barcode import BarcodeDetection  # noqa: F401
+from app.db.models_contract import Contract  # noqa: F401
+from app.db.models_custom_fields import CustomFieldDefinition  # noqa: F401
+from app.db.models_delegation import Delegation  # noqa: F401
+
+# Phase 7: Enterprise Features (Feb 2026)
+from app.db.models_einvoice import (
+    EInvoiceTransmission,
+    IncomingEInvoice,
+    PeppolParticipant,
+)
+
+# Phase 1.4: Field-Level Encryption (DSGVO Art. 32)
+from app.db.models_encryption import EncryptedFieldMeta, KeyRotationLog  # noqa: F401
+from app.db.models_esg import (
+    ESGCarbonFootprint,
+    ESGCertification,
+    ESGGoal,
+    ESGReport,
+    ESGSupplierRating,
+)
+from app.db.models_fraud import FraudScanResult, IBANBaseline, IBANChangeRequest  # noqa: F401
+from app.db.models_fx import (
+    ExchangeRate,
+    FXGainLossEntry,
+)
+from app.db.models_gl_posting import (
+    GLAccount,
+    JournalEntry,
+    JournalEntryLine,
+    TaxPeriod,
+)
+from app.db.models_inventory import (  # noqa: F401
+    InventoryItem,
+    InventoryMovement,
+    StockLevel,
+    Warehouse,
+)
+from app.db.models_invoice import Invoice  # noqa: F401
+from app.db.models_notification_template import (
+    NotificationMessageTemplate,
+)
+from app.db.models_portal import (
+    PortalComplaint,
+    PortalDocument,
+    PortalMessage,
+    PortalPaymentConfirmation,
+    PortalSession,
+    PortalUser,
+)
+from app.db.models_workflow_stage import (
+    DocumentWorkflowItem,
+    WorkflowStage,
+)

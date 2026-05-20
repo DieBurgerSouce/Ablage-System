@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\text\datasets\uci_housing.py
+# hypothesis_version: 6.148.7
+
+[0.8, 'AGE', 'B', 'CHAS', 'CRIM', 'DIS', 'INDUS', 'LSTAT', 'NOX', 'PTRATIO', 'RAD', 'RM', 'TAX', 'ZN', 'test', 'train', 'uci_housing']

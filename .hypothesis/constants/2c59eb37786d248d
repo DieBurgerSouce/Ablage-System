@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\mobilenetv2.py
+# hypothesis_version: 6.148.7
+
+[0.2, 1.0, 160, 320, 1000, 1280, 'mobilenetv2_', 'mobilenetv2_1.0']

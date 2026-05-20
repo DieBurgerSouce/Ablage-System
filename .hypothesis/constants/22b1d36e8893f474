@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\io\matlab\_mio.py
+# hypothesis_version: 6.148.7
+
+['.mat', '4', '5', 'loadmat', 'r+', 'rb', 'read', 'row', 'savemat', 'variable_names', 'wax+', 'wb', 'whosmat', 'write']

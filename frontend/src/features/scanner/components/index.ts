@@ -1,0 +1,1 @@
+export { ScannerPage } from './ScannerPage'

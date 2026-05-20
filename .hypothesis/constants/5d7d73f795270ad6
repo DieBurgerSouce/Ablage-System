@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\backends\__init__.py
+# hypothesis_version: 6.148.7
+
+['build_expression', 'evaluate_constants', 'get_func', 'has_backend', 'has_einsum', 'has_tensordot', 'to_cupy', 'to_tensorflow', 'to_theano', 'to_torch']

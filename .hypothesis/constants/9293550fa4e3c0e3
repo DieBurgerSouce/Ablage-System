@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\moe_combine_no_weight.py
+# hypothesis_version: 6.148.7
+
+[1e-15, 'combine_weight', 'epsilon', 'scatter_index', 'x', 'y']

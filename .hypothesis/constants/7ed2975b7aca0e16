@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\cost\comm_op_cost.py
+# hypothesis_version: 6.148.7
+
+[1000.0, 144, 'X', 'all_gather', 'all_reduce', 'broadcast', 'c_allreduce_sum', 'c_identity', 'inputs', 'out', 'recv_v2', 'send_v2', 'x']

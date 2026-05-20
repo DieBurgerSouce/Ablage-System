@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\decomposition.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.125, 0.3333333333333333, 1.0, 10.0, '_P', '_T', 'cpu', 'decompose_addmm', 'decompose_bmm', 'decompose_mm', 'dtype', 'duplicate decomp: %s', 'inductor', 'little', 'mean', 'mps', 'nan']

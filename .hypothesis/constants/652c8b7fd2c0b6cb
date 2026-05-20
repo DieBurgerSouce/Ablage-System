@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\regularizer.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'L1Decay', 'L2Decay', 'Out', 'X', 'scale', 'sign']

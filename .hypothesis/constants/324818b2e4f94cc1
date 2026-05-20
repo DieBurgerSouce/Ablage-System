@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\text_image_aug\__init__.py
+# hypothesis_version: 6.148.7
+
+['tia_distort', 'tia_perspective', 'tia_stretch']

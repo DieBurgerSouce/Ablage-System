@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\serialization.py
+# hypothesis_version: 6.148.7
+
+['+00:00', '0', '1', 'Z', '__module__', '__traceback__', 'args', 'create_exception_cls', 'false', 'get_pickleable_etype', 'no', 'off', 'on', 'strtobool', 'subclass_exception', 'true', 'yes']

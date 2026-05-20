@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\entity.py
+# hypothesis_version: 6.148.7
+
+[', ', 'Exchange', 'Exchange {}({})', 'Queue', '[{}]', 'alias', 'amq.', 'arguments', 'auto_delete', 'binding', 'binding_arguments', 'binding_key', 'bindings', 'consumer_arguments', 'content_encoding', 'delivery_mode', 'direct', 'durable', 'exchange', 'exchange_arguments', 'exchange_auto_delete', 'exchange_durable', 'exchange_type', 'exclusive', 'expires', 'max_length', 'max_length_bytes', 'max_priority', 'maybe_delivery_mode', 'message_to_python', 'message_ttl', 'name', 'no_ack', 'no_declare', 'passive', 'persistent', 'queue_arguments', 'queue_auto_delete', 'queue_durable', 'routing_key', 'transient', 'type', "u'", 'unbind_arguments', 'utf-8', 'x-expires', '{}->{}']

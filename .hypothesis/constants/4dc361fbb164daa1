@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\classes\coreviews.py
+# hypothesis_version: 6.148.7
+
+['AdjacencyView', 'AtlasView', 'FilterAdjacency', 'FilterAtlas', 'FilterMultiAdjacency', 'FilterMultiInner', 'MultiAdjacencyView', 'UnionAdjacency', 'UnionAtlas', 'UnionMultiAdjacency', 'UnionMultiInner', '_atlas', '_pred', '_succ', 'length', 'nodes']

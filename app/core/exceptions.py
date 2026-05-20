@@ -4,7 +4,78 @@ Structured error handling for production reliability
 Created: 2024-11-22
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.types import JSONDict
+
+
+class ErrorResponseSchema(BaseModel):
+    """Standardisiertes Fehler-Response-Schema für die OpenAPI-Dokumentation.
+
+    Alle API-Fehlerantworten folgen diesem Format.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "fehler": "Validierungsfehler",
+                "nachricht": "Die Anfrage konnte nicht verarbeitet werden",
+                "status_code": 400,
+                "fehler_code": "VAL_003",
+                "zeitstempel": "2026-02-15T12:00:00+00:00",
+                "pfad": "/api/v1/documents",
+            }
+        }
+    )
+
+    fehler: str = Field(
+        ...,
+        description="Kurze Fehlerbezeichnung (z.B. 'Validierungsfehler', 'GPU-Fehler')",
+        examples=["Validierungsfehler"],
+    )
+    nachricht: str = Field(
+        ...,
+        description="Detaillierte Beschreibung auf Deutsch für den Benutzer",
+        examples=["Die Anfrage konnte nicht verarbeitet werden"],
+    )
+    status_code: int = Field(
+        ...,
+        description="HTTP Status Code",
+        examples=[400],
+    )
+    fehler_code: Optional[str] = Field(
+        None,
+        description="Interner Fehlercode (z.B. 'E001', 'GPU_001', 'OCR_004'). "
+        "Siehe Fehlercode-Katalog unten.",
+        examples=["VAL_003"],
+    )
+    zeitstempel: str = Field(
+        ...,
+        description="ISO 8601 Zeitstempel des Fehlers",
+        examples=["2026-01-15T12:00:00+00:00"],
+    )
+    pfad: Optional[str] = Field(
+        None,
+        description="Request-Pfad, der den Fehler ausgeloest hat",
+        examples=["/api/v1/documents"],
+    )
+    request_id: Optional[str] = Field(
+        None,
+        description="Eindeutige Request-ID für verteiltes Tracing",
+        examples=["req-abc123"],
+    )
+    details: Optional[JSONDict] = Field(
+        None,
+        description="Zusätzliche technische Details (nur im DEBUG-Modus)",
+    )
+    retry_after: Optional[int] = Field(
+        None,
+        description="Sekunden bis zum nächsten Versuch (bei 429/503)",
+        examples=[60],
+    )
 
 
 class AblageSystemException(Exception):
@@ -14,7 +85,7 @@ class AblageSystemException(Exception):
         self,
         message: str,
         error_code: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[JSONDict] = None,
         user_message_de: Optional[str] = None
     ):
         super().__init__(message)
@@ -23,7 +94,7 @@ class AblageSystemException(Exception):
         self.details = details or {}
         self.user_message_de = user_message_de or message
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> JSONDict:
         """Convert exception to dictionary for API responses"""
         return {
             "error_code": self.error_code,
@@ -31,6 +102,43 @@ class AblageSystemException(Exception):
             "user_message_de": self.user_message_de,
             "details": self.details
         }
+
+
+# Generic HTTP-Style Exceptions
+class NotFoundError(AblageSystemException):
+    """Resource not found error"""
+
+    def __init__(self, message: str = "Ressource nicht gefunden", details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="E404",
+            details=details,
+            user_message_de=message
+        )
+
+
+class ForbiddenError(AblageSystemException):
+    """Access forbidden error"""
+
+    def __init__(self, message: str = "Zugriff verweigert", details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="E403",
+            details=details,
+            user_message_de=message
+        )
+
+
+class ValidationError(AblageSystemException):
+    """Input validation error"""
+
+    def __init__(self, message: str = "Validierungsfehler", details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="E400",
+            details=details,
+            user_message_de=message
+        )
 
 
 # GPU-Related Exceptions
@@ -45,7 +153,7 @@ class GPUOutOfMemoryError(GPUException):
     def __init__(self, message: str, required_gb: float, available_gb: float):
         super().__init__(
             message=message,
-            error_code="E001",
+            error_code="GPU_001",
             details={
                 "required_gb": required_gb,
                 "available_gb": available_gb
@@ -60,7 +168,7 @@ class GPUNotAvailableError(GPUException):
     def __init__(self, reason: str):
         super().__init__(
             message=f"GPU not available: {reason}",
-            error_code="E002",
+            error_code="GPU_002",
             details={"reason": reason},
             user_message_de=f"GPU nicht verfügbar: {reason}"
         )
@@ -78,7 +186,7 @@ class OCRProcessingError(OCRException):
     def __init__(self, document_id: str, backend: str, reason: str):
         super().__init__(
             message=f"OCR failed for document {document_id} with {backend}: {reason}",
-            error_code="E004",
+            error_code="OCR_004",
             details={
                 "document_id": document_id,
                 "backend": backend,
@@ -94,7 +202,7 @@ class OCRBackendTimeoutError(OCRException):
     def __init__(self, backend: str, timeout_seconds: int):
         super().__init__(
             message=f"OCR backend {backend} timed out after {timeout_seconds}s",
-            error_code="E004",
+            error_code="OCR_001",
             details={
                 "backend": backend,
                 "timeout_seconds": timeout_seconds
@@ -103,13 +211,63 @@ class OCRBackendTimeoutError(OCRException):
         )
 
 
+class InferenceTimeoutError(OCRException):
+    """OCR inference timed out during generation"""
+
+    def __init__(self, backend: str, timeout_seconds: float, document_id: Optional[str] = None):
+        super().__init__(
+            message=f"Inference timed out for {backend} after {timeout_seconds}s",
+            error_code="OCR_001",
+            details={
+                "backend": backend,
+                "timeout_seconds": timeout_seconds,
+                "document_id": document_id,
+                "fallback_available": True
+            },
+            user_message_de=f"OCR-Inferenz Timeout nach {timeout_seconds:.0f}s"
+        )
+        self.backend = backend
+        self.timeout_seconds = timeout_seconds
+        self.document_id = document_id
+
+
+class OCRGPUOutOfMemoryError(OCRException):
+    """GPU out of memory during OCR processing - signals fallback availability"""
+
+    def __init__(
+        self,
+        backend: str,
+        document_id: Optional[str] = None,
+        required_gb: Optional[float] = None,
+        available_gb: Optional[float] = None,
+        fallback_backends: Optional[list] = None
+    ):
+        fallback_backends = fallback_backends or ["surya"]
+        super().__init__(
+            message=f"GPU OOM in {backend}. Fallback backends available: {fallback_backends}",
+            error_code="GPU_001",
+            details={
+                "backend": backend,
+                "document_id": document_id,
+                "required_gb": required_gb,
+                "available_gb": available_gb,
+                "fallback_available": True,
+                "fallback_backends": fallback_backends
+            },
+            user_message_de=f"GPU-Speicher erschöpft bei {backend}. Fallback verfügbar."
+        )
+        self.backend = backend
+        self.document_id = document_id
+        self.fallback_backends = fallback_backends
+
+
 class BackendSelectionError(OCRException):
     """Failed to select appropriate OCR backend"""
 
     def __init__(self, reason: str):
         super().__init__(
             message=f"Backend selection failed: {reason}",
-            error_code="E010",
+            error_code="OCR_002",
             details={"reason": reason},
             user_message_de="Kein geeignetes OCR-System verfügbar"
         )
@@ -127,7 +285,7 @@ class InvalidGermanEncodingError(GermanTextException):
     def __init__(self, text_sample: str):
         super().__init__(
             message=f"Invalid German encoding detected in: {text_sample[:50]}...",
-            error_code="E003",
+            error_code="OCR_003",
             details={"text_sample": text_sample[:100]},
             user_message_de="Ungültige Textcodierung erkannt (Umlaute fehlerhaft)"
         )
@@ -145,7 +303,7 @@ class DocumentNotFoundError(DocumentException):
     def __init__(self, document_id: str):
         super().__init__(
             message=f"Document not found: {document_id}",
-            error_code="E007",
+            error_code="DOC_003",
             details={"document_id": document_id},
             user_message_de="Dokument nicht gefunden"
         )
@@ -157,7 +315,7 @@ class InvalidDocumentFormatError(DocumentException):
     def __init__(self, filename: str, format_detected: str):
         super().__init__(
             message=f"Invalid document format: {format_detected} in {filename}",
-            error_code="E007",
+            error_code="VAL_001",
             details={
                 "filename": filename,
                 "format_detected": format_detected
@@ -172,7 +330,7 @@ class FileSizeExceededError(DocumentException):
     def __init__(self, size_mb: float, max_size_mb: float):
         super().__init__(
             message=f"File size {size_mb:.1f}MB exceeds limit of {max_size_mb:.1f}MB",
-            error_code="E008",
+            error_code="VAL_002",
             details={
                 "size_mb": size_mb,
                 "max_size_mb": max_size_mb
@@ -193,7 +351,7 @@ class DatabaseConnectionError(DatabaseException):
     def __init__(self, reason: str):
         super().__init__(
             message=f"Database connection failed: {reason}",
-            error_code="E005",
+            error_code="DB_001",
             details={"reason": reason},
             user_message_de="Datenbankverbindung fehlgeschlagen"
         )
@@ -211,7 +369,7 @@ class GDPRViolationError(ComplianceException):
     def __init__(self, violation_type: str, details: str):
         super().__init__(
             message=f"GDPR violation: {violation_type} - {details}",
-            error_code="E009",
+            error_code="GDPR_001",
             details={
                 "violation_type": violation_type,
                 "violation_details": details
@@ -223,10 +381,10 @@ class GDPRViolationError(ComplianceException):
 class GDPRError(ComplianceException):
     """General GDPR operation error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
-            error_code="E011",
+            error_code="GDPR_002",
             details=details or {},
             user_message_de=message
         )
@@ -238,7 +396,7 @@ class UserNotFoundError(AblageSystemException):
     def __init__(self, user_id: str):
         super().__init__(
             message=f"User not found: {user_id}",
-            error_code="E012",
+            error_code="AUTH_002",
             details={"user_id": user_id},
             user_message_de="Benutzer nicht gefunden"
         )
@@ -247,10 +405,10 @@ class UserNotFoundError(AblageSystemException):
 class ExportError(AblageSystemException):
     """Data export operation error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
-            error_code="E013",
+            error_code="DOC_002",
             details=details or {},
             user_message_de=message
         )
@@ -259,34 +417,821 @@ class ExportError(AblageSystemException):
 class EmailVerificationError(AblageSystemException):
     """Email verification operation error"""
 
-    def __init__(self, message: str, user_message_de: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, user_message_de: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
-            error_code="E014",
+            error_code="AUTH_003",
             details=details or {},
             user_message_de=user_message_de
         )
 
 
-# Error Code Registry (from ERROR_PATTERNS.md)
-ERROR_CODE_REGISTRY = {
-    "E001": "GPU Out of Memory",
-    "E002": "GPU Not Available",
-    "E003": "Invalid German Text Encoding",
-    "E004": "OCR Backend Timeout",
-    "E005": "Database Connection Failed",
-    "E006": "Redis Connection Failed",
-    "E007": "Document Format Invalid",
-    "E008": "File Size Exceeded",
-    "E009": "GDPR Violation Detected",
-    "E010": "Backend Selection Failed",
-    "E011": "GDPR Operation Error",
-    "E012": "User Not Found",
-    "E013": "Data Export Error",
-    "E014": "Email Verification Error"
+# ==================== Storage Exceptions (E015) ====================
+
+class StorageError(AblageSystemException):
+    """Base class for storage-related errors (MinIO/S3)"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="STOR_001",
+            details=details or {},
+            user_message_de="Speicherfehler aufgetreten"
+        )
+
+
+class S3UploadError(StorageError):
+    """S3/MinIO upload failed"""
+
+    def __init__(self, bucket: str, key: str, reason: str):
+        super().__init__(
+            message=f"Failed to upload to {bucket}/{key}: {reason}",
+            details={
+                "bucket": bucket,
+                "key": key,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Upload fehlgeschlagen: {reason}"
+
+
+class BucketNotFoundError(StorageError):
+    """S3/MinIO bucket not found"""
+
+    def __init__(self, bucket: str):
+        super().__init__(
+            message=f"Bucket not found: {bucket}",
+            details={"bucket": bucket}
+        )
+        self.user_message_de = f"Speicher-Bucket nicht gefunden: {bucket}"
+
+
+class StorageQuotaExceededError(StorageError):
+    """Storage quota exceeded"""
+
+    def __init__(self, used_gb: float, quota_gb: float):
+        super().__init__(
+            message=f"Storage quota exceeded: {used_gb:.1f}GB used of {quota_gb:.1f}GB",
+            details={
+                "used_gb": used_gb,
+                "quota_gb": quota_gb
+            }
+        )
+        self.user_message_de = f"Speicherkontingent erschöpft: {used_gb:.1f}GB von {quota_gb:.1f}GB genutzt"
+
+
+# ==================== Webhook Exceptions (E016) ====================
+
+class WebhookError(AblageSystemException):
+    """Base class for webhook-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="NET_002",
+            details=details or {},
+            user_message_de="Webhook-Fehler aufgetreten"
+        )
+
+
+class WebhookDeliveryError(WebhookError):
+    """Webhook delivery failed after retries"""
+
+    def __init__(self, webhook_id: str, url: str, status_code: int, retries: int):
+        super().__init__(
+            message=f"Webhook delivery failed to {url}: HTTP {status_code} after {retries} retries",
+            details={
+                "webhook_id": webhook_id,
+                "url": url,
+                "status_code": status_code,
+                "retries": retries
+            }
+        )
+        self.user_message_de = f"Webhook-Zustellung fehlgeschlagen (HTTP {status_code})"
+
+
+class WebhookValidationError(WebhookError):
+    """Webhook URL or payload validation failed"""
+
+    def __init__(self, reason: str):
+        super().__init__(
+            message=f"Webhook validation failed: {reason}",
+            details={"reason": reason}
+        )
+        self.user_message_de = f"Webhook-Validierung fehlgeschlagen: {reason}"
+
+
+# ==================== Backup Exceptions (E017) ====================
+
+class BackupError(AblageSystemException):
+    """Base class for backup-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="ARCH_001",
+            details=details or {},
+            user_message_de="Backup-Fehler aufgetreten"
+        )
+
+
+class BackupCreationError(BackupError):
+    """Backup creation failed"""
+
+    def __init__(self, backup_type: str, reason: str):
+        super().__init__(
+            message=f"Backup creation failed for {backup_type}: {reason}",
+            details={
+                "backup_type": backup_type,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Backup-Erstellung fehlgeschlagen: {reason}"
+
+
+class BackupRestoreError(BackupError):
+    """Backup restoration failed"""
+
+    def __init__(self, backup_id: str, reason: str):
+        super().__init__(
+            message=f"Backup restore failed for {backup_id}: {reason}",
+            details={
+                "backup_id": backup_id,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Backup-Wiederherstellung fehlgeschlagen: {reason}"
+
+
+# ==================== ML/AI Exceptions (E018) ====================
+
+class MLError(AblageSystemException):
+    """Base class for ML/AI-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="ML_001",
+            details=details or {},
+            user_message_de="ML-Verarbeitungsfehler aufgetreten"
+        )
+
+
+class DriftDetectionError(MLError):
+    """Model drift detection failed"""
+
+    def __init__(self, model_name: str, reason: str):
+        super().__init__(
+            message=f"Drift detection failed for model {model_name}: {reason}",
+            details={
+                "model_name": model_name,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Modell-Drift-Erkennung fehlgeschlagen: {reason}"
+
+
+class ModelLoadError(MLError):
+    """ML model loading failed"""
+
+    def __init__(self, model_name: str, reason: str):
+        super().__init__(
+            message=f"Failed to load model {model_name}: {reason}",
+            details={
+                "model_name": model_name,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Modell konnte nicht geladen werden: {reason}"
+
+
+# ==================== Search Exceptions (E019) ====================
+
+class SearchError(AblageSystemException):
+    """Base class for search-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="ML_002",
+            details=details or {},
+            user_message_de="Suchfehler aufgetreten"
+        )
+
+
+class SearchIndexError(SearchError):
+    """Search index operation failed"""
+
+    def __init__(self, index_name: str, operation: str, reason: str):
+        super().__init__(
+            message=f"Search index {operation} failed for {index_name}: {reason}",
+            details={
+                "index_name": index_name,
+                "operation": operation,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Suchindex-Operation fehlgeschlagen: {reason}"
+
+
+class SearchQueryError(SearchError):
+    """Search query parsing or execution failed"""
+
+    def __init__(self, query: str, reason: str):
+        super().__init__(
+            message=f"Search query failed: {reason}",
+            details={
+                "query": query[:100] if query else "",  # Truncate for safety
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Suchanfrage fehlgeschlagen: {reason}"
+
+
+# ==================== Embedding Exceptions (E020) ====================
+
+class EmbeddingError(AblageSystemException):
+    """Base class for embedding-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="ML_003",
+            details=details or {},
+            user_message_de="Embedding-Fehler aufgetreten"
+        )
+
+
+class EmbeddingGenerationError(EmbeddingError):
+    """Embedding generation failed"""
+
+    def __init__(self, document_id: str, reason: str):
+        super().__init__(
+            message=f"Embedding generation failed for document {document_id}: {reason}",
+            details={
+                "document_id": document_id,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Embedding-Erzeugung fehlgeschlagen: {reason}"
+
+
+class EmbeddingDimensionMismatchError(EmbeddingError):
+    """Embedding dimension mismatch"""
+
+    def __init__(self, expected: int, actual: int):
+        super().__init__(
+            message=f"Embedding dimension mismatch: expected {expected}, got {actual}",
+            details={
+                "expected_dimension": expected,
+                "actual_dimension": actual
+            }
+        )
+        self.user_message_de = f"Embedding-Dimensionen stimmen nicht überein"
+
+
+# ==================== Notification Exceptions (E021) ====================
+
+class NotificationError(AblageSystemException):
+    """Base class for notification-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="NOTIF_001",
+            details=details or {},
+            user_message_de="Benachrichtigungsfehler aufgetreten"
+        )
+
+
+class NotificationDeliveryError(NotificationError):
+    """Notification delivery failed"""
+
+    def __init__(self, notification_type: str, recipient: str, reason: str):
+        super().__init__(
+            message=f"Notification delivery failed to {recipient}: {reason}",
+            details={
+                "notification_type": notification_type,
+                "recipient": recipient,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Benachrichtigung konnte nicht zugestellt werden: {reason}"
+
+
+class NotificationConfigError(NotificationError):
+    """Notification configuration error"""
+
+    def __init__(self, channel: str, reason: str):
+        super().__init__(
+            message=f"Notification config error for {channel}: {reason}",
+            details={
+                "channel": channel,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Benachrichtigungskonfiguration fehlerhaft: {reason}"
+
+
+# ==================== Authentication Exceptions (E022) ====================
+
+class AuthenticationError(AblageSystemException):
+    """Base class for authentication-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="AUTH_001",
+            details=details or {},
+            user_message_de="Authentifizierungsfehler"
+        )
+
+
+class InvalidCredentialsError(AuthenticationError):
+    """Invalid username or password"""
+
+    def __init__(self):
+        super().__init__(
+            message="Invalid credentials provided",
+            details={}
+        )
+        self.user_message_de = "Ungültige Anmeldedaten"
+
+
+class TokenExpiredError(AuthenticationError):
+    """JWT token has expired"""
+
+    def __init__(self):
+        super().__init__(
+            message="Token has expired",
+            details={}
+        )
+        self.user_message_de = "Sitzung abgelaufen. Bitte erneut anmelden."
+
+
+class InsufficientPermissionsError(AuthenticationError):
+    """User lacks required permissions"""
+
+    def __init__(self, required_permission: str):
+        super().__init__(
+            message=f"Insufficient permissions: {required_permission} required",
+            details={"required_permission": required_permission}
+        )
+        self.user_message_de = f"Fehlende Berechtigung: {required_permission}"
+
+
+# ==================== GoBD/Archive Exceptions (E024) ====================
+
+class ArchiveError(AblageSystemException):
+    """Base class for archive-related errors"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="ARCH_002",
+            details=details or {},
+            user_message_de="Archivierungsfehler aufgetreten"
+        )
+
+
+class VerificationError(ArchiveError):
+    """Document verification failed - integrity compromised"""
+
+    def __init__(self, document_id: str, expected_hash: str, actual_hash: str):
+        super().__init__(
+            message=f"Document verification failed for {document_id}: hash mismatch",
+            details={
+                "document_id": document_id,
+                "expected_hash": expected_hash[:16] + "...",
+                "actual_hash": actual_hash[:16] + "..."
+            }
+        )
+        self.user_message_de = "Dokumentverifikation fehlgeschlagen - Integrität möglicherweise kompromittiert"
+
+
+class ImmutabilityViolationError(ArchiveError):
+    """Attempt to modify an archived (immutable) document"""
+
+    def __init__(self, document_id: str):
+        super().__init__(
+            message=f"Immutability violation: Document {document_id} is archived and cannot be modified",
+            details={"document_id": document_id}
+        )
+        self.user_message_de = "Änderung nicht möglich: Dokument ist revisionssicher archiviert (GoBD)"
+
+
+class RetentionPolicyError(ArchiveError):
+    """Retention policy violation"""
+
+    def __init__(self, document_id: str, retention_expires_at: str, reason: str):
+        super().__init__(
+            message=f"Retention policy violation for {document_id}: {reason}",
+            details={
+                "document_id": document_id,
+                "retention_expires_at": retention_expires_at,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Aufbewahrungsfrist-Verletzung: {reason}"
+
+
+# ==================== Parsing Exceptions (E025) ====================
+
+class ParsingException(AblageSystemException):
+    """Base class for parsing-related errors (amounts, dates, VAT rates)"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="PARSE_001",
+            details=details or {},
+            user_message_de="Parsing-Fehler aufgetreten"
+        )
+
+
+class AmountParsingError(ParsingException):
+    """Failed to parse monetary amount from text"""
+
+    def __init__(self, raw_value: str, reason: str):
+        super().__init__(
+            message=f"Failed to parse amount from '{raw_value}': {reason}",
+            details={
+                "raw_value": raw_value[:100] if raw_value else "",
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Betrag konnte nicht geparst werden: {reason}"
+        self.raw_value = raw_value
+        self.reason = reason
+
+
+class DateParsingError(ParsingException):
+    """Failed to parse date from text"""
+
+    def __init__(self, raw_value: str, reason: str, expected_formats: Optional[list[str]] = None):
+        super().__init__(
+            message=f"Failed to parse date from '{raw_value}': {reason}",
+            details={
+                "raw_value": raw_value[:100] if raw_value else "",
+                "reason": reason,
+                "expected_formats": expected_formats or ["DD.MM.YYYY", "YYYY-MM-DD"]
+            }
+        )
+        self.user_message_de = f"Datum konnte nicht geparst werden: {reason}"
+        self.raw_value = raw_value
+        self.reason = reason
+
+
+class VATRateParsingError(ParsingException):
+    """Failed to parse VAT rate from text"""
+
+    def __init__(self, raw_value: str, reason: str):
+        super().__init__(
+            message=f"Failed to parse VAT rate from '{raw_value}': {reason}",
+            details={
+                "raw_value": raw_value[:100] if raw_value else "",
+                "reason": reason,
+                "valid_rates": ["0%", "7%", "19%"]
+            }
+        )
+        self.user_message_de = f"MwSt-Satz konnte nicht geparst werden: {reason}"
+        self.raw_value = raw_value
+        self.reason = reason
+
+
+# ==================== Metrics/Cache Exceptions (E026) ====================
+
+class MetricsRecordingError(AblageSystemException):
+    """Non-critical error when recording metrics fails"""
+
+    def __init__(self, metric_name: str, reason: str):
+        super().__init__(
+            message=f"Failed to record metric '{metric_name}': {reason}",
+            error_code="CACHE_002",
+            details={
+                "metric_name": metric_name,
+                "reason": reason
+            },
+            user_message_de="Metrik-Aufzeichnung fehlgeschlagen"
+        )
+        self.metric_name = metric_name
+
+
+class CacheOperationError(AblageSystemException):
+    """Non-critical error when cache operation fails"""
+
+    def __init__(self, operation: str, key: str, reason: str):
+        super().__init__(
+            message=f"Cache {operation} failed for key '{key}': {reason}",
+            error_code="CACHE_001",
+            details={
+                "operation": operation,
+                "cache_key": key[:100] if key else "",
+                "reason": reason
+            },
+            user_message_de="Cache-Operation fehlgeschlagen"
+        )
+        self.operation = operation
+        self.cache_key = key
+
+
+# ==================== Rate Limiting Exceptions (E023) ====================
+
+class RateLimitError(AblageSystemException):
+    """Base class for rate limiting errors"""
+
+    def __init__(self, message: str, retry_after: int, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="AUTH_004",
+            details={**(details or {}), "retry_after_seconds": retry_after},
+            user_message_de=f"Ratenlimit erreicht. Bitte in {retry_after} Sekunden erneut versuchen."
+        )
+        self.retry_after = retry_after
+
+
+class ConflictError(AblageSystemException):
+    """Resource conflict (duplicate) error"""
+
+    def __init__(self, message: str = "Ressource existiert bereits", details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="E409",
+            details=details,
+            user_message_de=message
+        )
+
+
+class ServiceUnavailableError(AblageSystemException):
+    """Backend service unavailable error"""
+
+    def __init__(self, message: str = "Service nicht verfuegbar", retry_after: Optional[int] = None, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="E503",
+            details={**(details or {}), **({"retry_after_seconds": retry_after} if retry_after else {})},
+            user_message_de=message
+        )
+        self.retry_after = retry_after
+
+
+# ==================== Security Exceptions (SEC) ====================
+
+class VaultException(AblageSystemException):
+    """Vault secret management error"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="SEC_001",
+            details=details or {},
+            user_message_de="Secrets-Management-Fehler"
+        )
+
+
+class CertificateRotationError(AblageSystemException):
+    """Certificate rotation error"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="SEC_002",
+            details=details or {},
+            user_message_de="Zertifikat-Rotationsfehler"
+        )
+
+
+# ==================== Pipeline Exceptions (PIPE) ====================
+
+class PipelineException(AblageSystemException):
+    """Zero-Touch Pipeline processing error"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="PIPE_001",
+            details=details or {},
+            user_message_de="Pipeline-Verarbeitungsfehler"
+        )
+
+
+class MatchingKontierungError(AblageSystemException):
+    """Matching/Kontierung processing error"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="PIPE_002",
+            details=details or {},
+            user_message_de="Matching/Kontierungs-Fehler"
+        )
+
+
+# =============================================================================
+# ERROR CODE REGISTRY (Enterprise Standard Format: [DOMAIN]_[NUMBER])
+# =============================================================================
+# Domain prefixes:
+#   GPU_  - GPU/CUDA related errors
+#   OCR_  - OCR processing errors
+#   VAL_  - Validation errors
+#   AUTH_ - Authentication/Authorization errors
+#   DB_   - Database errors
+#   STOR_ - Storage/MinIO errors
+#   NET_  - Network/Redis errors
+#   GDPR_ - GDPR/Compliance errors
+#   DOC_  - Document processing errors
+#   ML_   - ML/AI errors
+#   NOTIF_- Notification errors
+#   ARCH_ - Archive/Backup errors
+
+ERROR_CODE_REGISTRY: dict[str, str] = {
+    # GPU Domain
+    "GPU_001": "GPU Out of Memory",
+    "GPU_002": "GPU Not Available",
+    "GPU_003": "CUDA Initialization Failed",
+
+    # OCR Domain
+    "OCR_001": "OCR Backend Timeout",
+    "OCR_002": "Backend Selection Failed",
+    "OCR_003": "Invalid German Text Encoding",
+    "OCR_004": "OCR Processing Failed",
+
+    # Validation Domain
+    "VAL_001": "Document Format Invalid",
+    "VAL_002": "File Size Exceeded",
+    "VAL_003": "Input Validation Failed",
+
+    # Authentication Domain
+    "AUTH_001": "Authentication Failed",
+    "AUTH_002": "User Not Found",
+    "AUTH_003": "Email Verification Error",
+    "AUTH_004": "Rate Limit Exceeded",
+    "AUTH_005": "Token Expired",
+
+    # Database Domain
+    "DB_001": "Database Connection Failed",
+    "DB_002": "Query Timeout",
+    "DB_003": "Transaction Failed",
+
+    # Storage Domain
+    "STOR_001": "Storage Error (MinIO/S3)",
+    "STOR_002": "File Upload Failed",
+    "STOR_003": "File Not Found",
+
+    # Network Domain
+    "NET_001": "Redis Connection Failed",
+    "NET_002": "Webhook Error",
+    "NET_003": "External API Error",
+
+    # GDPR/Compliance Domain
+    "GDPR_001": "GDPR Violation Detected",
+    "GDPR_002": "GDPR Operation Error",
+    "GDPR_003": "Data Retention Violation",
+
+    # Document Domain
+    "DOC_001": "Document Processing Failed",
+    "DOC_002": "Data Export Error",
+    "DOC_003": "Document Not Found",
+
+    # ML/AI Domain
+    "ML_001": "ML/AI Processing Error",
+    "ML_002": "Search Error",
+    "ML_003": "Embedding Error",
+    "ML_004": "Model Loading Failed",
+
+    # Notification Domain
+    "NOTIF_001": "Notification Error",
+    "NOTIF_002": "Email Delivery Failed",
+    "NOTIF_003": "Slack Integration Error",
+
+    # Archive Domain
+    "ARCH_001": "Backup Error",
+    "ARCH_002": "GoBD Archive Error",
+    "ARCH_003": "Restore Failed",
+
+    # Parsing Domain (E025)
+    "PARSE_001": "Amount Parsing Failed",
+    "PARSE_002": "Date Parsing Failed",
+    "PARSE_003": "VAT Rate Parsing Failed",
+    "PARSE_004": "Currency Parsing Failed",
+
+    # Metrics/Cache Domain (E026)
+    "CACHE_001": "Cache Operation Failed",
+    "CACHE_002": "Metrics Recording Failed",
+    "CACHE_003": "Redis Connection Pool Exhausted",
+
+    # Security Domain
+    "SEC_001": "Vault Secret Management Error",
+    "SEC_002": "Certificate Rotation Error",
+
+    # Pipeline Domain
+    "PIPE_001": "Pipeline Processing Error",
+    "PIPE_002": "Matching/Kontierung Error",
+
+    # Business Logic Domain
+    "BIZ_001": "Business Logic Error",
+
+    # HTTP Conflict/Unavailable
+    "E409": "Resource Conflict (Duplicate)",
+    "E503": "Service Unavailable",
+}
+
+# ==================== Business Logic Exceptions (E027) ====================
+
+class BusinessLogicError(AblageSystemException):
+    """Business logic validation or processing error"""
+
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
+        super().__init__(
+            message=message,
+            error_code="BIZ_001",
+            details=details or {},
+            user_message_de=message
+        )
+
+
+class EntityNotFoundError(BusinessLogicError):
+    """Business entity not found"""
+
+    def __init__(self, entity_type: str, entity_id: str):
+        super().__init__(
+            message=f"{entity_type} not found: {entity_id}",
+            details={
+                "entity_type": entity_type,
+                "entity_id": entity_id
+            }
+        )
+        self.user_message_de = f"{entity_type} nicht gefunden"
+
+
+class WorkflowError(BusinessLogicError):
+    """Workflow execution or validation error"""
+
+    def __init__(self, workflow_id: str, reason: str):
+        super().__init__(
+            message=f"Workflow error for {workflow_id}: {reason}",
+            details={
+                "workflow_id": workflow_id,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Workflow-Fehler: {reason}"
+
+
+class ScenarioError(BusinessLogicError):
+    """Scenario simulation error"""
+
+    def __init__(self, scenario_id: str, reason: str):
+        super().__init__(
+            message=f"Scenario error for {scenario_id}: {reason}",
+            details={
+                "scenario_id": scenario_id,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Szenario-Fehler: {reason}"
+
+
+# Legacy mapping for backward compatibility (DEPRECATED - use new codes)
+LEGACY_ERROR_CODE_MAP: dict[str, str] = {
+    "E001": "GPU_001",
+    "E002": "GPU_002",
+    "E003": "OCR_003",
+    "E004": "OCR_001",
+    "E005": "DB_001",
+    "E006": "NET_001",
+    "E007": "VAL_001",
+    "E008": "VAL_002",
+    "E009": "GDPR_001",
+    "E010": "OCR_002",
+    "E011": "GDPR_002",
+    "E012": "AUTH_002",
+    "E013": "DOC_002",
+    "E014": "AUTH_003",
+    "E015": "STOR_001",
+    "E016": "NET_002",
+    "E017": "ARCH_001",
+    "E018": "ML_001",
+    "E019": "ML_002",
+    "E020": "ML_003",
+    "E021": "NOTIF_001",
+    "E022": "AUTH_001",
+    "E023": "AUTH_004",
+    "E024": "ARCH_002",
+    "E025": "PARSE_001",
+    "E026": "CACHE_001",
+    "E027": "BIZ_001",
 }
 
 
 def get_error_description(error_code: str) -> str:
-    """Get human-readable error description"""
+    """Get human-readable error description.
+
+    Supports both new domain-based codes (GPU_001) and legacy codes (E001).
+    Legacy codes are automatically mapped to new format.
+    """
+    # Check if legacy code, map to new format
+    if error_code in LEGACY_ERROR_CODE_MAP:
+        error_code = LEGACY_ERROR_CODE_MAP[error_code]
+
     return ERROR_CODE_REGISTRY.get(error_code, "Unknown Error")

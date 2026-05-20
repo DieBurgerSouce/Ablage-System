@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\h5py\_hl\files.py
+# hypothesis_version: 6.148.7
+
+[b'h5py_in_memory_nonfile_%d', ', ', '/', '<Closed HDF5 file>', 'ASCII', 'a', 'aggregate', 'ascii', 'aws_region', 'backing_store', 'best-effort', 'core', 'direct', 'driver', 'earliest', 'false', 'family', 'fileobj', 'fsm', 'http', 'https', 'info', 'latest', 'locking', 'mpio', 'mpiposix', 'none', 'page', 'r', 'r+', 'read', 'replace', 'ros3', 's3', 'sec2', 'seek', 'session_token', 'split', 'stdio', 'true', 'unknown', 'utf8', 'v108', 'v110', 'v112', 'v114', 'v200', 'w', 'w-', 'win32', 'windows', 'x']

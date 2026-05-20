@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distribution\__init__.py
+# hypothesis_version: 6.148.7
+
+['Bernoulli', 'Beta', 'Binomial', 'Categorical', 'Cauchy', 'Chi2', 'ContinuousBernoulli', 'Dirichlet', 'Distribution', 'Exponential', 'ExponentialFamily', 'Gamma', 'Geometric', 'Gumbel', 'Independent', 'LKJCholesky', 'Laplace', 'LogNormal', 'Multinomial', 'MultivariateNormal', 'Normal', 'Poisson', 'StudentT', 'Uniform', 'kl_divergence', 'register_kl']

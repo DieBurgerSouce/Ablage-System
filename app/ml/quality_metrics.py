@@ -184,14 +184,16 @@ class OCRQualityCalculator:
     UMLAUTS = frozenset("äöüÄÖÜß")
 
     # Mapping für potenzielle OCR-Fehler bei Umlauten
+    # HINWEIS: Latin-1-Doppelkodierungen (z.B. "Ã¤") sind ABSICHTLICH —
+    # sie repräsentieren reale OCR-Korruptionsmuster zur Erkennung.
     UMLAUT_SUBSTITUTIONS = {
-        "ä": ["a", "ae", "Ã¤"],
-        "ö": ["o", "oe", "Ã¶"],
-        "ü": ["u", "ue", "Ã¼"],
-        "Ä": ["A", "Ae", "AE", "Ã„"],
-        "Ö": ["O", "Oe", "OE", "Ã–"],
-        "Ü": ["U", "Ue", "UE", "Ãœ"],
-        "ß": ["ss", "SS", "sz", "B", "Ã"],
+        "ä": ["a", "ae", "Ã¤"],  # Intentional Latin-1 double-encoding for OCR detection
+        "ö": ["o", "oe", "Ã¶"],  # Intentional Latin-1 double-encoding for OCR detection
+        "ü": ["u", "ue", "Ã¼"],  # Intentional Latin-1 double-encoding for OCR detection
+        "Ä": ["A", "Ae", "AE", "Ã„"],  # Intentional Latin-1 double-encoding for OCR detection
+        "Ö": ["O", "Oe", "OE", "Ã–"],  # Intentional Latin-1 double-encoding for OCR detection
+        "Ü": ["U", "Ue", "UE", "Ãœ"],  # Intentional Latin-1 double-encoding for OCR detection
+        "ß": ["ss", "SS", "sz", "B", "Ã"],  # Intentional Latin-1 double-encoding for OCR detection
     }
 
     def __init__(self) -> None:
@@ -735,6 +737,24 @@ def calculate_wer(reference: str, hypothesis: str) -> float:
 def calculate_metrics(reference: str, hypothesis: str) -> OCRQualityMetrics:
     """Berechne alle OCR-Qualitätsmetriken."""
     return get_quality_calculator().calculate_full_metrics(reference, hypothesis)
+
+
+# Alias für Backwards-Kompatibilität mit Tests
+calculate_quality_metrics = calculate_metrics
+
+
+def analyze_umlaut_accuracy(reference: str, hypothesis: str) -> UmlautAnalysis:
+    """
+    Analysiere Umlaut-Genauigkeit zwischen Referenz und OCR-Ergebnis.
+
+    Args:
+        reference: Referenztext (Ground Truth)
+        hypothesis: OCR-Ergebnis
+
+    Returns:
+        UmlautAnalysis mit Details zu Umlaut-Fehlern
+    """
+    return get_quality_calculator().calculate_umlaut_accuracy(reference, hypothesis)
 
 
 def compare_texts(reference: str, hypothesis: str) -> Dict[str, float]:

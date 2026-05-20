@@ -7,7 +7,7 @@ Provides system monitoring and status information for the admin dashboard:
 - Processing statistics
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 import asyncio
 
@@ -26,6 +26,7 @@ from app.db.schemas import (
     SystemDashboard,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_detail,  safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -55,12 +56,12 @@ class SystemStatusService:
             # Generate recommendations
             recommendations = []
             if memory_usage_percent > 85:
-                recommendations.append("VRAM-Auslastung kritisch hoch. Batch-Groesse reduzieren.")
+                recommendations.append("VRAM-Auslastung kritisch hoch. Batch-Größe reduzieren.")
             elif memory_usage_percent > 70:
                 recommendations.append("VRAM-Auslastung erhoet. Monitoring empfohlen.")
 
             if not status.get("available", False):
-                recommendations.append("GPU nicht verfuegbar. Fallback auf CPU aktiv.")
+                recommendations.append("GPU nicht verfügbar. Fallback auf CPU aktiv.")
 
             return GPUStatusAdmin(
                 available=status.get("available", False),
@@ -75,7 +76,7 @@ class SystemStatusService:
                 recommendations=recommendations,
             )
         except Exception as e:
-            logger.warning("gpu_status_failed", error=str(e))
+            logger.warning("gpu_status_failed", **safe_error_log(e))
             return GPUStatusAdmin(
                 available=False,
                 gpu_name=None,
@@ -98,7 +99,7 @@ class SystemStatusService:
         Returns:
             Queue status with job counts and timing
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Count jobs by status
@@ -203,26 +204,26 @@ class SystemStatusService:
         Returns:
             Health status for PostgreSQL
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         try:
             result = await db.execute(select(func.now()))
             _ = result.scalar()
-            latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+            latency_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
             return BackendHealthStatus(
                 name="PostgreSQL",
                 status="healthy",
                 latency_ms=latency_ms,
                 message="Verbindung erfolgreich",
-                last_check=datetime.utcnow(),
+                last_check=datetime.now(timezone.utc),
             )
         except Exception as e:
             return BackendHealthStatus(
                 name="PostgreSQL",
                 status="unhealthy",
                 latency_ms=None,
-                message=f"Fehler: {str(e)[:100]}",
-                last_check=datetime.utcnow(),
+                message=safe_error_detail(e, "Fehler: "),
+                last_check=datetime.now(timezone.utc),
             )
 
     @staticmethod
@@ -232,12 +233,12 @@ class SystemStatusService:
         Returns:
             Health status for Redis
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6380')
-            client = redis.from_url(redis_url)
+            # Verwende zentrale settings - REDIS_URL wird automatisch konstruiert
+            client = redis.from_url(settings.REDIS_URL)
             await client.ping()
-            latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+            latency_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
             await client.close()
 
             return BackendHealthStatus(
@@ -245,15 +246,15 @@ class SystemStatusService:
                 status="healthy",
                 latency_ms=latency_ms,
                 message="Verbindung erfolgreich",
-                last_check=datetime.utcnow(),
+                last_check=datetime.now(timezone.utc),
             )
         except Exception as e:
             return BackendHealthStatus(
                 name="Redis",
                 status="unhealthy",
                 latency_ms=None,
-                message=f"Fehler: {str(e)[:100]}",
-                last_check=datetime.utcnow(),
+                message=safe_error_detail(e, "Fehler: "),
+                last_check=datetime.now(timezone.utc),
             )
 
     @staticmethod
@@ -263,38 +264,37 @@ class SystemStatusService:
         Returns:
             Health status for MinIO
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         try:
             from minio import Minio
 
-            minio_endpoint = getattr(settings, 'MINIO_ENDPOINT', 'localhost:9000')
-            minio_access_key = getattr(settings, 'MINIO_ACCESS_KEY', 'minioadmin')
-            minio_secret_key = getattr(settings, 'MINIO_SECRET_KEY', 'minioadmin')
+            # Verwende zentrale settings statt getattr Fallbacks
+            minio_secret = settings.MINIO_SECRET_KEY.get_secret_value() if settings.MINIO_SECRET_KEY else ""
 
             client = Minio(
-                minio_endpoint,
-                access_key=minio_access_key,
-                secret_key=minio_secret_key,
-                secure=False,
+                settings.MINIO_ENDPOINT,
+                access_key=settings.MINIO_ACCESS_KEY,
+                secret_key=minio_secret,
+                secure=settings.MINIO_SECURE,
             )
             # Try to list buckets as health check
             _ = client.list_buckets()
-            latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+            latency_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
             return BackendHealthStatus(
                 name="MinIO",
                 status="healthy",
                 latency_ms=latency_ms,
                 message="Verbindung erfolgreich",
-                last_check=datetime.utcnow(),
+                last_check=datetime.now(timezone.utc),
             )
         except Exception as e:
             return BackendHealthStatus(
                 name="MinIO",
                 status="unhealthy",
                 latency_ms=None,
-                message=f"Fehler: {str(e)[:100]}",
-                last_check=datetime.utcnow(),
+                message=safe_error_detail(e, "Fehler: "),
+                last_check=datetime.now(timezone.utc),
             )
 
     @staticmethod
@@ -304,9 +304,10 @@ class SystemStatusService:
         Returns:
             Health status for Celery
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         try:
             from app.workers.celery_app import celery_app
+
 
             # Try to ping workers
             inspect = celery_app.control.inspect()
@@ -314,13 +315,13 @@ class SystemStatusService:
 
             if active:
                 worker_count = len(active)
-                latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+                latency_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
                 return BackendHealthStatus(
                     name="Celery",
                     status="healthy",
                     latency_ms=latency_ms,
                     message=f"{worker_count} Worker aktiv",
-                    last_check=datetime.utcnow(),
+                    last_check=datetime.now(timezone.utc),
                 )
             else:
                 return BackendHealthStatus(
@@ -328,15 +329,15 @@ class SystemStatusService:
                     status="unhealthy",
                     latency_ms=None,
                     message="Keine Worker gefunden",
-                    last_check=datetime.utcnow(),
+                    last_check=datetime.now(timezone.utc),
                 )
         except Exception as e:
             return BackendHealthStatus(
                 name="Celery",
                 status="unknown",
                 latency_ms=None,
-                message=f"Status unbekannt: {str(e)[:100]}",
-                last_check=datetime.utcnow(),
+                message=safe_error_detail(e, "Status unbekannt: "),
+                last_check=datetime.now(timezone.utc),
             )
 
     @staticmethod
@@ -393,7 +394,7 @@ class SystemStatusService:
         Returns:
             Processing statistics
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         hour_ago = now - timedelta(hours=1)
         lookback = now - timedelta(hours=hours)
@@ -551,7 +552,7 @@ class SystemStatusService:
             queue=queue,
             health=health,
             processing=stats,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     @staticmethod
@@ -570,5 +571,5 @@ class SystemStatusService:
                 return True
             return False
         except Exception as e:
-            logger.error("gpu_cache_clear_failed", error=str(e))
+            logger.error("gpu_cache_clear_failed", **safe_error_log(e))
             return False

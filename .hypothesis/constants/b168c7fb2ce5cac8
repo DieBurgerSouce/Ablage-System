@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\clip.py
+# hypothesis_version: 6.148.7
+
+[0.0, '.', 'Out', 'X', 'Y', '_clip', '_clip_value', '_scale', 'bfloat16', 'cast', 'clip', 'clip_by_norm', 'default_group', 'elementwise_mul', 'error_clip', 'float16', 'float32', 'float64', 'gradient_clip', 'gradient_clip_attr', 'in_dtype', 'max', 'max_norm', 'merge_selected_rows', 'min', 'mp_group', 'need_clip', 'no_fusion', 'op_namescope', 'op_role_var', 'optimizer', 'out_dtype', 'pp', 'sharding_group', 'squared_l2_norm', 'tmp', 'uint16', 'x']

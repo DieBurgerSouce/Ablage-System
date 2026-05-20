@@ -17,11 +17,12 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models import User
 from app.api.dependencies import get_current_active_user, get_db
 from app.services.batch_job_service import get_batch_job_service
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -65,8 +66,7 @@ class BatchJobResponse(BaseModel):
     total_processing_time_ms: Optional[int]
     result_summary: Optional[dict]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BatchJobListResponse(BaseModel):
@@ -130,6 +130,7 @@ async def create_batch_job(
             celery_task_id = result.id
         elif request.job_type == "embedding":
             from app.workers.tasks.embedding_tasks import batch_generate_embeddings
+
             result = batch_generate_embeddings.apply_async(
                 kwargs={
                     "document_ids": [str(doc_id) for doc_id in request.document_ids],
@@ -146,7 +147,7 @@ async def create_batch_job(
         logger.error(
             "batch_job_celery_start_failed",
             batch_id=str(batch_job.id)[:8],
-            error=str(e)
+            **safe_error_log(e)
         )
         # Job bleibt im Status QUEUED, kann manuell gestartet werden
 
@@ -168,8 +169,8 @@ async def create_batch_job(
 async def list_batch_jobs(
     status: Optional[str] = Query(None, description="Nach Status filtern"),
     job_type: Optional[str] = Query(None, description="Nach Job-Typ filtern"),
-    limit: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
-    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -185,8 +186,8 @@ async def list_batch_jobs(
         user_id=current_user.id,
         status=status,
         job_type=job_type,
-        limit=limit,
-        offset=offset
+        limit=per_page,
+        offset=(page - 1) * per_page
     )
 
     return result
@@ -198,9 +199,9 @@ async def get_active_batch_jobs(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt alle aktiven (laufenden oder wartenden) Batch-Jobs zurueck.
+    Gibt alle aktiven (laufenden oder wartenden) Batch-Jobs zurück.
 
-    Nuetzlich fuer Dashboard-Anzeigen.
+    Nuetzlich für Dashboard-Anzeigen.
     """
     service = get_batch_job_service()
     return await service.get_active_batch_jobs(db, current_user.id)
@@ -213,9 +214,9 @@ async def get_batch_job(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt detaillierte Informationen zu einem Batch-Job zurueck.
+    Gibt detaillierte Informationen zu einem Batch-Job zurück.
 
-    Inklusive Fortschritt, Zeitschaetzung und Ergebnis-Zusammenfassung.
+    Inklusive Fortschritt, Zeitschätzung und Ergebnis-Zusammenfassung.
     """
     service = get_batch_job_service()
 
@@ -239,7 +240,7 @@ async def pause_batch_job(
     """
     Pausiert einen laufenden Batch-Job.
 
-    Nur Jobs im Status 'processing' koennen pausiert werden.
+    Nur Jobs im Status 'processing' können pausiert werden.
     Die Verarbeitung wird nach dem aktuellen Dokument angehalten.
     """
     service = get_batch_job_service()
@@ -266,9 +267,13 @@ async def pause_batch_job(
         }
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_pause_permission_denied", **safe_error_log(e))
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Aktion")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_pause_validation_error", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail="Ungültige Anfrage für Batch-Pause")
 
 
 @router.post("/{batch_id}/resume", response_model=BatchJobActionResponse)
@@ -306,9 +311,13 @@ async def resume_batch_job(
         }
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_resume_permission_denied", **safe_error_log(e))
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Aktion")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_resume_validation_error", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail="Ungültige Anfrage für Batch-Fortsetzung")
 
 
 @router.post("/{batch_id}/cancel", response_model=BatchJobActionResponse)
@@ -346,9 +355,13 @@ async def cancel_batch_job(
         }
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_cancel_permission_denied", **safe_error_log(e))
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Aktion")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_cancel_validation_error", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail="Ungültige Anfrage für Batch-Abbruch")
 
 
 @router.get("/{batch_id}/progress")
@@ -358,9 +371,9 @@ async def get_batch_job_progress(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt kompakten Fortschrittsstatus fuer Echtzeit-Updates zurueck.
+    Gibt kompakten Fortschrittsstatus für Echtzeit-Updates zurück.
 
-    Optimiert fuer haeufiges Polling vom Frontend.
+    Optimiert für häufiges Polling vom Frontend.
     """
     service = get_batch_job_service()
 

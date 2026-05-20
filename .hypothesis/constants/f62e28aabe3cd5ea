@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\transforms\__init__.py
+# hypothesis_version: 6.148.7
+
+['BaseTransform', 'BrightnessTransform', 'CenterCrop', 'ColorJitter', 'Compose', 'ContrastTransform', 'Grayscale', 'HueTransform', 'Normalize', 'Pad', 'RandomAffine', 'RandomCrop', 'RandomErasing', 'RandomHorizontalFlip', 'RandomPerspective', 'RandomResizedCrop', 'RandomRotation', 'RandomVerticalFlip', 'Resize', 'SaturationTransform', 'ToTensor', 'Transpose', 'adjust_brightness', 'adjust_contrast', 'adjust_hue', 'affine', 'center_crop', 'crop', 'erase', 'hflip', 'normalize', 'pad', 'perspective', 'resize', 'rotate', 'to_grayscale', 'to_tensor', 'vflip']

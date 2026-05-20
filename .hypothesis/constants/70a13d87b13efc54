@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\chandra_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.95, 1800.0, 224, 300, 1000, 1024, 4096, '.pdf', '1', '4bit', '8bit', 'Ae', 'CHANDRA_OCR_ERROR', 'Oe', 'RGB', 'Ue', 'ae', 'allocated_vram_gb', 'available', 'cached_vram_gb', 'chandra_gpu_memory', 'chandra_gpu_oom', 'chandra_ocr_agent', 'chandra_ocr_failed', 'chandra_ocr_starting', 'chandra_oom_fallback', 'chandra_page_error', 'chandra_pages_loaded', 'confidence', 'content', 'cpu', 'cuda', 'cuda_version', 'datalab-to/chandra', 'de', 'device_name', 'error', 'german_chars_found', 'gpu_info', 'image', 'image_path', 'language', 'model_name', 'models_loaded', 'nf4', 'none', 'oe', 'oom', 'page_confidence', 'page_number', 'pt', 'quantization_mode', 'replace', 'role', 'sdpa', 'ss', 'test', 'text', 'text_regions', 'tf32_enabled', 'total_vram_gb', 'type', 'ue', 'user', 'utf-8', 'white', 'win32', 'äöüÄÖÜß']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\stream\scatter.py
+# hypothesis_version: 6.148.7
+
+['Out', 'X', 'bool', 'c_scatter', 'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'nranks', 'ring_id', 'root', 'scatter', 'tensor', 'uint8', 'use_calc_stream']

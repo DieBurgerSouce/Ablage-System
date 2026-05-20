@@ -1,0 +1,478 @@
+{
+    "common": {
+        "loading": "Wird geladen...",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "delete": "Löschen",
+        "edit": "Bearbeiten",
+        "create": "Erstellen",
+        "search": "Suchen",
+        "filter": "Filtern",
+        "close": "Schließen",
+        "confirm": "Bestätigen",
+        "back": "Zurück",
+        "next": "Weiter",
+        "yes": "Ja",
+        "no": "Nein",
+        "all": "Alle",
+        "none": "Keine",
+        "upload": "Hochladen",
+        "download": "Herunterladen",
+        "export": "Exportieren",
+        "import": "Importieren",
+        "refresh": "Aktualisieren",
+        "settings": "Einstellungen",
+        "logout": "Abmelden",
+        "login": "Anmelden",
+        "register": "Registrieren",
+        "submit": "Absenden",
+        "reset": "Zurücksetzen",
+        "clear": "Leeren",
+        "select": "Auswählen",
+        "selected": "Ausgewählt",
+        "actions": "Aktionen",
+        "status": "Status",
+        "date": "Datum",
+        "time": "Uhrzeit",
+        "name": "Name",
+        "description": "Beschreibung",
+        "type": "Typ",
+        "size": "Größe",
+        "success": "Erfolgreich",
+        "error": "Fehler",
+        "warning": "Warnung",
+        "info": "Information",
+        "retry": "Wiederholen",
+        "open": "Öffnen"
+    },
+    "navigation": {
+        "home": "Startseite",
+        "dashboard": "Dashboard",
+        "documents": "Dokumente",
+        "upload": "Hochladen",
+        "search": "Suche",
+        "chat": "Chat",
+        "admin": "Administration",
+        "settings": "Einstellungen",
+        "profile": "Profil",
+        "help": "Hilfe",
+        "banking": "Banking",
+        "training": "OCR-Training",
+        "datev": "DATEV Export"
+    },
+    "auth": {
+        "login": {
+            "title": "Anmelden",
+            "subtitle": "Melden Sie sich bei Ihrem Konto an",
+            "email": "E-Mail-Adresse",
+            "password": "Passwort",
+            "rememberMe": "Angemeldet bleiben",
+            "forgotPassword": "Passwort vergessen?",
+            "noAccount": "Noch kein Konto?",
+            "signUp": "Registrieren",
+            "button": "Anmelden",
+            "error": "Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Zugangsdaten."
+        },
+        "register": {
+            "title": "Registrieren",
+            "subtitle": "Erstellen Sie ein neues Konto",
+            "username": "Benutzername",
+            "email": "E-Mail-Adresse",
+            "password": "Passwort",
+            "confirmPassword": "Passwort bestätigen",
+            "alreadyAccount": "Bereits ein Konto?",
+            "signIn": "Anmelden",
+            "button": "Registrieren",
+            "error": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+        },
+        "logout": {
+            "title": "Abmelden",
+            "message": "Möchten Sie sich wirklich abmelden?",
+            "success": "Sie wurden erfolgreich abgemeldet."
+        }
+    },
+    "documents": {
+        "title": "Dokumente",
+        "subtitle": "Verwalten Sie Ihre Dokumente",
+        "upload": {
+            "title": "Dokument hochladen",
+            "dragDrop": "Dateien hierher ziehen oder klicken zum Auswählen",
+            "selectFiles": "Dateien auswählen",
+            "supportedFormats": "Unterstützte Formate: PDF, PNG, JPG, TIFF",
+            "maxSize": "Maximale Dateigröße: 50 MB",
+            "processing": "Wird verarbeitet...",
+            "success": "Dokument erfolgreich hochgeladen",
+            "error": "Fehler beim Hochladen des Dokuments"
+        },
+        "list": {
+            "empty": "Keine Dokumente vorhanden",
+            "columns": {
+                "name": "Dateiname",
+                "type": "Typ",
+                "size": "Größe",
+                "date": "Hochgeladen am",
+                "status": "Status",
+                "actions": "Aktionen"
+            }
+        },
+        "status": {
+            "pending": "Ausstehend",
+            "processing": "Wird verarbeitet",
+            "completed": "Abgeschlossen",
+            "failed": "Fehlgeschlagen"
+        },
+        "actions": {
+            "view": "Anzeigen",
+            "download": "Herunterladen",
+            "delete": "Löschen",
+            "reprocess": "Erneut verarbeiten"
+        },
+        "delete": {
+            "title": "Dokument löschen",
+            "message": "Möchten Sie dieses Dokument wirklich löschen?",
+            "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+            "success": "Dokument erfolgreich gelöscht",
+            "error": "Fehler beim Löschen des Dokuments"
+        }
+    },
+    "ocr": {
+        "title": "OCR-Verarbeitung",
+        "backend": {
+            "deepseek": "DeepSeek-Janus-Pro",
+            "gotocr": "GOT-OCR 2.0",
+            "surya": "Surya + Docling",
+            "suryaGpu": "Surya GPU"
+        },
+        "status": {
+            "idle": "Bereit",
+            "processing": "Wird verarbeitet",
+            "completed": "Abgeschlossen",
+            "failed": "Fehlgeschlagen"
+        },
+        "results": {
+            "title": "OCR-Ergebnisse",
+            "extractedText": "Extrahierter Text",
+            "confidence": "Konfidenz",
+            "processingTime": "Verarbeitungszeit",
+            "backend": "Verwendetes Backend"
+        },
+        "errors": {
+            "gpuOom": "GPU-Speicher voll. Fallback auf CPU wird verwendet.",
+            "backendUnavailable": "OCR-Backend nicht verfügbar",
+            "processingFailed": "OCR-Verarbeitung fehlgeschlagen"
+        }
+    },
+    "banking": {
+        "title": "Banking",
+        "accounts": {
+            "title": "Konten",
+            "add": "Konto hinzufügen",
+            "iban": "IBAN",
+            "bic": "BIC",
+            "balance": "Kontostand"
+        },
+        "transactions": {
+            "title": "Transaktionen",
+            "import": "Transaktionen importieren",
+            "export": "Transaktionen exportieren",
+            "date": "Buchungsdatum",
+            "amount": "Betrag",
+            "description": "Verwendungszweck",
+            "counterparty": "Gegenkonto"
+        },
+        "reconciliation": {
+            "title": "Kontoabstimmung",
+            "matched": "Abgestimmt",
+            "unmatched": "Nicht abgestimmt",
+            "pending": "Ausstehend"
+        },
+        "payments": {
+            "title": "Zahlungen",
+            "create": "Zahlung erstellen",
+            "status": {
+                "pending": "Ausstehend",
+                "approved": "Genehmigt",
+                "executed": "Ausgeführt",
+                "failed": "Fehlgeschlagen"
+            }
+        }
+    },
+    "chat": {
+        "title": "Chat",
+        "placeholder": "Nachricht eingeben...",
+        "send": "Senden",
+        "thinking": "Denkt nach...",
+        "sources": "Quellen",
+        "noSources": "Keine Quellen gefunden",
+        "newChat": "Neuer Chat",
+        "history": "Chatverlauf",
+        "clearHistory": "Verlauf löschen"
+    },
+    "settings": {
+        "title": "Einstellungen",
+        "general": {
+            "title": "Allgemein",
+            "language": "Sprache",
+            "theme": "Design",
+            "displayMode": "Anzeigemodus"
+        },
+        "display": {
+            "title": "Anzeige",
+            "modes": {
+                "light": "Hell",
+                "dark": "Dunkel",
+                "whitescreen": "Weißschirm (Hoher Kontrast)",
+                "blackscreen": "Schwarzschirm (OLED)"
+            }
+        },
+        "notifications": {
+            "title": "Benachrichtigungen",
+            "email": "E-Mail-Benachrichtigungen",
+            "browser": "Browser-Benachrichtigungen"
+        },
+        "security": {
+            "title": "Sicherheit",
+            "changePassword": "Passwort ändern",
+            "twoFactor": "Zwei-Faktor-Authentifizierung",
+            "sessions": "Aktive Sitzungen"
+        }
+    },
+    "admin": {
+        "title": "Administration",
+        "users": {
+            "title": "Benutzerverwaltung",
+            "add": "Benutzer hinzufügen",
+            "edit": "Benutzer bearbeiten",
+            "delete": "Benutzer löschen",
+            "roles": {
+                "admin": "Administrator",
+                "editor": "Bearbeiter",
+                "viewer": "Betrachter"
+            }
+        },
+        "system": {
+            "title": "System",
+            "health": "Systemstatus",
+            "metrics": "Metriken",
+            "logs": "Protokolle"
+        },
+        "backup": {
+            "title": "Backup",
+            "create": "Backup erstellen",
+            "restore": "Backup wiederherstellen",
+            "schedule": "Zeitplan"
+        }
+    },
+    "errors": {
+        "general": "Ein Fehler ist aufgetreten",
+        "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung.",
+        "unauthorized": "Nicht autorisiert. Bitte melden Sie sich erneut an.",
+        "forbidden": "Zugriff verweigert. Sie haben keine Berechtigung für diese Aktion.",
+        "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+        "serverError": "Serverfehler. Bitte versuchen Sie es später erneut.",
+        "validation": "Validierungsfehler. Bitte überprüfen Sie Ihre Eingaben.",
+        "timeout": "Die Anfrage hat das Zeitlimit überschritten.",
+        "fileTooBig": "Die Datei ist zu groß.",
+        "unsupportedFormat": "Dieses Dateiformat wird nicht unterstützt."
+    },
+    "validation": {
+        "required": "Dieses Feld ist erforderlich",
+        "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+        "minLength": "Mindestens {{min}} Zeichen erforderlich",
+        "maxLength": "Maximal {{max}} Zeichen erlaubt",
+        "passwordMatch": "Passwörter stimmen nicht überein",
+        "invalidFormat": "Ungültiges Format"
+    },
+    "streckengeschaeft": {
+        "title": "Streckengeschäft",
+        "subtitle": "Erkennung und Klassifikation von Strecken- und Dreiecksgeschäften",
+        "dashboard": {
+            "title": "Streckengeschäft Dashboard",
+            "totalClassified": "Gesamt klassifiziert",
+            "documentsTotal": "Dokumente insgesamt",
+            "dropShipments": "Streckengeschäfte",
+            "triangularCount": "{{count}} Dreiecksgeschäfte",
+            "manualReview": "Manuelle Prüfung",
+            "pendingValidation": "Ausstehende Validierungen",
+            "zmRelevant": "ZM-relevant",
+            "forZm": "Für Zusammenfassende Meldung"
+        },
+        "transactionType": {
+            "standard": "Standard-Transaktion",
+            "drop_shipment": "Streckengeschäft",
+            "triangular_eu": "EU-Dreiecksgeschäft (§25b UStG)",
+            "chain_transaction": "Reihengeschäft (§3 Abs. 6a UStG)"
+        },
+        "confidenceLevel": {
+            "definitive": "Definitiv",
+            "high": "Hoch",
+            "medium": "Mittel",
+            "low": "Niedrig",
+            "manual_required": "Prüfung erforderlich"
+        },
+        "vatCategory": {
+            "standard_de": "Standard DE (19%/7%)",
+            "intra_community": "Innergemeinschaftlich steuerfrei",
+            "reverse_charge": "Reverse Charge (§13b UStG)",
+            "export": "Ausfuhrlieferung steuerfrei",
+            "triangular_middle": "Dreiecksgeschäft (Mittlerer)",
+            "triangular_final": "Dreiecksgeschäft (Endabnehmer)"
+        },
+        "partyRole": {
+            "seller": "Verkäufer",
+            "buyer": "Käufer",
+            "ship_to": "Warenempfänger",
+            "bill_to": "Rechnungsempfänger",
+            "carrier": "Spediteur"
+        },
+        "proofType": {
+            "invoice": "Rechnung",
+            "delivery_note": "Lieferschein",
+            "cmr": "CMR-Frachtbrief",
+            "gelangensbestaetigung": "Gelangensbestätigung",
+            "speditionsauftrag": "Speditionsauftrag",
+            "vat_id_proof": "USt-IdNr.-Nachweis"
+        },
+        "proofStatus": {
+            "present": "Vorhanden",
+            "missing": "Fehlt",
+            "complete": "Vollständig",
+            "incomplete": "Unvollständig"
+        },
+        "classification": {
+            "title": "Klassifikation",
+            "details": "Klassifikationsdetails",
+            "indicators": "Erkannte Indikatoren",
+            "parties": "Beteiligte Parteien",
+            "proofDocuments": "Nachweisdokumente",
+            "positions": "Positionen",
+            "auditLog": "Änderungsprotokoll"
+        },
+        "validation": {
+            "title": "Klassifikation validieren",
+            "description": "Bestätigen Sie die automatische Klassifikation oder korrigieren Sie diese manuell.",
+            "currentClassification": "Aktuelle Klassifikation",
+            "overrideClassification": "Klassifikation korrigieren",
+            "transactionType": "Transaktionstyp",
+            "vatCategory": "USt-Kategorie",
+            "reason": "Begründung",
+            "reasonPlaceholder": "Bitte begründen Sie die Korrektur...",
+            "reasonRequired": "Bei Korrekturen ist eine Begründung erforderlich (Audit-Trail)",
+            "confirm": "Bestätigen",
+            "override": "Korrigieren & Validieren",
+            "success": "Klassifikation validiert",
+            "overrideSuccess": "Klassifikation überschrieben",
+            "error": "Validierung fehlgeschlagen",
+            "defaultReasonOverride": "Manuelle Korrektur",
+            "defaultReasonConfirm": "Klassifikation bestätigt"
+        },
+        "datev": {
+            "title": "DATEV Export",
+            "export": "Exportieren",
+            "exportSuccess": "DATEV Export erstellt: {{filename}}",
+            "exportError": "DATEV Export fehlgeschlagen",
+            "kontenrahmen": "Kontenrahmen",
+            "includeZm": "ZM-Daten einschließen"
+        },
+        "zm": {
+            "title": "Zusammenfassende Meldung",
+            "subtitle": "Übersicht der ZM-relevanten Transaktionen",
+            "period": "Meldezeitraum",
+            "deadline": "Abgabefrist",
+            "totalAmount": "Gesamtbetrag",
+            "recordCount": "Anzahl Meldungen",
+            "triangularCount": "Dreiecksgeschäfte",
+            "exportElster": "ELSTER Export",
+            "months": {
+                "1": "Januar",
+                "2": "Februar",
+                "3": "März",
+                "4": "April",
+                "5": "Mai",
+                "6": "Juni",
+                "7": "Juli",
+                "8": "August",
+                "9": "September",
+                "10": "Oktober",
+                "11": "November",
+                "12": "Dezember"
+            }
+        },
+        "actions": {
+            "classify": "Klassifizieren",
+            "reclassify": "Neu klassifizieren",
+            "validate": "Validieren",
+            "export": "Exportieren",
+            "linkProof": "Nachweis verknüpfen",
+            "viewDocument": "Dokument anzeigen"
+        },
+        "errors": {
+            "classificationFailed": "Klassifikation fehlgeschlagen",
+            "documentNotFound": "Dokument nicht gefunden",
+            "validationFailed": "Validierung fehlgeschlagen",
+            "exportFailed": "Export fehlgeschlagen"
+        },
+        "legalInfo": {
+            "paragraph25b": "§25b UStG - Innergemeinschaftliches Dreiecksgeschäft",
+            "paragraph3_6a": "§3 Abs. 6a UStG - Reihengeschäft",
+            "bmfSchreiben": "BMF-Schreiben 25.04.2023 - Nachweispflichten"
+        },
+        "detail": {
+            "countriesInvolved": "Beteiligte Länder",
+            "mixedOrder": "Mischbestellung erkannt",
+            "mixedOrderDesc": "Diese Rechnung enthält sowohl Strecken- als auch Lagerpositionen. Jede Position wird separat steuerlich behandelt.",
+            "position": "Pos.",
+            "item": "Artikel",
+            "quantity": "Menge",
+            "amount": "Betrag",
+            "stock": "Lager",
+            "documentType": "Belegtyp",
+            "completeness": "Vollständigkeit",
+            "of": "von",
+            "zmRequirement": "ZM-Meldepflicht",
+            "zmRequirementDesc": "Diese Transaktion muss in der Zusammenfassenden Meldung gemeldet werden.",
+            "triangularMarkerRequired": "Dreiecksgeschäft-Kennzeichen (Kz. 1) erforderlich.",
+            "zmDeadline": "Frist: 25. des Folgemonats.",
+            "indicatorsUsed": "Diese Merkmale wurden zur Klassifikation herangezogen",
+            "noIndicators": "Keine Indikatoren gefunden",
+            "positionsDescription": "Positionsweise Klassifikation für Mischbelege",
+            "proofsDescription": "Erforderliche Dokumente für Steuerbefreiung nach §17b UStDV",
+            "auditLogDescription": "Chronologischer Verlauf aller Aktionen",
+            "noHistory": "Keine Historie vorhanden",
+            "found": "Gefunden",
+            "definitive": "Definitiv",
+            "euCountries": "EU-Länder"
+        },
+        "auditActions": {
+            "created": "Erstellt",
+            "auto_classified": "Automatisch klassifiziert",
+            "manually_validated": "Manuell validiert",
+            "overridden": "Überschrieben",
+            "exported_datev": "DATEV-Export",
+            "zm_reported": "ZM gemeldet"
+        },
+        "zmCard": {
+            "submitted": "Gemeldet",
+            "overdue": "Überfällig ({{days}} Tage)",
+            "daysRemaining": "{{days}} Tage verbleibend",
+            "deadline": "Frist:",
+            "submittedOn": "Gemeldet am",
+            "triangularMarker": "Kennzeichen 1 in ZM",
+            "triangularTransactions": "Dreiecksgeschäfte",
+            "byCountry": "Aufschlüsselung nach Ländern",
+            "records": "Meldungen",
+            "individualRecords": "Einzelne Meldungen",
+            "vatId": "USt-IdNr.",
+            "country": "Land",
+            "marker": "Kz.",
+            "moreRecords": "und {{count}} weitere Meldungen",
+            "markSubmitted": "Als gemeldet markieren",
+            "noTransactions": "Keine ZM-relevanten Transaktionen in diesem Zeitraum.",
+            "loadError": "ZM-Daten konnten nicht geladen werden."
+        },
+        "dashboardError": {
+            "loadError": "Klassifikationen konnten nicht geladen werden.",
+            "dataLoadError": "Fehler beim Laden der Daten"
+        }
+    }
+}

@@ -51,7 +51,7 @@ Ablage-System is a production-ready document processing platform designed specif
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/ablage-system.git
+git clone https://github.com/DieBurgerSouce/Ablage-System.git
 cd ablage-system
 ```
 
@@ -276,9 +276,9 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ablage-system/issues)
+- **Issues**: [GitHub Issues](https://github.com/DieBurgerSouce/Ablage-System/issues)
 - **Email**: support@ablage-system.local
-- **Documentation**: [Wiki](https://github.com/yourusername/ablage-system/wiki)
+- **Documentation**: [Wiki](https://github.com/DieBurgerSouce/Ablage-System/wiki)
 
 ---
 

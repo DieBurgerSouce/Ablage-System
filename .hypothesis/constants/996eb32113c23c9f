@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\classes\graph.py
+# hypothesis_version: 6.148.7
+
+['Graph', '_NODE_OK', '_adj', '_node', 'adj', 'degree', 'edges', 'hashable', 'iter', 'name', 'networkx', 'nodes', 'weight']

@@ -2056,8 +2056,8 @@ async def upload_document(
     db.refresh(document)
     
     # Trigger OCR processing (async)
-    from tasks.ocr_tasks import process_document_ocr
-    process_document_ocr.delay(str(document.id))
+    from app.workers.tasks.ocr_tasks import process_document_task
+    process_document_task.delay(str(document.id))
     
     return document
 
@@ -2128,9 +2128,9 @@ async def upload_multiple_documents(
         db.commit()
         
         # Trigger OCR for all documents
-        from tasks.ocr_tasks import process_document_ocr
+        from app.workers.tasks.ocr_tasks import process_document_task
         for doc in documents:
-            process_document_ocr.delay(str(doc.id))
+            process_document_task.delay(str(doc.id))
     
     if errors:
         # Return partial success with errors
@@ -2448,8 +2448,8 @@ async def complete_chunked_upload(
     background_tasks.add_task(cleanup_chunks)
     
     # Trigger OCR
-    from tasks.ocr_tasks import process_document_ocr
-    background_tasks.add_task(process_document_ocr.delay, str(document.id))
+    from app.workers.tasks.ocr_tasks import process_document_task
+    background_tasks.add_task(process_document_task.delay, str(document.id))
     
     return document
 

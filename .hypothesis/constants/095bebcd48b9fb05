@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\classification\textnet\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 128, 256, 512, 1000, '7.2.bias', '7.2.weight', 'classes', 'fan_out', 'french', 'in_channels', 'input_shape', 'kernel_size', 'mean', 'num_classes', 'out_channels', 'relu', 'std', 'stride', 'textnet_base', 'textnet_small', 'textnet_tiny', 'url']

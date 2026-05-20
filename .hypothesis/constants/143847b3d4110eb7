@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\amp_optimizer.py
+# hypothesis_version: 6.148.7
+
+[0.8, 2.0, 32768.0, 1000, 'DGCOptimizer', 'LambOptimizer', 'LarsOptimizer', 'RecomputeOptimizer', 'custom_black_list', 'custom_white_list', 'decr_ratio', 'incr_every_n_steps', 'incr_ratio', 'init_loss_scaling', 'use_fp16_guard', 'use_pure_fp16']

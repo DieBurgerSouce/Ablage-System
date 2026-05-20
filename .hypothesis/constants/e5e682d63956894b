@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\term.py
+# hypothesis_version: 6.148.7
+
+['\x07', '\x07\x1b\\', '\x1bPtmux;\x1b\x1b]', '\x1b[%dm', '\x1b[0m', '\x1b[1;%dm', '\x1b]', 'ITERM_PROFILE', 'TERM', 'Windows', 'ascii', 'black', 'blue', 'colored', 'cyan', 'enabled', 'green', 'magenta', 'op', 'rb', 'red', 'screen', 'white', 'yellow']

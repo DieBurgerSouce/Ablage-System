@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_grad_clip.py
+# hypothesis_version: 6.148.7
+
+['/', '/gradient_clip_pass', '@GRAD', 'Grad', 'Out', 'Param', 'X', '_grad', '_sharding_group', 'all_reduce', 'cast', 'clip_by_norm', 'dist_context', 'dtype', 'elementwise_mul', 'fill_constant', 'force_cpu', 'op_namescope', 'out', 'params_grads', 'rank_id', 'recv_v2', 'reduce', 'reduce_sum', 'reduce_type', 'ring_id', 'send_v2', 'shape', 'sqrt', 'square', 'squared_l2_norm', 'stack', 'sum', 'update_loss_scaling', 'value', 'x']

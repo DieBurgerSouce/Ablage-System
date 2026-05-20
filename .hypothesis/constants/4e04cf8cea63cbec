@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\decompose_mem_bound_mm.py
+# hypothesis_version: 6.148.7
+
+[2048, 10240, ', ', 'None', 'cpu', 'cuda', 'decompose_addmm', 'decompose_bmm', 'decompose_mm', 'decompose_mm_pass', 'inductor', 'val']

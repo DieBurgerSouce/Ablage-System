@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\image_transforms.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 255, 256, 'PIL.Image.Image', 'PILImageResampling', 'RGB', 'constant', 'cpu', 'edge', 'jnp.ndarray', 'reflect', 'replicate', 'symmetric', 'tf.Tensor', 'torch.Tensor', 'vision']

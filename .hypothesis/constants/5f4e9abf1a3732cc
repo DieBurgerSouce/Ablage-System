@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\flex\common.py
+# hypothesis_version: 6.148.7
+
+['QK_HEAD_DIM', 'QK_HEAD_DIM_ROUNDED', 'SAFE_HEAD_DIM', 'V_HEAD_DIM', 'V_HEAD_DIM_ROUNDED', 'atomic_add', 'templates']

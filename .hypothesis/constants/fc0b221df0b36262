@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\svm\_bounds.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 2.0, 'X', 'array-like', 'boolean', 'csc', 'fit_intercept', 'intercept_scaling', 'log', 'loss', 'neither', 'sparse matrix', 'squared_hinge', 'y']

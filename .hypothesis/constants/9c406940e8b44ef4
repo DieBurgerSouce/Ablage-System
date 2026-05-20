@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\expand_modality_expert_id.py
+# hypothesis_version: 6.148.7
+
+['expert_id', 'expert_id_out', 'group_size', 'is_group_expert', 'modality_offset']

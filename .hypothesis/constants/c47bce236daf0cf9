@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\contract_service.py
+# hypothesis_version: 6.148.7
+
+['0', 'Kuendigungsfrist', 'Preisanpassung', 'Vertragsbeginn', 'Vertragsende', 'asc', 'contract_created', 'contract_deleted', 'contract_end', 'contract_start', 'contract_updated', 'critical', 'desc', 'end', 'end_date', 'notice', 'notice_deadline', 'renewal', 'renewal_option', 'upcoming', 'warning']

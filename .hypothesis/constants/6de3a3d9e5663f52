@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\connection.py
+# hypothesis_version: 6.148.7
+
+[0.1, '**', '+', '/', ':', '://', ';', 'ChannelPool', 'Connection', 'ConnectionPool', 'KOMBU_LOG_CHANNEL', 'KOMBU_LOG_CONNECTION', '__doc__', '__module__', '__name__', 'acquired', 'alternates', 'amqp', 'callback', 'closed', 'connect_timeout', 'create channel', 'errback', 'failover_strategy', 'heartbeat', 'hostname', 'insist', 'interval_max', 'interval_start', 'interval_step', 'kombu.channel', 'librabbitmq', 'localhost', 'login_method', 'max_retries', 'password', 'port', 'pyamqp', 'rediss', 'released', 'round-robin', 'shuffle', 'ssl', 'ssl_cert_reqs', 'timeout', 'transport', 'transport_options', 'uri_prefix', 'userid', 'virtual_host']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\mt940\processors.py
+# hypothesis_version: 6.148.7
+
+['+', '00', '02', '10', '2', '20', '30', '31', '32', '33', '34', '35', '60', '61', '62', '63', '64', '65', ';', '?', 'ABWA', 'ABWE', 'BIC ', 'COAM', 'CRED', 'DDAT', 'DEBT', 'EREF', 'FRST_ONE_OFF_RECC', 'IBAN', 'KREF', 'MDAT', 'MREF', 'OAMT', 'ORCR', 'ORMR', 'PURP', 'SQTP', 'SVWZ', '^\\d{3}\\?\\d{2}', 'additional_purpose', 'applicant_bin', 'applicant_iban', 'applicant_name', 'compensation_amount', 'currency', 'customer_reference', 'day', 'debitor_identifier', 'deviate_applicant', 'deviate_recipient', 'end_to_end_reference', 'entry_day', 'entry_month', 'gvc_applicant_bin', 'gvc_applicant_iban', 'iph_id', 'month', 'old_SEPA_CI', 'original_amount', 'posting_text', 'prima_nota', 'purpose', 'purpose_code', 'recipient_name', 'return_debit_notes', 'settlement_tag', 'tnr', 'transaction_code', 'transaction_details', 'year']

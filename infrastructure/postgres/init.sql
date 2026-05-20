@@ -5,6 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For text search
 CREATE EXTENSION IF NOT EXISTS "unaccent";  -- For German text normalization
+CREATE EXTENSION IF NOT EXISTS "vector";   -- pgvector for RAG embeddings
 
 -- Create custom types
 DO $$ BEGIN
@@ -35,9 +36,15 @@ END $$;
 -- These will be created after tables are created via Alembic
 
 -- Create text search configuration for German
-CREATE TEXT SEARCH CONFIGURATION IF NOT EXISTS german_text (COPY = german);
+-- Note: CREATE TEXT SEARCH CONFIGURATION doesn't support IF NOT EXISTS
+DO $$ BEGIN
+    CREATE TEXT SEARCH CONFIGURATION german_text (COPY = german);
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 ALTER TEXT SEARCH CONFIGURATION german_text
-    ALTER MAPPING FOR asciiword, word 
+    ALTER MAPPING FOR asciiword, word
     WITH unaccent, german_stem;
 
 -- Create function for updating updated_at timestamp
@@ -58,56 +65,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- Create function to calculate document processing statistics
-CREATE OR REPLACE FUNCTION get_processing_stats(
-    start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW() - INTERVAL '30 days',
-    end_date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-)
-RETURNS TABLE (
-    total_documents BIGINT,
-    completed_documents BIGINT,
-    failed_documents BIGINT,
-    avg_processing_time_ms NUMERIC,
-    success_rate NUMERIC,
-    total_pages BIGINT,
-    avg_confidence NUMERIC
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        COUNT(*) AS total_documents,
-        COUNT(*) FILTER (WHERE status = 'completed') AS completed_documents,
-        COUNT(*) FILTER (WHERE status = 'failed') AS failed_documents,
-        AVG(processing_duration_ms) FILTER (WHERE status = 'completed')::NUMERIC AS avg_processing_time_ms,
-        CASE 
-            WHEN COUNT(*) > 0 
-            THEN (COUNT(*) FILTER (WHERE status = 'completed')::NUMERIC / COUNT(*)::NUMERIC * 100)
-            ELSE 0
-        END AS success_rate,
-        SUM(page_count) AS total_pages,
-        AVG(ocr_confidence) FILTER (WHERE status = 'completed')::NUMERIC AS avg_confidence
-    FROM documents
-    WHERE created_at BETWEEN start_date AND end_date;
-END;
-$$ LANGUAGE plpgsql;
+-- NOTE: get_processing_stats function moved to Alembic migration
+-- because it depends on documents table which doesn't exist yet
 
--- Create materialized view for quick stats (refresh periodically)
-CREATE MATERIALIZED VIEW IF NOT EXISTS document_stats AS
-SELECT
-    DATE(created_at) as date,
-    COUNT(*) as documents_processed,
-    AVG(processing_duration_ms) as avg_processing_time,
-    COUNT(*) FILTER (WHERE status = 'completed') as successful,
-    COUNT(*) FILTER (WHERE status = 'failed') as failed,
-    COUNT(DISTINCT owner_id) as unique_users,
-    COUNT(*) FILTER (WHERE has_umlauts = true) as german_documents,
-    AVG(german_validation_score) as avg_german_score
-FROM documents
-GROUP BY DATE(created_at)
-WITH NO DATA;
-
--- Create index on materialized view
-CREATE UNIQUE INDEX IF NOT EXISTS idx_document_stats_date ON document_stats(date);
+-- NOTE: Materialized view for document_stats is created via Alembic migration
+-- after the documents table exists. Do not create it here as it would fail.
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ablage_admin;
@@ -132,10 +94,8 @@ GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO ablage_admin;
 --     NOW()
 -- );
 
--- Performance tuning comments
-COMMENT ON TABLE documents IS 'Main document storage table - partitioning by created_at recommended for large datasets';
-COMMENT ON TABLE processing_jobs IS 'Async job tracking - consider archiving old completed jobs';
-COMMENT ON TABLE system_metrics IS 'Time-series metrics - consider using TimescaleDB for better performance';
+-- NOTE: COMMENT ON TABLE statements moved to Alembic migrations
+-- because tables don't exist yet in init.sql
 
 -- Notify that initialization is complete
 DO $$

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\functional\__init__.py
+# hypothesis_version: 6.148.7
+
+['compute_fbank_matrix', 'create_dct', 'fft_frequencies', 'get_window', 'hz_to_mel', 'mel_frequencies', 'mel_to_hz', 'power_to_db']

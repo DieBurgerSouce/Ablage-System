@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pandas\core\indexers\objects.py
+# hypothesis_version: 6.148.7
+
+['both', 'int64', 'left', 'neither', 'right', 'window_size']

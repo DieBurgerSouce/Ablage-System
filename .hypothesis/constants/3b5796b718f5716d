@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\distributed\utils\io\dist_save.py
+# hypothesis_version: 6.148.7
+
+[1024, '3G', 'G', 'LR_Scheduler', 'M', '^[0-9]*[GMK]$', 'all gathered ...', 'gather_to', 'master_weights', 'max_grouped_size', 'opt', 'params', 'save', 'start all gather ...', 'state_dict_keys:', 'state_type', 'use_binary_format', 'while True']

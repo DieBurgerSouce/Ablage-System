@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\pattern_matcher.py
+# hypothesis_version: 6.148.7
+
+[200, '%s%s %s %s', '()', '*', ',\n   ', ', ', ', MULTIPLE', 'Ignored()', 'Interpreter_Replacer', 'MULTIPLE', 'PYTORCH_GEN_PATTERNS', 'T', '_\\d+$', '_users=MULTIPLE', 'a', 'ac_graph_id', 'arg', 'args_structure {} {}', 'aten.', 'call_function', 'call_method', 'call_module', 'eager_input_vals', 'example_value', 'fns', 'from_node', 'function_mismatch', 'fx_passes', 'get_attr', 'inductor', 'kwarg mismatch: {}', 'list: no_match', 'list[{}]: {}', 'meta', 'multiple_users', 'multiple_users {}', 'mutation_region_id', 'no anchor found', 'non_list', 'op', 'out', 'output', 'pattern_matcher', 'placeholder', 'pretty_print', 'prims.', 'real', 'recompute', 'replace_by_example', 'replacement', 'serialized_patterns', 'size', 'stack_trace', 'tangent', 'tensor_meta', 'torch.', 'val', 'w']

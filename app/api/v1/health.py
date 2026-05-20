@@ -2,16 +2,25 @@
 """
 Health Check API Endpoints.
 
-Detaillierte Gesundheitspruefungen fuer alle Systemkomponenten.
+Detaillierte Gesundheitsprüfungen für alle Systemkomponenten.
 Feinpoliert und durchdacht - Enterprise Health Monitoring.
 
 Features:
 - TTL-basiertes Caching für teure Health-Checks (5 Sekunden)
 - Reduziert Last bei häufigen Monitoring-Abfragen
+- Kubernetes-kompatible Probes (live, ready, startup)
+- Parallele Health-Checks für schnellere Antwortzeiten
+- Umfassende System-Informationen
 """
 
+import asyncio
+import platform
+import sys
+import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional, Union
+
+from app.core.types import JSONDict
 import threading
 
 import structlog
@@ -19,6 +28,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Track startup time for uptime calculation
+_startup_time = time.time()
 
 # TTL-based caching for health checks
 try:
@@ -30,12 +42,17 @@ except ImportError:
 
 from app.api.dependencies import get_db
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
 # Health check cache configuration
 HEALTH_CHECK_CACHE_TTL = 5  # 5 seconds TTL
 HEALTH_CHECK_CACHE_MAXSIZE = 10  # Max cached entries
+
+# Type alias for cacheable health check results (forward reference)
+# Actual types defined below: BasicHealthResponse, DetailedHealthResponse, DependencyHealthResponse
+CachedHealthResult = Union["BasicHealthResponse", "DetailedHealthResponse", "DependencyHealthResponse", Dict[str, object]]
 
 # Thread-safe cache for health check results
 if CACHETOOLS_AVAILABLE:
@@ -45,11 +62,11 @@ if CACHETOOLS_AVAILABLE:
     )
     _health_cache_lock = threading.Lock()
 else:
-    _health_cache: Dict[str, Any] = {}
+    _health_cache: Dict[str, CachedHealthResult] = {}
     _health_cache_lock = threading.Lock()
 
 
-def _get_cached_result(cache_key: str) -> Optional[Any]:
+def _get_cached_result(cache_key: str) -> Optional[CachedHealthResult]:
     """Get cached health check result if available."""
     if not CACHETOOLS_AVAILABLE:
         return None
@@ -58,7 +75,7 @@ def _get_cached_result(cache_key: str) -> Optional[Any]:
         return _health_cache.get(cache_key)
 
 
-def _set_cached_result(cache_key: str, result: Any) -> None:
+def _set_cached_result(cache_key: str, result: CachedHealthResult) -> None:
     """Cache health check result."""
     if not CACHETOOLS_AVAILABLE:
         return
@@ -80,23 +97,23 @@ class KomponentenStatus(BaseModel):
     gesund: bool = Field(..., description="Ist Komponente gesund?")
     nachricht: Optional[str] = Field(None, description="Status-Nachricht")
     latenz_ms: Optional[float] = Field(None, description="Antwortzeit in ms")
-    details: Optional[Dict[str, Any]] = Field(None, description="Weitere Details")
+    details: Optional[JSONDict] = Field(None, description="Weitere Details")
 
 
 class BasicHealthResponse(BaseModel):
-    """Einfache Gesundheitspruefung."""
+    """Einfache Gesundheitsprüfung."""
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    version: str = Field(default="0.2.0-poc", description="API-Version")
+    version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API-Version")
 
 
 class DetailedHealthResponse(BaseModel):
-    """Detaillierte Gesundheitspruefung."""
+    """Detaillierte Gesundheitsprüfung."""
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    version: str = Field(default="0.2.0-poc", description="API-Version")
+    version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API-Version")
     komponenten: Dict[str, KomponentenStatus] = Field(
         ..., description="Status je Komponente"
     )
@@ -104,13 +121,14 @@ class DetailedHealthResponse(BaseModel):
 
 
 class DependencyHealthResponse(BaseModel):
-    """Gesundheitspruefung der Abhaengigkeiten."""
+    """Gesundheitsprüfung der Abhängigkeiten."""
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
     datenbank: KomponentenStatus = Field(..., description="PostgreSQL-Status")
     cache: KomponentenStatus = Field(..., description="Redis-Status")
     speicher: KomponentenStatus = Field(..., description="MinIO-Status")
+    vault: KomponentenStatus = Field(..., description="Vault-Status")
 
 
 # =============================================================================
@@ -119,7 +137,7 @@ class DependencyHealthResponse(BaseModel):
 
 
 async def _check_database(db: AsyncSession) -> KomponentenStatus:
-    """Pruefe Datenbank-Verbindung."""
+    """Prüfe Datenbank-Verbindung."""
     import time
 
     start = time.perf_counter()
@@ -135,16 +153,26 @@ async def _check_database(db: AsyncSession) -> KomponentenStatus:
             details={"pool_size": settings.DB_POOL_SIZE},
         )
     except Exception as e:
-        logger.error("health_check_database_failed", error=str(e))
+        logger.error("health_check_database_failed", **safe_error_log(e))
         return KomponentenStatus(
             gesund=False,
-            nachricht=f"Datenbank nicht erreichbar: {str(e)[:100]}",
+            nachricht=f"Datenbank nicht erreichbar: {safe_error_detail(e, 'DB-Verbindung')}",
             latenz_ms=None,
         )
 
 
 async def _check_redis() -> KomponentenStatus:
-    """Pruefe Redis-Verbindung."""
+    """Prüfe Redis-Verbindung.
+
+    Testet Verbindung zum Redis-Server via PING-Befehl.
+
+    Returns:
+        KomponentenStatus mit Latenz bei Erfolg
+
+    Note:
+        Erfordert redis.asyncio (optionale Abhängigkeit).
+        Bei fehlendem Modul wird gesund=False zurückgegeben.
+    """
     import time
 
     try:
@@ -173,14 +201,14 @@ async def _check_redis() -> KomponentenStatus:
             gesund=False, nachricht="Redis-Client nicht installiert"
         )
     except Exception as e:
-        logger.error("health_check_redis_failed", error=str(e))
+        logger.error("health_check_redis_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"Redis nicht erreichbar: {str(e)[:100]}"
+            gesund=False, nachricht=f"Redis nicht erreichbar: {safe_error_detail(e, 'Redis')}"
         )
 
 
 def _check_gpu() -> KomponentenStatus:
-    """Pruefe GPU-Verfuegbarkeit."""
+    """Prüfe GPU-Verfügbarkeit."""
     try:
         import torch
 
@@ -192,7 +220,7 @@ def _check_gpu() -> KomponentenStatus:
 
             return KomponentenStatus(
                 gesund=memory_percent < 85,
-                nachricht=f"GPU verfuegbar: {device_name}",
+                nachricht=f"GPU verfügbar: {device_name}",
                 details={
                     "geraet": device_name,
                     "speicher_total_gb": round(memory_total / 1024**3, 2),
@@ -203,8 +231,8 @@ def _check_gpu() -> KomponentenStatus:
         else:
             return KomponentenStatus(
                 gesund=True,
-                nachricht="Keine GPU verfuegbar - CPU-Modus aktiv",
-                details={"cuda_verfuegbar": False},
+                nachricht="Keine GPU verfügbar - CPU-Modus aktiv",
+                details={"cuda_verfügbar": False},
             )
     except ImportError:
         return KomponentenStatus(
@@ -213,14 +241,14 @@ def _check_gpu() -> KomponentenStatus:
             details={"pytorch_installiert": False},
         )
     except Exception as e:
-        logger.error("health_check_gpu_failed", error=str(e))
+        logger.error("health_check_gpu_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"GPU-Pruefung fehlgeschlagen: {str(e)[:100]}"
+            gesund=False, nachricht=f"GPU-Prüfung fehlgeschlagen: {safe_error_detail(e, 'GPU')}"
         )
 
 
 def _check_disk_space() -> KomponentenStatus:
-    """Pruefe verfuegbaren Speicherplatz."""
+    """Prüfe verfügbaren Speicherplatz."""
     try:
         import shutil
 
@@ -239,14 +267,77 @@ def _check_disk_space() -> KomponentenStatus:
             },
         )
     except Exception as e:
-        logger.error("health_check_disk_failed", error=str(e))
+        logger.error("health_check_disk_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"Speicherplatz-Pruefung fehlgeschlagen: {str(e)[:100]}"
+            gesund=False, nachricht=f"Speicherplatz-Prüfung fehlgeschlagen: {safe_error_detail(e, 'Storage')}"
+        )
+
+
+def _check_ocr_models() -> KomponentenStatus:
+    """Prüfe OCR-Modell-Verfügbarkeit."""
+    try:
+        from app.services.model_preloader import get_model_preloader
+
+        preloader = get_model_preloader()
+        status_info = preloader.get_status()
+
+        if not status_info.get("enabled"):
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Model-Preloading deaktiviert",
+                details={"enabled": False},
+            )
+
+        models = status_info.get("models", {})
+        summary = status_info.get("summary", {})
+        loaded = summary.get("loaded", 0)
+        total = summary.get("total", 0)
+        failed = summary.get("failed", 0)
+
+        model_details = {
+            name: info.get("status", "unknown")
+            for name, info in models.items()
+        }
+
+        if not status_info.get("preload_completed"):
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Modelle werden noch geladen...",
+                details={
+                    "preload_completed": False,
+                    "models": model_details,
+                },
+            )
+
+        if failed > 0 and loaded == 0:
+            return KomponentenStatus(
+                gesund=False,
+                nachricht=f"Kein OCR-Modell verfügbar ({failed} fehlgeschlagen)",
+                details={"models": model_details, "summary": summary},
+            )
+
+        return KomponentenStatus(
+            gesund=loaded > 0,
+            nachricht=f"{loaded}/{total} OCR-Modelle geladen",
+            details={"models": model_details, "summary": summary},
+        )
+
+    except ImportError:
+        return KomponentenStatus(
+            gesund=True,
+            nachricht="Model-Preloader nicht verfügbar",
+            details={"available": False},
+        )
+    except Exception as e:
+        logger.error("health_check_ocr_models_failed", **safe_error_log(e))
+        return KomponentenStatus(
+            gesund=False,
+            nachricht=f"OCR-Modell-Prüfung fehlgeschlagen: {safe_error_detail(e, 'OCR')}",
         )
 
 
 async def _check_minio() -> KomponentenStatus:
-    """Pruefe MinIO-Verbindung."""
+    """Prüfe MinIO-Verbindung."""
     import time
 
     try:
@@ -254,10 +345,10 @@ async def _check_minio() -> KomponentenStatus:
 
         start = time.perf_counter()
         client = Minio(
-            f"{settings.MINIO_HOST}:{settings.MINIO_PORT}",
+            settings.MINIO_ENDPOINT,
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
-            secure=False,
+            secure=settings.MINIO_SECURE,
         )
         # List buckets als Health Check
         buckets = client.list_buckets()
@@ -268,7 +359,7 @@ async def _check_minio() -> KomponentenStatus:
             nachricht=f"MinIO erreichbar - {len(buckets)} Buckets",
             latenz_ms=round(latenz, 2),
             details={
-                "host": settings.MINIO_HOST,
+                "endpoint": settings.MINIO_ENDPOINT,
                 "buckets": len(buckets),
             },
         )
@@ -277,9 +368,94 @@ async def _check_minio() -> KomponentenStatus:
             gesund=False, nachricht="MinIO-Client nicht installiert"
         )
     except Exception as e:
-        logger.error("health_check_minio_failed", error=str(e))
+        logger.error("health_check_minio_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"MinIO nicht erreichbar: {str(e)[:100]}"
+            gesund=False, nachricht=f"MinIO nicht erreichbar: {safe_error_detail(e, 'MinIO')}"
+        )
+
+
+def _check_vault() -> KomponentenStatus:
+    """
+    Prüfe Vault-Verbindung und -Konfiguration.
+
+    Vault-Status:
+    - "gesund": Vault aktiviert und verbunden, ODER Vault deaktiviert (nicht erforderlich)
+    - "beeintraechtigt": Vault aktiviert aber nicht verbunden
+    - "kritisch": Production UND Vault deaktiviert
+    """
+    try:
+        from app.core.config.vault_client import VaultClient
+
+        vault_client = VaultClient.get_instance()
+
+        # Vault nicht aktiviert
+        if not settings.VAULT_ENABLED:
+            # In Production: KRITISCH
+            if not settings.DEBUG:
+                return KomponentenStatus(
+                    gesund=False,
+                    nachricht="Vault in Production deaktiviert - KRITISCH",
+                    details={
+                        "enabled": False,
+                        "environment": "production",
+                        "severity": "critical",
+                    },
+                )
+            # In Development: OK
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Vault deaktiviert (Development-Modus)",
+                details={"enabled": False, "environment": "development"},
+            )
+
+        # Vault aktiviert - prüfe Verbindung
+        if not vault_client.is_configured():
+            return KomponentenStatus(
+                gesund=False,
+                nachricht="Vault aktiviert aber nicht konfiguriert",
+                details={
+                    "enabled": True,
+                    "configured": False,
+                },
+            )
+
+        if vault_client.is_healthy():
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Vault verbunden und authentifiziert",
+                details={
+                    "enabled": True,
+                    "connected": True,
+                    "authenticated": True,
+                    "address": vault_client.vault_addr,
+                },
+            )
+        else:
+            return KomponentenStatus(
+                gesund=False,
+                nachricht="Vault nicht verbunden",
+                details={
+                    "enabled": True,
+                    "connected": False,
+                },
+            )
+
+    except ImportError:
+        # hvac nicht installiert
+        if settings.VAULT_ENABLED:
+            return KomponentenStatus(
+                gesund=False,
+                nachricht="Vault aktiviert aber hvac nicht installiert",
+            )
+        return KomponentenStatus(
+            gesund=True,
+            nachricht="Vault nicht verfügbar (hvac nicht installiert)",
+            details={"enabled": False, "available": False},
+        )
+    except Exception as e:
+        logger.error("health_check_vault_failed", **safe_error_log(e))
+        return KomponentenStatus(
+            gesund=False, nachricht=f"Vault-Prüfung fehlgeschlagen: {safe_error_detail(e, 'Vault')}"
         )
 
 
@@ -291,34 +467,34 @@ async def _check_minio() -> KomponentenStatus:
 @router.get(
     "/",
     response_model=BasicHealthResponse,
-    summary="Einfache Gesundheitspruefung",
-    description="Schnelle Pruefung ob API erreichbar ist.",
+    summary="Einfache Gesundheitsprüfung",
+    description="Schnelle Prüfung ob API erreichbar ist.",
 )
 async def basic_health() -> BasicHealthResponse:
-    """Einfache Gesundheitspruefung - nur API-Erreichbarkeit."""
+    """Einfache Gesundheitsprüfung - nur API-Erreichbarkeit."""
     return BasicHealthResponse(
         status="gesund",
         zeitstempel=datetime.now(timezone.utc).isoformat(),
-        version="0.2.0-poc",
+        version=settings.APP_VERSION,
     )
 
 
 @router.get(
     "/detailed",
     response_model=DetailedHealthResponse,
-    summary="Detaillierte Gesundheitspruefung",
-    description="Prueft alle Systemkomponenten: Datenbank, Redis, GPU, Speicher. Ergebnisse werden 5 Sekunden gecacht.",
+    summary="Detaillierte Gesundheitsprüfung",
+    description="Prüft alle Systemkomponenten: Datenbank, Redis, GPU, Speicher. Ergebnisse werden 5 Sekunden gecacht.",
 )
 async def detailed_health(
     db: AsyncSession = Depends(get_db),
 ) -> DetailedHealthResponse:
     """
-    Detaillierte Gesundheitspruefung aller Komponenten.
+    Detaillierte Gesundheitsprüfung aller Komponenten.
 
-    Prueft:
+    Prüft:
     - PostgreSQL-Datenbank
     - Redis-Cache
-    - GPU-Verfuegbarkeit und -Speicher
+    - GPU-Verfügbarkeit und -Speicher
     - Festplatten-Speicherplatz
 
     Ergebnisse werden 5 Sekunden gecacht um Last bei häufigen
@@ -331,22 +507,31 @@ async def detailed_health(
         logger.debug("health_check_cache_hit", endpoint="detailed")
         return cached
 
-    # Pruefe alle Komponenten
+    # Prüfe alle Komponenten
     db_status = await _check_database(db)
     redis_status = await _check_redis()
     gpu_status = _check_gpu()
     disk_status = _check_disk_space()
+    ocr_status = _check_ocr_models()
+    vault_status = _check_vault()
 
     komponenten = {
         "datenbank": db_status,
         "cache": redis_status,
         "gpu": gpu_status,
         "speicherplatz": disk_status,
+        "ocr_modelle": ocr_status,
+        "vault": vault_status,
     }
 
     # Bestimme Gesamtstatus
-    kritisch = [k for k, v in komponenten.items() if not v.gesund and k in ["datenbank"]]
-    beeintraechtigt = [k for k, v in komponenten.items() if not v.gesund and k not in ["datenbank"]]
+    # Datenbank und Vault (in Production) sind kritisch
+    kritische_komponenten = ["datenbank"]
+    if not settings.DEBUG:  # Production
+        kritische_komponenten.append("vault")
+
+    kritisch = [k for k, v in komponenten.items() if not v.gesund and k in kritische_komponenten]
+    beeintraechtigt = [k for k, v in komponenten.items() if not v.gesund and k not in kritische_komponenten]
 
     if kritisch:
         status = "kritisch"
@@ -367,7 +552,7 @@ async def detailed_health(
     result = DetailedHealthResponse(
         status=status,
         zeitstempel=datetime.now(timezone.utc).isoformat(),
-        version="0.2.0-poc",
+        version=settings.APP_VERSION,
         komponenten=komponenten,
         zusammenfassung=zusammenfassung,
     )
@@ -381,26 +566,34 @@ async def detailed_health(
 @router.get(
     "/dependencies",
     response_model=DependencyHealthResponse,
-    summary="Abhaengigkeiten pruefen",
-    description="Prueft externe Abhaengigkeiten: Datenbank, Redis, MinIO.",
+    summary="Abhängigkeiten prüfen",
+    description="Prüft externe Abhängigkeiten: Datenbank, Redis, MinIO, Vault.",
 )
 async def check_dependencies(
     db: AsyncSession = Depends(get_db),
 ) -> DependencyHealthResponse:
     """
-    Prueft nur externe Abhaengigkeiten (Datenbank, Cache, Speicher).
+    Prüft nur externe Abhängigkeiten (Datenbank, Cache, Speicher, Vault).
 
-    Nuetzlich fuer Kubernetes Readiness Probes.
+    Nuetzlich für Kubernetes Readiness Probes.
     """
     db_status = await _check_database(db)
     redis_status = await _check_redis()
     minio_status = await _check_minio()
+    vault_status = _check_vault()
 
-    all_healthy = all([db_status.gesund, redis_status.gesund, minio_status.gesund])
+    # Vault ist in Production kritisch, sonst nur beeintraechtigt
+    critical_deps = [db_status.gesund]
+    if not settings.DEBUG:  # Production
+        critical_deps.append(vault_status.gesund)
 
-    if all_healthy:
+    degraded_deps = [redis_status.gesund, minio_status.gesund]
+    if settings.DEBUG:  # In Development, Vault ist optional
+        degraded_deps.append(vault_status.gesund)
+
+    if all(critical_deps) and all(degraded_deps):
         status = "gesund"
-    elif db_status.gesund:
+    elif all(critical_deps):
         status = "beeintraechtigt"
     else:
         status = "kritisch"
@@ -411,13 +604,33 @@ async def check_dependencies(
         datenbank=db_status,
         cache=redis_status,
         speicher=minio_status,
+        vault=vault_status,
     )
+
+
+@router.get(
+    "/models",
+    summary="OCR-Modell-Status",
+    description="Zeigt Verfügbarkeit und Ladezustand aller OCR-Modelle.",
+)
+async def model_health() -> JSONDict:
+    """OCR-Modell-Verfügbarkeit prüfen."""
+    ocr_status = _check_ocr_models()
+    return {
+        "status": "gesund" if ocr_status.gesund else "beeintraechtigt",
+        "zeitstempel": datetime.now(timezone.utc).isoformat(),
+        "ocr_modelle": {
+            "gesund": ocr_status.gesund,
+            "nachricht": ocr_status.nachricht,
+            "details": ocr_status.details,
+        },
+    }
 
 
 @router.get(
     "/live",
     summary="Liveness Probe",
-    description="Kubernetes Liveness Probe - prueft nur ob API laeuft.",
+    description="Kubernetes Liveness Probe - prüft nur ob API laeuft.",
 )
 async def liveness_probe() -> Dict[str, str]:
     """Kubernetes Liveness Probe."""
@@ -427,11 +640,11 @@ async def liveness_probe() -> Dict[str, str]:
 @router.get(
     "/ready",
     summary="Readiness Probe",
-    description="Kubernetes Readiness Probe - prueft Datenbank-Verbindung.",
+    description="Kubernetes Readiness Probe - prüft Datenbank-Verbindung.",
 )
 async def readiness_probe(
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Kubernetes Readiness Probe."""
     db_status = await _check_database(db)
 
@@ -440,10 +653,86 @@ async def readiness_probe(
 
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Datenbank nicht verfuegbar",
+            detail="Datenbank nicht verfügbar",
         )
 
     return {"status": "ready", "datenbank": db_status.gesund}
+
+
+@router.get(
+    "/startup",
+    summary="Startup Probe",
+    description="Kubernetes Startup Probe - prüft ob Anwendung vollständig gestartet ist.",
+)
+async def startup_probe(
+    db: AsyncSession = Depends(get_db),
+) -> JSONDict:
+    """
+    Kubernetes Startup Probe.
+
+    Prüft ob alle kritischen Komponenten beim Start bereit sind:
+    - Datenbank-Verbindung
+    - Redis-Verbindung
+    - Model Preloader Status (falls aktiviert)
+
+    Unterschied zu Readiness:
+    - Startup Probe laeuft nur einmal beim Start
+    - Readiness Probe laeuft kontinuierlich
+    """
+    from fastapi import HTTPException, status
+
+    startup_checks = {}
+    errors = []
+
+    # Check Database
+    db_status = await _check_database(db)
+    startup_checks["datenbank"] = db_status.gesund
+    if not db_status.gesund:
+        errors.append("Datenbank nicht verfügbar")
+
+    # Check Redis
+    redis_status = await _check_redis()
+    startup_checks["redis"] = redis_status.gesund
+    if not redis_status.gesund:
+        errors.append("Redis nicht verfügbar")
+
+    # Check Model Preloader
+    try:
+        from app.services.model_preloader import get_model_preloader
+
+        preloader = get_model_preloader()
+        preloader_status = preloader.get_status()
+        startup_checks["model_preloader"] = preloader_status.get("enabled", False)
+
+        # If preloading is enabled, check if it completed
+        if preloader_status.get("enabled") and preloader_status.get("preload_started"):
+            if not preloader_status.get("preload_completed"):
+                # Still loading - not ready yet
+                startup_checks["models_ready"] = False
+            else:
+                startup_checks["models_ready"] = True
+    except ImportError:
+        startup_checks["model_preloader"] = False
+
+    # Calculate startup duration
+    uptime = time.time() - _startup_time
+
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "status": "starting",
+                "errors": errors,
+                "checks": startup_checks,
+                "uptime_seconds": round(uptime, 2),
+            },
+        )
+
+    return {
+        "status": "started",
+        "checks": startup_checks,
+        "uptime_seconds": round(uptime, 2),
+    }
 
 
 # =============================================================================
@@ -494,7 +783,7 @@ class WorkerHealthResponse(BaseModel):
 
 
 async def _check_celery_workers() -> WorkerHealthResponse:
-    """Pruefe Celery Worker Status."""
+    """Prüfe Celery Worker Status."""
     import time
     from datetime import datetime, timezone
 
@@ -516,7 +805,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             await redis_client.ping()
             broker_erreichbar = True
         except Exception as e:
-            logger.warning("celery_broker_check_failed", error=str(e))
+            logger.warning("celery_broker_check_failed", **safe_error_log(e))
             broker_erreichbar = False
             empfehlungen.append("Redis Broker nicht erreichbar - Worker können keine Tasks empfangen")
             return WorkerHealthResponse(
@@ -543,8 +832,12 @@ async def _check_celery_workers() -> WorkerHealthResponse:
                     consumers=0,  # Will be updated from worker info
                 ))
                 tasks_wartend += length
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "queue_length_fetch_failed",
+                    queue=queue_name,
+                    error_type=type(e).__name__,
+                )
 
         await redis_client.close()
 
@@ -559,7 +852,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             ping_result = inspect.ping() or {}
             reserved = inspect.reserved() or {}
         except Exception as e:
-            logger.warning("celery_inspect_failed", error=str(e))
+            logger.warning("celery_inspect_failed", **safe_error_log(e))
             active = {}
             stats = {}
             ping_result = {}
@@ -593,8 +886,12 @@ async def _check_celery_workers() -> WorkerHealthResponse:
                 if torch.cuda.is_available():
                     mem_used = torch.cuda.memory_allocated() / torch.cuda.get_device_properties(0).total_memory * 100
                     gpu_mem = round(mem_used, 1)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "gpu_memory_fetch_failed",
+                    worker=worker_name,
+                    error_type=type(e).__name__,
+                )
 
             workers_list.append(WorkerInfo(
                 name=worker_name,
@@ -676,7 +973,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
         )
 
     except ImportError as e:
-        logger.warning("celery_not_available", error=str(e))
+        logger.warning("celery_not_available", **safe_error_log(e))
         return WorkerHealthResponse(
             status="unbekannt",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -690,7 +987,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             empfehlungen=["Celery nicht installiert oder konfiguriert"],
         )
     except Exception as e:
-        logger.error("celery_worker_health_failed", error=str(e))
+        logger.error("celery_worker_health_failed", **safe_error_log(e))
         return WorkerHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -701,7 +998,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             tasks_aktiv=0,
             workers=[],
             queues=[],
-            empfehlungen=[f"Worker-Prüfung fehlgeschlagen: {str(e)[:100]}"],
+            empfehlungen=[f"Worker-Prüfung fehlgeschlagen: {safe_error_detail(e, 'Vorgang')}"],
         )
 
 
@@ -709,16 +1006,16 @@ async def _check_celery_workers() -> WorkerHealthResponse:
     "/workers",
     response_model=WorkerHealthResponse,
     summary="Celery Worker Status",
-    description="Prueft alle Celery Worker, Queues und Task-Statistiken.",
+    description="Prüft alle Celery Worker, Queues und Task-Statistiken.",
 )
 async def worker_health() -> WorkerHealthResponse:
     """
-    Detaillierte Gesundheitspruefung der Celery Worker.
+    Detaillierte Gesundheitsprüfung der Celery Worker.
 
-    Prueft:
+    Prüft:
     - Broker-Verbindung (Redis)
     - Aktive Worker und deren Status
-    - Queue-Laengen
+    - Queue-Längen
     - Task-Statistiken
     - GPU-Speicher pro Worker
 
@@ -749,11 +1046,11 @@ class OCRBackendHealth(BaseModel):
 
     gesund: bool = Field(..., description="Ist Backend gesund?")
     grund: Optional[str] = Field(None, description="Grund falls ungesund")
-    status: Optional[Dict[str, Any]] = Field(None, description="Backend-Status")
+    status: Optional[JSONDict] = Field(None, description="Backend-Status")
 
 
 class OCRHealthResponse(BaseModel):
-    """OCR Gesundheitspruefung."""
+    """OCR Gesundheitsprüfung."""
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
@@ -761,27 +1058,27 @@ class OCRHealthResponse(BaseModel):
     backends: Dict[str, OCRBackendHealth] = Field(..., description="Backend-Status")
     gesunde_backends: int = Field(..., description="Anzahl gesunder Backends")
     ungesunde_backends: int = Field(..., description="Anzahl ungesunder Backends")
-    fallback_verfuegbar: bool = Field(..., description="CPU-Fallback verfuegbar")
+    fallback_verfuegbar: bool = Field(..., description="CPU-Fallback verfügbar")
     empfohlenes_backend: Optional[str] = Field(None, description="Empfohlenes Backend")
 
 
 @router.get(
     "/ocr",
     response_model=OCRHealthResponse,
-    summary="OCR Backend Gesundheitspruefung",
-    description="Prueft alle OCR-Backends auf Verfuegbarkeit und VRAM.",
+    summary="OCR Backend Gesundheitsprüfung",
+    description="Prüft alle OCR-Backends auf Verfügbarkeit und VRAM.",
 )
 async def ocr_health() -> OCRHealthResponse:
     """
-    Detaillierte Gesundheitspruefung aller OCR-Backends.
+    Detaillierte Gesundheitsprüfung aller OCR-Backends.
 
-    Prueft:
+    Prüft:
     - DeepSeek-Janus-Pro (GPU)
     - GOT-OCR 2.0 (GPU)
     - Surya GPU (GPU)
     - Surya CPU (Fallback)
 
-    Gibt Empfehlung fuer optimales Backend zurueck.
+    Gibt Empfehlung für optimales Backend zurück.
     """
     from app.services.ocr_service import OCRService
 
@@ -838,7 +1135,7 @@ async def ocr_health() -> OCRHealthResponse:
         )
 
     except Exception as e:
-        logger.error("ocr_health_check_failed", error=str(e))
+        logger.error("ocr_health_check_failed", **safe_error_log(e))
         return OCRHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -854,12 +1151,12 @@ async def ocr_health() -> OCRHealthResponse:
 @router.get(
     "/ocr/{backend_name}",
     response_model=OCRBackendHealth,
-    summary="Einzelnes OCR Backend pruefen",
-    description="Prueft ein spezifisches OCR-Backend.",
+    summary="Einzelnes OCR Backend prüfen",
+    description="Prüft ein spezifisches OCR-Backend.",
 )
 async def ocr_backend_health(backend_name: str) -> OCRBackendHealth:
     """
-    Gesundheitspruefung fuer ein spezifisches OCR-Backend.
+    Gesundheitsprüfung für ein spezifisches OCR-Backend.
 
     Args:
         backend_name: Name des Backends (deepseek, got_ocr, surya, surya_gpu)
@@ -881,10 +1178,10 @@ async def ocr_backend_health(backend_name: str) -> OCRBackendHealth:
         )
 
     except Exception as e:
-        logger.error("ocr_backend_health_check_failed", backend=backend_name, error=str(e))
+        logger.error("ocr_backend_health_check_failed", backend=backend_name, **safe_error_log(e))
         return OCRBackendHealth(
             gesund=False,
-            grund=f"Pruefung fehlgeschlagen: {str(e)[:100]}",
+            grund=f"Prüfung fehlgeschlagen: {safe_error_detail(e, 'Vorgang')}",
             status=None,
         )
 
@@ -902,8 +1199,8 @@ class CircuitBreakerHealth(BaseModel):
     gesund: bool = Field(..., description="True wenn closed")
     failure_rate: float = Field(..., description="Aktuelle Fehlerrate")
     consecutive_failures: int = Field(..., description="Aufeinanderfolgende Fehler")
-    retry_after_seconds: float = Field(..., description="Sekunden bis Retry moeglich")
-    times_opened: int = Field(..., description="Wie oft geoeffnet")
+    retry_after_seconds: float = Field(..., description="Sekunden bis Retry möglich")
+    times_opened: int = Field(..., description="Wie oft geöffnet")
 
 
 class CircuitBreakerHealthResponse(BaseModel):
@@ -922,13 +1219,13 @@ class CircuitBreakerHealthResponse(BaseModel):
     "/circuit-breakers",
     response_model=CircuitBreakerHealthResponse,
     summary="Circuit Breaker Status",
-    description="Prueft alle OCR Backend Circuit Breakers.",
+    description="Prüft alle OCR Backend Circuit Breakers.",
 )
 async def circuit_breaker_health() -> CircuitBreakerHealthResponse:
     """
-    Gesundheitspruefung aller Circuit Breakers.
+    Gesundheitsprüfung aller Circuit Breakers.
 
-    Zeigt Status, Fehlerraten und Recovery-Zeiten fuer alle Backends.
+    Zeigt Status, Fehlerraten und Recovery-Zeiten für alle Backends.
     """
     try:
         from app.services.circuit_breaker import get_circuit_breaker_registry, CircuitState
@@ -991,7 +1288,7 @@ async def circuit_breaker_health() -> CircuitBreakerHealthResponse:
             gesamtzahl=0,
         )
     except Exception as e:
-        logger.error("circuit_breaker_health_failed", error=str(e))
+        logger.error("circuit_breaker_health_failed", **safe_error_log(e))
         return CircuitBreakerHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1015,16 +1312,16 @@ class PipelineHealthResponse(BaseModel):
     circuit_breaker_enabled: bool = Field(..., description="Circuit Breaker aktiv")
     memory_guard_enabled: bool = Field(..., description="Memory Guard aktiv")
     min_confidence_threshold: float = Field(..., description="Min. Confidence Schwelle")
-    fallback_chain_status: Optional[Dict[str, Any]] = Field(
+    fallback_chain_status: Optional[JSONDict] = Field(
         None, description="Fallback Chain Metriken"
     )
-    circuit_breaker_status: Optional[Dict[str, Any]] = Field(
+    circuit_breaker_status: Optional[JSONDict] = Field(
         None, description="Circuit Breaker Status"
     )
-    memory_guard_status: Optional[Dict[str, Any]] = Field(
+    memory_guard_status: Optional[JSONDict] = Field(
         None, description="GPU Memory Guard Status"
     )
-    german_correction_stats: Optional[Dict[str, Any]] = Field(
+    german_correction_stats: Optional[JSONDict] = Field(
         None, description="German Correction Statistiken"
     )
 
@@ -1033,13 +1330,13 @@ class PipelineHealthResponse(BaseModel):
     "/pipeline",
     response_model=PipelineHealthResponse,
     summary="OCR Pipeline Status",
-    description="Vollstaendiger Status der OCR Pipeline mit allen Komponenten.",
+    description="Vollständiger Status der OCR Pipeline mit allen Komponenten.",
 )
 async def pipeline_health() -> PipelineHealthResponse:
     """
-    Vollstaendige Gesundheitspruefung der OCR Pipeline.
+    Vollständige Gesundheitsprüfung der OCR Pipeline.
 
-    Prueft:
+    Prüft:
     - Pipeline-Konfiguration
     - Fallback Chain Status
     - Circuit Breaker Status
@@ -1114,7 +1411,7 @@ async def pipeline_health() -> PipelineHealthResponse:
             german_correction_stats=None,
         )
     except Exception as e:
-        logger.error("pipeline_health_failed", error=str(e))
+        logger.error("pipeline_health_failed", **safe_error_log(e))
         return PipelineHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1139,9 +1436,9 @@ class SLOHealthResponse(BaseModel):
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    availability_target: float = Field(..., description="Verfuegbarkeits-Ziel")
-    availability_current: float = Field(..., description="Aktuelle Verfuegbarkeit")
-    availability_met: bool = Field(..., description="Verfuegbarkeits-SLO erfuellt")
+    availability_target: float = Field(..., description="Verfügbarkeits-Ziel")
+    availability_current: float = Field(..., description="Aktuelle Verfügbarkeit")
+    availability_met: bool = Field(..., description="Verfügbarkeits-SLO erfuellt")
     latency_target_p95_seconds: float = Field(..., description="Latenz P95 Ziel")
     latency_current_p95_seconds: float = Field(..., description="Aktuelle Latenz P95")
     latency_met: bool = Field(..., description="Latenz-SLO erfuellt")
@@ -1157,14 +1454,14 @@ class SLOHealthResponse(BaseModel):
     "/slo",
     response_model=SLOHealthResponse,
     summary="SLO/SLI Status",
-    description="Service Level Objectives und Indicators Uebersicht.",
+    description="Service Level Objectives und Indicators Übersicht.",
 )
 async def slo_health() -> SLOHealthResponse:
     """
-    Prueft alle Service Level Objectives.
+    Prüft alle Service Level Objectives.
 
     SLOs:
-    - Verfuegbarkeit: 99.9%
+    - Verfügbarkeit: 99.9%
     - Latenz P95: < 10s
     - Qualitaet: > 85% Confidence
     """
@@ -1250,7 +1547,7 @@ async def slo_health() -> SLOHealthResponse:
             all_slos_met=False,
         )
     except Exception as e:
-        logger.error("slo_health_failed", error=str(e))
+        logger.error("slo_health_failed", **safe_error_log(e))
         return SLOHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1274,15 +1571,90 @@ async def slo_health() -> SLOHealthResponse:
 # =============================================================================
 
 
+class GPUStatusResponse(BaseModel):
+    """GPU Verfügbarkeitsstatus für Frontend."""
+
+    available: bool = Field(..., description="GPU verfügbar für OCR")
+    name: Optional[str] = Field(None, description="GPU-Gerätename")
+    memory_total_gb: Optional[float] = Field(None, description="Gesamt VRAM in GB")
+    memory_used_gb: Optional[float] = Field(None, description="Belegter VRAM in GB")
+    memory_free_gb: Optional[float] = Field(None, description="Freier VRAM in GB")
+    utilization_percent: Optional[float] = Field(None, description="VRAM Nutzung in Prozent")
+
+
+@router.get(
+    "/gpu",
+    response_model=GPUStatusResponse,
+    summary="GPU Verfügbarkeitsstatus",
+    description="Prüft ob GPU für OCR-Verarbeitung verfügbar ist.",
+)
+async def gpu_status() -> GPUStatusResponse:
+    """
+    GPU-Verfügbarkeitsstatus für Upload-Dialog.
+
+    Gibt zurück:
+    - available: true wenn CUDA-GPU vorhanden und nutzbar
+    - name: GPU-Gerätename (z.B. 'NVIDIA RTX 4080')
+    - memory_*: VRAM-Statistiken
+    """
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            device_name = torch.cuda.get_device_name(0)
+            memory_total = torch.cuda.get_device_properties(0).total_memory
+            memory_allocated = torch.cuda.memory_allocated(0)
+            memory_free = memory_total - memory_allocated
+            memory_percent = (memory_allocated / memory_total) * 100
+
+            return GPUStatusResponse(
+                available=True,
+                name=device_name,
+                memory_total_gb=round(memory_total / 1024**3, 2),
+                memory_used_gb=round(memory_allocated / 1024**3, 2),
+                memory_free_gb=round(memory_free / 1024**3, 2),
+                utilization_percent=round(memory_percent, 1),
+            )
+        else:
+            return GPUStatusResponse(
+                available=False,
+                name=None,
+                memory_total_gb=None,
+                memory_used_gb=None,
+                memory_free_gb=None,
+                utilization_percent=None,
+            )
+    except ImportError:
+        # PyTorch nicht installiert
+        return GPUStatusResponse(
+            available=False,
+            name=None,
+            memory_total_gb=None,
+            memory_used_gb=None,
+            memory_free_gb=None,
+            utilization_percent=None,
+        )
+    except Exception as e:
+        logger.error("gpu_status_check_failed", **safe_error_log(e))
+        return GPUStatusResponse(
+            available=False,
+            name=None,
+            memory_total_gb=None,
+            memory_used_gb=None,
+            memory_free_gb=None,
+            utilization_percent=None,
+        )
+
+
 class MemoryGuardHealthResponse(BaseModel):
     """GPU Memory Guard Status."""
 
     status: str = Field(..., description="gesund, warnung, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    gpu_available: bool = Field(..., description="GPU verfuegbar")
+    gpu_available: bool = Field(..., description="GPU verfügbar")
     total_memory_gb: float = Field(..., description="Gesamt VRAM in GB")
     used_memory_gb: float = Field(..., description="Belegter VRAM in GB")
-    available_memory_gb: float = Field(..., description="Verfuegbarer VRAM in GB")
+    available_memory_gb: float = Field(..., description="Verfügbarer VRAM in GB")
     usage_percent: float = Field(..., description="VRAM Nutzung in Prozent")
     limit_gb: float = Field(..., description="Konfiguriertes Limit in GB")
     is_critical: bool = Field(..., description="Kritischer Zustand")
@@ -1293,7 +1665,7 @@ class MemoryGuardHealthResponse(BaseModel):
     "/gpu-memory",
     response_model=MemoryGuardHealthResponse,
     summary="GPU Memory Guard Status",
-    description="Prueft GPU-Speicher und Memory Guard Zustand.",
+    description="Prüft GPU-Speicher und Memory Guard Zustand.",
 )
 async def gpu_memory_health() -> MemoryGuardHealthResponse:
     """
@@ -1301,7 +1673,7 @@ async def gpu_memory_health() -> MemoryGuardHealthResponse:
 
     Zeigt:
     - Aktueller VRAM-Verbrauch
-    - Verfuegbarer Speicher
+    - Verfügbarer Speicher
     - Memory Guard Limit
     - Empfehlungen
     """
@@ -1365,7 +1737,7 @@ async def gpu_memory_health() -> MemoryGuardHealthResponse:
             cleanup_recommended=False,
         )
     except Exception as e:
-        logger.error("gpu_memory_health_failed", error=str(e))
+        logger.error("gpu_memory_health_failed", **safe_error_log(e))
         return MemoryGuardHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1386,11 +1758,11 @@ async def gpu_memory_health() -> MemoryGuardHealthResponse:
 
 
 class CompleteHealthResponse(BaseModel):
-    """Vollstaendiger System-Gesundheitsbericht."""
+    """Vollständiger System-Gesundheitsbericht."""
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    version: str = Field(default="0.2.0-poc", description="API-Version")
+    version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API-Version")
     zusammenfassung: str = Field(..., description="Kurze Zusammenfassung")
     komponenten: Dict[str, KomponentenStatus] = Field(
         ..., description="Basis-Komponenten Status"
@@ -1410,16 +1782,16 @@ class CompleteHealthResponse(BaseModel):
 @router.get(
     "/complete",
     response_model=CompleteHealthResponse,
-    summary="Vollstaendige Systemgesundheit",
-    description="Umfassende Pruefung aller Systemkomponenten inkl. OCR Pipeline, SLOs und Circuit Breaker.",
+    summary="Vollständige Systemgesundheit",
+    description="Umfassende Prüfung aller Systemkomponenten inkl. OCR Pipeline, SLOs und Circuit Breaker.",
 )
 async def complete_health(
     db: AsyncSession = Depends(get_db),
 ) -> CompleteHealthResponse:
     """
-    Vollstaendiger Gesundheitsbericht des gesamten Systems.
+    Vollständiger Gesundheitsbericht des gesamten Systems.
 
-    Prueft:
+    Prüft:
     - Basis-Infrastruktur (DB, Redis, MinIO, GPU, Disk)
     - OCR Backends
     - OCR Pipeline
@@ -1463,7 +1835,7 @@ async def complete_health(
     ocr_response = await ocr_health()
     ocr_status_str = ocr_response.status
     if ocr_status_str != "gesund":
-        probleme.append(f"OCR: {ocr_response.ungesunde_backends} Backends nicht verfuegbar")
+        probleme.append(f"OCR: {ocr_response.ungesunde_backends} Backends nicht verfügbar")
 
     # Pipeline Status
     pipeline_response = await pipeline_health()
@@ -1476,7 +1848,7 @@ async def complete_health(
     slo_status_str = slo_response.status
     if not slo_response.all_slos_met:
         if not slo_response.availability_met:
-            probleme.append(f"SLO Verfuegbarkeit nicht erfuellt: {slo_response.availability_current:.2%}")
+            probleme.append(f"SLO Verfügbarkeit nicht erfuellt: {slo_response.availability_current:.2%}")
         if not slo_response.latency_met:
             probleme.append(f"SLO Latenz nicht erfuellt: {slo_response.latency_current_p95_seconds:.2f}s")
         if not slo_response.quality_met:
@@ -1517,11 +1889,11 @@ async def complete_health(
 
     # Empfehlungen generieren
     if not db_status.gesund:
-        empfehlungen.append("Datenbank-Verbindung pruefen")
+        empfehlungen.append("Datenbank-Verbindung prüfen")
     if not redis_status.gesund:
-        empfehlungen.append("Redis-Server pruefen")
+        empfehlungen.append("Redis-Server prüfen")
     if cb_response.offene_circuits > 0:
-        empfehlungen.append("Circuit Breaker Recovery abwarten oder manuell zuruecksetzen")
+        empfehlungen.append("Circuit Breaker Recovery abwarten oder manuell zurücksetzen")
     if slo_response.error_budget_exhausted:
         empfehlungen.append("Fehlerursachen analysieren und beheben")
 
@@ -1573,7 +1945,7 @@ async def complete_health(
     result = CompleteHealthResponse(
         status=status,
         zeitstempel=datetime.now(timezone.utc).isoformat(),
-        version="0.2.0-poc",
+        version=settings.APP_VERSION,
         zusammenfassung=zusammenfassung,
         komponenten=komponenten,
         ocr_status=ocr_status_str,
@@ -1592,3 +1964,571 @@ async def complete_health(
     _set_cached_result(cache_key, result)
 
     return result
+
+
+# =============================================================================
+# System Information Endpoints
+# =============================================================================
+
+
+class SystemInfoResponse(BaseModel):
+    """System-Informationen."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    uptime_seconds: float = Field(..., description="Laufzeit in Sekunden")
+    uptime_human: str = Field(..., description="Laufzeit lesbar")
+    python_version: str = Field(..., description="Python Version")
+    platform_name: str = Field(..., description="Betriebssystem")
+    platform_version: str = Field(..., description="OS Version")
+    architecture: str = Field(..., description="CPU Architektur")
+    hostname: str = Field(..., description="Hostname")
+    cpu_count: int = Field(..., description="CPU Kerne")
+    api_version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API Version")
+    debug_mode: bool = Field(..., description="Debug Modus aktiv")
+    environment: str = Field(..., description="Environment (dev/staging/prod)")
+
+
+def _format_uptime(seconds: float) -> str:
+    """Formatiere Uptime in lesbares Format."""
+    days, remainder = divmod(int(seconds), 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, secs = divmod(remainder, 60)
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    parts.append(f"{secs}s")
+
+    return " ".join(parts)
+
+
+@router.get(
+    "/system",
+    response_model=SystemInfoResponse,
+    summary="System-Informationen",
+    description="Zeigt Systeminformationen wie Uptime, Versionen und Konfiguration.",
+)
+async def system_info() -> SystemInfoResponse:
+    """
+    System-Informationen Endpoint.
+
+    Zeigt:
+    - Uptime seit Start
+    - Python und Betriebssystem Version
+    - Hardware-Informationen
+    - Konfiguration
+    """
+    import os
+
+    uptime = time.time() - _startup_time
+    env = getattr(settings, 'ENVIRONMENT', None) or "development"
+
+    return SystemInfoResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        uptime_seconds=round(uptime, 2),
+        uptime_human=_format_uptime(uptime),
+        python_version=sys.version.split()[0],
+        platform_name=platform.system(),
+        platform_version=platform.release(),
+        architecture=platform.machine(),
+        hostname=platform.node(),
+        cpu_count=os.cpu_count() or 1,
+        api_version=settings.APP_VERSION,
+        debug_mode=settings.DEBUG,
+        environment=env,
+    )
+
+
+# =============================================================================
+# Cache Statistics Endpoints
+# =============================================================================
+
+
+class CacheStatsResponse(BaseModel):
+    """Cache-Statistiken."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    redis_verfuegbar: bool = Field(..., description="Redis erreichbar")
+    health_cache: JSONDict = Field(..., description="Health Check Cache Stats")
+    ocr_cache: Optional[JSONDict] = Field(None, description="OCR Cache Stats")
+    session_cache: Optional[JSONDict] = Field(None, description="Session Cache Stats")
+    redis_info: Optional[JSONDict] = Field(None, description="Redis Server Info")
+
+
+@router.get(
+    "/cache",
+    response_model=CacheStatsResponse,
+    summary="Cache-Statistiken",
+    description="Zeigt Cache-Statistiken für Health Checks, OCR und Sessions.",
+)
+async def cache_stats() -> CacheStatsResponse:
+    """
+    Cache-Statistiken Endpoint.
+
+    Zeigt:
+    - Health Check Cache Nutzung
+    - OCR Cache Statistiken
+    - Redis Server Informationen
+    """
+    # Health check cache stats
+    health_cache_stats: JSONDict = {
+        "cachetools_available": CACHETOOLS_AVAILABLE,
+        "maxsize": HEALTH_CHECK_CACHE_MAXSIZE,
+        "ttl_seconds": HEALTH_CHECK_CACHE_TTL,
+    }
+
+    if CACHETOOLS_AVAILABLE:
+        with _health_cache_lock:
+            health_cache_stats["current_size"] = len(_health_cache)
+            health_cache_stats["cached_keys"] = list(_health_cache.keys())
+
+    # OCR Cache stats
+    ocr_cache_stats = None
+    try:
+        from app.services.ocr_cache_service import get_ocr_cache_service
+
+        cache_service = get_ocr_cache_service()
+        ocr_cache_stats = await cache_service.get_stats()
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning("cache_stats_ocr_failed", **safe_error_log(e))
+        ocr_cache_stats = {"error": safe_error_detail(e, "Vorgang")[:100]}
+
+    # Redis info
+    redis_verfuegbar = False
+    redis_info = None
+
+    try:
+        import redis.asyncio as aioredis
+
+        client = aioredis.from_url(
+            f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
+            decode_responses=True,
+        )
+
+        # Basic Redis info
+        info = await client.info(section="memory")
+        redis_verfuegbar = True
+
+        redis_info = {
+            "used_memory_human": info.get("used_memory_human", "unknown"),
+            "used_memory_peak_human": info.get("used_memory_peak_human", "unknown"),
+            "maxmemory_human": info.get("maxmemory_human", "unlimited"),
+            "connected_clients": (await client.info(section="clients")).get("connected_clients", 0),
+        }
+
+        # Get key count by pattern
+        try:
+            db_info = await client.info(section="keyspace")
+            if "db0" in db_info:
+                redis_info["total_keys"] = db_info["db0"].get("keys", 0)
+        except Exception as e:
+            logger.debug(
+                "redis_keyspace_info_failed",
+                error_type=type(e).__name__,
+            )
+
+        await client.close()
+
+    except ImportError:
+        redis_info = {"error": "Redis Client nicht installiert"}
+    except Exception as e:
+        logger.warning("cache_stats_redis_failed", **safe_error_log(e))
+        redis_info = {"error": safe_error_detail(e, "Vorgang")[:100]}
+
+    # Session cache stats
+    session_cache_stats = None
+    try:
+        from app.core.session_store import get_session_stats
+
+        session_cache_stats = get_session_stats()
+    except ImportError:
+        pass  # Module not installed
+    except Exception as e:
+        logger.debug(
+            "session_cache_stats_failed",
+            error_type=type(e).__name__,
+        )
+
+    return CacheStatsResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        redis_verfuegbar=redis_verfuegbar,
+        health_cache=health_cache_stats,
+        ocr_cache=ocr_cache_stats,
+        session_cache=session_cache_stats,
+        redis_info=redis_info,
+    )
+
+
+# =============================================================================
+# Model Preloader Status Endpoint
+# =============================================================================
+
+
+class ModelPreloaderResponse(BaseModel):
+    """Model Preloader Status."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    enabled: bool = Field(..., description="Preloading aktiviert")
+    preload_started: bool = Field(..., description="Preloading gestartet")
+    preload_completed: bool = Field(..., description="Preloading abgeschlossen")
+    models: Dict[str, str] = Field(..., description="Model Status (model -> status)")
+    summary: Dict[str, int] = Field(..., description="Zusammenfassung")
+    load_times: Optional[Dict[str, float]] = Field(None, description="Ladezeiten in Sekunden")
+    errors: Optional[Dict[str, str]] = Field(None, description="Fehler pro Model")
+
+
+@router.get(
+    "/models",
+    response_model=ModelPreloaderResponse,
+    summary="Model Preloader Status",
+    description="Zeigt Status aller vorgeladenen OCR-Modelle.",
+)
+async def model_preloader_status() -> ModelPreloaderResponse:
+    """
+    Model Preloader Status Endpoint.
+
+    Zeigt:
+    - Welche Modelle vorgeladen werden
+    - Status jedes Modells (pending, loading, loaded, failed, skipped)
+    - Ladezeiten
+    - Fehler falls aufgetreten
+    """
+    try:
+        from app.services.model_preloader import get_model_preloader
+
+        preloader = get_model_preloader()
+        status_data = preloader.get_status()
+
+        return ModelPreloaderResponse(
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            enabled=status_data.get("enabled", False),
+            preload_started=status_data.get("preload_started", False),
+            preload_completed=status_data.get("preload_completed", False),
+            models=status_data.get("models", {}),
+            summary=status_data.get("summary", {"total": 0, "loaded": 0, "failed": 0, "skipped": 0}),
+            load_times=status_data.get("load_times"),
+            errors=status_data.get("errors"),
+        )
+
+    except ImportError:
+        return ModelPreloaderResponse(
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            enabled=False,
+            preload_started=False,
+            preload_completed=False,
+            models={},
+            summary={"total": 0, "loaded": 0, "failed": 0, "skipped": 0},
+            load_times=None,
+            errors={"_": "Model Preloader nicht verfügbar"},
+        )
+
+
+# =============================================================================
+# Parallel Health Check Helper
+# =============================================================================
+
+
+async def _run_parallel_health_checks(
+    db: AsyncSession,
+) -> Dict[str, KomponentenStatus]:
+    """
+    Führe alle Basis-Health-Checks parallel aus.
+
+    Verbessert die Response-Zeit erheblich bei mehreren Checks.
+    """
+    # Define all check coroutines
+    async def check_db() -> tuple[str, KomponentenStatus]:
+        return "datenbank", await _check_database(db)
+
+    async def check_redis_wrap() -> tuple[str, KomponentenStatus]:
+        return "cache", await _check_redis()
+
+    async def check_minio_wrap() -> tuple[str, KomponentenStatus]:
+        return "objektspeicher", await _check_minio()
+
+    def check_gpu_sync() -> tuple[str, KomponentenStatus]:
+        return "gpu", _check_gpu()
+
+    def check_disk_sync() -> tuple[str, KomponentenStatus]:
+        return "speicherplatz", _check_disk_space()
+
+    # Run async checks in parallel
+    async_results = await asyncio.gather(
+        check_db(),
+        check_redis_wrap(),
+        check_minio_wrap(),
+        return_exceptions=True,
+    )
+
+    # Run sync checks (GPU, disk)
+    sync_results = [check_gpu_sync(), check_disk_sync()]
+
+    # Combine results
+    komponenten: Dict[str, KomponentenStatus] = {}
+
+    for result in list(async_results) + sync_results:
+        if isinstance(result, Exception):
+            logger.error("parallel_health_check_error", error=str(result))
+            continue
+        if isinstance(result, tuple) and len(result) == 2:
+            name, status = result
+            komponenten[name] = status
+
+    return komponenten
+
+
+@router.get(
+    "/detailed/fast",
+    response_model=DetailedHealthResponse,
+    summary="Schnelle detaillierte Gesundheitsprüfung",
+    description="Führt alle Health-Checks parallel aus für schnellere Antwortzeit.",
+)
+async def detailed_health_fast(
+    db: AsyncSession = Depends(get_db),
+) -> DetailedHealthResponse:
+    """
+    Detaillierte Gesundheitsprüfung mit paralleler Ausführung.
+
+    Gleiche Prüfungen wie /detailed, aber alle Checks laufen parallel
+    für bessere Performance bei hoher Last.
+    """
+    # Check cache first
+    cache_key = "detailed_health_fast"
+    cached = _get_cached_result(cache_key)
+    if cached is not None:
+        logger.debug("health_check_cache_hit", endpoint="detailed_fast")
+        return cached
+
+    # Run all checks in parallel
+    komponenten = await _run_parallel_health_checks(db)
+
+    # Bestimme Gesamtstatus
+    kritisch = [k for k, v in komponenten.items() if not v.gesund and k in ["datenbank"]]
+    beeintraechtigt = [k for k, v in komponenten.items() if not v.gesund and k not in ["datenbank"]]
+
+    if kritisch:
+        status = "kritisch"
+        zusammenfassung = f"Kritische Fehler: {', '.join(kritisch)}"
+    elif beeintraechtigt:
+        status = "beeintraechtigt"
+        zusammenfassung = f"Beeintraechtigte Komponenten: {', '.join(beeintraechtigt)}"
+    else:
+        status = "gesund"
+        zusammenfassung = "Alle Komponenten funktionieren ordnungsgemaess"
+
+    logger.info(
+        "health_check_fast_complete",
+        status=status,
+        komponenten={k: v.gesund for k, v in komponenten.items()},
+    )
+
+    result = DetailedHealthResponse(
+        status=status,
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        version=settings.APP_VERSION,
+        komponenten=komponenten,
+        zusammenfassung=zusammenfassung,
+    )
+
+    # Cache the result
+    _set_cached_result(cache_key, result)
+
+    return result
+
+
+# =============================================================================
+# Degradation Status Endpoint
+# =============================================================================
+
+
+class DegradationStatusResponse(BaseModel):
+    """Degradation Status - zeigt ob System im eingeschraenkten Modus laeuft."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    degraded: bool = Field(..., description="System laeuft eingeschraenkt")
+    degradation_reasons: List[str] = Field(..., description="Gruende für Einschränkung")
+    available_features: Dict[str, bool] = Field(..., description="Verfügbare Features")
+    unavailable_features: List[str] = Field(..., description="Nicht verfügbare Features")
+    recovery_actions: List[str] = Field(..., description="Empfohlene Recovery-Aktionen")
+
+
+# =============================================================================
+# FAANG-AUDIT FIX: Permission Cache Health Endpoint
+# =============================================================================
+
+
+class PermissionCacheHealthResponse(BaseModel):
+    """Permission Cache Gesundheitsstatus - FAANG-AUDIT FIX."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    status: str = Field(..., description="gesund, warnung, kritisch")
+    redis_available: bool = Field(..., description="Redis für Permission-Cache erreichbar")
+    fallback_active: bool = Field(..., description="In-Memory Fallback aktiv (Warnung bei Multi-Worker!)")
+    cache_type: str = Field(..., description="Aktueller Cache-Typ (redis oder in-memory)")
+    warning_message: Optional[str] = Field(None, description="Warnung falls Fallback aktiv")
+    multi_worker_safe: bool = Field(..., description="Sicher für Multi-Worker-Deployment")
+
+
+@router.get(
+    "/permission-cache",
+    response_model=PermissionCacheHealthResponse,
+    summary="Permission Cache Status (FAANG-AUDIT)",
+    description="Prüft ob Permission-Cache Redis verwendet oder im unsicheren In-Memory Fallback laeuft.",
+)
+async def permission_cache_health(
+    db: AsyncSession = Depends(get_db),
+) -> PermissionCacheHealthResponse:
+    """
+    FAANG-AUDIT FIX: Prüft den Permission-Cache Status.
+
+    Bei Multi-Worker-Deployments MUSS Redis verfügbar sein, sonst
+    können Permission-Updates zwischen Workern inkonsistent sein.
+
+    Returns:
+        - status: gesund (Redis aktiv) oder warnung (Fallback aktiv)
+        - redis_available: Ob Redis erreichbar ist
+        - fallback_active: Ob In-Memory Fallback verwendet wird
+        - multi_worker_safe: Ob Setup für Multi-Worker sicher ist
+    """
+    from app.services.permission_service import PermissionService
+
+    # Create a temporary service instance to check status
+    service = PermissionService(db)
+
+    # Try to get redis client to check if it's available
+    redis_client = await service._get_redis_client()
+    redis_available = redis_client is not None
+    fallback_active = service._redis_fallback_mode
+
+    if redis_available and not fallback_active:
+        status = "gesund"
+        cache_type = "redis"
+        warning_message = None
+        multi_worker_safe = True
+    else:
+        status = "warnung"
+        cache_type = "in-memory"
+        warning_message = (
+            "WARNUNG: Permission-Cache laeuft im In-Memory Fallback-Modus. "
+            "Bei Multi-Worker-Deployment können Permission-Updates "
+            "zwischen Workern bis zu 30 Sekunden inkonsistent sein! "
+            "Dies ist ein Sicherheitsrisiko."
+        )
+        multi_worker_safe = False
+
+    logger.info(
+        "permission_cache_health_check",
+        status=status,
+        redis_available=redis_available,
+        fallback_active=fallback_active,
+        multi_worker_safe=multi_worker_safe,
+    )
+
+    return PermissionCacheHealthResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        status=status,
+        redis_available=redis_available,
+        fallback_active=fallback_active,
+        cache_type=cache_type,
+        warning_message=warning_message,
+        multi_worker_safe=multi_worker_safe,
+    )
+
+
+@router.get(
+    "/degradation",
+    response_model=DegradationStatusResponse,
+    summary="Degradation Status",
+    description="Zeigt ob und warum das System im eingeschraenkten Modus laeuft.",
+)
+async def degradation_status(
+    db: AsyncSession = Depends(get_db),
+) -> DegradationStatusResponse:
+    """
+    Prüft ob das System im Degradation Mode laeuft.
+
+    Nuetzlich für:
+    - Feature-Flags basierend auf Systemzustand
+    - Automatische Fallback-Aktivierung
+    - User-Benachrichtigungen
+    """
+    degradation_reasons: List[str] = []
+    unavailable_features: List[str] = []
+    recovery_actions: List[str] = []
+
+    available_features = {
+        "ocr_gpu": True,
+        "ocr_cpu": True,
+        "document_upload": True,
+        "document_search": True,
+        "user_auth": True,
+        "batch_processing": True,
+        "real_time_processing": True,
+    }
+
+    # Check GPU
+    gpu_status = _check_gpu()
+    if not gpu_status.gesund:
+        available_features["ocr_gpu"] = False
+        unavailable_features.append("GPU-basierte OCR")
+        degradation_reasons.append("GPU nicht verfügbar oder Speicher kritisch")
+        recovery_actions.append("GPU-Speicher freigeben oder System neustarten")
+
+    # Check Database
+    db_status = await _check_database(db)
+    if not db_status.gesund:
+        available_features["document_upload"] = False
+        available_features["document_search"] = False
+        available_features["user_auth"] = False
+        unavailable_features.extend(["Dokumenten-Upload", "Suche", "Authentifizierung"])
+        degradation_reasons.append("Datenbank nicht erreichbar")
+        recovery_actions.append("Datenbank-Verbindung prüfen")
+
+    # Check Redis
+    redis_status = await _check_redis()
+    if not redis_status.gesund:
+        available_features["batch_processing"] = False
+        available_features["real_time_processing"] = False
+        unavailable_features.extend(["Batch-Verarbeitung", "Echtzeit-Verarbeitung"])
+        degradation_reasons.append("Redis/Task-Queue nicht erreichbar")
+        recovery_actions.append("Redis-Server prüfen und ggf. neustarten")
+
+    # Check Circuit Breakers
+    try:
+        from app.services.circuit_breaker import get_circuit_breaker_registry
+
+
+        registry = get_circuit_breaker_registry()
+        all_status = registry.get_all_status()
+        open_circuits = [k for k, v in all_status.items() if v.get("state") == "open"]
+
+        if open_circuits:
+            degradation_reasons.append(f"Circuit Breaker offen: {', '.join(open_circuits)}")
+            recovery_actions.append("Warten auf Circuit Breaker Recovery (automatisch)")
+    except ImportError:
+        pass
+
+    # Check Disk Space
+    disk_status = _check_disk_space()
+    if not disk_status.gesund:
+        available_features["document_upload"] = False
+        unavailable_features.append("Dokumenten-Upload (Speicherplatz)")
+        degradation_reasons.append("Speicherplatz kritisch")
+        recovery_actions.append("Speicherplatz freigeben")
+
+    degraded = len(degradation_reasons) > 0
+
+    return DegradationStatusResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        degraded=degraded,
+        degradation_reasons=degradation_reasons,
+        available_features=available_features,
+        unavailable_features=unavailable_features,
+        recovery_actions=recovery_actions,
+    )

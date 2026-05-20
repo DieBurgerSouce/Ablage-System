@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\rocm\ck_conv_template.py
+# hypothesis_version: 6.148.7
+
+[',\n', ', ', 'CKGroupedConvFwdOp', 'ConvolutionStrides_0', 'ConvolutionStrides_1', 'Default', 'Dilations_0', 'Dilations_1', 'FilterSize_0', 'FilterSize_1', 'GKCYX', 'GKYXC', 'GroupCount', 'InputSize_0', 'InputSize_1', 'LeftPads_0', 'LeftPads_1', 'NBatch', 'NGCHW', 'NGKHW', 'NHWGC', 'NHWGK', 'NInChannels', 'NOutChannels', 'RightPads_0', 'RightPads_1', 'ck_conv_template', 'ds', 'template_buffer_node']

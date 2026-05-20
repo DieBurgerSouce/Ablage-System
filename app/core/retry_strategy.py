@@ -10,9 +10,10 @@ import random
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
+from typing import Callable, Dict, Optional, Set, Type, TypeVar, Union
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -198,10 +199,10 @@ class RetryStrategy:
         self,
         func: Callable[..., T],
         phase: WorkflowPhase,
-        *args: Any,
+        *args: object,
         config: Optional[RetryConfig] = None,
         on_retry: Optional[Callable[[int, Exception], None]] = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> T:
         """
         Execute function with retry logic.
@@ -263,7 +264,7 @@ class RetryStrategy:
                             "non_retryable_exception",
                             phase=phase.value,
                             exception_type=type(e).__name__,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         raise
                     # Max retries reached
@@ -279,7 +280,7 @@ class RetryStrategy:
                     max_retries=retry_config.max_retries,
                     delay_seconds=round(delay, 2),
                     error_type=type(e).__name__,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
                 # Call optional retry callback
@@ -341,15 +342,15 @@ class RetryContext:
     async def execute(
         self,
         func: Callable[..., T],
-        *args: Any,
-        **kwargs: Any,
+        *args: object,
+        **kwargs: object,
     ) -> T:
         """Execute function with retry."""
         return await self.strategy.execute_with_retry(
             func, self.phase, *args, **kwargs
         )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Union[str, int, float]]:
         """Get execution statistics."""
         return {
             "phase": self.phase.value,

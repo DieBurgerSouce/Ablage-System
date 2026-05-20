@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\bmm.py
+# hypothesis_version: 6.148.7
+
+['BLOCK_M', 'BLOCK_N', 'at::baddbmm_out', 'at::bmm_out', 'aten_mm_info', 'baddbmm', 'bmm', 'bmm_dtype', 'cpu', 'cuda', 'out_dtype', 'val']

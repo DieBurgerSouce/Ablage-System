@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\functional\extension.py
+# hypothesis_version: 6.148.7
+
+[0.25, '2.5.2', 'Ids', 'MaxLenTensor', 'NCHW', 'NHWC', 'Out', 'Parents', 'X', 'Y', 'data_format', 'float16', 'float32', 'float64', 'gather_tree', 'ids', 'int32', 'int64', 'maxlen', 'out_dtype', 'paddle.diag_embed', 'parents', 'seg_num', 'sequence_mask', 'shift_ratio', 'temporal_shift', 'uint16', 'x']

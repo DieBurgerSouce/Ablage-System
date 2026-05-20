@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\hybrid_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.15, 0.5, 0.85, 0.9, 1.0, 1.1, 1.5, 8.0, 10.0, 12.0, 15.0, 1000, 1024, 'all_confidences', 'chandra', 'character_voting', 'confidence', 'confidence_winner', 'deepseek', 'document_id', 'engine', 'entities', 'error', 'fusion_method', 'got_ocr', 'highest_confidence', 'hybrid_ocr_agent', 'hybrid_ocr_completed', 'hybrid_ocr_started', 'image_path', 'layout', 'original_values', 'selected_engine', 'source', 'source_count', 'sources', 'surya_docling', 'text', 'type', 'unknown', 'value', 'variations', 'vram_check_failed', 'äöüÄÖÜß']

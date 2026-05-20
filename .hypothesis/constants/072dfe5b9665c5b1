@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\audit.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 365, 500, '/actions', '/audit', '/export', '/logs', '/logs/{log_id}', '/search', '/stats', 'Admin - Audit-Logs', 'Audit-Log abrufen', 'Audit-Logs auflisten', 'Audit-Statistiken', 'Benutzer-Audit-Trail', 'Content-Disposition', 'Eintraege pro Seite', 'Nach Aktion filtern', 'Seitennummer', 'Sortierfeld', 'Sortierrichtung', 'Suchbegriff', 'attachment', 'csv', 'json']

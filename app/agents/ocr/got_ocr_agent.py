@@ -23,8 +23,11 @@ import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoProcessor, AutoModel
 
-from app.agents.base import AgentResourceError, OCRAgent
+from app.agents.base import AgentResourceError, OCRAgent, OCRResult
 from app.gpu_manager import GPUManager
+from app.core.exceptions import OCRGPUOutOfMemoryError, InferenceTimeoutError
+from app.services.circuit_breaker import circuit_breaker_protected, get_circuit_breaker_registry
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 
 class GOTOCRAgent(OCRAgent):
@@ -42,9 +45,20 @@ class GOTOCRAgent(OCRAgent):
     VRAM_REQUIRED_GB = 10
     MAX_BATCH_SIZE = 8
     MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten Timeout für Model-Loading (erste Initialisierung kann langsam sein)
+    INFERENCE_TIMEOUT = 300.0  # 5 Minuten Timeout für Inference
+
+    # Fallback configuration - GOT-OCR can run on CPU
+    FALLBACK_BACKENDS = ["surya"]  # CPU-capable backends for OOM fallback
+    SUPPORTS_CPU_FALLBACK = True  # GOT-OCR can fall back to CPU
 
     # Class-level lock to prevent concurrent model loading (race condition fix)
     _model_lock: Optional[asyncio.Lock] = None
+    # Class-level flag to track if model loading has permanently failed
+    _model_load_failed: bool = False
+    _model_load_error: Optional[str] = None
+
+    # Timeout for acquiring the model lock (prevents deadlock on failed load)
+    LOCK_ACQUISITION_TIMEOUT = 300.0  # 5 minutes
 
     def __init__(self):
         super().__init__(
@@ -61,6 +75,23 @@ class GOTOCRAgent(OCRAgent):
         if GOTOCRAgent._model_lock is None:
             GOTOCRAgent._model_lock = asyncio.Lock()
 
+    @property
+    def supports_cpu_fallback(self) -> bool:
+        """
+        Indicates whether this backend can fall back to CPU.
+
+        GOT-OCR can run on CPU (slower but functional).
+        """
+        return self.SUPPORTS_CPU_FALLBACK
+
+    @property
+    def fallback_backends(self) -> List[str]:
+        """
+        List of backends that can be used as fallback when this backend fails with OOM.
+        """
+        return self.FALLBACK_BACKENDS
+
+    @circuit_breaker_protected("got_ocr")
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process document with GOT-OCR 2.0.
@@ -79,6 +110,10 @@ class GOTOCRAgent(OCRAgent):
             format: str - Output format used
             processing_time_ms: int
             backend: str - "got-ocr-2.0"
+        Raises:
+            OCRGPUOutOfMemoryError: When GPU runs out of memory (signals fallback available)
+            InferenceTimeoutError: When inference takes too long
+            CircuitBreakerError: When backend is in circuit-open state
         """
         self.validate_input(input_data, ["document_id", "image_path"])
 
@@ -111,13 +146,16 @@ class GOTOCRAgent(OCRAgent):
             if region:
                 image = self._crop_region(image, region)
 
-            # Run OCR with specified format
-            result = await self._run_ocr(
+            # Run OCR with timeout protection
+            inference_timeout = input_data.get("options", {}).get("inference_timeout", self.INFERENCE_TIMEOUT)
+            result = await self._run_ocr_with_timeout(
                 image,
                 output_format=output_format,
                 extract_formulas=extract_formulas,
                 language=language,
-                device=device
+                device=device,
+                timeout_seconds=inference_timeout,
+                document_id=document_id
             )
 
             # Post-process for German text
@@ -127,57 +165,192 @@ class GOTOCRAgent(OCRAgent):
             self.logger.info(
                 "got_ocr_processing_completed",
                 document_id=document_id,
-                text_length=len(result["text"]),
-                format=result["format"],
+                text_length=len(result.text),
+                confidence=result.confidence,
                 device=device,
             )
 
-            return result
+            # Rückgabe als standardisiertes Dictionary
+            return result.to_dict()
 
         except torch.cuda.OutOfMemoryError as e:
             self.logger.error(
                 "got_ocr_gpu_oom",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
+                fallback_backends=self.FALLBACK_BACKENDS,
+                supports_cpu=self.SUPPORTS_CPU_FALLBACK,
             )
-            # Try to recover
+            # Try to recover GPU resources
             await self._handle_gpu_oom()
-            raise AgentResourceError(f"GPU out of memory: {e}")
+
+            # Get current GPU memory info for detailed error
+            available_gb = None
+            if torch.cuda.is_available():
+                try:
+                    free_mem = torch.cuda.mem_get_info()[0] / (1024**3)
+                    available_gb = round(free_mem, 2)
+                except Exception as e:
+                    self.logger.debug(
+                        "gpu_mem_info_failed",
+                        error_type=type(e).__name__,
+                    )
+
+            # Raise specific exception that signals fallback availability
+            raise OCRGPUOutOfMemoryError(
+                backend="got_ocr",
+                document_id=document_id,
+                required_gb=self.VRAM_REQUIRED_GB,
+                available_gb=available_gb,
+                fallback_backends=self.FALLBACK_BACKENDS
+            )
+
+        except InferenceTimeoutError:
+            # Re-raise timeout errors (already properly formatted)
+            raise
 
         except Exception as e:
             self.logger.error(
                 "got_ocr_processing_error",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
             raise
+
+        finally:
+            # Cleanup GPU resources after processing (success or failure)
+            await self._cleanup_gpu_resources()
+
+    async def _run_ocr_with_timeout(
+        self,
+        image: Image.Image,
+        output_format: str,
+        extract_formulas: bool,
+        language: str,
+        device: str,
+        timeout_seconds: float,
+        document_id: Optional[str] = None
+    ) -> OCRResult:
+        """
+        Run OCR with timeout protection.
+
+        Wraps _run_ocr with asyncio.wait_for to prevent indefinite hangs
+        during model generation.
+
+        Args:
+            image: Input image
+            output_format: Output format (plain, markdown, latex)
+            extract_formulas: Focus on formula extraction
+            language: Target language
+            device: Processing device (cuda/cpu)
+            timeout_seconds: Maximum time allowed for inference
+            document_id: Document ID for error reporting
+
+        Returns:
+            OCR result
+
+        Raises:
+            InferenceTimeoutError: When inference exceeds timeout
+        """
+        try:
+            result = await asyncio.wait_for(
+                self._run_ocr(
+                    image,
+                    output_format=output_format,
+                    extract_formulas=extract_formulas,
+                    language=language,
+                    device=device
+                ),
+                timeout=timeout_seconds
+            )
+            return result
+
+        except asyncio.TimeoutError:
+            self.logger.error(
+                "got_ocr_inference_timeout",
+                document_id=document_id,
+                timeout_seconds=timeout_seconds
+            )
+            # Cleanup GPU resources after timeout
+            await self._cleanup_gpu_resources()
+            raise InferenceTimeoutError(
+                backend="got_ocr",
+                timeout_seconds=timeout_seconds,
+                document_id=document_id
+            )
 
     async def _allocate_device(self) -> str:
         """Allocate GPU or fallback to CPU."""
         allocation = self.gpu_manager.allocate_for_backend("got_ocr")
 
-        if allocation["success"] and allocation.get("mode") == "gpu":
+        # FIX: GPUManager gibt "mode": "cpu" nur für CPU-only Backends (vram=0) zurück
+        # Für GPU-Backends prüfen wir nur "success" und "allocated_gb" > 0
+        if allocation["success"] and allocation.get("allocated_gb", 0) > 0:
+            self.logger.info(
+                "got_ocr_gpu_mode",
+                allocated_gb=allocation.get("allocated_gb"),
+            )
             return "cuda"
+        elif allocation["success"] and allocation.get("mode") == "cpu":
+            # Explizit CPU-mode (z.B. surya ohne GPU)
+            self.logger.info("got_ocr_cpu_only_mode")
+            return "cpu"
         else:
             self.logger.warning(
-                "got_ocr_cpu_mode",
-                reason="GPU not available, using CPU (slower)",
+                "got_ocr_cpu_fallback",
+                reason=allocation.get("reason", "GPU allocation failed"),
+                fallback=allocation.get("fallback", "cpu"),
             )
             return "cpu"
 
     async def _load_model(self, device: str) -> None:
-        """Load GOT-OCR 2.0 model with lock and timeout protection."""
+        """Load GOT-OCR 2.0 model with lock and timeout protection.
+
+        Implements deadlock prevention:
+        1. Timeout on lock acquisition to prevent infinite waiting
+        2. Tracks permanent failures to avoid repeated failed attempts
+        3. Clear error messaging for debugging
+        """
         # Quick check without lock (performance optimization)
         if self._model_loaded:
             return
 
-        # Acquire lock to prevent concurrent model loading (race condition fix)
-        async with self._model_lock:
+        # Check if model loading has permanently failed (prevents repeated attempts)
+        if GOTOCRAgent._model_load_failed:
+            raise AgentResourceError(
+                f"GOT-OCR-Modell wurde bereits als fehlerhaft markiert: {GOTOCRAgent._model_load_error}. "
+                "Neustart des Services erforderlich."
+            )
+
+        # Acquire lock with timeout to prevent deadlock
+        try:
+            await asyncio.wait_for(
+                self._model_lock.acquire(),
+                timeout=self.LOCK_ACQUISITION_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            self.logger.error(
+                "got_ocr_model_lock_timeout",
+                timeout_seconds=self.LOCK_ACQUISITION_TIMEOUT,
+                message="Lock-Akquisition Timeout - möglicherweise hängt ein anderer Ladevorgang"
+            )
+            raise AgentResourceError(
+                f"Model-Lock Timeout nach {self.LOCK_ACQUISITION_TIMEOUT / 60:.0f} Minuten. "
+                "Ein anderer Ladevorgang hängt möglicherweise."
+            )
+
+        try:
             # Double-check after acquiring lock (another request may have loaded it)
             if self._model_loaded:
                 self.logger.debug("got_ocr_model_already_loaded_by_other_request")
                 return
+
+            # Also check for failure after lock (another request may have failed)
+            if GOTOCRAgent._model_load_failed:
+                raise AgentResourceError(
+                    f"GOT-OCR-Modell wurde bereits als fehlerhaft markiert: {GOTOCRAgent._model_load_error}"
+                )
 
             self.logger.info("got_ocr_loading_model", device=device, model=self.MODEL_NAME)
 
@@ -190,17 +363,32 @@ class GOTOCRAgent(OCRAgent):
                 self._model_loaded = True
                 self.logger.info("got_ocr_model_loaded", device=device)
             except asyncio.TimeoutError:
+                # Mark as permanently failed to prevent infinite retry loops
+                GOTOCRAgent._model_load_failed = True
+                GOTOCRAgent._model_load_error = f"Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten"
                 self.logger.error(
                     "got_ocr_model_load_timeout",
-                    timeout_seconds=self.MODEL_LOADING_TIMEOUT
+                    timeout_seconds=self.MODEL_LOADING_TIMEOUT,
+                    permanent_failure=True
                 )
                 raise AgentResourceError(
                     f"Model-Loading Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten. "
                     "Überprüfen Sie die Netzwerkverbindung und den verfügbaren Speicher."
                 )
             except Exception as e:
-                self.logger.error("got_ocr_model_load_failed", error=str(e), exc_info=True)
+                # Mark as permanently failed to prevent infinite retry loops
+                GOTOCRAgent._model_load_failed = True
+                GOTOCRAgent._model_load_error = safe_error_detail(e, "GOT-OCR")
+                self.logger.error(
+                    "got_ocr_model_load_failed",
+                    **safe_error_log(e),
+                    exc_info=True,
+                    permanent_failure=True
+                )
                 raise AgentResourceError(f"Fehler beim Laden des GOT-OCR-Modells: {e}")
+        finally:
+            # Always release the lock, even on failure
+            self._model_lock.release()
 
     async def _do_load_model(self, device: str) -> None:
         """Actual model loading logic (called within lock and timeout)."""
@@ -280,8 +468,19 @@ class GOTOCRAgent(OCRAgent):
             raise ValueError(f"Failed to load image: {e}")
 
     def _crop_region(self, image: Image.Image, region: List[int]) -> Image.Image:
-        """Crop image to specified region."""
+        """Crop image to specified region with bounds validation."""
+        if len(region) != 4:
+            raise ValueError(f"Region muss 4 Koordinaten haben, erhalten: {len(region)}")
+
         x1, y1, x2, y2 = region
+        width, height = image.size
+
+        # Clamp coordinates to image bounds
+        x1 = max(0, min(x1, width - 1))
+        y1 = max(0, min(y1, height - 1))
+        x2 = max(x1 + 1, min(x2, width))
+        y2 = max(y1 + 1, min(y2, height))
+
         return image.crop((x1, y1, x2, y2))
 
     def _calculate_token_confidence(
@@ -390,7 +589,7 @@ class GOTOCRAgent(OCRAgent):
         except Exception as e:
             self.logger.warning(
                 "got_confidence_calculation_error",
-                error=str(e),
+                **safe_error_log(e),
                 fallback="heuristic"
             )
             return {
@@ -524,171 +723,79 @@ class GOTOCRAgent(OCRAgent):
                 else:
                     confidence = 0.85
 
-            # Baue Result mit Confidence-Details
-            result = {
-                "text": text,
-                "confidence": confidence,
-                "format": output_format,
-                "model": self.MODEL_NAME,
-                "device": device,
-                "processing_time_ms": processing_time_ms,
-                "backend": "got-ocr-2.0",
-                "success": True,
-            }
+            # Erstelle standardisiertes OCRResult
+            has_umlauts = any(c in text for c in "äöüÄÖÜß")
 
-            # Füge detaillierte Confidence-Metriken hinzu wenn verfügbar
-            if confidence_data:
-                result["confidence_details"] = {
-                    "method": confidence_data.get("confidence_method", "unknown"),
-                    "mean_confidence": confidence_data.get("mean_confidence", 0.0),
-                    "min_confidence": confidence_data.get("min_confidence", 0.0),
-                    "total_tokens": confidence_data.get("total_tokens", 0),
-                    "low_confidence_count": len(confidence_data.get("low_confidence_positions", []))
-                }
+            result = self.create_success_result(
+                text=text,
+                confidence=confidence,
+                processing_time_ms=processing_time_ms,
+                language=language,
+                has_umlauts=has_umlauts,
+            )
 
             return result
 
         except Exception as e:
-            self.logger.error("got_ocr_inference_error", error=str(e), exc_info=True)
-            return {
-                "text": "",
-                "confidence": 0.0,
-                "format": output_format,
-                "model": self.MODEL_NAME,
-                "device": device,
-                "processing_time_ms": int((time.perf_counter() - start_time) * 1000),
-                "backend": "got-ocr-2.0",
-                "success": False,
-                "error": str(e),
-            }
+            self.logger.error("got_ocr_inference_error", **safe_error_log(e), exc_info=True)
+            return self.create_error_result(
+                **safe_error_log(e),
+                error_code="OCR_INFERENCE_ERROR",
+                processing_time_ms=int((time.perf_counter() - start_time) * 1000)
+            )
 
-    async def _postprocess_german(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        """Post-process for German language specifics with context-aware correction."""
-        import re
+    async def _postprocess_german(self, result: OCRResult) -> OCRResult:
+        """Post-process for German language specifics using unified postprocessor.
 
-        text = result["text"]
-        corrections: List[Dict[str, str]] = []
+        Args:
+            result: OCRResult-Objekt von _run_ocr
 
-        # German words that commonly need umlaut restoration
-        # These are words where ae/oe/ue should become umlauts
-        german_umlaut_words = {
-            # Common business/document words
-            'über', 'überprüfung', 'überweisung', 'übersicht', 'übernahme',
-            'für', 'führung', 'ausführung', 'durchführung',
-            'büro', 'gebühr', 'gebühren',
-            'größe', 'größer', 'größte',
-            'öffentlich', 'öffnung', 'eröffnung',
-            'änderung', 'ändern', 'ergänzung',
-            'prüfung', 'prüfen', 'überprüfen',
-            'erklärung', 'klärung', 'aufklärung',
-            'möglich', 'möglichkeit', 'unmöglich',
-            'geschäft', 'geschäftsführer', 'geschäftlich',
-            'gültig', 'gültigkeit', 'ungültig',
-            'straße', 'hauptstraße',
-            'müller', 'schröder', 'köhler', 'bäcker',
-            'münchen', 'köln', 'düsseldorf', 'nürnberg', 'würzburg',
-            'träger', 'empfänger', 'absender',
-            'währung', 'erläuterung', 'begründung',
-            'verfügung', 'verfügbar', 'zuständig',
-            'ausländisch', 'inländisch',
-            'stück', 'rückgabe', 'rücksendung',
-            'kürzlich', 'natürlich', 'persönlich',
-        }
+        Returns:
+            Aktualisiertes OCRResult mit deutschen Korrekturen
+        """
+        if not result.text:
+            return result
 
-        # Words where ss should become ß (after long vowels/diphthongs)
-        eszett_words = {
-            'groß', 'größe', 'größer', 'größte',
-            'straße', 'hauptstraße',
-            'gruß', 'grüße', 'begrüßung',
-            'fuß', 'füße',
-            'maß', 'maße', 'maßnahme',
-            'spaß',
-            'weiß', 'weißer',
-            'heiß', 'heißt', 'heißen',
-            'außen', 'außer', 'außerdem', 'außerhalb',
-            'schließen', 'schließlich', 'abschließend',
-            'gemäß',
-        }
-
-        # Build reverse mapping for detection
-        umlaut_to_ascii = {
-            'ü': 'ue', 'ö': 'oe', 'ä': 'ae',
-            'Ü': 'Ue', 'Ö': 'Oe', 'Ä': 'Ae',
-        }
-
-        # Apply context-aware umlaut restoration
-        words = re.findall(r'\b\w+\b', text)
-        for word in words:
-            word_lower = word.lower()
-
-            # Try umlaut replacements
-            test_word = word_lower
-            for umlaut, ascii_form in umlaut_to_ascii.items():
-                test_word = test_word.replace(ascii_form.lower(), umlaut.lower())
-
-            # Check if the corrected word is in our vocabulary
-            if test_word in german_umlaut_words and test_word != word_lower:
-                # Preserve original case pattern
-                if word[0].isupper():
-                    corrected = test_word.capitalize()
-                elif word.isupper():
-                    corrected = test_word.upper()
-                else:
-                    corrected = test_word
-
-                # Apply replacement
-                pattern = r'\b' + re.escape(word) + r'\b'
-                if re.search(pattern, text):
-                    text = re.sub(pattern, corrected, text, count=1)
-                    corrections.append({
-                        "original": word,
-                        "corrected": corrected,
-                        "type": "umlaut_restoration"
-                    })
-
-        # Apply ß corrections for known words
-        for eszett_word in eszett_words:
-            ss_version = eszett_word.replace('ß', 'ss')
-            # Case variations
-            for original, replacement in [
-                (ss_version, eszett_word),
-                (ss_version.capitalize(), eszett_word.capitalize()),
-                (ss_version.upper(), eszett_word.upper()),
-            ]:
-                pattern = r'\b' + re.escape(original) + r'\b'
-                if re.search(pattern, text):
-                    text = re.sub(pattern, replacement, text)
-                    corrections.append({
-                        "original": original,
-                        "corrected": replacement,
-                        "type": "eszett_restoration"
-                    })
-
-        # Validate with GermanValidator if available
-        validation_result = None
+        # OPTIMIERUNG: Verwende Unified German Postprocessor
         try:
-            from app.german_validator import GermanValidator
-            validator = GermanValidator()
-            validation_result = validator.validate_umlauts(text)
-        except ImportError:
-            self.logger.debug("german_validator_not_available")
+            from app.services.german_text_postprocessor import get_german_postprocessor
 
-        result["text"] = text
-        result["german_processed"] = True
-        result["corrections"] = corrections
-        result["corrections_count"] = len(corrections)
-        if validation_result:
-            result["umlaut_validation"] = validation_result
+            postprocessor = get_german_postprocessor()
+            german_result = postprocessor.postprocess(result.text, {"validate": True})
+
+            # Aktualisiere OCRResult mit korrigiertem Text
+            result.text = german_result["text"]
+            result.has_umlauts = any(c in result.text for c in "äöüÄÖÜß")
+
+            # Extrahiere Qualitätsmetriken
+            stats = german_result.get("stats", {})
+            result.german_validation_score = stats.get("quality_score", 0.0)
+
+            self.logger.debug(
+                "got_ocr_german_postprocessing",
+                corrections_count=german_result.get("corrections_count", 0),
+                text_changed=german_result.get("text_changed", False)
+            )
+
+        except ImportError:
+            self.logger.debug("german_postprocessor_not_available_fallback")
 
         return result
+
+    async def _cleanup_gpu_resources(self) -> None:
+        """Cleanup GPU resources after processing."""
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()  # Wait for all GPU operations to complete
+            torch.cuda.empty_cache()  # Now safe to clear cache
 
     async def _handle_gpu_oom(self) -> None:
         """Handle GPU out-of-memory error."""
         self.logger.warning("got_ocr_gpu_oom_recovery", action="clearing_cache")
 
-        # Clear CUDA cache
+        # Clear CUDA cache - synchronize first to ensure all operations complete
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            torch.cuda.synchronize()  # Wait for all GPU operations to complete
+            torch.cuda.empty_cache()  # Now safe to clear cache
 
         # Unload model to free memory
         if self.model is not None:

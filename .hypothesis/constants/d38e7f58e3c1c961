@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\predict_system.py
+# hypothesis_version: 6.148.7
+
+[0.0, '--process_id={}', '--use_mp={}', '-u', '.', '../', '180', '270', '90', '</b>', '</i>', '</overline>', '</sub>', '</sup>', '</underline>', '<b>', '<i>', '<overline>', '<strike>', '<sub>', '<sup>', '<underline>', '[{}/{}] {}', '__main__', 'all', 'auto_growth', 'bbox', 'confidence', 'det', 'docx save to {}', 'equation', 'figure', 'formula', 'html', 'image_orientation', 'img', 'img_idx', 'kie', 'label', 'label_names', 'latex', 'layout', 'match', 'ocr_info', 'pdf2docx', 'rec', 'res', 'res_{}.txt', 'res_{}_kie.txt', 'result save to {}', 'score', 'show_{}.jpg', 'structure', 'table', 'table_match', 'text', 'text_region', 'text_word', 'text_word_region', 'type', 'utf8', 'w', '{}\t{}\n', '{}\n', '{}_api.docx', '{}_{}.jpg', '{}_{}.xlsx']

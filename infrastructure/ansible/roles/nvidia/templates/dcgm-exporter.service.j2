@@ -1,0 +1,36 @@
+# DCGM Exporter Systemd Service
+# Exports NVIDIA GPU metrics for Prometheus
+# Created: 2025-12-09
+
+[Unit]
+Description=NVIDIA DCGM Exporter for Prometheus
+Documentation=https://github.com/NVIDIA/dcgm-exporter
+After=network.target nvidia-dcgm.service
+Requires=nvidia-dcgm.service
+
+[Service]
+Type=simple
+User=root
+Environment="DCGM_EXPORTER_LISTEN=:{{ dcgm_exporter_port | default(9400) }}"
+Environment="DCGM_EXPORTER_INTERVAL={{ dcgm_exporter_interval | default(30000) }}"
+
+ExecStart=/usr/bin/docker run --rm \
+    --name dcgm-exporter \
+    --gpus all \
+    --cap-add SYS_ADMIN \
+    -p {{ dcgm_exporter_port | default(9400) }}:9400 \
+    -v /opt/dcgm-exporter/default-counters.csv:/etc/dcgm-exporter/default-counters.csv:ro \
+    nvcr.io/nvidia/k8s/dcgm-exporter:{{ dcgm_exporter_version | default('3.3.5-3.4.1-ubuntu22.04') }}
+
+ExecStop=/usr/bin/docker stop dcgm-exporter
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=false
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

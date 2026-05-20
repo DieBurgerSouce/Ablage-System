@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\sgd.py
+# hypothesis_version: 6.148.7
+
+[0.001, 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Param', 'ParamOut', 'multi_precision', 'params', 'sgd']

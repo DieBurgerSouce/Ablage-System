@@ -2,13 +2,15 @@
 User service for managing user accounts and authentication.
 
 Handles user CRUD operations, password management, and authentication logic.
-All error messages in German.
+All error messages in German. Mit Redis-Caching für häufige Lookups.
 """
 
 from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import UUID
+import json
 
+import structlog
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -16,15 +18,114 @@ from fastapi import HTTPException, status
 
 from app.db.models import User
 from app.db.schemas import UserCreate, UserUpdate, UserChangePassword, UserResponse
+from app.core.safe_errors import safe_error_log
 from app.core.security import (
     get_password_hash,
     verify_password,
     validate_password_strength
 )
 
+logger = structlog.get_logger(__name__)
+
+# User Cache Konfiguration
+USER_CACHE_TTL = 300  # 5 Minuten - kurz wegen Sicherheit
+USER_CACHE_PREFIX = "cache:user"
+
 
 class UserService:
-    """Service for user management operations."""
+    """Service for user management operations mit Redis-Caching."""
+
+    # Redis-Client wird lazy initialisiert
+    _redis = None
+
+    @classmethod
+    async def _get_redis(cls):
+        """Lazy-load Redis connection."""
+        if cls._redis is None:
+            from app.core.redis_state import RedisStateManager
+
+            cls._redis = RedisStateManager.get_instance()
+            await cls._redis.connect()
+        return cls._redis
+
+    @classmethod
+    async def _cache_user(cls, user: User, extra_keys: Optional[List[str]] = None) -> None:
+        """Cache einen User unter verschiedenen Keys."""
+        try:
+            redis = await cls._get_redis()
+            # Serialisiere nur essentielle, sichere Daten
+            cache_data = {
+                "id": str(user.id),
+                "email": user.email,
+                "username": user.username,
+                "full_name": user.full_name,
+                "is_active": user.is_active,
+                "is_superuser": user.is_superuser,
+                "preferred_language": user.preferred_language,
+            }
+            cache_json = json.dumps(cache_data)
+
+            # Haupt-Cache nach ID
+            await redis._redis.setex(
+                f"{USER_CACHE_PREFIX}:id:{user.id}",
+                USER_CACHE_TTL,
+                cache_json
+            )
+            # Cache nach Email
+            await redis._redis.setex(
+                f"{USER_CACHE_PREFIX}:email:{user.email.lower()}",
+                USER_CACHE_TTL,
+                cache_json
+            )
+            # Cache nach Username
+            await redis._redis.setex(
+                f"{USER_CACHE_PREFIX}:username:{user.username.lower()}",
+                USER_CACHE_TTL,
+                cache_json
+            )
+        except Exception as e:
+            # Cache-Fehler sollten nicht den Service unterbrechen
+            logger.debug("user_cache_set_failed", **safe_error_log(e))
+
+    @classmethod
+    async def _get_cached_user_by_id(cls, user_id: UUID) -> Optional[dict]:
+        """Hole gecachten User nach ID."""
+        try:
+            redis = await cls._get_redis()
+            cached = await redis._redis.get(f"{USER_CACHE_PREFIX}:id:{user_id}")
+            if cached:
+                return json.loads(cached)
+        except Exception as e:
+            logger.debug("user_cache_get_failed", **safe_error_log(e))
+        return None
+
+    @classmethod
+    async def _get_cached_user_by_email(cls, email: str) -> Optional[dict]:
+        """Hole gecachten User nach Email."""
+        try:
+            redis = await cls._get_redis()
+            cached = await redis._redis.get(f"{USER_CACHE_PREFIX}:email:{email.lower()}")
+            if cached:
+                return json.loads(cached)
+        except Exception as e:
+            logger.debug("user_cache_get_failed", **safe_error_log(e))
+        return None
+
+    @classmethod
+    async def _invalidate_user_cache(cls, user: User) -> None:
+        """Invalidiere alle Cache-Einträge für einen User."""
+        try:
+            redis = await cls._get_redis()
+            keys_to_delete = [
+                f"{USER_CACHE_PREFIX}:id:{user.id}",
+                f"{USER_CACHE_PREFIX}:email:{user.email.lower()}",
+                f"{USER_CACHE_PREFIX}:username:{user.username.lower()}",
+            ]
+            for key in keys_to_delete:
+                await redis._redis.delete(key)
+            logger.debug("user_cache_invalidated", user_id=str(user.id))
+        except Exception as e:
+            logger.debug("user_cache_invalidation_failed", **safe_error_log(e))
 
     @staticmethod
     async def create_user(
@@ -120,25 +221,37 @@ class UserService:
 
         return user
 
-    @staticmethod
+    @classmethod
     async def get_user_by_id(
+        cls,
         db: AsyncSession,
-        user_id: UUID
+        user_id: UUID,
+        use_cache: bool = True
     ) -> Optional[User]:
         """
-        Get user by ID.
+        Get user by ID mit optionalem Cache.
 
         Args:
             db: Database session
             user_id: User ID
+            use_cache: Cache verwenden (default: True)
 
         Returns:
             User object or None if not found
         """
+        # Cache-Lookup wird hier nicht verwendet, da wir das vollständige
+        # User-Objekt aus der DB brauchen (inkl. hashed_password etc.)
+        # Der Cache dient hauptsächlich für Validierung ob User existiert
         result = await db.execute(
             select(User).where(User.id == user_id)
         )
-        return result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+
+        # User cachen für zukünftige Lookups
+        if user and use_cache:
+            await cls._cache_user(user)
+
+        return user
 
     @staticmethod
     async def get_user_by_email(
@@ -180,14 +293,15 @@ class UserService:
         )
         return result.scalar_one_or_none()
 
-    @staticmethod
+    @classmethod
     async def update_user(
+        cls,
         db: AsyncSession,
         user_id: UUID,
         user_data: UserUpdate
     ) -> Optional[User]:
         """
-        Update user profile.
+        Update user profile mit Cache-Invalidation.
 
         Args:
             db: Database session
@@ -200,13 +314,17 @@ class UserService:
         Raises:
             HTTPException: If email or username already exists
         """
-        user = await UserService.get_user_by_id(db, user_id)
+        user = await cls.get_user_by_id(db, user_id, use_cache=False)
         if not user:
             return None
 
+        # Alte Email/Username für Cache-Invalidation speichern
+        old_email = user.email
+        old_username = user.username
+
         # Check email uniqueness if changing
         if user_data.email and user_data.email != user.email:
-            existing = await UserService.get_user_by_email(db, user_data.email)
+            existing = await cls.get_user_by_email(db, user_data.email)
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -221,6 +339,25 @@ class UserService:
         try:
             await db.commit()
             await db.refresh(user)
+
+            # Cache invalidieren (alte und neue Keys)
+            await cls._invalidate_user_cache(user)
+            # Alte Keys separat invalidieren falls Email/Username geändert
+            if old_email != user.email:
+                try:
+                    redis = await cls._get_redis()
+                    await redis._redis.delete(f"{USER_CACHE_PREFIX}:email:{old_email.lower()}")
+                except Exception as e:
+                    # Cache-Invalidierung nicht kritisch, aber loggen für Debugging
+                    logger.debug("cache_invalidation_failed", cache_type="email", **safe_error_log(e))
+            if old_username != user.username:
+                try:
+                    redis = await cls._get_redis()
+                    await redis._redis.delete(f"{USER_CACHE_PREFIX}:username:{old_username.lower()}")
+                except Exception as e:
+                    # Cache-Invalidierung nicht kritisch, aber loggen für Debugging
+                    logger.debug("cache_invalidation_failed", cache_type="username", **safe_error_log(e))
+
             return user
         except IntegrityError:
             await db.rollback()

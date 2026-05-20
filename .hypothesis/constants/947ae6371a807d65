@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\stats\_wilcoxon.py
+# hypothesis_version: 6.148.7
+
+[0.25, 0.5, 1.0, 2.0, 'AxisError', 'WRITEABLE', 'asymptotic', 'auto', 'average', 'exact', 'greater', 'less', 'pratt', 'samples', 'two-sided', 'wilcox', 'zsplit']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\_typing.py
+# hypothesis_version: 6.148.7
+
+['CTypeT', '_F', '_T', 'pa.NumericArray', 'pa.StringArray']

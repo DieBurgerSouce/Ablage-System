@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shapely\errors.py
+# hypothesis_version: 6.148.7
+
+[10000, 'InvalidGeometryError', 'PredicateError', 'ReadingError', 'WKBReadingError', 'WKTReadingError']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\bank_csv\commerzbank.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.6, 0.85, 0.95, 'amount', 'auftraggeber', 'begünstigter', 'betrag', 'bic', 'booking_date', 'booking_text', 'buchungstag', 'buchungstext', 'commerzbank', 'counterparty_bic', 'counterparty_iban', 'counterparty_name', 'currency', 'iban', 'reference_text', 'umsatzart', 'urspr', 'value_date', 'valuta', 'waehrung', 'wertstellung', 'währung', '\ufeff']

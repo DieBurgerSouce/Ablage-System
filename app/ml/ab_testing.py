@@ -13,6 +13,7 @@ Feinpoliert und durchdacht - Datengetriebene Optimierung.
 
 import hashlib
 import json
+import math
 import random
 import threading
 from dataclasses import dataclass, field
@@ -22,8 +23,139 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
+from pydantic import BaseModel, Field, field_validator
+
+
+# =============================================================================
+# Pydantic Validierungsmodelle für sichere JSON-Deserialisierung
+# =============================================================================
+
+class QualityMetricsSchema(BaseModel):
+    """Validierungsschema für Quality Metrics aus JSON."""
+    benchmark_samples: int = 0
+    avg_cer: float = Field(default=0.0, ge=0.0, le=1.0)
+    avg_wer: float = Field(default=0.0, ge=0.0, le=1.0)
+    avg_umlaut_accuracy: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class VariantMetricsSchema(BaseModel):
+    """Validierungsschema für Variant Metrics."""
+    samples: int = 0
+    conversions: int = 0
+
+
+class VariantSchema(BaseModel):
+    """Validierungsschema für Experiment-Varianten."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = ""
+    weight: float = Field(..., ge=0.0, le=1.0)
+    config: Dict[str, Any] = Field(default_factory=dict)
+    metrics: VariantMetricsSchema = Field(default_factory=VariantMetricsSchema)
+    quality_metrics: QualityMetricsSchema = Field(default_factory=QualityMetricsSchema)
+
+
+class ExperimentSchema(BaseModel):
+    """Validierungsschema für Experiment-JSON-Dateien.
+
+    Validiert:
+    - Pflichtfelder (experiment_id, name, status)
+    - Feldtypen und Wertebereiche
+    - Varianten-Struktur
+    """
+    experiment_id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = ""
+    status: str = Field(..., pattern="^(draft|running|paused|completed|archived)$")
+    variants: List[VariantSchema] = Field(default_factory=list)
+    winner: Optional[str] = None
+    significance_reached: bool = False
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def validate_iso_datetime(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere ISO-8601 Datumsformat."""
+        if v is None:
+            return v
+        try:
+            datetime.fromisoformat(v)
+            return v
+        except ValueError:
+            raise ValueError(f"Ungültiges Datumsformat: {v}")
+
+
+def validate_experiment_json(data: Dict[str, Any]) -> ExperimentSchema:
+    """Validiere Experiment-JSON mit Pydantic.
+
+    Args:
+        data: Deserialisierte JSON-Daten
+
+    Returns:
+        Validiertes ExperimentSchema
+
+    Raises:
+        pydantic.ValidationError: Bei Validierungsfehlern
+    """
+    return ExperimentSchema.model_validate(data)
 
 logger = structlog.get_logger(__name__)
+
+
+class SafeJSONEncoder(json.JSONEncoder):
+    """
+    JSON Encoder, der nicht-serialisierbare Typen sicher konvertiert.
+
+    Behandelt:
+    - numpy Typen (int64, float64, ndarray)
+    - datetime Objekte
+    - Enum Werte
+    - NaN und Infinity
+    - Beliebige Objekte via __dict__ oder str()
+    """
+
+    def default(self, obj: object) -> object:
+        # numpy Typen
+        try:
+            import numpy as np
+            if isinstance(obj, (np.integer, np.int64, np.int32)):
+                return int(obj)
+            if isinstance(obj, (np.floating, np.float64, np.float32)):
+                value = float(obj)
+                # NaN und Infinity zu None konvertieren
+                if math.isnan(value) or math.isinf(value):
+                    return None
+                return value
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+        except ImportError:
+            pass
+
+        # datetime Objekte
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+
+        # timedelta
+        if isinstance(obj, timedelta):
+            return obj.total_seconds()
+
+        # Enum Werte
+        if isinstance(obj, Enum):
+            return obj.value
+
+        # Path Objekte
+        if isinstance(obj, Path):
+            return str(obj)
+
+        # Objekte mit __dict__
+        if hasattr(obj, "__dict__"):
+            return obj.__dict__
+
+        # Fallback: String-Repräsentation
+        try:
+            return str(obj)
+        except Exception:
+            return f"<non-serializable: {type(obj).__name__}>"
 
 # Thread-Safety für Singleton
 _ab_test_manager_lock = threading.Lock()
@@ -323,7 +455,7 @@ class Experiment:
                 )
 
         except Exception as e:
-            logger.debug("signifikanz_test_fehlgeschlagen", error=str(e))
+            logger.debug("signifikanz_test_fehlgeschlagen", **safe_error_log(e))
 
     def _two_proportion_z_test(
         self,
@@ -381,8 +513,8 @@ class Experiment:
         }
 
     def to_json(self) -> str:
-        """Serialisiere zu JSON."""
-        return json.dumps(self.get_summary(), indent=2)
+        """Serialisiere zu JSON mit sicherer Typ-Konvertierung."""
+        return json.dumps(self.get_summary(), indent=2, cls=SafeJSONEncoder)
 
 
 class ABTestManager:
@@ -535,7 +667,7 @@ class ABTestManager:
             return False
 
         if experiment.status != ExperimentStatus.DRAFT:
-            logger.warning("experiment_start_nicht_moeglich", status=experiment.status.value)
+            logger.warning("experiment_start_nicht_möglich", status=experiment.status.value)
             return False
 
         experiment.status = ExperimentStatus.RUNNING
@@ -669,55 +801,333 @@ class ABTestManager:
         name_slug = name.lower().replace(" ", "_")[:20]
         return f"exp_{name_slug}_{timestamp}"
 
-    def _save_experiment(self, experiment: Experiment) -> None:
-        """Speichere Experiment."""
+    def _save_experiment(self, experiment: Experiment) -> bool:
+        """
+        Speichere Experiment auf Disk.
+
+        Args:
+            experiment: Das zu speichernde Experiment
+
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
         filepath = self.storage_path / f"{experiment.experiment_id}.json"
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(experiment.to_json())
+        try:
+            json_content = experiment.to_json()
+
+            # Validiere, dass Inhalt nicht leer ist
+            if not json_content or json_content.strip() == "":
+                logger.error(
+                    "experiment_speichern_fehlgeschlagen_leerer_inhalt",
+                    experiment_id=experiment.experiment_id,
+                )
+                return False
+
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(json_content)
+                f.flush()  # Sicherstellen, dass Daten auf Disk geschrieben werden
+
+            # Verifiziere, dass Datei nicht leer ist
+            if filepath.stat().st_size == 0:
+                logger.error(
+                    "experiment_speichern_fehlgeschlagen_datei_leer",
+                    experiment_id=experiment.experiment_id,
+                    filepath=str(filepath),
+                )
+                return False
+
+            logger.debug(
+                "experiment_gespeichert",
+                experiment_id=experiment.experiment_id,
+                filepath=str(filepath),
+                size_bytes=filepath.stat().st_size,
+            )
+            return True
+
+        except (OSError, IOError) as e:
+            logger.error(
+                "experiment_speichern_fehlgeschlagen_io",
+                experiment_id=experiment.experiment_id,
+                filepath=str(filepath),
+                **safe_error_log(e),
+            )
+            return False
+        except json.JSONDecodeError as e:
+            logger.error(
+                "experiment_speichern_fehlgeschlagen_json",
+                experiment_id=experiment.experiment_id,
+                **safe_error_log(e),
+            )
+            return False
+        except Exception as e:
+            logger.exception(
+                "experiment_speichern_fehlgeschlagen_unbekannt",
+                experiment_id=experiment.experiment_id,
+                **safe_error_log(e),
+            )
+            return False
 
     def _load_experiments(self) -> None:
         """Lade gespeicherte Experimente."""
+        loaded_count = 0
+        skipped_count = 0
+
         for filepath in self.storage_path.glob("exp_*.json"):
             try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                # Überspringe leere Dateien (bekannter Bug, der jetzt gefixt ist)
+                if filepath.stat().st_size == 0:
+                    logger.warning(
+                        "experiment_datei_leer_übersprungen",
+                        filepath=str(filepath),
+                    )
+                    skipped_count += 1
+                    continue
 
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                # Überspringe leeren Inhalt
+                if not content or content.strip() == "":
+                    logger.warning(
+                        "experiment_inhalt_leer_übersprungen",
+                        filepath=str(filepath),
+                    )
+                    skipped_count += 1
+                    continue
+
+                data = json.loads(content)
+
+                # Pydantic-Validierung für sichere JSON-Deserialisierung
+                from pydantic import ValidationError as PydanticValidationError
+
+                try:
+                    validated_data = validate_experiment_json(data)
+                except PydanticValidationError as e:
+                    logger.warning(
+                        "experiment_validierung_fehlgeschlagen",
+                        filepath=str(filepath),
+                        errors=e.error_count(),
+                        details=str(e.errors()[:3]),  # Nur erste 3 Fehler loggen
+                    )
+                    skipped_count += 1
+                    continue
+
+                # Nutze validierte Daten
                 variants = [
                     Variant(
-                        name=v["name"],
-                        description=v.get("description", ""),
-                        weight=v["weight"],
-                        config=v.get("config", {}),
-                        samples=v.get("metrics", {}).get("samples", 0),
-                        conversions=v.get("metrics", {}).get("conversions", 0),
+                        name=v.name,
+                        description=v.description,
+                        weight=v.weight,
+                        config=v.config,
+                        samples=v.metrics.samples,
+                        conversions=v.metrics.conversions,
                         # Ground-Truth Quality Metrics laden
-                        benchmark_samples=v.get("quality_metrics", {}).get("benchmark_samples", 0),
-                        total_cer=v.get("quality_metrics", {}).get("avg_cer", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
-                        total_wer=v.get("quality_metrics", {}).get("avg_wer", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
-                        total_umlaut_accuracy=v.get("quality_metrics", {}).get("avg_umlaut_accuracy", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
+                        benchmark_samples=v.quality_metrics.benchmark_samples,
+                        total_cer=v.quality_metrics.avg_cer * v.quality_metrics.benchmark_samples,
+                        total_wer=v.quality_metrics.avg_wer * v.quality_metrics.benchmark_samples,
+                        total_umlaut_accuracy=v.quality_metrics.avg_umlaut_accuracy * v.quality_metrics.benchmark_samples,
                     )
-                    for v in data.get("variants", [])
+                    for v in validated_data.variants
                 ]
 
                 experiment = Experiment(
-                    experiment_id=data["experiment_id"],
-                    name=data["name"],
-                    description=data.get("description", ""),
+                    experiment_id=validated_data.experiment_id,
+                    name=validated_data.name,
+                    description=validated_data.description,
                     variants=variants,
-                    status=ExperimentStatus(data["status"]),
-                    winner=data.get("winner"),
-                    significance_reached=data.get("significance_reached", False),
+                    status=ExperimentStatus(validated_data.status),
+                    winner=validated_data.winner,
+                    significance_reached=validated_data.significance_reached,
                 )
 
-                if data.get("start_time"):
-                    experiment.start_time = datetime.fromisoformat(data["start_time"])
-                if data.get("end_time"):
-                    experiment.end_time = datetime.fromisoformat(data["end_time"])
+                if validated_data.start_time:
+                    experiment.start_time = datetime.fromisoformat(validated_data.start_time)
+                if validated_data.end_time:
+                    experiment.end_time = datetime.fromisoformat(validated_data.end_time)
 
                 self._experiments[experiment.experiment_id] = experiment
+                loaded_count += 1
 
+            except json.JSONDecodeError as e:
+                logger.warning(
+                    "experiment_laden_fehlgeschlagen_json_ungültig",
+                    filepath=str(filepath),
+                    **safe_error_log(e),
+                )
+                skipped_count += 1
             except Exception as e:
-                logger.warning("experiment_laden_fehlgeschlagen", filepath=str(filepath), error=str(e))
+                logger.warning(
+                    "experiment_laden_fehlgeschlagen",
+                    filepath=str(filepath),
+                    **safe_error_log(e),
+                )
+                skipped_count += 1
+
+        if loaded_count > 0 or skipped_count > 0:
+            logger.info(
+                "experimente_geladen",
+                loaded=loaded_count,
+                skipped=skipped_count,
+            )
+
+    def get_winning_backend(self, experiment_id: str) -> Optional[str]:
+        """
+        Hole das gewinnende Backend aus einem Experiment.
+
+        Args:
+            experiment_id: ID des Experiments
+
+        Returns:
+            Backend-Name des Gewinners oder None
+        """
+        experiment = self._experiments.get(experiment_id)
+        if not experiment:
+            return None
+
+        if experiment.winner:
+            # Find the variant with the winning name and extract backend
+            for variant in experiment.variants:
+                if variant.name == experiment.winner:
+                    return variant.config.get("backend")
+        return None
+
+    def get_significant_winners(self) -> Dict[str, str]:
+        """
+        Hole alle Experimente mit signifikanten Gewinnern.
+
+        Returns:
+            Dict[experiment_id, winning_backend]
+        """
+        winners = {}
+        for exp_id, experiment in self._experiments.items():
+            if experiment.significance_reached and experiment.winner:
+                backend = self.get_winning_backend(exp_id)
+                if backend:
+                    winners[exp_id] = backend
+        return winners
+
+    def check_and_apply_winners(
+        self,
+        auto_conclude: bool = True,
+        min_improvement_percent: float = 5.0,
+    ) -> List[Dict[str, Any]]:
+        """
+        Prüfe alle laufenden Experimente auf Signifikanz und wende Gewinner an.
+
+        Args:
+            auto_conclude: Experimente automatisch beenden bei Signifikanz
+            min_improvement_percent: Mindestverbesserung für Gewinner-Anwendung
+
+        Returns:
+            Liste der angewendeten Gewinner mit Details
+        """
+        applied_winners = []
+
+        for experiment in self.get_active_experiments():
+            # Skip if not enough samples
+            if any(v.samples < experiment.min_samples_per_variant for v in experiment.variants):
+                continue
+
+            # Check if significance was reached
+            if experiment.significance_reached and experiment.winner:
+                # Calculate improvement
+                control = experiment.variants[0]
+                treatment = None
+                for v in experiment.variants:
+                    if v.name == experiment.winner:
+                        treatment = v
+                        break
+
+                if treatment and control:
+                    improvement = 0.0
+                    if control.conversion_rate > 0:
+                        improvement = ((treatment.conversion_rate - control.conversion_rate)
+                                      / control.conversion_rate * 100)
+
+                    winner_backend = self.get_winning_backend(experiment.experiment_id)
+
+                    if improvement >= min_improvement_percent or treatment.conversion_rate > control.conversion_rate:
+                        result = {
+                            "experiment_id": experiment.experiment_id,
+                            "winner_backend": winner_backend,
+                            "winner_variant": experiment.winner,
+                            "improvement_percent": round(improvement, 2),
+                            "control_rate": round(control.conversion_rate, 4),
+                            "winner_rate": round(treatment.conversion_rate, 4),
+                            "total_samples": sum(v.samples for v in experiment.variants),
+                        }
+
+                        applied_winners.append(result)
+
+                        logger.info(
+                            "ab_test_winner_detected",
+                            experiment_id=experiment.experiment_id,
+                            winner_backend=winner_backend,
+                            improvement_percent=round(improvement, 2),
+                        )
+
+                        # Auto-conclude experiment
+                        if auto_conclude:
+                            self.conclude_experiment(experiment.experiment_id)
+
+        return applied_winners
+
+    def get_recommended_backend_order(self) -> List[str]:
+        """
+        Empfehle Backend-Reihenfolge basierend auf A/B-Test Ergebnissen.
+
+        Analysiert alle abgeschlossenen Experimente und erstellt
+        eine optimierte Backend-Reihenfolge.
+
+        Returns:
+            Liste von Backend-Namen, sortiert nach Performance
+        """
+        backend_scores: Dict[str, Dict[str, float]] = {}
+
+        # Sammle Daten aus allen abgeschlossenen Experimenten
+        for experiment in self._experiments.values():
+            if experiment.status != ExperimentStatus.COMPLETED:
+                continue
+
+            for variant in experiment.variants:
+                backend = variant.config.get("backend")
+                if not backend:
+                    continue
+
+                if backend not in backend_scores:
+                    backend_scores[backend] = {
+                        "total_rate": 0.0,
+                        "experiment_count": 0,
+                        "wins": 0,
+                    }
+
+                backend_scores[backend]["total_rate"] += variant.conversion_rate
+                backend_scores[backend]["experiment_count"] += 1
+
+                if experiment.winner == variant.name:
+                    backend_scores[backend]["wins"] += 1
+
+        # Berechne durchschnittliche Rate und sortiere
+        backend_ranks = []
+        for backend, scores in backend_scores.items():
+            if scores["experiment_count"] > 0:
+                avg_rate = scores["total_rate"] / scores["experiment_count"]
+                win_bonus = scores["wins"] * 0.1  # 10% Bonus pro Gewinn
+                final_score = avg_rate + win_bonus
+                backend_ranks.append((backend, final_score))
+
+        # Sortiere absteigend nach Score
+        backend_ranks.sort(key=lambda x: x[1], reverse=True)
+
+        recommended_order = [b[0] for b in backend_ranks]
+
+        logger.info(
+            "recommended_backend_order",
+            order=recommended_order,
+            scores={b: round(s, 4) for b, s in backend_ranks},
+        )
+
+        return recommended_order
 
 
 # Singleton instance

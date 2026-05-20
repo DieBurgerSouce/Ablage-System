@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\validators\i18n\__init__.py
+# hypothesis_version: 6.148.7
+
+['es_cif', 'es_doi', 'es_nie', 'es_nif', 'fi_business_id', 'fi_ssn', 'fr_department', 'fr_ssn', 'ind_aadhar', 'ind_pan', 'ru_inn']

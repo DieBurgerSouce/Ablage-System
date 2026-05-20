@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\app\utils.py
+# hypothesis_version: 6.148.7
+
+['*', ', ', '6.0.0', ':', 'CELERY_BROKER_URL', 'Settings', 'TIME_ZONE', '_', '__bogus__', '__path__', 'amqp', 'appstr', 'backend', 'broker_host', 'broker_read_url', 'broker_url', 'broker_write_url', 'bugreport', 'celery', 'changes', 'config_source', 'control', 'convert', 'defaults', 'disabled', 'events', 'find_app', 'key_t', 'loader', 'log', 'main', 'mix_error', 'result_backend', 'set_as_current', 'settings_info_t', 'task_default_queue', 'timezone', '{}:{}']

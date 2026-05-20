@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\company_metrics_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, '0.00', '1', '2', '3', '4', 'active', 'active_companies', 'active_count', 'active_dunnings', 'average_payment_days', 'balance', 'banking', 'by_level', 'company_id', 'company_name', 'company_short_name', 'customer', 'customers', 'details', 'documents', 'dunning', 'entities', 'growth_percent', 'health', 'health_score', 'high_risk', 'incoming_this_month', 'invoices', 'is_active', 'last_month', 'metric_type', 'outgoing_this_month', 'outstanding', 'outstanding_amount', 'overdue', 'overdue_amount', 'overdue_count', 'paid_amount', 'pending', 'supplier', 'suppliers', 'this_month', 'total', 'total_amount', 'total_companies', 'total_count', 'total_documents', 'total_entities', 'total_invoices', 'total_overdue_amount', 'value']

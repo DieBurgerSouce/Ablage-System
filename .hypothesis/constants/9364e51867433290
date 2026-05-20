@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\amp\debugging.py
+# hypothesis_version: 6.148.7
+
+[123, ' BF16 Calls ', ' FP16 Calls ', ' FP32 Calls', ' Op Name ', ' Other Calls ', ' op count: ', ' op list ', ',', '<{:-^120}>', '<{:-^120}>\n', '<{:-^40}', 'DebugMode', 'FLAGS_check_nan_inf', 'TensorCheckerConfig', '_InputT', '_RetT', 'check_layer_numerics', 'check_nan_inf_level', 'check_numerics', 'compare_accuracy', 'float', 'int64', 'op_type', 'output_dir', 'stack_height_limit', 'stats', 'tensor', 'values', 'var_name', '{:-^17}', '{:-^17}>', '|']

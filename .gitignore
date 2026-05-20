@@ -1,58 +1,4 @@
-# =============================================================================
-# GLOBAL ENTERPRISE .GITIGNORE
-# Project: Ablage-System
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# STRICT ROOT POLICY
-# -----------------------------------------------------------------------------
-/*
-!/.gitignore
-!/.dockerignore
-!/.editorconfig
-!/.pre-commit-config.yaml
-!/pyproject.toml
-!/package.json
-!/package-lock.json
-!/requirements.txt
-!/requirements-dev.txt
-!/requirements-gpu.txt
-!/Dockerfile
-!/docker-compose*.yml
-!/docker-compose*.yaml
-!/Makefile
-!/README.md
-!/CLAUDE.md
-!/VERSION
-!/LICENSE
-!/ARCHITECTURE.md
-!/CONTRIBUTING.md
-!/SECURITY.md
-!/CHANGELOG.md
-!/CONVENTIONS.md
-!/alembic.ini
-!/jest.config.js
-!/playwright.config.ts
-!/tsconfig.json
-!/.releaserc.json
-!/.secrets.baseline
-!/.yamllint.yml
-!/.markdownlint.json
-
-# Whitelist core directories
-!/app/
-!/frontend/
-!/infrastructure/
-!/docs/
-!/tests/
-!/scripts/
-!/.github/
-!/.vscode/
-!/.devcontainer/
-
-# -----------------------------------------------------------------------------
-# PYTHON & CORE
-# -----------------------------------------------------------------------------
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -64,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -74,98 +20,157 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Virtual Environment
 venv/
-.venv/
 ENV/
 env/
+.venv
 
-# -----------------------------------------------------------------------------
-# JAVASCRIPT & FRONTEND
-# -----------------------------------------------------------------------------
-node_modules/
-/frontend/dist/
-/frontend/build/
-.next/
-.out/
-.vercel
-.npm
-.eslintcache
-*.tsbuildinfo
-
-# -----------------------------------------------------------------------------
-# SECRETS & ENVIRONMENT
-# -----------------------------------------------------------------------------
-.env
-.env.*
-!.env.example
-!.env.*.example
-*.pem
-*.key
-*.pfx
-*.crt
-secrets/
-vault/
-*.txt
-!/requirements*.txt
-!*.md
-
-# -----------------------------------------------------------------------------
-# OS & IDE
-# -----------------------------------------------------------------------------
-.DS_Store
-Thumbs.db
-desktop.ini
+# IDE
+.vscode/
 .idea/
 *.swp
 *.swo
-.project
-.settings/
-.pydevproject
+*~
 
-# -----------------------------------------------------------------------------
-# DATA, MODELS & BINARIES
-# -----------------------------------------------------------------------------
-data/
-!data/.gitkeep
-models/
-!models/.gitkeep
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads
+uploads/
+/tmp/
+
+# Model files (large files)
 *.pt
 *.pth
 *.bin
-*.pkl
-*.h5
-*.onnx
 *.safetensors
-*.zip
-*.tar
-*.gz
-*.7z
-*.rar
-*.exe
-*.dll
-*.so
-*.dylib
-*.log
-logs/
-/tmp/
-/quarantine/
-nul
-=2.0.0
 
-# -----------------------------------------------------------------------------
-# SCANNER & TOOLING ARTIFACTS
-# -----------------------------------------------------------------------------
-.pytest_cache/
-.hypothesis/
-.kiro/
-.playwright-mcp/
+# Cache
 .cache/
+*.cache
+.claude/cache/
+nul
+frontend/lint_report*.txt
+lint_report*.txt
+
+# OCR Results (generated)
+ocr_result*.json
+
+# Temporary test directories
+temp_paddle_test/
+temp_results/
+.hypothesis/
+ocr_comparison_results/
+stichproben.csv
+
+# Script output files
+scripts/*.json
+
+# Pip artifacts
+=*
+
+# Archive directory
+ARCHIVE/
+
+# Training Data (large binary files - not for version control)
+Trainings_Data/
+
+# Security - Certificates and Keys
+*.key
+*.pem
+*.crt
+!requirements*.txt
+infrastructure/vault/config/certs/
+
+# Nginx security files (never commit!)
+infrastructure/nginx/.htpasswd
+infrastructure/nginx/dhparam.pem
+
+# Vault secrets (NEVER commit these!)
+infrastructure/vault/.vault*
+
+# Browser Diagnostics - Temporary files
+*.png
+!frontend/public/*.png
+!docs/**/*.png
+screenshots/
 test-reports/
-htmlcov/
-.coverage
-.coverage.*
-.tox/
-.nox/
-.ruff_cache/
-.mypy_cache/
-.pytype/
+
+# Temporary test scripts (keep only the main suite)
+test_*.js
+!tests/e2e/ultra-browser-diagnostics.js
+run-*.bat
+run-*.js
+
+# Root-level temporary files
+*.md
+!README.md
+!CLAUDE.md
+!ARCHITECTURE.md
+!DEPLOYMENT.md
+!CONVENTIONS.md
+!docs/**/*.md
+!.claude/**/*.md
+!frontend/**/*.md
+
+# Node modules in root (frontend has its own)
+/node_modules/
+/package-lock.json
+
+# Playwright MCP
+.playwright-mcp/
+.mcp.json
+
+# Alerting secrets (Sprint 0 / G01, Task D)
+infrastructure/alerting/slack-webhook.url
+infrastructure/alerting/teams-webhook.url
+infrastructure/alerting/smtp-password
+
+# Prometheus scrape tokens (mounted into prometheus container)
+infrastructure/prometheus/qdrant_metrics_token
+
+# Watchdog runtime logs (Sprint 0 / G05) - State liegt im Docker-Volume
+scripts/watchdog/logs/
+
+# Claude-Flow Runtime in beliebigen Subdirectories (Phase B 2026-05-19)
+# Im Root-Repo werden `.claude-flow/metrics/*.json` als Audit-Baseline
+# committet; in Sub-Workdirs (z.B. frontend/.claude-flow/) ist alles
+# nur Runtime-Cruft.
+**/.claude-flow/daemon-state.json
+**/.claude-flow/daemon-children.json
+**/.claude-flow/daemon.pid
+**/.claude-flow/.trend-cache.json
+**/.claude-flow/data/
+**/.claude-flow/logs/
+**/.claude-flow/sessions/
+**/.claude-flow/tasks/
+**/.claude-flow/workflows/
+**/.claude-flow/learning/
+**/.claude-flow/neural/
+# Subdir-Daemon-Instanzen komplett ignorieren (nur das Root .claude-flow/ ist relevant)
+/frontend/.claude-flow/
+
+# Python scripts in root
+/reset_password.py

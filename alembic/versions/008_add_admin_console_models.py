@@ -118,12 +118,8 @@ def upgrade() -> None:
     op.create_index('ix_rate_limit_overrides_user_id', 'rate_limit_overrides', ['user_id'])
     op.create_index('ix_rate_limit_overrides_valid_until', 'rate_limit_overrides', ['valid_until'])
 
-    # Partial index for active overrides (no expiration or future expiration)
-    op.execute("""
-        CREATE INDEX ix_rate_limit_overrides_active
-        ON rate_limit_overrides (user_id)
-        WHERE valid_until IS NULL OR valid_until > NOW();
-    """)
+    # NOTE: Partial index removed - NOW() is not immutable and cannot be used in index predicates
+    # Use the separate indexes on user_id and valid_until instead
 
     # ========== Create view for effective rate limits ==========
     op.execute("""

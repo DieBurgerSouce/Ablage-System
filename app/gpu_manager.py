@@ -20,6 +20,7 @@ import threading
 import asyncio
 from functools import wraps
 from contextlib import contextmanager
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -33,7 +34,7 @@ class GPUManager:
         """Initialize GPU manager with RTX 4080 specifications"""
         self.device_name = "RTX 4080"
         self.total_vram_bytes = 16 * 1024 * 1024 * 1024  # 16GB in bytes
-        self.safety_buffer_bytes = 4 * 1024 * 1024 * 1024  # 4GB safety buffer
+        self.safety_buffer_bytes = 2 * 1024 * 1024 * 1024  # 2GB safety buffer (reduced from 4GB for RTX 4080)
 
         # Backend VRAM requirements (in GB)
         self.backend_requirements = {
@@ -42,7 +43,12 @@ class GPUManager:
             "surya_gpu": 8.0,   # Surya GPU-accelerated needs 8GB
             "donut": 8.0,       # Donut OCR needs 8GB
             "hybrid": 12.0,     # Hybrid uses multiple backends, estimate max
-            "surya": 0.0        # CPU-only fallback
+            "surya": 0.0,       # CPU-only fallback
+            "qwen_ocr": 14.0,   # Qwen2.5-VL-7B needs 14GB
+            "chandra": 15.0,    # Chandra 9B VLM - Standard FP16
+            "chandra_8bit": 9.0,  # Chandra 9B - 8-bit Quantisierung
+            "chandra_4bit": 5.0,  # Chandra 9B - 4-bit Quantisierung
+            "olmocr": 14.0,     # OlmOCR-2 7B needs 14GB (based on Qwen2.5-VL)
         }
 
         # Track allocations (thread-safe with lock)
@@ -103,10 +109,10 @@ class GPUManager:
             }
 
         except Exception as e:
-            logger.error("gpu_check_failed", error=str(e))
+            logger.error("gpu_check_failed", **safe_error_log(e))
             return {
                 "available": False,
-                "reason": f"GPU check failed: {str(e)}",
+                "reason": safe_error_detail(e, "GPU-Check"),
                 "fallback": "cpu"
             }
 
@@ -170,7 +176,7 @@ class GPUManager:
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
             except RuntimeError as e:
-                logger.warning("cuda_cache_clear_failed", error=str(e))
+                logger.debug("cuda_cache_clear_failed", error_type=type(e).__name__)
 
             # Re-check
             status = self.check_availability()
@@ -407,10 +413,10 @@ class GPUManager:
                 }
 
         except Exception as e:
-            logger.critical("gpu_recovery_catastrophic_failure", error=str(e))
+            logger.critical("gpu_recovery_catastrophic_failure", **safe_error_log(e))
             return {
                 "recovered": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "fallback": "cpu_only"
             }
 
@@ -470,6 +476,358 @@ class GPUManager:
 
         return recommendations
 
+    # ==========================================================================
+    # GPU Memory Vorhersage (P1 - Proaktive OOM-Verhinderung)
+    # ==========================================================================
+
+    def predict_memory_usage(
+        self,
+        backend: str,
+        batch_size: int = 1,
+        image_size_mb: float = 0.0,
+        page_count: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Vorhersage des VRAM-Verbrauchs für einen OCR-Task.
+
+        Verwendet empirische Messungen und Heuristiken um den erwarteten
+        Speicherverbrauch zu schätzen. Ermöglicht proaktive OOM-Verhinderung.
+
+        Args:
+            backend: OCR Backend Name
+            batch_size: Anzahl der Dokumente im Batch
+            image_size_mb: Größe des Eingabebilds in MB (optional)
+            page_count: Anzahl der Seiten (für Multi-Page-PDFs)
+
+        Returns:
+            Dict mit Vorhersage:
+            - predicted_gb: Geschätzter VRAM-Verbrauch in GB
+            - confidence: Konfidenz der Vorhersage (0-1)
+            - model_base_gb: Basis-VRAM für Model
+            - processing_gb: VRAM für Verarbeitung
+            - overhead_gb: Overhead/Buffer
+        """
+        # Basis-VRAM für geladenes Model (in GB)
+        model_base_map = {
+            "deepseek": 10.0,    # DeepSeek-Janus-Pro Model Weights
+            "got_ocr": 6.0,     # GOT-OCR 2.0 Weights
+            "surya_gpu": 4.0,   # Surya GPU Weights
+            "surya_docling": 2.0,  # Surya CPU (minimal GPU)
+            "donut": 5.0,       # Donut Weights
+            "hybrid": 10.0,     # Conservative: Max of sub-models
+            "surya": 0.0,       # CPU-only
+        }
+
+        # Verarbeitungs-VRAM pro Dokument (in MB)
+        processing_mb_per_doc = {
+            "deepseek": 1024,   # 1GB pro Dokument (complex multimodal)
+            "got_ocr": 500,     # 500MB pro Dokument
+            "surya_gpu": 250,   # 250MB pro Dokument
+            "surya_docling": 100,  # 100MB (mostly CPU)
+            "donut": 400,       # 400MB pro Dokument
+            "hybrid": 1024,     # Conservative
+            "surya": 0,         # CPU-only
+        }
+
+        # Hole profiled Werte falls verfügbar
+        if hasattr(self, '_backend_profiles') and backend in self._backend_profiles:
+            profile = self._backend_profiles[backend]
+            measured_mb = profile.get('measured_mb_per_doc')
+            if measured_mb and measured_mb > 0:
+                processing_mb_per_doc[backend] = measured_mb
+                confidence = 0.9  # Hohe Konfidenz bei gemessenen Werten
+            else:
+                confidence = 0.7  # Mittlere Konfidenz bei Heuristik
+        else:
+            confidence = 0.7
+
+        # Berechne Vorhersage
+        model_base_gb = model_base_map.get(backend, 5.0)
+        processing_mb = processing_mb_per_doc.get(backend, 500) * batch_size
+
+        # Skalierung nach Bildgröße (größere Bilder brauchen mehr VRAM)
+        if image_size_mb > 0:
+            # Faktor: 10MB Bild -> 1.0x, 50MB Bild -> 1.5x, 100MB Bild -> 2.0x
+            size_factor = 1.0 + (image_size_mb / 100.0)
+            processing_mb *= size_factor
+            confidence *= 0.9  # Leicht reduzierte Konfidenz bei größeren Bildern
+
+        # Skalierung nach Seitenanzahl
+        if page_count > 1:
+            # Multi-Page PDFs: Nicht linear (Batching)
+            page_factor = 1.0 + (0.2 * (page_count - 1))  # 20% mehr pro Seite
+            processing_mb *= page_factor
+
+        processing_gb = processing_mb / 1024
+
+        # Overhead (CUDA Kernel, Aktivierungen, temporaere Tensoren)
+        # Ca. 15% des Verarbeitungs-VRAMs
+        overhead_gb = processing_gb * 0.15
+
+        total_predicted_gb = model_base_gb + processing_gb + overhead_gb
+
+        prediction = {
+            "predicted_gb": round(total_predicted_gb, 2),
+            "confidence": round(confidence, 2),
+            "breakdown": {
+                "model_base_gb": round(model_base_gb, 2),
+                "processing_gb": round(processing_gb, 2),
+                "overhead_gb": round(overhead_gb, 2),
+            },
+            "parameters": {
+                "backend": backend,
+                "batch_size": batch_size,
+                "image_size_mb": image_size_mb,
+                "page_count": page_count,
+            }
+        }
+
+        logger.debug("memory_prediction", **prediction)
+        return prediction
+
+    def can_process_task(
+        self,
+        backend: str,
+        batch_size: int = 1,
+        image_size_mb: float = 0.0,
+        page_count: int = 1,
+        safety_margin: float = 0.15
+    ) -> Dict[str, Any]:
+        """
+        Prüfe ob ein Task mit den aktuellen VRAM-Ressourcen verarbeitet werden kann.
+
+        Args:
+            backend: OCR Backend Name
+            batch_size: Batch-Größe
+            image_size_mb: Bildgröße in MB
+            page_count: Seitenanzahl
+            safety_margin: Sicherheitspuffer (default: 15%)
+
+        Returns:
+            Dict mit:
+            - can_process: Bool - Ob der Task verarbeitet werden kann
+            - reason: Grund falls nicht möglich
+            - predicted_gb: Vorhergesagter Verbrauch
+            - available_gb: Verfügbarer VRAM
+            - suggested_batch_size: Empfohlene Batch-Größe falls zu groß
+            - suggested_backend: Alternative Backend-Empfehlung
+        """
+        # Vorhersage erstellen
+        prediction = self.predict_memory_usage(
+            backend=backend,
+            batch_size=batch_size,
+            image_size_mb=image_size_mb,
+            page_count=page_count
+        )
+
+        # Aktuellen Status prüfen
+        status = self.check_availability()
+
+        if not status.get("available"):
+            return {
+                "can_process": backend == "surya",  # CPU-only funktioniert immer
+                "reason": "GPU nicht verfügbar",
+                "suggested_backend": "surya",
+                "predicted_gb": prediction["predicted_gb"],
+                "available_gb": 0.0,
+            }
+
+        available_gb = status.get("free_gb", 0)
+        safe_available_gb = available_gb * (1 - safety_margin)
+        predicted_gb = prediction["predicted_gb"]
+
+        result = {
+            "predicted_gb": predicted_gb,
+            "available_gb": round(available_gb, 2),
+            "safe_available_gb": round(safe_available_gb, 2),
+            "prediction_confidence": prediction["confidence"],
+        }
+
+        if predicted_gb <= safe_available_gb:
+            # Genügend VRAM verfügbar
+            result["can_process"] = True
+            result["reason"] = "Ausreichend VRAM verfügbar"
+            result["headroom_gb"] = round(safe_available_gb - predicted_gb, 2)
+
+        else:
+            # Nicht genügend VRAM
+            result["can_process"] = False
+            result["reason"] = f"Unzureichend VRAM: {predicted_gb:.1f}GB benötigt, {safe_available_gb:.1f}GB verfügbar"
+            result["deficit_gb"] = round(predicted_gb - safe_available_gb, 2)
+
+            # Berechne optimale Batch-Größe
+            suggested_batch = self._calculate_max_batch_size(
+                backend=backend,
+                available_gb=safe_available_gb,
+                image_size_mb=image_size_mb,
+                page_count=page_count
+            )
+            result["suggested_batch_size"] = suggested_batch
+
+            # Schlage alternatives Backend vor
+            suggested_backend = self._suggest_alternative_backend(
+                available_gb=safe_available_gb,
+                batch_size=batch_size
+            )
+            result["suggested_backend"] = suggested_backend
+
+        logger.info("task_processability_check", **result)
+        return result
+
+    def _calculate_max_batch_size(
+        self,
+        backend: str,
+        available_gb: float,
+        image_size_mb: float = 0.0,
+        page_count: int = 1
+    ) -> int:
+        """Berechne maximale Batch-Größe für gegebenen VRAM."""
+        # Binäre Suche nach maximaler Batch-Größe
+        for batch_size in range(32, 0, -1):
+            prediction = self.predict_memory_usage(
+                backend=backend,
+                batch_size=batch_size,
+                image_size_mb=image_size_mb,
+                page_count=page_count
+            )
+            if prediction["predicted_gb"] <= available_gb:
+                return batch_size
+        return 1
+
+    def _suggest_alternative_backend(
+        self,
+        available_gb: float,
+        batch_size: int = 1
+    ) -> Optional[str]:
+        """Schlage alternatives Backend vor basierend auf verfügbarem VRAM."""
+        # Sortiert nach Qualität (beste zuerst)
+        backend_priority = [
+            ("deepseek", 12.0),
+            ("got_ocr", 8.0),
+            ("surya_gpu", 5.0),
+            ("surya_docling", 2.0),
+            ("surya", 0.0),  # CPU-fallback
+        ]
+
+        for backend, min_vram in backend_priority:
+            prediction = self.predict_memory_usage(
+                backend=backend,
+                batch_size=min(batch_size, 4)  # Konservative Batch-Größe
+            )
+            if prediction["predicted_gb"] <= available_gb:
+                return backend
+
+        return "surya"  # Immer CPU als letzter Fallback
+
+    def suggest_optimal_settings(
+        self,
+        preferred_backend: str = "auto",
+        document_count: int = 1,
+        image_size_mb: float = 0.0,
+        page_count: int = 1,
+        target_throughput: str = "balanced"
+    ) -> Dict[str, Any]:
+        """
+        Empfehle optimale Einstellungen für einen OCR-Job.
+
+        Berücksichtigt:
+        - Verfügbaren VRAM
+        - Anzahl der Dokumente
+        - Gewünschten Durchsatz
+        - Backend-Fähigkeiten
+
+        Args:
+            preferred_backend: Bevorzugtes Backend oder "auto"
+            document_count: Anzahl zu verarbeitender Dokumente
+            image_size_mb: Bildgröße in MB
+            page_count: Seiten pro Dokument
+            target_throughput: "fast", "balanced", oder "quality"
+
+        Returns:
+            Dict mit empfohlenen Einstellungen
+        """
+        status = self.check_availability()
+        available_gb = status.get("free_gb", 0) if status.get("available") else 0
+
+        # Backend-Auswahl
+        if preferred_backend == "auto":
+            if target_throughput == "quality":
+                backend_candidates = ["deepseek", "got_ocr", "surya_gpu", "surya"]
+            elif target_throughput == "fast":
+                backend_candidates = ["surya_gpu", "got_ocr", "surya"]
+            else:  # balanced
+                backend_candidates = ["got_ocr", "surya_gpu", "deepseek", "surya"]
+
+            selected_backend = None
+            for backend in backend_candidates:
+                check = self.can_process_task(
+                    backend=backend,
+                    batch_size=1,
+                    image_size_mb=image_size_mb,
+                    page_count=page_count
+                )
+                if check["can_process"]:
+                    selected_backend = backend
+                    break
+
+            if not selected_backend:
+                selected_backend = "surya"  # CPU-fallback
+        else:
+            selected_backend = preferred_backend
+
+        # Batch-Größe optimieren
+        optimal_batch = self._calculate_max_batch_size(
+            backend=selected_backend,
+            available_gb=available_gb * 0.85,  # 15% Safety
+            image_size_mb=image_size_mb,
+            page_count=page_count
+        )
+
+        # Batch-Größe auf Dokumentanzahl begrenzen
+        optimal_batch = min(optimal_batch, document_count)
+
+        # Finales Check
+        final_check = self.can_process_task(
+            backend=selected_backend,
+            batch_size=optimal_batch,
+            image_size_mb=image_size_mb,
+            page_count=page_count
+        )
+
+        suggestion = {
+            "backend": selected_backend,
+            "batch_size": optimal_batch,
+            "can_process": final_check["can_process"],
+            "predicted_vram_gb": final_check["predicted_gb"],
+            "available_vram_gb": round(available_gb, 2),
+            "batches_needed": (document_count + optimal_batch - 1) // optimal_batch,
+            "target_throughput": target_throughput,
+            "warnings": [],
+        }
+
+        # Warnungen hinzufügen
+        if optimal_batch < document_count:
+            suggestion["warnings"].append(
+                f"Batch-Größe auf {optimal_batch} reduziert (VRAM-Limit)"
+            )
+
+        if selected_backend != preferred_backend and preferred_backend != "auto":
+            suggestion["warnings"].append(
+                f"Backend von {preferred_backend} auf {selected_backend} geändert (VRAM)"
+            )
+
+        if available_gb < 4:
+            suggestion["warnings"].append("Niedriger VRAM - erwäge GPU-Cache-Cleanup")
+
+        logger.info("optimal_settings_suggestion", **suggestion)
+        return suggestion
+
+    def has_gpu(self) -> bool:
+        """Prüfe ob GPU verfügbar ist."""
+        if not TORCH_AVAILABLE:
+            return False
+        return torch.cuda.is_available()
+
 
 class GPUMemoryGuard:
     """
@@ -480,6 +838,7 @@ class GPUMemoryGuard:
     - Automatische Cache-Bereinigung
     - Threshold-basierte Warnungen
     - Metriken für Prometheus
+    - **NEU: Proaktive Background-Überwachung (P0-Optimierung)**
 
     Konfiguration über Umgebungsvariable GPU_MEMORY_LIMIT_GB.
     """
@@ -489,11 +848,16 @@ class GPUMemoryGuard:
     WARNING_THRESHOLD = 0.75  # Warnung bei 75%
     CRITICAL_THRESHOLD = 0.90  # Kritisch bei 90%
 
+    # Background Monitor Konfiguration
+    MONITOR_INTERVAL_SECONDS = 10  # Prüfintervall
+    PROACTIVE_CLEANUP_THRESHOLD = 0.80  # Cleanup bei 80% (zwischen Warning und Critical)
+
     def __init__(
         self,
         gpu_manager: Optional['GPUManager'] = None,
         memory_limit_gb: Optional[float] = None,
-        auto_cleanup: bool = True
+        auto_cleanup: bool = True,
+        enable_background_monitor: bool = True
     ):
         """
         Initialisiere GPU Memory Guard.
@@ -502,9 +866,11 @@ class GPUMemoryGuard:
             gpu_manager: Optional GPUManager Instance
             memory_limit_gb: VRAM Limit in GB (default: 13.6)
             auto_cleanup: Automatische Cache-Bereinigung bei Warning
+            enable_background_monitor: Aktiviere proaktive Hintergrund-Überwachung
         """
         self.gpu_manager = gpu_manager or GPUManager()
         self.auto_cleanup = auto_cleanup
+        self._enable_background_monitor = enable_background_monitor
 
         # Lade Limit aus Environment oder verwende Default
         import os
@@ -526,13 +892,20 @@ class GPUMemoryGuard:
         self._enforcement_count = 0
         self._warning_count = 0
         self._critical_count = 0
+        self._proactive_cleanup_count = 0  # Neue Metrik für proaktive Cleanups
+
+        # Background Monitor State
+        self._monitor_task: Optional[asyncio.Task] = None
+        self._monitor_running = False
 
         logger.info(
             "gpu_memory_guard_initialized",
             limit_gb=self.memory_limit_gb,
             warning_threshold=self.WARNING_THRESHOLD,
             critical_threshold=self.CRITICAL_THRESHOLD,
-            auto_cleanup=self.auto_cleanup
+            proactive_threshold=self.PROACTIVE_CLEANUP_THRESHOLD,
+            auto_cleanup=self.auto_cleanup,
+            background_monitor=enable_background_monitor
         )
 
     def check_memory_status(self) -> Dict:
@@ -586,12 +959,10 @@ class GPUMemoryGuard:
             return status
 
         except Exception as e:
-            logger.error("gpu_memory_check_failed", error=str(e))
+            logger.error("gpu_memory_check_failed", **safe_error_log(e))
             return {
                 "available": False,
-                "enforced": False,
-                "error": str(e)
-            }
+                "enforced": False, **safe_error_log(e)}
 
     def can_allocate(self, required_gb: float) -> Dict:
         """
@@ -676,6 +1047,7 @@ class GPUMemoryGuard:
 
             # Garbage Collection
             import gc
+
             gc.collect()
 
             after = torch.cuda.memory_allocated(0)
@@ -692,7 +1064,7 @@ class GPUMemoryGuard:
             return max(0, freed)
 
         except Exception as e:
-            logger.error("gpu_cache_cleanup_failed", error=str(e))
+            logger.error("gpu_cache_cleanup_failed", **safe_error_log(e))
             return 0
 
     def enforce_limit(self) -> Dict:
@@ -788,15 +1160,148 @@ class GPUMemoryGuard:
                 "limit_gb": self.memory_limit_gb,
                 "warning_threshold": self.WARNING_THRESHOLD,
                 "critical_threshold": self.CRITICAL_THRESHOLD,
+                "proactive_threshold": self.PROACTIVE_CLEANUP_THRESHOLD,
                 "auto_cleanup": self.auto_cleanup,
+                "background_monitor_enabled": self._enable_background_monitor,
             },
             "metrics": {
                 "cleanup_count": self._cleanup_count,
                 "enforcement_count": self._enforcement_count,
                 "warning_count": self._warning_count,
                 "critical_count": self._critical_count,
+                "proactive_cleanup_count": self._proactive_cleanup_count,
+            },
+            "monitor": {
+                "running": self._monitor_running,
+                "interval_seconds": self.MONITOR_INTERVAL_SECONDS,
             }
         }
+
+    # =========================================================================
+    # P0: Proactive GPU Memory Monitor - Background Task
+    # =========================================================================
+
+    async def start_memory_monitor(self) -> bool:
+        """
+        Starte proaktiven Hintergrund-Memory-Monitor.
+
+        Der Monitor prüft alle MONITOR_INTERVAL_SECONDS den VRAM-Status und
+        führt proaktive Cleanups durch, bevor kritische Zustände erreicht werden.
+
+        Returns:
+            True wenn Monitor gestartet wurde, False wenn bereits läuft oder deaktiviert
+        """
+        if not self._enable_background_monitor:
+            logger.debug("background_monitor_disabled")
+            return False
+
+        if self._monitor_running:
+            logger.debug("background_monitor_already_running")
+            return False
+
+        self._monitor_running = True
+        self._monitor_task = asyncio.create_task(self._memory_monitor_loop())
+        logger.info(
+            "gpu_memory_monitor_started",
+            interval_seconds=self.MONITOR_INTERVAL_SECONDS,
+            proactive_threshold=self.PROACTIVE_CLEANUP_THRESHOLD
+        )
+        return True
+
+    async def stop_memory_monitor(self) -> bool:
+        """
+        Stoppe den Hintergrund-Memory-Monitor.
+
+        Returns:
+            True wenn Monitor gestoppt wurde, False wenn nicht lief
+        """
+        if not self._monitor_running:
+            return False
+
+        self._monitor_running = False
+
+        if self._monitor_task:
+            self._monitor_task.cancel()
+            try:
+                await self._monitor_task
+            except asyncio.CancelledError:
+                pass
+            self._monitor_task = None
+
+        logger.info("gpu_memory_monitor_stopped")
+        return True
+
+    async def _memory_monitor_loop(self) -> None:
+        """
+        Hauptschleife des Memory-Monitors.
+
+        Prüft periodisch den VRAM-Status und führt proaktive Cleanups durch
+        bei Überschreitung des proaktiven Thresholds (80%).
+        """
+        logger.info("gpu_memory_monitor_loop_started")
+
+        while self._monitor_running:
+            try:
+                await self._proactive_memory_check()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.debug("memory_monitor_check_error", error_type=type(e).__name__)
+
+            try:
+                await asyncio.sleep(self.MONITOR_INTERVAL_SECONDS)
+            except asyncio.CancelledError:
+                break
+
+        logger.info("gpu_memory_monitor_loop_ended")
+
+    async def _proactive_memory_check(self) -> None:
+        """
+        Führe proaktive Memory-Prüfung durch.
+
+        Wenn VRAM-Nutzung über PROACTIVE_CLEANUP_THRESHOLD (80%) liegt,
+        wird proaktiv der Cache bereinigt, BEVOR es kritisch wird.
+        """
+        if not TORCH_AVAILABLE or not torch.cuda.is_available():
+            return
+
+        try:
+            allocated = torch.cuda.memory_allocated(0)
+            usage_ratio = allocated / self.memory_limit_bytes
+
+            # Proaktives Cleanup bei 80% (vor Warning bei 75% des Limits)
+            if usage_ratio >= self.PROACTIVE_CLEANUP_THRESHOLD:
+                before_gb = allocated / (1024**3)
+
+                # Cleanup durchführen
+                freed = self.cleanup_cache()
+                freed_gb = freed / (1024**3)
+
+                if freed > 0:
+                    self._proactive_cleanup_count += 1
+                    after_allocated = torch.cuda.memory_allocated(0)
+                    after_gb = after_allocated / (1024**3)
+
+                    logger.info(
+                        "proactive_memory_cleanup",
+                        before_gb=round(before_gb, 2),
+                        freed_gb=round(freed_gb, 2),
+                        after_gb=round(after_gb, 2),
+                        usage_ratio_before=round(usage_ratio, 2),
+                        proactive_cleanup_count=self._proactive_cleanup_count
+                    )
+
+            # Log bei Critical-Level (auch ohne Cleanup)
+            elif usage_ratio >= self.CRITICAL_THRESHOLD:
+                logger.warning(
+                    "gpu_memory_critical_level",
+                    usage_ratio=round(usage_ratio, 2),
+                    allocated_gb=round(allocated / (1024**3), 2),
+                    limit_gb=self.memory_limit_gb
+                )
+
+        except Exception as e:
+            logger.debug("proactive_memory_check_error", error_type=type(e).__name__)
 
 
 # Context Manager für Memory-geschützte Operations
@@ -1051,7 +1556,7 @@ class AdaptiveBatchProcessor:
                     new_batch_size=batch_size // 2,
                     new_effective_max=self._stats["current_effective_max_batch"],
                     hysteresis_reset=True,
-                    error=str(e),
+                    **safe_error_log(e),
                     backend=backend
                 )
 
@@ -1082,7 +1587,7 @@ class AdaptiveBatchProcessor:
                 # Andere Fehler - nicht recoverable durch Batch-Size Reduktion
                 logger.error(
                     "batch_processing_error",
-                    error=str(e),
+                    **safe_error_log(e),
                     backend=backend,
                     batch_size=batch_size
                 )

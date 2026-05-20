@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\graph_module.py
+# hypothesis_version: 6.148.7
+
+['FusedGraphModule', 'ObservedGraphModule', 'QuantizedGraphModule', '_is_qat', '_node_name_to_scope', '_observed_node_names', '_packed_weight', '_patterns', '_qconfig_mapping', 'meta']

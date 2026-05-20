@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\app\defaults.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.2, 1.0, 3.0, 4.0, 5.0, 10.0, 60.0, 120.0, 300.0, 100, 120, 10000, 'NAMESPACES', 'Option', 'Session', 'WARNING', '_', 'any', 'bool', 'bytes', 'celery', 'celery_arangodb', 'celery_cache', 'celery_couchbase', 'celery_elasticsearch', 'celery_event', 'celery_mongodb', 'celery_redis', 'celery_result', 'celery_result_dburi', 'celery_security', 'celery_send_events', 'celery_task_protocol', 'celery_worker_direct', 'celery_{0}', 'celerybeat-schedule', 'celerybeat_{0}', 'celerycol', 'celeryd_{0}', 'celerydb', 'celeryev', 'celeryresults', 'classic', 'dict', 'direct', 'find', 'flatten', 'float', 'inf', 'int', 'interval_max', 'interval_start', 'interval_step', 'json', 'key', 'list', 'max_retries', 'namespace', 'prefork', 'quorum', 'searchresult', 'sha256', 'str', 'string', 'tuple', 'type']

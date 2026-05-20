@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ level_config.title }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+            background: #fff;
+            padding: 2cm;
+        }
+
+        .letter-container {
+            max-width: 21cm;
+            margin: 0 auto;
+        }
+
+        /* Absender-Zeile (klein, oben) */
+        .sender-line {
+            font-size: 9pt;
+            color: #666;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-bottom: 1cm;
+        }
+
+        /* Empfaenger-Adresse */
+        .recipient-address {
+            margin-bottom: 1.5cm;
+        }
+
+        .recipient-address .name {
+            font-weight: bold;
+        }
+
+        .customer-number {
+            font-size: 10pt;
+            color: #666;
+            margin-top: 0.5cm;
+        }
+
+        /* Datum und Referenz */
+        .date-reference {
+            text-align: right;
+            margin-bottom: 1cm;
+        }
+
+        .date-reference .date {
+            font-weight: bold;
+        }
+
+        .date-reference .reference {
+            font-size: 10pt;
+            color: #666;
+        }
+
+        /* Titel */
+        .dunning-title {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #cc0000;
+            margin-bottom: 0.5cm;
+        }
+
+        .dunning-title.friendly {
+            color: #333;
+        }
+
+        /* Intro-Text */
+        .intro-text {
+            margin-bottom: 0.5cm;
+        }
+
+        /* Forderungstabelle */
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5cm 0;
+        }
+
+        .invoice-table th,
+        .invoice-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border: 1px solid #ccc;
+        }
+
+        .invoice-table th {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .invoice-table .amount {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+
+        .invoice-table .total-row {
+            background: #ffffcc;
+            font-weight: bold;
+        }
+
+        /* Zahlungsinformationen */
+        .payment-info {
+            margin: 0.5cm 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #333;
+        }
+
+        .payment-info .deadline {
+            font-weight: bold;
+            color: #cc0000;
+        }
+
+        /* Bankverbindung */
+        .bank-details {
+            margin: 0.5cm 0;
+        }
+
+        .bank-details dt {
+            font-weight: bold;
+            float: left;
+            width: 150px;
+        }
+
+        .bank-details dd {
+            margin-left: 160px;
+            margin-bottom: 5px;
+        }
+
+        /* Warnung */
+        .escalation-warning {
+            margin: 0.5cm 0;
+            padding: 10px;
+            background: #fff0f0;
+            border-left: 3px solid #cc0000;
+            color: #cc0000;
+            font-weight: bold;
+        }
+
+        /* Schlussformel */
+        .closing {
+            margin-top: 1cm;
+        }
+
+        .signature {
+            margin-top: 1cm;
+            font-weight: bold;
+        }
+
+        /* Rechtlicher Hinweis */
+        .legal-notice {
+            margin-top: 2cm;
+            font-size: 8pt;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+
+        /* Druckoptimierung */
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            .letter-container {
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="letter-container">
+        <!-- Absender-Zeile -->
+        <div class="sender-line">
+            {{ data.company_name }} &bull; {{ data.company_address }} &bull; {{ data.company_city }}
+        </div>
+
+        <!-- Empfaenger -->
+        <div class="recipient-address">
+            <div class="name">{{ data.recipient_name }}</div>
+            <div>{{ data.recipient_address }}</div>
+            <div>{{ data.recipient_city }}</div>
+            {% if data.recipient_customer_number %}
+            <div class="customer-number">Kundennummer: {{ data.recipient_customer_number }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Datum und Referenz -->
+        <div class="date-reference">
+            <div class="date">{{ data.company_city }}, {{ data.dunning_date | date }}</div>
+            <div class="reference">Unser Zeichen: {{ data.reference }}</div>
+        </div>
+
+        <!-- Titel -->
+        <h1 class="dunning-title {% if data.dunning_level == 1 %}friendly{% endif %}">
+            {{ level_config.title }}
+        </h1>
+
+        <!-- Einleitungstext -->
+        <div class="intro-text">
+            {% block intro_text %}
+            <p>Sehr geehrte Damen und Herren,</p>
+            <p>nachfolgend finden Sie eine Aufstellung Ihrer offenen Posten.</p>
+            {% endblock %}
+        </div>
+
+        <!-- Forderungstabelle -->
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th>Position</th>
+                    <th class="amount">Betrag</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Rechnung {{ data.invoice_number }} vom {{ data.invoice_date | date }}</td>
+                    <td class="amount">{{ data.outstanding_amount | currency }}</td>
+                </tr>
+                {% if data.interest_amount > 0 %}
+                <tr>
+                    <td>Verzugszinsen ({{ data.days_overdue }} Tage, {{ data.interest_rate | percent }} p.a.)</td>
+                    <td class="amount">{{ data.interest_amount | currency }}</td>
+                </tr>
+                {% endif %}
+                {% if data.dunning_fee > 0 %}
+                <tr>
+                    <td>Mahngebuehr</td>
+                    <td class="amount">{{ data.dunning_fee | currency }}</td>
+                </tr>
+                {% endif %}
+                {% if data.b2b_pauschale %}
+                <tr>
+                    <td>Pauschale nach &sect;288 Abs. 5 BGB</td>
+                    <td class="amount">{{ data.b2b_pauschale | currency }}</td>
+                </tr>
+                {% endif %}
+                <tr class="total-row">
+                    <td>Gesamtbetrag</td>
+                    <td class="amount">{{ data.total_amount | currency }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Zahlungsinformationen -->
+        <div class="payment-info">
+            <p>
+                Bitte ueberweisen Sie den Gesamtbetrag von <strong>{{ data.total_amount | currency }}</strong>
+                bis zum <span class="deadline">{{ data.payment_deadline | date }}</span> auf unser Konto.
+            </p>
+        </div>
+
+        <!-- Bankverbindung -->
+        {% if data.company_iban %}
+        <dl class="bank-details">
+            <dt>IBAN:</dt>
+            <dd>{{ data.company_iban }}</dd>
+            {% if data.company_bic %}
+            <dt>BIC:</dt>
+            <dd>{{ data.company_bic }}</dd>
+            {% endif %}
+            {% if data.company_bank_name %}
+            <dt>Bank:</dt>
+            <dd>{{ data.company_bank_name }}</dd>
+            {% endif %}
+            <dt>Verwendungszweck:</dt>
+            <dd>{{ data.reference }}</dd>
+        </dl>
+        {% endif %}
+
+        <!-- Eskalationswarnung -->
+        {% if data.escalation_warning %}
+        <div class="escalation-warning">
+            {{ data.escalation_warning }}
+        </div>
+        {% endif %}
+
+        <!-- Schlussformel -->
+        <div class="closing">
+            {% block closing_text %}
+            <p>Bei Fragen stehen wir Ihnen gerne zur Verfuegung.</p>
+            <p>Mit freundlichen Gruessen</p>
+            {% endblock %}
+        </div>
+
+        <!-- Unterschrift -->
+        <div class="signature">
+            {{ data.company_name }}
+        </div>
+
+        <!-- Rechtlicher Hinweis -->
+        <div class="legal-notice">
+            Verzugszinsen berechnet nach &sect;288 BGB. Basiszinssatz der Deutschen Bundesbank
+            zuzueglich 9 Prozentpunkte (B2B) bzw. 5 Prozentpunkte (B2C).
+        </div>
+    </div>
+</body>
+</html>

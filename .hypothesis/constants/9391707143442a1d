@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\connectivity\connectivity.py
+# hypothesis_version: 6.148.7
+
+['G', 'auxiliary', 'auxiliary?', 'capacity', 'cutoff', 'edge_connectivity', 'flow_func', 'mapping', 'node_connectivity', 'residual', 'two_phase']

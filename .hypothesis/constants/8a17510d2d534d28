@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\datasets\ic03.py
+# hypothesis_version: 6.148.7
+
+['IC03', 'SceneTrialTest', 'SceneTrialTrain', 'height', 'ic03_test.zip', 'ic03_train.zip', 'width', 'words.xml', 'x', 'y']

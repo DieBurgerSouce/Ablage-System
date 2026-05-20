@@ -17,6 +17,7 @@ from starlette.responses import JSONResponse
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -142,11 +143,12 @@ class IPBlockingMiddleware(BaseHTTPMiddleware):
             if service.is_ip_blocked(ip_address):
                 return True, "incident_response_block"
         except Exception as e:
-            logger.debug("incident_service_check_failed", error=str(e))
+            logger.debug("incident_service_check_failed", **safe_error_log(e))
 
         # 2. Prüfe Redis (falls konfiguriert)
         try:
-            from app.core.redis_client import get_redis
+            from app.core.redis_state import get_redis
+
 
             redis = await get_redis()
             if redis:
@@ -154,7 +156,7 @@ class IPBlockingMiddleware(BaseHTTPMiddleware):
                 if blocked:
                     return True, "redis_block"
         except Exception as e:
-            logger.debug("redis_ip_check_failed", error=str(e))
+            logger.debug("redis_ip_check_failed", **safe_error_log(e))
 
         return False, ""
 

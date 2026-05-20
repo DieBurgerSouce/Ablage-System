@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\tasks\__init__.py
+# hypothesis_version: 6.148.7
+
+['REPORT_BEAT_SCHEDULE', 'batch_process_task', 'cancel_execution', 'cleanup_task', 'generate_daily_stats', 'run_benchmark_batch', 'send_daily_digest', 'send_report_email', 'send_weekly_digest']

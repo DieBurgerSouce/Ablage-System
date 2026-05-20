@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\tensor\manipulation.py
+# hypothesis_version: 6.148.7
+
+['bool', 'float16', 'float32', 'float64', 'format', 'int16', 'int32', 'int64', 'int8', 'npu_identity', 'out', 'place', 'uint8', 'x']

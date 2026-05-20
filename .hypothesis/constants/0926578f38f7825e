@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\utils\e2e_utils\extract_textpoint_fast.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 0.15, 0.2, 0.3, 0.5, 1.0, 1.2, 2.0, 4.0, '--> too short, {}', 'align', 'int32', 'partvgg', 'rb', 'totaltext', 'utf-8']

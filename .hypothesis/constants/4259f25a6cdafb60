@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\accelerate\parallelism_config.py
+# hypothesis_version: 6.148.7
+
+['1', '2.2.0', '>=', 'Accelerator', '__dict__', 'cp', 'deepspeed', 'device_mesh', 'dp', 'dp_cp', 'dp_replicate', 'dp_shard', 'dp_shard_cp', 'sp', 'torch', 'tp']

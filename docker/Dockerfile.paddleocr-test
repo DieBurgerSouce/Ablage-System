@@ -1,0 +1,174 @@
+# PaddleOCR Test Container
+# Used to test PaddleOCR without Windows OneDNN issues
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect python:3.11-slim
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies - use latest compatible versions
+RUN pip install --no-cache-dir \
+    paddlepaddle \
+    paddleocr \
+    pillow \
+    numpy
+
+# Create directories for multi-document processing
+RUN mkdir -p /app/test_images /app/results
+
+# Create test script inline (bypassing .dockerignore)
+# PaddleOCR 3.x API: removed show_log, use_angle_cls -> use_textline_orientation
+RUN cat > /app/test_paddleocr_docker.py << 'SCRIPT'
+# -*- coding: utf-8 -*-
+"""Test PaddleOCR in Docker - bypasses Windows OneDNN bug."""
+import time
+import os
+import sys
+import warnings
+warnings.filterwarnings("ignore")
+
+TEST_FILE = "/app/test_images/0000000B.TIF"
+
+def test_paddleocr():
+    """Test PaddleOCR direkt."""
+    print("\n" + "="*60)
+    print("TESTE: PaddleOCR (CPU) - Linux/Docker")
+    print("="*60)
+    try:
+        from paddleocr import PaddleOCR
+        from PIL import Image
+        import numpy as np
+
+        start = time.perf_counter()
+
+        # Load model (multilingual with German)
+        # PaddleOCR 3.x API - only lang parameter supported, CPU is default
+        ocr = PaddleOCR(
+            lang='german',
+        )
+
+        # Load image
+        img = Image.open(TEST_FILE).convert('RGB')
+        img_np = np.array(img)
+
+        # OCR - PaddleOCR 3.x: new API
+        result = ocr.ocr(img_np)
+
+        # Debug: print result structure
+        print(f"DEBUG: Result type = {type(result)}")
+        if result:
+            print(f"DEBUG: Result length = {len(result)}")
+            first_page = result[0]
+            print(f"DEBUG: First page type = {type(first_page)}")
+            if isinstance(first_page, dict):
+                print(f"DEBUG: First page keys = {first_page.keys()}")
+                # Print first few key-value pairs
+                for i, (k, v) in enumerate(first_page.items()):
+                    if i < 3:
+                        print(f"DEBUG: {k} = {str(v)[:100]}...")
+            elif isinstance(first_page, list) and len(first_page) > 0:
+                print(f"DEBUG: First line = {first_page[0]}")
+
+        # Extract text - PaddleOCR 3.x returns [dict] where dict has keys like 'rec_texts', 'rec_scores'
+        text_lines = []
+        total_conf = 0.0
+        word_count = 0
+
+        if result:
+            first_page = result[0]
+
+            # PaddleOCR 3.x format: dict with 'rec_texts' and 'rec_scores'
+            if isinstance(first_page, dict):
+                rec_texts = first_page.get('rec_texts') or first_page.get('text', [])
+                rec_scores = first_page.get('rec_scores') or first_page.get('score', [])
+
+                if isinstance(rec_texts, list):
+                    for i, text_val in enumerate(rec_texts):
+                        text_lines.append(str(text_val))
+                        if isinstance(rec_scores, list) and i < len(rec_scores):
+                            total_conf += float(rec_scores[i])
+                        word_count += 1
+                elif isinstance(rec_texts, str):
+                    text_lines.append(rec_texts)
+                    word_count = 1
+                    if isinstance(rec_scores, (int, float)):
+                        total_conf = float(rec_scores)
+
+            # PaddleOCR 2.x format: list of [[bbox], (text, confidence)]
+            elif isinstance(first_page, list):
+                for line in first_page:
+                    if isinstance(line, dict):
+                        text_val = line.get('text') or line.get('rec_text', '')
+                        conf_val = line.get('confidence') or line.get('rec_score', 0.0)
+                        text_lines.append(str(text_val))
+                        total_conf += float(conf_val) if conf_val else 0.0
+                        word_count += 1
+                    elif isinstance(line, (list, tuple)) and len(line) >= 2:
+                        text_data = line[1]
+                        if isinstance(text_data, (list, tuple)) and len(text_data) >= 2:
+                            text_lines.append(str(text_data[0]))
+                            total_conf += float(text_data[1])
+                            word_count += 1
+
+        text = '\n'.join(text_lines)
+        confidence = total_conf / word_count if word_count > 0 else 0.0
+        elapsed = time.perf_counter() - start
+
+        if text:
+            print(f"OK - {elapsed:.1f}s - {len(text)} Zeichen - {confidence:.1%} Confidence")
+            print(f"\nText (erste 500 Zeichen):\n{text[:500]}...")
+
+            # Save result for comparison
+            with open("/app/results/paddleocr_result.txt", "w", encoding="utf-8") as f:
+                f.write(f"Backend: PaddleOCR\n")
+                f.write(f"Time: {elapsed:.1f}s\n")
+                f.write(f"Characters: {len(text)}\n")
+                f.write(f"Confidence: {confidence:.1%}\n")
+                f.write(f"Word Count: {word_count}\n")
+                f.write(f"\n{'='*60}\n")
+                f.write(f"FULL TEXT:\n")
+                f.write(f"{'='*60}\n")
+                f.write(text)
+
+            return {"backend": "PaddleOCR", "success": True, "time": elapsed, "chars": len(text), "confidence": confidence}
+        else:
+            print("FEHLER: Kein Text extrahiert")
+            return {"backend": "PaddleOCR", "success": False, "error": "Kein Text"}
+
+    except Exception as e:
+        print(f"EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"backend": "PaddleOCR", "success": False, "error": str(e)}
+
+
+if __name__ == "__main__":
+    print("="*60)
+    print("PADDLEOCR DOCKER TEST")
+    print(f"Testdatei: {TEST_FILE}")
+    print("="*60)
+
+    result = test_paddleocr()
+
+    print("\n" + "="*60)
+    print("ERGEBNIS")
+    print("="*60)
+    print(result)
+SCRIPT
+
+# Create non-root user for security
+RUN useradd -r -s /bin/false ocr && \
+    chown -R ocr:ocr /app
+USER ocr
+
+CMD ["python", "/app/test_paddleocr_docker.py"]

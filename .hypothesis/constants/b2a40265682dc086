@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\datasets\stanford_cars.py
+# hypothesis_version: 6.148.7
+
+['Dataset not found.', 'annotations', 'cars_meta.mat', 'cars_test', 'cars_train', 'cars_train_annos.mat', 'class', 'class_names', 'devkit', 'fname', 'split', 'stanford_cars', 'test', 'train']

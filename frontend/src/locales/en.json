@@ -1,0 +1,478 @@
+{
+    "common": {
+        "loading": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "create": "Create",
+        "search": "Search",
+        "filter": "Filter",
+        "close": "Close",
+        "confirm": "Confirm",
+        "back": "Back",
+        "next": "Next",
+        "yes": "Yes",
+        "no": "No",
+        "all": "All",
+        "none": "None",
+        "upload": "Upload",
+        "download": "Download",
+        "export": "Export",
+        "import": "Import",
+        "refresh": "Refresh",
+        "settings": "Settings",
+        "logout": "Logout",
+        "login": "Login",
+        "register": "Register",
+        "submit": "Submit",
+        "reset": "Reset",
+        "clear": "Clear",
+        "select": "Select",
+        "selected": "Selected",
+        "actions": "Actions",
+        "status": "Status",
+        "date": "Date",
+        "time": "Time",
+        "name": "Name",
+        "description": "Description",
+        "type": "Type",
+        "size": "Size",
+        "success": "Success",
+        "error": "Error",
+        "warning": "Warning",
+        "info": "Information",
+        "retry": "Retry",
+        "open": "Open"
+    },
+    "navigation": {
+        "home": "Home",
+        "dashboard": "Dashboard",
+        "documents": "Documents",
+        "upload": "Upload",
+        "search": "Search",
+        "chat": "Chat",
+        "admin": "Administration",
+        "settings": "Settings",
+        "profile": "Profile",
+        "help": "Help",
+        "banking": "Banking",
+        "training": "OCR Training",
+        "datev": "DATEV Export"
+    },
+    "auth": {
+        "login": {
+            "title": "Login",
+            "subtitle": "Sign in to your account",
+            "email": "Email address",
+            "password": "Password",
+            "rememberMe": "Remember me",
+            "forgotPassword": "Forgot password?",
+            "noAccount": "Don't have an account?",
+            "signUp": "Sign up",
+            "button": "Sign in",
+            "error": "Login failed. Please check your credentials."
+        },
+        "register": {
+            "title": "Register",
+            "subtitle": "Create a new account",
+            "username": "Username",
+            "email": "Email address",
+            "password": "Password",
+            "confirmPassword": "Confirm password",
+            "alreadyAccount": "Already have an account?",
+            "signIn": "Sign in",
+            "button": "Register",
+            "error": "Registration failed. Please try again."
+        },
+        "logout": {
+            "title": "Logout",
+            "message": "Are you sure you want to logout?",
+            "success": "You have been logged out successfully."
+        }
+    },
+    "documents": {
+        "title": "Documents",
+        "subtitle": "Manage your documents",
+        "upload": {
+            "title": "Upload Document",
+            "dragDrop": "Drag and drop files here or click to select",
+            "selectFiles": "Select files",
+            "supportedFormats": "Supported formats: PDF, PNG, JPG, TIFF",
+            "maxSize": "Maximum file size: 50 MB",
+            "processing": "Processing...",
+            "success": "Document uploaded successfully",
+            "error": "Error uploading document"
+        },
+        "list": {
+            "empty": "No documents available",
+            "columns": {
+                "name": "Filename",
+                "type": "Type",
+                "size": "Size",
+                "date": "Uploaded on",
+                "status": "Status",
+                "actions": "Actions"
+            }
+        },
+        "status": {
+            "pending": "Pending",
+            "processing": "Processing",
+            "completed": "Completed",
+            "failed": "Failed"
+        },
+        "actions": {
+            "view": "View",
+            "download": "Download",
+            "delete": "Delete",
+            "reprocess": "Reprocess"
+        },
+        "delete": {
+            "title": "Delete Document",
+            "message": "Are you sure you want to delete this document?",
+            "warning": "This action cannot be undone.",
+            "success": "Document deleted successfully",
+            "error": "Error deleting document"
+        }
+    },
+    "ocr": {
+        "title": "OCR Processing",
+        "backend": {
+            "deepseek": "DeepSeek-Janus-Pro",
+            "gotocr": "GOT-OCR 2.0",
+            "surya": "Surya + Docling",
+            "suryaGpu": "Surya GPU"
+        },
+        "status": {
+            "idle": "Ready",
+            "processing": "Processing",
+            "completed": "Completed",
+            "failed": "Failed"
+        },
+        "results": {
+            "title": "OCR Results",
+            "extractedText": "Extracted Text",
+            "confidence": "Confidence",
+            "processingTime": "Processing Time",
+            "backend": "Backend Used"
+        },
+        "errors": {
+            "gpuOom": "GPU out of memory. Falling back to CPU.",
+            "backendUnavailable": "OCR backend unavailable",
+            "processingFailed": "OCR processing failed"
+        }
+    },
+    "banking": {
+        "title": "Banking",
+        "accounts": {
+            "title": "Accounts",
+            "add": "Add Account",
+            "iban": "IBAN",
+            "bic": "BIC",
+            "balance": "Balance"
+        },
+        "transactions": {
+            "title": "Transactions",
+            "import": "Import Transactions",
+            "export": "Export Transactions",
+            "date": "Booking Date",
+            "amount": "Amount",
+            "description": "Description",
+            "counterparty": "Counterparty"
+        },
+        "reconciliation": {
+            "title": "Reconciliation",
+            "matched": "Matched",
+            "unmatched": "Unmatched",
+            "pending": "Pending"
+        },
+        "payments": {
+            "title": "Payments",
+            "create": "Create Payment",
+            "status": {
+                "pending": "Pending",
+                "approved": "Approved",
+                "executed": "Executed",
+                "failed": "Failed"
+            }
+        }
+    },
+    "chat": {
+        "title": "Chat",
+        "placeholder": "Enter message...",
+        "send": "Send",
+        "thinking": "Thinking...",
+        "sources": "Sources",
+        "noSources": "No sources found",
+        "newChat": "New Chat",
+        "history": "Chat History",
+        "clearHistory": "Clear History"
+    },
+    "settings": {
+        "title": "Settings",
+        "general": {
+            "title": "General",
+            "language": "Language",
+            "theme": "Theme",
+            "displayMode": "Display Mode"
+        },
+        "display": {
+            "title": "Display",
+            "modes": {
+                "light": "Light",
+                "dark": "Dark",
+                "whitescreen": "Whitescreen (High Contrast)",
+                "blackscreen": "Blackscreen (OLED)"
+            }
+        },
+        "notifications": {
+            "title": "Notifications",
+            "email": "Email notifications",
+            "browser": "Browser notifications"
+        },
+        "security": {
+            "title": "Security",
+            "changePassword": "Change Password",
+            "twoFactor": "Two-Factor Authentication",
+            "sessions": "Active Sessions"
+        }
+    },
+    "admin": {
+        "title": "Administration",
+        "users": {
+            "title": "User Management",
+            "add": "Add User",
+            "edit": "Edit User",
+            "delete": "Delete User",
+            "roles": {
+                "admin": "Administrator",
+                "editor": "Editor",
+                "viewer": "Viewer"
+            }
+        },
+        "system": {
+            "title": "System",
+            "health": "System Health",
+            "metrics": "Metrics",
+            "logs": "Logs"
+        },
+        "backup": {
+            "title": "Backup",
+            "create": "Create Backup",
+            "restore": "Restore Backup",
+            "schedule": "Schedule"
+        }
+    },
+    "errors": {
+        "general": "An error occurred",
+        "network": "Network error. Please check your internet connection.",
+        "unauthorized": "Unauthorized. Please sign in again.",
+        "forbidden": "Access denied. You don't have permission for this action.",
+        "notFound": "The requested resource was not found.",
+        "serverError": "Server error. Please try again later.",
+        "validation": "Validation error. Please check your input.",
+        "timeout": "The request has timed out.",
+        "fileTooBig": "The file is too large.",
+        "unsupportedFormat": "This file format is not supported."
+    },
+    "validation": {
+        "required": "This field is required",
+        "email": "Please enter a valid email address",
+        "minLength": "Minimum {{min}} characters required",
+        "maxLength": "Maximum {{max}} characters allowed",
+        "passwordMatch": "Passwords do not match",
+        "invalidFormat": "Invalid format"
+    },
+    "streckengeschaeft": {
+        "title": "Drop Shipment",
+        "subtitle": "Detection and classification of drop shipments and triangular transactions",
+        "dashboard": {
+            "title": "Drop Shipment Dashboard",
+            "totalClassified": "Total Classified",
+            "documentsTotal": "Documents total",
+            "dropShipments": "Drop Shipments",
+            "triangularCount": "{{count}} Triangular Transactions",
+            "manualReview": "Manual Review",
+            "pendingValidation": "Pending validations",
+            "zmRelevant": "EC Sales List Relevant",
+            "forZm": "For EC Sales List"
+        },
+        "transactionType": {
+            "standard": "Standard Transaction",
+            "drop_shipment": "Drop Shipment",
+            "triangular_eu": "EU Triangular Transaction (§25b UStG)",
+            "chain_transaction": "Chain Transaction (§3 para. 6a UStG)"
+        },
+        "confidenceLevel": {
+            "definitive": "Definitive",
+            "high": "High",
+            "medium": "Medium",
+            "low": "Low",
+            "manual_required": "Review Required"
+        },
+        "vatCategory": {
+            "standard_de": "Standard DE (19%/7%)",
+            "intra_community": "Intra-Community Tax-Free",
+            "reverse_charge": "Reverse Charge (§13b UStG)",
+            "export": "Export Tax-Free",
+            "triangular_middle": "Triangular (Middle Party)",
+            "triangular_final": "Triangular (Final Customer)"
+        },
+        "partyRole": {
+            "seller": "Seller",
+            "buyer": "Buyer",
+            "ship_to": "Ship To",
+            "bill_to": "Bill To",
+            "carrier": "Carrier"
+        },
+        "proofType": {
+            "invoice": "Invoice",
+            "delivery_note": "Delivery Note",
+            "cmr": "CMR Waybill",
+            "gelangensbestaetigung": "Proof of Arrival",
+            "speditionsauftrag": "Shipping Order",
+            "vat_id_proof": "VAT ID Proof"
+        },
+        "proofStatus": {
+            "present": "Present",
+            "missing": "Missing",
+            "complete": "Complete",
+            "incomplete": "Incomplete"
+        },
+        "classification": {
+            "title": "Classification",
+            "details": "Classification Details",
+            "indicators": "Detected Indicators",
+            "parties": "Involved Parties",
+            "proofDocuments": "Proof Documents",
+            "positions": "Positions",
+            "auditLog": "Audit Log"
+        },
+        "validation": {
+            "title": "Validate Classification",
+            "description": "Confirm the automatic classification or correct it manually.",
+            "currentClassification": "Current Classification",
+            "overrideClassification": "Override Classification",
+            "transactionType": "Transaction Type",
+            "vatCategory": "VAT Category",
+            "reason": "Reason",
+            "reasonPlaceholder": "Please provide a reason for the correction...",
+            "reasonRequired": "A reason is required for corrections (audit trail)",
+            "confirm": "Confirm",
+            "override": "Override & Validate",
+            "success": "Classification validated",
+            "overrideSuccess": "Classification overridden",
+            "error": "Validation failed",
+            "defaultReasonOverride": "Manual correction",
+            "defaultReasonConfirm": "Classification confirmed"
+        },
+        "datev": {
+            "title": "DATEV Export",
+            "export": "Export",
+            "exportSuccess": "DATEV Export created: {{filename}}",
+            "exportError": "DATEV Export failed",
+            "kontenrahmen": "Chart of Accounts",
+            "includeZm": "Include EC Sales List Data"
+        },
+        "zm": {
+            "title": "EC Sales List",
+            "subtitle": "Overview of EC Sales List relevant transactions",
+            "period": "Reporting Period",
+            "deadline": "Deadline",
+            "totalAmount": "Total Amount",
+            "recordCount": "Record Count",
+            "triangularCount": "Triangular Transactions",
+            "exportElster": "ELSTER Export",
+            "months": {
+                "1": "January",
+                "2": "February",
+                "3": "March",
+                "4": "April",
+                "5": "May",
+                "6": "June",
+                "7": "July",
+                "8": "August",
+                "9": "September",
+                "10": "October",
+                "11": "November",
+                "12": "December"
+            }
+        },
+        "actions": {
+            "classify": "Classify",
+            "reclassify": "Reclassify",
+            "validate": "Validate",
+            "export": "Export",
+            "linkProof": "Link Proof",
+            "viewDocument": "View Document"
+        },
+        "errors": {
+            "classificationFailed": "Classification failed",
+            "documentNotFound": "Document not found",
+            "validationFailed": "Validation failed",
+            "exportFailed": "Export failed"
+        },
+        "legalInfo": {
+            "paragraph25b": "§25b UStG - EU Triangular Transaction",
+            "paragraph3_6a": "§3 para. 6a UStG - Chain Transaction",
+            "bmfSchreiben": "BMF Circular 25.04.2023 - Proof Requirements"
+        },
+        "detail": {
+            "countriesInvolved": "Countries Involved",
+            "mixedOrder": "Mixed Order Detected",
+            "mixedOrderDesc": "This invoice contains both drop shipment and warehouse positions. Each position is treated separately for tax purposes.",
+            "position": "Pos.",
+            "item": "Item",
+            "quantity": "Qty",
+            "amount": "Amount",
+            "stock": "Stock",
+            "documentType": "Document Type",
+            "completeness": "Completeness",
+            "of": "of",
+            "zmRequirement": "EC Sales List Requirement",
+            "zmRequirementDesc": "This transaction must be reported in the EC Sales List.",
+            "triangularMarkerRequired": "Triangular transaction marker (Kz. 1) required.",
+            "zmDeadline": "Deadline: 25th of following month.",
+            "indicatorsUsed": "These indicators were used for classification",
+            "noIndicators": "No indicators found",
+            "positionsDescription": "Position-level classification for mixed invoices",
+            "proofsDescription": "Required documents for tax exemption under §17b UStDV",
+            "auditLogDescription": "Chronological history of all actions",
+            "noHistory": "No history available",
+            "found": "Found",
+            "definitive": "Definitive",
+            "euCountries": "EU Countries"
+        },
+        "auditActions": {
+            "created": "Created",
+            "auto_classified": "Auto-classified",
+            "manually_validated": "Manually validated",
+            "overridden": "Overridden",
+            "exported_datev": "DATEV Export",
+            "zm_reported": "EC Sales List reported"
+        },
+        "zmCard": {
+            "submitted": "Submitted",
+            "overdue": "Overdue ({{days}} days)",
+            "daysRemaining": "{{days}} days remaining",
+            "deadline": "Deadline:",
+            "submittedOn": "Submitted on",
+            "triangularMarker": "Marker 1 in EC Sales List",
+            "triangularTransactions": "triangular transactions",
+            "byCountry": "Breakdown by Country",
+            "records": "records",
+            "individualRecords": "Individual Records",
+            "vatId": "VAT ID",
+            "country": "Country",
+            "marker": "Marker",
+            "moreRecords": "and {{count}} more records",
+            "markSubmitted": "Mark as submitted",
+            "noTransactions": "No EC Sales List relevant transactions in this period.",
+            "loadError": "EC Sales List data could not be loaded."
+        },
+        "dashboardError": {
+            "loadError": "Classifications could not be loaded.",
+            "dataLoadError": "Error loading data"
+        }
+    }
+}

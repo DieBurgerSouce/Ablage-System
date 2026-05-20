@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\decomposition\decomp.py
+# hypothesis_version: 6.148.7
+
+['.', 'Before Recompute: ', 'FLAGS_enable_pir_api', 'Out_grad', 'Skip Auto Recompute!', '_', '_grad', '_grad_', 'auto-recompute', 'backward_blacklist', 'builtin.combine', 'builtin.parameter', 'builtin.slice', 'builtin.split', 'forward_blacklist', 'loss_grad', 'out_grad', 'pd_op.data', 'pd_op.fetch', 'pd_op.full', 'pd_op.full_int_array', 'pd_op.squeeze', 'pd_op.stack']

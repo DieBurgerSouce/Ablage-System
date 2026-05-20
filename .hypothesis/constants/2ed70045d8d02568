@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numpy\f2py\func2subr.py
+# hypothesis_version: 6.148.7
+
+['%s\n      %s', '%s %s', '%s = %s(%s)', '%s(%s)', '%s(%s=%s)', '%s(kind=%s)', '%s(len=%s', '%s(len=*)', '%s)', '%s*%s', '%s*(%s)', '%s,kind=%s)', '%sf2pywrap', '(*)', '*', ',', ', ', '10', ':', '=', '@@@NAME@@@', '__user__', 'args', 'call %s(%s)', 'character(len=10)', 'character*(*)', 'character*10', 'charselector', 'dimension', 'end', 'end interface', 'external %s', 'f2py_%s_d%s', 'hide', 'integer', 'intent', 'interface', 'kind', 'kindselector', 'len', 'modulename', 'name', 'out', 'out=', 'out=%s', 'result', 'saved_interface', 'shape(%s, %s)', 'type', 'typename', 'typespec', 'use ', 'use %s, only : %s', 'use iso_c_binding', 'vars']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\localsgd_optimizer.py
+# hypothesis_version: 6.148.7
+
+[1.0, '@SNAPSHOT', 'AMPOptimizer', 'LocalSGDOptimizer', 'Out', 'X', 'Y', 'all_reduce', 'assign', 'avg_loss', 'begin_step', 'c_sync_calc_stream', 'c_sync_comm_stream', 'elementwise_sub', 'float32', 'init_k_steps', 'int64', 'k_steps', 'last_step', 'loss_0', 'lr_0', 'out', 'reduce_type', 'ring_id', 'scale', 'x']

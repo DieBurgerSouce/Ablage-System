@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\cextension.py
+# hypothesis_version: 6.148.7
+
+['\n  - ', '.', ':', 'BNB_CUDA_VERSION', 'CPU', 'CUDA', 'NONE', 'ROCm', 'XPU', 'cuda', 'cuda\\d+', 'get_context', 'rocm', 'unknown', 'unknown library']

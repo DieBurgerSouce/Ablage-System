@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\initializer.py
+# hypothesis_version: 6.148.7
+
+[0.01, 2.0, 3.0, 5.0, 'conv1d', 'conv1d_transpose', 'conv2d', 'conv2d_transpose', 'conv3d', 'conv3d_transpose', 'conv_transpose1d', 'conv_transpose2d', 'conv_transpose3d', 'leaky_relu', 'linear', 'relu', 'selu', 'sigmoid', 'tanh']

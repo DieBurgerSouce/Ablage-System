@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\contract.py
+# hypothesis_version: 6.148.7
+
+['\n  {}.  ', '\neinsum_kwargs={}', ' [{}]', "'{}'", ',', ', constants={}', '-', '->', '.', '...', 'BLAS', 'ContractExpression', 'EINSUM', 'Shaped', '[{}]', '],[', '_constants_dict', '_gen_expression', 'auto', 'backend', 'casting', 'constants', 'contract', 'contract_path', 'current', 'dtype', 'einsum', 'einsum_call', 'evaluate_constants', 'max_input', 'memory_limit', 'numpy', 'optimize', 'order', 'out', 'path', 'remaining', 'scaling', 'shape', 'shape_only', 'shapes', 'tensordot', 'transpose', 'use_blas', '{}->{}', '{}{}{}']

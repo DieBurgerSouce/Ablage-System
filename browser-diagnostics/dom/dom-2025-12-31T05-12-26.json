@@ -1,0 +1,622 @@
+{
+  "category": "dom",
+  "timestamp": "2025-12-31T05:12:26.563Z",
+  "data": {
+    "sizes": [
+      {
+        "page": "dashboard",
+        "timestamp": "2025-12-31T02:20:47.475Z",
+        "nodeCount": 531,
+        "depth": 17,
+        "isTooLarge": false
+      },
+      {
+        "page": "upload",
+        "timestamp": "2025-12-31T02:22:59.569Z",
+        "nodeCount": 242,
+        "depth": 13,
+        "isTooLarge": false
+      },
+      {
+        "page": "search",
+        "timestamp": "2025-12-31T02:28:39.876Z",
+        "nodeCount": 273,
+        "depth": 13,
+        "isTooLarge": false
+      },
+      {
+        "page": "chat-rag",
+        "timestamp": "2025-12-31T02:41:17.678Z",
+        "nodeCount": 418,
+        "depth": 14,
+        "isTooLarge": false
+      },
+      {
+        "page": "relationships",
+        "timestamp": "2025-12-31T02:43:26.385Z",
+        "nodeCount": 213,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "monitoring",
+        "timestamp": "2025-12-31T02:45:36.162Z",
+        "nodeCount": 359,
+        "depth": 16,
+        "isTooLarge": false
+      },
+      {
+        "page": "automation",
+        "timestamp": "2025-12-31T02:52:47.944Z",
+        "nodeCount": 344,
+        "depth": 18,
+        "isTooLarge": false
+      },
+      {
+        "page": "validation-queue",
+        "timestamp": "2025-12-31T03:00:26.957Z",
+        "nodeCount": 344,
+        "depth": 14,
+        "isTooLarge": false
+      },
+      {
+        "page": "document-groups",
+        "timestamp": "2025-12-31T03:05:05.818Z",
+        "nodeCount": 330,
+        "depth": 18,
+        "isTooLarge": false
+      },
+      {
+        "page": "kasse",
+        "timestamp": "2025-12-31T03:08:13.977Z",
+        "nodeCount": 252,
+        "depth": 15,
+        "isTooLarge": false
+      },
+      {
+        "page": "spesen",
+        "timestamp": "2025-12-31T03:11:51.838Z",
+        "nodeCount": 238,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "streckengeschaeft",
+        "timestamp": "2025-12-31T03:16:03.432Z",
+        "nodeCount": 355,
+        "depth": 19,
+        "isTooLarge": false
+      },
+      {
+        "page": "streckengeschaeft-zm",
+        "timestamp": "2025-12-31T03:18:23.787Z",
+        "nodeCount": 271,
+        "depth": 13,
+        "isTooLarge": false
+      },
+      {
+        "page": "finanzen",
+        "timestamp": "2025-12-31T03:20:32.114Z",
+        "nodeCount": 273,
+        "depth": 12,
+        "isTooLarge": false
+      },
+      {
+        "page": "finanzen-2025",
+        "timestamp": "2025-12-31T03:22:38.494Z",
+        "nodeCount": 220,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "finanzen-2024",
+        "timestamp": "2025-12-31T03:24:44.980Z",
+        "nodeCount": 213,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "kunden",
+        "timestamp": "2025-12-31T03:26:52.317Z",
+        "nodeCount": 341,
+        "depth": 13,
+        "isTooLarge": false
+      },
+      {
+        "page": "lieferanten",
+        "timestamp": "2025-12-31T03:29:00.475Z",
+        "nodeCount": 317,
+        "depth": 13,
+        "isTooLarge": false
+      },
+      {
+        "page": "personal",
+        "timestamp": "2025-12-31T03:33:17.221Z",
+        "nodeCount": 296,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "business-entities",
+        "timestamp": "2025-12-31T03:36:25.462Z",
+        "nodeCount": 230,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "privat",
+        "timestamp": "2025-12-31T03:40:01.414Z",
+        "nodeCount": 216,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "privat-finanzen",
+        "timestamp": "2025-12-31T03:43:37.244Z",
+        "nodeCount": 220,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "privat-notfall",
+        "timestamp": "2025-12-31T03:45:43.625Z",
+        "nodeCount": 214,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-dashboard",
+        "timestamp": "2025-12-31T03:47:51.540Z",
+        "nodeCount": 372,
+        "depth": 13,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-users",
+        "timestamp": "2025-12-31T03:53:03.519Z",
+        "nodeCount": 352,
+        "depth": 18,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-settings",
+        "timestamp": "2025-12-31T03:55:10.440Z",
+        "nodeCount": 297,
+        "depth": 11,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-ocr-training",
+        "timestamp": "2025-12-31T04:00:23.183Z",
+        "nodeCount": 526,
+        "depth": 19,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-ocr-backends",
+        "timestamp": "2025-12-31T04:02:30.693Z",
+        "nodeCount": 292,
+        "depth": 13,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-datev",
+        "timestamp": "2025-12-31T04:04:37.753Z",
+        "nodeCount": 401,
+        "depth": 16,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-datev-config",
+        "timestamp": "2025-12-31T04:07:43.816Z",
+        "nodeCount": 355,
+        "depth": 19,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-datev-export",
+        "timestamp": "2025-12-31T04:11:50.256Z",
+        "nodeCount": 353,
+        "depth": 15,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-datev-history",
+        "timestamp": "2025-12-31T04:13:56.915Z",
+        "nodeCount": 339,
+        "depth": 14,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-datev-vendors",
+        "timestamp": "2025-12-31T04:17:32.892Z",
+        "nodeCount": 349,
+        "depth": 15,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-mahnungen",
+        "timestamp": "2025-12-31T04:30:37.896Z",
+        "nodeCount": 502,
+        "depth": 23,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-mahnungen-aktiv",
+        "timestamp": "2025-12-31T04:39:14.800Z",
+        "nodeCount": 420,
+        "depth": 20,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-mahnungen-aufgaben",
+        "timestamp": "2025-12-31T04:43:51.401Z",
+        "nodeCount": 357,
+        "depth": 16,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-mahnungen-einstellungen",
+        "timestamp": "2025-12-31T04:47:59.346Z",
+        "nodeCount": 439,
+        "depth": 17,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-mahnungen-eskalation",
+        "timestamp": "2025-12-31T04:57:36.333Z",
+        "nodeCount": 496,
+        "depth": 23,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-mahnungen-kanban",
+        "timestamp": "2025-12-31T04:59:42.959Z",
+        "nodeCount": 410,
+        "depth": 15,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-mahnungen-mahnstopp",
+        "timestamp": "2025-12-31T05:11:49.018Z",
+        "nodeCount": 478,
+        "depth": 21,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-banking",
+        "timestamp": "2025-12-31T05:11:54.632Z",
+        "nodeCount": 34,
+        "depth": 8,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-banking-accounts",
+        "timestamp": "2025-12-31T05:11:59.974Z",
+        "nodeCount": 34,
+        "depth": 8,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-banking-import",
+        "timestamp": "2025-12-31T05:12:04.988Z",
+        "nodeCount": 34,
+        "depth": 8,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-banking-payments",
+        "timestamp": "2025-12-31T05:12:10.093Z",
+        "nodeCount": 34,
+        "depth": 8,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-banking-reconciliation",
+        "timestamp": "2025-12-31T05:12:15.222Z",
+        "nodeCount": 34,
+        "depth": 8,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-banking-skonto",
+        "timestamp": "2025-12-31T05:12:20.368Z",
+        "nodeCount": 34,
+        "depth": 8,
+        "isTooLarge": false
+      },
+      {
+        "page": "admin-banking-transactions",
+        "timestamp": "2025-12-31T05:12:25.578Z",
+        "nodeCount": 34,
+        "depth": 8,
+        "isTooLarge": false
+      }
+    ],
+    "mutations": [],
+    "eventListeners": [
+      {
+        "page": "dashboard",
+        "timestamp": "2025-12-31T02:20:47.477Z",
+        "count": 57,
+        "isTooMany": false
+      },
+      {
+        "page": "upload",
+        "timestamp": "2025-12-31T02:22:59.570Z",
+        "count": 32,
+        "isTooMany": false
+      },
+      {
+        "page": "search",
+        "timestamp": "2025-12-31T02:28:39.877Z",
+        "count": 36,
+        "isTooMany": false
+      },
+      {
+        "page": "chat-rag",
+        "timestamp": "2025-12-31T02:41:17.680Z",
+        "count": 59,
+        "isTooMany": false
+      },
+      {
+        "page": "relationships",
+        "timestamp": "2025-12-31T02:43:26.387Z",
+        "count": 30,
+        "isTooMany": false
+      },
+      {
+        "page": "monitoring",
+        "timestamp": "2025-12-31T02:45:36.163Z",
+        "count": 32,
+        "isTooMany": false
+      },
+      {
+        "page": "automation",
+        "timestamp": "2025-12-31T02:52:47.947Z",
+        "count": 53,
+        "isTooMany": false
+      },
+      {
+        "page": "validation-queue",
+        "timestamp": "2025-12-31T03:00:26.959Z",
+        "count": 40,
+        "isTooMany": false
+      },
+      {
+        "page": "document-groups",
+        "timestamp": "2025-12-31T03:05:05.820Z",
+        "count": 33,
+        "isTooMany": false
+      },
+      {
+        "page": "kasse",
+        "timestamp": "2025-12-31T03:08:13.977Z",
+        "count": 33,
+        "isTooMany": false
+      },
+      {
+        "page": "spesen",
+        "timestamp": "2025-12-31T03:11:51.844Z",
+        "count": 34,
+        "isTooMany": false
+      },
+      {
+        "page": "streckengeschaeft",
+        "timestamp": "2025-12-31T03:16:03.436Z",
+        "count": 45,
+        "isTooMany": false
+      },
+      {
+        "page": "streckengeschaeft-zm",
+        "timestamp": "2025-12-31T03:18:23.789Z",
+        "count": 36,
+        "isTooMany": false
+      },
+      {
+        "page": "finanzen",
+        "timestamp": "2025-12-31T03:20:32.115Z",
+        "count": 29,
+        "isTooMany": false
+      },
+      {
+        "page": "finanzen-2025",
+        "timestamp": "2025-12-31T03:22:38.495Z",
+        "count": 31,
+        "isTooMany": false
+      },
+      {
+        "page": "finanzen-2024",
+        "timestamp": "2025-12-31T03:24:44.984Z",
+        "count": 31,
+        "isTooMany": false
+      },
+      {
+        "page": "kunden",
+        "timestamp": "2025-12-31T03:26:52.320Z",
+        "count": 34,
+        "isTooMany": false
+      },
+      {
+        "page": "lieferanten",
+        "timestamp": "2025-12-31T03:29:00.476Z",
+        "count": 33,
+        "isTooMany": false
+      },
+      {
+        "page": "personal",
+        "timestamp": "2025-12-31T03:33:17.222Z",
+        "count": 36,
+        "isTooMany": false
+      },
+      {
+        "page": "business-entities",
+        "timestamp": "2025-12-31T03:36:25.464Z",
+        "count": 31,
+        "isTooMany": false
+      },
+      {
+        "page": "privat",
+        "timestamp": "2025-12-31T03:40:01.415Z",
+        "count": 29,
+        "isTooMany": false
+      },
+      {
+        "page": "privat-finanzen",
+        "timestamp": "2025-12-31T03:43:37.246Z",
+        "count": 30,
+        "isTooMany": false
+      },
+      {
+        "page": "privat-notfall",
+        "timestamp": "2025-12-31T03:45:43.627Z",
+        "count": 30,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-dashboard",
+        "timestamp": "2025-12-31T03:47:51.542Z",
+        "count": 38,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-users",
+        "timestamp": "2025-12-31T03:53:03.521Z",
+        "count": 46,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-settings",
+        "timestamp": "2025-12-31T03:55:10.442Z",
+        "count": 39,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-ocr-training",
+        "timestamp": "2025-12-31T04:00:23.184Z",
+        "count": 39,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-ocr-backends",
+        "timestamp": "2025-12-31T04:02:30.695Z",
+        "count": 39,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-datev",
+        "timestamp": "2025-12-31T04:04:37.755Z",
+        "count": 47,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-datev-config",
+        "timestamp": "2025-12-31T04:07:43.818Z",
+        "count": 46,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-datev-export",
+        "timestamp": "2025-12-31T04:11:50.257Z",
+        "count": 49,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-datev-history",
+        "timestamp": "2025-12-31T04:13:56.916Z",
+        "count": 45,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-datev-vendors",
+        "timestamp": "2025-12-31T04:17:32.894Z",
+        "count": 49,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-mahnungen",
+        "timestamp": "2025-12-31T04:30:37.897Z",
+        "count": 64,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-mahnungen-aktiv",
+        "timestamp": "2025-12-31T04:39:14.801Z",
+        "count": 61,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-mahnungen-aufgaben",
+        "timestamp": "2025-12-31T04:43:51.402Z",
+        "count": 47,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-mahnungen-einstellungen",
+        "timestamp": "2025-12-31T04:47:59.347Z",
+        "count": 51,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-mahnungen-eskalation",
+        "timestamp": "2025-12-31T04:57:36.334Z",
+        "count": 61,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-mahnungen-kanban",
+        "timestamp": "2025-12-31T04:59:42.961Z",
+        "count": 47,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-mahnungen-mahnstopp",
+        "timestamp": "2025-12-31T05:11:49.019Z",
+        "count": 66,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-banking",
+        "timestamp": "2025-12-31T05:11:54.633Z",
+        "count": 3,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-banking-accounts",
+        "timestamp": "2025-12-31T05:11:59.975Z",
+        "count": 3,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-banking-import",
+        "timestamp": "2025-12-31T05:12:04.990Z",
+        "count": 3,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-banking-payments",
+        "timestamp": "2025-12-31T05:12:10.093Z",
+        "count": 3,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-banking-reconciliation",
+        "timestamp": "2025-12-31T05:12:15.224Z",
+        "count": 3,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-banking-skonto",
+        "timestamp": "2025-12-31T05:12:20.369Z",
+        "count": 3,
+        "isTooMany": false
+      },
+      {
+        "page": "admin-banking-transactions",
+        "timestamp": "2025-12-31T05:12:25.580Z",
+        "count": 3,
+        "isTooMany": false
+      }
+    ]
+  }
+}

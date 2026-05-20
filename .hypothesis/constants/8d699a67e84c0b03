@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\orchestration\language_detector.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.2, 0.3, 0.5, 0.8, 0.9, 1.0, 'CZECH', 'DUTCH', 'ENGLISH', 'FRENCH', 'GERMAN', 'ITALIAN', 'LanguageCode', 'POLISH', 'RUSSIAN', 'SPANISH', 'UKRAINIAN', '[|_\\\\\\/\\[\\]{}]', '[äöüßÄÖÜ]', '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]', '[а-яА-ЯёЁ]{3,}', '[а-яА-ЯёЁіІїЇєЄґҐ]', '\\s+', 'all_languages', 'confidence', 'cs', 'cyrillic', 'de', 'deepseek', 'default_fallback', 'detection_method', 'donut', 'en', 'es', 'fr', 'got_ocr', 'is_multilingual', 'it', 'langdetect', 'langdetect verfügbar', 'langdetect_error', 'langdetect_failed', 'language', 'latin', 'lingua', 'lingua verfügbar', 'lingua_error', 'lingua_failed', 'mixed', 'nl', 'no_text', 'ocr_short_text', 'pattern_german', 'pattern_polish', 'pattern_russian', 'pl', 'primary_language', 'ru', 'script_type', 'surya', 'uk', 'unknown']

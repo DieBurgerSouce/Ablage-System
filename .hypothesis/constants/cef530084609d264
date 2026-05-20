@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\pg_process.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 0.001, 0.1, 0.15, 0.2, 0.224, 0.225, 0.229, 0.25, 0.3, 0.375, 0.406, 0.456, 0.485, 0.5, 0.625, 0.75, 0.875, 1.0, 1.5, 1.55, 2.0, 180.0, 255.0, 2048.0, 10000.0, 180, 200, 255, 512, 2048, 'PGProcessTrain', 'align', 'border_maps', 'direction_maps', 'float32', 'ignore_tags', 'image', 'images', 'int32', 'invalid poly', 'label_list', 'polys', 'pos_list', 'pos_mask', 'rb', 'tcl_label_maps', 'tcl_maps', 'texts', 'training_masks', 'utf-8']

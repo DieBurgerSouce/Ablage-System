@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\datasets\coco_text.py
+# hypothesis_version: 6.148.7
+
+['COCOTEXT', 'anns', 'bbox', 'file_name', 'image_id', 'imgs', 'legibility', 'legible', 'r', 'set', 'train', 'utf8_string']

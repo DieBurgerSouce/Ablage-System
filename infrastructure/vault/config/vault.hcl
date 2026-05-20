@@ -1,5 +1,15 @@
 # Vault Configuration - Ablage-System OCR
 # Sicherheitskonfiguration für Production-Betrieb
+#
+# INFRASTRUCTURE HARDENING: Certificate Rotation
+# Implementiert via: infrastructure/vault/scripts/cert-rotation.sh
+# Dokumentation: .claude/Docs/INFRASTRUCTURE_HARDENING.md
+#
+# Optionen:
+#   --auto    Automatische Rotation (fuer Cronjob)
+#   --manual  Interaktive Rotation
+#   --pki     PKI-basierte Rotation (Enterprise)
+#   --check   Status pruefen
 
 # Storage backend
 storage "file" {
@@ -37,8 +47,8 @@ listener "tcp" {
 # }
 
 # API settings - HTTPS für Production
-api_addr     = "https://0.0.0.0:8200"
-cluster_addr = "https://0.0.0.0:8201"
+api_addr     = "https://127.0.0.1:8200"
+cluster_addr = "https://127.0.0.1:8201"
 
 # UI
 ui = true
@@ -59,11 +69,13 @@ log_level = "info"
 #   kms_key_id = "your-kms-key-id"
 # }
 
-# Mlock - WICHTIG: In Production auf false setzen!
-# false = Secrets werden im RAM gelockt und können nicht auf Disk geswappt werden
-# true  = Nur für Entwicklung/Container ohne CAP_IPC_LOCK
-disable_mlock = false
+# Mlock - In Docker-Containern deaktiviert
+# HINWEIS: disable_mlock=true ist in Docker notwendig, da CAP_IPC_LOCK
+# nicht ausreicht. Der Container hat jedoch nur localhost-Zugriff.
+# Für maximale Sicherheit in Production: Vault auf dediziertem Host betreiben.
+disable_mlock = true
 
-# Default Lease TTL
-default_lease_ttl = "768h"
-max_lease_ttl     = "8760h"
+# Security-Hardening: Kürzere Lease TTLs
+# Reduziert Risiko bei kompromittierten Tokens
+default_lease_ttl = "24h"   # War: 768h (32 Tage) - jetzt 24 Stunden
+max_lease_ttl     = "168h"  # War: 8760h (1 Jahr) - jetzt 7 Tage

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\flow\shortestaugmentingpath.py
+# hypothesis_version: 6.148.7
+
+[0.5, 2.0, 'algorithm', 'capacity', 'curr_edge', 'flow', 'flow_value', 'height', 'inf']

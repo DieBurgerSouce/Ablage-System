@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\datasets\doc_artefacts.py
+# hypothesis_version: 6.148.7
+
+['DocArtefacts', 'background', 'bar_code', 'geometry', 'images', 'label', 'labels.json', 'logo', 'photo', 'qr_code', 'rb', 'train', 'val']

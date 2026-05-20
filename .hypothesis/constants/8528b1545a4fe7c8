@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\nn\loss.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'Bias', 'Cost', 'CustomDistAlias', 'CustomDistAliasProbs', 'CustomDistProbs', 'Input', 'Label', 'SampleLabels', 'SampleLogits', 'SampleWeight', 'Weight', 'custom_dist', 'float32', 'float64', 'input', 'int32', 'int64', 'is_sparse', 'label', 'log_uniform', 'nce', 'num_neg_samples', 'num_total_classes', 'remote_prefetch', 'sampler', 'seed', 'uniform']

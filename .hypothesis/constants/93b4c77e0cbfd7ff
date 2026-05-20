@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_forest.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 100, 'C', 'ExtraTreesClassifier', 'ExtraTreesRegressor', 'RandomTreesEmbedding', '_n_features_out', 'allow-nan', 'auto', 'balanced', 'balanced_subsample', 'boolean', 'bootstrap', 'ccp_alpha', 'class_weight', 'classes_', 'criterion', 'csc', 'csr', 'dtype', 'estimators_', 'feature_importances_', 'gini', 'ignore', 'left', 'max_depth', 'max_features', 'max_leaf_nodes', 'max_samples', 'min_samples_leaf', 'min_samples_split', 'monotonic_cst', 'n_classes_', 'n_estimators', 'n_jobs', 'oob_score', 'oob_score_', 'poisson', 'random_state', 'right', 'sharedmem', 'sparse_output', 'splitter', 'sqrt', 'squared_error', 'subsample', 'threads', 'unknown', 'verbose', 'warm_start']

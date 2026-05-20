@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\readwrite\json_graph\tree.py
+# hypothesis_version: 6.148.7
+
+['G is not a tree.', 'G is not directed.', 'children', 'id', 'tree_data', 'tree_graph']

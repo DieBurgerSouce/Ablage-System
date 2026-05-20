@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\optimizer\functional\line_search.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-08, 0.0001, 0.1, 0.5, 0.9, 1.0, 2.0, 'bool', 'float32', 'int64']

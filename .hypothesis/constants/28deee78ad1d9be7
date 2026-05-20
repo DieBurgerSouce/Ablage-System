@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_services\batch_service.py
+# hypothesis_version: 6.148.7
+
+['DELETE_ERROR', 'NOT_FOUND', 'TAG_ERROR', 'add', 'batch_delete', 'batch_delete_dry_run', 'batch_delete_failed', 'batch_soft_delete', 'batch_tag', 'batch_tag_completed', 'batch_tag_failed', 'bulk_update', 'delete', 'entfernt', 'gesetzt', 'hinzugefuegt', 'permanent geloescht', 'remove', 'set', 'soft_delete']

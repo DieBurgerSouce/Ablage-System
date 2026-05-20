@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\runtime\static_cuda_launcher.py
+# hypothesis_version: 6.148.7
+
+['*', 'B', 'Global', 'H', 'HookChain', 'I', 'K', 'O', 'Profile', 'b', 'bf16', 'constants', 'constexpr', 'cubin', 'cubin_path', 'd', 'f', 'f32', 'fp16', 'fp32', 'fp64', 'function', 'global_scratch_size', 'h', 'i', 'i1', 'i16', 'i32', 'i64', 'i8', 'l', 'metadata', 'num_ctas', 'nvTmaDesc', 'profile_scratch_size', 'shared', 'u1', 'u16', 'u32', 'u64', 'u8', 'wb']

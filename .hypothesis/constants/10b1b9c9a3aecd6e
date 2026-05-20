@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\accelerate\utils\bnb.py
+# hypothesis_version: 6.148.7
+
+['.', '.bias', '.weight', 'SCB', 'auto', 'balanced', 'balanced_low_0', 'base_model_prefix', 'cpu', 'cuda', 'disk', 'dtype', 'max_memory', 'meta', 'sequential', 'special_dtypes', 'weight']

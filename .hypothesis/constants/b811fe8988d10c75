@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sqlalchemy\ext\hybrid.py
+# hypothesis_version: 6.148.7
+
+['HYBRID_METHOD', 'HYBRID_PROPERTY', '_', '_P', '_R', '_T', '_TE', '_T_co', '_T_con', 'attr', "can't set attribute"]

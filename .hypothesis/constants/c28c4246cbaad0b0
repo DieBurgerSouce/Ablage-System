@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\profiling.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 500, 2000, 60000, '/config', '/endpoints', '/hot-paths', '/memory', '/memory/snapshot', '/profiling', '/prometheus', '/report', '/reset', '/slow-requests', '/summary', 'Allgemein', 'Fehlerrate', 'Hot Path', 'Langsame Requests', 'Latenz', 'Sortierfeld', 'avg_time_ms', 'bereich', 'beschreibung', 'empfehlungen', 'endpoint', 'endpoints', 'error_rate_percent', 'filter', 'geloeschte_endpoints', 'hoch', 'hot_paths', 'hot_paths_retrieved', 'info', 'langsame_requests', 'langsamste_endpoints', 'limit', 'memory', 'method', 'mittel', 'nachricht', 'niedrig', 'optimierung', 'p99_latency_ms', 'prioritaet', 'profiling', 'report_generiert_am', 'request_count', 'requests', 'schwellwert_ms', 'snapshot', 'snapshots', 'sort_by', 'total_count', 'total_requests', 'total_slow_requests', 'typ', 'uptime_formatted', 'warnung', 'zeitstempel', 'zusammenfassung']

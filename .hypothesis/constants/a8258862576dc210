@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\foundation\cache\static_ops.py
+# hypothesis_version: 6.148.7
+
+['cache_idxs', 'head_dim', 'num_key_value_heads', 'num_valid_tokens', 'prefill', 'text_lengths']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\io\arff\_arffread.py
+# hypothesis_version: 6.148.7
+
+[1.0, '"', '%H', '%M', '%S', '%Y', '%d', '%m', '%y', "'", "'(..+)'\\s+(..+$)", '(\\S+)\\s+(..+$)', ',', ',\t', ',{', "3, 'a'", '?', 'ArffError', 'D', 'HH', 'M', 'MM', 'MetaData', 'NaT', 'ParseArffError', 'Y', 'Z', '\\s*$', '^%', '^@[Dd][Aa][Tt][Aa]', '^@[Ee][Nn][Dd]\\s*', '^\\s*@', '^\\s*@\\S*', '^\\s+$', 'date', 'dd', 'delim', 'h', 'has_bug', 'int', 'loadarff', 'm', 'mm', 'nominal', 'numeric', 'quote', 'read', 'real', 'relational', 's', 'space', 'ss', 'string', 'unicode-escape', 'yy', 'yyyy', 'z', '{', '{(.+)}', '}']

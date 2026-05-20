@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\launch\utils\topology.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 0.25, 0.5, 1.0, 2.0, 2.4, 4.0, 8.0, 1000.0, 1000000.0, 5300, 7800, 9700, 10600, 15700, 19500, 24000, 30000, 48000, 60000, ' {print $', '127.0.0.1', '16', '25', '4', '40536', '41366484', '8', 'A100', 'A800', 'GPU', 'H100', 'NV', 'NVL', 'P100', 'PADDLE_LOCAL_SIZE', 'PCIe', 'SXM5', 'V100', 'X', 'addr', 'avx2', 'avx512', 'bandwidth', 'device_type', 'device_type_full', 'devices', 'dp_gflops', 'global_id', 'hostname', 'hostname -i', 'hostname -s', 'inf', 'latency', 'links', 'local_id', 'localhost', 'lscpu | grep avx2', 'lscpu | grep avx512', 'lscpu | grep sse', 'memory', 'model', 'nvidia-smi --id=', 'rm /tmp/matrix.txt', 'source_global_id', 'sp_gflops', 'sse', 'target_global_id', 'type', 'w', "}'"]

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\origin_info.py
+# hypothesis_version: 6.148.7
+
+['(* user code *)', ',', 'col_offset', 'filepath', 'function_name', 'lineno', 'location', 'source_code']

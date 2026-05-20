@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\account_lockout.py
+# hypothesis_version: 6.148.7
+
+[300, 900, 3600, '***', '...', ':', 'account_locked', 'admin_account_unlock', 'failed_attempts', 'identifier', 'is_locked', 'lockout_until', 'login:failed:', 'login:lockout:', 'login_failed_attempt', 'remaining_seconds', 'unknown', 'using_redis']

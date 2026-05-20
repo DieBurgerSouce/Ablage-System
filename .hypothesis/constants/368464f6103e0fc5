@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\fp8.py
+# hypothesis_version: 6.148.7
+
+[0.0, 112, 4194304, 33554432, '128x128', '1x128', 'e4m3']

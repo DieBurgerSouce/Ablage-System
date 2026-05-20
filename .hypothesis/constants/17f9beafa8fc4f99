@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\linalg\bethehessianmatrix.py
+# hypothesis_version: 6.148.7
+
+['bethe_hessian_matrix', 'csr', 'directed', 'multigraph']

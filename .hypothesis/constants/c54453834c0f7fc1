@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\recompute\recompute_hybrid.py
+# hypothesis_version: 6.148.7
+
+[':', 'O1', 'O2', 'gpu:', 'mp_group', 'offload', 'partition', 'xpu:']

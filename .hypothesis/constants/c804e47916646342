@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\parser.py
+# hypothesis_version: 6.148.7
+
+[140, ',', ',->', ',->.', '-', '->', '.', '.,->', '...', '>', 'Invalid Ellipses.', 'No input operands', 'alpha_canonicalize', 'find_output_shape', 'find_output_str', 'gen_unused_symbols', 'get_symbol', 'is_valid_einsum_char', 'parse_einsum_input', 'shape']

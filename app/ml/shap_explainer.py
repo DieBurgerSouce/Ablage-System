@@ -16,7 +16,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import structlog
@@ -30,6 +30,7 @@ _shap_explainer_lock = threading.Lock()
 SHAP_AVAILABLE = False
 try:
     import shap
+
     SHAP_AVAILABLE = True
 except ImportError:
     logger.info("SHAP nicht installiert - verwende eingebaute Feature Importance")
@@ -39,7 +40,7 @@ except ImportError:
 class FeatureContribution:
     """Beitrag eines Features zur Entscheidung."""
     feature_name: str
-    feature_value: Any
+    feature_value: object
     shap_value: float  # Positiv = erhöht Wahrscheinlichkeit, Negativ = verringert
     contribution_percent: float  # Relativer Beitrag in %
     direction: str  # "supports" oder "opposes"
@@ -57,9 +58,9 @@ class RoutingExplanation:
     alternative_backends: List[Tuple[str, float]]  # (backend, probability)
     decision_summary: str  # Deutsche Zusammenfassung
     counterfactual: Optional[str]  # "Wenn X, dann wäre Y gewählt worden"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, object] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Konvertiere zu Dictionary."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -173,7 +174,7 @@ class SHAPExplainer:
 
     def __init__(
         self,
-        model: Optional[Any] = None,
+        model: Optional[object] = None,
         feature_names: Optional[List[str]] = None,
         storage_path: Optional[Path] = None,
     ) -> None:
@@ -190,7 +191,7 @@ class SHAPExplainer:
         self.storage_path = storage_path or Path("data/explanations")
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
-        self._shap_explainer: Optional[Any] = None
+        self._shap_explainer: Optional[object] = None
         self._global_importance: Optional[Dict[str, float]] = None
 
         # Cache für Erklärungen
@@ -208,9 +209,9 @@ class SHAPExplainer:
             self._shap_explainer = shap.TreeExplainer(self.model)
             logger.info("SHAP TreeExplainer initialisiert")
         except Exception as e:
-            logger.warning("shap_explainer_init_fehlgeschlagen", error=str(e))
+            logger.warning("shap_explainer_init_fehlgeschlagen", **safe_error_log(e))
 
-    def set_model(self, model: Any, feature_names: List[str]) -> None:
+    def set_model(self, model: object, feature_names: List[str]) -> None:
         """
         Setze oder aktualisiere das Modell.
 
@@ -244,7 +245,7 @@ class SHAPExplainer:
     def explain_routing(
         self,
         document_id: str,
-        features: Dict[str, Any],
+        features: Dict[str, object],
         selected_backend: str,
         confidence: float,
         all_probabilities: Dict[str, float],
@@ -330,7 +331,7 @@ class SHAPExplainer:
 
     def _calculate_contributions(
         self,
-        features: Dict[str, Any],
+        features: Dict[str, object],
         selected_backend: str,
     ) -> List[FeatureContribution]:
         """Berechne Feature-Beiträge zur Entscheidung."""
@@ -352,7 +353,7 @@ class SHAPExplainer:
 
     def _calculate_shap_contributions(
         self,
-        features: Dict[str, Any],
+        features: Dict[str, object],
         selected_backend: str,
     ) -> List[FeatureContribution]:
         """Berechne SHAP-basierte Beiträge."""
@@ -395,7 +396,7 @@ class SHAPExplainer:
                 contributions.append(contribution)
 
         except Exception as e:
-            logger.warning("shap_berechnung_fehlgeschlagen", error=str(e))
+            logger.warning("shap_berechnung_fehlgeschlagen", **safe_error_log(e))
             contributions = self._calculate_heuristic_contributions(
                 features, selected_backend
             )
@@ -404,7 +405,7 @@ class SHAPExplainer:
 
     def _calculate_heuristic_contributions(
         self,
-        features: Dict[str, Any],
+        features: Dict[str, object],
         selected_backend: str,
     ) -> List[FeatureContribution]:
         """Berechne heuristische Feature-Beiträge ohne SHAP."""
@@ -449,7 +450,7 @@ class SHAPExplainer:
     def _feature_supports_backend(
         self,
         feature_name: str,
-        feature_value: Any,
+        feature_value: object,
         backend: str,
     ) -> bool:
         """Bestimme ob Feature das gewählte Backend unterstützt."""
@@ -481,7 +482,7 @@ class SHAPExplainer:
     def _generate_feature_explanation(
         self,
         feature_name: str,
-        feature_value: Any,
+        feature_value: object,
         shap_value: float,
     ) -> str:
         """Generiere deutsche Erklärung für Feature-Beitrag."""
@@ -529,7 +530,7 @@ class SHAPExplainer:
 
     def _generate_counterfactual(
         self,
-        features: Dict[str, Any],
+        features: Dict[str, object],
         selected_backend: str,
         alternatives: List[Tuple[str, float]],
     ) -> Optional[str]:

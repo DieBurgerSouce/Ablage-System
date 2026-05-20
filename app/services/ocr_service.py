@@ -14,11 +14,12 @@ import os
 
 logger = structlog.get_logger(__name__)
 
-# Import our backend manager
-from app.services.backend_manager import BackendManager
+# Import our backend manager (Singleton für Performance)
+from app.services.backend_manager import get_backend_manager
 # Import German correction components
 from app.agents.postprocessing.german_correction_agent import GermanCorrectionAgent
 from app.utils.german_text import normalize_german_text
+from app.core.safe_errors import safe_error_log
 
 
 class OCRService:
@@ -27,18 +28,24 @@ class OCRService:
     Provides high-level OCR processing interface for FastAPI
     """
 
+    # Timeout for batch operations to prevent hanging (5 minutes per batch)
+    BATCH_TIMEOUT_SECONDS = 300.0
+
     def __init__(self, enable_german_correction: bool = True):
         """Initialize OCR service with backend manager
 
         Args:
             enable_german_correction: Enable automatic German text correction (default: True)
         """
-        self.backend_manager = BackendManager()
+        # Verwende Singleton BackendManager für Performance
+        # Das vermeidet ~60s Model-Loading bei jedem Task
+        self.backend_manager = get_backend_manager()
         self.processing_stats = {
             "total_processed": 0,
             "total_errors": 0,
             "total_fallbacks": 0,
             "total_corrections": 0,
+            "total_correction_errors": 0,  # P2: Track German correction failures
             "by_backend": {},
             "health_checks": {
                 "total": 0,
@@ -57,7 +64,7 @@ class OCRService:
             except Exception as e:
                 logger.warning(
                     "german_correction_agent_init_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     message="Korrektur deaktiviert"
                 )
 
@@ -148,7 +155,8 @@ class OCRService:
             # Apply German correction for German documents
             correction_applied = False
             correction_result = None
-            if language == "de" and self._german_corrector and result.get("text"):
+            # Guard clause: Explizite None-Prüfung für Type Safety
+            if language == "de" and self._german_corrector is not None and result.get("text"):
                 try:
                     logger.info(
                         "applying_german_correction",
@@ -186,9 +194,15 @@ class OCRService:
                         )
 
                 except Exception as e:
+                    # P2: Track correction errors for monitoring
+                    self.processing_stats["total_correction_errors"] += 1
+
                     logger.warning(
                         "german_correction_failed",
-                        error=str(e),
+                        error_type=type(e).__name__,
+                        **safe_error_log(e),
+                        text_length=len(result.get("text", "")),
+                        total_correction_errors=self.processing_stats["total_correction_errors"],
                         message="Korrektur übersprungen, Originaltext beibehalten"
                     )
 
@@ -241,12 +255,12 @@ class OCRService:
 
         except Exception as e:
             self.processing_stats["total_errors"] += 1
-            logger.error("ocr_processing_failed", error=str(e), exc_info=True)
+            logger.error("ocr_processing_failed", **safe_error_log(e), exc_info=True)
 
             # Return error response (fallback already attempted by backend_manager)
             return {
                 "success": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "metadata": {
                     "processing_time_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
                     "timestamp": datetime.now(timezone.utc).isoformat()
@@ -287,7 +301,22 @@ class OCRService:
 
         # Process all documents concurrently (limited by semaphore)
         tasks = [process_with_semaphore(path) for path in image_paths]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=self.BATCH_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "batch_processing_timeout",
+                document_count=len(image_paths),
+                timeout_seconds=self.BATCH_TIMEOUT_SECONDS
+            )
+            # Return timeout errors for all documents
+            results = [
+                TimeoutError(f"Batch-Timeout nach {self.BATCH_TIMEOUT_SECONDS}s")
+                for _ in image_paths
+            ]
 
         # Convert exceptions to error results
         processed_results = []
@@ -486,7 +515,7 @@ class OCRService:
         validator = GermanValidator()
 
         # Check various aspects
-        has_umlauts = validator.validate_umlauts(text)
+        umlaut_result = validator.validate_umlauts(text)
         dates = validator.validate_date_format(text)
         amounts = validator.validate_currency_format(text)
         terms = validator.extract_business_terms(text)
@@ -502,14 +531,21 @@ class OCRService:
                         "count": text.count(replacement)
                     })
 
+        # Determine if text contains German indicators
+        has_german_indicators = (
+            len(umlaut_result.get("umlauts_found", [])) > 0
+            or len(dates) > 0
+            or len(amounts) > 0
+        )
+
         return {
-            "valid": has_umlauts or len(dates) > 0 or len(amounts) > 0,
-            "has_umlauts": has_umlauts,
+            "valid": has_german_indicators,
+            "umlaut_validation": umlaut_result,
             "dates_found": dates,
             "amounts_found": amounts,
             "business_terms": terms,
             "potential_ocr_errors": ocr_errors,
-            "quality_score": 1.0 - (len(ocr_errors) * 0.1)  # Simple quality metric
+            "quality_score": max(0.0, 1.0 - (len(ocr_errors) * 0.1))
         }
 
     async def save_upload(self, file_content: bytes, filename: str) -> str:
@@ -562,6 +598,7 @@ class OCRService:
             from uuid import UUID
             from app.services.version_service import get_version_service
 
+
             version_service = get_version_service()
 
             doc_uuid = UUID(document_id) if isinstance(document_id, str) else document_id
@@ -594,7 +631,7 @@ class OCRService:
             logger.error(
                 "ocr_version_save_failed",
                 document_id=document_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
 

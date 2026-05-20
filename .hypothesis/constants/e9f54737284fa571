@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\functional\window.py
+# hypothesis_version: 6.148.7
+
+[-2.0, -0.5, 0.0106411, 0.08, 0.1365995, 0.3635819, 0.42, 0.4891775, 0.5, 0.54, 1.0, 2.0, "The '", 'Unknown window type.', '_', 'exponential', 'float64', 'gaussian', 'kaiser', 'sym']

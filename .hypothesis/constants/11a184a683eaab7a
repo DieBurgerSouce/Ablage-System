@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ocr_training_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '-', '_', 'avg_cer', 'avg_time', 'avg_umlaut', 'avg_wer', 'batch_populated', 'deepseek', 'deepseek-janus-pro', 'got-ocr', 'got-ocr-2.0', 'got_ocr', 'hybrid', 'samples_count', 'surya', 'surya-gpu', 'surya_gpu']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\transformers\decorator_transformer.py
+# hypothesis_version: 6.148.7
+
+['(.+?)\\((.*)\\)', ',', ', ', '_decoedby_', '_jst.Call', '_orig_', 'classmethod', 'contextmanager', 'declarative', 'decorator', 'inference', 'staticmethod', 'to_static', 'wraps']

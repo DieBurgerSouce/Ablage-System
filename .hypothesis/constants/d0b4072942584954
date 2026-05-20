@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\temp_file_storage.py
+# hypothesis_version: 6.148.7
+
+[1024, 1800, 3600, 7200, 'content_b64', 'created_at', 'file_size', 'metadata', 'mime_type', 'original_filename', 'temp_file_deleted', 'temp_file_id', 'temp_file_not_found', 'temp_file_retrieved', 'temp_file_stored', 'user_id', 'utf-8']

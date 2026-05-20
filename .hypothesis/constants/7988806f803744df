@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\mt940\models.py
+# hypothesis_version: 6.148.7
+
+[1000, 2000, '\n%s', '%s %s', '%s @ %s', '%s: %s', ',', '-', '.', '0', '<%s %s in %s stmts)>', '<%s>', '<%s[%s] %s>', '<%s[%s]>', 'D', '][', '_balance', 'amount', 'available_balance', 'balance', 'c_floor_limit', 'closing_balance', 'currency', 'd_floor_limit', 'date', 'full_tag', 'id', 'number', 'offset', 'opening_balance', 'post_%s', 'pre_%s', 'processors', 'strip', 'tag', 'tzinfo', 'year']

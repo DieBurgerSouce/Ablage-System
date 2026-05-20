@@ -18,7 +18,7 @@ groups:
 
       # Warnung: Hohe OCR-Verarbeitungszeit (95. Perzentil > 10s)
       - alert: OCRProcessingSlowHigh
-        expr: histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m])) > 10
+        expr: histogram_quantile(0.95, rate(ablage_ocr_processing_duration_seconds_bucket[5m])) > 10
         for: 5m
         labels:
           severity: warning
@@ -30,7 +30,7 @@ groups:
 
       # Kritisch: Sehr hohe OCR-Verarbeitungszeit (95. Perzentil > 30s)
       - alert: OCRProcessingVerySlow
-        expr: histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m])) > 30
+        expr: histogram_quantile(0.95, rate(ablage_ocr_processing_duration_seconds_bucket[5m])) > 30
         for: 5m
         labels:
           severity: critical
@@ -43,8 +43,8 @@ groups:
       # Warnung: Hohe OCR Fehlerrate (>10%)
       - alert: OCRErrorRateHigh
         expr: |
-          rate(ocr_requests_total{status="error"}[5m])
-          / rate(ocr_requests_total[5m]) > 0.1
+          rate(ablage_ocr_requests_total{status="error"}[5m])
+          / rate(ablage_ocr_requests_total[5m]) > 0.1
         for: 5m
         labels:
           severity: warning
@@ -57,8 +57,8 @@ groups:
       # Kritisch: Sehr hohe OCR Fehlerrate (>25%)
       - alert: OCRErrorRateCritical
         expr: |
-          rate(ocr_requests_total{status="error"}[5m])
-          / rate(ocr_requests_total[5m]) > 0.25
+          rate(ablage_ocr_requests_total{status="error"}[5m])
+          / rate(ablage_ocr_requests_total[5m]) > 0.25
         for: 2m
         labels:
           severity: critical
@@ -69,9 +69,11 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-error-critical"
 
       # Warnung: GPU Speicher hoch (>85%)
-      # Verwendet DCGM-Metriken: FB_USED / (FB_USED + FB_FREE)
+      # Verwendet ablage_gpu_memory Metriken aus app/core/telemetry.py
+      # HINWEIS: DCGM-Metriken (DCGM_FI_DEV_FB_*) erfordern nvidia-dcgm-exporter
+      # und sind optional. Wir verwenden stattdessen die Anwendungs-Metriken.
       - alert: GPUMemoryHigh
-        expr: DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) > 0.85
+        expr: ablage_gpu_memory_usage_bytes / ablage_gpu_memory_limit_bytes > 0.85
         for: 5m
         labels:
           severity: warning
@@ -83,7 +85,7 @@ groups:
 
       # Kritisch: GPU Speicher kritisch (>95%)
       - alert: GPUMemoryCritical
-        expr: DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) > 0.95
+        expr: ablage_gpu_memory_usage_bytes / ablage_gpu_memory_limit_bytes > 0.95
         for: 2m
         labels:
           severity: critical
@@ -95,7 +97,7 @@ groups:
 
       # Warnung: OCR Warteschlange zu lang
       - alert: OCRQueueBacklog
-        expr: ocr_queue_length > 100
+        expr: ablage_ocr_queue_length > 100
         for: 10m
         labels:
           severity: warning
@@ -107,7 +109,7 @@ groups:
 
       # Warnung: Kein OCR-Traffic (moeglicher Ausfall)
       - alert: OCRNoTraffic
-        expr: rate(ocr_requests_total[15m]) == 0
+        expr: rate(ablage_ocr_requests_total[15m]) == 0
         for: 30m
         labels:
           severity: warning
@@ -117,63 +119,29 @@ groups:
           description: "Keine OCR-Anfragen in den letzten 30 Minuten. Moeglicherweise ein Systemausfall."
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-no-traffic"
 
-      # Info: OCR Backend Fallback aktiv
+      # Info: OCR Backend Fallback aktiv (basierend auf Fallback-Rate)
       - alert: OCRFallbackActive
-        expr: ocr_fallback_active == 1
+        expr: rate(ablage_ocr_fallbacks_total[5m]) > 0
         for: 5m
         labels:
           severity: info
           component: ocr
         annotations:
           summary: "OCR verwendet Fallback-Backend"
-          description: "Das primaere OCR-Backend ist nicht verfuegbar. Fallback auf {{ $labels.fallback_backend }} aktiv."
+          description: "OCR-Fallbacks werden verwendet. Von {{ $labels.from_backend }} zu {{ $labels.to_backend }}. Grund: {{ $labels.reason }}"
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-fallback"
 
       # ===================================================================
       # Backend Health Alerts
       # ===================================================================
-
-      # Warnung: Einzelnes OCR Backend ungesund
-      - alert: OCRBackendUnhealthy
-        expr: ocr_backend_healthy{backend!="surya"} == 0
-        for: 5m
-        labels:
-          severity: warning
-          component: ocr
-        annotations:
-          summary: "OCR Backend {{ $labels.backend }} ungesund"
-          description: "Das OCR-Backend {{ $labels.backend }} ist seit 5 Minuten ungesund. Fallback-Backends werden verwendet."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-backend-unhealthy"
-
-      # Kritisch: Alle GPU-Backends ungesund
-      - alert: AllGPUBackendsUnhealthy
-        expr: sum(ocr_backend_healthy{backend=~"deepseek|got_ocr|surya_gpu"}) == 0
-        for: 2m
-        labels:
-          severity: critical
-          component: ocr
-        annotations:
-          summary: "KRITISCH: Alle GPU-OCR-Backends ungesund"
-          description: "Alle GPU-beschleunigten OCR-Backends sind ungesund. System laeuft nur noch mit CPU-Fallback."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/all-gpu-backends-down"
-
-      # Kritisch: Kein OCR Backend verfuegbar
-      - alert: NoOCRBackendAvailable
-        expr: sum(ocr_backend_healthy) == 0
-        for: 1m
-        labels:
-          severity: critical
-          component: ocr
-        annotations:
-          summary: "KRITISCH: Kein OCR-Backend verfuegbar"
-          description: "KEIN OCR-Backend ist verfuegbar. Dokumentenverarbeitung vollstaendig ausgefallen."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/no-ocr-backend"
+      # Die ablage_ocr_backend_healthy Metrik ist in app/ml/metrics.py implementiert
+      # (OCR_BACKEND_HEALTHY Gauge mit Label "backend")
 
       # Warnung: Hohe Fallback-Rate
       - alert: OCRHighFallbackRate
         expr: |
-          rate(ocr_fallbacks_total[5m])
-          / rate(ocr_requests_total[5m]) > 0.2
+          rate(ablage_ocr_fallbacks_total[5m])
+          / rate(ablage_ocr_requests_total[5m]) > 0.2
         for: 10m
         labels:
           severity: warning
@@ -183,40 +151,124 @@ groups:
           description: "Mehr als 20% der OCR-Verarbeitungen verwenden Fallback-Backends. Aktuelle Rate: {{ $value | humanizePercentage }}"
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-high-fallback"
 
-      # Warnung: Haeufige Health-Check-Fehler
-      - alert: OCRHealthCheckFailures
-        expr: |
-          rate(ocr_health_checks_unhealthy_total[5m])
-          / rate(ocr_health_checks_total[5m]) > 0.3
-        for: 5m
-        labels:
-          severity: warning
-          component: ocr
-        annotations:
-          summary: "Haeufige OCR Health-Check-Fehler"
-          description: "Mehr als 30% der OCR Health-Checks schlagen fehl. Backend-Stabilitaet beeintraechtigt."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-health-check-failures"
-
-      # Warnung: CPU Fallback dauerhaft aktiv
-      - alert: OCRCPUFallbackPersistent
-        expr: ocr_backend_healthy{backend="surya"} == 1 and sum(ocr_backend_healthy{backend!="surya"}) == 0
-        for: 30m
-        labels:
-          severity: warning
-          component: ocr
-        annotations:
-          summary: "OCR nur noch auf CPU-Fallback"
-          description: "Das System laeuft seit 30 Minuten nur auf dem CPU-Fallback (Surya). Leistung reduziert."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-cpu-only"
-
-      # Info: DeepSeek VRAM kritisch
-      - alert: DeepSeekVRAMCritical
-        expr: ocr_backend_vram_available_gb{backend="deepseek"} < 4
+      # Warnung: OCR Backend nicht gesund
+      # Nutzt ablage_ocr_backend_healthy aus app/ml/metrics.py
+      - alert: OCRBackendUnhealthy
+        expr: ablage_ocr_backend_healthy == 0
         for: 2m
         labels:
           severity: warning
           component: ocr
         annotations:
-          summary: "DeepSeek VRAM kritisch niedrig"
-          description: "DeepSeek-Backend hat weniger als 4GB VRAM frei. Verfuegbar: {{ $value }}GB"
-          runbook_url: "https://wiki.ablage-system.local/runbooks/deepseek-vram-low"
+          summary: "OCR Backend {{ $labels.backend }} nicht gesund"
+          description: "Das OCR Backend {{ $labels.backend }} meldet Status unhealthy. Health-Check pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-backend-unhealthy"
+
+      # Kritisch: Alle GPU-Backends nicht gesund
+      - alert: AllGPUBackendsUnhealthy
+        expr: |
+          (ablage_ocr_backend_healthy{backend="deepseek"} == 0)
+          and (ablage_ocr_backend_healthy{backend="got_ocr"} == 0 or absent(ablage_ocr_backend_healthy{backend="got_ocr"}))
+        for: 5m
+        labels:
+          severity: critical
+          component: ocr
+        annotations:
+          summary: "Alle GPU-OCR-Backends nicht verfuegbar"
+          description: "Kein GPU-OCR-Backend ist verfuegbar. System laeuft im CPU-Fallback-Modus."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/all-gpu-backends-down"
+
+      # Info: CPU-Fallback laenger aktiv
+      - alert: OCRCPUFallbackPersistent
+        expr: |
+          (ablage_ocr_backend_healthy{backend="surya"} == 1)
+          and (ablage_ocr_backend_healthy{backend="deepseek"} == 0 or absent(ablage_ocr_backend_healthy{backend="deepseek"}))
+        for: 15m
+        labels:
+          severity: info
+          component: ocr
+        annotations:
+          summary: "OCR laeuft im CPU-Fallback-Modus"
+          description: "Das System verwendet seit 15 Minuten das CPU-Backend (Surya). Performance moeglicherweise reduziert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-cpu-fallback"
+
+      # ===================================================================
+      # GPU THERMAL ALERTS (B6: Reaktiviert 2026-05-19)
+      # ===================================================================
+      # Erfordert nvidia-dcgm-exporter fuer DCGM-Metriken.
+      # Installation: https://github.com/NVIDIA/dcgm-exporter
+      #
+      # B6 (2026-05-19): Bis 2026-05-19 waren diese vier Alerts auskommentiert
+      # mit dem Hinweis "fuer lokale Entwicklung ohne DCGM". DCGM-Exporter
+      # laeuft jedoch seit `docker-compose.yml:1482` als
+      # nvidia/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04 - der Disable-Grund war
+      # stale. Auf einem GPU-only-OCR-System (RTX 4080) ist Thermal-Monitoring
+      # nicht optional. Quelle: MASTER_REVIEW_2026-05-19.md B6.
+
+      - alert: GPUTemperatureHigh
+        expr: DCGM_FI_DEV_GPU_TEMP > 75
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU Temperatur hoch (>75°C)"
+          description: "GPU Temperatur bei {{ $value }}°C. Kuehlung pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-high"
+
+      - alert: GPUThermalThrottling
+        expr: DCGM_FI_DEV_GPU_TEMP > 80
+        for: 2m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "KRITISCH: GPU Thermal Throttling (>80°C)"
+          description: "GPU bei {{ $value }}°C - Thermal Throttling aktiv."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-thermal-throttling"
+
+      - alert: GPUTemperatureCritical
+        expr: DCGM_FI_DEV_GPU_TEMP > 85
+        for: 1m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "KRITISCH: GPU Temperatur gefaehrlich hoch (>85°C)"
+          description: "GPU bei {{ $value }}°C - Ueberhitzungsgefahr!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-critical"
+
+      - alert: GPUPowerLimitReached
+        expr: DCGM_FI_DEV_POWER_USAGE / DCGM_FI_DEV_POWER_LIMIT > 0.95
+        for: 5m
+        labels:
+          severity: info
+          component: gpu
+        annotations:
+          summary: "GPU Power Limit erreicht"
+          description: "GPU Power bei {{ $value | humanizePercentage }} des Limits."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-power-limit"
+
+      # Alternative: GPU OOM Events Counter (immer verfuegbar)
+      - alert: GPUOOMEventsHigh
+        expr: rate(ablage_gpu_oom_events_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "Haeufige GPU Out-of-Memory Events"
+          description: "GPU OOM Events auf Backend {{ $labels.backend }}. Batch-Groesse reduzieren oder VRAM-Nutzung optimieren."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-oom-events"
+
+      # GPU Cleanups als Indikator fuer Speicherdruck
+      - alert: GPUMemoryPressure
+        expr: rate(ablage_gpu_memory_cleanups_total[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: gpu
+        annotations:
+          summary: "Haeufige GPU-Speicher-Cleanups"
+          description: "GPU Cache wird haeufig bereinigt. Dies kann auf Speicherdruck hinweisen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-memory-pressure"

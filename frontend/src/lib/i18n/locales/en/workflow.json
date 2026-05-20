@@ -1,0 +1,143 @@
+{
+  "title": "Workflows",
+  "subtitle": "Process automation",
+  "workflow": "Workflow",
+  "workflows": "Workflows",
+  "process": "Process",
+  "processes": "Processes",
+  "list": {
+    "title": "Workflow overview",
+    "empty": "No workflows available",
+    "active": "Active workflows",
+    "completed": "Completed workflows",
+    "pending": "Pending workflows"
+  },
+  "status": {
+    "draft": "Draft",
+    "pending": "Pending",
+    "inProgress": "In progress",
+    "waitingApproval": "Waiting for approval",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "failed": "Failed",
+    "onHold": "On hold"
+  },
+  "type": {
+    "documentApproval": "Document approval",
+    "invoiceApproval": "Invoice approval",
+    "paymentApproval": "Payment approval",
+    "contractApproval": "Contract approval",
+    "purchaseOrder": "Purchase order approval",
+    "expenseReport": "Expense report",
+    "custom": "Custom"
+  },
+  "steps": {
+    "title": "Workflow steps",
+    "current": "Current step",
+    "next": "Next step",
+    "previous": "Previous step",
+    "completed": "Completed",
+    "pending": "Pending",
+    "skipped": "Skipped"
+  },
+  "actions": {
+    "start": "Start workflow",
+    "approve": "Approve",
+    "reject": "Reject",
+    "cancel": "Cancel",
+    "pause": "Pause",
+    "resume": "Resume",
+    "reassign": "Reassign",
+    "escalate": "Escalate",
+    "comment": "Add comment",
+    "delegate": "Delegate"
+  },
+  "approval": {
+    "title": "Approval",
+    "required": "Approval required",
+    "approvedBy": "Approved by {{name}}",
+    "rejectedBy": "Rejected by {{name}}",
+    "pendingApproval": "Waiting for approval from {{name}}",
+    "approvalDate": "Approved on {{date}}",
+    "rejectionReason": "Rejection reason",
+    "comment": "Comment",
+    "commentPlaceholder": "Optional comment for approval...",
+    "history": "Approval history"
+  },
+  "rules": {
+    "title": "Workflow rules",
+    "condition": "Condition",
+    "action": "Action",
+    "trigger": "Trigger",
+    "assignment": "Assignment",
+    "deadline": "Deadline",
+    "escalation": "Escalation",
+    "notification": "Notification"
+  },
+  "assignment": {
+    "title": "Assignment",
+    "assignedTo": "Assigned to",
+    "assignedBy": "Assigned by",
+    "assignedAt": "Assigned at",
+    "unassigned": "Unassigned",
+    "reassign": "Reassign",
+    "delegate": "Delegate",
+    "selectUser": "Select user"
+  },
+  "deadline": {
+    "title": "Deadline",
+    "dueDate": "Due date",
+    "overdue": "Overdue",
+    "daysRemaining": "{{days}} days remaining",
+    "hoursRemaining": "{{hours}} hours remaining",
+    "dueSoon": "Due soon",
+    "dueToday": "Due today",
+    "noDueDate": "No deadline"
+  },
+  "escalation": {
+    "title": "Escalation",
+    "escalated": "Escalated",
+    "escalatedTo": "Escalated to {{name}}",
+    "escalationReason": "Escalation reason",
+    "autoEscalation": "Automatic escalation",
+    "manualEscalation": "Manual escalation",
+    "escalationLevel": "Escalation level {{level}}"
+  },
+  "notification": {
+    "title": "Notifications",
+    "email": "Email notification",
+    "slack": "Slack notification",
+    "teams": "Teams notification",
+    "inApp": "In-app notification",
+    "reminder": "Reminder",
+    "sent": "Notification sent"
+  },
+  "template": {
+    "title": "Workflow templates",
+    "create": "Create template",
+    "edit": "Edit template",
+    "delete": "Delete template",
+    "duplicate": "Duplicate template",
+    "useTemplate": "Use template",
+    "noTemplates": "No templates available"
+  },
+  "automation": {
+    "title": "Automation",
+    "autoApprove": "Auto-approve",
+    "autoReject": "Auto-reject",
+    "autoAssign": "Auto-assign",
+    "autoEscalate": "Auto-escalate",
+    "conditions": "Conditions",
+    "threshold": "Threshold"
+  },
+  "metrics": {
+    "title": "Workflow metrics",
+    "averageTime": "Average processing time",
+    "completionRate": "Completion rate",
+    "approvalRate": "Approval rate",
+    "escalationRate": "Escalation rate",
+    "bottlenecks": "Bottlenecks"
+  }
+}

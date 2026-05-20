@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\moe_gate_dispatch_partial_nosoftmaxtopk.py
+# hypothesis_version: 6.148.7
+
+['capacity', 'combine_weights', 'combine_weights_out', 'expert_end_index', 'expert_id', 'expert_nums_local', 'expert_offset', 'expert_start_index', 'int32', 'int64', 'k', 'num_experts', 'reverse_token_drop', 'scatter_index', 'scatter_index_rev', 'use_pad', 'x', 'y']

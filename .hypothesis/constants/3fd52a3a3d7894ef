@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\autoheuristic\autoheuristic_utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 128, 129, 256, 512, 768, 1024, 166912, 232448, ',', 'arith_intensity', 'bfloat_perf_hit', 'choice', 'device_capa', 'feedback', 'k', 'k*n', 'k/(m*n)', 'k_padded_length', 'm', 'm*k', 'm*n', 'm_padded_length', 'mat1_dtype', 'mat1_iscontig', 'mat1_stride_0', 'mat1_stride_1', 'mat2_iscontig', 'mat2_stride_0', 'mat2_stride_1', 'n', 'n_padded_length', 'name', 'not_float_32', 'shared_memory', 'torch.bfloat16', 'using_tf32']

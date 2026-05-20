@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\optimize_indexing.py
+# hypothesis_version: 6.148.7
+
+['is_Boolean', 'output', 'set_indirect', 'store', 'to_dtype']

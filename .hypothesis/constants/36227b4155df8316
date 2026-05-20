@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\shufflenetv2.py
+# hypothesis_version: 6.148.7
+
+[0.25, 0.33, 0.5, 1.0, 1.5, 2.0, 116, 128, 176, 192, 224, 232, 352, 464, 488, 512, 704, 976, 1000, 1024, 2048, 'This scale size:[', '_', 'relu', 'shufflenet_v2_swish', 'shufflenet_v2_x0_25', 'shufflenet_v2_x0_33', 'shufflenet_v2_x0_5', 'shufflenet_v2_x1_0', 'shufflenet_v2_x1_5', 'shufflenet_v2_x2_0', 'swish']

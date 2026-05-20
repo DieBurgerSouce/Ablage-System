@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\alembic\ddl\mysql.py
+# hypothesis_version: 6.148.7
+
+[' AUTO_INCREMENT', ' COMMENT %s', ' DEFAULT %s', '%s %s', '%s CHANGE %s %s %s', '%s MODIFY %s %s', "'0'", '(.*?)(?:\\(\\))?$', 'BOOL', 'DROP DEFAULT', 'JSON', 'LONGTEXT', 'NOT NULL', 'NULL', 'RESTRICT', 'SET DEFAULT %s', 'TINYINT', '\\1', "^'|'$", 'collate ([\\w\\-_]+)', 'mariadb', 'mysql', 'restrict']

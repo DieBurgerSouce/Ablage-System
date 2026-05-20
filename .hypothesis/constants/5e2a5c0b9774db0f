@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\orchestration\model_registry.py
+# hypothesis_version: 6.148.7
+
+[0.0, '.', '1.0.0', 'HEAD', 'ModelVersion', 'active_version', 'created_at', 'false', 'git', 'is_active', 'major', 'metadata.json', 'migrated_from', 'migration_timestamp', 'minor', 'model', 'model.json', 'modell_geladen', 'modell_registriert', 'patch', 'rb', 'registry.json', 'rev-parse', 'security_notice', 'training_samples', 'true', 'unknown', 'utf-8', 'version_geloescht', 'versions', 'w', 'xgboost', '|']

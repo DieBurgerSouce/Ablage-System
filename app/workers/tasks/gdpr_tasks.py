@@ -16,13 +16,56 @@ from uuid import UUID
 import hashlib
 
 import structlog
-from celery import shared_task
 from sqlalchemy import select, delete, update, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from prometheus_client import Counter, Gauge, Histogram
 
 from app.core.config import settings
+from app.core.cache import invalidate_user_cache, invalidate_all_caches
+from app.core.safe_errors import safe_error_log
+from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Prometheus Metriken
+# =============================================================================
+
+gdpr_deletion_requests_pending = Gauge(
+    "gdpr_deletion_requests_pending",
+    "Anzahl ausstehender GDPR-Loeschanfragen",
+)
+
+gdpr_deletion_processing_duration_seconds = Histogram(
+    "gdpr_deletion_processing_duration_seconds",
+    "Dauer der GDPR-Loeschanfrage-Verarbeitung in Sekunden",
+    buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0],
+)
+
+gdpr_deletion_completed_total = Counter(
+    "gdpr_deletion_completed_total",
+    "Erfolgreich verarbeitete GDPR-Loeschanfragen",
+    ["source"],
+)
+
+gdpr_deletion_errors_total = Counter(
+    "gdpr_deletion_errors_total",
+    "Fehler bei GDPR-Loeschverarbeitung",
+    ["source"],
+)
+
+gdpr_breach_notifications_total = Counter(
+    "gdpr_breach_notifications_total",
+    "Gesendete Breach-Benachrichtigungen",
+    ["type"],
+)
+
+gdpr_compliance_score = Gauge(
+    "gdpr_compliance_score",
+    "GDPR Compliance Score (0-100)",
+)
+
 
 # Konstanten
 GDPR_DELETION_DEADLINE_DAYS = 30  # Art. 17: 30 Tage für Löschanfragen
@@ -30,12 +73,15 @@ BREACH_NOTIFICATION_HOURS = 72  # Art. 33: 72 Stunden für Breach-Meldung
 RETENTION_CHECK_BATCH_SIZE = 500
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.process_deletion_requests",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.process_deletion_requests",
     max_retries=3,
     default_retry_delay=600,  # 10 Minuten
-    autoretry_for=(Exception,),
+    soft_time_limit=1800,  # 30 Minuten Soft-Limit (GDPR-kritisch)
+    time_limit=1860,  # 31 Minuten Hard-Limit
+    acks_late=True,
 )
 def process_deletion_requests(self) -> Dict[str, Any]:
     """
@@ -48,9 +94,13 @@ def process_deletion_requests(self) -> Dict[str, Any]:
         Dict mit Statistiken über verarbeitete Anfragen
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _process_deletion_requests_async()
-    )
+    import time as _time
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    start = _time.monotonic()
+    result = asyncio.run(_process_deletion_requests_async())
+    duration = _time.monotonic() - start
+    gdpr_deletion_processing_duration_seconds.observe(duration)
+    return result
 
 
 async def _process_deletion_requests_async() -> Dict[str, Any]:
@@ -96,6 +146,7 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                     stats["documents_deleted"] += user_stats.get("documents", 0)
                     stats["audit_entries_anonymized"] += user_stats.get("audit_entries", 0)
                     stats["requests_processed"] += 1
+                    gdpr_deletion_completed_total.labels(source="user_field").inc()
 
                     logger.info(
                         "gdpr_deletion_completed",
@@ -105,12 +156,13 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "user_id": str(user.id)[:8] + "...",
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
+                    gdpr_deletion_errors_total.labels(source="user_field").inc()
                     logger.error(
                         "gdpr_deletion_failed",
                         user_id=str(user.id)[:8] + "...",
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             # 2. Verarbeite GDPRDeletionRequest-Tabelle (legacy)
@@ -139,6 +191,7 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                         request.status = "completed"
                         request.completed_at = now
                         stats["requests_processed"] += 1
+                        gdpr_deletion_completed_total.labels(source="request_table").inc()
 
                         logger.info(
                             "gdpr_deletion_completed",
@@ -150,28 +203,35 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                     except Exception as e:
                         stats["errors"].append({
                             "request_id": str(request.id),
-                            "error": str(e),
+                            "error": safe_error_detail(e, "Vorgang"),
                         })
+                        gdpr_deletion_errors_total.labels(source="request_table").inc()
                         logger.error(
                             "gdpr_deletion_failed",
                             request_id=str(request.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
-            except Exception:
+            except Exception as e:
                 # GDPRDeletionRequest-Tabelle existiert möglicherweise nicht
-                pass
+                logger.debug(
+                    "gdpr_deletion_request_table_missing",
+                    error_type=type(e).__name__,
+                )
 
             await db.commit()
 
     except Exception as e:
-        logger.error("gdpr_deletion_processing_error", error=str(e))
-        stats["errors"].append({"type": "general", "error": str(e)})
+        logger.error("gdpr_deletion_processing_error", **safe_error_log(e))
+        stats["errors"].append({"type": "general", **safe_error_log(e)})
 
     logger.info(
         "gdpr_deletion_processing_completed",
         requests_processed=stats["requests_processed"],
         errors=len(stats["errors"]),
     )
+
+    # Pending Gauge aktualisieren
+    gdpr_deletion_requests_pending.dec(stats["requests_processed"])
 
     return stats
 
@@ -212,7 +272,7 @@ async def _delete_user_data(
             logger.warning(
                 "gdpr_storage_delete_failed",
                 document_id=str(doc.id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # 2. Lösche Dokumente aus DB
@@ -237,13 +297,33 @@ async def _delete_user_data(
     # 4. Lösche Benutzer
     await db.execute(delete(User).where(User.id == user_id))
 
+    # 5. Cache Invalidation: Alle Caches für gelöschten Benutzer invalidieren
+    try:
+        cache_result = await invalidate_user_cache(str(user_id))
+        logger.info(
+            "gdpr_user_cache_invalidated",
+            user_id=str(user_id),
+            invalidated_keys=cache_result
+        )
+    except Exception as cache_error:
+        # Cache-Invalidation sollte GDPR-Löschung nicht blockieren
+        logger.warning(
+            "gdpr_cache_invalidation_failed",
+            user_id=str(user_id),
+            **safe_error_log(cache_error)
+        )
+
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.check_retention_compliance",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.check_retention_compliance",
     max_retries=2,
+    soft_time_limit=1200,  # 20 Minuten Soft-Limit
+    time_limit=1260,  # 21 Minuten Hard-Limit
+    acks_late=True,
 )
 def check_retention_compliance(self, dry_run: bool = False) -> Dict[str, Any]:
     """
@@ -259,9 +339,8 @@ def check_retention_compliance(self, dry_run: bool = False) -> Dict[str, Any]:
         Dict mit Compliance-Status
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _check_retention_compliance_async(dry_run)
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_check_retention_compliance_async(dry_run))
 
 
 async def _check_retention_compliance_async(dry_run: bool) -> Dict[str, Any]:
@@ -343,11 +422,15 @@ async def _check_retention_compliance_async(dry_run: bool) -> Dict[str, Any]:
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.send_breach_notification",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.send_breach_notification",
     max_retries=5,
     default_retry_delay=300,
+    soft_time_limit=600,  # 10 Minuten Soft-Limit
+    time_limit=660,  # 11 Minuten Hard-Limit
+    acks_late=True,
 )
 def send_breach_notification(
     self,
@@ -376,7 +459,8 @@ def send_breach_notification(
         Dict mit Benachrichtigungsstatus
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(
         _send_breach_notification_async(
             breach_id,
             breach_type,
@@ -438,9 +522,10 @@ Sofortmaßnahmen erforderlich!
             priority="critical",
         )
         stats["admin_notified"] = True
+        gdpr_breach_notifications_total.labels(type="admin").inc()
     except Exception as e:
-        stats["errors"].append({"type": "admin_notification", "error": str(e)})
-        logger.error("breach_admin_notification_failed", error=str(e))
+        stats["errors"].append({"type": "admin_notification", **safe_error_log(e)})
+        logger.error("breach_admin_notification_failed", **safe_error_log(e))
 
     # 2. Behördenmeldung (Art. 33)
     if notify_authority and affected_records > 0:
@@ -479,10 +564,11 @@ Frist: 72 Stunden ab Erkennung
                 priority="critical",
             )
             stats["authority_notified"] = True
+            gdpr_breach_notifications_total.labels(type="authority").inc()
 
         except Exception as e:
-            stats["errors"].append({"type": "authority_notification", "error": str(e)})
-            logger.error("breach_authority_notification_failed", error=str(e))
+            stats["errors"].append({"type": "authority_notification", **safe_error_log(e)})
+            logger.error("breach_authority_notification_failed", **safe_error_log(e))
 
     # 3. Benutzerbenachrichtigung (Art. 34) bei hohem Risiko
     if notify_users and affected_records > 0:
@@ -522,12 +608,15 @@ Mit freundlichen Grüßen,
                         logger.warning(
                             "breach_user_notification_failed",
                             user_id=str(user.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
+                if stats["users_notified"] > 0:
+                    gdpr_breach_notifications_total.labels(type="user").inc(stats["users_notified"])
+
         except Exception as e:
-            stats["errors"].append({"type": "user_notification", "error": str(e)})
-            logger.error("breach_user_notification_batch_failed", error=str(e))
+            stats["errors"].append({"type": "user_notification", **safe_error_log(e)})
+            logger.error("breach_user_notification_batch_failed", **safe_error_log(e))
 
     # 4. Speichere Breach-Eintrag in DB für Audit
     try:
@@ -548,8 +637,8 @@ Mit freundlichen Grüßen,
             await db.commit()
 
     except Exception as e:
-        stats["errors"].append({"type": "breach_log", "error": str(e)})
-        logger.error("breach_log_save_failed", error=str(e))
+        stats["errors"].append({"type": "breach_log", **safe_error_log(e)})
+        logger.error("breach_log_save_failed", **safe_error_log(e))
 
     logger.info(
         "breach_notification_completed",
@@ -577,9 +666,13 @@ Meldung gemäß Art. 33 DSGVO
 """
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.generate_compliance_report",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.generate_compliance_report",
+    soft_time_limit=300,  # 5 Minuten Soft-Limit
+    time_limit=360,  # 6 Minuten Hard-Limit
+    acks_late=True,
 )
 def generate_compliance_report(self) -> Dict[str, Any]:
     """
@@ -595,9 +688,8 @@ def generate_compliance_report(self) -> Dict[str, Any]:
         Dict mit Compliance-Übersicht
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _generate_compliance_report_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_generate_compliance_report_async())
 
 
 async def _generate_compliance_report_async() -> Dict[str, Any]:
@@ -654,7 +746,11 @@ async def _generate_compliance_report_async() -> Dict[str, Any]:
                 "pending": pending_requests.scalar() or 0,
                 "completed": completed_requests.scalar() or 0,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "gdpr_deletion_requests_table_missing",
+                error_type=type(e).__name__,
+            )
             report["deletion_requests"] = {"note": "Table not yet created"}
 
         # Breach-Historie
@@ -663,12 +759,16 @@ async def _generate_compliance_report_async() -> Dict[str, Any]:
             report["breaches"] = {
                 "total": breach_count.scalar() or 0,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "gdpr_breach_log_table_missing",
+                error_type=type(e).__name__,
+            )
             report["breaches"] = {"note": "Table not yet created"}
 
-    # GDPR Manager Status
+    # GDPR Manager Status (async)
     gdpr_manager = get_gdpr_manager()
-    report["retention"] = gdpr_manager.check_retention_compliance()
+    report["retention"] = await gdpr_manager.check_retention_compliance_async(db)
 
     logger.info("compliance_report_generated")
 

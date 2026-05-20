@@ -62,7 +62,9 @@ def init_sentry(
         integrations=[
             FastApiIntegration(
                 transaction_style="endpoint",  # Use endpoint name as transaction
-                failed_request_status_codes=[500, 599],  # Track 5xx as errors
+                # Sprint 0 / G10 (2026-05-05): failed_request_status_codes existiert erst
+                # ab sentry-sdk 1.45+. Wir laufen auf 1.40.6 - Parameter entfernt.
+                # 5xx werden trotzdem als Errors getrackt (Sentry-Default).
             ),
             SqlalchemyIntegration(),
             RedisIntegration(),

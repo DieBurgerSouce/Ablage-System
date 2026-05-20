@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\rag\search_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.3, 0.5, 0.7, 1.0, 100, 1000, ',', '@@', '[', ']', 'chunk_id', 'chunk_text', 'cpu', 'document_id', 'german', 'gpu', 'gpu_model_loaded', 'page_number', 'rank', 'rank DESC', 'rerank_complete', 'rerank_failed', 'rerank_score', 'section_type', 'similarity', 'text', 'value']

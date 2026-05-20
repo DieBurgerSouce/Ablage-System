@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen2\tokenization_qwen2_fast.py
+# hypothesis_version: 6.148.7
+
+[32768, '<|endoftext|>', 'Qwen2TokenizerFast', 'attention_mask', 'input_ids', 'merges.txt', 'merges_file', 'qwen/qwen-tokenizer', 'tokenizer.json', 'tokenizer_file', 'vocab.json', 'vocab_file']

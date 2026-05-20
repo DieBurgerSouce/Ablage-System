@@ -1,0 +1,203 @@
+{
+  "title": "Banking",
+  "subtitle": "Finanzverwaltung",
+  "accounts": {
+    "title": "Konten",
+    "subtitle": "Bankkontenverwaltung",
+    "add": "Konto hinzufügen",
+    "edit": "Konto bearbeiten",
+    "delete": "Konto löschen",
+    "noAccounts": "Keine Konten vorhanden",
+    "iban": "IBAN",
+    "bic": "BIC",
+    "bankName": "Bankname",
+    "accountHolder": "Kontoinhaber",
+    "accountNumber": "Kontonummer",
+    "balance": "Kontostand",
+    "currency": "Währung",
+    "lastSync": "Letzte Synchronisation",
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "blocked": "Gesperrt"
+    }
+  },
+  "transactions": {
+    "title": "Transaktionen",
+    "subtitle": "Kontobewegungen",
+    "import": "Transaktionen importieren",
+    "export": "Transaktionen exportieren",
+    "noTransactions": "Keine Transaktionen vorhanden",
+    "fields": {
+      "date": "Buchungsdatum",
+      "valueDate": "Wertstellungsdatum",
+      "amount": "Betrag",
+      "description": "Verwendungszweck",
+      "counterparty": "Gegenkonto",
+      "counterpartyName": "Empfänger/Auftraggeber",
+      "counterpartyIban": "IBAN Gegenkonto",
+      "reference": "Referenz",
+      "transactionType": "Transaktionsart",
+      "status": "Status",
+      "category": "Kategorie"
+    },
+    "type": {
+      "credit": "Gutschrift",
+      "debit": "Lastschrift",
+      "transfer": "Überweisung",
+      "standing": "Dauerauftrag",
+      "directDebit": "Lastschrifteinzug",
+      "fee": "Gebühr",
+      "interest": "Zinsen",
+      "other": "Sonstiges"
+    },
+    "import": {
+      "title": "Transaktionen importieren",
+      "formats": {
+        "mt940": "MT940 (SWIFT)",
+        "camt053": "CAMT.053 (ISO 20022)",
+        "csv": "CSV",
+        "excel": "Excel"
+      },
+      "success": "{{count}} Transaktionen importiert",
+      "error": "Fehler beim Import",
+      "duplicates": "{{count}} Duplikate übersprungen"
+    }
+  },
+  "reconciliation": {
+    "title": "Kontoabstimmung",
+    "subtitle": "Transaktionen mit Dokumenten abgleichen",
+    "matched": "Abgestimmt",
+    "unmatched": "Nicht abgestimmt",
+    "pending": "Ausstehend",
+    "partial": "Teilweise abgestimmt",
+    "noMatches": "Keine passenden Transaktionen gefunden",
+    "autoMatch": "Automatisch abgleichen",
+    "manualMatch": "Manuell zuordnen",
+    "unmatch": "Zuordnung aufheben",
+    "suggestions": "Vorschläge",
+    "confidence": "Übereinstimmung: {{percent}}%",
+    "matchCriteria": {
+      "amount": "Betrag",
+      "date": "Datum",
+      "reference": "Referenz",
+      "counterparty": "Geschäftspartner"
+    },
+    "status": {
+      "matched": "Abgestimmt",
+      "unmatched": "Offen",
+      "partialMatch": "Teilweise",
+      "manualReview": "Manuelle Prüfung"
+    }
+  },
+  "payments": {
+    "title": "Zahlungen",
+    "subtitle": "Zahlungsverwaltung",
+    "create": "Zahlung erstellen",
+    "edit": "Zahlung bearbeiten",
+    "delete": "Zahlung löschen",
+    "approve": "Zahlung genehmigen",
+    "reject": "Zahlung ablehnen",
+    "execute": "Zahlung ausführen",
+    "cancel": "Zahlung stornieren",
+    "noPayments": "Keine Zahlungen vorhanden",
+    "fields": {
+      "amount": "Betrag",
+      "currency": "Währung",
+      "recipient": "Empfänger",
+      "recipientIban": "Empfänger-IBAN",
+      "recipientBic": "Empfänger-BIC",
+      "reference": "Verwendungszweck",
+      "executionDate": "Ausführungsdatum",
+      "urgency": "Dringlichkeit"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "pending": "Ausstehend",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "executing": "Wird ausgeführt",
+      "executed": "Ausgeführt",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Storniert"
+    },
+    "type": {
+      "single": "Einzelüberweisung",
+      "batch": "Sammelüberweisung",
+      "scheduled": "Terminüberweisung",
+      "standing": "Dauerauftrag"
+    }
+  },
+  "invoices": {
+    "title": "Rechnungsverfolgung",
+    "subtitle": "Offene Rechnungen und Zahlungsstatus",
+    "open": "Offene Rechnungen",
+    "paid": "Bezahlte Rechnungen",
+    "overdue": "Überfällige Rechnungen",
+    "total": "Gesamtbetrag",
+    "outstanding": "Ausstehend",
+    "fields": {
+      "invoiceNumber": "Rechnungsnummer",
+      "invoiceDate": "Rechnungsdatum",
+      "dueDate": "Fälligkeitsdatum",
+      "amount": "Betrag",
+      "paidAmount": "Bezahlt",
+      "outstandingAmount": "Ausstehend",
+      "status": "Status",
+      "entity": "Geschäftspartner"
+    },
+    "status": {
+      "open": "Offen",
+      "partiallyPaid": "Teilweise bezahlt",
+      "paid": "Bezahlt",
+      "overdue": "Überfällig",
+      "dunning1": "1. Mahnung",
+      "dunning2": "2. Mahnung",
+      "dunning3": "3. Mahnung",
+      "collection": "Inkasso",
+      "cancelled": "Storniert"
+    },
+    "actions": {
+      "markPaid": "Als bezahlt markieren",
+      "sendReminder": "Erinnerung senden",
+      "increaseDunning": "Mahnstufe erhöhen",
+      "addPayment": "Zahlung erfassen"
+    }
+  },
+  "skonto": {
+    "title": "Skonto-Tracking",
+    "available": "Skonto verfügbar",
+    "deadline": "Skonto-Frist",
+    "percentage": "Skonto: {{percent}}%",
+    "amount": "Skonto-Betrag: {{amount}}",
+    "daysRemaining": "Noch {{days}} Tage",
+    "expired": "Skonto abgelaufen",
+    "applied": "Skonto angewendet",
+    "missed": "Skonto verpasst",
+    "savings": "Ersparnis: {{amount}}"
+  },
+  "cashflow": {
+    "title": "Cashflow",
+    "subtitle": "Liquiditätsübersicht",
+    "inflow": "Einnahmen",
+    "outflow": "Ausgaben",
+    "balance": "Saldo",
+    "forecast": "Prognose",
+    "periods": {
+      "today": "Heute",
+      "thisWeek": "Diese Woche",
+      "thisMonth": "Diesen Monat",
+      "thisQuarter": "Dieses Quartal",
+      "thisYear": "Dieses Jahr"
+    }
+  },
+  "reports": {
+    "title": "Berichte",
+    "accountStatement": "Kontoauszug",
+    "transactionReport": "Transaktionsbericht",
+    "reconciliationReport": "Abstimmungsbericht",
+    "paymentReport": "Zahlungsbericht",
+    "generate": "Bericht erstellen",
+    "download": "Herunterladen"
+  }
+}

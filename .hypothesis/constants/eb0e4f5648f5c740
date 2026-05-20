@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\quantization\utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-08, ' in scope.', '=', 'Cannot find ', 'Loading|{bar}', 'X', 'conv2d_transpose', 'matmul', 'matmul_v2', 'mul', 'sub_block', 'while', '|']

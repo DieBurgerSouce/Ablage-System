@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\limits\storage\base.py
+# hypothesis_version: 6.148.7
+
+['acquire_entry', 'check', 'clear', 'clear_sliding_window', 'get', 'get_expiry', 'get_moving_window', 'get_sliding_window', 'incr', 'reset']

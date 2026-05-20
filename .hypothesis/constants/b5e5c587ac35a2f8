@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\feature_extraction\_dict_vectorizer.py
+# hypothesis_version: 6.148.7
+
+['%s%s%s', '=', 'boolean', 'csc', 'csr', 'dict_type', 'dtype', 'feature_names_', 'i', 'no_validation', 'separator', 'sort', 'sparse', 'vocabulary_']

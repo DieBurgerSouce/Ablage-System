@@ -5,14 +5,17 @@ FoundationPredictor, and RecognitionPredictor classes.
 """
 
 import asyncio
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 import structlog
 
 from PIL import Image
 import pypdfium2 as pdfium
 
-from app.agents.base import OCRAgent
+from app.agents.base import OCRAgent, OCRResult
+from app.ml.metrics import get_ml_metrics
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -20,8 +23,15 @@ logger = structlog.get_logger(__name__)
 class SuryaDoclingAgent(OCRAgent):
     """Surya OCR agent with working German text recognition (CPU-only)."""
 
+    # Class-level lock to prevent race conditions during model loading
+    _model_lock: Optional[asyncio.Lock] = None
+
     def __init__(self):
         """Initialize Surya OCR models."""
+        # Initialize class-level lock if not already done
+        if SuryaDoclingAgent._model_lock is None:
+            SuryaDoclingAgent._model_lock = asyncio.Lock()
+
         super().__init__(name="surya_docling_agent", gpu_required=False, vram_gb=0)
 
         # Models will be loaded on first use
@@ -36,8 +46,46 @@ class SuryaDoclingAgent(OCRAgent):
 
         logger.info("SuryaDoclingAgent initialized (models will be loaded on first use)")
 
+    async def _load_models_async(self, timeout_seconds: float = 600.0):
+        """Load Surya models with thread-safe locking and timeout.
+
+        SECURITY FIX: Uses asyncio.Lock to prevent race conditions when
+        multiple concurrent requests try to load models simultaneously.
+
+        Args:
+            timeout_seconds: Maximum time to wait for model loading (default: 600s = 10min)
+
+        Raises:
+            asyncio.TimeoutError: If model loading exceeds timeout
+        """
+        async with SuryaDoclingAgent._model_lock:
+            # Double-check pattern: re-check inside lock
+            if self._models_loaded:
+                return
+
+            loop = asyncio.get_running_loop()
+            try:
+                # Run sync loading in thread pool with timeout
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, self._load_models_sync),
+                    timeout=timeout_seconds
+                )
+            except asyncio.TimeoutError:
+                logger.error(
+                    "surya_model_loading_timeout",
+                    timeout_seconds=timeout_seconds,
+                    message="Model loading exceeded timeout - possible stuck download or OOM"
+                )
+                raise
+
     def _load_models(self):
-        """Load Surya models if not already loaded."""
+        """Synchronous model loading - prefer _load_models_async() for concurrent access."""
+        if self._models_loaded:
+            return
+        self._load_models_sync()
+
+    def _load_models_sync(self):
+        """Internal synchronous model loading implementation."""
         if self._models_loaded:
             return
 
@@ -69,7 +117,7 @@ class SuryaDoclingAgent(OCRAgent):
             logger.info("All Surya 0.17.0 models loaded successfully (CPU mode)")
 
         except Exception as e:
-            logger.error("surya_models_load_failed", error=str(e))
+            logger.error("surya_models_load_failed", **safe_error_log(e))
             raise
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
@@ -93,7 +141,7 @@ class SuryaDoclingAgent(OCRAgent):
                     logger.debug("pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error("pdf_load_failed", error=str(e))
+                logger.error("pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Handle image files (PNG, JPG, etc.)
@@ -105,7 +153,7 @@ class SuryaDoclingAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error("image_load_failed", error=str(e))
+                logger.error("image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -153,8 +201,8 @@ class SuryaDoclingAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error("image_processing_failed", error=str(e))
-            return {"text_blocks": [], "full_text": "", "error": str(e)}
+            logger.error("image_processing_failed", **safe_error_log(e))
+            return {"text_blocks": [], "full_text": "", **safe_error_log(e)}
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process document with Surya OCR pipeline.
@@ -171,6 +219,10 @@ class SuryaDoclingAgent(OCRAgent):
                 - pages: Per-page OCR results
                 - success: Whether OCR was successful
         """
+        # Start timing
+        start_time = time.perf_counter()
+        metrics = get_ml_metrics()
+
         try:
             # Extract parameters
             image_path = input_data.get("image_path")
@@ -180,10 +232,10 @@ class SuryaDoclingAgent(OCRAgent):
             language = input_data.get("language", "de")
 
             # Ensure models are loaded
-            await asyncio.get_event_loop().run_in_executor(None, self._load_models)
+            await asyncio.get_running_loop().run_in_executor(None, self._load_models)
 
             # Load images
-            images = await asyncio.get_event_loop().run_in_executor(
+            images = await asyncio.get_running_loop().run_in_executor(
                 None, self._load_image, image_path
             )
 
@@ -202,7 +254,7 @@ class SuryaDoclingAgent(OCRAgent):
                 logger.info("processing_page", page=idx + 1, total=len(images))
 
                 # Process image
-                result = await asyncio.get_event_loop().run_in_executor(
+                result = await asyncio.get_running_loop().run_in_executor(
                     None, self._process_single_image, image, language
                 )
 
@@ -249,32 +301,78 @@ class SuryaDoclingAgent(OCRAgent):
 
             logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
-            # Check for German characters if German language was used
-            if language == "de" and full_text:
-                german_chars = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']
-                found_chars = [char for char in german_chars if char in full_text]
-                if found_chars:
-                    logger.info("german_chars_detected", chars=found_chars)
+            # German text postprocessing
+            has_umlauts = False
+            german_validation_score = 0.0
 
-            return {
-                "text": full_text,
-                "confidence": round(avg_confidence, 3),
-                "pages": pages_data,
-                "page_count": len(images),
-                "language": language,
-                "model": "surya-ocr-0.17.0",
-                "success": bool(full_text)
-            }
+            if language == "de" and full_text:
+                try:
+                    from app.services.german_text_postprocessor import get_german_postprocessor
+
+                    postprocessor = get_german_postprocessor()
+                    german_result = postprocessor.postprocess(full_text)
+                    full_text = german_result["text"]
+
+                    # Extract German quality metrics
+                    stats = german_result.get("stats", {})
+                    german_validation_score = stats.get("quality_score", 0.0)
+                    has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+
+                    corrections = german_result.get("corrections", [])
+                    if corrections:
+                        logger.debug(
+                            "surya_german_postprocessing",
+                            corrections_count=len(corrections),
+                            umlaut_fixes=stats.get("umlaut_corrections", 0),
+                            eszett_fixes=stats.get("eszett_corrections", 0)
+                        )
+                except ImportError:
+                    logger.debug("german_postprocessor_not_available")
+                    # Fallback: Check for German characters
+                    has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+                except Exception as e:
+                    logger.warning(
+                        "surya_german_postprocessing_error",
+                        **safe_error_log(e)
+                    )
+                    # Track postprocessor error in metrics
+                    metrics.record_ocr_postprocessor_error(
+                        backend="surya",
+                        postprocessor="german_text"
+                    )
+                    # Fallback: Check for German characters
+                    has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+
+            # Calculate processing time
+            processing_time_ms = int((time.perf_counter() - start_time) * 1000)
+
+            # Record metrics
+            metrics.record_ocr_inference_time("surya", processing_time_ms / 1000.0)
+            metrics.record_ocr_confidence_score("surya", avg_confidence)
+
+            # Erstelle standardisiertes OCRResult
+            result = self.create_success_result(
+                text=full_text,
+                confidence=round(avg_confidence, 3),
+                processing_time_ms=processing_time_ms,
+                page_count=len(images),
+                language=language,
+                pages=pages_data,
+                has_umlauts=has_umlauts,
+                german_validation_score=german_validation_score,
+            )
+
+            return result.to_dict()
 
         except Exception as e:
-            logger.error("surya_ocr_processing_error", error=str(e), exc_info=True)
-            return {
-                "text": "",
-                "confidence": 0.0,
-                "error": str(e),
-                "success": False,
-                "model": "surya-ocr-0.17.0"
-            }
+            logger.error("surya_ocr_processing_error", **safe_error_log(e), exc_info=True)
+
+            # Erstelle standardisiertes Fehler-Result
+            result = self.create_error_result(
+                **safe_error_log(e),
+                error_code="SURYA_DOCLING_ERROR",
+            )
+            return result.to_dict()
 
     async def cleanup(self):
         """Clean up resources."""

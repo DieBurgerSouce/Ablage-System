@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\text.py
+# hypothesis_version: 6.148.7
+
+[100.0, 45720, 91440, '\n|\x0b', '<a:r %s><a:t/></a:r>', '_x%04X_', 'a', 'a:blipFill', 'a:bodyPr', 'a:br', 'a:buAutoNum', 'a:buBlip', 'a:buChar', 'a:buClr', 'a:buClrTx', 'a:buFont', 'a:buFontTx', 'a:buNone', 'a:buSzPct', 'a:buSzPts', 'a:buSzTx', 'a:cs', 'a:defRPr', 'a:ea', 'a:effectDag', 'a:effectLst', 'a:endParaRPr', 'a:extLst', 'a:flatTx', 'a:fld', 'a:gradFill', 'a:grpFill', 'a:highlight', 'a:hlinkClick', 'a:hlinkMouseOver', 'a:latin', 'a:lnSpc', 'a:noAutofit', 'a:noFill', 'a:normAutofit', 'a:p', 'a:pPr', 'a:pattFill', 'a:r', 'a:rPr', 'a:rtl', 'a:scene3d', 'a:solidFill', 'a:sp3d', 'a:spAutoFit', 'a:spcAft', 'a:spcBef', 'a:spcPct', 'a:spcPts', 'a:sym', 'a:t', 'a:tabLst', 'a:uFill', 'a:uFillTx', 'a:uLn', 'a:uLnTx', 'algn', 'anchor', 'b', 'bIns', 'c', 'fontScale', 'i', 'lIns', 'lang', 'lvl', 'p', 'rIns', 'sz', 'tIns', 'typeface', 'u', 'val', 'wrap']

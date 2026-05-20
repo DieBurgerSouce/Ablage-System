@@ -4,12 +4,13 @@ Dieses Modul bietet Funktionen zur:
 - Protokollierung von Suchanfragen
 - Analyse von Suchmustern
 - Generierung von Nutzungsstatistiken
-- Verbesserung der Suchqualitaet
+- Verbesserung der Suchqualität
 """
 
 import structlog
+import math
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 import hashlib
 import ipaddress
@@ -20,37 +21,96 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models import SearchAnalytics, User
 from app.db.schemas import SearchFilters, SearchType
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
 
+# =============================================================================
+# Position-Weighted Click Analytics Functions
+# =============================================================================
+
+def calculate_position_weight(position: int, decay_rate: float = 0.15) -> float:
+    """Berechnet das Gewicht eines Klicks basierend auf der Position.
+
+    Verwendet exponentiellen Decay:
+    - Position 1: 1.0 (volle Relevanz)
+    - Position 5: ~0.55 (mittlere Relevanz)
+    - Position 10: ~0.26 (niedrige Relevanz)
+    - Position 20: ~0.07 (sehr niedrige Relevanz)
+
+    Die Idee: Ein Klick auf Position 1 zeigt starke Relevanz an,
+    während ein Klick auf Position 10 weniger aussagekraeftig ist
+    (User musste weit scrollen).
+
+    Args:
+        position: 1-basierte Klick-Position (1 = erstes Ergebnis)
+        decay_rate: Abklingrate (Standard: 0.15, höher = schnellerer Abfall)
+
+    Returns:
+        Gewicht zwischen 0 und 1
+    """
+    if position < 1:
+        return 0.0
+    # Formel: exp(-decay_rate * (position - 1))
+    return math.exp(-decay_rate * (position - 1))
+
+
+def calculate_weighted_ctr(
+    total_searches: int,
+    weighted_score_sum: float,
+    max_possible_score: Optional[float] = None
+) -> float:
+    """Berechnet die gewichtete Click-Through-Rate.
+
+    Im Gegensatz zur einfachen CTR (Klicks / Suchen) berücksichtigt
+    die gewichtete CTR die Position der Klicks.
+
+    Args:
+        total_searches: Anzahl der Suchanfragen
+        weighted_score_sum: Summe der gewichteten Klick-Scores
+        max_possible_score: Maximaler Score (default: total_searches * 1.0)
+
+    Returns:
+        Gewichtete CTR zwischen 0 und 1 (oder höher bei Mehrfachklicks)
+    """
+    if total_searches == 0:
+        return 0.0
+
+    if max_possible_score is None:
+        # Maximaler Score wenn jede Suche einen Klick auf Position 1 haette
+        max_possible_score = float(total_searches)
+
+    return weighted_score_sum / max_possible_score
+
+
 class SearchAnalyticsService:
-    """Service fuer Such-Analytics und Reporting.
+    """Service für Such-Analytics und Reporting.
 
     Bietet Funktionen zur:
     - Protokollierung von Suchanfragen mit Metadaten
     - Klick-Tracking auf Suchergebnisse
-    - Aggregierte Statistiken (taegliche, woechentliche Auswertungen)
+    - Aggregierte Statistiken (tägliche, woechentliche Auswertungen)
     - Analyse von Suchmustern und Filter-Nutzung
     - Identifikation von Suchanfragen ohne Ergebnisse
 
     Der Service anonymisiert IP-Adressen (DSGVO-konform) und
-    verwendet eine materialisierte View fuer performante Abfragen.
+    verwendet eine materialisierte View für performante Abfragen.
 
     Hinweis: Alle zeitbasierten Abfragen verwenden UTC.
     """
 
     def _anonymize_ip(self, ip_address: Optional[str]) -> Optional[str]:
-        """Anonymisiert eine IP-Adresse fuer DSGVO-Konformitaet.
+        """Anonymisiert eine IP-Adresse für DSGVO-Konformität.
 
-        IPv4: Behaelt erste zwei Oktetts (x.x.0.0)
-        IPv6: Behaelt erste 48 Bits / 3 Segmente (xxxx:xxxx:xxxx::)
+        IPv4: Behält erste zwei Oktetts (x.x.0.0)
+        IPv6: Behält erste 48 Bits / 3 Segmente (xxxx:xxxx:xxxx::)
 
         Args:
             ip_address: Zu anonymisierende IP-Adresse
 
         Returns:
-            Anonymisierte IP-Adresse oder None bei ungueltigem Format
+            Anonymisierte IP-Adresse oder None bei ungültigem Format
         """
         if not ip_address:
             return None
@@ -63,7 +123,7 @@ class SearchAnalyticsService:
                 return f"{parts[0]}.{parts[1]}.0.0"
             elif isinstance(ip, ipaddress.IPv6Address):
                 # Behalte erste 48 Bits (3 Segmente): xxxx:xxxx:xxxx::
-                # Expandiere zuerst zu vollem Format fuer konsistente Verarbeitung
+                # Expandiere zuerst zu vollem Format für konsistente Verarbeitung
                 expanded = ip.exploded.split(":")
                 return f"{expanded[0]}:{expanded[1]}:{expanded[2]}::"
         except ValueError:
@@ -100,17 +160,17 @@ class SearchAnalyticsService:
             query: Suchbegriff
             search_type: Art der Suche (fts, semantic, hybrid)
             total_results: Anzahl der Treffer
-            execution_time_ms: Gesamtausfuehrungszeit
+            execution_time_ms: Gesamtausführungszeit
             user_id: Benutzer-ID (optional)
             filters: Angewendete Filter (optional)
             page: Aktuelle Seite
             per_page: Ergebnisse pro Seite
-            fts_time_ms: FTS-Ausfuehrungszeit (optional)
-            semantic_time_ms: Semantic-Ausfuehrungszeit (optional)
-            session_id: Session-ID fuer Gruppierung (optional)
+            fts_time_ms: FTS-Ausführungszeit (optional)
+            semantic_time_ms: Semantic-Ausführungszeit (optional)
+            session_id: Session-ID für Gruppierung (optional)
             previous_query_id: Vorherige Anfrage bei Verfeinerung (optional)
             user_agent: Browser User-Agent (optional)
-            ip_address: IP-Adresse fuer Aggregation (optional)
+            ip_address: IP-Adresse für Aggregation (optional)
 
         Returns:
             UUID der erstellten Analytics-Eintrag
@@ -149,7 +209,7 @@ class SearchAnalyticsService:
         # Erstelle Analytics-Eintrag
         analytics = SearchAnalytics(
             user_id=user_id,
-            query=query[:500],  # Limitiere auf 500 Zeichen
+            search_query=query[:500],  # Limitiere auf 500 Zeichen
             search_type=search_type.value if hasattr(search_type, 'value') else str(search_type),
             query_length=len(query),
             filters_used=filters_dict,
@@ -192,13 +252,19 @@ class SearchAnalyticsService:
         result_position: int,
         is_download: bool = False,
     ) -> None:
-        """Protokolliert einen Klick auf ein Suchergebnis.
+        """Protokolliert einen Klick auf ein Suchergebnis mit Position-Weighted Score.
 
         Args:
             db: Datenbank-Session
             analytics_id: ID des Analytics-Eintrags
             result_position: Position des geklickten Ergebnisses (1-basiert)
             is_download: Ob das Dokument heruntergeladen wurde
+
+        Position-Weighted Scoring:
+            - Position 1: +1.0 zum weighted_click_score
+            - Position 5: +0.55 zum weighted_click_score
+            - Position 10: +0.26 zum weighted_click_score
+            - Formel: exp(-0.15 * (position - 1))
         """
         result = await db.execute(
             select(SearchAnalytics).where(SearchAnalytics.id == analytics_id)
@@ -209,13 +275,33 @@ class SearchAnalyticsService:
             logger.warning("analytics_not_found", analytics_id=str(analytics_id))
             return
 
+        # Klick-Zähler aktualisieren
         analytics.clicked_results = (analytics.clicked_results or 0) + 1
 
+        # Erste Klick-Position merken
         if analytics.first_click_position is None:
             analytics.first_click_position = result_position
 
+        # Download-Zähler
         if is_download:
             analytics.downloaded_count = (analytics.downloaded_count or 0) + 1
+
+        # Position-Weighted Click Analytics
+        # Gewicht basierend auf Position berechnen
+        position_weight = calculate_position_weight(result_position)
+
+        # Gewichteten Score kumulieren
+        current_score = analytics.weighted_click_score or 0.0
+        analytics.weighted_click_score = current_score + position_weight
+
+        # Klick-Position zur Liste hinzufuegen
+        current_positions = analytics.click_positions or []
+        if isinstance(current_positions, list):
+            current_positions.append(result_position)
+            analytics.click_positions = current_positions
+        else:
+            # Falls JSON nicht korrekt initialisiert war
+            analytics.click_positions = [result_position]
 
         await db.commit()
 
@@ -223,6 +309,8 @@ class SearchAnalyticsService:
             "search_click_logged",
             analytics_id=str(analytics_id),
             position=result_position,
+            position_weight=round(position_weight, 4),
+            total_weighted_score=round(analytics.weighted_click_score, 4),
             is_download=is_download,
         )
 
@@ -236,8 +324,8 @@ class SearchAnalyticsService:
 
         Args:
             db: Datenbank-Session
-            days: Anzahl der Tage fuer die Statistik
-            user_id: Optional - nur Statistiken fuer diesen Benutzer
+            days: Anzahl der Tage für die Statistik
+            user_id: Optional - nur Statistiken für diesen Benutzer
 
         Returns:
             Dictionary mit Statistiken
@@ -290,18 +378,18 @@ class SearchAnalyticsService:
 
         # Top-Suchbegriffe
         top_queries_query = select(
-            SearchAnalytics.query,
+            SearchAnalytics.search_query,
             func.count(SearchAnalytics.id).label("count"),
         ).where(
             and_(*base_filter)
         ).group_by(
-            SearchAnalytics.query
+            SearchAnalytics.search_query
         ).order_by(
             func.count(SearchAnalytics.id).desc()
         ).limit(10)
 
         top_results = await db.execute(top_queries_query)
-        top_queries = [{"query": row.query, "count": row.count} for row in top_results]
+        top_queries = [{"query": row.search_query, "count": row.count} for row in top_results]
 
         # Filter-Nutzung
         filter_usage_query = select(
@@ -311,7 +399,7 @@ class SearchAnalyticsService:
             func.sum(func.cast(SearchAnalytics.has_status_filter, Integer)).label("status_filter"),
         ).where(and_(*base_filter))
 
-        # Verwende raw SQL fuer Boolean-Summe
+        # Verwende raw SQL für Boolean-Summe
         filter_usage_sql = text("""
             SELECT
                 SUM(CASE WHEN has_document_type_filter THEN 1 ELSE 0 END) as type_filter,
@@ -368,16 +456,16 @@ class SearchAnalyticsService:
         db: AsyncSession,
         days: int = 30,
     ) -> List[Dict[str, Any]]:
-        """Liefert taegliche Suchstatistiken.
+        """Liefert tägliche Suchstatistiken.
 
-        Verwendet die materialisierte View fuer Performance.
+        Verwendet die materialisierte View für Performance.
 
         Args:
             db: Datenbank-Session
             days: Anzahl der Tage
 
         Returns:
-            Liste mit taeglichen Statistiken
+            Liste mit täglichen Statistiken
         """
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -416,7 +504,7 @@ class SearchAnalyticsService:
         except Exception as e:
             logger.warning(
                 "materialized_view_error",
-                error=str(e),
+                **safe_error_log(e),
                 fallback="direct_query",
             )
 
@@ -475,14 +563,14 @@ class SearchAnalyticsService:
 
         query = text("""
             SELECT
-                query,
+                search_query,
                 COUNT(*) as search_count,
                 AVG(total_results)::INTEGER as avg_results,
                 AVG(clicked_results)::FLOAT as avg_clicks,
                 COUNT(DISTINCT user_id) as unique_searchers
             FROM search_analytics
             WHERE created_at >= :since
-            GROUP BY query
+            GROUP BY search_query
             HAVING COUNT(*) >= :min_count
             ORDER BY search_count DESC
             LIMIT :limit
@@ -496,7 +584,7 @@ class SearchAnalyticsService:
 
         return [
             {
-                "query": row.query,
+                "query": row.search_query,
                 "search_count": row.search_count,
                 "avg_results": row.avg_results or 0,
                 "avg_clicks": round(row.avg_clicks, 2) if row.avg_clicks else 0,
@@ -513,7 +601,7 @@ class SearchAnalyticsService:
     ) -> List[Dict[str, Any]]:
         """Liefert Suchanfragen ohne Ergebnisse.
 
-        Nuetzlich fuer die Verbesserung der Suchqualitaet.
+        Nützlich für die Verbesserung der Suchqualität.
 
         Args:
             db: Datenbank-Session
@@ -527,13 +615,13 @@ class SearchAnalyticsService:
 
         query = text("""
             SELECT
-                query,
+                search_query,
                 COUNT(*) as search_count,
                 search_type,
                 MAX(created_at) as last_searched
             FROM search_analytics
             WHERE created_at >= :since AND total_results = 0
-            GROUP BY query, search_type
+            GROUP BY search_query, search_type
             ORDER BY search_count DESC
             LIMIT :limit
         """)
@@ -543,7 +631,7 @@ class SearchAnalyticsService:
 
         return [
             {
-                "query": row.query,
+                "query": row.search_query,
                 "search_count": row.search_count,
                 "search_type": row.search_type,
                 "last_searched": row.last_searched.isoformat() if row.last_searched else None,
@@ -552,7 +640,7 @@ class SearchAnalyticsService:
         ]
 
     async def refresh_daily_statistics(self, db: AsyncSession) -> bool:
-        """Aktualisiert die materialisierte View fuer taegliche Statistiken.
+        """Aktualisiert die materialisierte View für tägliche Statistiken.
 
         Sollte periodisch aufgerufen werden (z.B. via Celery Beat).
 
@@ -568,8 +656,233 @@ class SearchAnalyticsService:
             logger.info("search_analytics_daily_refreshed")
             return True
         except Exception as e:
-            logger.error("refresh_daily_statistics_error", error=str(e))
+            logger.error("refresh_daily_statistics_error", **safe_error_log(e))
             return False
+
+    # =========================================================================
+    # Position-Weighted Click Analytics
+    # =========================================================================
+
+    async def get_weighted_ctr_statistics(
+        self,
+        db: AsyncSession,
+        days: int = 30,
+        min_searches: int = 5,
+        limit: int = 20,
+    ) -> Dict[str, Any]:
+        """Liefert Position-Weighted CTR Statistiken.
+
+        Die gewichtete CTR berücksichtigt die Position der Klicks:
+        - Ein Klick auf Position 1 ist wertvoller als auf Position 10
+        - Ermöglicht bessere Bewertung der Suchqualität
+
+        Args:
+            db: Datenbank-Session
+            days: Analysezeitraum in Tagen
+            min_searches: Mindestanzahl Suchen für Einbeziehung
+            limit: Maximale Anzahl Ergebnisse
+
+        Returns:
+            Dictionary mit:
+            - overall: Gesamtstatistiken (CTR, weighted CTR, etc.)
+            - by_search_type: Aufschluesselung nach Suchtyp
+            - top_queries_by_weighted_ctr: Queries mit hoechster gewichteter CTR
+            - low_performing_queries: Queries mit niedriger gewichteter CTR
+            - position_distribution: Verteilung der Klicks nach Position
+        """
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+
+        result: Dict[str, Any] = {
+            "period_days": days,
+            "analysis_timestamp": datetime.now(timezone.utc).isoformat(),
+            "overall": {},
+            "by_search_type": {},
+            "top_queries_by_weighted_ctr": [],
+            "low_performing_queries": [],
+            "position_distribution": {},
+        }
+
+        try:
+            # 1. Gesamtstatistiken
+            overall_query = text("""
+                SELECT
+                    COUNT(*) as total_searches,
+                    SUM(clicked_results) as total_clicks,
+                    SUM(weighted_click_score) as total_weighted_score,
+                    AVG(weighted_click_score) as avg_weighted_score,
+                    COUNT(CASE WHEN clicked_results > 0 THEN 1 END) as searches_with_clicks,
+                    AVG(first_click_position) as avg_first_click_position
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+            """)
+            overall_result = await db.execute(overall_query, {"since": since})
+            overall_row = overall_result.one()
+
+            total_searches = overall_row.total_searches or 0
+            total_clicks = overall_row.total_clicks or 0
+            total_weighted = overall_row.total_weighted_score or 0.0
+            searches_with_clicks = overall_row.searches_with_clicks or 0
+
+            # Einfache CTR
+            simple_ctr = (searches_with_clicks / total_searches * 100) if total_searches > 0 else 0
+
+            # Gewichtete CTR (normalisiert auf Searches mit Ergebnissen)
+            weighted_ctr = calculate_weighted_ctr(total_searches, total_weighted)
+
+            result["overall"] = {
+                "total_searches": total_searches,
+                "total_clicks": total_clicks,
+                "searches_with_clicks": searches_with_clicks,
+                "simple_ctr_percent": round(simple_ctr, 2),
+                "weighted_ctr": round(weighted_ctr, 4),
+                "total_weighted_score": round(total_weighted, 2),
+                "avg_weighted_score_per_search": round(overall_row.avg_weighted_score or 0, 4),
+                "avg_first_click_position": round(overall_row.avg_first_click_position or 0, 2),
+            }
+
+            # 2. Aufschluesselung nach Suchtyp
+            type_query = text("""
+                SELECT
+                    search_type,
+                    COUNT(*) as searches,
+                    SUM(clicked_results) as clicks,
+                    SUM(weighted_click_score) as weighted_score,
+                    AVG(first_click_position) as avg_first_position
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+                GROUP BY search_type
+            """)
+            type_result = await db.execute(type_query, {"since": since})
+
+            for row in type_result:
+                type_searches = row.searches or 0
+                type_weighted = row.weighted_score or 0.0
+                type_ctr = calculate_weighted_ctr(type_searches, type_weighted)
+
+                result["by_search_type"][row.search_type] = {
+                    "searches": type_searches,
+                    "clicks": row.clicks or 0,
+                    "weighted_ctr": round(type_ctr, 4),
+                    "weighted_score": round(type_weighted, 2),
+                    "avg_first_click_position": round(row.avg_first_position or 0, 2),
+                }
+
+            # 3. Top Queries nach gewichteter CTR
+            top_queries_query = text("""
+                SELECT
+                    search_query,
+                    COUNT(*) as search_count,
+                    SUM(clicked_results) as total_clicks,
+                    SUM(weighted_click_score) as weighted_score,
+                    AVG(first_click_position) as avg_first_position
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+                GROUP BY search_query
+                HAVING COUNT(*) >= :min_searches
+                   AND SUM(weighted_click_score) > 0
+                ORDER BY SUM(weighted_click_score) / COUNT(*) DESC
+                LIMIT :limit
+            """)
+            top_result = await db.execute(
+                top_queries_query,
+                {"since": since, "min_searches": min_searches, "limit": limit}
+            )
+
+            for row in top_result:
+                q_searches = row.search_count or 1
+                q_weighted = row.weighted_score or 0.0
+                q_ctr = calculate_weighted_ctr(q_searches, q_weighted)
+
+                result["top_queries_by_weighted_ctr"].append({
+                    "query": row.search_query,
+                    "search_count": q_searches,
+                    "total_clicks": row.total_clicks or 0,
+                    "weighted_ctr": round(q_ctr, 4),
+                    "weighted_score": round(q_weighted, 2),
+                    "avg_first_click_position": round(row.avg_first_position or 0, 2),
+                })
+
+            # 4. Low-Performing Queries (Suchen mit Ergebnissen aber wenig/keine Klicks)
+            low_perf_query = text("""
+                SELECT
+                    search_query,
+                    COUNT(*) as search_count,
+                    AVG(total_results) as avg_results,
+                    SUM(clicked_results) as total_clicks,
+                    SUM(weighted_click_score) as weighted_score
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+                GROUP BY search_query
+                HAVING COUNT(*) >= :min_searches
+                ORDER BY COALESCE(SUM(weighted_click_score), 0) / COUNT(*) ASC
+                LIMIT :limit
+            """)
+            low_result = await db.execute(
+                low_perf_query,
+                {"since": since, "min_searches": min_searches, "limit": limit}
+            )
+
+            for row in low_result:
+                q_searches = row.search_count or 1
+                q_weighted = row.weighted_score or 0.0
+                q_ctr = calculate_weighted_ctr(q_searches, q_weighted)
+
+                result["low_performing_queries"].append({
+                    "query": row.search_query,
+                    "search_count": q_searches,
+                    "avg_results": round(row.avg_results or 0, 1),
+                    "total_clicks": row.total_clicks or 0,
+                    "weighted_ctr": round(q_ctr, 4),
+                    "improvement_potential": "hoch" if q_ctr < 0.1 else "mittel",
+                })
+
+            # 5. Position Distribution (aus click_positions aggregiert)
+            # Fallback auf first_click_position wenn click_positions leer
+            pos_query = text("""
+                SELECT
+                    first_click_position as position,
+                    COUNT(*) as click_count
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND first_click_position IS NOT NULL
+                GROUP BY first_click_position
+                ORDER BY first_click_position
+            """)
+            pos_result = await db.execute(pos_query, {"since": since})
+
+            total_position_clicks = 0
+            position_data = {}
+            for row in pos_result:
+                pos = row.position
+                count = row.click_count or 0
+                total_position_clicks += count
+                position_data[pos] = count
+
+            # Prozentsatz und Gewicht berechnen
+            for pos, count in position_data.items():
+                percentage = (count / total_position_clicks * 100) if total_position_clicks > 0 else 0
+                result["position_distribution"][str(pos)] = {
+                    "clicks": count,
+                    "percentage": round(percentage, 2),
+                    "position_weight": round(calculate_position_weight(pos), 4),
+                }
+
+            logger.info(
+                "weighted_ctr_statistics_generated",
+                period_days=days,
+                total_searches=total_searches,
+                weighted_ctr=round(weighted_ctr, 4),
+            )
+
+        except Exception as e:
+            logger.error("weighted_ctr_statistics_error", **safe_error_log(e), exc_info=True)
+            result["error"] = safe_error_detail(e, "Analytics")
+
+        return result
 
 
 # Singleton-Instanz

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\datasets\__init__.py
+# hypothesis_version: 6.148.7
+
+['Cifar10', 'Cifar100', 'DatasetFolder', 'FashionMNIST', 'Flowers', 'ImageFolder', 'MNIST', 'VOC2012']

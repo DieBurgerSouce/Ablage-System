@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\auto_ground_truth_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.95, 1.0, 100, '([\\d.,]+)\\s*€', 'RE-\\d{4,}', '[A-Z]{10,}', '[^\\w\\s]{5,}', '[äöüÄÖÜß]', '\\b\\w*[äöüÄÖÜß]\\w*\\b', 'accuracy', 'amount', 'artifact_types', 'artifacts', 'auto_accepted', 'confidence', 'confidence_valid', 'contract', 'date', 'de', 'delivery_note', 'details', 'document_type', 'errors', 'excessive_caps', 'extracted_text', 'file_hash', 'file_path', 'found_fields', 'has_artifacts', 'invoice', 'invoice_number', 'is_valid', 'letter', 'medium', 'missing_fields', 'ocr_confidence', 'ocr_text', 'order_confirmation', 'order_number', 'processed', 'rejected', 'score', 'spot_check_flagged', 'structural', 'suggestions_count', 'text_length_valid', 'umlaut_validation', 'unusual_characters']

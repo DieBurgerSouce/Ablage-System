@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\core\bbox_utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-07, 1e-06, 0.5, 1.0, 'BboxParams', 'BboxProcessor', 'albumentations', 'bboxes', 'check_bboxes', 'check_each_transform', 'clip', 'coco', 'denormalize_bboxes', 'filter_bboxes', 'from', 'height', 'max_accept_ratio', 'min_area', 'min_height', 'min_visibility', 'min_width', 'normalize_bboxes', 'pascal_voc', 'to', 'union_of_bboxes', 'width', 'x_max', 'x_min', 'y_max', 'y_min', 'yolo']

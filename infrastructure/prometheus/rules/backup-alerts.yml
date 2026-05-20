@@ -77,16 +77,20 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/backup-remote-sync-failed"
 
       # Info: Verschluesselung deaktiviert
-      - alert: BackupEncryptionDisabled
-        expr: ablage_backup_encryption_enabled == 0
-        for: 1h
-        labels:
-          severity: info
-          component: backup
-        annotations:
-          summary: "Backup-Verschluesselung deaktiviert"
-          description: "Die Backup-Verschluesselung ist deaktiviert. Backups werden unverschluesselt gespeichert."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-encryption-disabled"
+      # 2026-05-12: Deaktiviert — Backup-Encryption-Feature wurde in Sprint-0
+      # spezifiziert aber noch nicht umgesetzt. Bis dahin ist die Rule reine
+      # Erinnerung, nicht actionable. Wieder aktivieren wenn Encryption
+      # implementiert ist (Tracking: Sprint-0 G06 / Backup-Encryption-TODO).
+      # - alert: BackupEncryptionDisabled
+      #   expr: ablage_backup_encryption_enabled == 0
+      #   for: 1h
+      #   labels:
+      #     severity: info
+      #     component: backup
+      #   annotations:
+      #     summary: "Backup-Verschluesselung deaktiviert"
+      #     description: "Die Backup-Verschluesselung ist deaktiviert. Backups werden unverschluesselt gespeichert."
+      #     runbook_url: "https://wiki.ablage-system.local/runbooks/backup-encryption-disabled"
 
       # Warnung: Hohe Backup-Dauer
       - alert: BackupSlowDuration

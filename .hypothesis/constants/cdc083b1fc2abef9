@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\scheduled_exports.py
+# hypothesis_version: 6.148.7
+
+[100, 201, 204, 255, 404, '*', ', ', '-', '/', '/scheduled-exports', '/{export_id}', '/{export_id}/run-now', '/{export_id}/toggle', '0', '0 0 1 * *', '0 6 * * 1-5', '0 8 * * *', '0 8 * * 1', '1', '2', '3', '4', '5', '6', 'Di', 'Do', 'Europe/Berlin', 'Fr', 'Mi', 'Mo', 'Sa', 'So', 'aktiviert', 'cron_expression', 'deaktiviert', 'export', 'export_type', 'filter_config', 'format', 'include_metadata', 'include_text', 'queued', 'scheduled-exports', 'scheduled_export_id']

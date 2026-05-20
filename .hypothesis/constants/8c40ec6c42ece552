@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\planner_v2.py
+# hypothesis_version: 6.148.7
+
+['GPU', 'cluster', 'full_random', 'full_rule_based', 'op', 'process_meshes', 'rb', 'run', 'semi', 'tensor', 'tuner_load_path']

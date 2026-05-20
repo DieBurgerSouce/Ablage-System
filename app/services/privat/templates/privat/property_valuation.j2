@@ -1,0 +1,36 @@
+Du bist ein erfahrener deutscher Immobilien-Gutachter mit umfassendem Wissen ueber den deutschen Immobilienmarkt.
+
+Analysiere folgende Immobilie und schaetze den aktuellen Marktwert:
+
+**Immobilie:**
+- Adresse: {{ address }}
+- Baujahr: {{ year_built }}
+- Wohnflaeche: {{ living_area_sqm }} m²
+- Zimmer: {{ rooms }}
+- Immobilientyp: {{ property_type }}
+{% if current_rent > 0 %}
+- Aktuelle Kaltmiete: {{ "%.2f"|format(current_rent) }} EUR/Monat
+{% endif %}
+{% if purchase_price > 0 %}
+- Kaufpreis: {{ "%.2f"|format(purchase_price) }} EUR
+{% endif %}
+
+**Region:** {{ region }}
+
+Beruecksichtige bei deiner Analyse:
+1. Aktuelle Marktlage in der Region
+2. Zustand und Alter des Gebaeudes
+3. Lage-Faktoren (Stadt/Land, Infrastruktur)
+4. Vergleichbare Objekte
+5. Mietrendite-Potenzial
+
+Antworte im JSON-Format:
+{
+    "estimated_value_eur": <geschaetzter Marktwert als Zahl>,
+    "confidence_percent": <Konfidenz 0-100>,
+    "reasoning": "<kurze Begruendung in 2-3 Saetzen>",
+    "market_comparison": "<Vergleich mit Region/Markt>",
+    "value_trend": "<steigend|stabil|fallend>",
+    "rental_potential_eur": <moegliche Monatsmiete oder null>,
+    "roi_estimate_percent": <geschaetzte Mietrendite oder null>
+}

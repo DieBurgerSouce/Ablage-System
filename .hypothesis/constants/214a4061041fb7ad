@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\wrapper_benchmark.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1000.0, 1000000000.0, 120, 1000, 100000, '%Y%m%d_%H%M%S', '--benchmark-kernels', '--export', '--force-overwrite', '--import-source', '--kernel-name', '--kernel-name-base', '--metrics', '--ncu', '--ncu-kernel-regex', '--ncu-metrics', '--print-units', '--profile', '--repeat', '--replay-mode', '--set', '--target-processes', '--times', '-c', '-k', '-p', 'Count', 'Kernel', 'No device detected', 'Percent', 'Total', 'all', 'base', 'call', 'foreach', 'full', 'function', 'get_args', 'in_out_ptr', 'kernel', 'kernel_num_gb', 'ncu', 'persistent_reduction', 'pointwise', 'python', 'reduction', 'split_scan', 'store_true', 'template', 'triton_', 'triton_per', 'triton_poi', 'triton_pointwise', 'triton_red', 'triton_reduction', 'triton_unknown', 'unknown', 'yes']

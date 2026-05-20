@@ -6,6 +6,8 @@ Custom webhook endpoint for processing Alertmanager alerts
 
 import os
 import json
+import hmac
+import hashlib
 from datetime import datetime
 from typing import Dict, List, Any
 
@@ -26,13 +28,51 @@ logger = structlog.get_logger(__name__)
 app = Flask(__name__)
 
 # Configuration
-WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET', 'changeme')
+# S.8 SECURITY FIX: Kein hardcoded Default mehr - Secret MUSS gesetzt sein
+WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET')
+if not WEBHOOK_SECRET:
+    raise ValueError(
+        "WEBHOOK_SECRET environment variable is required. "
+        "Set a strong secret (min 32 characters) for webhook authentication."
+    )
 BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://backend:8000')
 
 
+def verify_webhook_signature(payload: bytes, signature: str, secret: str) -> bool:
+    """Verify webhook HMAC-SHA256 signature.
+
+    S.8 SECURITY FIX: Verwendet HMAC-SHA256 statt einfachen String-Vergleich.
+    hmac.compare_digest() ist timing-attack-resistant.
+
+    Args:
+        payload: Raw request body bytes
+        signature: X-Webhook-Signature header value
+        secret: Webhook secret
+
+    Returns:
+        True if signature is valid, False otherwise
+    """
+    expected_signature = hmac.new(
+        secret.encode('utf-8'),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(signature, expected_signature)
+
+
 def verify_webhook_secret(secret: str) -> bool:
-    """Verify webhook secret for security."""
-    return secret == WEBHOOK_SECRET
+    """Verify webhook secret using constant-time comparison.
+
+    S.8 SECURITY FIX: Verwendet hmac.compare_digest() statt ==
+    um Timing-Attacken zu verhindern.
+
+    Args:
+        secret: Secret from X-Webhook-Secret header
+
+    Returns:
+        True if secret matches, False otherwise
+    """
+    return hmac.compare_digest(secret, WEBHOOK_SECRET)
 
 
 def format_alert(alert: Dict[str, Any]) -> Dict[str, Any]:

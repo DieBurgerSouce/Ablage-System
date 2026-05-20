@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\utils\configs.py
+# hypothesis_version: 6.148.7
+
+[')', ', ', 'Config', '__annotations__', 'algos', 'backend_priority', 'backends', 'cache', 'fallback_to_nx', 'generators', 'warnings_to_ignore']

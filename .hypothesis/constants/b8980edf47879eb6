@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\Cython\Compiler\Main.py
+# hypothesis_version: 6.148.7
+
+[100, "'%s' not found", "'%s.pxd' not found", '.', '......found %s', '...pxd not loaded', '...scope = %s', '.c', '.cpp', '.dep', '.html', '.lis', '.pxd', '.py', '.pyx', '3str', 'Compiling %s\n', 'Includes', 'UTF-8', '[.]c(pp|[+][+]|xx)$', '__builtin__', '__init__', '__init__.pxd', '__init__.py', '__init__.pyx', 'builtins', 'c', 'c++', 'cimport', 'cython', 'include', 'iso8859-1', 'pyx', '{0}(\\.{0})*$', '{}-{}']

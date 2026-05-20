@@ -14,18 +14,76 @@ Feinpoliert und durchdacht - Zuverlässige Benachrichtigungen für Benutzer.
 import asyncio
 import json
 import smtplib
-from datetime import datetime
+import threading
+import uuid as uuid_module
+from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Dict, List, Optional
 
 import httpx
 import structlog
+from starlette.websockets import WebSocket
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# SECURITY: Header/Key Sanitization Functions (PHASE 10.2/10.3 FIX)
+# =============================================================================
+
+def sanitize_email_header(value: str) -> str:
+    """Sanitize email header values to prevent header injection attacks.
+
+    Removes CRLF characters that could be used to inject additional headers.
+
+    Args:
+        value: Raw header value (e.g., subject, to address)
+
+    Returns:
+        Sanitized header value safe for email headers
+
+    Security:
+        - Prevents email header injection (CWE-93)
+        - Removes CR, LF, and NULL characters
+    """
+    if not value:
+        return ""
+    return value.replace('\r', '').replace('\n', '').replace('\x00', '')
+
+
+def validate_user_id_for_redis_key(user_id: str) -> str:
+    """Validate user_id is a valid UUID before using in Redis keys.
+
+    Prevents Redis key injection by ensuring only valid UUIDs are used.
+
+    Args:
+        user_id: User identifier to validate
+
+    Returns:
+        Validated user_id string
+
+    Raises:
+        ValueError: If user_id is not a valid UUID
+
+    Security:
+        - Prevents Redis key injection attacks
+        - Ensures predictable key format
+    """
+    try:
+        # This will raise ValueError if not a valid UUID
+        uuid_module.UUID(user_id)
+        return user_id
+    except (ValueError, AttributeError) as e:
+        logger.warning(
+            "invalid_user_id_for_redis_key",
+            user_id=str(user_id)[:50],  # Truncate for logging
+            **safe_error_log(e)
+        )
+        raise ValueError(f"Invalid user_id format: must be a valid UUID")
 
 
 class NotificationType:
@@ -37,6 +95,20 @@ class NotificationType:
     GERMAN_VALIDATION_WARNING = "german_validation_warning"
     BATCH_COMPLETED = "batch_completed"
     SYSTEM_ALERT = "system_alert"
+    PASSWORD_RESET_CONFIRMATION = "password_reset_confirmation"
+    # Export-spezifische Typen
+    EXPORT_COMPLETED = "export_completed"
+    EXPORT_FAILED = "export_failed"
+    SCHEDULED_EXPORT_COMPLETED = "scheduled_export_completed"
+    SCHEDULED_EXPORT_FAILED = "scheduled_export_failed"
+    # Approval-spezifische Typen
+    APPROVAL_ESCALATED = "approval_escalated"
+    APPROVAL_REMINDER = "approval_reminder"
+    APPROVAL_ACTION_REQUIRED = "approval_action_required"
+    # Banking-spezifische Typen
+    SKONTO_EXPIRING = "skonto_expiring"
+    ERP_CONFLICT_PENDING = "erp_conflict_pending"
+    DUNNING_NOTIFICATION = "dunning_notification"
 
 
 class NotificationChannel:
@@ -45,6 +117,8 @@ class NotificationChannel:
     WEBHOOK = "webhook"
     WEBSOCKET = "websocket"
     IN_APP = "in_app"
+    PUSH = "push"
+    SLACK = "slack"
 
 
 class NotificationPriority:
@@ -192,13 +266,241 @@ Schweregrad: {severity}
 Bitte überprüfen Sie das System.
             """.strip(),
         },
+        NotificationType.PASSWORD_RESET_CONFIRMATION: {
+            "subject": "Passwort erfolgreich geändert - Ablage-System",
+            "body": """
+Guten Tag {full_name},
+
+Ihr Passwort für das Ablage-System wurde erfolgreich geändert.
+
+Zeitpunkt: {timestamp}
+IP-Adresse: {ip_address}
+Gerät: {user_agent}
+
+Falls Sie diese Änderung NICHT vorgenommen haben, ergreifen Sie bitte sofort folgende Maßnahmen:
+1. Kontaktieren Sie umgehend den Administrator
+2. Versuchen Sie, Ihr Passwort erneut zurückzusetzen
+3. Überprüfen Sie Ihre anderen Konten auf verdächtige Aktivitäten
+
+Mit freundlichen Grüßen,
+Ablage-System Team
+
+---
+Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+            """.strip(),
+        },
+        NotificationType.EXPORT_COMPLETED: {
+            "subject": "Export erfolgreich abgeschlossen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr Export wurde erfolgreich abgeschlossen.
+
+Export-Details:
+- Dokumente exportiert: {documents_exported}
+- Format: {export_format}
+- Gesamtgröße: {total_size}
+- Verarbeitungszeit: {processing_time}
+
+Sie können die exportierten Daten jetzt herunterladen.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.EXPORT_FAILED: {
+            "subject": "Export fehlgeschlagen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr Export ist leider fehlgeschlagen.
+
+Fehlerdetails:
+- Fehler: {error_message}
+- Verarbeitete Dokumente: {processed_count}/{total_count}
+- Zeitpunkt: {failed_at}
+
+Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.SCHEDULED_EXPORT_COMPLETED: {
+            "subject": "Geplanter Export '{export_name}' abgeschlossen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr geplanter Export wurde erfolgreich ausgeführt.
+
+Export-Name: {export_name}
+Ausführungszeitpunkt: {executed_at}
+
+Ergebnis:
+- Dokumente exportiert: {documents_exported}
+- Format: {export_format}
+- Status: Erfolgreich
+
+Der nächste geplante Export ist für {next_run} vorgesehen.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.SCHEDULED_EXPORT_FAILED: {
+            "subject": "Geplanter Export '{export_name}' fehlgeschlagen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr geplanter Export ist leider fehlgeschlagen.
+
+Export-Name: {export_name}
+Ausführungszeitpunkt: {executed_at}
+
+Fehlerdetails:
+- Fehler: {error_message}
+- Verarbeitete Dokumente: {processed_count}/{total_count}
+
+Der nächste Versuch ist für {next_run} geplant.
+Bei wiederholten Fehlern überprüfen Sie bitte die Export-Konfiguration.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.APPROVAL_ESCALATED: {
+            "subject": "Genehmigungsanfrage eskaliert - Sofortige Aufmerksamkeit erforderlich",
+            "body": """
+Sehr geehrter Benutzer,
+
+Eine Genehmigungsanfrage wurde eskaliert und erfordert Ihre sofortige Aufmerksamkeit.
+
+Anfrage-Details:
+- Anfrage-ID: {request_id}
+- Betreff: {request_subject}
+- Ursprünglicher Antragsteller: {requester_name}
+- Fälligkeitsdatum: {due_date}
+- Eskaliert am: {escalated_at}
+
+Grund der Eskalation:
+Die ursprüngliche Fälligkeitsfrist wurde überschritten ohne dass eine Entscheidung getroffen wurde.
+
+Bitte bearbeiten Sie diese Anfrage umgehend im Dashboard.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.APPROVAL_REMINDER: {
+            "subject": "Erinnerung: Ausstehende Genehmigung wartet auf Ihre Entscheidung",
+            "body": """
+Sehr geehrter Benutzer,
+
+Sie haben eine ausstehende Genehmigungsanfrage, die bald fällig ist.
+
+Anfrage-Details:
+- Anfrage-ID: {request_id}
+- Betreff: {request_subject}
+- Antragsteller: {requester_name}
+- Fälligkeitsdatum: {due_date}
+- Verbleibende Zeit: {time_remaining}
+
+Erinnerungszähler: {reminder_count}
+
+Bitte treffen Sie eine Entscheidung, um eine Eskalation zu vermeiden.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.APPROVAL_ACTION_REQUIRED: {
+            "subject": "Neue Genehmigungsanfrage: {request_subject}",
+            "body": """
+Sehr geehrter Benutzer,
+
+Sie haben eine neue Genehmigungsanfrage erhalten, die Ihre Aufmerksamkeit erfordert.
+
+Anfrage-Details:
+- Anfrage-ID: {request_id}
+- Betreff: {request_subject}
+- Antragsteller: {requester_name}
+- Priorität: {priority}
+- Fälligkeitsdatum: {due_date}
+
+Beschreibung:
+{description}
+
+Bitte prüfen und genehmigen oder ablehnen Sie diese Anfrage im Dashboard.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.SKONTO_EXPIRING: {
+            "subject": "Skonto-Frist laeuft ab - Handlungsbedarf",
+            "body": """
+Sehr geehrter Benutzer,
+
+Folgende Rechnungen haben bald ablaufende Skonto-Fristen:
+
+{opportunities_list}
+
+Gesamtersparnis bei rechtzeitiger Zahlung: {total_savings} EUR
+
+Bitte prüfen Sie die Zahlungsmöglichkeiten.
+
+Mit freundlichen Gruessen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.ERP_CONFLICT_PENDING: {
+            "subject": "ERP-Synchronisationskonflikte erfordern Aufmerksamkeit",
+            "body": """
+Sehr geehrter Administrator,
+
+Es wurden Konflikte bei der ERP-Synchronisation festgestellt, die Ihre Aufmerksamkeit erfordern.
+
+Konflikt-Zusammenfassung:
+- Anzahl offener Konflikte: {total_conflicts}
+- Betroffene Verbindungen: {connection_count}
+
+Details nach Verbindung:
+{conflicts_by_connection_list}
+
+Bitte loesen Sie diese Konflikte im Admin-Bereich unter ERP-Sync > Konflikte.
+
+Mit freundlichen Gruessen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.DUNNING_NOTIFICATION: {
+            "subject": "Mahnung Stufe {dunning_level} - {customer_name}",
+            "body": """
+Sehr geehrter Benutzer,
+
+Eine neue Mahnaufgabe wurde erstellt.
+
+Details:
+- Kunde: {customer_name}
+- Rechnungsnummer: {invoice_number}
+- Betrag: {amount} EUR
+- Fällig seit: {days_overdue} Tagen
+- Mahnstufe: {dunning_level}
+- Empfohlene Aktion: {recommended_action}
+
+Bitte bearbeiten Sie diese Aufgabe zeitnah.
+
+Mit freundlichen Gruessen,
+Ablage-System
+            """.strip(),
+        },
     }
 
     @classmethod
     def render(
         cls,
         notification_type: str,
-        context: Dict[str, Any],
+        context: Dict[str, object],
     ) -> Dict[str, str]:
         """Render notification template with context."""
         template = cls.TEMPLATES.get(notification_type, {})
@@ -209,7 +511,10 @@ Bitte überprüfen Sie das System.
         # Render with context
         try:
             rendered_body = body.format(**context)
-            rendered_subject = subject.format(**context) if "{" in subject else subject
+            # SECURITY FIX Phase 11.1: Sanitize rendered subject to prevent header injection
+            rendered_subject = sanitize_email_header(
+                subject.format(**context) if "{" in subject else subject
+            )
         except KeyError as e:
             logger.warning("missing_template_context", missing_key=str(e))
             rendered_body = body
@@ -282,9 +587,10 @@ class EmailNotifier:
         try:
             # Create message
             msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = self.from_email
-            msg["To"] = to_email
+            # SECURITY: Sanitize headers to prevent header injection (Phase 10.2)
+            msg["Subject"] = sanitize_email_header(subject)
+            msg["From"] = self.from_email  # from_email is controlled by config
+            msg["To"] = sanitize_email_header(to_email)
 
             # Add plain text
             msg.attach(MIMEText(body, "plain", "utf-8"))
@@ -313,7 +619,7 @@ class EmailNotifier:
             logger.error(
                 "email_send_failed",
                 to=to_email,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -352,7 +658,7 @@ class WebhookNotifier:
     async def send(
         self,
         webhook_url: Optional[str],
-        payload: Dict[str, Any],
+        payload: Dict[str, object],
         headers: Optional[Dict[str, str]] = None,
     ) -> bool:
         """
@@ -372,11 +678,22 @@ class WebhookNotifier:
             logger.warning("Keine Webhook-URL konfiguriert")
             return False
 
+        # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
+        from app.core.security import validate_url_for_ssrf_async
+        is_valid, ssrf_error = await validate_url_for_ssrf_async(url)
+        if not is_valid:
+            logger.warning(
+                "notification_webhook_ssrf_blocked",
+                url=url[:50],
+                error=ssrf_error
+            )
+            return False
+
         try:
             request_headers = {
                 "Content-Type": "application/json",
                 "X-Ablage-System-Event": payload.get("event_type", "notification"),
-                "X-Ablage-System-Timestamp": datetime.utcnow().isoformat(),
+                "X-Ablage-System-Timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             if headers:
@@ -420,7 +737,7 @@ class WebhookNotifier:
             logger.error(
                 "webhook_send_failed",
                 url=url,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -439,13 +756,14 @@ class InAppNotificationStore:
         """Get Redis client (lazy initialization)."""
         if self._redis is None:
             from app.core.redis_state import get_redis
+
             self._redis = await get_redis()
         return self._redis
 
     async def store(
         self,
         user_id: str,
-        notification: Dict[str, Any],
+        notification: Dict[str, object],
     ) -> str:
         """
         Store notification for user.
@@ -457,20 +775,21 @@ class InAppNotificationStore:
         Returns:
             Notification ID
         """
-        import uuid as uuid_module
         notification_id = str(uuid_module.uuid4())
 
         notification_data = {
             "id": notification_id,
             "user_id": user_id,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "read": False,
             **notification,
         }
 
         try:
             redis = await self._get_redis()
-            key = f"notifications:{user_id}"
+            # SECURITY: Validate user_id to prevent Redis key injection (Phase 10.3)
+            validated_user_id = validate_user_id_for_redis_key(user_id)
+            key = f"notifications:{validated_user_id}"
 
             # Store notification
             await redis.client.lpush(key, json.dumps(notification_data))
@@ -493,7 +812,7 @@ class InAppNotificationStore:
             logger.error(
                 "notification_store_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return notification_id
 
@@ -502,7 +821,7 @@ class InAppNotificationStore:
         user_id: str,
         unread_only: bool = False,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, object]]:
         """
         Get notifications for user.
 
@@ -516,7 +835,9 @@ class InAppNotificationStore:
         """
         try:
             redis = await self._get_redis()
-            key = f"notifications:{user_id}"
+            # SECURITY: Validate user_id to prevent Redis key injection (Phase 10.3)
+            validated_user_id = validate_user_id_for_redis_key(user_id)
+            key = f"notifications:{validated_user_id}"
 
             # Get notifications
             raw_notifications = await redis.client.lrange(key, 0, limit - 1)
@@ -534,7 +855,7 @@ class InAppNotificationStore:
             logger.error(
                 "notification_fetch_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -546,7 +867,9 @@ class InAppNotificationStore:
         """Mark notification as read."""
         try:
             redis = await self._get_redis()
-            key = f"notifications:{user_id}"
+            # SECURITY: Validate user_id to prevent Redis key injection (Phase 10.3)
+            validated_user_id = validate_user_id_for_redis_key(user_id)
+            key = f"notifications:{validated_user_id}"
 
             # Get all notifications
             raw_notifications = await redis.client.lrange(key, 0, -1)
@@ -555,7 +878,7 @@ class InAppNotificationStore:
                 notification = json.loads(raw)
                 if notification.get("id") == notification_id:
                     notification["read"] = True
-                    notification["read_at"] = datetime.utcnow().isoformat()
+                    notification["read_at"] = datetime.now(timezone.utc).isoformat()
                     await redis.client.lset(key, i, json.dumps(notification))
                     return True
 
@@ -566,7 +889,7 @@ class InAppNotificationStore:
                 "notification_mark_read_failed",
                 user_id=user_id,
                 notification_id=notification_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -584,6 +907,7 @@ class NotificationService:
     - Email (SMTP)
     - Webhooks (HTTP POST)
     - In-app notifications (Redis)
+    - WebSocket real-time updates
     """
 
     def __init__(self) -> None:
@@ -591,11 +915,20 @@ class NotificationService:
         self.email = EmailNotifier()
         self.webhook = WebhookNotifier()
         self.in_app = InAppNotificationStore()
+        # WebSocket manager wird lazy initialisiert um zirkuläre Imports zu vermeiden
+        self._ws_manager: Optional["NotificationWebSocketManager"] = None
+
+    @property
+    def websocket(self) -> "NotificationWebSocketManager":
+        """Lazy initialization of WebSocket manager."""
+        if self._ws_manager is None:
+            self._ws_manager = get_notification_ws_manager()
+        return self._ws_manager
 
     async def notify(
         self,
         notification_type: str,
-        context: Dict[str, Any],
+        context: Dict[str, object],
         user_id: Optional[str] = None,
         email: Optional[str] = None,
         webhook_url: Optional[str] = None,
@@ -626,6 +959,8 @@ class NotificationService:
                 channels.append(NotificationChannel.WEBHOOK)
             if user_id:
                 channels.append(NotificationChannel.IN_APP)
+                channels.append(NotificationChannel.WEBSOCKET)
+                channels.append(NotificationChannel.PUSH)
 
         # Render template
         rendered = NotificationTemplate.render(notification_type, context)
@@ -653,6 +988,32 @@ class NotificationService:
                 user_id,
                 notification_type,
                 rendered,
+                priority,
+                results,
+            ))
+
+        if NotificationChannel.WEBSOCKET in channels and user_id:
+            tasks.append(self._send_websocket(
+                user_id,
+                notification_type,
+                rendered,
+                priority,
+                results,
+            ))
+
+        if NotificationChannel.PUSH in channels and user_id:
+            tasks.append(self._send_push(
+                user_id,
+                rendered,
+                notification_type,
+                results,
+            ))
+
+        if NotificationChannel.SLACK in channels:
+            tasks.append(self._send_slack(
+                notification_type,
+                rendered,
+                context,
                 priority,
                 results,
             ))
@@ -687,14 +1048,14 @@ class NotificationService:
         self,
         webhook_url: Optional[str],
         notification_type: str,
-        context: Dict[str, Any],
+        context: Dict[str, object],
         priority: str,
         results: Dict[str, bool],
     ) -> None:
         """Send webhook notification."""
         payload = {
             "event_type": notification_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "priority": priority,
             "data": context,
         }
@@ -723,12 +1084,119 @@ class NotificationService:
         )
         results[NotificationChannel.IN_APP] = bool(notification_id)
 
+    async def _send_websocket(
+        self,
+        user_id: str,
+        notification_type: str,
+        rendered: Dict[str, str],
+        priority: str,
+        results: Dict[str, bool],
+    ) -> None:
+        """Send WebSocket notification via EventBroadcaster."""
+        try:
+            # Emit via EventBroadcaster for realtime system
+            from app.services.realtime.event_broadcaster import get_event_broadcaster
+            broadcaster = get_event_broadcaster()
+            await broadcaster.emit_notification(
+                user_id=user_id,
+                title=rendered["subject"],
+                message=rendered["body"],
+                priority=priority,
+                notification_type=notification_type,
+            )
+            results[NotificationChannel.WEBSOCKET] = True
+
+            logger.debug(
+                "websocket_notification_sent",
+                user_id=user_id,
+                notification_type=notification_type,
+            )
+        except Exception as e:
+            logger.warning(
+                "websocket_notification_failed",
+                user_id=user_id,
+                **safe_error_log(e),
+            )
+            results[NotificationChannel.WEBSOCKET] = False
+
+    async def _send_push(
+        self,
+        user_id: str,
+        rendered: Dict[str, str],
+        notification_type: str,
+        results: Dict[str, bool],
+    ) -> None:
+        """Send push notification via PushNotificationService."""
+        try:
+            from app.db.session import get_async_session_context
+            from app.services.push_notification_service import PushNotificationService
+
+            async with get_async_session_context() as db:
+                push_service = PushNotificationService(db)
+                success, failed = await push_service.send_to_user(
+                    user_id=uuid_module.UUID(user_id),
+                    title=rendered["subject"],
+                    body=rendered["body"][:200],
+                    tag=notification_type,
+                    data={"type": notification_type},
+                )
+                await db.commit()
+                results[NotificationChannel.PUSH] = success > 0
+
+            logger.debug(
+                "push_notification_sent",
+                user_id=user_id,
+                success=success,
+                failed=failed,
+            )
+        except Exception as e:
+            logger.warning(
+                "push_notification_failed",
+                user_id=user_id,
+                **safe_error_log(e),
+            )
+            results[NotificationChannel.PUSH] = False
+
+    async def _send_slack(
+        self,
+        notification_type: str,
+        rendered: Dict[str, str],
+        context: Dict[str, object],
+        priority: str,
+        results: Dict[str, bool],
+    ) -> None:
+        """Send Slack notification via SlackService."""
+        try:
+            from app.services.slack_service import send_slack_notification
+
+            success = await send_slack_notification(
+                notification_type=notification_type,
+                title=rendered["subject"],
+                message=rendered["body"][:500],
+                context=context,
+                priority=priority,
+            )
+            results[NotificationChannel.SLACK] = success
+
+            logger.debug(
+                "slack_notification_sent",
+                notification_type=notification_type,
+                success=success,
+            )
+        except Exception as e:
+            logger.warning(
+                "slack_notification_failed",
+                notification_type=notification_type,
+                **safe_error_log(e),
+            )
+            results[NotificationChannel.SLACK] = False
+
     async def notify_processing_completed(
         self,
         document_id: str,
         filename: str,
         backend: str,
-        processing_result: Dict[str, Any],
+        processing_result: Dict[str, object],
         user_id: Optional[str] = None,
         email: Optional[str] = None,
     ) -> Dict[str, bool]:
@@ -772,7 +1240,7 @@ class NotificationService:
             "document_id": document_id,
             "filename": filename,
             "error_message": error_message,
-            "failed_at": datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S"),
+            "failed_at": datetime.now(timezone.utc).strftime("%d.%m.%Y %H:%M:%S"),
         }
 
         return await self.notify(
@@ -875,13 +1343,209 @@ class NotificationService:
         )
 
 
-# Singleton instance
+# =============================================================================
+# WebSocket Notification Manager
+# =============================================================================
+
+
+class NotificationWebSocketManager:
+    """
+    WebSocket Manager für Real-time Benachrichtigungen an Benutzer.
+
+    Features:
+    - Pro-User WebSocket-Verbindungen (kann mehrere Tabs haben)
+    - Broadcast an alle Verbindungen eines Users
+    - Automatische Verbindungsverwaltung
+    - Thread-safe für async Operationen
+    """
+
+    def __init__(self) -> None:
+        """Initialize notification WebSocket manager."""
+        # user_id -> List[WebSocket]  (User kann mehrere Tabs/Geräte haben)
+        self._connections: Dict[str, List[WebSocket]] = {}
+        self._lock = asyncio.Lock()
+
+    async def connect(
+        self,
+        websocket: WebSocket,
+        user_id: str,
+    ) -> bool:
+        """
+        Verbindet einen User für Benachrichtigungen.
+
+        Args:
+            websocket: WebSocket-Verbindung
+            user_id: User ID
+
+        Returns:
+            True wenn erfolgreich verbunden
+        """
+        try:
+            await websocket.accept()
+        except Exception as e:
+            logger.warning(
+                "notification_ws_accept_failed",
+                user_id=user_id,
+                **safe_error_log(e)
+            )
+            return False
+
+        async with self._lock:
+            if user_id not in self._connections:
+                self._connections[user_id] = []
+            self._connections[user_id].append(websocket)
+
+        logger.info(
+            "notification_ws_connected",
+            user_id=user_id,
+            connection_count=len(self._connections.get(user_id, [])),
+        )
+        return True
+
+    async def disconnect(
+        self,
+        websocket: WebSocket,
+        user_id: str,
+    ) -> None:
+        """
+        Trennt eine WebSocket-Verbindung.
+
+        Args:
+            websocket: WebSocket-Verbindung
+            user_id: User ID
+        """
+        async with self._lock:
+            if user_id in self._connections:
+                try:
+                    self._connections[user_id].remove(websocket)
+                except ValueError as e:
+                    logger.debug(
+                        "websocket_remove_failed",
+                        error_type=type(e).__name__,
+                    )
+
+                # Leere Liste entfernen
+                if not self._connections[user_id]:
+                    del self._connections[user_id]
+
+        logger.info(
+            "notification_ws_disconnected",
+            user_id=user_id,
+            remaining_connections=len(self._connections.get(user_id, [])),
+        )
+
+    async def send_to_user(
+        self,
+        user_id: str,
+        message: Dict[str, object],
+    ) -> int:
+        """
+        Sendet eine Nachricht an alle Verbindungen eines Users.
+
+        Args:
+            user_id: Ziel-User ID
+            message: Nachricht als Dict
+
+        Returns:
+            Anzahl erfolgreicher Sendungen
+        """
+        async with self._lock:
+            if user_id not in self._connections:
+                return 0
+
+            # Kopie der Liste für thread-safe Iteration
+            connections = list(self._connections[user_id])
+
+        sent_count = 0
+        dead_connections = []
+
+        for ws in connections:
+            try:
+                await ws.send_json(message)
+                sent_count += 1
+            except Exception as e:
+                logger.warning(
+                    "notification_ws_send_failed",
+                    user_id=user_id,
+                    **safe_error_log(e),
+                )
+                dead_connections.append(ws)
+
+        # Tote Verbindungen entfernen
+        if dead_connections:
+            async with self._lock:
+                if user_id in self._connections:
+                    for dead_ws in dead_connections:
+                        try:
+                            self._connections[user_id].remove(dead_ws)
+                        except ValueError as e:
+                            logger.debug(
+                                "dead_websocket_remove_failed",
+                                error_type=type(e).__name__,
+                            )
+
+        return sent_count
+
+    async def broadcast_to_all(
+        self,
+        message: Dict[str, object],
+    ) -> int:
+        """
+        Sendet eine Nachricht an alle verbundenen User.
+
+        Args:
+            message: Nachricht als Dict
+
+        Returns:
+            Anzahl erfolgreicher Sendungen
+        """
+        async with self._lock:
+            all_user_ids = list(self._connections.keys())
+
+        total_sent = 0
+        for user_id in all_user_ids:
+            sent = await self.send_to_user(user_id, message)
+            total_sent += sent
+
+        return total_sent
+
+    def get_connected_users(self) -> List[str]:
+        """Gibt Liste aller verbundenen User-IDs zurück."""
+        return list(self._connections.keys())
+
+    def get_connection_count(self, user_id: str) -> int:
+        """Gibt Anzahl der Verbindungen eines Users zurück."""
+        return len(self._connections.get(user_id, []))
+
+    def is_user_connected(self, user_id: str) -> bool:
+        """Prüft ob User verbunden ist."""
+        return user_id in self._connections and len(self._connections[user_id]) > 0
+
+
+# Singleton instances mit Thread-Safety (Double-Check Locking)
 _notification_service: Optional[NotificationService] = None
+_notification_service_lock = threading.Lock()
+_notification_ws_manager: Optional[NotificationWebSocketManager] = None
+_notification_ws_manager_lock = threading.Lock()
 
 
 def get_notification_service() -> NotificationService:
-    """Get or create singleton notification service."""
+    """Get or create singleton notification service (Thread-Safe)."""
     global _notification_service
     if _notification_service is None:
-        _notification_service = NotificationService()
+        with _notification_service_lock:
+            # Double-Check Locking: Erneut prüfen nach Lock-Erwerb
+            if _notification_service is None:
+                _notification_service = NotificationService()
     return _notification_service
+
+
+def get_notification_ws_manager() -> NotificationWebSocketManager:
+    """Get or create singleton notification WebSocket manager (Thread-Safe)."""
+    global _notification_ws_manager
+    if _notification_ws_manager is None:
+        with _notification_ws_manager_lock:
+            # Double-Check Locking: Erneut prüfen nach Lock-Erwerb
+            if _notification_ws_manager is None:
+                _notification_ws_manager = NotificationWebSocketManager()
+    return _notification_ws_manager

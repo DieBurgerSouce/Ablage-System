@@ -1,11 +1,12 @@
-"""Such-Service fuer Volltextsuche und semantische Suche.
+"""Such-Service für Volltextsuche und semantische Suche.
 
 Kombiniert PostgreSQL Full-Text Search (FTS) mit pgvector semantischer Suche.
-Unterstuetzt Hybrid-Suche mit Reciprocal Rank Fusion.
+Unterstützt Hybrid-Suche mit Reciprocal Rank Fusion.
 """
 
 from typing import List, Optional, Dict, Any, Tuple, Set
 from datetime import datetime
+from functools import lru_cache
 from uuid import UUID
 import time
 import math
@@ -17,10 +18,11 @@ from sqlalchemy import select, func, text, and_, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Document, Tag, document_tags
+from app.db.models import Document, Tag, document_tags, DocumentAccess
 from app.db.schemas import (
     SearchType, SearchFilters, SearchResultItem, SearchResponse,
-    SimilarDocumentItem, SortField, SortOrder, DocumentType, ProcessingStatus
+    SimilarDocumentItem, SortField, SortOrder, DocumentType, ProcessingStatus,
+    SynonymExpansion
 )
 from app.core.config import settings
 from app.core.redis_state import RedisStateManager
@@ -29,22 +31,27 @@ from app.services.search_metrics import get_search_metrics
 from app.services.german_compound_splitter import (
     GermanCompoundSplitter,
     get_compound_splitter,
-    split_for_search
+    split_for_search,
+    expand_umlaut_variants,
+    expand_query_with_umlauts
 )
+from app.services.reranker_service import get_reranker_service, RerankerService
+from app.services.query_expansion_service import QueryExpansionService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
-# Konstanten fuer Suche
-RRF_K_CONSTANT = 60  # Standard RRF Fusion Konstante (bewahrt fuer Ranking-Stabilitaet)
-HYBRID_EXPANSION_FACTOR = 3  # Faktor fuer erweiterte Ergebnisse bei Hybrid-Suche
+# Konstanten für Suche
+RRF_K_CONSTANT = 60  # Standard RRF Fusion Konstante (bewahrt für Ranking-Stabilität)
+HYBRID_EXPANSION_FACTOR = 3  # Faktor für erweiterte Ergebnisse bei Hybrid-Suche
 
 
 class SearchService:
-    """Service fuer Dokumentensuche.
+    """Service für Dokumentensuche.
 
     Bietet drei Suchmodi:
     - FTS (Volltext): PostgreSQL tsvector mit deutschen Wortstaemmen
-    - Semantic: pgvector Cosine-Aehnlichkeit mit multilingual-e5-large
+    - Semantic: pgvector Cosine-Ähnlichkeit mit multilingual-e5-large
     - Hybrid: Kombination beider Methoden via Reciprocal Rank Fusion
     """
 
@@ -64,6 +71,14 @@ class SearchService:
         self._compound_splitting_enabled = settings.COMPOUND_SPLITTING_ENABLED
         self._compound_splitter: Optional[GermanCompoundSplitter] = None
 
+        # Reranker für verbesserte Relevanz (BGE-Reranker GPU/CPU Dual-Stack)
+        self._reranker: Optional[RerankerService] = None
+        self._rerank_enabled = settings.RAG_RERANK_ENABLED
+        self._rerank_top_k = settings.RAG_RERANK_TOP_K
+
+        # Adaptive RRF-Gewichte (Query-längenabhängig)
+        self._adaptive_weights_enabled = settings.ADAPTIVE_RRF_WEIGHTS_ENABLED
+
     async def _get_redis(self) -> RedisStateManager:
         """Lazy-load Redis connection."""
         if self._redis_manager is None:
@@ -82,7 +97,7 @@ class SearchService:
         sort_by: SortField,
         sort_order: SortOrder
     ) -> str:
-        """Generiert einen eindeutigen Cache-Key fuer Suchanfragen."""
+        """Generiert einen eindeutigen Cache-Key für Suchanfragen."""
         # Hash der Query
         query_hash = hashlib.sha256(query.encode()).hexdigest()[:12]
 
@@ -111,11 +126,11 @@ class SearchService:
         limit: int,
         threshold: float
     ) -> str:
-        """Generiert Cache-Key fuer aehnliche Dokumente."""
+        """Generiert Cache-Key für ähnliche Dokumente."""
         return f"search:similar:{user_id}:{document_id}:{limit}:{threshold}"
 
     def _generate_embedding_cache_key(self, query: str) -> str:
-        """Generiert Cache-Key fuer Query-Embeddings."""
+        """Generiert Cache-Key für Query-Embeddings."""
         query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
         return f"search:embedding:{query_hash}"
 
@@ -131,7 +146,7 @@ class SearchService:
                     min_part_length=settings.COMPOUND_MIN_PART_LENGTH
                 )
             except Exception as e:
-                logger.warning("compound_splitter_load_error", error=str(e))
+                logger.warning("compound_splitter_load_error", **safe_error_log(e))
                 self._compound_splitting_enabled = False
         return self._compound_splitter
 
@@ -144,7 +159,7 @@ class SearchService:
             query: Originale Suchanfrage
 
         Returns:
-            Tuple von (erweiterte_query_string, liste_der_zusaetzlichen_terms)
+            Tuple von (erweiterte_query_string, liste_der_zusätzlichen_terms)
         """
         if not self._compound_splitting_enabled:
             return query, []
@@ -171,18 +186,59 @@ class SearchService:
             logger.debug(
                 "query_expanded_with_compounds",
                 original=query,
-                additional_terms=additional_terms[:5],  # Max 5 fuer Logging
+                additional_terms=additional_terms[:5],  # Max 5 für Logging
                 total_additional=len(additional_terms)
             )
 
-        # Erweiterte Query: Original + OR-verknuepfte Zusatzterms
+        # Erweiterte Query: Original + OR-verknüpfte Zusatzterms
         if additional_terms:
             expanded_query = query + " " + " ".join(additional_terms[:10])  # Max 10 Zusatzterms
             return expanded_query, additional_terms
         return query, []
 
+    def _get_adaptive_weights(self, query: str) -> Tuple[float, float]:
+        """Waehlt RRF-Gewichte basierend auf Query-Länge.
+
+        Kurze Queries (1-2 Woerter): 50/50 - Benötigen sowohl exakte als auch semantische Matches
+        Mittlere Queries (3-5 Woerter): 30/70 - Standard, semantisch hilft bei Kontext
+        Lange Queries (6+ Woerter): 20/80 - Lange Queries sind semantischer Natur
+
+        Args:
+            query: Suchanfrage
+
+        Returns:
+            Tuple von (fts_weight, semantic_weight)
+        """
+        if not self._adaptive_weights_enabled:
+            return self.fts_weight, self.semantic_weight
+
+        word_count = len(query.split())
+
+        if word_count <= 2:  # Kurze Query
+            fts_weight = settings.HYBRID_WEIGHTS_SHORT_FTS
+            semantic_weight = settings.HYBRID_WEIGHTS_SHORT_SEMANTIC
+            weight_category = "short"
+        elif word_count <= 5:  # Mittlere Query
+            fts_weight = settings.HYBRID_WEIGHTS_MEDIUM_FTS
+            semantic_weight = settings.HYBRID_WEIGHTS_MEDIUM_SEMANTIC
+            weight_category = "medium"
+        else:  # Lange Query
+            fts_weight = settings.HYBRID_WEIGHTS_LONG_FTS
+            semantic_weight = settings.HYBRID_WEIGHTS_LONG_SEMANTIC
+            weight_category = "long"
+
+        logger.debug(
+            "adaptive_weights_selected",
+            query_words=word_count,
+            category=weight_category,
+            fts_weight=fts_weight,
+            semantic_weight=semantic_weight
+        )
+
+        return fts_weight, semantic_weight
+
     def _validate_embedding(self, embedding: List[float]) -> bool:
-        """Validiert dass ein Embedding nur finite numerische Werte enthaelt.
+        """Validiert dass ein Embedding nur finite numerische Werte enthält.
 
         Args:
             embedding: Liste von Embedding-Werten
@@ -193,24 +249,24 @@ class SearchService:
         return all(isinstance(x, (int, float)) and math.isfinite(x) for x in embedding)
 
     async def invalidate_user_search_cache(self, user_id: UUID, reason: str = "user_update") -> int:
-        """Invalidiert alle Such-Caches fuer einen Benutzer.
+        """Invalidiert alle Such-Caches für einen Benutzer.
 
         Sollte aufgerufen werden wenn Dokumente erstellt, aktualisiert oder
-        geloescht werden, da Suchergebnisse nicht mehr aktuell sind.
+        gelöscht werden, da Suchergebnisse nicht mehr aktuell sind.
 
         Args:
             user_id: Benutzer-ID
             reason: Grund der Invalidierung
 
         Returns:
-            Anzahl der invalidierten Cache-Eintraege
+            Anzahl der invalidierten Cache-Einträge
         """
         if not self._cache_enabled:
             return 0
 
         try:
             redis = await self._get_redis()
-            # Pattern fuer alle Benutzer-Caches: search:*:{user_id}:*
+            # Pattern für alle Benutzer-Caches: search:*:{user_id}:*
             pattern = f"search:*:{user_id}:*"
             count = await redis.invalidate_cache(pattern)
 
@@ -228,7 +284,7 @@ class SearchService:
             logger.warning(
                 "cache_invalidation_error",
                 user_id=str(user_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0
 
@@ -238,11 +294,11 @@ class SearchService:
         user_id: UUID,
         reason: str = "document_update"
     ) -> int:
-        """Invalidiert Caches fuer ein spezifisches Dokument.
+        """Invalidiert Caches für ein spezifisches Dokument.
 
         Invalidiert:
-        - Aehnliche-Dokumente-Cache fuer dieses Dokument
-        - Alle Such-Caches des Benutzers (da Ergebnisse betroffen sein koennten)
+        - Ähnliche-Dokumente-Cache für dieses Dokument
+        - Alle Such-Caches des Benutzers (da Ergebnisse betroffen sein könnten)
 
         Args:
             document_id: Dokument-ID
@@ -250,7 +306,7 @@ class SearchService:
             reason: Grund der Invalidierung
 
         Returns:
-            Anzahl der invalidierten Cache-Eintraege
+            Anzahl der invalidierten Cache-Einträge
         """
         if not self._cache_enabled:
             return 0
@@ -260,7 +316,7 @@ class SearchService:
             redis = await self._get_redis()
             metrics = get_search_metrics()
 
-            # 1. Aehnliche-Dokumente-Cache invalidieren
+            # 1. Ähnliche-Dokumente-Cache invalidieren
             similar_pattern = f"search:similar:*:{document_id}:*"
             count = await redis.invalidate_cache(similar_pattern)
             total_invalidated += count
@@ -280,7 +336,7 @@ class SearchService:
             logger.warning(
                 "document_cache_invalidation_error",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0
 
@@ -288,7 +344,7 @@ class SearchService:
         """Invalidiert alle Such-Caches (Admin-Funktion).
 
         Returns:
-            Anzahl der invalidierten Cache-Eintraege
+            Anzahl der invalidierten Cache-Einträge
         """
         if not self._cache_enabled:
             return 0
@@ -304,7 +360,7 @@ class SearchService:
             logger.info("all_search_cache_invalidated", invalidated_count=count)
             return count
         except Exception as e:
-            logger.warning("cache_invalidation_error", error=str(e))
+            logger.warning("cache_invalidation_error", **safe_error_log(e))
             return 0
 
     async def search(
@@ -318,16 +374,18 @@ class SearchService:
         per_page: int = 20,
         sort_by: SortField = SortField.RELEVANCE,
         sort_order: SortOrder = SortOrder.DESC,
-        highlight: bool = True,
+        highlight: bool = False,
         similarity_threshold: Optional[float] = None,
-        skip_cache: bool = False
+        skip_cache: bool = False,
+        rerank: bool = True,
+        use_synonyms: bool = False
     ) -> SearchResponse:
         """Dokumente durchsuchen.
 
         Args:
             db: Datenbank-Session
             query: Suchbegriff
-            user_id: Benutzer-ID fuer Zugriffsfilter
+            user_id: Benutzer-ID für Zugriffsfilter
             search_type: Art der Suche (fts, semantic, hybrid)
             filters: Optionale Filter
             page: Seitennummer (1-basiert)
@@ -335,8 +393,10 @@ class SearchService:
             sort_by: Sortierfeld
             sort_order: Sortierreihenfolge
             highlight: Text-Highlighting aktivieren
-            similarity_threshold: Min. Aehnlichkeit fuer semantische Suche
-            skip_cache: Cache fuer diese Anfrage umgehen
+            similarity_threshold: Min. Ähnlichkeit für semantische Suche
+            skip_cache: Cache für diese Anfrage umgehen
+            rerank: Ergebnisse mit BGE-Reranker neu sortieren (verbessert Relevanz)
+            use_synonyms: Suchanfrage mit deutschen Geschäftsbegriff-Synonymen erweitern
 
         Returns:
             SearchResponse mit Ergebnissen und Metadaten
@@ -349,7 +409,7 @@ class SearchService:
             query, user_id, search_type, filters, page, per_page, sort_by, sort_order
         )
 
-        # Cache pruefen (wenn aktiviert)
+        # Cache prüfen (wenn aktiviert)
         metrics = get_search_metrics()
         cache_hit = False
 
@@ -370,7 +430,7 @@ class SearchService:
                     cached["results"] = [
                         SearchResultItem(**r) for r in cached.get("results", [])
                     ]
-                    # Metriken fuer Cache-Hit erfassen
+                    # Metriken für Cache-Hit erfassen
                     took_ms = int((time.time() - start_time) * 1000)
                     metrics.record_search(
                         search_type=search_type.value,
@@ -383,19 +443,48 @@ class SearchService:
                 else:
                     metrics.record_cache_miss()
             except Exception as e:
-                logger.warning("search_cache_error", error=str(e), cache_key=cache_key[:50])
+                logger.warning("search_cache_error", **safe_error_log(e), cache_key=cache_key[:50])
 
-        # Query mit Compound-Splits erweitern (fuer FTS und Hybrid)
+        # Query erweitern: Compound-Splits + Umlaut-Varianten + Synonyme (für FTS und Hybrid)
         expanded_query = query
         compound_terms: List[str] = []
+        umlaut_terms: List[str] = []
+        synonym_expansions: List[Dict[str, Any]] = []
+
         if search_type in (SearchType.FTS, SearchType.HYBRID):
-            expanded_query, compound_terms = self._expand_query_with_compounds(query)
+            # 1. Umlaut-Varianten expandieren (z.B. "Größe" -> auch "Größe", "Grosse")
+            expanded_query, umlaut_terms = expand_query_with_umlauts(query)
+            # 2. Compound-Splits hinzufuegen (z.B. "Finanzamt" -> "Finanz", "Amt")
+            expanded_query, compound_terms = self._expand_query_with_compounds(expanded_query)
+            # 3. Synonyme hinzufuegen (z.B. "Rechnung" -> auch "Invoice", "Faktura")
+            if use_synonyms:
+                try:
+                    synonym_service = QueryExpansionService()
+                    expanded_with_synonyms = synonym_service.expand_query_simple(
+                        expanded_query,
+                        max_expansions_per_term=3
+                    )
+                    # Hole Expansions-Info für Response
+                    preview = synonym_service.get_expansion_preview(query)
+                    synonym_expansions = preview.get("expansions", [])
+                    if expanded_with_synonyms != expanded_query:
+                        expanded_query = expanded_with_synonyms
+                        logger.debug(
+                            "synonyms_expanded",
+                            original=query[:50],
+                            expanded=expanded_query[:100],
+                            expansions_count=len(synonym_expansions)
+                        )
+                except Exception as e:
+                    logger.warning("synonym_expansion_error", **safe_error_log(e))
 
         logger.info(
             "search_started",
             query=query[:100],
             expanded_query=expanded_query[:100] if expanded_query != query else None,
             compound_terms_count=len(compound_terms),
+            umlaut_terms_count=len(umlaut_terms),
+            synonym_expansions_count=len(synonym_expansions),
             search_type=search_type.value,
             user_id=str(user_id)
         )
@@ -410,7 +499,7 @@ class SearchService:
             )
         else:  # HYBRID
             results, total = await self._search_hybrid(
-                db, expanded_query, user_id, filters, page, per_page, highlight, threshold
+                db, expanded_query, user_id, filters, page, per_page, highlight, threshold, rerank
             )
 
         # Sortierung anwenden (ausser bei Relevanz - schon sortiert)
@@ -448,6 +537,20 @@ class SearchService:
                 embedding=filters.has_embedding is not None,
             )
 
+        # Baue Synonym-Expansions für Response
+        synonym_expansion_models = [
+            SynonymExpansion(original=exp["original"], synonyms=exp["synonyms"])
+            for exp in synonym_expansions
+        ] if synonym_expansions else []
+
+        # "Meinten Sie?" - pg_trgm-basierte Korrektur bei 0 Ergebnissen
+        did_you_mean = None
+        if total == 0 and len(query) >= 3:
+            try:
+                did_you_mean = await self._get_did_you_mean(db, query, user_id)
+            except Exception as e:
+                logger.warning("did_you_mean_error", **safe_error_log(e))
+
         response = SearchResponse(
             query=query,
             search_type=search_type,
@@ -457,7 +560,9 @@ class SearchService:
             total_pages=total_pages,
             results=results,
             took_ms=took_ms,
-            filters_applied=filters.model_dump(exclude_none=True) if filters else {}
+            filters_applied=filters.model_dump(exclude_none=True) if filters else {},
+            synonym_expansions=synonym_expansion_models,
+            did_you_mean=did_you_mean
         )
 
         # Ergebnis cachen (wenn aktiviert und Ergebnisse vorhanden)
@@ -477,9 +582,97 @@ class SearchService:
                 )
             except Exception as e:
                 metrics.record_cache_store(success=False)
-                logger.warning("search_cache_store_error", error=str(e))
+                logger.warning("search_cache_store_error", **safe_error_log(e))
 
         return response
+
+    async def _get_did_you_mean(
+        self,
+        db: AsyncSession,
+        query: str,
+        user_id: UUID,
+        threshold: float = 0.3,
+        limit: int = 1
+    ) -> Optional[str]:
+        """Findet aehnliche Begriffe via pg_trgm wenn Suche 0 Ergebnisse liefert.
+
+        Sucht in Dokumentnamen, Tags und extrahiertem Text nach
+        aehnlichen Begriffen mittels PostgreSQL pg_trgm similarity().
+
+        Args:
+            db: Datenbank-Session
+            query: Originale Suchanfrage
+            user_id: Benutzer-ID fuer Zugriffsfilter
+            threshold: Minimum similarity score (0-1)
+            limit: Maximale Anzahl Vorschlaege
+
+        Returns:
+            Bester Korrekturvorschlag oder None
+        """
+        # Erstes Wort der Query fuer Einzel-Wort-Korrektur
+        query_word = query.strip().split()[0] if query.strip() else query.strip()
+        if len(query_word) < 3:
+            return None
+
+        # 1. Suche in Dateinamen (haeufigster Anwendungsfall)
+        try:
+            filename_query = text("""
+                SELECT DISTINCT original_filename, similarity(original_filename, :query) AS sim
+                FROM documents
+                WHERE owner_id = :user_id
+                    AND original_filename IS NOT NULL
+                    AND similarity(original_filename, :query) > :threshold
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            result = await db.execute(filename_query, {
+                "query": query_word,
+                "user_id": str(user_id),
+                "threshold": threshold,
+                "limit": limit
+            })
+            row = result.first()
+            if row and row.original_filename:
+                return row.original_filename
+        except Exception:
+            pass  # pg_trgm evtl. nicht auf original_filename
+
+        # 2. Suche in Tags
+        try:
+            tag_query = text("""
+                SELECT t.name, similarity(t.name, :query) AS sim
+                FROM tags t
+                JOIN document_tags dt ON dt.tag_id = t.id
+                JOIN documents d ON d.id = dt.document_id
+                WHERE d.owner_id = :user_id
+                    AND similarity(t.name, :query) > :threshold
+                GROUP BY t.name, sim
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            result = await db.execute(tag_query, {
+                "query": query_word,
+                "user_id": str(user_id),
+                "threshold": threshold,
+                "limit": limit
+            })
+            row = result.first()
+            if row and row.name:
+                return row.name
+        except Exception:
+            pass
+
+        # 3. Fallback: SymSpell Woerterbuch-Korrektur
+        try:
+            from app.services.german_spellchecker import get_german_spellchecker
+            spellchecker = get_german_spellchecker()
+            corrected = spellchecker.correct_word(query_word)
+            if corrected.lower() != query_word.lower():
+                return corrected
+        except Exception:
+            pass
+
+        return None
 
     async def _search_fts(
         self,
@@ -491,13 +684,31 @@ class SearchService:
         per_page: int,
         highlight: bool
     ) -> Tuple[List[SearchResultItem], int]:
-        """PostgreSQL Full-Text Search mit German Config."""
+        """PostgreSQL Full-Text Search mit German Config und Field-Level Boosting."""
         offset = (page - 1) * per_page
 
-        # Base query mit tsvector Suche
+        # Field-Level Boost-Werte aus Config
+        filename_boost = settings.FTS_FIELD_BOOST_FILENAME
+        orig_filename_boost = settings.FTS_FIELD_BOOST_ORIGINAL_FILENAME
+        text_boost = settings.FTS_FIELD_BOOST_EXTRACTED_TEXT
+
+        # Base query mit tsvector Suche und Field-Level Boosting
+        # Inkludiert eigene UND geteilte Dokumente (via DocumentAccess)
+        # Boosting: Treffer im Dateinamen ranken höher als im extrahierten Text
         fts_query = text("""
             WITH search_query AS (
                 SELECT plainto_tsquery('german_text', :query) AS query
+            ),
+            accessible_docs AS (
+                -- Eigene Dokumente
+                SELECT document_id FROM (
+                    SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                ) owned
+                UNION
+                -- Geteilte Dokumente (nicht abgelaufen)
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
             ),
             ranked_docs AS (
                 SELECT
@@ -513,12 +724,24 @@ class SearchService:
                     d.ocr_confidence,
                     d.owner_id,
                     d.extracted_text,
-                    ts_rank_cd(d.search_vector, sq.query) AS fts_rank,
-                    ts_headline('german_text', COALESCE(d.extracted_text, ''), sq.query,
-                        'MaxWords=50, MinWords=25, StartSel=<mark>, StopSel=</mark>'
-                    ) AS highlight
+                    -- Field-Level Boosting: Filename-Treffer ranken höher
+                    ts_rank_cd(d.search_vector, sq.query) *
+                    CASE
+                        WHEN lower(d.filename) LIKE '%' || lower(:raw_query) || '%'
+                            THEN :filename_boost
+                        WHEN lower(d.original_filename) LIKE '%' || lower(:raw_query) || '%'
+                            THEN :orig_filename_boost
+                        ELSE :text_boost
+                    END AS fts_rank,
+                    CASE
+                        WHEN :enable_highlight THEN
+                            ts_headline('german_text', COALESCE(d.extracted_text, ''), sq.query,
+                                'MaxWords=35, MinWords=15, ShortWord=3, StartSel=<mark>, StopSel=</mark>'
+                            )
+                        ELSE NULL
+                    END AS highlight
                 FROM documents d, search_query sq
-                WHERE d.owner_id = :user_id
+                WHERE d.id IN (SELECT document_id FROM accessible_docs)
                     AND d.search_vector @@ sq.query
                     {filters}
                 ORDER BY fts_rank DESC
@@ -527,20 +750,35 @@ class SearchService:
             LIMIT :limit OFFSET :offset
         """.format(filters=self._build_filter_sql(filters)))
 
-        # Count query
+        # Count query (inkl. geteilte Dokumente)
         count_query = text("""
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            )
             SELECT COUNT(*) FROM documents d,
                 plainto_tsquery('german_text', :query) AS query
-            WHERE d.owner_id = :user_id
+            WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.search_vector @@ query
                 {filters}
         """.format(filters=self._build_filter_sql(filters)))
 
+        # Extrahiere erstes Wort der Query für Filename-Matching (ohne Expansion)
+        raw_query_first_word = query.split()[0] if query.split() else query
+
         params = {
             "query": query,
+            "raw_query": raw_query_first_word,  # Für LIKE-Matching im Filename
             "user_id": str(user_id),
             "limit": per_page,
-            "offset": offset
+            "offset": offset,
+            "filename_boost": filename_boost,
+            "orig_filename_boost": orig_filename_boost,
+            "text_boost": text_boost,
+            "enable_highlight": highlight
         }
         params.update(self._get_filter_params(filters))
 
@@ -597,9 +835,16 @@ class SearchService:
         query_embedding = await self.embedding_service.generate_embedding_async(query, is_query=True)
         embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
 
-        # Semantic search query
+        # Semantic search query (inkl. geteilte Dokumente)
         semantic_query = text("""
-            WITH semantic_results AS (
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            ),
+            semantic_results AS (
                 SELECT
                     d.id,
                     d.filename,
@@ -615,7 +860,7 @@ class SearchService:
                     d.extracted_text,
                     1 - (d.embedding <=> :embedding::vector) AS similarity
                 FROM documents d
-                WHERE d.owner_id = :user_id
+                WHERE d.id IN (SELECT document_id FROM accessible_docs)
                     AND d.embedding IS NOT NULL
                     AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
                     {filters}
@@ -625,10 +870,17 @@ class SearchService:
             LIMIT :limit OFFSET :offset
         """.format(filters=self._build_filter_sql(filters)))
 
-        # Count query
+        # Count query (inkl. geteilte Dokumente)
         count_query = text("""
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            )
             SELECT COUNT(*) FROM documents d
-            WHERE d.owner_id = :user_id
+            WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.embedding IS NOT NULL
                 AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
                 {filters}
@@ -687,10 +939,14 @@ class SearchService:
         page: int,
         per_page: int,
         highlight: bool,
-        threshold: float
+        threshold: float,
+        rerank: bool = True
     ) -> Tuple[List[SearchResultItem], int]:
-        """Hybrid-Suche mit Reciprocal Rank Fusion (RRF)."""
-        # Beide Suchmethoden ausfuehren (mehr Ergebnisse holen fuer Fusion)
+        """Hybrid-Suche mit Reciprocal Rank Fusion (RRF) und optionalem Reranking."""
+        # Adaptive Gewichte basierend auf Query-Länge wählen
+        fts_weight, semantic_weight = self._get_adaptive_weights(query)
+
+        # Beide Suchmethoden ausführen (mehr Ergebnisse holen für Fusion)
         expanded_limit = per_page * HYBRID_EXPANSION_FACTOR
 
         fts_results, _ = await self._search_fts(
@@ -700,29 +956,29 @@ class SearchService:
             db, query, user_id, filters, 1, expanded_limit, threshold
         )
 
-        # RRF Score berechnen mit Standard-Konstante
+        # RRF Score berechnen mit Standard-Konstante und adaptiven Gewichten
         k = RRF_K_CONSTANT
         scores: Dict[UUID, Dict[str, Any]] = {}
 
-        # FTS Scores
+        # FTS Scores (mit adaptiver Gewichtung)
         for rank, result in enumerate(fts_results):
             doc_id = result.document_id
-            rrf_score = self.fts_weight / (k + rank + 1)
+            rrf_score = fts_weight / (k + rank + 1)
             scores[doc_id] = {
                 "result": result,
                 "rrf_score": rrf_score,
                 "fts_rank": rank + 1
             }
 
-        # Semantic Scores hinzufuegen/kombinieren
+        # Semantic Scores hinzufuegen/kombinieren (mit adaptiver Gewichtung)
         for rank, result in enumerate(semantic_results):
             doc_id = result.document_id
-            rrf_contribution = self.semantic_weight / (k + rank + 1)
+            rrf_contribution = semantic_weight / (k + rank + 1)
 
             if doc_id in scores:
                 scores[doc_id]["rrf_score"] += rrf_contribution
                 scores[doc_id]["semantic_rank"] = rank + 1
-                # Semantic similarity uebernehmen
+                # Semantic similarity übernehmen
                 scores[doc_id]["result"].semantic_similarity = result.semantic_similarity
             else:
                 result.fts_rank = None  # Nicht in FTS gefunden
@@ -739,7 +995,22 @@ class SearchService:
             reverse=True
         )
 
-        # Pagination anwenden
+        total = len(sorted_items)
+
+        # Reranking mit BGE-Reranker (GPU/CPU Dual-Stack)
+        if rerank and self._rerank_enabled and len(sorted_items) > 1:
+            # Top-Kandidaten für Reranking (max 30 für Performance)
+            rerank_candidates = [item["result"] for item in sorted_items[:30]]
+            reranked_results = await self._rerank_results(query, rerank_candidates, per_page)
+
+            if reranked_results:
+                # Score normalisieren
+                max_score = max(r.score for r in reranked_results) if reranked_results else 1.0
+                for r in reranked_results:
+                    r.score = r.score / max_score if max_score > 0 else r.score
+                return reranked_results, total
+
+        # Fallback: Pagination ohne Reranking
         offset = (page - 1) * per_page
         paginated = sorted_items[offset:offset + per_page]
 
@@ -751,7 +1022,6 @@ class SearchService:
             result.score = item["rrf_score"] / max_score  # Normalisieren auf 0-1
             results.append(result)
 
-        total = len(sorted_items)
         return results, total
 
     async def find_similar_documents(
@@ -764,7 +1034,7 @@ class SearchService:
         exclude_same_type: bool = False,
         skip_cache: bool = False
     ) -> List[SimilarDocumentItem]:
-        """Aehnliche Dokumente basierend auf Embedding-Aehnlichkeit finden."""
+        """Ähnliche Dokumente basierend auf Embedding-Ähnlichkeit finden."""
         start_time = time.time()
         metrics = get_search_metrics()
 
@@ -773,7 +1043,7 @@ class SearchService:
             document_id, user_id, limit, similarity_threshold
         )
 
-        # Cache pruefen
+        # Cache prüfen
         if self._cache_enabled and not skip_cache:
             try:
                 redis = await self._get_redis()
@@ -792,12 +1062,31 @@ class SearchService:
                 else:
                     metrics.record_cache_miss()
             except Exception as e:
-                logger.warning("similar_cache_error", error=str(e))
+                logger.warning("similar_cache_error", **safe_error_log(e))
 
-        # Embedding des Quelldokuments holen
-        doc_query = select(Document).where(
-            and_(Document.id == document_id, Document.owner_id == user_id)
-        )
+        # Embedding des Quelldokuments holen (eigenes oder geteiltes)
+        # Prüfe ob Benutzer Zugriff hat (Owner oder via DocumentAccess)
+        doc_query = text("""
+            SELECT d.* FROM documents d
+            WHERE d.id = :document_id
+            AND (
+                d.owner_id = :user_id
+                OR d.id IN (
+                    SELECT document_id FROM document_access
+                    WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+                )
+            )
+        """)
+        result = await db.execute(doc_query, {"document_id": str(document_id), "user_id": str(user_id)})
+        source_row = result.first()
+
+        if not source_row:
+            logger.warning("document_not_found_or_no_access", document_id=str(document_id))
+            return []
+
+        # Lade das vollständige Document-Objekt
+        doc_query = select(Document).where(Document.id == document_id)
         result = await db.execute(doc_query)
         source_doc = result.scalar_one_or_none()
 
@@ -814,18 +1103,25 @@ class SearchService:
             logger.error(
                 "invalid_embedding_values",
                 document_id=str(document_id),
-                message="Embedding enthaelt NaN oder Inf-Werte"
+                message="Embedding enthält NaN oder Inf-Werte"
             )
-            raise ValueError("Embedding enthaelt ungueltige Werte (NaN/Inf)")
+            raise ValueError("Embedding enthält ungültige Werte (NaN/Inf)")
 
         embedding_str = "[" + ",".join(str(x) for x in source_doc.embedding) + "]"
 
-        # Aehnliche Dokumente suchen
+        # Ähnliche Dokumente suchen (inkl. geteilte Dokumente)
         type_filter = ""
         if exclude_same_type and source_doc.document_type:
             type_filter = "AND d.document_type != :source_type"
 
         similar_query = text(f"""
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            )
             SELECT
                 d.id AS document_id,
                 d.filename,
@@ -834,7 +1130,7 @@ class SearchService:
                 d.created_at,
                 LEFT(d.extracted_text, 200) AS text_preview
             FROM documents d
-            WHERE d.owner_id = :user_id
+            WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.id != :source_id
                 AND d.embedding IS NOT NULL
                 AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
@@ -886,7 +1182,7 @@ class SearchService:
                 logger.debug("similar_cache_stored", document_id=str(document_id))
             except Exception as e:
                 metrics.record_cache_store(success=False)
-                logger.warning("similar_cache_store_error", error=str(e))
+                logger.warning("similar_cache_store_error", **safe_error_log(e))
 
         return results
 
@@ -895,7 +1191,7 @@ class SearchService:
         db: AsyncSession,
         doc_ids: List[UUID]
     ) -> Dict[UUID, List[str]]:
-        """Tags fuer mehrere Dokumente laden."""
+        """Tags für mehrere Dokumente laden."""
         if not doc_ids:
             return {}
 
@@ -916,7 +1212,7 @@ class SearchService:
         return tags_map
 
     def _build_filter_sql(self, filters: Optional[SearchFilters]) -> str:
-        """SQL-Fragment fuer Filter generieren."""
+        """SQL-Fragment für Filter generieren."""
         if not filters:
             return ""
 
@@ -947,7 +1243,7 @@ class SearchService:
             conditions.append("AND d.detected_language = :filter_language")
 
         if filters.tags:
-            # Subquery fuer Dokumente mit ALLEN angegebenen Tags
+            # Subquery für Dokumente mit ALLEN angegebenen Tags
             conditions.append("""
                 AND d.id IN (
                     SELECT dt.document_id
@@ -962,7 +1258,7 @@ class SearchService:
         return " ".join(conditions)
 
     def _get_filter_params(self, filters: Optional[SearchFilters]) -> Dict[str, Any]:
-        """Parameter fuer Filter-SQL generieren."""
+        """Parameter für Filter-SQL generieren."""
         if not filters:
             return {}
 
@@ -1014,12 +1310,81 @@ class SearchService:
         return sorted(results, key=key_func, reverse=reverse)
 
     def _truncate_text(self, text: Optional[str], max_length: int = 500) -> Optional[str]:
-        """Text auf maximale Laenge kuerzen."""
+        """Text auf maximale Länge kürzen."""
         if not text:
             return None
         if len(text) <= max_length:
             return text
         return text[:max_length - 3] + "..."
+
+    # ==================== Reranking ====================
+
+    async def _rerank_results(
+        self,
+        query: str,
+        results: List[SearchResultItem],
+        top_k: int
+    ) -> List[SearchResultItem]:
+        """Rerankt Suchergebnisse mit BGE-Reranker (GPU/CPU Dual-Stack).
+
+        Verwendet den lokalen RerankerService für integriertes Reranking:
+        - Primär: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
+        - Fallback: MiniLM Cross-Encoder (CPU, ~300MB RAM)
+
+        Falls beide fehlschlagen: Original-Reihenfolge beibehalten.
+
+        Args:
+            query: Suchanfrage
+            results: Liste von Suchergebnissen (nach RRF sortiert)
+            top_k: Anzahl der zurückzugebenden Ergebnisse
+
+        Returns:
+            Rerankte Liste von Suchergebnissen
+        """
+        if not results or not self._rerank_enabled:
+            return results[:top_k]
+
+        try:
+            # Lazy-load Reranker
+            if self._reranker is None:
+                self._reranker = get_reranker_service()
+
+            # Text für Reranking extrahieren (highlight oder text_preview)
+            documents = []
+            for r in results:
+                # Priorisiere: highlight > text_preview > filename
+                text = r.highlight or r.text_preview or r.filename
+                # Auf max. 512 Zeichen beschraenken (Reranker-Limit)
+                documents.append(text[:512] if text else "")
+
+            # Async Reranking mit GPU/CPU Fallback
+            reranked = await self._reranker.rerank_async(query, documents, top_k)
+
+            # Ergebnisse mit Rerank-Scores aktualisieren und neu sortieren
+            reranked_results = []
+            for rr in reranked:
+                original = results[rr.index]
+                # Score mit Rerank-Score aktualisieren
+                original.score = rr.score
+                reranked_results.append(original)
+
+            logger.info(
+                "search_rerank_complete",
+                input_count=len(results),
+                output_count=len(reranked_results),
+                top_k=top_k,
+                backend="gpu" if self._reranker.get_stats().get("gpu_model_loaded", False) else "cpu"
+            )
+
+            return reranked_results
+
+        except Exception as e:
+            logger.warning(
+                "search_rerank_failed",
+                **safe_error_log(e),
+                fallback="using_rrf_scores"
+            )
+            return results[:top_k]
 
     # ==================== Facets ====================
 
@@ -1031,12 +1396,12 @@ class SearchService:
         filters: Optional[SearchFilters] = None
     ) -> Dict[str, Any]:
         """
-        Berechnet Facetten fuer die Suchseite.
+        Berechnet Facetten für die Suchseite.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID fuer Zugriffsfilter
-            facet_fields: Felder fuer Facetten (z.B. ["document_type", "status", "tags"])
+            user_id: Benutzer-ID für Zugriffsfilter
+            facet_fields: Felder für Facetten (z.B. ["document_type", "status", "tags"])
             filters: Optionale Filter (werden auf Facetten angewendet)
 
         Returns:
@@ -1044,7 +1409,7 @@ class SearchService:
         """
         from app.db.schemas import FacetGroup, FacetValue
 
-        # Label-Mapping fuer deutsche UI
+        # Label-Mapping für deutsche UI
         field_labels = {
             "document_type": "Dokumenttyp",
             "status": "Status",
@@ -1054,7 +1419,7 @@ class SearchService:
             "language": "Sprache",
         }
 
-        # Value-Labels fuer deutsche UI
+        # Value-Labels für deutsche UI
         value_labels = {
             "document_type": {
                 "invoice": "Rechnung",
@@ -1080,7 +1445,7 @@ class SearchService:
         # Basis-Query mit Benutzer-Filter
         base_conditions = [Document.owner_id == user_id]
 
-        # Zusaetzliche Filter anwenden
+        # Zusätzliche Filter anwenden
         if filters:
             if filters.document_type:
                 base_conditions.append(Document.document_type == filters.document_type.value)
@@ -1091,7 +1456,7 @@ class SearchService:
             if filters.date_to:
                 base_conditions.append(Document.created_at <= filters.date_to)
 
-        # Facet fuer jedes Feld berechnen
+        # Facet für jedes Feld berechnen
         for field in facet_fields:
             if field == "document_type":
                 result = await db.execute(
@@ -1229,7 +1594,7 @@ class SearchService:
         limit: int = 10
     ) -> Dict[str, Any]:
         """
-        Autovervollstaendigung fuer Suchanfragen.
+        Autovervollständigung für Suchanfragen.
 
         Sucht in:
         - Dokumentnamen
@@ -1238,12 +1603,12 @@ class SearchService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID fuer Zugriffsfilter
+            user_id: Benutzer-ID für Zugriffsfilter
             query: Suchbegriff (mind. 2 Zeichen)
-            limit: Maximale Anzahl Vorschlaege
+            limit: Maximale Anzahl Vorschläge
 
         Returns:
-            Dict mit Vorschlaegen
+            Dict mit Vorschlägen
         """
         from app.db.schemas import SuggestItem
 
@@ -1342,8 +1707,9 @@ class SearchService:
                         highlight=highlight
                     ))
         except Exception as e:
-            # Wenn die Text-Suche fehlschlägt (z.B. SQLite), ignorieren
-            logger.debug("text_suggest_failed", error=str(e))
+            # Log at WARNING for unexpected failures (schema issues, etc.)
+            # SQLite limitation is expected and harmless, but other errors need visibility
+            logger.warning("text_suggest_failed", **safe_error_log(e), error_type=type(e).__name__)
 
         # Nach Score sortieren und limitieren
         suggestions.sort(key=lambda x: x.score, reverse=True)
@@ -1363,19 +1729,14 @@ class SearchService:
         }
 
     def _create_highlight(self, text: str, query: str) -> str:
-        """Erstellt HTML-Highlight fuer Suchbegriff."""
-        import re
-        pattern = re.compile(re.escape(query), re.IGNORECASE)
-        return pattern.sub(lambda m: f"<mark>{m.group()}</mark>", text)
+        """Erstellt sicheres HTML-Highlight für Suchbegriff (ReDoS-geschuetzt)."""
+        from app.core.input_sanitization import create_safe_highlight
+
+        return create_safe_highlight(text, query, tag="mark")
 
 
-# Dependency Injection
-_search_service: Optional[SearchService] = None
-
-
+# Thread-safe singleton via lru_cache
+@lru_cache(maxsize=1)
 def get_search_service() -> SearchService:
-    """Search-Service-Instanz abrufen."""
-    global _search_service
-    if _search_service is None:
-        _search_service = SearchService()
-    return _search_service
+    """Search-Service-Instanz abrufen (thread-safe singleton)."""
+    return SearchService()

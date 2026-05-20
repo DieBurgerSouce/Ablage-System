@@ -1,21 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { JobQueueDashboard } from '@/features/jobs/components/JobQueueDashboard'
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
+/**
+ * Legacy /jobs route - redirects to /admin/job-queue
+ *
+ * Die alte Job Queue Route wurde durch das neue Enterprise-Level
+ * Admin Dashboard ersetzt unter /admin/job-queue.
+ */
 export const Route = createFileRoute('/jobs')({
-    component: JobsPage,
-})
-
-function JobsPage() {
-    return (
-        <div className="max-w-5xl mx-auto p-8 space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Job Queue</h1>
-                <p className="text-muted-foreground mt-2">
-                    Überwachen Sie den Status Ihrer OCR-Verarbeitungsaufträge.
-                </p>
-            </div>
-
-            <JobQueueDashboard />
-        </div>
-    )
-}
+  beforeLoad: async () => {
+    throw redirect({
+      to: '/admin/job-queue',
+      replace: true,
+    });
+  },
+  component: () => null,
+});

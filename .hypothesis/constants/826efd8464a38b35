@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\autograd\primapi.py
+# hypothesis_version: 6.148.7
+
+['_TensorOrTensorsT', 'composite_ops_record', 'forward_blacklist']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_check_finite_and_unscale.py
+# hypothesis_version: 6.148.7
+
+['/', '@cast_int32', 'FoundInfinite', 'Out', 'Scale', 'X', 'all_reduce', 'cast', 'in_dtype', 'nop', 'op_namescope', 'op_type', 'out', 'out_dtype', 'ring_id', 'x']

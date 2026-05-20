@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\readwrite\json_graph\node_link.py
+# hypothesis_version: 6.148.7
+
+['directed', 'graph', 'id', 'key', 'links', 'multigraph', 'node_link_data', 'node_link_graph', 'nodes', 'source', 'target']

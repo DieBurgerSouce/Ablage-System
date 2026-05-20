@@ -1,0 +1,314 @@
+# =============================================================================
+# RAG Document Chunking Configuration
+# =============================================================================
+# Konfiguration fuer das Dokument-Chunking im RAG Intelligence Layer.
+# Strategien werden pro Dokumenttyp definiert.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# GLOBALE EINSTELLUNGEN
+# -----------------------------------------------------------------------------
+global:
+  # Default-Strategie wenn kein Dokumenttyp erkannt wird
+  default_strategy: "semantic"
+
+  # Embedding-Model fuer Chunks
+  embedding_model: "multilingual-e5-large"
+  embedding_dimensions: 1024
+
+  # Maximale Wartezeit fuer Embedding-Generierung (Sekunden)
+  embedding_timeout: 300
+
+  # Batch-Groesse fuer Embedding-Generierung
+  embedding_batch_size: 32
+
+  # Token-Zaehler
+  tokenizer: "tiktoken"
+  tokenizer_model: "cl100k_base"
+
+# -----------------------------------------------------------------------------
+# CHUNKING-STRATEGIEN
+# -----------------------------------------------------------------------------
+strategies:
+  # Semantisches Chunking - Respektiert natuerliche Textgrenzen
+  semantic:
+    description: "Semantisches Chunking basierend auf Absaetzen und Sections"
+    min_chunk_size: 100      # Minimum Tokens pro Chunk
+    max_chunk_size: 512      # Maximum Tokens pro Chunk
+    overlap: 50              # Ueberlappung zwischen Chunks
+    respect_sentences: true   # Satzgrenzen nicht brechen
+    respect_paragraphs: true  # Absatzgrenzen bevorzugen
+
+  # Fixes Chunking - Konstante Groesse
+  fixed:
+    description: "Feste Chunk-Groesse mit Ueberlappung"
+    chunk_size: 512
+    overlap: 50
+
+  # Dokument-basiertes Chunking - Passt sich an Dokumenttyp an
+  document_type:
+    description: "Dokumenttyp-spezifisches Chunking"
+    # Verwendet document_types Konfiguration unten
+
+# -----------------------------------------------------------------------------
+# DOKUMENTTYP-SPEZIFISCHE KONFIGURATION
+# -----------------------------------------------------------------------------
+document_types:
+  # RECHNUNG - Kleine Chunks fuer praezise Suche
+  rechnung:
+    strategy: "semantic"
+    chunk_size: 256
+    overlap: 25
+    preserve_tables: true
+    preserve_line_items: true
+    section_markers:
+      - "Rechnungsnummer"
+      - "Rechnungsdatum"
+      - "Faelligkeitsdatum"
+      - "Positionen"
+      - "Summe"
+      - "Zahlungsbedingungen"
+      - "Bankverbindung"
+    extract_metadata:
+      - invoice_number
+      - invoice_date
+      - due_date
+      - total_amount
+      - vendor_name
+
+  # VERTRAG - Grosse Chunks fuer vollstaendigen Kontext
+  vertrag:
+    strategy: "semantic"
+    chunk_size: 1024
+    overlap: 100
+    preserve_sections: true
+    preserve_clauses: true
+    section_markers:
+      - "Praeambel"
+      - "Vertragsgegenstand"
+      - "Leistungsumfang"
+      - "Verguetung"
+      - "Laufzeit"
+      - "Kuendigung"
+      - "Haftung"
+      - "Datenschutz"
+      - "Schlussbestimmungen"
+    extract_metadata:
+      - contract_number
+      - contract_type
+      - start_date
+      - end_date
+      - parties
+
+  # LIEFERSCHEIN - Kleine Chunks fuer schnelle Suche
+  lieferschein:
+    strategy: "semantic"
+    chunk_size: 256
+    overlap: 25
+    preserve_tables: true
+    preserve_line_items: true
+    section_markers:
+      - "Lieferscheinnummer"
+      - "Lieferdatum"
+      - "Lieferadresse"
+      - "Positionen"
+      - "Menge"
+    extract_metadata:
+      - delivery_note_number
+      - delivery_date
+      - recipient
+      - items_count
+
+  # KORRESPONDENZ - Mittlere Chunks fuer Gespraechskontext
+  korrespondenz:
+    strategy: "semantic"
+    chunk_size: 512
+    overlap: 50
+    preserve_paragraphs: true
+    section_markers:
+      - "Betreff"
+      - "Sehr geehrte"
+      - "Mit freundlichen"
+    extract_metadata:
+      - sender
+      - recipient
+      - date
+      - subject
+
+  # BESTELLUNG - Aehnlich wie Rechnung
+  bestellung:
+    strategy: "semantic"
+    chunk_size: 256
+    overlap: 25
+    preserve_tables: true
+    preserve_line_items: true
+    section_markers:
+      - "Bestellnummer"
+      - "Bestelldatum"
+      - "Positionen"
+      - "Liefertermin"
+      - "Zahlungsbedingungen"
+    extract_metadata:
+      - order_number
+      - order_date
+      - delivery_date
+      - total_amount
+
+  # ANGEBOT - Mittlere Chunks mit Positionserhalt
+  angebot:
+    strategy: "semantic"
+    chunk_size: 384
+    overlap: 40
+    preserve_tables: true
+    preserve_line_items: true
+    section_markers:
+      - "Angebotsnummer"
+      - "Gueltig bis"
+      - "Leistungsumfang"
+      - "Preise"
+      - "Zahlungsbedingungen"
+    extract_metadata:
+      - offer_number
+      - valid_until
+      - total_amount
+
+  # PROTOKOLL - Grosse Chunks fuer vollstaendigen Kontext
+  protokoll:
+    strategy: "semantic"
+    chunk_size: 768
+    overlap: 75
+    preserve_sections: true
+    section_markers:
+      - "Teilnehmer"
+      - "Agenda"
+      - "TOP"
+      - "Beschluesse"
+      - "Naechste Schritte"
+    extract_metadata:
+      - meeting_date
+      - participants
+      - action_items
+
+  # TECHNISCHE DOKUMENTATION - Grosse Chunks mit Code-Erhalt
+  technisch:
+    strategy: "semantic"
+    chunk_size: 1024
+    overlap: 100
+    preserve_code_blocks: true
+    preserve_lists: true
+    section_markers:
+      - "Einleitung"
+      - "Installation"
+      - "Konfiguration"
+      - "API"
+      - "Fehlerbehebung"
+    extract_metadata:
+      - version
+      - product_name
+
+  # SONSTIGE - Default-Konfiguration
+  sonstige:
+    strategy: "semantic"
+    chunk_size: 512
+    overlap: 50
+    preserve_paragraphs: true
+    section_markers: []
+    extract_metadata: []
+
+# -----------------------------------------------------------------------------
+# TABELLEN-VERARBEITUNG
+# -----------------------------------------------------------------------------
+tables:
+  # Tabellen als separate Chunks behandeln
+  extract_as_chunks: true
+
+  # Maximale Tabellengroesse bevor Split
+  max_rows_per_chunk: 25
+
+  # Spaltenheader in jeden Chunk einschliessen
+  include_headers_in_each_chunk: true
+
+  # Tabellen-Kontext (Text vor/nach Tabelle) einschliessen
+  include_surrounding_context: true
+  surrounding_context_tokens: 50
+
+# -----------------------------------------------------------------------------
+# SECTION-ERKENNUNG
+# -----------------------------------------------------------------------------
+sections:
+  # Section-Typ Erkennung aktivieren
+  detect_section_types: true
+
+  # Section-Typen und ihre Erkennungsmuster
+  types:
+    header:
+      patterns:
+        - "^#+\\s"              # Markdown Headers
+        - "^[A-Z][A-Za-z\\s]+:$"  # Title with colon
+        - "^\\d+\\.\\s+[A-Z]"    # Numbered sections
+      min_confidence: 0.8
+
+    paragraph:
+      patterns:
+        - "^[A-Za-z]"           # Starts with letter
+      min_confidence: 0.5
+
+    table:
+      patterns:
+        - "\\|.*\\|"            # Markdown table
+        - "\\t.*\\t"            # Tab-separated
+      min_confidence: 0.9
+
+    list:
+      patterns:
+        - "^[-*]\\s"            # Bullet list
+        - "^\\d+\\)\\s"         # Numbered list
+        - "^[a-z]\\)\\s"        # Lettered list
+      min_confidence: 0.8
+
+    footer:
+      patterns:
+        - "^Seite\\s+\\d+"      # Page number
+        - "^\\d+\\s*$"          # Just a number
+        - "Stand:"              # Date indicator
+      min_confidence: 0.7
+
+# -----------------------------------------------------------------------------
+# QUALITAETSKONTROLLE
+# -----------------------------------------------------------------------------
+quality:
+  # Minimale Chunk-Qualitaet
+  min_chunk_length: 50         # Minimum Zeichen
+  max_chunk_length: 10000      # Maximum Zeichen
+
+  # Duplikat-Erkennung
+  detect_duplicates: true
+  duplicate_threshold: 0.95    # Cosine Similarity fuer Duplikat
+
+  # Leere Chunks filtern
+  filter_empty_chunks: true
+
+  # Chunks mit nur Sonderzeichen filtern
+  filter_special_chars_only: true
+
+  # Mindestanzahl an Woertern
+  min_word_count: 10
+
+# -----------------------------------------------------------------------------
+# PERFORMANCE
+# -----------------------------------------------------------------------------
+performance:
+  # Parallele Verarbeitung
+  parallel_chunking: true
+  max_workers: 4
+
+  # Batch-Verarbeitung
+  batch_size: 10               # Dokumente pro Batch
+
+  # Memory-Management
+  max_document_size_mb: 50     # Max Dokumentgroesse
+  chunk_memory_limit_mb: 512   # Max Memory fuer Chunking
+
+  # Caching
+  cache_chunks: true
+  cache_ttl_hours: 24

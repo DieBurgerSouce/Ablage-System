@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_recompute_pir.py
+# hypothesis_version: 6.148.7
+
+['.', 'bwd_recompute_id', 'chunk_id', 'fwd_recompute_id', 'main_ops', 'num', 'op_role', 'pd_op.dropout', 'pre_ops', 'refined_ops_patterns', 'seed', 'suf_ops']

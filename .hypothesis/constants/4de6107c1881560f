@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\mixing\domain_adaptation_functional.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 'apply_histogram', 'components_', 'minmax', 'pca', 'standard']

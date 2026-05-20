@@ -1,0 +1,186 @@
+{
+  "start": "2026-01-08T18:26:08.655311",
+  "tests": [
+    {
+      "time": "18:26:08",
+      "msg": "=== PRIVAT-MODUL VOLLSTAENDIGER TEST ===",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:09",
+      "msg": "--- SCHRITT 1: Login ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:22",
+      "msg": "Login fehlgeschlagen: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"<function ImplToApiMapping.wrap_handler.<locals>.wrapper_func at 0x000001E4091E4A40>\" until 'load'\n============================================================",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:22",
+      "msg": "--- SCHRITT 2: Navigation zu /privat ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:25",
+      "msg": "--- SCHRITT 3: Onboarding-Dialog schliessen ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:25",
+      "msg": "Kein Onboarding-Dialog mehr sichtbar",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "--- SCHRITT 4: Privat-Seite pruefen ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Uebersicht-Tab nicht gefunden",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Bereiche-Tab nicht gefunden",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Dokumente-Card vorhanden",
+      "status": "PASS"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Immobilien-Card vorhanden",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Fahrzeuge-Card vorhanden",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Versicherungen-Card vorhanden",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Finanzen-Card vorhanden",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "Fristen-Card vorhanden",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:27",
+      "msg": "--- SCHRITT 5: Bereiche-Tab ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:32",
+      "msg": "Bereiche-Tab Fehler: Locator.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role='tab']\").filter(has_text=\"Bereiche\").or_(locator(\"button\").filter(has_text=\"Bereiche\")).first\n",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:32",
+      "msg": "--- SCHRITT 6: Immobilien-Card ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:37",
+      "msg": "Immobilien-Card nicht sichtbar",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:37",
+      "msg": "--- SCHRITT 7: Fahrzeuge-Card ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:39",
+      "msg": "Kein Onboarding-Dialog mehr sichtbar",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:40",
+      "msg": "Fahrzeuge-Card nicht sichtbar",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:40",
+      "msg": "--- SCHRITT 8: Versicherungen-Card ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:41",
+      "msg": "Kein Onboarding-Dialog mehr sichtbar",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:42",
+      "msg": "Versicherungen-Card nicht sichtbar",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:42",
+      "msg": "--- SCHRITT 9: Finanzen-Card ---",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:43",
+      "msg": "Kein Onboarding-Dialog mehr sichtbar",
+      "status": "INFO"
+    },
+    {
+      "time": "18:26:44",
+      "msg": "Finanzen-Card nicht sichtbar",
+      "status": "FAIL"
+    },
+    {
+      "time": "18:26:44",
+      "msg": "=== TEST ABGESCHLOSSEN ===",
+      "status": "INFO"
+    }
+  ],
+  "errors": [
+    "Login fehlgeschlagen: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"<function ImplToApiMapping.wrap_handler.<locals>.wrapper_func at 0x000001E4091E4A40>\" until 'load'\n============================================================",
+    "Uebersicht-Tab nicht gefunden",
+    "Bereiche-Tab nicht gefunden",
+    "Immobilien-Card vorhanden",
+    "Fahrzeuge-Card vorhanden",
+    "Versicherungen-Card vorhanden",
+    "Finanzen-Card vorhanden",
+    "Fristen-Card vorhanden",
+    "Bereiche-Tab Fehler: Locator.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role='tab']\").filter(has_text=\"Bereiche\").or_(locator(\"button\").filter(has_text=\"Bereiche\")).first\n",
+    "Immobilien-Card nicht sichtbar",
+    "Fahrzeuge-Card nicht sichtbar",
+    "Versicherungen-Card nicht sichtbar",
+    "Finanzen-Card nicht sichtbar"
+  ],
+  "screenshots": [
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/01_after_login.png",
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/02_privat_with_dialog.png",
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/03_privat_clean.png",
+    "C:/Users/benfi/Ablage_System/tests/e2e/screenshots/09_final.png"
+  ],
+  "passed": 1,
+  "failed": 13,
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Anmeldung fehlgeschlagen Jn",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+  ],
+  "end": "2026-01-08T18:26:44.200355"
+}

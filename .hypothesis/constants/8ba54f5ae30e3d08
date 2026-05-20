@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\cpp_pass.py
+# hypothesis_version: 6.148.7
+
+[';', 'FLAGS_allow_cinn_ops', 'FLAGS_deny_cinn_ops', 'allow_ops', 'build_cinn', 'build_cinn_pass', 'deny_ops', 'feed', 'fetch', 'fetch_list', 'fuse_adam_op_pass', 'fuse_adamw', 'fuse_adamw_op_pass', 'fuse_bn_act', 'fuse_bn_act_pass', 'fuse_bn_add_act', 'fuse_bn_add_act_pass', 'fuse_elewise_add_act', 'fuse_gemm_epilogue', 'fuse_optimizer', 'fuse_resunit', 'fuse_resunit_pass', 'fuse_sgd_op_pass', 'fused_attention', 'fused_attention_pass', 'fused_feedforward', 'prune_program']

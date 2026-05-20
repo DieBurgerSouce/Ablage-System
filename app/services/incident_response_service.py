@@ -25,6 +25,7 @@ import structlog
 from app.core.config import settings
 from app.core.audit_logger import SecurityEventType
 from app.db.models import AuditLog, User
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -47,6 +48,8 @@ class IncidentType(str, Enum):
     DATA_EXFILTRATION_ATTEMPT = "data_exfiltration_attempt"
     SESSION_ANOMALY = "session_anomaly"
     ADMIN_ACCOUNT_COMPROMISE = "admin_account_compromise"
+    DLQ_CRITICAL = "dlq_critical"  # Dead Letter Queue kritischer Zustand
+    SYSTEM_HEALTH_CRITICAL = "system_health_critical"  # Allgemeine Systemprobleme
 
 
 class ResponseAction(str, Enum):
@@ -98,6 +101,15 @@ RESPONSE_RULES: Dict[IncidentType, Dict[IncidentSeverity, List[ResponseAction]]]
     IncidentType.SESSION_ANOMALY: {
         IncidentSeverity.MEDIUM: [ResponseAction.NOTIFY_USER, ResponseAction.REVOKE_ALL_SESSIONS],
         IncidentSeverity.HIGH: [ResponseAction.NOTIFY_ADMIN, ResponseAction.NOTIFY_USER, ResponseAction.REVOKE_ALL_SESSIONS],
+    },
+    IncidentType.DLQ_CRITICAL: {
+        IncidentSeverity.HIGH: [ResponseAction.NOTIFY_ADMIN],
+        IncidentSeverity.CRITICAL: [ResponseAction.NOTIFY_ADMIN],
+    },
+    IncidentType.SYSTEM_HEALTH_CRITICAL: {
+        IncidentSeverity.MEDIUM: [ResponseAction.NOTIFY_ADMIN],
+        IncidentSeverity.HIGH: [ResponseAction.NOTIFY_ADMIN],
+        IncidentSeverity.CRITICAL: [ResponseAction.NOTIFY_ADMIN],
     },
 }
 
@@ -230,11 +242,12 @@ class IncidentResponseService:
             )
             incidents.append(incident)
 
-            logger.warning(
+            logger.error(
                 "brute_force_detected",
                 ip_address=ip_address,
                 failed_count=count,
-                severity=severity.value
+                severity=severity.value,
+                security_event=True
             )
 
         return incidents
@@ -357,7 +370,7 @@ class IncidentResponseService:
                     "response_action_failed",
                     action=action.value,
                     incident_id=incident.id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         logger.info(
@@ -436,7 +449,7 @@ class IncidentResponseService:
                 details=incident.to_dict()
             )
         except Exception as e:
-            logger.warning("admin_notification_failed", error=str(e))
+            logger.warning("admin_notification_failed", **safe_error_log(e))
 
     async def _block_ip(self, ip_address: str, permanent: bool = False) -> None:
         """Blockiert eine IP-Adresse."""
@@ -450,14 +463,14 @@ class IncidentResponseService:
 
         # Persistiere in Redis wenn verfügbar
         try:
-            from app.core.redis_client import get_redis
+            from app.core.redis_state import get_redis
 
             redis = await get_redis()
             if redis:
                 ttl = int((expiry - datetime.now(timezone.utc)).total_seconds())
                 await redis.setex(f"blocked_ip:{ip_address}", ttl, "1")
         except Exception as e:
-            logger.warning("ip_block_redis_failed", ip=ip_address, error=str(e))
+            logger.warning("ip_block_redis_failed", ip=ip_address, **safe_error_log(e))
 
         logger.warning(
             "ip_blocked",
@@ -485,7 +498,7 @@ class IncidentResponseService:
             session_manager = get_session_manager()
             await session_manager.revoke_all_sessions(db, user_id)
         except Exception as e:
-            logger.warning("session_revoke_failed", user_id=str(user_id)[:8], error=str(e))
+            logger.warning("session_revoke_failed", user_id=str(user_id)[:8], **safe_error_log(e))
 
     async def _revoke_api_keys(self, db: AsyncSession, user_id: UUID) -> None:
         """Widerruft alle API-Keys eines Benutzers."""
@@ -495,7 +508,7 @@ class IncidentResponseService:
             service = get_api_key_service()
             await service.revoke_all_keys(db, user_id)
         except Exception as e:
-            logger.warning("api_key_revoke_failed", user_id=str(user_id)[:8], error=str(e))
+            logger.warning("api_key_revoke_failed", user_id=str(user_id)[:8], **safe_error_log(e))
 
     async def _notify_user(self, db: AsyncSession, incident: Incident) -> None:
         """Benachrichtigt den betroffenen Benutzer."""
@@ -518,7 +531,7 @@ class IncidentResponseService:
                     message=f"Wir haben ungewöhnliche Aktivitäten in Ihrem Konto festgestellt: {incident.description}"
                 )
             except Exception as e:
-                logger.warning("user_notification_failed", user_id=str(incident.user_id)[:8], error=str(e))
+                logger.warning("user_notification_failed", user_id=str(incident.user_id)[:8], **safe_error_log(e))
 
     def is_ip_blocked(self, ip_address: str) -> bool:
         """Prüft ob eine IP-Adresse blockiert ist."""
@@ -554,3 +567,77 @@ def get_incident_response_service() -> IncidentResponseService:
     if _incident_response_service is None:
         _incident_response_service = IncidentResponseService()
     return _incident_response_service
+
+
+def report_system_incident(
+    incident_type: IncidentType,
+    severity: IncidentSeverity,
+    description: str,
+    details: Optional[Dict[str, Any]] = None
+) -> Incident:
+    """Meldet einen System-Incident (DLQ, Health etc.) - synchron aufrufbar.
+
+    Diese Funktion kann von synchronen Celery Tasks aufgerufen werden.
+
+    Args:
+        incident_type: Art des Incidents (DLQ_CRITICAL, SYSTEM_HEALTH_CRITICAL)
+        severity: Schweregrad (HIGH, CRITICAL)
+        description: Beschreibung des Problems
+        details: Zusätzliche Details als Dict
+
+    Returns:
+        Erstellter Incident
+
+    Example:
+        from app.services.incident_response_service import (
+
+            report_system_incident, IncidentType, IncidentSeverity
+        )
+        report_system_incident(
+            IncidentType.DLQ_CRITICAL,
+            IncidentSeverity.CRITICAL,
+            "DLQ enthält 500+ fehlgeschlagene Tasks",
+            details={"count": 523, "poison_pills": 3}
+        )
+    """
+    service = get_incident_response_service()
+    incident = Incident(
+        incident_type=incident_type,
+        severity=severity,
+        description=description,
+        details=details or {}
+    )
+
+    # Speichere in aktiven Incidents
+    service.active_incidents[incident.id] = incident
+
+    # Logging mit strukturierten Daten
+    log_method = logger.critical if severity == IncidentSeverity.CRITICAL else logger.error
+    log_method(
+        "system_incident_reported",
+        incident_id=incident.id,
+        incident_type=incident_type.value,
+        severity=severity.value,
+        description=description,
+        details=details
+    )
+
+    # Admin-Benachrichtigung auslösen (async wird im Background gestartet)
+    try:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Wenn bereits ein Event Loop läuft, Task erstellen
+            asyncio.create_task(service._notify_admin(incident))
+        else:
+            # Ansonsten synchron ausführen
+            loop.run_until_complete(service._notify_admin(incident))
+    except RuntimeError:
+        # Kein Event Loop verfügbar - nur loggen
+        logger.warning(
+            "admin_notification_skipped",
+            reason="no_event_loop",
+            incident_id=incident.id
+        )
+
+    return incident

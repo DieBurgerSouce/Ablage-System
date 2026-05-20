@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\surya\__init__.py
+# hypothesis_version: 6.148.7
+
+[0.0, 256, 32768, 'batch_size', 'constant', 'cpu', 'cu_seqlens_k', 'cuda', 'flash_attention_2', 'indices_k', 'input_ids', 'lm_head.weight', 'mean', 'past_key_values', 'query_length', 'sdpa', 'xpu']

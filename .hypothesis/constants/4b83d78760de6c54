@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cuda\gemm_template.py
+# hypothesis_version: 6.148.7
+
+[',', '.', 'Bias', 'ColumnMajor', 'D', 'M', 'Meta', 'N', 'RowMajor', 'StreamK', 'TensorDescription', 'W', 'X', 'Y', '\\s*struct\\s(.*?)\\s:', '\\s*using\\s(.*?)\\s=', 'alpha', 'argument_template', 'beta', 'epilogue_args', 'epilogue_functor', 'epilogue_template', 'false,', 'fastaccum', 'input_reorder', 'instance_definition', 'instance_type', 'kernel', 'op_conf_name', 'should_swap_xw', 'struct ', 'template', 'test_call_statement', 'tma', '|']

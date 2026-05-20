@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\utils\_masked_model.py
+# hypothesis_version: 6.148.7
+
+[0.0001, 2147483647, 'immutable_outputs', 'invariants', 'mask_shapes', 'reset_delta_masking', 'shape']

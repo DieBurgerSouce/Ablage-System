@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\__init__.py
+# hypothesis_version: 6.148.7
+
+['BuildStrategy', 'CompiledProgram', 'Executor', 'InputSpec', 'IpuCompiledProgram', 'IpuStrategy', 'Print', 'Program', 'Variable', 'WeightNormParamAttr', 'accuracy', 'append_backward', 'auc', 'cpu_places', 'create_global_var', 'create_parameter', 'ctr_metric_bundle', 'cuda_places', 'data', 'default_main_program', 'deserialize_program', 'device_guard', 'global_scope', 'gradients', 'ipu_shard_guard', 'load', 'load_from_file', 'load_inference_model', 'load_program_state', 'name_scope', 'normalize_program', 'program_guard', 'py_func', 'save', 'save_inference_model', 'save_to_file', 'scope_guard', 'serialize_program', 'set_ipu_shard', 'set_program_state', 'xpu_places']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\ml\confidence_calibration.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-10, 0.01, 0.1, 0.5, 0.7, 0.85, 0.95, 1.0, 5.0, 100, '*_calibration.json', 'CalibrationModel', 'backend', 'beta_calibration', 'bin_accuracies', 'brier_score', 'created_at', 'data/calibration', 'deepseek', 'ece', 'got_ocr', 'high', 'histogram_binning', 'inf', 'isotonic_few_samples', 'isotonic_regression', 'low', 'mapping_points', 'mce', 'medium', 'method', 'metrics', 'parameters', 'platt_scaling', 'r', 'retrain_failed', 'samples_used', 'surya', 'surya_gpu', 'temperature', 'temperature_scaling', 'unknown', 'utf-8', 'very_high', 'very_low', 'w']

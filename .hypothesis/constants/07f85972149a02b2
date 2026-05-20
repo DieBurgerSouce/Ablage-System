@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\utils\_tags.py
+# hypothesis_version: 6.148.7
+
+['_estimator_type', 'classifier', 'fit_transform', 'float64', 'regressor', 'transform']

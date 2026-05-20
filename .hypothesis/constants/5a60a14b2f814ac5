@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\quantization\imperative\qat.py
+# hypothesis_version: 6.148.7
+
+[0.9, '.', '.pdiparams', '.pdmodel', 'ColumnParallelLinear', 'Conv2D', 'Conv2DTranspose', 'Linear', 'Out', 'OutScale', 'Quantized', 'RowParallelLinear', 'X', '_act_preprocess', '_threshold', 'abs_max', 'act_pre_layer', 'act_preprocess_layer', 'act_quant_layer', 'act_quantize_layer', 'activation_bits', 'channel_wise_abs_max', 'conv2d', 'conv2d_transpose', 'depthwise_conv2d', 'feed', 'lsq_act', 'lsq_weight', 'matmul', 'model', 'moving_rate', 'out_threshold', 'quantize_dequantize', 'skip_quant', 'weight_bits', 'weight_pre_layer', 'weight_quant_layer', 'weight_quantize_type', 'with_quant_attr']

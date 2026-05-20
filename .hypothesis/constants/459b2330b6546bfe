@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\optimizer\lars_momentum.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.0005, 0.001, 1.0, 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Param', 'ParamOut', 'Velocity', 'VelocityOut', 'epsilon', 'lars_coeff', 'lars_momentum', 'lars_weight_decay', 'mu', 'multi_precision', 'rescale_grad', 'velocity']

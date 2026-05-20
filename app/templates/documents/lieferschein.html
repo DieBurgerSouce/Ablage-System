@@ -1,0 +1,127 @@
+{% extends "documents/base_document.html" %}
+
+{% block page_title %}Lieferschein {{ data.lieferscheinnummer }}{% endblock %}
+
+{% block title %}Lieferschein {{ data.lieferscheinnummer }}{% endblock %}
+
+{% block intro_text %}
+<p>Sehr geehrte Damen und Herren,</p>
+{% if data.bezug_auftragsnummer %}
+<p>in Bezug auf Auftrag <strong>{{ data.bezug_auftragsnummer }}</strong> liefern wir Ihnen folgende Artikel:</p>
+{% else %}
+<p>wir liefern Ihnen folgende Artikel:</p>
+{% endif %}
+
+{% if data.lieferadresse and data.lieferadresse != data.recipient_address %}
+<div class="highlight">
+    <p><strong>Lieferadresse:</strong></p>
+    <p>
+        {{ data.lieferadresse.name | default(data.recipient_name) }}<br>
+        {{ data.lieferadresse.strasse }}<br>
+        {{ data.lieferadresse.plz }} {{ data.lieferadresse.ort }}
+    </p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block positions_table %}
+<table class="document-table">
+    <thead>
+        <tr>
+            <th style="width: 8%;">Pos.</th>
+            <th style="width: 62%;">Bezeichnung</th>
+            <th class="right" style="width: 15%;">Menge</th>
+            <th class="center" style="width: 15%;">Einheit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pos in data.positionen %}
+        <tr>
+            <td class="center">{{ loop.index }}</td>
+            <td>{{ pos.bezeichnung }}</td>
+            <td class="right">{{ pos.menge | number_de }}</td>
+            <td class="center">{{ pos.einheit | default('Stk.') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if data.verpackungseinheiten %}
+<p><strong>Verpackung:</strong> {{ data.verpackungseinheiten }}</p>
+{% endif %}
+
+{% if data.gesamtgewicht %}
+<p><strong>Gesamtgewicht:</strong> {{ data.gesamtgewicht }} kg</p>
+{% endif %}
+{% endblock %}
+
+{% block payment_section %}
+<div class="payment-section">
+    <h2>Versandinformationen</h2>
+
+    {% if data.lieferdatum %}
+    <p><strong>Lieferdatum:</strong> {{ data.lieferdatum | date }}</p>
+    {% endif %}
+
+    {% if data.versandart %}
+    <p><strong>Versandart:</strong> {{ data.versandart }}</p>
+    {% endif %}
+
+    {% if data.tracking_nummer %}
+    <div class="bank-details">
+        <table>
+            <tr>
+                <td>Sendungsnummer:</td>
+                <td><strong>{{ data.tracking_nummer }}</strong></td>
+            </tr>
+            {% if data.versanddienstleister %}
+            <tr>
+                <td>Versanddienstleister:</td>
+                <td>{{ data.versanddienstleister }}</td>
+            </tr>
+            {% endif %}
+            {% if data.tracking_url %}
+            <tr>
+                <td>Sendungsverfolgung:</td>
+                <td>{{ data.tracking_url }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+
+    {% if data.besondere_hinweise %}
+    <div class="highlight">
+        <p><strong>Wichtige Hinweise:</strong></p>
+        <p>{{ data.besondere_hinweise }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block closing_text %}
+<p><strong>Bitte prüfen Sie die Lieferung umgehend auf Vollständigkeit und Unversehrtheit.</strong></p>
+<p>Eventuelle Transportschäden oder Mengendifferenzen sind dem Versanddienstleister und uns unverzüglich mitzuteilen.</p>
+
+{% if data.bezug_auftragsnummer %}
+<p>Die Rechnung zu diesem Lieferschein folgt separat.</p>
+{% endif %}
+
+<p>Mit freundlichen Grüßen</p>
+{% endblock %}
+
+{% block legal_notice %}
+{% if data.bezug_auftragsnummer %}
+Auftragsnummer: {{ data.bezug_auftragsnummer }}
+{% endif %}
+{% if data.lieferdatum %}
+&bull; Lieferdatum: {{ data.lieferdatum | date }}
+{% endif %}
+<br>
+Geschäftsführer: {{ data.geschaeftsfuehrer | default('') }}
+{% if data.handelsregister %}
+&bull; {{ data.handelsregister }}
+{% endif %}
+<br>
+Dieser Lieferschein ist kein Rechnungsbeleg.
+{% endblock %}

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\flex_checkpoint\aoa\lexer.py
+# hypothesis_version: 6.148.7
+
+['"[^"]*"|\\\'[^\\\']*\\\'', ',', '->', '.', ':', '=', 'COLON', 'COMMA', 'EQUAL', 'IDENTIFIER', 'LBRACKET', 'MISMATCH', 'NEWLINE', 'NUMBER', 'RARROW', 'RBRACKET', 'SKIP', 'STRING', '[ \\t]+', '[\\r\\n]+', '\\[', '\\]', '\\d+', '|']

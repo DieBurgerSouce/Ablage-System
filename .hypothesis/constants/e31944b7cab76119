@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cpp_grouped_gemm_template.py
+# hypothesis_version: 6.148.7
+
+['W', 'X', 'Y', '_T', '_U', 'bias_add', 'buf_out', 'get_dtype', 'inductor', 'inp', 'micro_gemm']

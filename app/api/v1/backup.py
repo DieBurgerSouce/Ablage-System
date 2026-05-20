@@ -1,22 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-API-Endpunkte fuer Backup-Operationen.
+API-Endpunkte für Backup-Operationen.
 
 Alle Endpunkte erfordern Admin-Authentifizierung.
 
 Feinpoliert und durchdacht - Enterprise Backup API.
 """
 
+import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
+from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import get_current_superuser
 from app.db.models import User
 from app.services.backup_service import BackupResult, get_backup_service
+from app.core.safe_errors import safe_error_log
 from app.services.backup_validator import (
     BackupValidator,
     ValidationLevel,
@@ -25,6 +28,82 @@ from app.services.backup_validator import (
 )
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Z.2 SECURITY FIX: Path Traversal Protection
+# =============================================================================
+
+# Erlaubtes Basis-Backup-Verzeichnis (aus Environment oder Standard)
+ALLOWED_BACKUP_BASE_DIR = Path(os.getenv("BACKUP_DIR", "/var/backups/ablage")).resolve()
+
+
+def validate_backup_path(user_path: str, is_directory: bool = False) -> Path:
+    """
+    Validiert einen vom User angegebenen Backup-Pfad gegen Path-Traversal.
+
+    Z.2 SECURITY FIX: Verhindert Zugriff ausserhalb des Backup-Verzeichnisses.
+
+    Args:
+        user_path: Vom User angegebener Pfad
+        is_directory: True wenn Verzeichnis erwartet, False für Datei
+
+    Returns:
+        Validierter, normalisierter Pfad
+
+    Raises:
+        HTTPException 403: Bei Path-Traversal-Versuch
+        HTTPException 404: Wenn Pfad nicht existiert
+    """
+    try:
+        # Resolve normalisiert und entfernt .. und symbolische Links
+        resolved_path = Path(user_path).resolve()
+
+        # Prüfe ob Pfad innerhalb des erlaubten Verzeichnisses liegt
+        try:
+            resolved_path.relative_to(ALLOWED_BACKUP_BASE_DIR)
+        except ValueError:
+            # Pfad liegt ausserhalb des Backup-Verzeichnisses
+            logger.warning(
+                "path_traversal_attempt_blocked",
+                user_path=user_path,
+                resolved_path=str(resolved_path),
+                allowed_base=str(ALLOWED_BACKUP_BASE_DIR),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Zugriff verweigert: Pfad muss innerhalb von {ALLOWED_BACKUP_BASE_DIR} liegen"
+            )
+
+        # Prüfe ob Pfad existiert
+        if not resolved_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Backup nicht gefunden: {user_path}"
+            )
+
+        # Prüfe ob Typ stimmt
+        if is_directory and not resolved_path.is_dir():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Kein Verzeichnis: {user_path}"
+            )
+        if not is_directory and not resolved_path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Keine Datei: {user_path}"
+            )
+
+        return resolved_path
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("path_validation_error", user_path=user_path, **safe_error_log(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungültiger Pfad: {user_path}"
+        )
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -35,13 +114,13 @@ router = APIRouter(prefix="/backup", tags=["backup"])
 
 
 class BackupResponse(BaseModel):
-    """Antwort fuer einzelne Backup-Operation."""
+    """Antwort für einzelne Backup-Operation."""
 
     erfolg: bool = Field(..., description="War das Backup erfolgreich?")
     backup_typ: str = Field(..., description="postgres, redis, minio, config")
     pfad: Optional[str] = Field(None, description="Pfad zur Backup-Datei")
-    groesse_bytes: int = Field(0, description="Groesse in Bytes")
-    groesse_mb: float = Field(0.0, description="Groesse in MB")
+    groesse_bytes: int = Field(0, description="Größe in Bytes")
+    groesse_mb: float = Field(0.0, description="Größe in MB")
     validiert: bool = Field(False, description="Wurde Backup validiert?")
     verschluesselt: bool = Field(False, description="Ist Backup verschluesselt?")
     remote_sync: bool = Field(False, description="Wurde zum Remote synchronisiert?")
@@ -64,7 +143,7 @@ class BackupResponse(BaseModel):
 
 
 class FullBackupResponse(BaseModel):
-    """Antwort fuer vollstaendiges Backup."""
+    """Antwort für vollständiges Backup."""
 
     erfolg: bool = Field(..., description="Waren alle Backups erfolgreich?")
     erfolgreich: int = Field(..., description="Anzahl erfolgreicher Backups")
@@ -78,26 +157,26 @@ class BackupListItem(BaseModel):
 
     typ: str = Field(..., description="Backup-Typ")
     name: str = Field(..., description="Dateiname")
-    pfad: str = Field(..., description="Vollstaendiger Pfad")
-    groesse_bytes: int = Field(..., description="Groesse in Bytes")
-    groesse_mb: float = Field(..., description="Groesse in MB")
+    pfad: str = Field(..., description="Vollständiger Pfad")
+    groesse_bytes: int = Field(..., description="Größe in Bytes")
+    groesse_mb: float = Field(..., description="Größe in MB")
     erstellt: str = Field(..., description="Erstellungszeitpunkt (ISO)")
     verschluesselt: bool = Field(..., description="Ist verschluesselt?")
 
 
 class BackupListResponse(BaseModel):
-    """Antwort fuer Backup-Liste."""
+    """Antwort für Backup-Liste."""
 
     anzahl: int = Field(..., description="Anzahl der Backups")
     backups: List[BackupListItem] = Field(..., description="Liste der Backups")
 
 
 class RetentionResponse(BaseModel):
-    """Antwort fuer Retention Policy."""
+    """Antwort für Retention Policy."""
 
     erfolg: bool = Field(..., description="War Aufraeumen erfolgreich?")
-    geloescht_gesamt: int = Field(..., description="Gesamtzahl geloeschter Backups")
-    details: Dict[str, int] = Field(..., description="Geloescht pro Typ")
+    geloescht_gesamt: int = Field(..., description="Gesamtzahl gelöschter Backups")
+    details: Dict[str, int] = Field(..., description="Gelöscht pro Typ")
     nachricht: str = Field(..., description="Zusammenfassung")
 
 
@@ -109,12 +188,12 @@ class BackupStatusResponse(BaseModel):
     remote_sync_aktiviert: bool = Field(..., description="Ist Remote-Sync aktiv?")
     backup_verzeichnis: str = Field(..., description="Pfad zum Backup-Verzeichnis")
     aufbewahrung_tage: int = Field(..., description="Retention in Tagen")
-    speicherplatz: Dict[str, Any] = Field(..., description="Speicherplatz-Info")
+    speicherplatz: JSONDict = Field(..., description="Speicherplatz-Info")
     backup_dateien: Dict[str, int] = Field(..., description="Anzahl Dateien pro Typ")
 
 
 class AsyncBackupResponse(BaseModel):
-    """Antwort fuer asynchron gestartetes Backup."""
+    """Antwort für asynchron gestartetes Backup."""
 
     gestartet: bool = Field(True, description="Wurde Backup gestartet?")
     backup_typ: str = Field(..., description="Gestarteter Backup-Typ")
@@ -122,32 +201,133 @@ class AsyncBackupResponse(BaseModel):
 
 
 class RestoreRequest(BaseModel):
-    """Anfrage fuer Restore-Operation."""
+    """Anfrage für Restore-Operation."""
 
-    backup_pfad: str = Field(..., description="Pfad zur Backup-Datei")
-    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+    backup_path: str = Field(..., description="Pfad zur Backup-Datei")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausführen")
+
+    @field_validator('backup_path')
+    @classmethod
+    def validate_backup_path(cls, v: str) -> str:
+        """K.1 SECURITY FIX: Path-Traversal-Schutz."""
+        # Homoglyph-Normalisierung
+        import unicodedata
+        v = unicodedata.normalize('NFKC', v)
+
+        # Path-Traversal-Pattern blockieren
+        dangerous_patterns = ['..', '~', '$', '`', '|', ';', '&']
+        for pattern in dangerous_patterns:
+            if pattern in v:
+                raise ValueError(f"Unerlaubtes Zeichen im Pfad: {pattern}")
+
+        # Nur absolute Pfade im Backup-Verzeichnis erlauben
+        from pathlib import Path as PathLib
+        resolved = PathLib(v).resolve()
+
+        # Erlaubte Backup-Verzeichnisse
+        from app.core.config import settings
+        allowed_roots = [
+            PathLib(settings.BACKUP_ROOT_DIR).resolve() if hasattr(settings, 'BACKUP_ROOT_DIR') else PathLib('/backups').resolve(),
+            PathLib('/var/backups/ablage').resolve(),
+        ]
+
+        is_allowed = any(
+            str(resolved).startswith(str(allowed_root))
+            for allowed_root in allowed_roots
+            if allowed_root.exists()
+        )
+
+        if not is_allowed:
+            raise ValueError("Backup-Pfad muss im erlaubten Backup-Verzeichnis liegen")
+
+        return v
 
 
 class RestoreMinioRequest(BaseModel):
-    """Anfrage fuer MinIO-Restore."""
+    """Anfrage für MinIO-Restore."""
 
-    backup_pfad: str = Field(..., description="Pfad zur Backup-Datei")
+    backup_path: str = Field(..., description="Pfad zur Backup-Datei")
     bucket: Optional[str] = Field(None, description="Ziel-Bucket (optional)")
-    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausführen")
+
+    @field_validator('backup_path')
+    @classmethod
+    def validate_backup_path(cls, v: str) -> str:
+        """K.1 SECURITY FIX: Path-Traversal-Schutz (siehe RestoreRequest)."""
+        import unicodedata
+        v = unicodedata.normalize('NFKC', v)
+
+        dangerous_patterns = ['..', '~', '$', '`', '|', ';', '&']
+        for pattern in dangerous_patterns:
+            if pattern in v:
+                raise ValueError(f"Unerlaubtes Zeichen im Pfad: {pattern}")
+
+        from pathlib import Path as PathLib
+        from app.core.config import settings
+        resolved = PathLib(v).resolve()
+
+        allowed_roots = [
+            PathLib(settings.BACKUP_ROOT_DIR).resolve() if hasattr(settings, 'BACKUP_ROOT_DIR') else PathLib('/backups').resolve(),
+            PathLib('/var/backups/ablage').resolve(),
+        ]
+
+        is_allowed = any(
+            str(resolved).startswith(str(allowed_root))
+            for allowed_root in allowed_roots
+            if allowed_root.exists()
+        )
+
+        if not is_allowed:
+            raise ValueError("Backup-Pfad muss im erlaubten Backup-Verzeichnis liegen")
+
+        return v
 
 
 class FullRestoreRequest(BaseModel):
-    """Anfrage fuer vollstaendigen Restore."""
+    """Anfrage für vollständigen Restore."""
 
     backup_verzeichnis: str = Field(..., description="Verzeichnis mit Backup-Dateien")
     komponenten: Optional[List[str]] = Field(
         None, description="Komponenten: postgres, redis, minio, config"
     )
-    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausführen")
+
+    @field_validator('backup_verzeichnis')
+    @classmethod
+    def validate_backup_verzeichnis(cls, v: str) -> str:
+        """K.1 SECURITY FIX: Path-Traversal-Schutz (siehe RestoreRequest)."""
+        import unicodedata
+        v = unicodedata.normalize('NFKC', v)
+
+        dangerous_patterns = ['..', '~', '$', '`', '|', ';', '&']
+        for pattern in dangerous_patterns:
+            if pattern in v:
+                raise ValueError(f"Unerlaubtes Zeichen im Pfad: {pattern}")
+
+        from pathlib import Path as PathLib
+        from app.core.config import settings
+
+        resolved = PathLib(v).resolve()
+
+        allowed_roots = [
+            PathLib(settings.BACKUP_ROOT_DIR).resolve() if hasattr(settings, 'BACKUP_ROOT_DIR') else PathLib('/backups').resolve(),
+            PathLib('/var/backups/ablage').resolve(),
+        ]
+
+        is_allowed = any(
+            str(resolved).startswith(str(allowed_root))
+            for allowed_root in allowed_roots
+            if allowed_root.exists()
+        )
+
+        if not is_allowed:
+            raise ValueError("Backup-Verzeichnis muss im erlaubten Backup-Verzeichnis liegen")
+
+        return v
 
 
 class RestoreResponse(BaseModel):
-    """Antwort fuer Restore-Operation."""
+    """Antwort für Restore-Operation."""
 
     erfolg: bool = Field(..., description="War Restore erfolgreich?")
     backup_typ: str = Field(..., description="postgres, redis, minio, config")
@@ -177,7 +357,7 @@ class RestoreResponse(BaseModel):
 
 
 class FullRestoreResponse(BaseModel):
-    """Antwort fuer vollstaendigen Restore."""
+    """Antwort für vollständigen Restore."""
 
     erfolg: bool = Field(..., description="Waren alle Restores erfolgreich?")
     erfolgreich: int = Field(..., description="Anzahl erfolgreicher Restores")
@@ -192,16 +372,16 @@ class ValidationIssueResponse(BaseModel):
     schweregrad: str = Field(..., description="error, warning, info")
     code: str = Field(..., description="Fehlercode")
     nachricht: str = Field(..., description="Beschreibung des Problems")
-    details: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Details")
+    details: Optional[JSONDict] = Field(None, description="Zusätzliche Details")
 
 
 class ValidateBackupResponse(BaseModel):
-    """Antwort fuer Backup-Validierung."""
+    """Antwort für Backup-Validierung."""
 
-    gueltig: bool = Field(..., description="Ist Backup gueltig?")
+    gueltig: bool = Field(..., description="Ist Backup gültig?")
     status: str = Field(..., description="valid, invalid, warning, skipped")
     backup_typ: str = Field(..., description="Erkannter Backup-Typ")
-    groesse_bytes: int = Field(..., description="Groesse in Bytes")
+    groesse_bytes: int = Field(..., description="Größe in Bytes")
     datei_anzahl: int = Field(0, description="Anzahl Dateien (bei Archiven)")
     checksum_sha256: Optional[str] = Field(None, description="SHA256 Checksum")
     verschluesselt: bool = Field(..., description="Ist Backup verschluesselt?")
@@ -211,8 +391,8 @@ class ValidateBackupResponse(BaseModel):
     probleme: List[ValidationIssueResponse] = Field(default_factory=list, description="Gefundene Probleme")
     anzahl_fehler: int = Field(0, description="Anzahl Fehler")
     anzahl_warnungen: int = Field(0, description="Anzahl Warnungen")
-    details: Dict[str, Any] = Field(default_factory=dict, description="Weitere Metadaten")
-    fehler: Optional[str] = Field(None, description="Hauptfehlermeldung bei ungueltigem Backup")
+    details: JSONDict = Field(default_factory=dict, description="Weitere Metadaten")
+    fehler: Optional[str] = Field(None, description="Hauptfehlermeldung bei ungültigem Backup")
 
 
 # =============================================================================
@@ -382,15 +562,15 @@ async def backup_config(
 @router.post(
     "/full",
     response_model=FullBackupResponse,
-    summary="Vollstaendiges Backup",
+    summary="Vollständiges Backup",
     description="Erstellt Backups aller Komponenten (PostgreSQL, Redis, MinIO, Config).",
 )
 async def backup_full(
     current_user: User = Depends(get_current_superuser),
 ) -> FullBackupResponse:
-    """Erstelle vollstaendiges Backup aller Komponenten."""
+    """Erstelle vollständiges Backup aller Komponenten."""
     logger.info(
-        "vollstaendiges_backup_angefordert",
+        "vollständiges_backup_angefordert",
         user_id=str(current_user.id),
     )
 
@@ -420,16 +600,16 @@ async def backup_full(
 @router.post(
     "/full/async",
     response_model=AsyncBackupResponse,
-    summary="Vollstaendiges Backup (Hintergrund)",
-    description="Startet vollstaendiges Backup im Hintergrund.",
+    summary="Vollständiges Backup (Hintergrund)",
+    description="Startet vollständiges Backup im Hintergrund.",
 )
 async def backup_full_async(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_superuser),
 ) -> AsyncBackupResponse:
-    """Starte vollstaendiges Backup im Hintergrund."""
+    """Starte vollständiges Backup im Hintergrund."""
     logger.info(
-        "vollstaendiges_backup_async_angefordert",
+        "vollständiges_backup_async_angefordert",
         user_id=str(current_user.id),
     )
 
@@ -442,7 +622,7 @@ async def backup_full_async(
     return AsyncBackupResponse(
         gestartet=True,
         backup_typ="full",
-        nachricht="Vollstaendiges Backup wurde im Hintergrund gestartet. Fortschritt in Logs und Metriken sichtbar.",
+        nachricht="Vollständiges Backup wurde im Hintergrund gestartet. Fortschritt in Logs und Metriken sichtbar.",
     )
 
 
@@ -450,12 +630,12 @@ async def backup_full_async(
     "/retention",
     response_model=RetentionResponse,
     summary="Retention Policy anwenden",
-    description="Loescht alte Backups gemaess Retention Policy.",
+    description="Löscht alte Backups gemaess Retention Policy.",
 )
 async def apply_retention(
     current_user: User = Depends(get_current_superuser),
 ) -> RetentionResponse:
-    """Wende Retention Policy an - loesche alte Backups."""
+    """Wende Retention Policy an - lösche alte Backups."""
     logger.info(
         "retention_policy_angefordert",
         user_id=str(current_user.id),
@@ -466,9 +646,9 @@ async def apply_retention(
     total_deleted = sum(deleted.values())
 
     if total_deleted > 0:
-        nachricht = f"{total_deleted} alte Backup(s) geloescht."
+        nachricht = f"{total_deleted} alte Backup(s) gelöscht."
     else:
-        nachricht = "Keine alten Backups zum Loeschen gefunden."
+        nachricht = "Keine alten Backups zum Löschen gefunden."
 
     return RetentionResponse(
         erfolg=True,
@@ -523,7 +703,7 @@ async def sync_to_remote(
 )
 async def list_remote_backups(
     current_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Liste Backups auf dem Remote-Server auf."""
     service = get_backup_service()
 
@@ -551,7 +731,7 @@ async def list_remote_backups(
     "/restore/postgres",
     response_model=RestoreResponse,
     summary="PostgreSQL Restore",
-    description="Stellt PostgreSQL-Datenbank aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+    description="Stellt PostgreSQL-Datenbank aus Backup wieder her. ACHTUNG: Überschreibt aktuelle Daten!",
 )
 async def restore_postgres(
     request: RestoreRequest,
@@ -561,17 +741,12 @@ async def restore_postgres(
     logger.warning(
         "postgres_restore_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=request.backup_pfad,
+        backup_pfad=request.backup_path,
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_pfad)
-
-    if not backup_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz
+    backup_path = validate_backup_path(request.backup_path, is_directory=False)
 
     service = get_backup_service()
     result = await service.restore_postgres(backup_path, dry_run=request.dry_run)
@@ -583,7 +758,7 @@ async def restore_postgres(
     "/restore/redis",
     response_model=RestoreResponse,
     summary="Redis Restore",
-    description="Stellt Redis-Cache aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+    description="Stellt Redis-Cache aus Backup wieder her. ACHTUNG: Überschreibt aktuelle Daten!",
 )
 async def restore_redis(
     request: RestoreRequest,
@@ -593,17 +768,12 @@ async def restore_redis(
     logger.warning(
         "redis_restore_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=request.backup_pfad,
+        backup_pfad=request.backup_path,
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_pfad)
-
-    if not backup_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz
+    backup_path = validate_backup_path(request.backup_path, is_directory=False)
 
     service = get_backup_service()
     result = await service.restore_redis(backup_path, dry_run=request.dry_run)
@@ -615,7 +785,7 @@ async def restore_redis(
     "/restore/minio",
     response_model=RestoreResponse,
     summary="MinIO Restore",
-    description="Stellt MinIO-Bucket aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+    description="Stellt MinIO-Bucket aus Backup wieder her. ACHTUNG: Überschreibt aktuelle Daten!",
 )
 async def restore_minio(
     request: RestoreMinioRequest,
@@ -625,18 +795,13 @@ async def restore_minio(
     logger.warning(
         "minio_restore_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=request.backup_pfad,
+        backup_pfad=request.backup_path,
         bucket=request.bucket,
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_pfad)
-
-    if not backup_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz
+    backup_path = validate_backup_path(request.backup_path, is_directory=False)
 
     service = get_backup_service()
     result = await service.restore_minio(
@@ -649,8 +814,8 @@ async def restore_minio(
 @router.post(
     "/restore/full",
     response_model=FullRestoreResponse,
-    summary="Vollstaendiger Restore",
-    description="Stellt alle Komponenten aus Backup-Verzeichnis wieder her. ACHTUNG: Ueberschreibt alle Daten!",
+    summary="Vollständiger Restore",
+    description="Stellt alle Komponenten aus Backup-Verzeichnis wieder her. ACHTUNG: Überschreibt alle Daten!",
 )
 async def restore_full(
     request: FullRestoreRequest,
@@ -658,20 +823,15 @@ async def restore_full(
 ) -> FullRestoreResponse:
     """Stelle alle Komponenten aus Backup wieder her."""
     logger.warning(
-        "vollstaendiger_restore_angefordert",
+        "vollständiger_restore_angefordert",
         user_id=str(current_user.id),
         backup_verzeichnis=request.backup_verzeichnis,
         komponenten=request.komponenten,
         dry_run=request.dry_run,
     )
 
-    backup_dir = Path(request.backup_verzeichnis)
-
-    if not backup_dir.exists() or not backup_dir.is_dir():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Verzeichnis nicht gefunden: {request.backup_verzeichnis}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz (Verzeichnis)
+    backup_dir = validate_backup_path(request.backup_verzeichnis, is_directory=True)
 
     service = get_backup_service()
     results = await service.restore_full(
@@ -708,7 +868,7 @@ async def restore_full(
     description="Validiert eine Backup-Datei mit tiefgehender Analyse ohne Restore.",
 )
 async def validate_backup(
-    backup_pfad: str,
+    backup_path: str,
     level: str = "standard",
     current_user: User = Depends(get_current_superuser),
 ) -> ValidateBackupResponse:
@@ -716,36 +876,61 @@ async def validate_backup(
     Validiere eine Backup-Datei mit konfigurierbarer Tiefe.
 
     Args:
-        backup_pfad: Pfad zur Backup-Datei
+        backup_path: Pfad zur Backup-Datei
         level: Validierungsstufe (quick, standard, deep, full)
     """
     logger.info(
         "backup_validierung_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=backup_pfad,
+        backup_path=backup_path,
         level=level,
     )
 
-    backup_path = Path(backup_pfad)
+    resolved_path = Path(backup_path).resolve()
 
-    if not backup_path.exists():
+    # SECURITY FIX: Path Traversal Prevention
+    # Resolve path to prevent ../ attacks and validate it's within backup dir
+    backup_service = get_backup_service()
+    allowed_backup_dir = backup_service.config.backup_dir.resolve()
+
+    try:
+        # Check if path is within allowed backup directory
+        resolved_path.relative_to(allowed_backup_dir)
+    except ValueError:
+        logger.warning(
+            "path_traversal_attempt_blocked",
+            user_id=str(current_user.id),
+            requested_path=backup_path,
+            allowed_dir=str(allowed_backup_dir),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Zugriff verweigert: Pfad außerhalb des Backup-Verzeichnisses",
+        )
+
+    if not resolved_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {backup_pfad}",
+            detail=f"Backup-Datei nicht gefunden: {backup_path}",
         )
 
     # Validierungslevel parsen
+    valid_levels = ["quick", "standard", "deep", "full"]
     try:
         validation_level = ValidationLevel(level.lower())
     except ValueError:
-        validation_level = ValidationLevel.STANDARD
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungültiger Validierungslevel: '{level}'. "
+                   f"Erlaubte Werte: {', '.join(valid_levels)}",
+        )
 
     # BackupValidator verwenden
     validator = get_backup_validator()
-    result = await validator.validate_backup(backup_path, level=validation_level)
+    result = await validator.validate_backup(resolved_path, level=validation_level)
 
     # Datei-Eigenschaften
-    filename = backup_path.name.lower()
+    filename = resolved_path.name.lower()
     verschluesselt = filename.endswith(".gpg")
     komprimiert = ".gz" in filename or ".tar" in filename
 
@@ -809,10 +994,15 @@ async def validate_all_backups(
     )
 
     # Validierungslevel parsen
+    valid_levels = ["quick", "standard", "deep", "full"]
     try:
         validation_level = ValidationLevel(level.lower())
     except ValueError:
-        validation_level = ValidationLevel.STANDARD
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungültiger Validierungslevel: '{level}'. "
+                   f"Erlaubte Werte: {', '.join(valid_levels)}",
+        )
 
     # Backup-Service und Validator
     service = get_backup_service()

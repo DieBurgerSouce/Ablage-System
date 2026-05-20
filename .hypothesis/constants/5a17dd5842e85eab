@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\bf16\amp_lists.py
+# hypothesis_version: 6.148.7
+
+['CPU', 'fill_constant', 'uniform_random']

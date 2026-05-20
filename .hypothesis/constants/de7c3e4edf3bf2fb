@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cpp_micro_gemm.py
+# hypothesis_version: 6.148.7
+
+[128, ' * ', ');', 'AMXState amx_state;', 'AMXState& amx_state,', 'N * 2,', '__restrict', '__restrict__', 'alpha', 'amx_state,', 'block_k', 'block_m', 'block_n', 'buffer_dtype', 'buffer_name', 'buffer_size', 'compute_dtype', 'compute_t', 'declare_kernel', 'dynamic_M', 'group_size,', 'input2_dtype', 'input2_t', 'input_dtype', 'input_t', 'int8_gemm', 'is_msvc_compiler', 'is_woq_int4', 'k_start,', 'kernel', 'kernel_name', 'num_columns', 'num_rows', 'output_dtype', 'output_t', 'pack_vnni_B_locally', 'q_group_size', 'qscale_and_zeros', 'restrict_keyword', 'sub_block_m', 'sub_block_n', 'tail_n', 'template', 'torch', 'trans_b', 'vec_isa', 'vnni_size', 'win32']

@@ -13,12 +13,13 @@ Feinpoliert und durchdacht - Historische Schriften zuverlässig erkennen.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import structlog
 
 from app.agents.base import AgentCategory, PreprocessingAgent
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -72,7 +73,7 @@ class FrakturAnalysis:
     confidence_level: FrakturConfidence
     features: List[FrakturFeatureScore]
     recommended_backend: str
-    analysis_details: Dict[str, Any]
+    analysis_details: Dict[str, object]
 
     @property
     def feature_summary(self) -> Dict[str, bool]:
@@ -164,7 +165,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
 
         logger.info("FrakturDetectorAgent initialisiert")
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Analysiere Dokument auf Frakturschrift.
 
@@ -245,7 +246,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
             "recommended_backend": analysis.recommended_backend,
         }
 
-    async def _analyze_visual_features(self, image: Any) -> float:
+    async def _analyze_visual_features(self, image: Union[str, np.ndarray]) -> float:
         """
         Analysiere visuelle Fraktur-Merkmale.
 
@@ -285,7 +286,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
             return np.mean(scores) if scores else 0.5
 
         except Exception as e:
-            logger.warning("visual_analysis_error", error=str(e))
+            logger.warning("visual_analysis_error", **safe_error_log(e))
             return 0.5  # Neutral bei Fehler
 
     def _analyze_stroke_patterns(self, image: np.ndarray) -> float:
@@ -463,7 +464,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
 
         return 0.0
 
-    async def _analyze_layout(self, image: Any) -> float:
+    async def _analyze_layout(self, image: Union[str, np.ndarray]) -> float:
         """Analysiere Layout-Eigenschaften."""
         try:
             if not isinstance(image, np.ndarray):
@@ -482,7 +483,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
 
     async def _collect_feature_details(
         self,
-        image: Any,
+        image: Union[str, np.ndarray],
         text: str
     ) -> List[FrakturFeatureScore]:
         """Sammle Details zu allen erkannten Features."""
@@ -538,7 +539,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
 
         return features
 
-    async def _detect_broken_strokes(self, image: Any) -> float:
+    async def _detect_broken_strokes(self, image: Union[str, np.ndarray]) -> float:
         """Erkenne gebrochene Strichführung."""
         try:
             if not isinstance(image, np.ndarray):
@@ -548,7 +549,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
         except Exception:
             return 0.5
 
-    async def _assess_blackletter_style(self, image: Any) -> float:
+    async def _assess_blackletter_style(self, image: Union[str, np.ndarray]) -> float:
         """Bewerte generellen Blackletter/Textura-Stil."""
         try:
             if not isinstance(image, np.ndarray):
@@ -620,9 +621,9 @@ def get_fraktur_detector() -> FrakturDetectorAgent:
 
 
 async def detect_fraktur(
-    image: Any,
+    image: Union[str, np.ndarray],
     text: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, object]] = None
 ) -> FrakturAnalysis:
     """
     Convenience-Funktion zur Fraktur-Erkennung.
@@ -644,13 +645,13 @@ async def detect_fraktur(
     return result["result"]["analysis"]
 
 
-async def is_fraktur(image: Any, text: Optional[str] = None) -> bool:
+async def is_fraktur(image: Union[str, np.ndarray], text: Optional[str] = None) -> bool:
     """Schnelle Prüfung ob Dokument Fraktur enthält."""
     analysis = await detect_fraktur(image, text)
-    return analysis.is_fraktur
+    return bool(analysis.is_fraktur)  # Konvertiere numpy.bool_ zu Python bool
 
 
-async def get_recommended_backend(image: Any, text: Optional[str] = None) -> str:
+async def get_recommended_backend(image: Union[str, np.ndarray], text: Optional[str] = None) -> str:
     """Empfehle OCR-Backend basierend auf Fraktur-Erkennung."""
     analysis = await detect_fraktur(image, text)
     return analysis.recommended_backend

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\validators\cross_field_validator.py
+# hypothesis_version: 6.148.7
+
+[100, '2.00', 'MwSt-Satz pruefen', 'actual_due', 'actual_gross', 'amount_consistency', 'date_consistency', 'description', 'diff', 'diff_days', 'discount_days', 'discount_percent', 'due_date', 'expected_due', 'expected_gross', 'gross_amount', 'item_count', 'line_item_math', 'line_item_sum', 'line_items', 'line_sum', 'net', 'net_amount', 'payment_days', 'payment_terms', 'position', 'quantity', 'skonto', 'skonto_consistency', 'skonto_plausibility', 'total_price', 'unit_price', 'vat', 'vat_rate']

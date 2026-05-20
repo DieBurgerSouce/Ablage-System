@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\workflow\workflow_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 3600, ' -> ', 'action', 'action_type', 'avg_duration', 'avg_duration_seconds', 'category', 'completed', 'condition', 'conditions', 'config', 'cron', 'delay', 'delay_seconds', 'description', 'document_event', 'edges', 'epoch', 'errors', 'events', 'execution_count', 'failed', 'id', 'is_active', 'last_executed_at', 'max_retries', 'name', 'nodes', 'position_x', 'position_y', 'retry_config', 'retry_delay', 'retry_on_failure', 'schedule', 'source', 'statistics', 'step_id', 'step_name', 'step_order', 'step_type', 'success_rate', 'target', 'timeout_seconds', 'total', 'total_executions', 'trigger', 'trigger_config', 'trigger_type', 'type', 'valid', 'variables', 'warnings', 'workflow_created', 'workflow_deleted', 'workflow_duplicated', 'workflow_id', 'workflow_toggled', 'workflow_updated']

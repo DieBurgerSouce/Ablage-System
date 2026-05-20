@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\layer\activation.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 0.01, 0.25, 0.5, 1.0, 1.0507009873554805, 1.6732632423543772, 3.0, 8.0, 'NCHW', 'none', 'tanh']

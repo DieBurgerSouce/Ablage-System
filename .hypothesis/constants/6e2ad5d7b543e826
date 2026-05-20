@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\backup_metrics_service.py
+# hypothesis_version: 6.148.7
+
+[b'# Prometheus not available\n', 100, 120, 300, 600, 1024, 1200, 1800, 3600, '*.rdb', '*.sql.gz', '*.tar.gz', '/var/backups/ablage', 'BACKUP_DIR', 'backup_dateien', 'backup_erfolgreich', 'backup_type', 'config', 'frei_gb', 'minio', 'postgres', 'prometheus_aktiv', 'redis', 'size_bytes', 'speicherplatz', 'speicherplatz_fehler', 'text/plain', 'total_gb', 'unknown', 'verwendet_gb', 'verwendung_prozent']

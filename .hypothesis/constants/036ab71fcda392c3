@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_parallel\parallel_layers\pp_layers.py
+# hypothesis_version: 6.148.7
+
+[1234, ', ', '-tensor_', ':', '_parent_hcg', '_start_poss', 'all_reduce', 'broadcast_group', 'build_schedule_node', 'color', 'data', 'float32', 'grad@', 'group', 'layer', 'layer:', 'main_grad', 'main_grad@', 'model', 'offload', 'out', 'part should be int', 'partition', 'pipe', 'pp_configs', 'pp_shared', 'ranks', 'reduce_type', 'ring_id', 'set_state_dict', 'state_dict', 'uniform', 'weight', 'weight_attr', 'x']

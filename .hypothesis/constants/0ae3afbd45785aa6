@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\dygraph_optimizer\dygraph_sharding_optimizer.py
+# hypothesis_version: 6.148.7
+
+[1.0, 256, 1024, '.', '0', '1', 'LR_Scheduler', '_', '_apply_optimize', '_inner_opt', '_param_groups', '_parameter_list', 'apply-optimize', 'beta1_pow_acc_0', 'beta2_pow_acc_0', 'check-padding-zero', 'color', 'comm_buffer_ref', 'do_model_average', 'fp32_master_0', 'group', 'is_distributed', 'learning_rate', 'main_grad', 'master_weights', 'moment1_0', 'moment2_0', 'need_clip', 'no_sync', 'not supported yet', 'optimize_attr', 'pp_configs', 'pp_degree', 'reduce-gradients', 'regularizer', 'sharding_configs', 'sync-parameters', 'velocity_0']

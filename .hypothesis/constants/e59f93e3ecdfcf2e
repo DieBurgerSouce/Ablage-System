@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\knowledge.py
+# hypothesis_version: 6.148.7
+
+[100, 500, 1000, '/checklists', '/knowledge', '/links', '/links/{link_id}', '/notes', '/notes/{note_id}', '/tags', '/tags/{tag_id}', 'Item nicht gefunden', 'Knowledge Management', 'Notiz nicht gefunden', 'Tag nicht gefunden', '^#[0-9A-Fa-f]{6}$', 'checklist_item_added', 'is_completed']

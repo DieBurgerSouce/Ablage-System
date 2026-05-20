@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\neighbors\_regression.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'auto', 'distance', 'metric', 'minkowski', 'n_neighbors', 'precomputed', 'radius', 'uniform', 'weights']

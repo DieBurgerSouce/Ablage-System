@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\__init__.py
+# hypothesis_version: 6.148.7
+
+['AdditiveExplainer', 'CoalitionExplainer', 'DeepExplainer', 'ExactExplainer', 'GPUTreeExplainer', 'GradientExplainer', 'KernelExplainer', 'LinearExplainer', 'PartitionExplainer', 'PermutationExplainer', 'SamplingExplainer', 'TreeExplainer']

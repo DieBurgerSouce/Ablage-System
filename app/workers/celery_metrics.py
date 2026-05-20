@@ -23,6 +23,8 @@ from prometheus_client import (
     CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
 )
 
+from app.core.safe_errors import safe_error_detail, safe_error_log
+
 logger = structlog.get_logger(__name__)
 
 # =============================================================================
@@ -272,7 +274,8 @@ def update_gpu_metrics() -> None:
             utilization = (allocated / total) * 100 if total > 0 else 0
             celery_gpu_utilization_percent.set(utilization)
     except Exception as e:
-        logger.debug("gpu_metrics_update_failed", error=str(e))
+        # Z.2 FIX: Erhöhtes Log-Level für bessere Sichtbarkeit in Monitoring
+        logger.warning("gpu_metrics_update_failed", context="Metriken", **safe_error_log(e))
 
 
 def update_queue_metrics(app: Any) -> None:
@@ -291,10 +294,12 @@ def update_queue_metrics(app: Any) -> None:
                     redis = Redis.from_url(settings.CELERY_BROKER_URL)
                     length = redis.llen(queue_name) or 0
                     celery_queue_length.labels(queue_name=queue_name).set(length)
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Z.2 FIX: Erhöhtes Log-Level für bessere Sichtbarkeit in Monitoring
+                    logger.warning("queue_length_check_failed", queue=queue_name, context="Metriken", **safe_error_log(e))
     except Exception as e:
-        logger.debug("queue_metrics_update_failed", error=str(e))
+        # Z.2 FIX: Erhöhtes Log-Level für bessere Sichtbarkeit in Monitoring
+        logger.warning("queue_metrics_update_failed", context="Metriken", **safe_error_log(e))
 
 
 def init_worker_metrics(
@@ -392,7 +397,7 @@ def start_metrics_server(port: int = 8001) -> None:
         logger.info("celery_metrics_server_started", port=port)
 
     except Exception as e:
-        logger.error("celery_metrics_server_start_failed", error=str(e))
+        logger.error("celery_metrics_server_start_failed", context="Aufzeichnung", **safe_error_log(e))
 
 
 def stop_metrics_server() -> None:

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distribution\bernoulli.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'Bernoulli', '_cdf', '_entropy', '_kl_divergence', '_log_prob', '_prob', '_rsample', '_sample', 'float32', 'float64', 'none', 'other', 'probs', 'shape', 'temperature', 'value']

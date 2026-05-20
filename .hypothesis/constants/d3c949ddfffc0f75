@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\factory\hub.py
+# hypothesis_version: 6.148.7
+
+['.cache', 'README.md', 'arch', 'classes', 'classification', 'config.json', 'detection', 'from_hub', 'git', 'hub', 'huggingface', 'input_shape', 'lfs', 'login_to_hub', 'num_classes', 'push_to_hf_hub', 'pytorch_model.bin', 'rb', 'recognition', 'run_config', 'task', 'version', 'vocab', 'w', '~']

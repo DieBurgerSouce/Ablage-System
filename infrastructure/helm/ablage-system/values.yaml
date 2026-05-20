@@ -96,6 +96,25 @@ worker:
   nodeSelector:
     nvidia.com/gpu.present: "true"
 
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    # Queue-based autoscaling via Prometheus custom metrics
+    metrics:
+      - type: External
+        external:
+          metric:
+            name: celery_queue_length
+            selector:
+              matchLabels:
+                queue: ocr_normal
+          target:
+            type: AverageValue
+            averageValue: 10
+    # GPU worker CPU threshold as fallback
+    targetCPUUtilizationPercentage: 80
+
   env:
     CUDA_VISIBLE_DEVICES: "0"
     OCR_DEFAULT_BACKEND: "deepseek"
@@ -174,16 +193,39 @@ redis:
     repository: redis
     tag: 7-alpine
 
+  # Architecture: standalone (dev) or replication (production HA)
+  # With replication + sentinel, automatic failover is enabled
   architecture: standalone
 
   auth:
     enabled: false
+
+  # Sentinel configuration for HA (activate via values-production.yaml)
+  sentinel:
+    enabled: false
+    masterName: mymaster
+    quorum: 2
+    downAfterMilliseconds: 10000
+    failoverTimeout: 180000
 
   master:
     persistence:
       enabled: true
       size: 10Gi
 
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  replica:
+    replicaCount: 0
+    persistence:
+      enabled: true
+      size: 10Gi
     resources:
       requests:
         cpu: 100m

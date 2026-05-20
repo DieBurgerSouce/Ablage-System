@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\extractors\amount_extractor.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.6, 0.7, 0.8, 100, '%', '0', '0% mwst', '0% vat', '0.5', '1', '\\bDE\\d{9}\\b', 'amount_inconsistency', 'amounts_extracted', 'btw verlegd', 'exempt from vat', 'gross_to_net', 'intra-community', 'intracommunautaire', 'labeled_net_applied', 'labeled_vat_applied', 'mwst', 'mwst 0%', 'net_equals_gross', 'reverse charge', 'right', 'steuer', 'tax', 'tax exempt', 'ust', 'vat', 'vat 0%', 'vat exempt', 'vat_rate_inferred']

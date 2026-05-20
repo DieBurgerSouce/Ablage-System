@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\task_service.py
+# hypothesis_version: 6.148.7
+
+[100, 'PROGRESS', 'auto', 'backend', 'batch_task_submitted', 'cancelled', 'celery_state', 'completed_at', 'created_at', 'current', 'de', 'detect_fraktur', 'detect_layout', 'document_count', 'document_id', 'document_ids', 'error', 'failed', 'high', 'job_id', 'job_type', 'language', 'low', 'message', 'normal', 'ocr', 'priority', 'progress', 'queued', 'ready', 'result', 'started_at', 'state', 'status', 'submitted_at', 'successful', 'task_cancelled', 'task_id', 'task_status_checked', 'total', 'user_tasks_retrieved']

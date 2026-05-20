@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\tasks\entity_linking_tasks.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.75, 0.85, 100, 300, 500, 'already_linked_count', 'completed_at', 'confidence', 'day_of_week', 'default', 'document_not_linked', 'documents_checked', 'documents_linked', 'documents_processed', 'documents_to_process', 'entity_id', 'entity_name', 'error', 'error_count', 'errors', 'generated_at', 'hour', 'improved', 'kd_nr', 'linked', 'linked_count', 'linked_documents', 'linking_rate_percent', 'low_confidence_count', 'match_details', 'match_type', 'matchcode', 'minute', 'options', 'phase', 'post_lexware_import', 'queue', 'reason', 'reprocessed', 'schedule', 'started_at', 'success_rate', 'task', 'total_documents', 'total_entities', 'unchanged', 'unlinked_count', 'unlinked_with_text']

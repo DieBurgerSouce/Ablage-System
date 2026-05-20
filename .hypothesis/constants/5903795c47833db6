@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pandas\compat\_constants.py
+# hypothesis_version: 6.148.7
+
+['HOST_GNU_TYPE', 'IS64', 'ISMUSL', 'PY310', 'PY311', 'PY312', 'PY314', 'PYPY', 'PyPy', 'musl']

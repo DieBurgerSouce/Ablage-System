@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_bagging.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'BaggingClassifier', 'BaggingRegressor', 'boolean', 'bootstrap', 'bootstrap_features', 'check_input', 'csc', 'csr', 'decision_function', 'estimator', 'estimators_', 'fit', 'left', 'max_features', 'max_samples', 'n_estimators', 'n_jobs', 'oob_score', 'oob_score_', 'predict', 'predict_log_proba', 'predict_proba', 'random_state', 'right', 'sample_weight', 'verbose', 'warm_start']

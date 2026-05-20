@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\vqa\token\vqa_token_pad.py
+# hypothesis_version: 6.148.7
+
+[512, 'attention_mask', 'bbox', 'input_ids', 'int64', 'labels', 'left', 'longest_first', 'pad_token_id', 'pad_token_type_id', 'padding_side', 'right', 'special_tokens_mask', 'token_type_ids', 'tokenizer_params']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\datasets\fgvc_aircraft.py
+# hypothesis_version: 6.148.7
+
+['annotation_level', 'data', 'families.txt', 'family', 'fgvc-aircraft-2013b', 'images', 'manufacturer', 'manufacturers.txt', 'split', 'test', 'train', 'trainval', 'val', 'variant', 'variants.txt']

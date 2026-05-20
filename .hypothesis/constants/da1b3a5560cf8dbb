@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\pir_utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1024, 'FLAGS_enable_pir_api', 'hard_swish', 'hardswish', 'softmax', 'use_cudnn']

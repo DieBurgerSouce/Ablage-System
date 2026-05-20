@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\optim\optimizer.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-08, 0.001, 0.9, 0.999, 1.0, 100000.0, 100, 256, 4096, '(', ')', ',', 'absmax1', 'absmax2', 'alpha', 'betas', 'block_wise', 'dynamic', 'eps', 'gnorm_vec', 'is_paged', 'lr', 'max1', 'max2', 'max_unorm', 'min_8bit_size', 'new_max1', 'new_max2', 'optim_bits', 'param_groups', 'params', 'percentile_clipping', 'qmap1', 'qmap2', 'skip_zeros', 'state', 'state1', 'state2', 'step', 't_alpha', 't_beta3', 'udynamic', 'unorm_vec', 'weight_decay']

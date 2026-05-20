@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_bitnet.py
+# hypothesis_version: 6.148.7
+
+[0.9, 'PreTrainedModel', 'accelerate', 'autobitlinear', 'cpu', 'device_map', 'disk', 'from_flax', 'from_tf', 'online', 'torch.dtype']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\mix_precision_utils.py
+# hypothesis_version: 6.148.7
+
+['2.5.0', '_is_sparse', '_mix_precision', '_param_groups', 'bfloat16', 'float16', 'int32', 'is_selected_rows', 'main_grad', 'main_grad@', 'params']

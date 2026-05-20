@@ -6,12 +6,15 @@ All responses in German for user-facing messages.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+
+# Z.7 SECURITY FIX: Rate Limiting für Passwort-Endpoints
+from app.core.rate_limiting import limiter, RateLimitTier, get_ip_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -33,14 +36,29 @@ from app.db.schemas import (
     SessionListResponse,
     SessionRevokeRequest,
     SessionRevokeAllRequest,
-    SessionRevokeResponse
+    SessionRevokeResponse,
+    PasswordResetRequest,
+    PasswordResetValidate,
+    PasswordResetConfirm,
+    PasswordResetResponse,
+    EmailVerificationStatusResponse,
+    EmailVerificationResponse,
+    EmailVerifyResponse,
+    EmailChangeResponse,
+    EmailVerifyTokenRequest,
+    EmailChangeRequest,
+    TwoFactorRequiredResponse,
+    TwoFactorVerifyRequest,
 )
 from app.services.user_service import UserService
 from app.core.security import (
     create_token_pair,
     decode_token,
     verify_token_type,
-    blacklist_token
+    blacklist_token,
+    create_2fa_temp_token,
+    verify_2fa_temp_token,
+    check_and_mark_totp_used,
 )
 from app.core.totp import (
     check_totp_available,
@@ -56,6 +74,7 @@ from app.core.totp import (
     TOTPSecretEncryptionError,
     PYOTP_AVAILABLE,
 )
+from app.core.safe_errors import safe_error_log
 from app.core.account_lockout import (
     check_account_lockout,
     record_failed_attempt,
@@ -69,12 +88,15 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # ==================== CSRF Token ====================
 
+# SECURITY FIX: Rate-Limit für CSRF-Token-Endpoint
+# Verhindert Token-Exhaustion und DoS-Angriffe
+@limiter.limit("10/minute", key_func=get_ip_identifier)
 @router.get(
     "/csrf-token",
     summary="CSRF-Token abrufen",
     description="Gibt ein CSRF-Token für geschützte Anfragen zurück"
 )
-async def get_csrf_token() -> dict:
+async def get_csrf_token(request: Request) -> dict:
     """
     Hole ein CSRF-Token für geschützte Anfragen.
 
@@ -102,10 +124,12 @@ async def get_csrf_token() -> dict:
     summary="Benutzerregistrierung",
     description="Registriert einen neuen Benutzer im System"
 )
+@limiter.limit("5/hour", key_func=get_ip_identifier)  # BB.1 SECURITY FIX: Rate limit registration
 async def register(
+    request: Request,  # SECURITY FIX 25-7: Required for IP-based rate limiter - KRITISCH!
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> UserResponse:
     """
     Registriere einen neuen Benutzer.
 
@@ -124,17 +148,42 @@ async def register(
 
 # ==================== Login ====================
 
+# SECURITY FIX 27-1: Rate-Limit für Login-Endpoint - KRITISCH!
+# Verhindert Brute-Force-Angriffe auf Passwörter.
+# Sprint 0 / G07: Verschaerft von "10/minute" auf "5/minute" - konsistent mit
+# MAX_FAILED_ATTEMPTS=5 in app/core/account_lockout.py. Per-IP-Limit greift VOR
+# dem Per-Account-Lockout. Defense in Depth: 5/min IP-Limit + Account-Lockout
+# (5x falsch -> 60s Lock; 7x -> 15min; 8x -> 1h, exponentiell).
+@limiter.limit("5/minute", key_func=get_ip_identifier)
 @router.post(
     "/login",
-    response_model=Token,
     summary="Benutzer-Login",
-    description="Authentifiziert einen Benutzer und gibt JWT-Tokens zurück"
+    description="Authentifiziert einen Benutzer und gibt JWT-Tokens zuruck. Bei aktiviertem 2FA wird ein temporarer Token zuruck gegeben.",
+    responses={
+        200: {
+            "description": "Login erfolgreich oder 2FA erforderlich",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Login ohne 2FA",
+                            "value": {"access_token": "...", "refresh_token": "...", "token_type": "bearer"}
+                        },
+                        "2fa_required": {
+                            "summary": "2FA erforderlich",
+                            "value": {"requires_2fa": True, "temp_token": "...", "message": "Bitte geben Sie Ihren 2FA-Code ein."}
+                        }
+                    }
+                }
+            }
+        }
+    }
 )
 async def login(
     login_data: LoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> Union[Token, TwoFactorRequiredResponse]:
     """
     Authentifiziere einen Benutzer mit E-Mail und Passwort.
 
@@ -167,14 +216,16 @@ async def login(
         )
     except AccountLockoutStorageError as e:
         # Redis nicht verfügbar und fail_closed=True -> blockieren
+        # SECURITY FIX 28-20: Generische Fehlermeldung
         logger.error(
             "login_blocked_security_service_unavailable",
             ip=client_ip,
             email=login_data.email[:3] + "***" if login_data.email else None,
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
+            detail="Sicherheitsdienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
             headers={"Retry-After": "60"},
         )
 
@@ -210,31 +261,39 @@ async def login(
             )
         except AccountLockoutStorageError as e:
             # Redis nicht verfügbar und fail_closed=True -> blockieren
+            # SECURITY FIX 28-20: Generische Fehlermeldung
             logger.error(
                 "login_blocked_cannot_record_failed_attempt",
                 ip=client_ip,
                 email=login_data.email[:3] + "***" if login_data.email else None,
+                **safe_error_log(e),
             )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=str(e),
+                detail="Sicherheitsdienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
                 headers={"Retry-After": "60"},
             )
 
+        # SECURITY FIX: Einheitliche Fehlermeldung verhindert Account-Enumeration
+        # Angreifer können nicht mehr erkennen, ob ein Konto existiert
+        # Rate-Limit Headers werden nur bei tatsächlichem Lockout zurückgegeben
+        error_detail = "Ungültige E-Mail-Adresse oder Passwort"
+        headers = {"WWW-Authenticate": "Bearer"}
+
         if is_now_locked:
+            # Bei Lockout: 429 mit Retry-After, aber gleiche Nachricht
+            headers["Retry-After"] = str(lockout_seconds)
+            headers["X-RateLimit-Reset"] = str(lockout_seconds)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Zu viele fehlgeschlagene Anmeldeversuche. Konto für {lockout_seconds // 60} Minute(n) gesperrt.",
-                headers={
-                    "Retry-After": str(lockout_seconds),
-                    "X-RateLimit-Reset": str(lockout_seconds),
-                },
+                detail=error_detail,  # Keine Konto-spezifische Info
+                headers=headers,
             )
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungültige E-Mail-Adresse oder Passwort",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail=error_detail,
+            headers=headers,
         )
 
     # Check if user is active
@@ -246,6 +305,21 @@ async def login(
 
     # Reset failed attempts on successful login
     await reset_failed_attempts(ip=client_ip, username=login_data.email)
+
+    # Check if 2FA is enabled for this user
+    if user.totp_enabled:
+        logger.info(
+            "login_requires_2fa",
+            user_id=str(user.id),
+            username=user.username
+        )
+        # Return temporary token for 2FA verification
+        temp_token = create_2fa_temp_token(str(user.id))
+        return TwoFactorRequiredResponse(
+            requires_2fa=True,
+            temp_token=temp_token,
+            message="Bitte geben Sie Ihren 2FA-Code ein."
+        )
 
     # Create token pair
     token_data = {
@@ -299,7 +373,7 @@ async def login(
         logger.warning(
             "session_creation_failed",
             user_id=str(user.id),
-            error=str(e)
+            **safe_error_log(e)
         )
 
     logger.info(
@@ -312,20 +386,188 @@ async def login(
     return Token(**tokens, session_warning=session_warning)
 
 
+# ==================== 2FA Verification during Login ====================
+
+# SECURITY FIX 27-2: Rate-Limit für 2FA-Endpoint - KRITISCH!
+# 6-stellige TOTP-Codes haben nur 1M Kombinationen - Brute-Force verhindern!
+@limiter.limit("5/minute", key_func=get_ip_identifier)
+@router.post(
+    "/verify-2fa",
+    response_model=Token,
+    summary="2FA-Verifizierung abschließen",
+    description="Verifiziert den 2FA-Code und gibt JWT-Tokens zuruck"
+)
+async def verify_2fa_login_endpoint(
+    data: TwoFactorVerifyRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+) -> Token:
+    """
+    Verifiziere 2FA-Code nach erfolgreicher Passwort-Authentifizierung.
+
+    - **temp_token**: Temporarer Token aus der Login-Response
+    - **code**: 6-stelliger TOTP-Code oder Backup-Code
+
+    Gibt Access Token und Refresh Token zuruck bei erfolgreichem 2FA.
+    """
+    # Verify temp token and get user ID
+    user_id = await verify_2fa_temp_token(data.temp_token)
+
+    # Get user from database
+    from uuid import UUID
+    user = await UserService.get_user(db, UUID(user_id))
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Benutzer nicht gefunden",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA ist nicht aktiviert fur diesen Benutzer",
+        )
+
+    # Clean up code (remove spaces/dashes)
+    clean_code = data.code.replace(" ", "").replace("-", "")
+
+    # Detect code type: TOTP (6 Stellen) vs Backup (8 Stellen)
+    is_totp_code = len(clean_code) == 6 and clean_code.isdigit()
+
+    # Verify TOTP code or backup code
+    try:
+        # SECURITY FIX: Atomare Replay-Prüfung VOR Verifikation
+        # Verhindert Timing-Attack bei parallelen Requests mit gleichem Code.
+        # SETNX stellt sicher, dass nur ein Request pro Code durchkommt.
+        if is_totp_code:
+            is_replay = await check_and_mark_totp_used(str(user.id), clean_code)
+            if is_replay:
+                logger.warning(
+                    "2fa_replay_attack_detected",
+                    user_id=str(user.id),
+                    message="TOTP-Code wurde bereits verwendet (Replay-Angriff?)"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Dieser Code wurde bereits verwendet. Bitte warten Sie auf den nächsten Code.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+        is_valid, used_backup, backup_index = verify_2fa_login_encrypted(
+            encrypted_secret=user.totp_secret,
+            user_id=str(user.id),
+            code=clean_code,
+            backup_codes=user.totp_backup_codes or []
+        )
+
+        if not is_valid:
+            logger.warning(
+                "2fa_verification_failed",
+                user_id=str(user.id),
+                code_type="backup" if len(clean_code) == 8 else "totp"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Ungültiger 2FA-Code",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # If backup code was used, remove it from the list
+        if used_backup and backup_index is not None:
+            backup_codes = list(user.totp_backup_codes or [])
+            if 0 <= backup_index < len(backup_codes):
+                del backup_codes[backup_index]
+                user.totp_backup_codes = backup_codes
+                await db.commit()
+                logger.info(
+                    "2fa_backup_code_used",
+                    user_id=str(user.id),
+                    remaining_codes=len(backup_codes)
+                )
+
+    except TOTPSecretEncryptionError as e:
+        logger.error(
+            "2fa_decryption_failed",
+            user_id=str(user.id),
+            **safe_error_log(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler bei der 2FA-Verifizierung"
+        )
+
+    # 2FA successful - create token pair
+    token_data = {
+        "sub": str(user.id),
+        "email": user.email,
+        "username": user.username
+    }
+    tokens = create_token_pair(token_data)
+
+    # Create session for tracking
+    client_ip = request.client.host if request.client else None
+    session_warning = None
+
+    try:
+        from app.core.session_manager import get_session_manager, SessionLimitReachedError
+
+        session_manager = get_session_manager()
+        access_payload = await decode_token(tokens["access_token"])
+        token_jti = access_payload.get("jti")
+
+        if token_jti and client_ip:
+            user_agent = request.headers.get("User-Agent")
+            session_result = await session_manager.create_session(
+                db=db,
+                user_id=user.id,
+                token_jti=token_jti,
+                ip_address=client_ip,
+                user_agent=user_agent
+            )
+            session_warning = session_result.get("warning")
+
+    except Exception as e:
+        logger.warning(
+            "session_creation_failed_2fa",
+            user_id=str(user.id),
+            **safe_error_log(e)
+        )
+
+    logger.info(
+        "2fa_login_successful",
+        user_id=str(user.id),
+        username=user.username,
+        used_backup_code=used_backup
+    )
+
+    return Token(**tokens, session_warning=session_warning)
+
+
 # ==================== Token Refresh ====================
 
+# SECURITY FIX 27-3: Rate-Limit für Refresh-Endpoint
+# Verhindert Token-Exhaustion-Angriffe
+@limiter.limit("30/minute", key_func=get_ip_identifier)
 @router.post(
     "/refresh",
     response_model=Token,
     summary="Token erneuern",
-    description="Erneuert Access Token mit Refresh Token"
+    description="Erneuert Access Token mit Refresh Token (Token Rotation)"
 )
 async def refresh_token(
+    request: Request,  # SECURITY FIX 27-3: Required for rate limiter
     refresh_data: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> Token:
     """
     Erneuere Access Token mit einem gültigen Refresh Token.
+
+    **SECURITY: Refresh Token Rotation**
+    - Der alte Refresh Token wird invalidiert (Blacklist)
+    - Ein komplett neues Token-Paar wird ausgestellt
+    - Verhindert Token-Wiederverwendung bei Token-Diebstahl
 
     - **refresh_token**: Gültiger Refresh Token
 
@@ -337,14 +579,23 @@ async def refresh_token(
         "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     }
     ```
+
+    **Sicherheitshinweise:**
+    - Nach Verwendung ist der alte Refresh Token ungültig
+    - Bei Verdacht auf Token-Diebstahl: Alle Sessions widerrufen
     """
+    from datetime import timezone as tz
+
     try:
         # Decode and validate refresh token (async for Redis blacklist check)
         payload = await decode_token(refresh_data.refresh_token)
         verify_token_type(payload, "refresh")
 
-        # Extract user ID
+        # Extract user ID and token metadata
         user_id_str = payload.get("sub")
+        old_jti = payload.get("jti")
+        old_exp = payload.get("exp")
+
         if not user_id_str:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -371,7 +622,32 @@ async def refresh_token(
                 detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
             )
 
-        # Create new token pair
+        # SECURITY FIX: Token Rotation - Blacklist the OLD refresh token
+        # This prevents replay attacks if the token was stolen
+        if old_jti and old_exp:
+            try:
+                old_exp_datetime = datetime.fromtimestamp(old_exp, tz=tz.utc)
+                await blacklist_token(old_jti, old_exp_datetime)
+                logger.debug(
+                    "refresh_token_rotated",
+                    old_jti=old_jti[:8] + "...",
+                    user_id=str(user.id)[:8] + "..."
+                )
+            except HTTPException:
+                # Re-raise HTTPException (fail-closed mode from blacklist_token)
+                # This is critical for security - blocking login is safer than
+                # allowing potentially compromised tokens
+                raise
+            except Exception as blacklist_error:
+                # Other errors (e.g., connection issues in non-fail-closed mode)
+                # Log as warning but continue to avoid blocking legitimate users
+                logger.warning(
+                    "refresh_token_blacklist_failed",
+                    error_type=type(blacklist_error).__name__,
+                    user_id=str(user.id)[:8] + "..."
+                )
+
+        # Create new token pair (with new JTIs)
         token_data = {
             "sub": str(user.id),
             "email": user.email,
@@ -379,12 +655,19 @@ async def refresh_token(
         }
         tokens = create_token_pair(token_data)
 
+        logger.info(
+            "token_refresh_successful",
+            user_id=str(user.id)[:8] + "...",
+            username=user.username,
+            rotation_applied=True
+        )
+
         return Token(**tokens)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("refresh_token_failed", error=str(e), error_type=type(e).__name__)
+        logger.warning("refresh_token_failed", **safe_error_log(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültiger oder abgelaufener Refresh Token",  # Invalid or expired refresh token
@@ -405,21 +688,59 @@ async def logout(
     logout_data: LogoutRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> MessageResponse:
     """
     Melde einen Benutzer ab.
 
-    Fügt den Refresh Token zur Blacklist hinzu, um weitere Verwendung zu verhindern.
+    Fügt Access Token und Refresh Token zur Blacklist hinzu, um weitere Verwendung zu verhindern.
 
     - **refresh_token**: Refresh Token zum Widerrufen (optional)
 
     **Hinweis:** Nach dem Logout müssen sich Clients erneut anmelden.
+
+    **Sicherheitsverbesserung:**
+    - Access Token wird sofort ungültig (nicht erst nach 15min Ablauf)
+    - Refresh Token wird ebenfalls auf Blacklist gesetzt
+    - Session wird in der Datenbank widerrufen
     """
-    # Revoke current session
+    from datetime import timezone as tz
+
+    access_token_blacklisted = False
+    refresh_token_blacklisted = False
+    session_revoked = False
+
+    # 1. SECURITY FIX: Blacklist the ACCESS token (wichtigste Änderung!)
+    # Ohne dies bleibt der Access Token bis zu 15 Minuten gültig nach Logout
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            access_token = auth_header.split(" ")[1]
+            access_payload = await decode_token(access_token)
+            access_jti = access_payload.get("jti")
+            access_exp = access_payload.get("exp")
+
+            if access_jti and access_exp:
+                access_exp_datetime = datetime.fromtimestamp(access_exp, tz=tz.utc)
+                await blacklist_token(access_jti, access_exp_datetime)
+                access_token_blacklisted = True
+                logger.debug(
+                    "access_token_blacklisted",
+                    jti=access_jti[:8] + "...",
+                    user_id=str(current_user.id)[:8] + "..."
+                )
+
+        except Exception as e:
+            # Access token blacklist failed - log warning (security relevant)
+            logger.warning(
+                "access_token_blacklist_failed",
+                error_type=type(e).__name__,
+                user_id=str(current_user.id)[:8] + "..."
+            )
+
+    # 2. Revoke session in database
     try:
         from app.core.session_manager import get_session_manager
 
-        auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             payload = await decode_token(token)
@@ -428,12 +749,13 @@ async def logout(
             if current_jti:
                 session_manager = get_session_manager()
                 await session_manager.revoke_session_by_jti(db, current_jti)
+                session_revoked = True
 
     except Exception as e:
         # Session revocation failure should not block logout
-        logger.debug("session_revoke_skipped", error=str(e))
+        logger.debug("session_revoke_skipped", **safe_error_log(e))
 
-    # Blacklist refresh token if provided (async Redis-backed)
+    # 3. Blacklist refresh token if provided
     if logout_data.refresh_token:
         try:
             payload = await decode_token(logout_data.refresh_token)
@@ -441,18 +763,32 @@ async def logout(
             exp = payload.get("exp")
 
             if jti and exp:
-                # Convert exp timestamp to datetime (with timezone)
-                from datetime import timezone as tz
                 exp_datetime = datetime.fromtimestamp(exp, tz=tz.utc)
                 await blacklist_token(jti, exp_datetime)
+                refresh_token_blacklisted = True
+                logger.debug(
+                    "refresh_token_blacklisted",
+                    jti=jti[:8] + "...",
+                    user_id=str(current_user.id)[:8] + "..."
+                )
 
         except Exception as e:
             # Token already invalid or blacklist failed - log but continue logout
-            logger.debug("token_blacklist_skipped", error=str(e))
+            logger.debug("refresh_token_blacklist_skipped", **safe_error_log(e))
+
+    # Log logout summary
+    logger.info(
+        "user_logout_completed",
+        user_id=str(current_user.id)[:8] + "...",
+        username=current_user.username,
+        access_token_blacklisted=access_token_blacklisted,
+        refresh_token_blacklisted=refresh_token_blacklisted,
+        session_revoked=session_revoked
+    )
 
     return MessageResponse(
-        message="Erfolgreich abgemeldet",  # Successfully logged out
-        detail="Bitte melden Sie sich erneut an, um auf geschützte Ressourcen zuzugreifen"  # Please log in again to access protected resources
+        message="Erfolgreich abgemeldet",
+        detail="Alle Tokens wurden widerrufen. Bitte melden Sie sich erneut an."
     )
 
 
@@ -465,8 +801,9 @@ async def logout(
     description="Ruft Informationen über den aktuell angemeldeten Benutzer ab"
 )
 async def get_current_user_info(
-    current_user: User = Depends(get_current_active_user)
-) -> Any:
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> UserResponse:
     """
     Rufe Informationen über den aktuell angemeldeten Benutzer ab.
 
@@ -479,7 +816,40 @@ async def get_current_user_info(
 
     Gibt Benutzerdetails zurück (ohne Passwort).
     """
-    return UserResponse.model_validate(current_user)
+    # FAANG-AUDIT FIX (B6): Korrekte Rollenermittlung aus RBAC-System
+    # Prioritaet: is_superuser > RBAC-Rollen > Default "viewer"
+    role = "viewer"  # Default
+
+    if current_user.is_superuser:
+        role = "admin"
+    else:
+        # Hole echte Rollen aus dem RBAC-System
+        from app.services.permission_service import PermissionService
+        permission_service = PermissionService(db)
+        try:
+            user_roles = await permission_service.get_user_roles(current_user)
+            if user_roles:
+                # Sortiere nach Prioritaet (hoechste zuerst) und nehme die hoechste Rolle
+                sorted_roles = sorted(user_roles, key=lambda r: r.priority, reverse=True)
+                role = sorted_roles[0].name
+                logger.debug(
+                    "user_role_resolved",
+                    user_id=str(current_user.id),
+                    role=role,
+                    all_roles=[r.name for r in sorted_roles]
+                )
+        except Exception as e:
+            # Bei Fehler: Fallback auf "viewer" (sicherste Option)
+            logger.warning(
+                "rbac_role_fetch_failed",
+                user_id=str(current_user.id),
+                **safe_error_log(e),
+                fallback_role="viewer"
+            )
+
+    user_data = UserResponse.model_validate(current_user)
+    user_data.role = role
+    return user_data
 
 
 # ==================== Update User Profile ====================
@@ -494,7 +864,7 @@ async def update_profile(
     user_update: UserCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> UserResponse:
     """
     Aktualisiere das Profil des aktuell angemeldeten Benutzers.
 
@@ -536,11 +906,13 @@ async def update_profile(
     summary="Passwort ändern",
     description="Ändert das Passwort des aktuell angemeldeten Benutzers"
 )
+@limiter.limit("5/hour", key_func=get_ip_identifier)  # Z.7 SECURITY FIX: Rate Limit
 async def change_password(
+    request: Request,  # Z.7: Required for rate limiter
     password_data: UserCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> MessageResponse:
     """
     Ändere das Passwort des aktuell angemeldeten Benutzers.
 
@@ -586,11 +958,12 @@ async def change_password(
     summary="Passwort zurücksetzen anfordern",
     description="Sendet eine E-Mail mit Link zum Zurücksetzen des Passworts"
 )
+@limiter.limit(RateLimitTier.PASSWORD_RESET, key_func=get_ip_identifier)  # Z.7 SECURITY FIX: Rate Limit (3/hour)
 async def request_password_reset(
-    reset_request: "PasswordResetRequest",
-    request: Request,
+    request: Request,  # Z.7: Required for rate limiter (moved to first position)
+    reset_request: PasswordResetRequest,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> MessageResponse:
     """
     Fordere einen Link zum Zurücksetzen des Passworts an.
 
@@ -614,7 +987,7 @@ async def request_password_reset(
     try:
         notification_service = NotificationService()
     except Exception as e:
-        logger.warning("notification_service_unavailable", error=str(e))
+        logger.warning("notification_service_unavailable", **safe_error_log(e))
 
     success, message = await reset_service.request_password_reset(
         db=db,
@@ -636,14 +1009,14 @@ async def request_password_reset(
 
 @router.post(
     "/validate-reset-token",
-    response_model="PasswordResetResponse",
+    response_model=PasswordResetResponse,
     summary="Reset-Token validieren",
     description="Prüft ob ein Reset-Token gültig ist"
 )
 async def validate_reset_token(
-    validate_request: "PasswordResetValidate",
+    validate_request: PasswordResetValidate,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> PasswordResetResponse:
     """
     Validiere einen Password-Reset-Token.
 
@@ -652,7 +1025,6 @@ async def validate_reset_token(
     Nützlich für Frontends um zu prüfen, ob der Token noch gültig ist,
     bevor das Formular zum Setzen eines neuen Passworts angezeigt wird.
     """
-    from app.db.schemas import PasswordResetValidate, PasswordResetResponse
     from app.services.password_reset_service import get_password_reset_service
 
     reset_service = get_password_reset_service()
@@ -670,15 +1042,16 @@ async def validate_reset_token(
 
 @router.post(
     "/reset-password",
-    response_model="PasswordResetResponse",
+    response_model=PasswordResetResponse,
     summary="Passwort zurücksetzen",
     description="Setzt das Passwort mit einem gültigen Reset-Token zurück"
 )
+@limiter.limit(RateLimitTier.PASSWORD_RESET, key_func=get_ip_identifier)  # Z.7 SECURITY FIX: Rate Limit (3/hour)
 async def reset_password(
-    reset_data: "PasswordResetConfirm",
-    request: Request,
+    request: Request,  # Z.7: Required for rate limiter
+    reset_data: PasswordResetConfirm,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> PasswordResetResponse:
     """
     Setze das Passwort mit einem gültigen Reset-Token zurück.
 
@@ -694,7 +1067,6 @@ async def reset_password(
 
     Nach erfolgreichem Reset werden alle anderen Reset-Tokens invalidiert.
     """
-    from app.db.schemas import PasswordResetConfirm, PasswordResetResponse
     from app.services.password_reset_service import get_password_reset_service
 
     reset_service = get_password_reset_service()
@@ -742,7 +1114,7 @@ async def list_users(
     limit: int = 100,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> list[UserResponse]:
     """
     Liste alle Benutzer auf.
 
@@ -857,13 +1229,13 @@ async def initiate_2fa_setup(
         }
 
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_setup_encryption_failed", error=str(e), user_id=str(current_user.id)[:8])
+        logger.error("2fa_setup_encryption_failed", **safe_error_log(e), user_id=str(current_user.id)[:8])
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
         )
     except Exception as e:
-        logger.error("2fa_setup_failed", error=str(e), user_id=str(current_user.id)[:8])
+        logger.error("2fa_setup_failed", **safe_error_log(e), user_id=str(current_user.id)[:8])
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="2FA-Setup fehlgeschlagen. Bitte versuchen Sie es später erneut."
@@ -912,7 +1284,7 @@ async def verify_2fa_setup_endpoint(
                 detail="Ungültiger Code. Stellen Sie sicher, dass die Zeit auf Ihrem Gerät korrekt ist."
             )
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_verify_decryption_failed", error=str(e))
+        logger.error("2fa_verify_decryption_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
@@ -969,7 +1341,7 @@ async def disable_2fa(
             backup_codes=current_user.totp_backup_codes
         )
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_disable_decryption_failed", error=str(e))
+        logger.error("2fa_disable_decryption_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
@@ -1036,7 +1408,7 @@ async def regenerate_backup_codes(
                 detail="Ungültiger Code."
             )
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_regenerate_decryption_failed", error=str(e))
+        logger.error("2fa_regenerate_decryption_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
@@ -1269,8 +1641,11 @@ async def revoke_all_sessions(
                 token = auth_header.split(" ")[1]
                 payload = await decode_token(token)
                 current_jti = payload.get("jti")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "current_token_extraction_failed",
+                    error_type=type(e).__name__,
+                )
 
     count = await session_manager.revoke_all_sessions(
         db,
@@ -1302,14 +1677,14 @@ async def revoke_all_sessions(
 
 @router.get(
     "/email/verification-status",
-    response_model="EmailVerificationStatusResponse",
+    response_model=EmailVerificationStatusResponse,
     summary="Email-Verifizierungsstatus",
     description="Zeigt den aktuellen Verifizierungsstatus der Email-Adresse"
 )
 async def get_email_verification_status(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailVerificationStatusResponse:
     """
     Prüft den Email-Verifizierungsstatus des aktuellen Benutzers.
 
@@ -1331,7 +1706,7 @@ async def get_email_verification_status(
 
 @router.post(
     "/email/resend-verification",
-    response_model="EmailVerificationResponse",
+    response_model=EmailVerificationResponse,
     summary="Verifizierungs-Email erneut senden",
     description="Sendet die Verifizierungs-Email erneut an die aktuelle Adresse"
 )
@@ -1339,7 +1714,7 @@ async def resend_verification_email(
     request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailVerificationResponse:
     """
     Sendet die Verifizierungs-Email erneut.
 
@@ -1389,14 +1764,14 @@ async def resend_verification_email(
 
 @router.post(
     "/email/verify",
-    response_model="EmailVerifyResponse",
+    response_model=EmailVerifyResponse,
     summary="Email verifizieren",
     description="Verifiziert die Email-Adresse mit dem Token aus der Email"
 )
 async def verify_email(
-    verify_request: "EmailVerifyTokenRequest",
+    verify_request: EmailVerifyTokenRequest,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailVerifyResponse:
     """
     Verifiziert eine Email-Adresse mit dem Token.
 
@@ -1425,16 +1800,16 @@ async def verify_email(
 
 @router.post(
     "/email/change",
-    response_model="EmailChangeResponse",
+    response_model=EmailChangeResponse,
     summary="Email-Adresse ändern",
     description="Initiiert eine Email-Änderung (erfordert Verifizierung)"
 )
 async def request_email_change(
     request: Request,
-    change_request: "EmailChangeRequest",
+    change_request: EmailChangeRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailChangeResponse:
     """
     Fordert eine Email-Änderung an.
 
@@ -1448,6 +1823,7 @@ async def request_email_change(
     from app.services.email_verification_service import get_email_verification_service
     from app.services.user_service import UserService
     from app.core.exceptions import EmailVerificationError
+
 
     # Verifiziere Passwort
     authenticated = await UserService.authenticate_user(

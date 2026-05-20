@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\dirac.py
+# hypothesis_version: 6.148.7
+
+[1.0, '.', 'Dirac', 'Ids', 'Out', 'Updates', 'X', 'XShape', 'assign_value', 'bfloat16', 'cast', 'dirac', 'dtype', 'fill_constant', 'float16', 'float32', 'float64', 'in_dtype', 'out_dtype', 'overwrite', 'reshape2', 'scatter', 'scatter_index', 'scatter_value', 'shape', 'tmp', 'value', 'values']

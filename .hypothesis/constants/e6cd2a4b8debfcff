@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\hygiene.py
+# hypothesis_version: 6.148.7
+
+[500, ',', '/apply-correction', '/deactivate-entity', '/hygiene', '/issue-types', '/lexware-compare', '/scan', '/severity-levels', 'Adresse fehlt', 'Adresse geaendert', 'E-Mail fehlt', 'E-Mail geaendert', 'Hoch', 'IBAN fehlt', 'IBAN geaendert', 'IBAN ungueltig', 'Inaktiver Kunde', 'Inaktiver Lieferant', 'Information', 'Kritisch', 'Lexware-Aenderung', 'Mittel', 'Moegliches Duplikat', 'Niedrig', 'Telefon geaendert', 'USt-IdNr fehlt', 'USt-IdNr geaendert', '^(folie|messer)$', 'blue', 'color', 'customer', 'gray', 'iban', 'issue_types', 'issues', 'issues_found', 'label', 'orange', 'red', 'severity_levels', 'stammdaten-hygiene', 'value', 'vat_id', 'yellow']

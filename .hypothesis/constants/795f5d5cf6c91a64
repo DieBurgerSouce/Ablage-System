@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\Cython\Plex\Regexps.py
+# hypothesis_version: 6.148.7
+
+['%s(%s)', ',', 'A', 'Alt(%s)', 'Any(%s)', 'AnyBut(%s)', 'AnyChar', 'Bol', 'Case', 'Char(%s)', 'CodeRange(%d,%d)', 'Empty', 'Eof', 'Eol', 'NoCase', 'Opt(%s)', 'Plex.RE instance', 'Range(%s)', 'Range(%s,%s)', 'Rep(%s)', 'Rep1(%s)', 'Seq(%s)', 'Str(%s)', 'Z', 'a', 'bol', 'eof', 'eol', 'string', 'z']

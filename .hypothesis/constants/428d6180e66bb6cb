@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\__init__.py
+# hypothesis_version: 6.148.7
+
+['1.0.0', 'Ablage-System Team', 'CachedDecision', 'ClassificationResult', 'CompressedContext', 'CompressionLevel', 'ContentType', 'ContextCompressor', 'DecisionCache', 'DisplayMode', 'LearningFeedback', 'MetricsSnapshot', 'ModelTier', 'OrchestrationMetrics', 'OrchestrationResult', 'Orchestrator', 'OverrideMode', 'PatternStatistics', 'QualityGate', 'QualityLevel', 'QualityResult', 'TaskClassifier', 'TaskExecution', 'TokenCounter', 'UserFeedback', 'ValidationError']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\insolvency_warning_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.005, 0.5, 0.7, 1.0, 1.3, 1.5, 100, 180, 365, '0', '0.0', '0.1', '0.3', '0.4', '0.6', '0.7', '1', '1.0', 'active', 'address_change', 'bundesanzeiger', 'capital_reduction', 'check_time', 'creditreform', 'critical', 'data', 'decline_percent', 'dispute_rate_high', 'dissolved', 'handelsregister', 'high', 'increase_percent', 'info', 'insolvency_filed', 'insolvency_filing', 'insolvency_opened', 'insolvency_opening', 'internal', 'invoice_ids', 'liquidation', 'liquidation_start', 'low', 'management_change', 'medium', 'name', 'negative_equity', 'no_insolvency_found', 'older_avg_delay', 'older_volume', 'open', 'overdue', 'overdue_count', 'paid', 'payment_default', 'recent_avg_delay', 'recent_volume', 'schufa_b2b', 'signals', 'total_overdue_amount', 'warning', 'watch']

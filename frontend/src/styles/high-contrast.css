@@ -1,0 +1,296 @@
+/**
+ * High Contrast Mode Styles
+ *
+ * WCAG 2.1 AA High Contrast Support
+ * Activated via prefers-contrast: more media query
+ */
+
+/* High Contrast Mode (forced-colors) */
+@media (forced-colors: active) {
+  /* Ensure buttons are visible */
+  .btn,
+  button,
+  [role="button"] {
+    border: 2px solid ButtonText !important;
+  }
+
+  /* Ensure focus is visible */
+  :focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Ensure links are visible */
+  a {
+    text-decoration: underline !important;
+  }
+
+  /* Ensure form controls are visible */
+  input,
+  textarea,
+  select {
+    border: 2px solid ButtonText !important;
+  }
+
+  /* Ensure disabled states are clear */
+  [disabled],
+  [aria-disabled="true"] {
+    opacity: 0.5 !important;
+    border-style: dashed !important;
+  }
+
+  /* Icons in high contrast */
+  svg {
+    fill: currentColor !important;
+    stroke: currentColor !important;
+  }
+}
+
+/* User preference for more contrast */
+@media (prefers-contrast: more) {
+  :root {
+    /* Increase contrast for text */
+    --foreground: 0 0% 0%;
+    --background: 0 0% 100%;
+    --muted-foreground: 0 0% 30%;
+
+    /* Stronger borders */
+    --border: 0 0% 40%;
+
+    /* More visible focus rings */
+    --ring: 220 100% 50%;
+  }
+
+  .dark {
+    --foreground: 0 0% 100%;
+    --background: 0 0% 0%;
+    --muted-foreground: 0 0% 70%;
+    --border: 0 0% 60%;
+  }
+
+  /* Increase text contrast */
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  /* Stronger shadows for better depth perception */
+  .shadow-sm {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3) !important;
+  }
+
+  .shadow {
+    box-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3) !important;
+  }
+
+  .shadow-md {
+    box-shadow: 0 4px 12px -1px rgb(0 0 0 / 0.3), 0 2px 6px -2px rgb(0 0 0 / 0.3) !important;
+  }
+
+  /* Ensure badges are readable */
+  .badge,
+  [data-state="active"] {
+    border-width: 2px !important;
+  }
+
+  /* Ensure focus states are very visible */
+  :focus-visible {
+    outline-width: 3px !important;
+    outline-offset: 3px !important;
+  }
+
+  /* Increase minimum touch target size */
+  button,
+  [role="button"],
+  a,
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Exception for inline links */
+  p a,
+  span a,
+  li a {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+/* Manual high-contrast toggle (via AccessibilityProvider) */
+:root.high-contrast {
+  /* Maximum contrast colors */
+  --foreground: 0 0% 0%;
+  --background: 0 0% 100%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 20%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 0%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 0%;
+  --primary: 220 100% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 0 0% 0%;
+  --accent: 220 100% 95%;
+  --accent-foreground: 0 0% 0%;
+  --destructive: 0 100% 40%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 30%;
+  --input: 0 0% 30%;
+  --ring: 220 100% 50%;
+}
+
+:root.high-contrast.dark {
+  --foreground: 0 0% 100%;
+  --background: 0 0% 0%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 80%;
+  --card: 0 0% 5%;
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 5%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 220 100% 60%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 220 100% 15%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 100% 60%;
+  --destructive-foreground: 0 0% 0%;
+  --border: 0 0% 70%;
+  --input: 0 0% 70%;
+  --ring: 220 100% 60%;
+}
+
+.high-contrast {
+  /* Stronger text rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.high-contrast .text-muted-foreground {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.high-contrast .shadow-sm,
+.high-contrast .shadow,
+.high-contrast .shadow-md,
+.high-contrast .shadow-lg {
+  box-shadow: 0 0 0 2px hsl(var(--border)) !important;
+}
+
+.high-contrast .border,
+.high-contrast [class*="border-"] {
+  border-width: 2px !important;
+}
+
+.high-contrast button,
+.high-contrast [role="button"],
+.high-contrast input,
+.high-contrast textarea,
+.high-contrast select {
+  border: 2px solid hsl(var(--border)) !important;
+}
+
+.high-contrast :focus-visible {
+  outline: 3px solid hsl(var(--ring)) !important;
+  outline-offset: 3px !important;
+}
+
+.high-contrast a:not(.btn):not([role="button"]) {
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}
+
+.high-contrast .badge {
+  border: 2px solid currentColor !important;
+}
+
+/* Reduced transparency for users who prefer less motion/transparency */
+@media (prefers-reduced-transparency: reduce) {
+  .bg-background\/80,
+  .bg-background\/90,
+  .bg-background\/95 {
+    background-color: hsl(var(--background)) !important;
+  }
+
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg {
+    backdrop-filter: none !important;
+  }
+}
+
+/* Focus visible improvements for all modes */
+:focus-visible {
+  outline-color: hsl(var(--ring));
+  outline-style: solid;
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+/* Ensure disabled states are perceivable */
+[disabled],
+[aria-disabled="true"],
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Make sure placeholder text has enough contrast */
+::placeholder {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.8;
+}
+
+/* Selection highlighting */
+::selection {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Manual reduced motion toggle (via AccessibilityProvider) */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Print styles for accessibility */
+@media print {
+  /* Ensure links are visible when printed */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+  }
+
+  /* Don't print internal links */
+  a[href^="#"]:after,
+  a[href^="javascript:"]:after {
+    content: "";
+  }
+
+  /* Ensure text is black on white */
+  * {
+    color: black !important;
+    background: white !important;
+  }
+}

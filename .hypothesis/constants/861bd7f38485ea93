@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pandas\_config\dates.py
+# hypothesis_version: 6.148.7
+
+['date_dayfirst', 'date_yearfirst', 'display']

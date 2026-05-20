@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\maskers\_output_composite.py
+# hypothesis_version: 6.148.7
+
+['clustering', 'data_transform', 'feature_names', 'image_data', 'invariants', 'mask_shapes', 'masker', 'model', 'shape', 'text_data']

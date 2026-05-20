@@ -279,19 +279,46 @@ class TestOCRCacheService:
         assert "deepseek" in key
         assert "de" in key
 
-    def test_hash_options(self, cache_service):
-        """Test options hashing for consistency."""
-        opts1 = {"quality": "high", "deskew": True}
-        opts2 = {"deskew": True, "quality": "high"}  # Same, different order
+    def test_make_cache_key_includes_model_version(self, cache_service):
+        """Test cache key includes model version for cache invalidation on updates."""
+        # SECURITY FIX: Model-Version muss im Key sein
+        key_deepseek = cache_service._make_cache_key(
+            file_hash="abc123",
+            backend="deepseek",
+            language="de"
+        )
+        key_got_ocr = cache_service._make_cache_key(
+            file_hash="abc123",
+            backend="got_ocr",
+            language="de"
+        )
 
-        hash1 = cache_service._hash_options(opts1)
-        hash2 = cache_service._hash_options(opts2)
+        # Verify model versions are in keys
+        assert ":v1.0:" in key_deepseek  # deepseek v1.0
+        assert ":v2.0:" in key_got_ocr   # got_ocr v2.0
 
-        assert hash1 == hash2  # Should be same (sorted keys)
+        # Keys fuer gleichen file_hash aber unterschiedliche Backends muessen unterschiedlich sein
+        assert key_deepseek != key_got_ocr
 
-        # Empty options
-        assert cache_service._hash_options(None) == ""
-        assert cache_service._hash_options({}) == ""
+        # Key-Format: {prefix}:{file_hash}:{backend}:{model_version}:{language}
+        # Prefix ist "ocr_cache:" daher split ergibt: ["ocr_cache", "", "abc123", ...]
+        key_parts = key_deepseek.split(":")
+        assert key_parts[0] == "ocr_cache"
+        # key_parts[1] ist leer weil prefix mit : endet
+        assert key_parts[2] == "abc123"
+        assert key_parts[3] == "deepseek"
+        assert key_parts[4] == "v1.0"
+        assert key_parts[5] == "de"
+
+    def test_make_cache_key_unknown_backend_uses_default_version(self, cache_service):
+        """Unknown backend uses default version v0."""
+        key = cache_service._make_cache_key(
+            file_hash="abc123",
+            backend="unknown_backend",
+            language="de"
+        )
+
+        assert ":v0:" in key  # Default version for unknown backends
 
     @pytest.mark.asyncio
     async def test_l1_cache_hit(self, cache_service, sample_content, sample_ocr_result):
@@ -588,3 +615,371 @@ class TestTTLCacheStress:
         # Most recent items should be present
         assert cache.get("key_19") == "value_19"
         assert cache.get("key_18") == "value_18"
+
+
+# =============================================================================
+# Additional Edge Case Tests - P1-2 Erweiterungen
+# =============================================================================
+
+class TestCacheTimeoutHandling:
+    """Tests fuer Redis Timeout-Verhalten."""
+
+    @pytest.fixture
+    def timeout_redis(self):
+        """Mock Redis that times out."""
+        redis = AsyncMock()
+        redis.get = AsyncMock(side_effect=asyncio.TimeoutError())
+        redis.set = AsyncMock()
+        return redis
+
+    @pytest.mark.asyncio
+    async def test_redis_timeout_returns_none(self, timeout_redis):
+        """Redis Timeout gibt None zurueck statt Exception."""
+        service = OCRCacheService(redis_client=timeout_redis)
+
+        result = await service.get_cached_result(
+            content=b"test content",
+            backend="deepseek",
+            language="de"
+        )
+
+        # Sollte None zurueckgeben, nicht Exception werfen
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_redis_timeout_records_miss(self, timeout_redis):
+        """Redis Timeout wird als Miss gezaehlt."""
+        service = OCRCacheService(redis_client=timeout_redis)
+
+        await service.get_cached_result(
+            content=b"test content",
+            backend="deepseek",
+            language="de"
+        )
+
+        assert service._backend_stats["deepseek"]["misses"] == 1
+
+    @pytest.mark.asyncio
+    async def test_redis_connection_error_graceful(self):
+        """Redis Connection Error wird graceful behandelt."""
+        redis = AsyncMock()
+        redis.get = AsyncMock(side_effect=ConnectionError("Redis not available"))
+        service = OCRCacheService(redis_client=redis)
+
+        result = await service.get_cached_result(
+            content=b"test",
+            backend="deepseek",
+            language="de"
+        )
+
+        assert result is None
+
+
+class TestCacheMetricsAccuracy:
+    """Tests fuer Cache-Metriken Genauigkeit."""
+
+    @pytest.fixture
+    def cache_service_no_redis(self):
+        """OCRCacheService ohne Redis."""
+        return OCRCacheService(redis_client=None, l1_maxsize=100)
+
+    @pytest.mark.asyncio
+    async def test_hit_rate_calculation_accuracy(self, cache_service_no_redis):
+        """Hit-Rate wird korrekt berechnet."""
+        service = cache_service_no_redis
+        content = b"test document"
+        result = {"text": "result"}
+
+        # Cache fuellen
+        await service.cache_result(content, "deepseek", result)
+
+        # 3 Hits
+        for _ in range(3):
+            await service.get_cached_result(content, "deepseek")
+
+        # 2 Misses (anderer Content)
+        for i in range(2):
+            await service.get_cached_result(f"miss_{i}".encode(), "deepseek")
+
+        stats = await service.get_stats()
+
+        # 3 hits, 2 misses = 60% hit rate
+        assert stats["per_backend"]["deepseek"]["l1_hits"] == 3
+        assert stats["per_backend"]["deepseek"]["misses"] == 2
+        assert stats["per_backend"]["deepseek"]["hit_rate_percent"] == 60.0
+
+    @pytest.mark.asyncio
+    async def test_multi_backend_stats_isolation(self, cache_service_no_redis):
+        """Stats pro Backend sind isoliert."""
+        service = cache_service_no_redis
+
+        # DeepSeek: 2 hits, 1 miss
+        await service.cache_result(b"doc1", "deepseek", {"text": "r1"})
+        await service.get_cached_result(b"doc1", "deepseek")  # Hit
+        await service.get_cached_result(b"doc1", "deepseek")  # Hit
+        await service.get_cached_result(b"miss", "deepseek")  # Miss
+
+        # GOT-OCR: 1 hit, 3 misses
+        await service.cache_result(b"doc2", "got_ocr", {"text": "r2"})
+        await service.get_cached_result(b"doc2", "got_ocr")   # Hit
+        await service.get_cached_result(b"m1", "got_ocr")     # Miss
+        await service.get_cached_result(b"m2", "got_ocr")     # Miss
+        await service.get_cached_result(b"m3", "got_ocr")     # Miss
+
+        stats = await service.get_stats()
+
+        # DeepSeek: 66.67% hit rate
+        assert stats["per_backend"]["deepseek"]["l1_hits"] == 2
+        assert stats["per_backend"]["deepseek"]["misses"] == 1
+
+        # GOT-OCR: 25% hit rate
+        assert stats["per_backend"]["got_ocr"]["l1_hits"] == 1
+        assert stats["per_backend"]["got_ocr"]["misses"] == 3
+
+
+class TestCacheInvalidationPatterns:
+    """Tests fuer Cache-Invalidierungs-Patterns."""
+
+    @pytest.fixture
+    def cache_service(self):
+        """OCRCacheService ohne Redis."""
+        service = OCRCacheService(redis_client=None, l1_maxsize=100)
+        # Disable lazy Redis loading to ensure pure L1 cache tests
+        service._redis = None
+        return service
+
+    @pytest.mark.asyncio
+    async def test_invalidate_all_backends_for_content(self, cache_service):
+        """Invalidiere alle Backends fuer einen Content."""
+        content = b"test document for invalidation"
+
+        # Mock _get_redis to return None (no Redis available)
+        with patch.object(cache_service, '_get_redis', return_value=None):
+            # Cache fuer mehrere Backends
+            await cache_service.cache_result(content, "deepseek", {"text": "ds"}, language="de")
+            await cache_service.cache_result(content, "got_ocr", {"text": "got"}, language="de")
+            await cache_service.cache_result(content, "surya", {"text": "surya"}, language="de")
+
+            # Invalidiere alle Backends fuer diesen Content einzeln
+            # (ohne backend/language loescht nur L1 mit exact file_hash prefix scan)
+            await cache_service.invalidate(content, backend="deepseek", language="de")
+            await cache_service.invalidate(content, backend="got_ocr", language="de")
+            await cache_service.invalidate(content, backend="surya", language="de")
+
+            # Alle sollten weg sein
+            assert await cache_service.get_cached_result(content, "deepseek") is None
+            assert await cache_service.get_cached_result(content, "got_ocr") is None
+            assert await cache_service.get_cached_result(content, "surya") is None
+
+    @pytest.mark.asyncio
+    async def test_invalidate_preserves_other_content(self, cache_service):
+        """Invalidierung behaelt anderen Content."""
+        content1 = b"document 1 for test"
+        content2 = b"document 2 for test"
+        result = {"text": "result"}
+
+        # Mock _get_redis to return None (no Redis available)
+        with patch.object(cache_service, '_get_redis', return_value=None):
+            await cache_service.cache_result(content1, "deepseek", result)
+            await cache_service.cache_result(content2, "deepseek", result)
+
+            # Invalidiere nur content1
+            await cache_service.invalidate(content1, backend="deepseek", language="de")
+
+            # content2 sollte noch da sein
+            assert await cache_service.get_cached_result(content1, "deepseek") is None
+            assert await cache_service.get_cached_result(content2, "deepseek") == result
+
+
+class TestCacheUnicodeHandling:
+    """Tests fuer Unicode und deutsche Zeichen im Cache."""
+
+    @pytest.fixture
+    def cache_service(self):
+        """OCRCacheService ohne Redis."""
+        return OCRCacheService(redis_client=None, l1_maxsize=100)
+
+    @pytest.mark.asyncio
+    async def test_german_umlauts_in_result(self, cache_service):
+        """Deutsche Umlaute werden korrekt gecacht."""
+        content = b"test"
+        result = {
+            "text": "Größe der Fläche: 100m² äöü ß",
+            "entities": [
+                {"type": "MEASURE", "value": "Größe"},
+                {"type": "LOCATION", "value": "München"}
+            ]
+        }
+
+        await cache_service.cache_result(content, "deepseek", result)
+        cached = await cache_service.get_cached_result(content, "deepseek")
+
+        assert cached["text"] == "Größe der Fläche: 100m² äöü ß"
+        assert cached["entities"][1]["value"] == "München"
+
+    @pytest.mark.asyncio
+    async def test_unicode_content_hash_consistency(self, cache_service):
+        """Unicode Content wird konsistent gehasht."""
+        content = "Größe äöü ß".encode("utf-8")
+
+        hash1 = cache_service._compute_file_hash(content)
+        hash2 = cache_service._compute_file_hash(content)
+
+        assert hash1 == hash2
+
+    @pytest.mark.asyncio
+    async def test_fraktur_characters(self, cache_service):
+        """Fraktur-Schriftzeichen werden korrekt behandelt."""
+        content = b"fraktur test"
+        result = {
+            "text": "ſ (langes s) und ß werden unterschieden",
+            "confidence": 0.85
+        }
+
+        await cache_service.cache_result(content, "deepseek", result)
+        cached = await cache_service.get_cached_result(content, "deepseek")
+
+        assert "ſ" in cached["text"]
+
+
+class TestCacheConcurrentModification:
+    """Tests fuer gleichzeitige Cache-Modifikationen."""
+
+    @pytest.mark.asyncio
+    async def test_concurrent_cache_and_invalidate(self):
+        """Gleichzeitiges Cachen und Invalidieren."""
+        service = OCRCacheService(redis_client=None, l1_maxsize=100)
+        content = b"concurrent test"
+        result = {"text": "result"}
+
+        async def cache_repeatedly():
+            for _ in range(50):
+                await service.cache_result(content, "deepseek", result)
+                await asyncio.sleep(0.001)
+
+        async def invalidate_repeatedly():
+            for _ in range(50):
+                await service.invalidate(content, backend="deepseek", language="de")
+                await asyncio.sleep(0.001)
+
+        # Gleichzeitig ausfuehren
+        await asyncio.gather(
+            cache_repeatedly(),
+            invalidate_repeatedly()
+        )
+
+        # Sollte ohne Errors durchlaufen
+
+    @pytest.mark.asyncio
+    async def test_concurrent_reads_during_write(self):
+        """Gleichzeitige Lesezugriffe waehrend Schreibvorgang."""
+        service = OCRCacheService(redis_client=None, l1_maxsize=100)
+        content = b"concurrent read/write"
+        result = {"text": "result"}
+
+        # Erst cachen
+        await service.cache_result(content, "deepseek", result)
+
+        async def read_repeatedly():
+            for _ in range(100):
+                await service.get_cached_result(content, "deepseek")
+
+        async def write_new():
+            for i in range(50):
+                await service.cache_result(f"new_{i}".encode(), "deepseek", result)
+
+        await asyncio.gather(
+            read_repeatedly(),
+            write_new()
+        )
+
+
+class TestCacheCustomTTL:
+    """Tests fuer benutzerdefinierte TTL-Werte."""
+
+    @pytest.fixture
+    def mock_redis(self):
+        """Mock Redis Client."""
+        redis = AsyncMock()
+        redis.get = AsyncMock(return_value=None)
+        redis.set = AsyncMock()
+        return redis
+
+    @pytest.mark.asyncio
+    async def test_custom_ttl_passed_to_redis(self, mock_redis):
+        """Benutzerdefinierter TTL wird an Redis uebergeben."""
+        service = OCRCacheService(redis_client=mock_redis)
+
+        await service.cache_result(
+            content=b"test",
+            backend="deepseek",
+            result={"text": "result"},
+            ttl=7200  # 2 Stunden
+        )
+
+        # Verify Redis was called with correct TTL
+        call_args = mock_redis.set.call_args
+        assert call_args.kwargs.get("ex") == 7200 or call_args[1].get("ex") == 7200
+
+    @pytest.mark.asyncio
+    async def test_default_ttl_used_when_not_specified(self, mock_redis):
+        """Standard-TTL wird verwendet wenn nicht angegeben."""
+        service = OCRCacheService(redis_client=mock_redis, l2_ttl=86400)
+
+        await service.cache_result(
+            content=b"test",
+            backend="deepseek",
+            result={"text": "result"}
+        )
+
+        # Verify Redis was called with default TTL
+        call_args = mock_redis.set.call_args
+        assert call_args.kwargs.get("ex") == 86400 or call_args[1].get("ex") == 86400
+
+
+class TestCacheStatsClearance:
+    """Tests fuer Zuruecksetzen von Cache-Statistiken."""
+
+    @pytest.fixture
+    def cache_service(self):
+        """OCRCacheService ohne Redis."""
+        return OCRCacheService(redis_client=None, l1_maxsize=100)
+
+    @pytest.mark.asyncio
+    async def test_clear_stats_resets_all_backends(self, cache_service):
+        """clear_stats setzt alle Backend-Stats zurueck."""
+        # Generiere einige Stats
+        content = b"test"
+        result = {"text": "result"}
+
+        await cache_service.cache_result(content, "deepseek", result)
+        await cache_service.get_cached_result(content, "deepseek")
+        await cache_service.get_cached_result(b"miss", "got_ocr")
+
+        # Stats sollten vorhanden sein
+        assert len(cache_service._backend_stats) > 0
+
+        # Stats zuruecksetzen
+        await cache_service.clear_stats()
+
+        # Stats sollten leer sein
+        assert len(cache_service._backend_stats) == 0
+
+    @pytest.mark.asyncio
+    async def test_stats_accumulate_after_clear(self, cache_service):
+        """Stats sammeln sich nach Clear wieder an."""
+        content = b"test"
+        result = {"text": "result"}
+
+        # Cache und Stats generieren
+        await cache_service.cache_result(content, "deepseek", result)
+        await cache_service.get_cached_result(content, "deepseek")
+
+        # Clear
+        await cache_service.clear_stats()
+
+        # Neue Stats generieren
+        await cache_service.get_cached_result(content, "deepseek")
+
+        stats = await cache_service.get_stats()
+        assert stats["per_backend"]["deepseek"]["l1_hits"] == 1

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\partial_program.py
+# hypothesis_version: 6.148.7
+
+['@GRAD', '@dy2static', 'O1', 'Out', 'X', 'amp', 'backend', 'bfloat16', 'bool', 'build_strategy', 'cuda_graph', 'cuda_graph_pool_id', 'float16', 'for_partial_block', 'forward_global_block', 'fp16', 'fp32', 'in_pir_pt_mode', 'infer', 'is_test', 'list[str]', 'lr_scheduler', 'lr_var', 'mem_opt_skip_vars', 'must be LRScheduler', 'out', 'out_grad_names', 'param', 'param_grad_names', 'program_id', 'skip_gc_vars', 'sum', 'targets', 'use_cuda', 'x', 'x_grad_names', 'x_names']

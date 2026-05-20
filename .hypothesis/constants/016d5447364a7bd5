@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_c_embedding.py
+# hypothesis_version: 6.148.7
+
+['.', 'cast', 'concrete_program', 'mp_degree', 'parameter_name', 'pd_op.embedding', 'pd_op.full', 'reshard']

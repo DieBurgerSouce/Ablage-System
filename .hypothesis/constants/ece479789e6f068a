@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\masked_multihead_attention.py
+# hypothesis_version: 6.148.7
+
+[-127.0, 127.0, 'beam_cache_offset', 'bf16', 'bias', 'cache_kv', 'cache_kv_out', 'compute_dtype', 'cum_offsets', 'default', 'float16', 'float32', 'fp16', 'fp32', 'int', 'int32', 'out', 'out_scale', 'out_shift', 'out_smooth', 'qkv_out_scale', 'quant_max_bound', 'quant_min_bound', 'quant_round_type', 'rotary_emb_dims', 'rotary_tensor', 'seq_len', 'sequence_lengths', 'src_mask', 'uint16', 'x']

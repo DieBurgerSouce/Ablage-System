@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\transformers\call_transformer.py
+# hypothesis_version: 6.148.7
+
+['enumerate', 'len', 'pdb.set_trace', 'print', 'range', 'zip']

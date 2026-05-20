@@ -64,9 +64,10 @@ variable "private_subnet_cidr" {
 }
 
 variable "allowed_ssh_cidrs" {
-  description = "CIDR blocks allowed to SSH"
+  description = "CIDR blocks allowed to SSH - SECURITY: Restrict to your IP range!"
   type        = list(string)
-  default     = ["0.0.0.0/0"]  # Change in production!
+  # SECURITY FIX: No default - must be explicitly set to prevent open SSH
+  # Example: ["10.0.0.0/8"] for internal network or ["YOUR.IP.ADDRESS/32"] for single IP
 }
 
 # ============================================

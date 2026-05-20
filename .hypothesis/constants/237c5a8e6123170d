@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\predictor.py
+# hypothesis_version: 6.148.7
+
+['Model not loaded', 'constant', 'cpu', 'cuda', 'foundation_predictor', 'model', 'mps']

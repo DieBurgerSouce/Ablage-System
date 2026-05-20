@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\prometheus_middleware.py
+# hypothesis_version: 6.148.7
+
+[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 100, 400, 500, 1000, 10000, 100000, 1000000, 10000000, '/\\d+(?=/|$)', '/docs', '/health', '/metrics', '/metrics/prometheus', '/openapi.json', '/{id}', 'HTTP Fehler nach Typ', 'app', 'content-length', 'endpoint', 'error_type', 'method', 'routes', 'status_code', '{id}']

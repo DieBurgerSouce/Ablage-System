@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\rocm\compile_command.py
+# hypothesis_version: 6.148.7
+
+['--save-temps=obj', '-DDEBUG_LOG=1', '-c', '-fPIC', '-ffast-math', '-fno-gpu-rdc', '-fvisibility=hidden', '-g', '-lamdhip64', '-lpthread', '-lstdc++', '-mllvm', '-shared', '-std=c++17', '-x', 'bin', 'clang', 'composable_kernel', 'exe', 'hip', 'include', 'lib', 'library', 'llvm', 'native', 'o', 'so', 'src', 'utility']

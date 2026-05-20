@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\connection.py
+# hypothesis_version: 6.148.7
+
+[b' ', b', ', 65535, 131072, '/', 'AMQPLAIN', 'BlB', 'BsBB', 'Connection', 'EXTERNAL', 'FsSs', 'GSSAPI', 'H', 'Invalid login method', 'PLAIN', 'Use AMQP heartbeats', 'amqp', 'capabilities', 'connection.blocked', 'en_US', 'frame_writer', 'guest', 'localhost:5672', 'on_inbound_frame', 'ooFSS', 'product', 'product_version', 'py-amqp', 's', 'ssb', 'transport', 'utf-8']

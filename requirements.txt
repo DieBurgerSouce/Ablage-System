@@ -1,4 +1,4 @@
-# Ablage-System OCR - Core Dependencies
+    # Ablage-System OCR - Core Dependencies
 # Python 3.11+ required
 
 # Core Framework
@@ -7,11 +7,14 @@ uvicorn[standard]==0.27.0
 python-multipart==0.0.9
 
 # GPU/ML Processing
-torch==2.1.2+cu121  # CUDA 12.1 for RTX 4080
-torchvision==0.16.2+cu121
-transformers==4.36.2
-accelerate==0.25.0
-sentence-transformers==2.2.2  # For multilingual-e5-large embeddings
+# NOTE: torch and torchvision are installed separately in Dockerfile with --index-url
+# to get CUDA-enabled builds. Do NOT add them here or the build will fail.
+# torch==2.1.2+cu121 -> installed in Dockerfile
+# torchvision==0.16.2+cu121 -> installed in Dockerfile
+transformers>=4.45.0  # Qwen2.5-VL support requires >=4.45.0 (upgraded from 4.41.0)
+accelerate>=0.25.0  # Relaxed version for newer transformers compatibility
+qwen-vl-utils>=0.0.2  # Qwen VL image processing utilities
+sentence-transformers>=2.2.2  # For multilingual-e5-large embeddings
 
 # Database & ORM
 sqlalchemy==2.0.25
@@ -21,6 +24,7 @@ pgvector==0.2.4  # PostgreSQL vector extension for semantic search
 
 # Task Queue
 celery==5.3.4
+celery-redbeat==2.2.0  # Redis-backed distributed Beat scheduler (HA)
 redis==5.0.1
 flower==2.0.1  # Celery monitoring tool
 kombu==5.3.4  # Celery messaging library
@@ -30,26 +34,36 @@ slowapi==0.1.9  # Rate limiting for FastAPI
 limits==3.6.0  # Rate limiting library used by SlowAPI
 
 # Data Validation
-pydantic==2.5.3
-pydantic-settings==2.1.0
+pydantic>=2.7.0,<3.0.0  # Updated for pydantic-settings compatibility
+pydantic-settings>=2.3.0  # docling 2.20.0 requires >=2.3.0
+email-validator>=2.0.0  # Required for pydantic email validation
 
 # Storage
 minio==7.2.3
 pillow==10.2.0
+imagehash>=4.3.1  # Perceptual hashing for visual duplicate detection
 
 # OCR Backends
-surya-ocr==0.4.0  # CPU-based OCR, no GPU required
-pypdfium2==4.25.0  # PDF processing for Surya
-docling==1.0.7  # Document structure extraction
+surya-ocr>=0.17.0  # CPU-based OCR, no GPU required - 0.17.0 required for new API (DetectionPredictor, RecognitionPredictor)
+pypdfium2>=4.30.0  # PDF processing for Surya and Docling (docling requires >=4.30.0)
+docling>=2.20.0  # Document structure extraction (requires Python 3.11+), pinned for faster builds
 pytesseract==0.3.10  # Python wrapper for Tesseract (fallback)
+paddlepaddle>=2.6.0  # PaddlePaddle ML framework (CPU)
+paddleocr>=3.3.2  # PaddleOCR 3.3.2 - Latest stable (released 2025-11-13), CPU-optimiert, 106 Sprachen
+python-doctr[torch]>=0.8.0  # docTR - CPU-optimiert, deutsches Modell (Mindee)
 
 # Model quantization for large models (DeepSeek, GOT)
-bitsandbytes==0.41.3  # 4-bit and 8-bit quantization
+bitsandbytes>=0.43.0  # 4-bit and 8-bit quantization (>=0.43 für CUDA 12.x)
 # Note: GOT-OCR and DeepSeek models are loaded via transformers/HuggingFace
 
 # German Text Processing
-spacy==3.7.2
+spacy>=3.8.0  # Updated to resolve typer conflict with docling
 # Run after install: python -m spacy download de_core_news_sm
+symspellpy>=6.7.0  # German spellchecking for OCR correction
+hunspell>=0.5.5  # Hunspell dictionary support for German spellchecking
+
+# Translation (Multi-language OCR Support)
+argostranslate>=1.9.1  # Offline translation for non-German documents
 
 # Testing
 pytest==7.4.4
@@ -63,11 +77,20 @@ rich==13.7.0
 
 # Monitoring & Logging
 psutil==5.9.7
+pynvml==11.5.0  # NVIDIA GPU monitoring (optional, graceful degradation if unavailable)
 prometheus-client==0.19.0
 structlog==24.1.0
 
 # Authentication & Security
-python-jose[cryptography]==3.3.0
+# Sprint 0 / G02 (2026-05-04): python-jose entfernt (CVE-2024-33664 algorithm confusion).
+# Migration zu PyJWT abgeschlossen in: app/core/security_auth.py, app/api/v1/{auth,exports,tasks}.py,
+# app/api/v1/rag/chat_ws.py, app/services/auth/sso/oidc_service.py.
+# python-jose[cryptography]==3.3.0  # REMOVED
+PyJWT[crypto]>=2.8.0  # JWT inkl. RSA/EC-Algorithms (statt python-jose)
+
+# Sprint 0 / G10 (2026-05-04): Sentry-SDK ins Hauptbackend gezogen (war nur in
+# infrastructure/sentry/requirements.txt - daher ModuleNotFoundError beim Startup).
+sentry-sdk[fastapi,sqlalchemy,celery,redis]==1.40.6
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
 bcrypt==4.1.2
@@ -78,17 +101,58 @@ python-magic==0.4.27; sys_platform != "win32"  # Linux/Mac: requires system libm
 pyotp==2.9.0  # TOTP/HOTP for 2FA (RFC 6238)
 qrcode[pil]==7.4.2  # QR-Code generation for Authenticator Apps
 
+# Email Services
+aiosmtplib>=3.0.0  # Async SMTP client for email sending
+aiohttp>=3.9.0  # Async HTTP client for Peppol/external integrations
+
 # Utilities
 python-dotenv==1.0.0
-pyyaml==6.0.1
+pyyaml==6.0.2
 cachetools==5.3.2  # TTL-based caching for token blacklist
 user-agents==2.2.0  # User-Agent parsing for session management
+orjson==3.10.12  # Fast JSON serialization (10-15% faster than stdlib json)
+isodate>=0.6.1  # ISO 8601 date/duration parsing for BPMN timers
 
 # PDF Export
-reportlab==4.0.9  # PDF generation for document export
+reportlab[rlPyCairo]==4.0.9  # PDF generation for document export (rlPyCairo fuer renderPM)
+
+# E-Invoicing (ZUGFeRD / XRechnung)
+factur-x>=3.0.0  # ZUGFeRD 2.x / Factur-X PDF generation and parsing
+lxml>=4.9.0  # XML processing for e-invoices
+defusedxml>=0.7.1  # SECURITY: Safe XML parsing to prevent XXE attacks (CWE-611)
+
+# Spreadsheet Export
+openpyxl>=3.1.5  # Excel (.xlsx) export for extracted data
+
+# RAG Intelligence Layer
+tiktoken>=0.5.0  # Token counting for LLM chunking
+python-docx>=1.1.0  # Word document generation for reports
+
+# Vector Search Stack (Parallel zu pgvector)
+qdrant-client>=1.7.0  # Qdrant Vector-DB Client (REST + gRPC)
+einops>=0.7.0  # Tensor operations (required for Jina-Embeddings)
+
+# Text Similarity (TF-IDF + Cosine) for duplicate detection
+scikit-learn>=1.3.0
 
 # Optional: ML-basiertes OCR-Routing
 # XGBoost ist optional - System fällt gracefully auf regelbasiertes Routing zurück
 # Für ML-Routing: pip install xgboost>=2.0.0
 # Oder: pip install ablage-system-ocr[ml]
 # xgboost>=2.0.0  # Uncomment für ML-Routing
+
+# Banking Integration
+mt-940>=4.30.0  # MT940 Bank Statement Parser (SWIFT)
+sepaxml>=2.7.0  # SEPA XML Generation (PAIN.001/008)
+pyiso20022>=1.6.0  # CAMT.053 ISO 20022 Parser
+pdfplumber>=0.11.0  # PDF Bank Statement Parsing
+
+# QR-Code & Barcode Detection
+pyzbar>=0.1.9  # QR-Code and Barcode scanning (SEPA-QR, EAN-13, Code-128, etc.)
+
+# Mahnwesen (Dunning System)
+holidays>=0.40  # German/Austrian/Swiss holidays for scheduled Mahnlauf
+
+# Export Scheduling
+croniter>=2.0.0  # Cron expression parsing for scheduled exports
+pytz>=2024.1  # Timezone support for scheduled exports

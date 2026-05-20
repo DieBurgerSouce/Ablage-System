@@ -1,0 +1,144 @@
+{
+  "title": "OCR Processing",
+  "subtitle": "Text recognition from documents",
+  "backend": {
+    "title": "OCR Backend",
+    "auto": "Automatic",
+    "deepseek": "DeepSeek-Janus-Pro",
+    "gotocr": "GOT-OCR 2.0",
+    "surya": "Surya + Docling",
+    "suryaGpu": "Surya GPU",
+    "description": {
+      "auto": "Automatic selection based on document type",
+      "deepseek": "Best umlaut recognition, Fraktur script",
+      "gotocr": "Fast, good for tables and formulas",
+      "surya": "CPU-based, layout analysis",
+      "suryaGpu": "Fast GPU variant"
+    }
+  },
+  "status": {
+    "idle": "Ready",
+    "uploading": "Uploading...",
+    "queued": "Queued",
+    "preprocessing": "Preprocessing...",
+    "processing": "Processing...",
+    "postprocessing": "Postprocessing...",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "progress": {
+    "uploading": "Uploading document...",
+    "queued": "Waiting for processing...",
+    "preprocessing": "Preparing image...",
+    "processing": "Extracting text...",
+    "postprocessing": "Optimizing text...",
+    "page": "Processing page {{current}} of {{total}}",
+    "percent": "{{percent}}% complete"
+  },
+  "results": {
+    "title": "OCR Results",
+    "extractedText": "Extracted text",
+    "confidence": "Confidence",
+    "processingTime": "Processing time",
+    "backend": "Backend used",
+    "pages": "Pages processed",
+    "words": "Words recognized",
+    "characters": "Characters recognized",
+    "download": "Download text",
+    "copy": "Copy text"
+  },
+  "quality": {
+    "title": "Quality",
+    "high": "High recognition quality",
+    "medium": "Medium recognition quality",
+    "low": "Low recognition quality",
+    "veryLow": "Very low quality",
+    "reviewRecommended": "Manual review recommended",
+    "confidence": {
+      "excellent": "Excellent (>95%)",
+      "good": "Good (85-95%)",
+      "fair": "Fair (70-85%)",
+      "poor": "Poor (<70%)"
+    }
+  },
+  "german": {
+    "title": "German text recognition",
+    "detected": "German text detected",
+    "umlauts": "Umlauts detected",
+    "umlautsPreserved": "Umlauts correctly recognized",
+    "fraktur": "Fraktur script detected",
+    "frakturDetected": "Historical Fraktur script detected",
+    "validation": "German text validation",
+    "score": "German quality: {{score}}%"
+  },
+  "extraction": {
+    "title": "Data extraction",
+    "fields": "Extracted fields",
+    "invoiceNumber": "Invoice number",
+    "invoiceDate": "Invoice date",
+    "dueDate": "Due date",
+    "totalAmount": "Total amount",
+    "taxAmount": "Tax amount",
+    "netAmount": "Net amount",
+    "vatId": "VAT ID",
+    "iban": "IBAN",
+    "bic": "BIC",
+    "currency": "Currency",
+    "vendor": "Vendor",
+    "customer": "Customer",
+    "items": "Line items",
+    "confidence": "Confidence: {{percent}}%"
+  },
+  "errors": {
+    "gpuOom": "GPU out of memory. Falling back to CPU.",
+    "backendUnavailable": "OCR backend unavailable",
+    "processingFailed": "OCR processing failed",
+    "timeout": "Processing timeout",
+    "invalidDocument": "Document cannot be processed",
+    "noTextExtracted": "No text could be extracted",
+    "corruptedFile": "File is corrupted or unreadable",
+    "unsupportedFormat": "File format not supported"
+  },
+  "settings": {
+    "title": "OCR Settings",
+    "defaultBackend": "Default backend",
+    "language": "Recognition language",
+    "enhanceQuality": "Enhance image quality",
+    "detectTables": "Detect tables",
+    "detectLayout": "Analyze layout",
+    "gpu": {
+      "title": "GPU settings",
+      "enabled": "GPU acceleration",
+      "memoryLimit": "Memory limit",
+      "batchSize": "Batch size"
+    }
+  },
+  "learning": {
+    "title": "OCR Training",
+    "subtitle": "Improve recognition through corrections",
+    "correction": "Submit correction",
+    "original": "Original",
+    "corrected": "Corrected",
+    "submit": "Save correction",
+    "success": "Correction saved",
+    "stats": {
+      "title": "Training statistics",
+      "corrections": "Corrections",
+      "accuracy": "Accuracy",
+      "improvement": "Improvement"
+    },
+    "abTest": {
+      "title": "A/B Tests",
+      "active": "Active tests",
+      "results": "Results"
+    }
+  },
+  "batch": {
+    "title": "Batch processing",
+    "documents": "{{count}} documents",
+    "progress": "{{completed}} of {{total}} processed",
+    "estimatedTime": "Estimated time remaining: {{time}}",
+    "cancel": "Cancel batch",
+    "retry": "Retry failed"
+  }
+}

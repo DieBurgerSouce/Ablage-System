@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\utils.py
+# hypothesis_version: 6.148.7
+
+[1.77113e+27, '#', '.', '.py', 'CINN', 'ENABLE_CINN_IN_DY2ST', 'ENABLE_FALL_BACK', 'FLAGS_use_cinn', 'Linux', 'PCC', 'SOT_EVENT_LEVEL', '[a-zA-Z0-9_]+', '[a-zA-Z0-9_]+\\.', '__', '__already_d2s', '__globals__', '__i_m_p_l__', '__name__', '__self__', '__sot_dynamic_dims', 'data', 'float32', 'float64', 'from typing import *', 'import numpy as np', 'import paddle', 'import warnings', 'out', 'paddle.', 'param', 'self', 'undefined_var', 'utf-8', 'w', 'win', 'x', '~/.cache']

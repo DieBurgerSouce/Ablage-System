@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\utils\install_check.py
+# hypothesis_version: 6.148.7
+
+[0.001, 0.1, 0.5, 1.0, 2.0, 3.0, 4.0, 'CPU', 'GPU', 'XPU', 'bias', 'cpu', 'float32', 'gpu', 'input', 'weight', 'xccl', 'xpu']

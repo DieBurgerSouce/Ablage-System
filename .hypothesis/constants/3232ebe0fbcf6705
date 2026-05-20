@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\ddp_fusion.py
+# hypothesis_version: 6.148.7
+
+[1024, 'alias', 'bucket_size_mb', 'comm_fusion', 'ddp_buckets', 'detach', 'getitem', 'inductor', 'output', 'reshape', 'split', 'tensor_meta', 'val']

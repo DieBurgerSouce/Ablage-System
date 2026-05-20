@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\geometric\sampling\neighbors.py
+# hypothesis_version: 6.148.7
+
+['Col_Ptr', 'Eids', 'Out', 'Out_Count', 'Out_Eids', 'Perm_Buffer', 'Row', 'X', 'colptr', 'edge_weight', 'eids', 'flag_perm_buffer', 'float32', 'input_nodes', 'int32', 'int64', 'out_count', 'out_eids', 'out_neighbors', 'return_eids', 'row', 'sample_neighbors', 'sample_size']

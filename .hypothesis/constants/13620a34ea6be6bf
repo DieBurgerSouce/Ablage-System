@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\_paddle_docs.py
+# hypothesis_version: 6.148.7
+
+['<string>', 'all', 'amax', 'amin', 'any', 'argmax', 'argmin', 'bmm', 'cos', 'exec', 'expand_as', 'floor', 'greater_than', 'isfinite', 'isinf', 'isnan', 'log', 'logical_and', 'logical_not', 'logical_or', 'logical_xor', 'logsumexp', 'matmul', 'maximum', 'minimum', 'multiply', 'roll', 'rsqrt', 'sigmoid', 'sign', 'sin', 'sqrt', 'tril', 'triu']

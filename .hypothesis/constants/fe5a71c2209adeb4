@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\media.py
+# hypothesis_version: 6.148.7
+
+['.', 'asf', 'avi', 'mov', 'movie.%s', 'mp4', 'mpg', 'rb', 'swf', 'vid', 'wmv']

@@ -11,7 +11,7 @@ Alle Antworten auf Deutsch.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict
+from typing import Any, Optional, List, Dict
 from uuid import UUID, uuid4
 
 from sqlalchemy import select, and_, update, delete
@@ -21,6 +21,7 @@ from user_agents import parse as parse_user_agent
 
 from app.db.models import UserSession
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -61,7 +62,7 @@ class SessionManager:
         ip_address: str,
         user_agent: Optional[str] = None,
         location: Optional[str] = None
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Erstellt eine neue Session beim Login.
 
@@ -143,7 +144,7 @@ class SessionManager:
         )
 
         # Erstelle Response-Dict
-        result: Dict[str, any] = {
+        result: Dict[str, Any] = {
             "session": session,
             "revoked_sessions": revoked_sessions,
             "warning": None
@@ -538,7 +539,7 @@ class SessionManager:
             return device_name, device_type
 
         except Exception as e:
-            logger.warning("user_agent_parse_failed", error=str(e))
+            logger.warning("user_agent_parse_failed", **safe_error_log(e))
             return None, None
 
     def _mask_ip(self, ip_address: str) -> str:

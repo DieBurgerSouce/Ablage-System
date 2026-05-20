@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\clique.py
+# hypothesis_version: 6.148.7
+
+['directed', 'find_cliques', 'max_weight_clique', 'node_clique_number', 'number_of_cliques', 'weight']

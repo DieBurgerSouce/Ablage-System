@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_gradient_merge.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '@GRAD@MERGE', 'FLAGS_enable_pir_api', 'adam', 'avg', 'grad_merge_add', 'k_steps', 'master_grad_cast', 'params_grads', 'pd_op.full', 'pd_op.send', 'pd_op.send_v2', 'pd_op.slice', 'sgd']

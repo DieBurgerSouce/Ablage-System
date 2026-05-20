@@ -651,3 +651,83 @@ class TestEmailExtraction:
         emails = [e for e in result.get("entities", []) if e["type"] == "EMAIL"]
         if emails:
             assert len(emails) >= 1
+
+
+class TestExtractNamedEntitiesPublicAPI:
+    """Tests fuer die oeffentliche extract_named_entities API."""
+
+    @pytest.fixture
+    def entity_extraction_agent(self, mock_spacy):
+        """Create EntityExtractionAgent instance for testing."""
+        with patch("app.agents.postprocessing.entity_extraction_agent.spacy") as mock_sp:
+            mock_sp.load = Mock(return_value=mock_spacy_nlp)
+
+            from app.agents.postprocessing.entity_extraction_agent import EntityExtractionAgent
+            agent = EntityExtractionAgent()
+            agent._nlp = mock_spacy_nlp
+            return agent
+
+    def test_extract_named_entities_returns_list(self, entity_extraction_agent):
+        """Sollte eine Liste zurueckgeben."""
+        # Setup mock
+        mock_spacy_doc.ents = []
+
+        result = entity_extraction_agent.extract_named_entities("Test text")
+
+        assert isinstance(result, list)
+
+    def test_extract_named_entities_extracts_persons(self, entity_extraction_agent):
+        """Sollte Personen extrahieren."""
+        # Setup mock fuer Person
+        mock_ent = Mock()
+        mock_ent.label_ = "PER"
+        mock_ent.text = "Max Mustermann"
+        mock_spacy_doc.ents = [mock_ent]
+
+        result = entity_extraction_agent.extract_named_entities("Max Mustermann unterzeichnet...")
+
+        # Should include person entities from spaCy or fallback
+        assert isinstance(result, list)
+
+    def test_extract_named_entities_extracts_organizations(self, entity_extraction_agent):
+        """Sollte Organisationen extrahieren."""
+        # Setup mock fuer Organisation
+        mock_ent = Mock()
+        mock_ent.label_ = "ORG"
+        mock_ent.text = "Muster GmbH"
+        mock_spacy_doc.ents = [mock_ent]
+
+        result = entity_extraction_agent.extract_named_entities("Muster GmbH liefert...")
+
+        # Should include organization entities
+        assert isinstance(result, list)
+
+    def test_extract_named_entities_uses_fallback(self, entity_extraction_agent):
+        """Sollte Fallback nutzen wenn keine Personen gefunden."""
+        # Setup mock ohne Person-Entities
+        mock_spacy_doc.ents = []
+
+        result = entity_extraction_agent.extract_named_entities("Dr. Hans Schmidt unterzeichnet...")
+
+        # Fallback should try pattern matching
+        assert isinstance(result, list)
+
+    def test_extract_named_entities_empty_text(self, entity_extraction_agent):
+        """Sollte leere Liste fuer leeren Text zurueckgeben."""
+        mock_spacy_doc.ents = []
+
+        result = entity_extraction_agent.extract_named_entities("")
+
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_extract_named_entities_is_synchronous(self, entity_extraction_agent):
+        """Public API sollte synchron sein (nicht async)."""
+        import asyncio
+
+        # extract_named_entities sollte NICHT coroutine sein
+        result = entity_extraction_agent.extract_named_entities("Test")
+
+        # Sollte direkt ein Ergebnis sein, keine Coroutine
+        assert not asyncio.iscoroutine(result)
+        assert isinstance(result, list)

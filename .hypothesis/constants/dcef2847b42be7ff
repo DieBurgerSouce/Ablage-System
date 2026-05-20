@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numpy\f2py\f90mod_rules.py
+# hypothesis_version: 6.148.7
+
+['\t\t  Variables: %s\n', '\t{NULL}\n};\n', ' allocate(d(%s))\n', '"\t%s --- %s"', '$Revision: 1.27 $', '%s\n      %s', '%s\n%s', '%s()', '*', ',', '--- %s', '-1', ':', 'F_FUNC', 'F_FUNC_US', 'See `f2py -v`', '\\begin{description}', '\\end{description}', '\\subsection{', '\\subsubsection{', '_', 'arrayobject.h', 'body', 'char *', 'char *%s', 'char*', 'dims', 'doc', 'docs', 'docshort', 'end interface', 'end subroutine %s', 'external %s', 'externroutines', 'f2py_%s_getdims_%s', 'f2pywrap_%s_%s', 'f90modhooks', 'includes', 'includes0', 'initf90modhooks', 'integer flag\n', 'interface', 'latexdoc', 'modulename', 'name', 'need', 'note', 'rank', 'routine_defs', 's(%s)', 'separatorsfor', 'use %s, only : %s', 'vars', '}', '}\n']

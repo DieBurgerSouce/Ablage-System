@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\xavier.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 2.0, 6.0, '.', 'Out', 'X', 'cast', 'dtype', 'float16', 'float32', 'float64', 'gaussian_random', 'in_dtype', 'max', 'mean', 'min', 'out_dtype', 'seed', 'shape', 'std', 'tmp', 'uint16', 'uniform_random', 'xavier_init']

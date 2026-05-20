@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\rtree\index.py
+# hypothesis_version: 6.148.7
+
+['.', 'Index', 'Index_InsertTPData', 'Pagesize must be > 0', 'Property', 'Rtree', 'Unclosable index', 'bounds', 'buffering_capacity', 'context', 'createCallback', 'dat_extension', 'deleteCallback', 'destroyCallback', 'dimension', 'filename', 'fill_factor', 'flushCallback', 'handle', 'id', 'idx_extension', 'index_capacity', 'index_id', 'interleaved', 'leaf_capacity', 'loadCallback', 'object', 'overwrite', 'owned', 'pagesize', 'point_pool_capacity', 'properties', 'raw', 'region_pool_capacity', 'reinsert_factor', 'storage', 'storeCallback', 'tight_mbr', 'tpr_horizon', 'type', 'utf-8', 'variant', 'writethrough']

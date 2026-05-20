@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\validators\i18n\fi.py
+# hypothesis_version: 6.148.7
+
+[899, '^[0-9]{7}-[0-9]$', 'checksum', 'date', 'serial']

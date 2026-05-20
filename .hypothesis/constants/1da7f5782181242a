@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\layers\mpu\mp_layers.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, -100, 512, '0', 'bias', 'fused_gemm_epilogue', 'main_grad', 'mp_configs', 'ring_id', 'use_calc_stream', 'use_model_parallel', 'weight']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\modules\layers\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'AdaptiveAvgPool2d', 'DropPath', 'FASTConvLayer', 'bn', 'conv', 'fused_conv', 'hor_bn', 'hor_conv', 'id_tensor', 'rbr_identity', 'ver_bn', 'ver_conv']

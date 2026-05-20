@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\monitoring.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 100, 1000, 1024, '/', 'CPU usage >95%', 'CUDA not available', 'Disk usage >90%', 'GPU not detected', 'RAM usage >90%', 'available', 'available_gb', 'backend', 'backend_usage', 'cores', 'cpu', 'device_name', 'disk', 'disk_percent', 'duration_ms', 'error_counts', 'failed_ocr', 'free_gb', 'freq_mhz', 'gpu', 'healthy', 'memory', 'memory_allocated_gb', 'memory_free_gb', 'memory_percent', 'memory_reserved_gb', 'memory_total_gb', 'memory_used_gb', 'overall_status', 'percent', 'reason', 'requests_per_minute', 'success', 'success_rate_percent', 'successful_ocr', 'system_resources', 'timer_completed', 'timer_failed', 'timer_started', 'timestamp', 'total_documents', 'total_gb', 'unhealthy', 'uptime_formatted', 'uptime_seconds', 'used_gb', 'utilization_percent', 'vram_free_gb', 'vram_utilization', 'warnings']

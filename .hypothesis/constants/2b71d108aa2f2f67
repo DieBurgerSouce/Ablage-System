@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\comms.py
+# hypothesis_version: 6.148.7
+
+[0.0, ',', 'Collective node', 'None', 'Wait node', '_', 'all_gather_inputs', 'all_gather_output', 'artifact', 'call_function', 'collective ordering', 'contains_collective', 'contains_gemm_like', 'default', 'encoding', 'extern_kernels', 'final exposed', 'group_name', 'group_size', 'grouped', 'grouped_info', 'improvement', 'initial exposed', 'inp_split_sizes', 'item_idx', 'limiting factor', 'moves', 'moves_info', 'name', 'overlap', 'placeholder', 'python_kernel_name', 'rank', 'sink_waits_iterative', 'string', 'tabulate', 'val', '~']

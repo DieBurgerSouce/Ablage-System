@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\batch_prefetcher.py
+# hypothesis_version: 6.148.7
+
+[b'%PDF', b'/Type /Page', 0.0, 0.01, 0.1, -100, 100, 1000, 1024, '.bmp', '.jpeg', '.jpg', '.pdf', '.png', '.tif', '.tiff', 'Invalid PDF header', 'L', 'RGB', 'array_shape', 'avg_prefetch_time_ms', 'cache_hits', 'cache_misses', 'dpi', 'error', 'estimated_pages', 'file_size_mb', 'files_remaining', 'format', 'height', 'hit_rate', 'image', 'max_queue_size', 'mode', 'pdf', 'prefetch-worker', 'prefetch_complete', 'prefetch_error', 'prefetch_loop_error', 'prefetch_running', 'prefetching_started', 'queue_length', 'size', 'total_bytes_loaded', 'total_errors', 'total_mb_loaded', 'total_prefetched', 'total_preprocessed', 'type', 'valid', 'width']

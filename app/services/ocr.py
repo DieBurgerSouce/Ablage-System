@@ -3,6 +3,7 @@
 OCR Service Utilities.
 
 Provides quick OCR preview functionality for document classification.
+Uses pypdfium2 for PDF rendering and Tesseract for OCR.
 """
 
 from typing import Optional
@@ -13,12 +14,18 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Optional imports for text extraction
+# Check available libraries
 try:
-    import fitz  # PyMuPDF
-    PYMUPDF_AVAILABLE = True
+    import pypdfium2 as pdfium
+    PDFIUM_AVAILABLE = True
 except ImportError:
-    PYMUPDF_AVAILABLE = False
+    PDFIUM_AVAILABLE = False
+
+try:
+    import pdfplumber
+    PDFPLUMBER_AVAILABLE = True
+except ImportError:
+    PDFPLUMBER_AVAILABLE = False
 
 try:
     from PIL import Image
@@ -62,8 +69,8 @@ async def quick_ocr_preview(
     suffix = file_path.suffix.lower()
 
     try:
-        # PDF files - try embedded text extraction first (very fast)
-        if suffix == ".pdf" and PYMUPDF_AVAILABLE:
+        # PDF files
+        if suffix == ".pdf":
             text = await _extract_pdf_text(file_path, max_pages, max_chars)
 
         # Image files - use OCR
@@ -83,7 +90,7 @@ async def quick_ocr_preview(
         logger.error(
             "quick_ocr_preview_failed",
             file_path=str(file_path),
-            error=str(e)
+            **safe_error_log(e)
         )
         return ""
 
@@ -106,7 +113,7 @@ async def _extract_pdf_text(
     max_chars: int
 ) -> str:
     """
-    Extract text from PDF using PyMuPDF (fast, for embedded text).
+    Extract text from PDF - try embedded text first, then OCR.
 
     Args:
         file_path: Path to PDF file
@@ -116,47 +123,38 @@ async def _extract_pdf_text(
     Returns:
         Extracted text
     """
-    if not PYMUPDF_AVAILABLE:
-        logger.warning("pymupdf_not_available")
-        return ""
+    # First try: Extract embedded text with pdfplumber (fast)
+    if PDFPLUMBER_AVAILABLE:
+        def _extract_with_pdfplumber() -> str:
+            text_parts = []
+            try:
+                with pdfplumber.open(str(file_path)) as pdf:
+                    pages_to_process = min(len(pdf.pages), max_pages)
+                    for i in range(pages_to_process):
+                        page_text = pdf.pages[i].extract_text() or ""
+                        text_parts.append(page_text)
+                        if sum(len(t) for t in text_parts) >= max_chars:
+                            break
+            except Exception as e:
+                logger.warning("pdfplumber_extraction_failed", **safe_error_log(e))
+                return ""
+            return "\n".join(text_parts).strip()
 
-    def _extract() -> str:
-        text_parts = []
-        try:
-            doc = fitz.open(str(file_path))
-            pages_to_process = min(len(doc), max_pages)
+        loop = asyncio.get_event_loop()
+        text = await loop.run_in_executor(None, _extract_with_pdfplumber)
 
-            for page_num in range(pages_to_process):
-                page = doc[page_num]
-                page_text = page.get_text("text")
-                text_parts.append(page_text)
+        if text and len(text.strip()) > 50:
+            logger.info("pdf_embedded_text_found", chars=len(text))
+            return text
 
-                # Early exit if we have enough text
-                if sum(len(t) for t in text_parts) >= max_chars:
-                    break
-
-            doc.close()
-        except Exception as e:
-            logger.error("pdf_text_extraction_failed", error=str(e))
-            return ""
-
-        return "\n".join(text_parts).strip()
-
-    # Run in thread pool to avoid blocking
-    loop = asyncio.get_event_loop()
-    text = await loop.run_in_executor(None, _extract)
-
-    # If no embedded text found, try OCR on first page
-    if not text.strip():
-        logger.info("no_embedded_text_trying_ocr", file_path=str(file_path))
-        text = await _ocr_pdf_first_page(file_path, max_chars)
-
-    return text
+    # Second try: OCR with pypdfium2 + Tesseract
+    logger.info("no_embedded_text_trying_ocr", file_path=str(file_path))
+    return await _ocr_pdf_first_page(file_path, max_chars)
 
 
 async def _ocr_pdf_first_page(file_path: Path, max_chars: int) -> str:
     """
-    OCR the first page of a PDF when no embedded text is available.
+    OCR the first page of a PDF using pypdfium2 + Tesseract.
 
     Args:
         file_path: Path to PDF file
@@ -165,31 +163,53 @@ async def _ocr_pdf_first_page(file_path: Path, max_chars: int) -> str:
     Returns:
         OCR-extracted text
     """
-    if not PYMUPDF_AVAILABLE or not PILLOW_AVAILABLE:
+    if not PDFIUM_AVAILABLE or not PILLOW_AVAILABLE:
+        logger.warning(
+            "pdf_ocr_missing_deps",
+            pdfium=PDFIUM_AVAILABLE,
+            pillow=PILLOW_AVAILABLE
+        )
         return ""
 
-    try:
-        # Extract first page as image
-        doc = fitz.open(str(file_path))
-        if len(doc) == 0:
-            doc.close()
+    def _render_and_ocr() -> str:
+        try:
+            import pytesseract
+
+            # Open PDF with pypdfium2
+            pdf = pdfium.PdfDocument(str(file_path))
+            if len(pdf) == 0:
+                return ""
+
+            # Render first page at 150 DPI
+            page = pdf[0]
+            # scale = DPI / 72 (PDF default is 72 DPI)
+            scale = 150 / 72
+            bitmap = page.render(scale=scale)
+
+            # Convert to PIL Image
+            img = bitmap.to_pil()
+
+            # OCR with Tesseract
+            text = pytesseract.image_to_string(img, lang='deu+eng')
+
+            logger.info(
+                "pdf_ocr_success",
+                file_path=str(file_path),
+                chars=len(text)
+            )
+            return text.strip()
+
+        except ImportError:
+            logger.warning("tesseract_not_available")
+            return ""
+        except Exception as e:
+            logger.error("pdf_ocr_failed", **safe_error_log(e))
             return ""
 
-        page = doc[0]
-        # Render at 150 DPI for balance between speed and quality
-        mat = fitz.Matrix(150 / 72, 150 / 72)
-        pix = page.get_pixmap(matrix=mat)
+    loop = asyncio.get_event_loop()
+    text = await loop.run_in_executor(None, _render_and_ocr)
 
-        # Convert to PIL Image
-        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-        doc.close()
-
-        # Use Surya for OCR
-        return await _ocr_image(img, max_chars)
-
-    except Exception as e:
-        logger.error("pdf_ocr_failed", error=str(e))
-        return ""
+    return text[:max_chars] if len(text) > max_chars else text
 
 
 async def _extract_image_text(file_path: Path, max_chars: int) -> str:
@@ -211,13 +231,18 @@ async def _extract_image_text(file_path: Path, max_chars: int) -> str:
         img = Image.open(str(file_path))
         return await _ocr_image(img, max_chars)
     except Exception as e:
-        logger.error("image_ocr_failed", error=str(e))
+        logger.error("image_ocr_failed", **safe_error_log(e))
         return ""
 
 
 async def _ocr_image(img: "Image.Image", max_chars: int) -> str:
     """
-    Perform OCR on a PIL Image using Surya (CPU mode for speed).
+    Perform OCR on a PIL Image using Tesseract (CPU-friendly).
+
+    Uses Tesseract instead of Surya because:
+    - Tesseract works on CPU (backend container has no GPU)
+    - Fast enough for quick preview extraction
+    - German language pack (deu) available
 
     Args:
         img: PIL Image object
@@ -227,46 +252,23 @@ async def _ocr_image(img: "Image.Image", max_chars: int) -> str:
         OCR-extracted text
     """
     try:
-        # Import Surya components (lazy import to reduce startup time)
-        from surya.recognition import RecognitionPredictor
-        from surya.detection import DetectionPredictor
-        from surya.foundation import FoundationPredictor
-        from surya.common.surya.schema import TaskNames
+        import pytesseract
+
 
         def _run_ocr() -> str:
-            # Initialize predictors
-            foundation = FoundationPredictor()
-            det_predictor = DetectionPredictor()
-            rec_predictor = RecognitionPredictor(foundation)
+            # German + English for best results on German documents
+            text = pytesseract.image_to_string(img, lang='deu+eng')
+            return text.strip()
 
-            # Detect text regions
-            det_results = det_predictor([img])
-
-            # Recognize text
-            rec_results = rec_predictor(
-                [img],
-                det_results,
-                TaskNames.ocr_with_boxes,
-                langs=[["de", "en"]]  # German primary
-            )
-
-            # Extract text from results
-            text_lines = []
-            for result in rec_results:
-                for line in result.text_lines:
-                    text_lines.append(line.text)
-
-            return " ".join(text_lines)
-
-        # Run in thread pool
+        # Run in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
         text = await loop.run_in_executor(None, _run_ocr)
 
         return text[:max_chars] if len(text) > max_chars else text
 
     except ImportError:
-        logger.warning("surya_not_available_for_preview")
+        logger.warning("tesseract_not_available_for_preview")
         return ""
     except Exception as e:
-        logger.error("surya_ocr_failed", error=str(e))
+        logger.error("tesseract_ocr_failed", **safe_error_log(e))
         return ""

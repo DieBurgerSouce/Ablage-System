@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\tags.py
+# hypothesis_version: 6.148.7
+
+[100, 200, '/tags', '/{tag_id}', 'Admin - Tags', 'Alle Tags abrufen', 'Tag abrufen', 'Tag aktualisieren', 'Tag erstellen', 'Tag loeschen', 'Tag nicht gefunden', 'tag_created', 'tag_deleted', 'tag_updated', 'tags_listed']

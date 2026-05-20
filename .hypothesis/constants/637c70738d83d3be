@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\swap.py
+# hypothesis_version: 6.148.7
+
+[100, 'Graph not connected', 'directed_edge_swap', 'double_edge_swap', 'undirected']

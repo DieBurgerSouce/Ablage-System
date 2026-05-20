@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\check_version.py
+# hypothesis_version: 6.148.7
+
+[200, '([0-9]+|[a-zA-Z]+)', '.', 'info', 'utf-8', 'version']

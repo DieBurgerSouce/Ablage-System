@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\got_ocr2\image_processing_got_ocr2.py
+# hypothesis_version: 6.148.7
+
+[0.5, 100, 255, 384, 'crop_to_patches', 'height', 'inf', 'max_patches', 'min_patches', 'num_patches', 'patch_size', 'pixel_values', 'width']

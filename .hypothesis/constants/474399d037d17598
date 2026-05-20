@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\filetype\types\document.py
+# hypothesis_version: 6.148.7
+
+[b'\x00\x00', b'\x00\n\x00\x00\x00MSWordDoc\x00\x10\x00\x00\x00Word.Document.8\x00\xf49\xb2q', b'\x00n\x1e\xf0', b'\x00\xb9)\xe8\x11\x00\x00\x00MS PowerPoint 97', b'\t\x08\x10\x00\x00\x06\x05\x00', b'\x0f\x00\xe8\x03', b'PK\x03\x04', b'[Content_Types].xml', b'_rels/.rels', b'docProps', b'mimetype', b'ppt/', b'word/', b'xl/', b'\xa0F\x1d\xf0', b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1', b'\xe2\x00\x00\x00\\\x00p\x00\x04\x00\x00Calc', b'\xec\xa5\xc1\x00', b'\xfd\xff\xff\xff', 512, 515, 516, 518, 520, 522, 524, 1568, 2072, 2075, 2095, 2096, 2142, 6000, 'ASCII', 'application/msword', 'doc', 'docx', 'odp', 'ods', 'odt', 'ppt', 'pptx', 'xls', 'xlsx']

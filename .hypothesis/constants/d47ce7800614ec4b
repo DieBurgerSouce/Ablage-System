@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_access_service.py
+# hypothesis_version: 6.148.7
+
+[100, 500, 'access_count', 'access_history', 'access_stats', 'access_type', 'accessed_at', 'by_access_type', 'by_day', 'count', 'date', 'description', 'document_id', 'expected_sequence', 'export_format', 'failed_access_count', 'first_access', 'gap_count', 'gaps', 'has_gaps', 'id', 'is_valid', 'last_access', 'limit', 'logs', 'metadata', 'null_sequence', 'offset', 'success', 'top_documents', 'top_users', 'total_accesses', 'total_count', 'total_records', 'type', 'user_id']

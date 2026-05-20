@@ -3,14 +3,20 @@ Database Connection Manager
 Async PostgreSQL with connection pooling
 Priority: P0 - CRITICAL
 Created: 2024-11-22
+
+SECURITY: Z.2 Fix - URL-encode password to prevent injection
 """
 from typing import AsyncGenerator, Optional
+from urllib.parse import quote_plus
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 from sqlalchemy import text
 from contextlib import asynccontextmanager
 import structlog
 import os
+
+from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -20,23 +26,24 @@ logger = structlog.get_logger(__name__)
 # ============================================================================
 
 class DatabaseConfig:
-    """Database configuration from environment"""
+    """Database configuration from central settings"""
 
     def __init__(self):
-        self.DB_HOST = os.getenv("DB_HOST", "localhost")
-        self.DB_PORT = self._safe_int(os.getenv("DB_PORT"), 5432)
-        self.DB_NAME = os.getenv("DB_NAME", "ablage_ocr")
-        self.DB_USER = os.getenv("DB_USER", "postgres")
-        self.DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
+        # Verwende zentrale settings statt eigener Defaults
+        self.DB_HOST = settings.DB_HOST
+        self.DB_PORT = settings.DB_PORT
+        self.DB_NAME = settings.DB_NAME
+        self.DB_USER = settings.DB_USER
+        self.DB_PASSWORD = settings.DB_PASSWORD.get_secret_value() if settings.DB_PASSWORD else ""
 
-        # Connection pool settings
+        # Connection pool settings - aus Umgebungsvariablen mit sicheren Defaults
         self.POOL_SIZE = self._safe_int(os.getenv("DB_POOL_SIZE"), 20)
         self.MAX_OVERFLOW = self._safe_int(os.getenv("DB_MAX_OVERFLOW"), 40)
         self.POOL_TIMEOUT = self._safe_int(os.getenv("DB_POOL_TIMEOUT"), 30)
         self.POOL_RECYCLE = self._safe_int(os.getenv("DB_POOL_RECYCLE"), 3600)  # 1 hour
 
         # Query settings
-        self.ECHO_SQL = os.getenv("DB_ECHO_SQL", "false").lower() == "true"
+        self.ECHO_SQL = settings.DEBUG
 
     @staticmethod
     def _safe_int(value: Optional[str], default: int) -> int:
@@ -51,17 +58,34 @@ class DatabaseConfig:
 
     @property
     def DATABASE_URL(self) -> str:
-        """Build async PostgreSQL connection string"""
+        """Get async PostgreSQL connection string.
+
+        Uses settings.DATABASE_URL if available, otherwise builds from components.
+
+        SECURITY: Z.2 Fix - URL-encode password to handle special characters
+        (prevents connection string injection and parsing errors).
+        """
+        # Priorität: settings.DATABASE_URL (korrekt mit Docker-Netzwerk)
+        if settings.DATABASE_URL:
+            return settings.DATABASE_URL
+        # Fallback: Aus Komponenten bauen
+        # SECURITY: URL-encode password to handle special chars like @, :, /, etc.
+        encoded_password = quote_plus(self.DB_PASSWORD) if self.DB_PASSWORD else ""
         return (
-            f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"postgresql+asyncpg://{self.DB_USER}:{encoded_password}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
     @property
     def SYNC_DATABASE_URL(self) -> str:
-        """Build sync PostgreSQL connection string (for Alembic)"""
+        """Build sync PostgreSQL connection string (for Alembic).
+
+        SECURITY: Z.2 Fix - URL-encode password for special characters.
+        """
+        # SECURITY: URL-encode password to handle special chars like @, :, /, etc.
+        encoded_password = quote_plus(self.DB_PASSWORD) if self.DB_PASSWORD else ""
         return (
-            f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"postgresql+psycopg2://{self.DB_USER}:{encoded_password}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
@@ -117,7 +141,7 @@ class DatabaseManager:
             )
 
         except Exception as e:
-            logger.error("database_initialization_failed", error=str(e), exc_info=True)
+            logger.error("database_initialization_failed", **safe_error_log(e), exc_info=True)
             raise
 
     @property
@@ -160,11 +184,9 @@ class DatabaseManager:
             }
 
         except Exception as e:
-            logger.error("database_health_check_failed", error=str(e), exc_info=True)
+            logger.error("database_health_check_failed", **safe_error_log(e), exc_info=True)
             return {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+                "status": "unhealthy", **safe_error_log(e)}
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
@@ -175,7 +197,7 @@ class DatabaseManager:
             await session.commit()
         except Exception as e:
             await session.rollback()
-            logger.error("database_session_error", error=str(e), exc_info=True)
+            logger.error("database_session_error", **safe_error_log(e), exc_info=True)
             raise
         finally:
             await session.close()
@@ -190,6 +212,11 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     db_manager = DatabaseManager()
     async with db_manager.get_session() as session:
         yield session
+
+
+# Alias für Abwärtskompatibilität
+get_db = get_db_session
+get_async_db = get_db_session
 
 
 # ============================================================================
@@ -213,9 +240,7 @@ async def get_pool_status() -> dict:
         return await db_manager.health_check()
     except Exception as e:
         return {
-            "status": "error",
-            "error": str(e)
-        }
+            "status": "error", **safe_error_log(e)}
 
 
 # ============================================================================

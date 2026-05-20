@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\datasets\cifar.py
+# hypothesis_version: 6.148.7
+
+[b'data', b'fine_labels', b'labels', '10', '100', '_ImageDataType', 'bytes', 'cifar', 'cv2', 'data_batch', 'int64', 'npt.NDArray[Any]', 'pil', 'r', 'test', 'test10', 'test100', 'test_batch', 'train', 'train10', 'train100', 'uint8']

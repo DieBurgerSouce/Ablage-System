@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\_activation_checkpointing\ac_logging_utils.py
+# hypothesis_version: 6.148.7
+
+['Edges', 'Expected Runtime', 'Joint Graph Edges', 'Joint Graph Size', 'Knapsack Saved Nodes', 'Total', 'artifact', 'encoding', 'index', 'input_arguments', 'is_recomputed', 'is_saved', 'json', 'memory', 'min_cut_information', 'name', 'runtime', 'shape', 'stack_trace', 'target', 'tensor_meta']

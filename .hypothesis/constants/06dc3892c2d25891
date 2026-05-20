@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\inference\__init__.py
+# hypothesis_version: 6.148.7
+
+['Config', 'DataType', 'PlaceType', 'PrecisionType', 'Predictor', 'PredictorPool', 'Tensor', 'XpuConfig', '_get_phi_kernel_name', 'create_predictor', 'get_version']

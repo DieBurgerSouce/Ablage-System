@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\text.py
+# hypothesis_version: 6.148.7
+
+[128, '%', '%(\\w)', ',', '.', '...', '???', '[.]', '\\1', 'abbr', 'abbrtask', 'dedent', 'dedent_initial', 'ensure_newlines', 'ensure_sep', 'fill_paragraphs', 'indent', 'join', 'pluralize', 'pretty', 's', 'simple_format', 'str_to_list', 'truncate', '{}{}{}']

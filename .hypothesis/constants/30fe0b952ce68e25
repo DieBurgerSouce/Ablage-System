@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\evaluation\availability_checker.py
+# hypothesis_version: 6.148.7
+
+[300, ',', '-', '-m', '.', '2.6.0', '3.3.2', 'PyPI-Anfrage Timeout', 'SemanticVersion', 'VERSION', '\\(([^)]+)\\)', '^(\\d+)\\.(\\d+)\\.(\\d+)', '_', '__version__', 'all_satisfied', 'available', 'buildmetadata', 'checked_at', 'cuda', 'cuda_available', 'error_message', 'fallback_available', 'fallback_version', 'generated_at', 'github', 'index', 'local', 'major', 'minor', 'package_name', 'paddle', 'paddleocr', 'paddleocr-vl', 'paddleocr_vl', 'paddlepaddle', 'paddlepaddle-gpu', 'paddlepaddle_gpu', 'patch', 'pip', 'prerelease', 'pypi', 'pypi_check_failed', 'recommendations', 'source', 'unknown', 'v', 'version', 'versions']

@@ -35,7 +35,8 @@ class TestBackupConfig:
 
         assert config.retention_days == 30
         assert config.compression_enabled is True
-        assert config.encryption_enabled is False
+        # encryption_enabled ist jetzt standardmaessig True (Security-Verbesserung)
+        assert config.encryption_enabled is True
         assert config.remote_enabled is False
 
     def test_config_from_environment(self):
@@ -57,49 +58,52 @@ class TestBackupConfig:
             assert config.gpg_recipient == "test@example.com"
 
     def test_postgres_config(self):
-        """Test PostgreSQL configuration."""
-        with patch.dict(os.environ, {
-            "DB_HOST": "postgres.local",
-            "DB_PORT": "5432",
-            "DB_NAME": "test_db",
-            "DB_USER": "test_user",
-            "DB_PASSWORD": "secret123",
-        }):
-            config = BackupConfig()
+        """Test PostgreSQL configuration von zentraler settings."""
+        # BackupConfig liest aus zentralem settings-Objekt, nicht direkt aus os.environ
+        # Daher testen wir, dass die Werte korrekt aus settings gelesen werden
+        from app.core.config import settings
 
-            assert config.postgres_host == "postgres.local"
-            assert config.postgres_port == 5432
-            assert config.postgres_db == "test_db"
-            assert config.postgres_user == "test_user"
-            assert config.postgres_password == "secret123"
+        config = BackupConfig()
+
+        # Pruefen, dass Werte mit settings uebereinstimmen
+        assert config.postgres_host == settings.DB_HOST
+        assert config.postgres_port == settings.DB_PORT
+        assert config.postgres_db == settings.DB_NAME
+        assert config.postgres_user == settings.DB_USER
+        expected_password = settings.DB_PASSWORD.get_secret_value() if settings.DB_PASSWORD else ""
+        assert config.postgres_password == expected_password
 
     def test_redis_config(self):
-        """Test Redis configuration."""
-        with patch.dict(os.environ, {
-            "REDIS_HOST": "redis.local",
-            "REDIS_PORT": "6379",
-            "REDIS_PASSWORD": "redis_secret",
-        }):
-            config = BackupConfig()
+        """Test Redis configuration von zentraler settings."""
+        # BackupConfig liest aus zentralem settings-Objekt
+        from app.core.config import settings
 
-            assert config.redis_host == "redis.local"
-            assert config.redis_port == 6379
-            assert config.redis_password == "redis_secret"
+        config = BackupConfig()
+
+        # Pruefen, dass Werte mit settings uebereinstimmen
+        assert config.redis_host == settings.REDIS_HOST
+        assert config.redis_port == settings.REDIS_PORT
+        expected_password = settings.REDIS_PASSWORD.get_secret_value() if settings.REDIS_PASSWORD else None
+        assert config.redis_password == expected_password
 
     def test_minio_config(self):
-        """Test MinIO configuration."""
-        with patch.dict(os.environ, {
-            "MINIO_ENDPOINT": "minio.local:9000",
-            "MINIO_ACCESS_KEY": "access123",
-            "MINIO_SECRET_KEY": "secret456",
-            "MINIO_BUCKETS": "bucket1,bucket2,bucket3",
-        }):
-            config = BackupConfig()
+        """Test MinIO configuration von zentraler settings."""
+        # BackupConfig liest aus zentralem settings-Objekt
+        from app.core.config import settings
 
-            assert config.minio_endpoint == "minio.local:9000"
-            assert config.minio_access_key == "access123"
-            assert config.minio_secret_key == "secret456"
-            assert config.minio_buckets == ["bucket1", "bucket2", "bucket3"]
+        config = BackupConfig()
+
+        # Pruefen, dass Werte mit settings uebereinstimmen
+        assert config.minio_endpoint == settings.MINIO_ENDPOINT
+        assert config.minio_access_key == settings.MINIO_ACCESS_KEY
+        expected_secret = settings.MINIO_SECRET_KEY.get_secret_value() if settings.MINIO_SECRET_KEY else ""
+        assert config.minio_secret_key == expected_secret
+        expected_buckets = [
+            settings.MINIO_BUCKET_DOCUMENTS,
+            settings.MINIO_BUCKET_PROCESSED,
+            settings.MINIO_BUCKET_THUMBNAILS
+        ]
+        assert config.minio_buckets == expected_buckets
 
     def test_remote_sync_config(self):
         """Test remote sync configuration."""

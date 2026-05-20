@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\layer_helper.py
+# hypothesis_version: 6.148.7
+
+['Out', 'X', 'Y', 'act', 'axis', 'bias_attr', 'elementwise_add', 'input', 'name', 'param_attr', 'type', 'use_cudnn']

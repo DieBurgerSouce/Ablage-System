@@ -1,0 +1,111 @@
+# Ablage-System NVIDIA Role - DCGM (Data Center GPU Manager) Installation
+# Created: 2025-12-09 - GPU metrics for Prometheus/Grafana
+---
+- name: Check if DCGM is already installed
+  ansible.builtin.command: dcgmi discovery -l
+  register: dcgm_check
+  changed_when: false
+  failed_when: false
+
+- name: Install DCGM if not present
+  block:
+    - name: Get system architecture
+      ansible.builtin.command: dpkg --print-architecture
+      register: dcgm_arch
+      changed_when: false
+
+    - name: Add NVIDIA DCGM GPG key
+      ansible.builtin.get_url:
+        url: "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/{{ 'x86_64' if dcgm_arch.stdout == 'amd64' else dcgm_arch.stdout }}/3bf863cc.pub"
+        dest: /usr/share/keyrings/nvidia-dcgm.asc
+        mode: '0644'
+      become: yes
+
+    - name: Add NVIDIA DCGM repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/nvidia-dcgm.asc] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/{{ 'x86_64' if dcgm_arch.stdout == 'amd64' else dcgm_arch.stdout }} /"
+        state: present
+        filename: nvidia-dcgm
+      become: yes
+
+    - name: Install DCGM packages
+      ansible.builtin.apt:
+        name:
+          - datacenter-gpu-manager
+        state: present
+        update_cache: yes
+      become: yes
+
+  when:
+    - nvidia_install_dcgm | default(true)
+    - dcgm_check.rc != 0
+
+- name: Enable and start DCGM service
+  ansible.builtin.systemd:
+    name: nvidia-dcgm
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes
+  when: nvidia_install_dcgm | default(true)
+
+- name: Install DCGM Exporter for Prometheus
+  block:
+    - name: Create DCGM exporter directory
+      ansible.builtin.file:
+        path: /opt/dcgm-exporter
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      become: yes
+
+    - name: Create DCGM exporter systemd service
+      ansible.builtin.template:
+        src: dcgm-exporter.service.j2
+        dest: /etc/systemd/system/dcgm-exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+      notify: restart dcgm-exporter
+
+    - name: Create DCGM exporter metrics configuration
+      ansible.builtin.template:
+        src: dcgm-exporter-metrics.csv.j2
+        dest: /opt/dcgm-exporter/default-counters.csv
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+      notify: restart dcgm-exporter
+
+    - name: Enable and start DCGM exporter
+      ansible.builtin.systemd:
+        name: dcgm-exporter
+        state: started
+        enabled: yes
+        daemon_reload: yes
+      become: yes
+
+  when:
+    - nvidia_install_dcgm_exporter | default(true)
+    - nvidia_install_dcgm | default(true)
+
+- name: Verify DCGM installation
+  ansible.builtin.command: dcgmi discovery -l
+  register: dcgm_discovery
+  changed_when: false
+  when: nvidia_install_dcgm | default(true)
+
+- name: Display DCGM status
+  ansible.builtin.debug:
+    msg: |
+      DCGM (Data Center GPU Manager) Status:
+      - Service: {{ 'Running' if dcgm_discovery.rc == 0 else 'Not Running' }}
+      - Exporter: {{ 'Enabled' if nvidia_install_dcgm_exporter | default(true) else 'Disabled' }}
+      - Metrics Port: {{ dcgm_exporter_port | default(9400) }}
+
+      Discovered GPUs:
+      {{ dcgm_discovery.stdout }}
+  when: nvidia_install_dcgm | default(true)

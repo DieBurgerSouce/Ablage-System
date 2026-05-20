@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\geometric\flip.py
+# hypothesis_version: 6.148.7
+
+['D4', 'HorizontalFlip', 'SquareSymmetry', 'Transpose', 'VerticalFlip', 'e', 'group_element', 'h', 'hvt', 'r180', 'r270', 'r90', 'shape', 'spatial', 't', 'v']

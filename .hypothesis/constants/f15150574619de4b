@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\datev\kontenrahmen\skr04.py
+# hypothesis_version: 6.148.7
+
+['1200', '1401', '1406', '3300', '3801', '3806', '4100', '4120', '4125', '4300', '4337', '4400', '4830', '5200', '5300', '5425', '5435', '5550', '5900', '6200', '6310', '6315', '6400', '6470', '6520', '6530', '6560', '6565', '6600', '6640', '6650', '6805', '6820', '6825', '6827', '7310', 'SKR04', 'abschreibung', 'bewirtung', 'buchfuehrung', 'buero', 'dienstleistung', 'dienstleistung_19', 'dienstleistung_7', 'drittland', 'eu', 'fremdleistung', 'kfz', 'kfz_betrieb', 'leasing', 'leasing_pkw', 'miete', 'nebenkosten', 'rechtsberatung', 'reise', 'reparatur', 'reverse_charge', 'sonstige', 'steuerfrei', 'telefon', 'versicherung', 'waren', 'waren_19', 'waren_7', 'waren_drittland', 'waren_eu_19', 'waren_eu_7', 'werbung', 'zinsen']

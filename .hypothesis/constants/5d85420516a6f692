@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\layer\fused_dropout_nd.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'axis', 'downgrade_in_infer', 'downscale_in_infer', 'dropout_prob', 'fix_seed', 'is_test', 'seed', 'upscale_in_train']

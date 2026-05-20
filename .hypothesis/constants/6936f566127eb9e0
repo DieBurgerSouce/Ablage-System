@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\tensor\random.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 0.5, 1.0, 2.0, 'Input', 'Out', 'ShapeTensor', 'X', 'bernoulli', 'bfloat16', 'binomial', 'bool', 'complex128', 'complex64', 'count', 'dtype', 'exponential', 'float16', 'float32', 'float64', 'gaussian', 'gaussian_random', 'high', 'input', 'input_dim_idx', 'int32', 'int64', 'lam', 'lambd', 'lambda', 'low', 'max', 'mean', 'min', 'multinomial', 'n', 'normal', 'num_samples', 'out', 'output_dim_idx', 'poisson', 'prob', 'randint', 'randint_like', 'randperm', 'replacement', 'seed', 'shape', 'standard_gamma', 'std', 'uint16', 'uniform', 'uniform/rand', 'uniform_random', 'x']

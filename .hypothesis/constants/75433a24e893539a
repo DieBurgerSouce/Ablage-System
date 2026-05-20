@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\collective.py
+# hypothesis_version: 6.148.7
+
+['USE_DLOPEN_NCCL', '[xgboost.collective]', '__path__', 'dmlc_nccl_path', 'dmlc_retry', 'dmlc_timeout', 'float128', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64', 'int8', 'libnccl.so', 'uint16', 'uint32', 'uint64', 'uint8']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\rag\chunking_service.py
+# hypothesis_version: 6.148.7
+
+[100, 512, 1024, 2048, '[.!?]\\s+', '\\n\\s*\\n', '^#+\\s', '^[-*]\\s', '^[A-Z][A-Za-z\\s]+:$', '^[a-z]\\)\\s', '^\\d+\\)\\s', '^\\d+\\.\\s+[A-Z]', '^\\d+\\s*$', '^seite\\s+\\d+', 'chunk_size', 'chunking.yaml', 'chunking_completed', 'chunking_document', 'chunks_deleted', 'chunks_saved', 'cl100k_base', 'config', 'default_strategy', 'document_types', 'embedding_dimensions', 'embedding_model', 'extract_metadata', 'fixed', 'global', 'max_chunk_size', 'min_chunk_size', 'overlap', 'preserve_line_items', 'preserve_paragraphs', 'preserve_sections', 'preserve_tables', 'r', 'respect_paragraphs', 'respect_sentences', 'section_markers', 'sections', 'semantic', 'sonstige', 'stand:', 'strategies', 'tiktoken', 'tokenizer', 'tokenizer_model', 'types', 'utf-8', 'value', '|']

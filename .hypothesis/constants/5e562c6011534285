@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\rate_limits.py
+# hypothesis_version: 6.148.7
+
+['/bulk/reset', '/rate-limits', '/stats', '/tiers', '/users/{user_id}', 'Admin - Rate Limits', 'Benutzer-Tier ändern', 'effective_limits', 'email', 'failed', 'failed_count', 'message', 'new_tier', 'success', 'success_count', 'tiers', 'user_id']

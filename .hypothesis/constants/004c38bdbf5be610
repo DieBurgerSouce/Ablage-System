@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\output_code.py
+# hypothesis_version: 6.148.7
+
+['NYI', 'compile_id', 'cuda', 'cudagraph_skips', 'cudagraphs', 'graph_id', 'inductor', 'is_backward', 'is_inference', 'mutated inputs', 'non-Tensor inputs', 'py', 'runner', 'static_input_idxs']

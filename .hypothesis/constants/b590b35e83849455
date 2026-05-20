@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_twenty_newsgroups.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '-', '.pkl', '20news-bydate-test', '20news-bydate-train', '20news-bydate.pkz', '20news-bydate.tar.gz', '20news_home', 'Cache loading failed', 'Decompressing %s', '_', 'all', 'array-like', 'as_frame', 'boolean', 'categories', 'category_class', 'data_home', 'delay', 'download_if_missing', 'footers', 'headers', 'latin1', 'left', 'n_retries', 'neither', 'normalize', 'quotes', 'r:gz', 'random_state', 'rb', 'remove', 'remove-', 'return_X_y', 'shuffle', 'subset', 'test', 'train', 'wb', 'zlib_codec']

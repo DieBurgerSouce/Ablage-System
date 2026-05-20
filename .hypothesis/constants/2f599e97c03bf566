@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\lexware_import_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 0.7, 1.0, '-', '--', '---', '.', '?', 'BIC', 'Company', 'E-Mail', 'Email', 'Firma', 'Haus Nr.', 'HausNr', 'I', 'IBAN', 'Kd.-Nr', 'Kd.-Nr.', 'Kd_Nr', 'Konto Nr.', 'KontoNr', 'Kreditoren Nr.', 'Kreditoren-Nr.', 'KreditorenNr', 'Lief-Nr', 'Lief-Nr.', 'Lief_Nr', 'Matchcode', 'NFC', 'Name', 'Ort', 'PLZ', 'Plz', 'Strasse', 'Straße', 'Tel1', 'Tel2', 'Vorname', '[^\\w]', '\\s+', 'auto_detected', 'bic', 'city', 'company_presence', 'confidence_score', 'critical_conflict', 'display_name', 'email', 'entity_type', 'excel_files_loaded', 'folie', 'harmlose_varianten', 'iban', 'kd_nr', 'keine', 'kritische_konflikte', 'lexware_ids', 'lief_nr', 'matchcode', 'messer', 'n.a.', 'n/a', 'name', 'name_aliases', 'namensvarianten', 'postal_code', 'reason', 'short_name', 'street', 'street_number', 'utf-8', 'verified']

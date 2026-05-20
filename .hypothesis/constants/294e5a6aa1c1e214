@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\impute\_base.py
+# hypothesis_version: 6.148.7
+
+['O', 'add_indicator', 'all', 'allow-nan', 'auto', 'b', 'boolean', 'constant', 'copy', 'could not convert', 'csc', 'csr', 'dtype', 'error_on_new', 'f', 'feature_names_in_', 'features', 'fill_value', 'i', 'indicator_', 'keep_empty_features', 'mean', 'median', 'missing-only', 'missing_value', 'missing_values', 'most_frequent', 'n_features_in_', 'no_validation', 'same_kind', 'sparse', 'strategy', 'u']

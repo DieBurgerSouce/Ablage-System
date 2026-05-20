@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\xpu\resnet_block.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 0.5, 0.9, 1.0, 2.0, 'Bias1', 'Bias2', 'Bias3', 'Conv1', 'Conv2', 'Conv2Input', 'Conv3', 'Filter1', 'Filter2', 'Filter3', 'MaxFilter1', 'MaxFilter2', 'MaxFilter3', 'MaxInput1', 'MaxInput2', 'MaxInput3', 'Mean1', 'Mean1Out', 'Mean2', 'Mean2Out', 'Mean3', 'Mean3Out', 'NCHW', 'ResNetBasicBlock', 'SavedInvstd1', 'SavedInvstd2', 'SavedInvstd3', 'SavedMean1', 'SavedMean2', 'SavedMean3', 'Scale1', 'Scale2', 'Scale3', 'Var1', 'Var1Out', 'Var2', 'Var2Out', 'Var3', 'Var3Out', 'X', 'Y', 'act_type', 'data_format', 'dilation1', 'dilation2', 'dilation3', 'epsilon', 'filter1_size', 'filter2_size', 'filter3_size', 'find_conv_input_max', 'group', 'has_shortcut', 'is_test', 'momentum', 'padding1', 'padding2', 'padding3', 'relu', 'resnet_basic_block', 'stride1', 'stride2', 'stride3', 'trainable_statistics', 'use_global_stats']

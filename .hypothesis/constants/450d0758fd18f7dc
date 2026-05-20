@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\efficiency_measures.py
+# hypothesis_version: 6.148.7
+
+['directed', 'efficiency', 'global_efficiency', 'local_efficiency']
