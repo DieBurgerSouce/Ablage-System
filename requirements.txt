@@ -39,7 +39,7 @@ pydantic-settings>=2.3.0  # docling 2.20.0 requires >=2.3.0
 email-validator>=2.0.0  # Required for pydantic email validation
 
 # Storage
-minio==7.2.3
+minio==7.2.20
 pillow==10.2.0
 imagehash>=4.3.1  # Perceptual hashing for visual duplicate detection
 
