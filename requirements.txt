@@ -121,6 +121,14 @@ factur-x>=3.0.0  # ZUGFeRD 2.x / Factur-X PDF generation and parsing
 lxml>=4.9.0  # XML processing for e-invoices
 defusedxml>=0.7.1  # SECURITY: Safe XML parsing to prevent XXE attacks (CWE-611)
 
+# Compliance / RFC 3161 Timestamping (Remediation-Strom G4)
+# ASN.1-Encoding/Decoding fuer qualifizierte Zeitstempel (TimeStampReq/TimeStampResp)
+# in app/services/compliance/tsa_service.py. Ersetzt das bisherige
+# hand-gerollte ASN.1-Parsing durch eine vollwertige Bibliothek.
+# Hinweis: 'cryptography' ist bereits transitiv via PyJWT[crypto] vorhanden und
+# wird fuer die Signatur-/Zertifikatspruefung der TSA-Antwort genutzt.
+asn1crypto==1.5.1  # Pure-Python ASN.1 (RFC 3161 TSP), pinned fuer reproduzierbare Builds
+
 # Spreadsheet Export
 openpyxl>=3.1.5  # Excel (.xlsx) export for extracted data
 
