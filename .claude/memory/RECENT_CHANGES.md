@@ -1,6 +1,12 @@
 # Recent Changes
 
 ## 2026-06-03
+- **test(g5)**: Test-Wahrheit (B4) auf `feature/g5-test-truth` (8 Commits, Tip `6c880864`) — Stub-Tarn-Skips beseitigt, Collection 26→0 Errors, statische Skip-Marker 401→232.
+- **test(g5)**: `tests/conftest.py` weasyprint-Mock (native GTK-Libs fehlen auf Windows → `app.main` sonst nicht importierbar); `pytest.ini` Marker vollstaendig (aktive Config, pyproject-Pytest ignoriert) + `testpaths=tests`/`--ignore=tests/_archived`; Orchestration-Tests via Paket-Import gefixt.
+- **test(g5)**: `test_multi_tenant_isolation.py` neu (vorher 8 failed/3 passed/6 skipped Drift) — Cross-Tenant-HTTP (Doku/Rechnung 403/404), RLS/Rollback, JSONB-Validierung (Pydantic), Timeline-PII; DB-frei gruen, DB-abhaengig Laufzeit-Skip.
+- **test(g5)**: Security-Stubs echt — `test_session_timeout` (decode_token 401, DB-frei), Slack/Email-Notification-PII-Maskierung; refresh-reuse + WS-CRLF als xfail/geloescht; `test_client`/`client`-Fixtures skippen statt zu erroren bei DB-losem App-Startup.
+- **test(g5)**: 102 pass-only Karteileichen geloescht (contracts/invoices/document_chains/validation_field); training_api + validation_{queue,sample,field} MagicMock→SimpleNamespace entrostet (82 passed/7 xfail, ruff gesunken).
+- **docs(g5)**: `tests/COVERAGE_STATUS.md` — Coverage lokal 25,6 %/Voll-Stack ~51 %, Top-Luecken dashboard.py/fraud.py (0 %)/banking/routes.py (37 %), Roadmap zu 90 %, Cross-Stream-Liste (🔴 `Folder.permissions` Ambiguous-FK blockiert ALLE ORM-Tests).
 - **fix(g1)**: B1 Multi-Tenant — `get_user_company_id_dep` zentral in `dependencies.py`; `validate_company_access` via `accessible_company_ids` (behebt AttributeError/HTTP-500). Branch `feature/g1-api-companyid`.
 - **fix(g1)**: company_id-Rollout — 821 `current_user.company_id` in 92 API-Modulen → `Depends(get_user_company_id_dep)` (HTTP 403 bei fehlender Firma); `rg current_user.company_id app/api` → 0.
 - **feat(g1)**: Dashboard-KPIs echt (avg_payment_days/Cashflow/Approvals), OCR ehrliche None; Fraud-Alerts `/alerts/{id}`+`/action` 200/404/400 statt 501; Admin-Restart ehrlicher 501 (M1-M6).
