@@ -1,6 +1,7 @@
 # Recent Changes
 
 ## 2026-06-03
+- **fix(g5-followup)**: 5 App-Findings aus G5 behoben (`fix/g5-followup-app`): F1 `validation_queue_service.assign_to_editor` nutzt UserCompany-Join statt nicht existentem `User.company_id`; F2 `training.get_trend_data` liefert gueltiges `TrendResponse` (avg_cer-Serie); F3 Entity-Endpoints (`get_entity`/`get_entity_documents`) mit company_id-Mandanten-Filter (eigene/NULL); F4 weasyprint-Importe `except (ImportError, OSError)`; F5 coverage `fail_under` 90→50 (gestaffelt). App importiert + configure_mappers gruen; 95 passed/5 skipped in betroffenen Tests, keine xfail mehr.
 - **test(g5)**: Test-Wahrheit (B4) auf `feature/g5-test-truth` (8 Commits, Tip `6c880864`) — Stub-Tarn-Skips beseitigt, Collection 26→0 Errors, statische Skip-Marker 401→232.
 - **test(g5)**: `tests/conftest.py` weasyprint-Mock (native GTK-Libs fehlen auf Windows → `app.main` sonst nicht importierbar); `pytest.ini` Marker vollstaendig (aktive Config, pyproject-Pytest ignoriert) + `testpaths=tests`/`--ignore=tests/_archived`; Orchestration-Tests via Paket-Import gefixt.
 - **test(g5)**: `test_multi_tenant_isolation.py` neu (vorher 8 failed/3 passed/6 skipped Drift) — Cross-Tenant-HTTP (Doku/Rechnung 403/404), RLS/Rollback, JSONB-Validierung (Pydantic), Timeline-PII; DB-frei gruen, DB-abhaengig Laufzeit-Skip.

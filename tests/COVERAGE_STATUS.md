@@ -46,6 +46,8 @@ daher lokal nicht durchlaufen. Der reale Suite-Wert ist im CI/Docker zu messen.
 
 ## 4. Cross-Stream-Dependencies (NICHT in G5-Scope `tests/**`+`pytest.ini`)
 
+> **G5-Followup (2026-06-03, `fix/g5-followup-app`):** #1 Folder.permissions ✅, #2 weasyprint OSError ✅, #3 fail_under 90→50 ✅, #5 User.company_id ✅, #6 get_trend_data ✅, #7 Entity-company_id-Filter ✅ — alle behoben. OFFEN: #4 Marker-Konsolidierung (pyproject-Pytest-Block) + Voll-Gruen der DB-Tests im CI.
+
 | # | Befund | Ort | Auswirkung | Empfehlung |
 |---|---|---|---|---|
 | 1 | **`Folder.permissions` Ambiguous-FK** bricht `configure_mappers()` | `app/db/models*.py` | Blockiert ALLE Tests, die echte ORM-Objekte instanziieren (G5-Cross-Tenant/RLS, `test_rls_context`, `test_cash_isolation`). `test_db` faengt es als irrefuehrendes "Database not available"-Skip. | `foreign_keys=[...]` an der `Folder.permissions`-Relationship setzen. **Kritisch fuer die gesamte DB-Test-Ebene.** |
