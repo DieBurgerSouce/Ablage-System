@@ -5,11 +5,11 @@ name: Docker
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
     tags:
       - 'v*.*.*'
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 env:
@@ -28,13 +28,13 @@ jobs:
       matrix:
         include:
           - name: backend
-            dockerfile: ./docker/Dockerfile.backend
+            dockerfile: ./Dockerfile
             context: .
           - name: worker
             dockerfile: ./docker/Dockerfile.worker
             context: .
           - name: frontend
-            dockerfile: ./docker/Dockerfile.frontend
+            dockerfile: ./frontend/Dockerfile
             context: ./frontend
 
     steps:

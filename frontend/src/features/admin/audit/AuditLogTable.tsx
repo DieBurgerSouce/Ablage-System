@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   FileText,
@@ -17,12 +17,10 @@ import {
   AlertTriangle,
   User,
   Globe,
-  Clock,
   ChevronDown,
   Search,
   Loader2,
   Filter,
-  X,
   FileJson,
   FileSpreadsheet,
 } from 'lucide-react';
@@ -705,10 +703,11 @@ export function AuditLogTable({ userId, maxItems = 50 }: AuditLogTableProps) {
             <p>Keine Audit-Einträge gefunden</p>
           </div>
         ) : (
-          <AuditLogVirtualizedTable
-            logs={data.logs}
-            containerRef={tableContainerRef}
-          />
+          <>
+            <AuditLogVirtualizedTable
+              logs={data.logs}
+              containerRef={tableContainerRef}
+            />
 
             {/* Pagination */}
             {data.total_pages > 1 && (

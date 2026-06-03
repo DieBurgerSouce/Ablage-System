@@ -27,7 +27,7 @@ on:
     # Woechentlicher Performance-Test Sonntag 02:00 UTC
     - cron: '0 2 * * 0'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'app/**'
       - 'tests/performance/**'

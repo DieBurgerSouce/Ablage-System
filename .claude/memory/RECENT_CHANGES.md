@@ -20,6 +20,17 @@
 - **fix(g4/M14)**: TSA RFC-3161 via asn1crypto (kein Handbau-ASN.1-Fallback)
 - **fix(g4/M15)**: GoBD echte company_id-Checks; XL ehrlich WARNING/teilgeprueft statt false PASSED
 - **chore(g4/db)**: app/db/all_models.py Aggregator (468 Tabellen); models_collaboration app.db.base->models_base-Fix
+- **ci(g2)**: Alle 17 Workflows Branch-Trigger `main` → `master` (Gates feuerten real nie); B3-Blocker behoben
+- **ci(g2)**: ci.yml/docker.yml/docker-build.yml/dependencies.yml bauen aus 3 realen Dockerfiles (Root-`Dockerfile`, `frontend/Dockerfile`, `docker/Dockerfile.worker`)
+- **ci(g2)**: `pip-audit` blockierend in ci.yml + dependencies.yml (ersetzt `safety … || true`); JSON-Report-Artefakt bleibt
+- **ci(g2)**: `.secrets.baseline` als gültige detect-secrets-1.4.0-Baseline neu erzeugt (vormals leeres `{}`)
+- **ci(g2)**: dependabot.yml docker-Ecosystem für `/`, `/frontend`, `/docker`; toter `python-dependencies`-Job entfernt
+- **ci(g2)**: `docker-compose.dev.yml` ohne `target: development`; `deploy.yml` Pfad `alembic/versions`; `canary-deploy.yml` deaktiviert (`if: false`)
+- **ci(g2)**: `.releaserc.json` Release-Branch `main` → `master`; manuelles `release.yml` als Release-Mechanismus gewählt
+- **ci(g2)**: `.secrets.baseline` vervollstaendigt (Commit 113a0d6d) — Frontend-Mock-USt-IdNr. als False-Positive aufgenommen, `.claude-flow/metrics/` + `browser-diagnostics/` in `.pre-commit-config.yaml` ausgenommen (Flaky-Gate verhindert); detect-secrets-Hook findet 0 echte Funde
+- **chore(security/g2)**: `browser-diagnostics/` (21 MB) untrackt + `.gitignore` — 73 abgelaufene JWTs (kein Auth-Risiko) mit PII; bleibt in History (DSGVO-Voll-Purge separat)
+- **chore(g2)**: `.claude/CLAUDE.md` PostgreSQL-Port `:5433` → `:5434` (Hyper-V-Reservierung); `package.json`+`pyproject.toml` Version `1.0.0` → `0.1.0`
+- **note(g2)**: ⚠️ Push blockiert — Parallelprozess hat kontaminierten Commit (87ec57e6 + 18 G3-Frontend-Dateien) auf origin/feature/g2-cicd gepusht; saubere lokale Commits liegen bereit, Auflösung an Team (siehe SESSION_LOG)
 
 ## 2026-05-20 (Pilot-Ship v0.1.0 — PR #9 Squash-Merge)
 

@@ -11,8 +11,10 @@ services:
   backend:
     build:
       context: .
-      dockerfile: infrastructure/docker/Dockerfile.backend
-      target: development  # Use development stage if multi-stage
+      # G2 (2026-06-03): Root-Dockerfile als Single Source of Truth. Kein
+      # `target: development` - Hot-Reload laeuft ueber volume-mount (./app) +
+      # `uvicorn --reload` (command unten), keine eigene Build-Stage noetig.
+      dockerfile: Dockerfile
     container_name: ablage-backend-dev
     environment:
       # Development environment
@@ -61,8 +63,9 @@ services:
   worker:
     build:
       context: .
-      dockerfile: infrastructure/docker/Dockerfile.worker
-      target: development
+      # G2 (2026-06-03): docker/Dockerfile.worker als Single Source of Truth.
+      # Kein `target: development` - Hot-Reload via volume-mount (./app).
+      dockerfile: docker/Dockerfile.worker
     container_name: ablage-worker-dev
     environment:
       ENV: development
@@ -168,7 +171,8 @@ services:
   flower:
     build:
       context: .
-      dockerfile: infrastructure/docker/Dockerfile.backend
+      # G2 (2026-06-03): Root-Dockerfile (Backend-Image enthaelt celery + flower).
+      dockerfile: Dockerfile
     container_name: ablage-flower-dev
     restart: unless-stopped
     command: >

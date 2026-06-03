@@ -37,9 +37,37 @@ updates:
           - "celery"
           - "redis"
 
-  # Docker dependencies
+  # Docker dependencies - Root Dockerfile (Backend + Worker Basis-Image)
+  # G2 (2026-06-03): / und /frontend ergaenzt, damit Dependabot ALLE drei realen
+  # Dockerfiles abdeckt (Root Dockerfile, docker/Dockerfile.worker, frontend/Dockerfile).
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+
+  # Docker dependencies - docker/ (Worker, Mustang, PaddleOCR)
   - package-ecosystem: "docker"
     directory: "/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+
+  # Docker dependencies - Frontend (frontend/Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/frontend"
     schedule:
       interval: "weekly"
       day: "monday"

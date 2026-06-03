@@ -44,6 +44,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { EmptyState } from '@/components/ui/empty-state'
 import { fetchReportData, exportReport, type CashflowForecastData } from '../api/report-data-api'
 
 // =============================================================================
@@ -104,7 +105,7 @@ function CustomTooltip({ active, payload, label }: RechartsTooltipProps) {
 export function CashflowForecastReport() {
   const [daysAhead, setDaysAhead] = useState<string>('30')
 
-  const { data, isLoading } = useQuery<CashflowForecastData>({
+  const { data, isLoading, isError, refetch } = useQuery<CashflowForecastData>({
     queryKey: ['report', 'cashflow-forecast', daysAhead],
     queryFn: () => fetchReportData('cashflow-forecast', { period: daysAhead }),
   })
@@ -140,6 +141,19 @@ export function CashflowForecastReport() {
           <Skeleton className="h-[400px]" />
           <Skeleton className="h-[400px]" />
         </div>
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="container mx-auto p-6">
+        <EmptyState
+          variant="error"
+          title="Berichtsdaten nicht verfügbar"
+          description="Die Berichtsdaten sind derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
+          action={{ label: 'Erneut versuchen', onClick: () => { void refetch(); } }}
+        />
       </div>
     )
   }

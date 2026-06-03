@@ -5,7 +5,7 @@
 # 1. Go to Settings > Environments > production
 # 2. Enable "Required reviewers" and add approvers
 # 3. Enable "Wait timer" for mandatory delay (recommended: 15 min)
-# 4. Restrict deployment branches to: main, release/*
+# 4. Restrict deployment branches to: master, release/*
 #
 # CAB (Change Advisory Board) Integration:
 # - Production deployments require manual approval via GitHub Environment
@@ -15,13 +15,13 @@ name: Deploy
 
 # K2 (CRITICAL): Test-Gate vor Deployment.
 # Vor diesem Fix konnte Deploy ohne erfolgreichen CI-Lauf triggern, weil
-# `push: branches: [main]` direkt feuerte. Jetzt wartet Deploy auf den
+# der Push-Trigger auf dem Default-Branch direkt feuerte. Jetzt wartet Deploy auf den
 # CI-Workflow (siehe pre-deploy-checks.if-Guard). Tag-basierte Releases
 # (v*.*.*) setzen voraus, dass CI auf dem merge commit bereits durchlief.
 on:
   workflow_run:
     workflows: ["CI"]
-    branches: [main]
+    branches: [master]
     types:
       - completed
   push:
@@ -84,8 +84,8 @@ jobs:
       - name: Check for Breaking Changes
         run: |
           # Check if there are database migrations
-          if [ -d "migrations/versions" ]; then
-            MIGRATION_COUNT=$(ls -1 migrations/versions/*.py 2>/dev/null | wc -l)
+          if [ -d "alembic/versions" ]; then
+            MIGRATION_COUNT=$(ls -1 alembic/versions/*.py 2>/dev/null | wc -l)
             echo "Found $MIGRATION_COUNT migration(s)"
             if [ $MIGRATION_COUNT -gt 0 ]; then
               echo "⚠️ Database migrations detected - manual review required"
@@ -110,7 +110,7 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: pre-deploy-checks
-    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    if: github.ref == 'refs/heads/master' || github.event.inputs.environment == 'staging'
     environment:
       name: staging
       url: https://staging.ablage-system.local
@@ -138,8 +138,8 @@ jobs:
 
             # Pull latest changes
             git fetch origin
-            git checkout main
-            git pull origin main
+            git checkout master
+            git pull origin master
 
             # Backup database
             ./scripts/backup.sh db

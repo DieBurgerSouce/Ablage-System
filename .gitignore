@@ -111,7 +111,8 @@ infrastructure/nginx/dhparam.pem
 # Vault secrets (NEVER commit these!)
 infrastructure/vault/.vault*
 
-# Browser Diagnostics - Temporary files
+# Browser Diagnostics - Temporary files (21 MB Dumps mit PII/JWTs - NICHT committen)
+browser-diagnostics/
 *.png
 !frontend/public/*.png
 !docs/**/*.png

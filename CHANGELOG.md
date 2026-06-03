@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `.env.example`: BANKING/FinTS-Konfigurationssektion (PSD2_BASE_URL, FINTS_SERVER_ADDRESS, FINTS_BLZ, FINTS_USER_ID)
 - `.claude/reviews/2026-06-03/INTERFACE_CONTRACT_G1_G4.md`: Formaler Interface-Kontrakt G1<->G4 (Dashboard-KPIs M1-M4, Fraud-Alert-Persistenz M5, Celery-Restart-Hook M6)
 - `.claude/reviews/2026-06-03/`: Status-Scan-Artefakte (STATUS_SCAN, MOCK_DATA_REGISTER, REMEDIATION_PLAN, Goals G0-G5)
+- **G2 (CI/CD):** `ci.yml` + `dependencies.yml`: blockierender `pip-audit`-CVE-Gate (ohne `|| true`) inkl. JSON-Report-Artefakt
+- **G2 (CI/CD):** `.github/dependabot.yml`: docker-Ecosystem für `/` (Root-`Dockerfile`) und `/frontend` ergänzt (zusätzlich zu `/docker`)
 
 ### Fixed
 - `tsa_service.py`: RFC-3161-konforme TimeStampReq/Resp via `asn1crypto` (M14); fehlende Lib -> `tsa_asn1_lib_missing`, kein Handbau-Fallback (G4)
@@ -34,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `app/db/models_collaboration.py`: nicht-existenter Import `app.db.base` -> `app.db.models_base` (G4 DB-Hygiene)
 - `auto_transaction_import_service.py`: PSD2 sendet keinen Platzhalter-Token mehr an die echte API; FinTS-Auto-Sync OUTSCOPED (M7/M8, G4)
 - `requirements.txt`: asn1crypto==1.5.1 gepinnt (behebt potenzielle RFC-3161-TSA-Inkompatibilitaet in tsa_service.py)
+- **G2 (CI/CD):** `canary-deploy.yml` deaktiviert (`if: false` + Kopf-Kommentar) — kein top-level `nginx`-Compose-Service, verschachtelte NGINX_EOF-Heredocs kaputt
 
 ### Changed
 - `celery_app.py` + `app/workers/tasks/__init__.py`: 5 bisher unsichtbare Task-Module registriert (active_learning, anomaly, clustering, encryption, summary); `banking-fints-sync-daily` hinter `FINTS_AUTO_SYNC_ENABLED` (G4)
@@ -42,6 +45,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `.claude/memory/KNOWN_ISSUES.md`: 4 produktionskritische Blocker B1-B4 dokumentiert (company_id-Crash, FinTS-Mock, CI-Dockerfiles, Security-Test-Stubs)
 - `.claude/memory/PROJECT_STATUS.md`: Reality-Check-Sektion ergaenzt (A-Z-Fan-Out-Scan, 12 Subagents, Gesamtstatus GELB)
 - `.claude/memory/TECHNICAL_DEBT.md`: Debt-Level von LOW auf MITTEL-HOCH angepasst (Status-Scan-Evidenz)
+- **G2 (CI/CD):** Alle 17 GitHub-Actions-Workflows von Branch-Trigger `main` → `master` umgestellt (Gates feuerten zuvor real nie)
+- **G2 (CI/CD):** `ci.yml`/`docker.yml`/`docker-build.yml`/`dependencies.yml` bauen aus den 3 realen Dockerfiles (`Dockerfile`, `frontend/Dockerfile`, `docker/Dockerfile.worker`) statt nicht existierender `docker/Dockerfile.{backend,frontend}`
+- **G2 (Infra):** `docker-compose.dev.yml`: `target: development` entfernt (Hot-Reload via volume-mount + `uvicorn --reload`)
+- **G2 (Deploy):** `deploy.yml`: Breaking-Change-Check-Pfad `migrations/versions` → `alembic/versions`
+- **G2 (CI/CD):** `dependencies.yml`: toter `python-dependencies`-Job (pip-compile `requirements.in`, existierte nie) entfernt — Python-Updates via Dependabot
+- **G2 (Release):** `.releaserc.json` Release-Branch `main` → `master`; **manuelles `release.yml`** als einziger CI-verdrahteter Release-Mechanismus gewählt (semantic-release bleibt dormant, nur lokal via `npm run release`)
+- **G2 (Doku):** `.claude/CLAUDE.md`: Architektur-Diagramm PostgreSQL `:5433` → `:5434` (real per `docker-compose.yml`; 5433 von Hyper-V reserviert)
+- **G2 (Version):** `package.json` + `pyproject.toml` Version `1.0.0` → `0.1.0` (= `VERSION`/Tag `pilot-v0.1.0`; 1.0.0 war Tier-1-Artefakt). Offen: `app/main.py`-Hardcodes (1.0.0/0.3.0/0.2.0-poc) separat vereinheitlichen
+
+### Security
+- **G2:** `.secrets.baseline` als gültige detect-secrets-1.4.0-Baseline neu erzeugt (vormals leeres `{}` = ungültig); `pre-commit run detect-secrets --all-files` = PASS
+- **G2:** `pip-audit` als **blockierendes** CVE-Gate in `ci.yml` UND `dependencies.yml` (ersetzt `safety check … || true`, das jeden Fund maskierte)
+- **G2 (Security):** `browser-diagnostics/` (21 MB) aus Git-Tracking entfernt (`git rm --cached`) + `.gitignore` — enthielt 73 **abgelaufene** JWTs (HS256, exp 2025-12-31…2026-01-07 → kein Auth-Risiko) mit PII (email/username/sub). **Offen:** Datei bleibt in History (origin/master + Tag `pilot-v0.1.0`); Voll-Purge (filter-repo) nur bei DSGVO-Löschpflicht + Team-Koordination
 
 ## \[0.1.0\] - 2026-05-20 (Pilot-Ship)
 

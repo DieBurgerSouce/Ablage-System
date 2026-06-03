@@ -6,13 +6,13 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.github/ISSUE_TEMPLATE/**'
   pull_request:
-    branches: [main, develop]
+    branches: [master, develop]
   workflow_dispatch:
 
 concurrency:
@@ -205,21 +205,26 @@ jobs:
           path: bandit-report.json
           retention-days: 30
 
-      - name: Run Safety Check (Dependencies)
-        run: |
-          pip install safety
-          echo "::group::Safety Dependency Check"
-          safety check --json --output safety-report.json || true
-          safety check
-          echo "::endgroup::"
+      # G2 (2026-06-03): safety durch pip-audit ersetzt. Der JSON-Report wird als
+      # Artefakt hochgeladen; das `|| true` haengt NUR am Report-Step, damit ein
+      # fehlender Report den Build nicht abbricht. Der nachgelagerte Gate-Step
+      # laeuft OHNE `|| true` und blockiert bei Schwachstellen (exit != 0).
+      - name: Install pip-audit
+        run: pip install pip-audit
 
-      - name: Upload Safety Report
+      - name: Generate pip-audit JSON Report
+        run: pip-audit -r requirements.txt -f json -o pip-audit-report.json || true
+
+      - name: Upload pip-audit Report
         uses: actions/upload-artifact@ea165f8d65b6db9a8b9c8bb8a1a6e62af5c2e0c7 # v4.6.2
         if: always()
         with:
-          name: safety-dependency-report
-          path: safety-report.json
+          name: pip-audit-dependency-report
+          path: pip-audit-report.json
           retention-days: 30
+
+      - name: Run pip-audit (blocking gate)
+        run: pip-audit -r requirements.txt
 
   # Job 3: Unit Tests
   test-unit:
@@ -389,7 +394,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc4c1f # v5.4.0
         with:
           context: .
-          file: ./docker/Dockerfile.backend
+          file: ./Dockerfile
           push: false
           tags: ablage-backend:test
           cache-from: type=gha

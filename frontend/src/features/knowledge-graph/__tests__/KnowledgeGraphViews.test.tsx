@@ -10,7 +10,7 @@
  * - TimelineView: Laden, Fehler, Events, Kategoriefilter
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -137,9 +137,25 @@ describe('RiskNetworkView', () => {
   });
 
   it('rendert Risiko-Netzwerk wenn Daten vorhanden', () => {
-    // Wenn API-Daten null sind, faellt die View auf interne Mock-Daten zurueck
+    // Echte API-Daten -> ReactFlow wird gerendert
     mockUseRiskNetwork.mockReturnValue({
-      data: null,
+      data: {
+        nodes: [
+          {
+            entityId: 'risk-1',
+            entityName: 'Test GmbH',
+            riskScore: 55,
+            transactionVolume: 120000,
+            communityId: 'community-1',
+            paymentBehaviorScore: 70,
+            industryRisk: 40,
+          },
+        ],
+        edges: [],
+        communities: [
+          { id: 'community-1', name: 'Cluster Sued', memberIds: ['risk-1'] },
+        ],
+      },
       isLoading: false,
       error: null,
     });
@@ -149,10 +165,26 @@ describe('RiskNetworkView', () => {
       { wrapper: createQueryWrapper() },
     );
 
-    // Die View zeigt entweder ReactFlow oder die Mock-Daten-Ansicht
-    // Kein Loading, kein Error = Daten werden dargestellt
-    expect(screen.queryByText('Lade Risiko-Netzwerk...')).not.toBeInTheDocument();
-    expect(screen.queryByText('Fehler beim Laden')).not.toBeInTheDocument();
+    expect(screen.getByTestId('reactflow-container')).toBeInTheDocument();
+  });
+
+  it('zeigt Empty-State wenn keine Daten vorhanden', () => {
+    // Leere echte Daten -> kein Mock, sondern ehrlicher Empty-State
+    mockUseRiskNetwork.mockReturnValue({
+      data: { nodes: [], edges: [], communities: [] },
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <RiskNetworkView entityId="entity-1" onNodeSelect={noop} />,
+      { wrapper: createQueryWrapper() },
+    );
+
+    expect(
+      screen.getByText(/Keine Risiko-Daten verfuegbar/),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('reactflow-container')).not.toBeInTheDocument();
   });
 });
 
@@ -196,9 +228,35 @@ describe('FinancialChainView', () => {
   });
 
   it('rendert Finanzkette wenn Daten vorhanden', () => {
-    // Null API-Daten -> interne Mock-Daten
+    // Echte API-Daten -> ReactFlow wird gerendert
     mockUseFinancialChain.mockReturnValue({
-      data: null,
+      data: {
+        entityId: 'entity-1',
+        entityName: 'Test GmbH',
+        stages: [
+          {
+            stage: 'invoice',
+            label: 'Rechnung',
+            documents: [
+              {
+                id: 'doc-1',
+                type: 'invoice',
+                label: 'Rechnung #1',
+                data: {
+                  documentNumber: 'RE-001',
+                  amount: 1000,
+                  currency: 'EUR',
+                  status: 'Offen',
+                  matchStatus: 'partial',
+                  date: '2026-01-15',
+                },
+              },
+            ],
+          },
+        ],
+        matchStatus: 'partial',
+        totalAmount: 1000,
+      },
       isLoading: false,
       error: null,
     });
@@ -208,8 +266,32 @@ describe('FinancialChainView', () => {
       { wrapper: createQueryWrapper() },
     );
 
-    expect(screen.queryByText('Lade Finanzketten-Daten...')).not.toBeInTheDocument();
-    expect(screen.queryByText('API nicht erreichbar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('reactflow-container')).toBeInTheDocument();
+  });
+
+  it('zeigt Empty-State wenn keine Daten vorhanden', () => {
+    // Leere echte Daten -> kein Mock, sondern ehrlicher Empty-State
+    mockUseFinancialChain.mockReturnValue({
+      data: {
+        entityId: 'entity-1',
+        entityName: 'Test GmbH',
+        stages: [],
+        matchStatus: 'none',
+        totalAmount: 0,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <FinancialChainView entityId="entity-1" onNodeSelect={noop} />,
+      { wrapper: createQueryWrapper() },
+    );
+
+    expect(
+      screen.getByText(/Keine Finanzketten .* gefunden/),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('reactflow-container')).not.toBeInTheDocument();
   });
 });
 
@@ -253,8 +335,56 @@ describe('DocumentFamilyView', () => {
   });
 
   it('rendert Dokumentenfamilie wenn Daten vorhanden', () => {
+    // Echte API-Daten -> ReactFlow wird gerendert
     mockUseDocumentFamily.mockReturnValue({
-      data: null,
+      data: {
+        rootDocument: {
+          id: 'root-1',
+          type: 'document',
+          label: 'Rahmenvertrag.pdf',
+          data: { date: '2026-01-10' },
+        },
+        groups: [
+          {
+            ring: 1,
+            label: 'Direkte Anhaenge',
+            documents: [
+              {
+                id: 'doc-child-1',
+                type: 'document',
+                label: 'Anlage_A.pdf',
+                data: { date: '2026-01-11' },
+              },
+            ],
+          },
+        ],
+        unlinkedCount: 0,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <DocumentFamilyView documentId="doc-1" onNodeSelect={noop} />,
+      { wrapper: createQueryWrapper() },
+    );
+
+    expect(screen.getByTestId('reactflow-container')).toBeInTheDocument();
+  });
+
+  it('zeigt Empty-State wenn keine Daten vorhanden', () => {
+    // Leere echte Daten -> kein Mock, sondern ehrlicher Empty-State
+    mockUseDocumentFamily.mockReturnValue({
+      data: {
+        rootDocument: {
+          id: 'root-1',
+          type: 'document',
+          label: 'Leer',
+          data: {},
+        },
+        groups: [],
+        unlinkedCount: 0,
+      },
       isLoading: false,
       error: null,
     });
@@ -265,8 +395,9 @@ describe('DocumentFamilyView', () => {
     );
 
     expect(
-      screen.queryByText('Lade Dokumentenfamilie...')
-    ).not.toBeInTheDocument();
+      screen.getByText(/Keine Dokumentenfamilie gefunden/),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('reactflow-container')).not.toBeInTheDocument();
   });
 });
 

@@ -9,6 +9,18 @@
 
 name: Canary Deploy
 
+# ============================================================================
+# DEAKTIVIERT (G2, 2026-06-03): Canary nicht konfiguriert.
+# Grund: Es existiert KEIN top-level `nginx`-Compose-Service (nur unter
+# infrastructure/nginx/docker-compose.nginx.yml). Die Jobs rufen
+# `docker-compose exec nginx ...` auf und schreiben verschachtelte Heredocs
+# (NGINX_EOF eingerueckt -> kaputt). Alle Jobs sind daher per `if: false`
+# deaktiviert, bis ein top-level nginx-Service + entschachtelte Heredocs
+# bereitstehen.
+# Reparatur-Pfad: nginx-Aufrufe auf infrastructure/nginx/docker-compose.nginx.yml
+# umstellen und die NGINX_EOF-Heredocs aus den DEPLOY_EOF-Heredocs entschachteln.
+# ============================================================================
+
 on:
   workflow_dispatch:
     inputs:
@@ -46,6 +58,7 @@ jobs:
   prepare:
     name: Prepare Canary Deployment
     runs-on: ubuntu-latest
+    if: false  # G2: Canary deaktiviert (siehe Kopf-Kommentar)
 
     outputs:
       version: ${{ steps.validate.outputs.version }}
@@ -101,6 +114,7 @@ jobs:
     name: Canary 10% Traffic
     runs-on: ubuntu-latest
     needs: prepare
+    if: false  # G2: Canary deaktiviert (siehe Kopf-Kommentar)
     environment:
       name: production-canary
 
@@ -190,6 +204,7 @@ jobs:
     name: Canary 50% Traffic
     runs-on: ubuntu-latest
     needs: [prepare, canary-10]
+    if: false  # G2: Canary deaktiviert (siehe Kopf-Kommentar)
 
     steps:
       - name: Configure SSH
@@ -253,6 +268,7 @@ jobs:
     name: Full Rollout (100%)
     runs-on: ubuntu-latest
     needs: [prepare, canary-10, canary-50]
+    if: false  # G2: Canary deaktiviert (siehe Kopf-Kommentar)
     environment:
       name: production
 
@@ -312,7 +328,7 @@ jobs:
     name: Rollback Canary
     runs-on: ubuntu-latest
     needs: [prepare, canary-10, canary-50, full-rollout]
-    if: failure()
+    if: false  # G2: Canary deaktiviert (siehe Kopf-Kommentar; vormals if: failure())
 
     steps:
       - name: Configure SSH
