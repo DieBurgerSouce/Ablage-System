@@ -38,31 +38,6 @@ interface JobThroughputChartProps {
   height?: number;
 }
 
-// ==================== Mock Data Generator ====================
-
-function generateMockData(): ThroughputDataPoint[] {
-  const data: ThroughputDataPoint[] = [];
-  const now = new Date();
-
-  for (let i = 23; i >= 0; i--) {
-    const date = new Date(now);
-    date.setHours(date.getHours() - i);
-
-    const completed = Math.floor(Math.random() * 50) + 10;
-    const failed = Math.floor(Math.random() * 5);
-
-    data.push({
-      hour: date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-      timestamp: date.toISOString(),
-      completed,
-      failed,
-      total: completed + failed,
-    });
-  }
-
-  return data;
-}
-
 // ==================== Custom Tooltip ====================
 
 interface TooltipProps {
@@ -105,9 +80,8 @@ export function JobThroughputChart({
   showFailed = true,
   height = 300,
 }: JobThroughputChartProps) {
-  // Use mock data if no data provided
   const chartData = useMemo(() => {
-    return data || generateMockData();
+    return data ?? [];
   }, [data]);
 
   // Calculate totals
@@ -131,6 +105,28 @@ export function JobThroughputChart({
         </CardHeader>
         <CardContent>
           <Skeleton className="h-[300px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            {title}
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="flex items-center justify-center text-sm text-muted-foreground"
+            style={{ height }}
+          >
+            Keine Daten für den gewählten Zeitraum
+          </div>
         </CardContent>
       </Card>
     );

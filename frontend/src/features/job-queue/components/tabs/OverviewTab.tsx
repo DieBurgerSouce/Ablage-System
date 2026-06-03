@@ -6,9 +6,7 @@
 
 import { useMemo } from 'react';
 import {
-  Activity,
   AlertTriangle,
-  BarChart3,
   CheckCircle2,
   Clock,
   Cpu,
@@ -105,7 +103,7 @@ function KPICard({
 export function OverviewTab() {
   const { data: stats, isLoading: statsLoading } = useJobStats();
   const { data: workers, isLoading: workersLoading } = useWorkersList();
-  const { data: dlqStats, isLoading: dlqLoading } = useDLQStats();
+  const { data: dlqStats } = useDLQStats();
   const { data: queues, isLoading: queuesLoading } = useQueuesList();
 
   // Berechne abgeleitete Werte
@@ -122,13 +120,6 @@ export function OverviewTab() {
     if (gpuMemoryPercent >= 70) return 'warning';
     return 'success';
   }, [gpuMemoryPercent]);
-
-  const dlqStatus = useMemo(() => {
-    if (!dlqStats?.totalTasks) return 'success';
-    if (dlqStats.totalTasks > 50) return 'error';
-    if (dlqStats.totalTasks > 10) return 'warning';
-    return 'default';
-  }, [dlqStats?.totalTasks]);
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
@@ -347,7 +338,13 @@ export function OverviewTab() {
         </CardContent>
       </Card>
 
-      {/* Performance Charts */}
+      {/* Performance Charts
+          Hinweis: useJobStats liefert nur 24h-Aggregate (successRate24h,
+          throughputPerHour, ...), aber KEINEN stündlichen 24h-Verlauf.
+          Bis ein Verlaufs-Endpoint existiert, bleiben diese Charts bewusst
+          ohne Daten (ehrlicher Empty-State) statt Mock-/Zufallsdaten.
+          Folgepunkt (G1): stündlichen 24h-Verlaufs-Endpoint bereitstellen
+          und hier als data-Prop durchreichen. */}
       <div className="grid gap-4 lg:grid-cols-2">
         <JobThroughputChart isLoading={statsLoading} />
         <SuccessRateChart isLoading={statsLoading} />

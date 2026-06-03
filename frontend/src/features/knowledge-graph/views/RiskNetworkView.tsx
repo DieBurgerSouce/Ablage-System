@@ -73,7 +73,7 @@ interface RiskCommunity {
   color: string;
 }
 
-interface RiskNetworkMockData {
+interface RiskNetworkViewData {
   entities: RiskEntity[];
   edges: RiskEdge[];
   communities: RiskCommunity[];
@@ -126,179 +126,6 @@ function formatGermanCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
-}
-
-// ---------------------------------------------------------------------------
-// Seeded Random (deterministic per entityId)
-// ---------------------------------------------------------------------------
-
-function seededRandom(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Mock Data Generation
-// ---------------------------------------------------------------------------
-
-const GERMAN_COMPANIES = [
-  'Mueller GmbH',
-  'Schmidt & Soehne KG',
-  'Bauer Maschinenbau AG',
-  'Fischer Logistik GmbH',
-  'Weber Consulting',
-  'Schneider IT Services',
-  'Hoffmann Elektrotechnik',
-  'Koch Handelsgesellschaft',
-  'Wagner Metallbau',
-  'Becker Transport AG',
-  'Richter Pharma GmbH',
-  'Klein Bauunternehmen',
-  'Wolf Textilien',
-  'Schaefer Automotive',
-  'Neumann Chemie GmbH',
-  'Schwarz Lebensmittel AG',
-  'Zimmermann Holzbau',
-  'Braun Medizintechnik',
-  'Krueger Versicherung',
-  'Hartmann Energietechnik',
-  'Lange Stahlwerke',
-  'Werner Gebaeudetechnik',
-  'Lehmann Druckerei',
-  'Schmitt Verpackung GmbH',
-  'Roth Elektronik AG',
-];
-
-const COMMUNITY_NAMES = [
-  'Lieferkette Sued',
-  'Industriecluster Nord',
-  'Handelspartner West',
-  'Technologie-Verbund',
-];
-
-const COMMUNITY_COLORS = [
-  'rgba(59, 130, 246, 0.08)',
-  'rgba(34, 197, 94, 0.08)',
-  'rgba(168, 85, 247, 0.08)',
-  'rgba(249, 115, 22, 0.08)',
-];
-
-function generateMockRiskNetwork(entityId?: string): RiskNetworkMockData {
-  const seed = (entityId ?? 'global')
-    .split('')
-    .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  const rng = seededRandom(seed || 42);
-
-  const entityCount = Math.floor(rng() * 11) + 15; // 15-25
-  const communityCount = Math.min(4, Math.max(3, Math.floor(rng() * 2) + 3));
-
-  // Build communities
-  const communities: RiskCommunity[] = [];
-  for (let c = 0; c < communityCount; c++) {
-    communities.push({
-      id: `community-${c}`,
-      name: COMMUNITY_NAMES[c % COMMUNITY_NAMES.length],
-      memberIds: [],
-      color: COMMUNITY_COLORS[c % COMMUNITY_COLORS.length],
-    });
-  }
-
-  // Build entities
-  const entities: RiskEntity[] = [];
-  const usedNames = new Set<string>();
-
-  for (let i = 0; i < entityCount; i++) {
-    let name = GERMAN_COMPANIES[Math.floor(rng() * GERMAN_COMPANIES.length)];
-    while (usedNames.has(name)) {
-      name =
-        GERMAN_COMPANIES[Math.floor(rng() * GERMAN_COMPANIES.length)] +
-        ` (${Math.floor(rng() * 99) + 1})`;
-    }
-    usedNames.add(name);
-
-    const communityIdx = Math.floor(rng() * communityCount);
-    const community = communities[communityIdx];
-    const entId = `risk-ent-${i}`;
-    community.memberIds.push(entId);
-
-    const riskScore = Math.floor(rng() * 86) + 10; // 10-95
-    const transactionVolume =
-      Math.floor(rng() * 4990000) + 10000; // 10,000 - 5,000,000
-
-    entities.push({
-      entityId: entId,
-      entityName: name,
-      riskScore,
-      transactionVolume,
-      communityId: community.id,
-      paymentBehaviorScore: Math.floor(rng() * 100),
-      industryRisk: Math.floor(rng() * 100),
-      volumeScore: Math.floor(rng() * 100),
-      lastAnomaly:
-        riskScore > 60
-          ? new Date(
-              Date.now() - Math.floor(rng() * 90 * 24 * 60 * 60 * 1000)
-            ).toLocaleDateString('de-DE')
-          : null,
-    });
-  }
-
-  // Build edges - connect entities within and across communities
-  const edges: RiskEdge[] = [];
-  const edgeSet = new Set<string>();
-
-  for (const community of communities) {
-    const members = community.memberIds;
-    // Connect within community (most members connected)
-    for (let i = 0; i < members.length; i++) {
-      for (let j = i + 1; j < members.length; j++) {
-        if (rng() > 0.4) {
-          const edgeKey = `${members[i]}-${members[j]}`;
-          if (!edgeSet.has(edgeKey)) {
-            edgeSet.add(edgeKey);
-            edges.push({
-              source: members[i],
-              target: members[j],
-              transactionCount: Math.floor(rng() * 50) + 1,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // Cross-community edges (fewer)
-  for (let i = 0; i < Math.floor(entityCount * 0.3); i++) {
-    const srcIdx = Math.floor(rng() * entityCount);
-    const tgtIdx = Math.floor(rng() * entityCount);
-    if (srcIdx !== tgtIdx) {
-      const src = entities[srcIdx].entityId;
-      const tgt = entities[tgtIdx].entityId;
-      const edgeKey = `${src}-${tgt}`;
-      const reverseKey = `${tgt}-${src}`;
-      if (!edgeSet.has(edgeKey) && !edgeSet.has(reverseKey)) {
-        edgeSet.add(edgeKey);
-        edges.push({
-          source: src,
-          target: tgt,
-          transactionCount: Math.floor(rng() * 20) + 1,
-        });
-      }
-    }
-  }
-
-  return { entities, edges, communities };
-}
-
-function useRiskNetworkData(entityId?: string) {
-  const mockData = useMemo(
-    () => generateMockRiskNetwork(entityId),
-    [entityId]
-  );
-  return { data: mockData, isLoading: false, error: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -671,7 +498,7 @@ export function RiskNetworkView({
 }: RiskNetworkViewProps) {
   const { data: apiData, isLoading, error } = useRiskNetwork(entityId);
 
-  const mockData = useMemo(() => {
+  const networkData = useMemo((): RiskNetworkViewData => {
     if (apiData?.nodes?.length) {
       return {
         entities: apiData.nodes.map((e) => ({
@@ -698,37 +525,38 @@ export function RiskNetworkView({
         })) || [],
       };
     }
-    return generateMockRiskNetwork(entityId);
-  }, [apiData, entityId]);
+    // Keine echten Daten -> leere Struktur, damit der Empty-State greift
+    return { entities: [], edges: [], communities: [] };
+  }, [apiData]);
 
   // Compute volume range for node sizing
   const { minVol, maxVol } = useMemo(() => {
-    if (!mockData || mockData.entities.length === 0)
+    if (!networkData || networkData.entities.length === 0)
       return { minVol: 0, maxVol: 1 };
-    const volumes = mockData.entities.map((e) => e.transactionVolume);
+    const volumes = networkData.entities.map((e) => e.transactionVolume);
     return {
       minVol: Math.min(...volumes),
       maxVol: Math.max(...volumes),
     };
-  }, [mockData]);
+  }, [networkData]);
 
   // Build ReactFlow nodes and edges from mock data
   const initialNodes = useMemo<Node[]>(() => {
-    if (!mockData) return [];
+    if (!networkData) return [];
     const { flowNodes, groupNodes } = layoutNodes(
-      mockData.entities,
-      mockData.communities,
+      networkData.entities,
+      networkData.communities,
       minVol,
       maxVol,
       onNodeSelect
     );
     return [...groupNodes, ...flowNodes];
-  }, [mockData, minVol, maxVol, onNodeSelect]);
+  }, [networkData, minVol, maxVol, onNodeSelect]);
 
   const initialEdges = useMemo<Edge[]>(() => {
-    if (!mockData) return [];
-    return buildFlowEdges(mockData.edges, mockData.entities);
-  }, [mockData]);
+    if (!networkData) return [];
+    return buildFlowEdges(networkData.edges, networkData.entities);
+  }, [networkData]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -795,7 +623,7 @@ export function RiskNetworkView({
     );
   }
 
-  if (!mockData || mockData.entities.length === 0) {
+  if (!networkData || networkData.entities.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Card className="max-w-md">
@@ -819,7 +647,7 @@ export function RiskNetworkView({
     <div className="flex h-full flex-col overflow-hidden">
       {/* Risk Summary Panel */}
       <div className="flex-shrink-0 border-b border-border bg-background p-3">
-        <RiskSummaryPanel entities={mockData.entities} />
+        <RiskSummaryPanel entities={networkData.entities} />
       </div>
 
       {/* ReactFlow Canvas */}
@@ -861,7 +689,7 @@ export function RiskNetworkView({
           <span className="font-semibold text-muted-foreground">
             Cluster:
           </span>
-          {mockData.communities.map((community) => (
+          {networkData.communities.map((community) => (
             <div key={community.id} className="flex items-center gap-1.5">
               <div
                 className="h-3 w-3 rounded border"

@@ -27,7 +27,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { logger } from '@/lib/logger';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,10 +56,15 @@ interface StatusOption {
   className?: string;
   action: 'payment' | 'archive';
   paymentStatus?: PaymentStatus;
+  /** true = serverseitig verkabelt; false = (noch) nicht unterstützt */
+  supported: boolean;
 }
 
 // ==================== Config ====================
 
+// Nur 'bezahlt' ist serverseitig (bulkMarkAsPaid) verkabelt. Die übrigen
+// Zahlungsstatus sind noch nicht implementiert und werden deaktiviert
+// dargestellt, statt einen falschen Erfolg vorzutäuschen.
 const STATUS_OPTIONS: StatusOption[] = [
   {
     id: 'bezahlt',
@@ -69,6 +73,7 @@ const STATUS_OPTIONS: StatusOption[] = [
     className: 'text-green-600',
     action: 'payment',
     paymentStatus: 'bezahlt',
+    supported: true,
   },
   {
     id: 'offen',
@@ -77,6 +82,7 @@ const STATUS_OPTIONS: StatusOption[] = [
     className: 'text-blue-600',
     action: 'payment',
     paymentStatus: 'offen',
+    supported: false,
   },
   {
     id: 'überfällig',
@@ -85,6 +91,7 @@ const STATUS_OPTIONS: StatusOption[] = [
     className: 'text-red-600',
     action: 'payment',
     paymentStatus: 'überfällig',
+    supported: false,
   },
 ];
 
@@ -93,6 +100,7 @@ const ARCHIVE_OPTION: StatusOption = {
   label: 'Archivieren',
   icon: Archive,
   action: 'archive',
+  supported: true,
 };
 
 // ==================== Main Component ====================
@@ -115,23 +123,22 @@ export function StatusChangeDropdown({
   const handlePaymentStatusChange = async (status: PaymentStatus) => {
     if (selectedIds.length === 0) return;
 
+    // Nur 'bezahlt' ist serverseitig verkabelt. Andere Status werden im UI
+    // bereits deaktiviert; hier zusätzlich früh beenden OHNE onSuccess, damit
+    // kein falscher Erfolgseindruck entsteht.
+    if (status !== 'bezahlt') {
+      return;
+    }
+
     setProcessingAction(status);
     try {
-      // Note: The API expects bezahlt for "mark as paid", but for other statuses
-      // we might need a different endpoint. For now, we use bulkMarkAsPaid for "bezahlt"
-      // and would need a separate hook for other statuses
-      if (status === 'bezahlt') {
-        await bulkMarkAsPaid.mutateAsync({
-          documentIds: selectedIds,
-        });
-      } else {
-        // For other statuses, we would need a bulk status update hook
-        // This is a placeholder - implement when backend supports it
-        logger.warn('Massen-Statusupdate zu', status, 'noch nicht implementiert');
-      }
+      await bulkMarkAsPaid.mutateAsync({
+        documentIds: selectedIds,
+      });
+      // onSuccess NUR nach erfolgreicher Mutation
       onSuccess?.();
     } catch {
-      // Error handling is done by the mutation hook
+      // Fehlerbehandlung erfolgt im Mutation-Hook
     } finally {
       setProcessingAction(null);
     }
@@ -196,8 +203,8 @@ export function StatusChangeDropdown({
                 return (
                   <DropdownMenuItem
                     key={option.id}
-                    onClick={() => handleOptionClick(option)}
-                    disabled={isLoading}
+                    onClick={option.supported ? () => handleOptionClick(option) : undefined}
+                    disabled={isLoading || !option.supported}
                     className={option.className}
                   >
                     {isProcessing ? (
@@ -206,6 +213,11 @@ export function StatusChangeDropdown({
                       <Icon className="h-4 w-4 mr-2" aria-hidden="true" />
                     )}
                     {option.label}
+                    {!option.supported && (
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        noch nicht verfügbar
+                      </span>
+                    )}
                   </DropdownMenuItem>
                 );
               })}

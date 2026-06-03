@@ -1,137 +1,138 @@
 /**
  * Streckengeschäft Validierung Route
  * Manuelle Validierung von Streckengeschäft-Klassifikationen.
+ *
+ * Lädt die offenen (noch nicht bestätigten) Klassifikationen aus der echten
+ * Streckengeschäft-API. "Prüfen" bestätigt die Klassifikation (echte Mutation),
+ * "Ablehnen" korrigiert sie via Override auf 'domestic' (Inlandsgeschäft).
  */
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle, XCircle, Clock, Filter, Shield, AlertTriangle, ExternalLink } from 'lucide-react';
+import { EmptyState, EmptyStatePresets } from '@/components/ui/empty-state';
+import { CheckCircle, XCircle, Clock, Filter, Shield, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  useDropShipmentList,
+  useConfirmClassification,
+  useOverrideClassification,
+} from '@/features/drop-shipment/hooks';
+import type {
+  DropShipmentClassification,
+  DropShipmentClassificationType,
+} from '@/features/drop-shipment/types';
 
+/** Anzeige-Modell einer Tabellenzeile, abgeleitet aus echten Klassifikationsdaten. */
 interface ValidationItem {
   id: string;
-  documentName: string;
-  transactionType: 'innergemeinschaftlich' | 'dreiecksgeschaeft' | 'ausfuhr';
-  confidence: number;
-  vatId: string;
-  vatIdValid: boolean | null;
-  status: 'ausstehend' | 'geprueft' | 'abgelehnt';
-  createdAt: string;
+  documentId: string;
+  classificationType: DropShipmentClassificationType;
+  confidence: number; // 0-100, abgeleitet aus confidenceScore (0.0-1.0)
+  vatId: string | null;
+  vatIdValid: boolean | null; // hier nicht geprüft -> konservativ null
 }
 
-const mockData: ValidationItem[] = [
-  {
-    id: '1',
-    documentName: 'Lieferschein_2024_0891.pdf',
-    transactionType: 'innergemeinschaftlich',
-    confidence: 92,
-    vatId: 'DE123456789',
-    vatIdValid: true,
-    status: 'ausstehend',
-    createdAt: '2024-02-15T10:30:00Z',
-  },
-  {
-    id: '2',
-    documentName: 'Rechnung_NL_2024_0234.pdf',
-    transactionType: 'dreiecksgeschaeft',
-    confidence: 78,
-    vatId: 'NL987654321B01',
-    vatIdValid: true,
-    status: 'ausstehend',
-    createdAt: '2024-02-15T09:15:00Z',
-  },
-  {
-    id: '3',
-    documentName: 'Export_CH_2024_0567.pdf',
-    transactionType: 'ausfuhr',
-    confidence: 88,
-    vatId: 'CHE-123.456.789',
-    vatIdValid: null,
-    status: 'geprueft',
-    createdAt: '2024-02-14T16:45:00Z',
-  },
-  {
-    id: '4',
-    documentName: 'Lieferschein_AT_2024_0192.pdf',
-    transactionType: 'innergemeinschaftlich',
-    confidence: 65,
-    vatId: 'ATU12345678',
-    vatIdValid: false,
-    status: 'abgelehnt',
-    createdAt: '2024-02-14T14:20:00Z',
-  },
-  {
-    id: '5',
-    documentName: 'Rechnung_FR_2024_0876.pdf',
-    transactionType: 'dreiecksgeschaeft',
-    confidence: 84,
-    vatId: 'FR12345678901',
-    vatIdValid: true,
-    status: 'ausstehend',
-    createdAt: '2024-02-14T11:00:00Z',
-  },
-  {
-    id: '6',
-    documentName: 'Export_US_2024_0445.pdf',
-    transactionType: 'ausfuhr',
-    confidence: 95,
-    vatId: 'N/A',
-    vatIdValid: null,
-    status: 'geprueft',
-    createdAt: '2024-02-13T13:30:00Z',
-  },
-];
-
-const transactionTypeLabels: Record<ValidationItem['transactionType'], string> = {
-  innergemeinschaftlich: 'Innergemeinschaftlich',
-  dreiecksgeschaeft: 'Dreiecksgeschäft',
-  ausfuhr: 'Ausfuhr',
+const classificationTypeLabels: Record<DropShipmentClassificationType, string> = {
+  drop_shipment: 'Streckengeschäft',
+  triangular: 'Dreiecksgeschäft',
+  chain_transaction: 'Reihengeschäft',
+  domestic: 'Inlandsgeschäft',
+  unknown: 'Unbekannt',
 };
+
+/**
+ * Mappt eine echte Klassifikation auf das Tabellen-Anzeigemodell.
+ * Es werden KEINE Werte erfunden: vatIdValid bleibt null (in dieser Ansicht
+ * nicht geprüft), vatId stammt aus der ersten Partei mit hinterlegter USt-IdNr.
+ */
+function toValidationItem(c: DropShipmentClassification): ValidationItem {
+  const firstVatId = c.parties.find((p) => p.vatId)?.vatId ?? null;
+  return {
+    id: c.id,
+    documentId: c.documentId,
+    classificationType: c.classificationType,
+    confidence: Math.round(c.confidenceScore * 100),
+    vatId: firstVatId,
+    vatIdValid: null,
+  };
+}
 
 function ValidationPage() {
   const { toast } = useToast();
-  const [items, setItems] = useState<ValidationItem[]>(mockData);
   const [statusFilter, setStatusFilter] = useState<string>('alle');
   const [confidenceFilter, setConfidenceFilter] = useState<string>('alle');
 
-  const handleApprove = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: 'geprueft' as const } : item
-      )
-    );
-    toast({
-      title: 'Klassifikation geprüft',
-      description: 'Die Klassifikation wurde erfolgreich validiert.',
-    });
+  // Nur offene (noch nicht bestätigte) Klassifikationen laden
+  const {
+    data: listResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useDropShipmentList({ isConfirmed: false });
+
+  const confirmMutation = useConfirmClassification();
+  const overrideMutation = useOverrideClassification();
+  const isMutating = confirmMutation.isPending || overrideMutation.isPending;
+
+  const items = useMemo<ValidationItem[]>(
+    () => (listResponse?.items ?? []).map(toValidationItem),
+    [listResponse],
+  );
+
+  const handleApprove = async (id: string) => {
+    try {
+      await confirmMutation.mutateAsync({ classificationId: id });
+      toast({
+        title: 'Klassifikation geprüft',
+        description: 'Die Klassifikation wurde erfolgreich bestätigt.',
+      });
+    } catch {
+      toast({
+        title: 'Bestätigung fehlgeschlagen',
+        description: 'Die Klassifikation konnte nicht bestätigt werden. Bitte erneut versuchen.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleReject = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: 'abgelehnt' as const } : item
-      )
-    );
-    toast({
-      title: 'Klassifikation abgelehnt',
-      description: 'Die Klassifikation wurde abgelehnt und muss überprüft werden.',
-      variant: 'destructive',
-    });
+  const handleReject = async (id: string) => {
+    // Hinweis: Das Backend kennt keinen dedizierten Reject-Status. Ablehnen wird
+    // als Korrektur auf 'domestic' (Inlandsgeschäft) abgebildet.
+    // Folgepunkt (G1): echten Reject-/Verworfen-Status bereitstellen.
+    try {
+      await overrideMutation.mutateAsync({
+        classificationId: id,
+        newClassificationType: 'domestic',
+        reason: 'Manuell abgelehnt',
+      });
+      toast({
+        title: 'Klassifikation abgelehnt',
+        description: 'Die Klassifikation wurde als Inlandsgeschäft korrigiert.',
+        variant: 'destructive',
+      });
+    } catch {
+      toast({
+        title: 'Ablehnung fehlgeschlagen',
+        description: 'Die Klassifikation konnte nicht abgelehnt werden. Bitte erneut versuchen.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // Status filter
-      if (statusFilter !== 'alle' && item.status !== statusFilter) {
+      // Status-Filter: Diese Ansicht zeigt ausschließlich offene Klassifikationen.
+      // 'alle' und 'ausstehend' lassen alles durch; 'geprueft'/'abgelehnt' sind hier leer.
+      if (statusFilter !== 'alle' && statusFilter !== 'ausstehend') {
         return false;
       }
 
-      // Confidence filter
+      // Konfidenz-Filter
       if (confidenceFilter === 'hoch' && item.confidence < 80) return false;
       if (confidenceFilter === 'mittel' && (item.confidence < 60 || item.confidence >= 80)) return false;
       if (confidenceFilter === 'niedrig' && item.confidence >= 60) return false;
@@ -141,11 +142,10 @@ function ValidationPage() {
   }, [items, statusFilter, confidenceFilter]);
 
   const stats = useMemo(() => {
-    const total = items.length;
-    const pending = items.filter((i) => i.status === 'ausstehend').length;
-    const approved = items.filter((i) => i.status === 'geprueft').length;
-    const rejected = items.filter((i) => i.status === 'abgelehnt').length;
-    return { total, pending, approved, rejected };
+    const pending = items.length;
+    const highConfidence = items.filter((i) => i.confidence >= 80).length;
+    const lowConfidence = items.filter((i) => i.confidence < 60).length;
+    return { pending, highConfidence, lowConfidence };
   }, [items]);
 
   const getConfidenceBadge = (confidence: number) => {
@@ -155,32 +155,6 @@ function ValidationPage() {
       return <Badge variant="secondary" className="bg-yellow-500 text-black">{confidence}%</Badge>;
     } else {
       return <Badge variant="destructive">{confidence}%</Badge>;
-    }
-  };
-
-  const getStatusBadge = (status: ValidationItem['status']) => {
-    switch (status) {
-      case 'ausstehend':
-        return (
-          <Badge variant="secondary" className="bg-yellow-500 text-black">
-            <Clock className="h-3 w-3 mr-1" />
-            Ausstehend
-          </Badge>
-        );
-      case 'geprueft':
-        return (
-          <Badge variant="default" className="bg-green-500">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Geprüft
-          </Badge>
-        );
-      case 'abgelehnt':
-        return (
-          <Badge variant="destructive">
-            <XCircle className="h-3 w-3 mr-1" />
-            Abgelehnt
-          </Badge>
-        );
     }
   };
 
@@ -201,18 +175,44 @@ function ValidationPage() {
     );
   };
 
+  const header = (
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight font-display flex items-center gap-2">
+        <Shield className="h-6 w-6" />
+        Validierung
+      </h1>
+      <p className="text-muted-foreground mt-1">
+        Manuelle Validierung von Streckengeschäft-Klassifikationen
+      </p>
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {header}
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm text-muted-foreground">Lade Klassifikationen...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        {header}
+        <EmptyState {...EmptyStatePresets.loadError(() => { void refetch(); })} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight font-display flex items-center gap-2">
-          <Shield className="h-6 w-6" />
-          Validierung
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Manuelle Validierung von Streckengeschäft-Klassifikationen
-        </p>
-      </div>
+      {header}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -233,12 +233,12 @@ function ValidationPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Geprüft
+              Hohe Konfidenz (≥80%)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold">{stats.approved}</div>
+              <div className="text-3xl font-bold">{stats.highConfidence}</div>
               <CheckCircle className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
@@ -247,13 +247,13 @@ function ValidationPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Abgelehnt
+              Niedrige Konfidenz (&lt;60%)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold">{stats.rejected}</div>
-              <XCircle className="h-8 w-8 text-red-500" />
+              <div className="text-3xl font-bold">{stats.lowConfidence}</div>
+              <AlertTriangle className="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
         </Card>
@@ -302,88 +302,94 @@ function ValidationPage() {
         </CardContent>
       </Card>
 
-      {/* Validation Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Klassifikationen ({filteredItems.length})</CardTitle>
-          <CardDescription>
-            Liste aller zu validierenden Streckengeschäft-Klassifikationen
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Dokument</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead>Konfidenz</TableHead>
-                <TableHead>USt-IdNr.</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredItems.length === 0 ? (
+      {/* Validation Table oder Empty-State */}
+      {items.length === 0 ? (
+        <EmptyState
+          variant="default"
+          title="Keine offenen Klassifikationen"
+          description="Es liegen derzeit keine zu validierenden Streckengeschäft-Klassifikationen vor."
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Klassifikationen ({filteredItems.length})</CardTitle>
+            <CardDescription>
+              Liste aller offenen, zu validierenden Streckengeschäft-Klassifikationen
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Keine Klassifikationen gefunden
-                  </TableCell>
+                  <TableHead>Dokument</TableHead>
+                  <TableHead>Typ</TableHead>
+                  <TableHead>Konfidenz</TableHead>
+                  <TableHead>USt-IdNr.</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
-              ) : (
-                filteredItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">
-                      {item.documentName}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {transactionTypeLabels[item.transactionType]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getConfidenceBadge(item.confidence)}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm font-mono">{item.vatId}</div>
-                        {getVatIdBadge(item.vatIdValid)}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {item.status === 'ausstehend' && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleApprove(item.id)}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Prüfen
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleReject(item.id)}
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Ablehnen
-                            </Button>
-                          </>
-                        )}
-                        {item.status !== 'ausstehend' && (
-                          <Badge variant="outline" className="text-xs">
-                            Abgeschlossen
-                          </Badge>
-                        )}
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {filteredItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      Keine Klassifikationen für die gewählten Filter
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ) : (
+                  filteredItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-xs">
+                        {item.documentId}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {classificationTypeLabels[item.classificationType]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{getConfidenceBadge(item.confidence)}</TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="text-sm font-mono">{item.vatId ?? '—'}</div>
+                          {getVatIdBadge(item.vatIdValid)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-yellow-500 text-black">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Ausstehend
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isMutating}
+                            onClick={() => handleApprove(item.id)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Prüfen
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isMutating}
+                            onClick={() => handleReject(item.id)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Ablehnen
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

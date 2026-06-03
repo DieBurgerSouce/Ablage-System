@@ -46,6 +46,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { EmptyState } from '@/components/ui/empty-state'
 import { fetchReportData, exportReport, type DocumentVolumeData } from '../api/report-data-api'
 
 // =============================================================================
@@ -93,7 +94,7 @@ function CustomTooltip({ active, payload, label }: RechartsTooltipProps) {
 export function DocumentVolumeReport() {
   const [period, setPeriod] = useState<string>('jahr')
 
-  const { data, isLoading } = useQuery<DocumentVolumeData>({
+  const { data, isLoading, isError, refetch } = useQuery<DocumentVolumeData>({
     queryKey: ['report', 'document-volume', period],
     queryFn: () => fetchReportData('document-volume', { period }),
   })
@@ -129,6 +130,19 @@ export function DocumentVolumeReport() {
           <Skeleton className="h-[400px]" />
           <Skeleton className="h-[400px]" />
         </div>
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="container mx-auto p-6">
+        <EmptyState
+          variant="error"
+          title="Berichtsdaten nicht verfügbar"
+          description="Die Berichtsdaten sind derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
+          action={{ label: 'Erneut versuchen', onClick: () => { void refetch(); } }}
+        />
       </div>
     )
   }

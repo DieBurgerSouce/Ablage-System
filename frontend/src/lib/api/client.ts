@@ -79,6 +79,10 @@ export const apiClient = axios.create({
 // 2. Frontend: credentials: 'include' bei fetch/axios
 // 3. CSRF-Token für state-changing requests
 // Phase 1.1: Migration von localStorage zu sessionStorage (XSS-Mitigation)
+// G3-Hinweis (Remediation 2026-06-03): Die httpOnly-Cookie-Migration ist
+// bewusst NICHT Teil von Strom G3 (Frontend-Mocks). Sie betrifft Auth-Client
+// + Backend (Set-Cookie/CSRF) und ist als Cross-Stream-Abhängigkeit zu G1/G2
+// vermerkt — hier erfolgt KEIN funktionaler Code-Change.
 apiClient.interceptors.request.use(
     (config) => {
         // Get token from sessionStorage (sicherer als localStorage)
