@@ -8,12 +8,21 @@
 
 | ID | Finding | Schwere | Evidenz / Ort | Status |
 |----|---------|---------|---------------|--------|
-| **B1** | `current_user.company_id` ohne Modell-Spalte → HTTP 500 | CRITICAL | `User` = `app/db/models.py:379-485` ohne `company_id`; 821 Vorkommen / 95 Dateien (`grep -c`), inkl. `app/api/dependencies.py:307/318/322` (`validate_company_access`). `invoices.py` bereits korrekt (UserCompany). | OFFEN — Fortsetzung der laufenden `owner_id→company_id`-Migration (F-Serie, siehe Resolved-Log) |
+| **B1** | `current_user.company_id` ohne Modell-Spalte → HTTP 500 | CRITICAL | `User` = `app/db/models.py:379-485` ohne `company_id`; 821 Vorkommen / 95 Dateien (`grep -c`), inkl. `app/api/dependencies.py:307/318/322` (`validate_company_access`). `invoices.py` bereits korrekt (UserCompany). | ✅ **BEHOBEN** (G1, `feature/g1-api-companyid`, 2026-06-03): `get_user_company_id_dep` zentral + 821 Vorkommen in 92 Modulen migriert; `validate_company_access` via `accessible_company_ids`; `rg current_user.company_id app/api` → 0 |
 | **B2** | Auto-Bankimport FinTS/PSD2 liefert Mock/leer | CRITICAL | `auto_transaction_import_service.py:480` „Mock: Return empty", `:434/590` `access_token="placeholder"`; `enhanced_fints_service.py:667-669,1187` Mock-Sync → echte Reconciliation (M9 gefährlich). | OFFEN — PSD2 teils bewusst OUTSCOPED (`breezy-napping-hare.md`); M9-Guard fehlt |
 | **B3** | CI/CD baut aus nicht existierenden Dockerfiles | HIGH | `ci.yml`/`docker.yml`/`docker-build.yml` → `docker/Dockerfile.backend\|frontend` existieren nicht; echte Builds = Root-`Dockerfile` + `frontend/Dockerfile` (von keinem CI referenziert). | OFFEN |
 | **B4** | Security-/Multi-Tenant-Tests als „stub" deaktiviert | CRITICAL | `tests/security/test_broken_auth.py`, `test_crlf_injection.py`, `test_pii_leakage.py`, `tests/integration/test_multi_tenant_isolation.py` = `@pytest.mark.skip("stub - nicht implementiert")`. Reale Coverage ~51 % vs. `fail_under=90`. | OFFEN |
 
 **Nächster Schritt** (priorisiert nach „Mocks → echt", separate Folge-Phase): siehe Roadmap in `MOCK_DATA_REGISTER.md`. Zusätzliche Medium/Low-Punkte (6 falsche Beat-Task-Namen, 5 unsichtbare Task-Module, verwaiste ORM-Modelle, Endpoint-Dubletten, leere `.secrets.baseline`, `safety || true`) in `TECHNICAL_DEBT.md`.
+
+### 🟡 G1-Abschluss (2026-06-03) — Follow-ups
+
+> G1 vollständig auf `feature/g1-api-companyid` (isolierter Worktree). DoD #1/#4/#5/#6/#7 erfüllt. Offene Punkte:
+
+- **Tests (→ G5)**: `tests/unit/api/test_fraud_detection_api.py` enthält 3 obsolete Tests, die das ALTE Verhalten prüfen (`test_analyze_fraud_no_company` erwartet 400-Guard statt 403-Dep; `test_alert_detail_not_implemented`/`test_alert_action_not_implemented` erwarten 501). Müssen auf das neue Verhalten (DoD #5/#7) aktualisiert werden. Nicht in G1 geändert (HARTe Scope-Grenze: nur `app/api`). Pre-existing Drift: gleiche Datei nutzt `limit=` statt `per_page=`; `tests/unit/services/approval/*` (G4-Services) brechen unabhängig.
+- **TODO(G4)**: `dashboard.py` OCR-Quality (success_rate/avg_confidence/manual_corrections = None bis OCRQualityMetricsService company-gefilterte Lese-Methode liefert, Interface-Kontrakt M3); `dashboard.py` current_balance (Kontostand-Lesemethode); `admin/system.py` `worker_control_service.request_worker_restart` (echter Celery-Restart, M6).
+- **Pre-existing (nicht G1)**: `ocr_feedback.py` Pydantic-v2 `regex=`→`pattern=` (Import-Fehler, schon im Base); `app.api.v1.rag.chat_rest` fehlende `get_chat_service`; `ruff`-Baseline ~27k Fehler (B008 für FastAPI-`Depends()`), daher DoD #2 „ruff/mypy clean" nicht absolut erfüllbar — G1 führt keine NEUEN F-Fehler ein.
+- **⚠️ Cross-Instance-Gefahr**: Während G1 lief, machte eine parallele G2-Instanz `git reset --hard` + Commits auf `feature/g2-cicd` im GETEILTEN Working-Dir und löschte die erste G1-Runde. Lehre: Streams in SEPARATEN Worktrees fahren (G1 wurde auf isoliertem Worktree neu gemacht).
 
 ### Design-Hinweise (kein Bug)
 

@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+### Security — Stream G1 (Multi-Tenant API-Hardening, `feature/g1-api-companyid`, 2026-06-03)
+- **B1 behoben**: `get_user_company_id`/`_require_user_company_id`/`get_user_company_id_dep` zentral in `app/api/dependencies.py`; `validate_company_access` nutzt jetzt `accessible_company_ids` (in `get_current_user` via `UserCompany` aufgeloest) statt der nicht existierenden `current_user.company_id`-Spalte — behebt latenten AttributeError/HTTP-500.
+- **company_id-Rollout**: 821 `current_user.company_id`-Zugriffe in 92 API-Modulen durch `company_id: UUID = Depends(get_user_company_id_dep)` ersetzt (HTTP 403 „Kein Unternehmen zugeordnet" bei fehlender Firma). `rg current_user.company_id app/api` → 0 Treffer.
+- `app/api/v1/fraud_detection.py`: `/alerts/{id}` + `/alerts/{id}/action` lesen/schreiben persistierte Fraud-Alerts ueber das Alert-Center (mandantengetrennt, 200/404/400 statt 501).
+- `app/api/v1/dashboard.py`: echte KPIs — `avg_payment_days` via SQL-Aggregation, Cashflow ueber `CashFlowService`, Approvals ueber `ApprovalService`; OCR-Quality ehrliche `None`-Werte statt `95.5/0.87`-Platzhaltern (`TODO(G4)`).
+- `app/api/v1/admin/system.py`: `restart_service` liefert ehrlichen HTTP 501 statt Fake-Erfolg (Superuser-Guard bleibt, `TODO(G4)` Worker-Control-Hook).
+- Mehrere latente `NameError` behoben (fehlende `and_`/`or_`-Imports in `approvals.py`, `predictions.py` u.a.).
+
 ### Added
 - `app/core/config.py`: FINTS_ALLOW_MOCK_SYNC + FINTS_AUTO_SYNC_ENABLED Feature-Flags (Default False) fuer sicheres FinTS/PSD2-Rollout (G0-Prereq)
 - `.env.example`: BANKING/FinTS-Konfigurationssektion (PSD2_BASE_URL, FINTS_SERVER_ADDRESS, FINTS_BLZ, FINTS_USER_ID)

@@ -1,6 +1,7 @@
 # Session Log
 
 | Datum | Branch | Commits | Dateien | Buckets | Modus |
+| 2026-06-03 | feature/g1-api-companyid | 5 | 100 | api,security,docs | worktree (AST-Codemod + 11 Agents) |
 | 2026-06-03 | feature/g0-prereq | 4 | 24 | orchestration,config,reviews | since-filter(6e877ef6) |
 | 2026-03-10 | feature/ocr-performance | 5 | 17 | infra,db,api,frontend,tests | session-documenter |
 | 2026-03-10 | feature/ocr-performance | 5 | 94 | infra,db,frontend,config,tests | session-documenter |
