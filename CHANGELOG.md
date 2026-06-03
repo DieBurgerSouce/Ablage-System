@@ -31,11 +31,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **G2 (Deploy):** `deploy.yml`: Breaking-Change-Check-Pfad `migrations/versions` → `alembic/versions`
 - **G2 (CI/CD):** `dependencies.yml`: toter `python-dependencies`-Job (pip-compile `requirements.in`, existierte nie) entfernt — Python-Updates via Dependabot
 - **G2 (Release):** `.releaserc.json` Release-Branch `main` → `master`; **manuelles `release.yml`** als einziger CI-verdrahteter Release-Mechanismus gewählt (semantic-release bleibt dormant, nur lokal via `npm run release`)
+- **G2 (Doku):** `.claude/CLAUDE.md`: Architektur-Diagramm PostgreSQL `:5433` → `:5434` (real per `docker-compose.yml`; 5433 von Hyper-V reserviert)
+- **G2 (Version):** `package.json` + `pyproject.toml` Version `1.0.0` → `0.1.0` (= `VERSION`/Tag `pilot-v0.1.0`; 1.0.0 war Tier-1-Artefakt). Offen: `app/main.py`-Hardcodes (1.0.0/0.3.0/0.2.0-poc) separat vereinheitlichen
 
 ### Security
 - **G2:** `.secrets.baseline` als gültige detect-secrets-1.4.0-Baseline neu erzeugt (vormals leeres `{}` = ungültig); `pre-commit run detect-secrets --all-files` = PASS
 - **G2:** `pip-audit` als **blockierendes** CVE-Gate in `ci.yml` UND `dependencies.yml` (ersetzt `safety check … || true`, das jeden Fund maskierte)
-- **G2 (Hinweis):** `browser-diagnostics/full-diagnostics-*.json` enthält zahlreiche JWT-Tokens (in Baseline als Hash erfasst) — falls real/aktiv: Tokens rotieren + Datei aus Repo/History entfernen (App-Scope, nicht G2)
+- **G2 (Security):** `browser-diagnostics/` (21 MB) aus Git-Tracking entfernt (`git rm --cached`) + `.gitignore` — enthielt 73 **abgelaufene** JWTs (HS256, exp 2025-12-31…2026-01-07 → kein Auth-Risiko) mit PII (email/username/sub). **Offen:** Datei bleibt in History (origin/master + Tag `pilot-v0.1.0`); Voll-Purge (filter-repo) nur bei DSGVO-Löschpflicht + Team-Koordination
 
 ## \[0.1.0\] - 2026-05-20 (Pilot-Ship)
 
