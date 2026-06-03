@@ -263,54 +263,9 @@ ignore_missing_imports = true
 # Pytest Configuration
 # =============================================================================
 
-[tool.pytest.ini_options]
-minversion = "7.0"
-pythonpath = ["."]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-
-# Markers for organizing tests
-markers = [
-    "unit: Unit tests",
-    "integration: Integration tests",
-    "e2e: End-to-end tests",
-    "gpu: Tests requiring GPU",
-    "slow: Slow running tests",
-    "asyncio: Async tests",
-    "database: Tests requiring database",
-    "redis: Tests requiring Redis",
-    "minio: Tests requiring MinIO",
-    "metrics: Backend metrics tests",
-    "fallback: GPU fallback scenario tests",
-    "windows: Windows-specific tests",
-    "experimental: Experimental features under evaluation",
-    "gpu_required: Tests that require GPU (will skip if not available)",
-    "docker: Docker container health tests",
-    "critical: Critical service tests (must pass)",
-    "gpu_optional: GPU tests (skip if no GPU available)",
-    "connectivity: Service connectivity tests",
-    "prometheus: Prometheus target tests",
-    "logs: Container log scanning tests",
-    "chaos: Chaos Engineering tests for fault injection",
-]
-
-# Addopts - options to always use
-# Note: Coverage options moved to separate invocation to allow running tests without pytest-cov
-addopts = [
-    "-ra",
-    "--strict-markers",
-    "--strict-config",
-    "--maxfail=5",
-    "--tb=short",
-    "-v",
-]
-
-# To run with coverage: pytest --cov=app --cov-report=term-missing --cov-branch
-
-# Asyncio configuration
-asyncio_mode = "auto"
+# Pytest-Konfiguration: siehe pytest.ini (einzige Quelle der Wahrheit).
+# Frueher gab es hier zusaetzlich [tool.pytest.ini_options]; pytest ignorierte
+# diesen Block aber, da pytest.ini Vorrang hat (G5-Followup: entfernt).
 
 # Coverage configuration
 [tool.coverage.run]
