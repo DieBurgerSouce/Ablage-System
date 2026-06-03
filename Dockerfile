@@ -8,7 +8,7 @@
 # ============================================================
 # Pin base image digest for reproducible builds
 # Update digest via: docker manifest inspect nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:f3a7fb39fa3ffbe54da713dd2e93063885e5be2f4586a705c39031b8284d379a AS builder
+FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04@sha256:2d913b09e6be8387e1a10976933642c73c840c0b735f0bf3c28d97fc9bc422e0 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
@@ -62,7 +62,7 @@ RUN if [ "${SKIP_JANUS}" = "1" ]; then \
 # curl is kept for the HEALTHCHECK.
 # ============================================================
 # Pin base image digest for reproducible builds (same image as builder)
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:f3a7fb39fa3ffbe54da713dd2e93063885e5be2f4586a705c39031b8284d379a
+FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04@sha256:2d913b09e6be8387e1a10976933642c73c840c0b735f0bf3c28d97fc9bc422e0
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
