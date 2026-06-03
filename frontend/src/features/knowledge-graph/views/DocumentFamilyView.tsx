@@ -106,157 +106,6 @@ const RING_CONFIG: Record<number, { radius: number; label: string; bgColor: stri
 };
 
 // ---------------------------------------------------------------------------
-// Mock Data Generator
-// ---------------------------------------------------------------------------
-
-function generateMockDocumentFamily(
-  documentId?: string,
-  entityId?: string,
-): DocumentFamilyData {
-  const seed = documentId || entityId || 'default';
-  const seedNum = seed.charCodeAt(0) % 5;
-
-  const documents: FamilyDocument[] = [
-    // Ring 0 - Hauptvertrag
-    {
-      id: `${seed}-vertrag-001`,
-      category: 'vertrag',
-      filename: 'Rahmenvertrag_2026.pdf',
-      date: '2026-01-10',
-      ring: 0,
-      isOrphan: false,
-      parentId: null,
-    },
-    // Ring 1 - Direkte Anhaenge
-    {
-      id: `${seed}-anlage-001`,
-      category: 'anlage',
-      filename: 'Anlage_A_Leistungsbeschreibung.pdf',
-      date: '2026-01-10',
-      ring: 1,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    {
-      id: `${seed}-anlage-002`,
-      category: 'anlage',
-      filename: 'Nachtrag_01_Preisanpassung.pdf',
-      date: '2026-01-25',
-      ring: 1,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    {
-      id: `${seed}-anlage-003`,
-      category: 'anlage',
-      filename: `Anlage_B_AGB${seedNum > 2 ? '_v2' : ''}.pdf`,
-      date: '2026-01-10',
-      ring: 1,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    // Ring 2 - Rechnungen, Lieferscheine
-    {
-      id: `${seed}-rechnung-001`,
-      category: 'rechnung',
-      filename: 'RE-2026-0042.pdf',
-      date: '2026-02-01',
-      ring: 2,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    {
-      id: `${seed}-rechnung-002`,
-      category: 'rechnung',
-      filename: 'RE-2026-0078.pdf',
-      date: '2026-02-15',
-      ring: 2,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    {
-      id: `${seed}-liefer-001`,
-      category: 'lieferschein',
-      filename: 'LS-2026-0042.pdf',
-      date: '2026-01-28',
-      ring: 2,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    {
-      id: `${seed}-liefer-002`,
-      category: 'lieferschein',
-      filename: 'LS-2026-0078.pdf',
-      date: '2026-02-12',
-      ring: 2,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    // Ring 3 - Korrespondenz, E-Mails
-    {
-      id: `${seed}-email-001`,
-      category: 'email',
-      filename: 'Auftragsbestaetigung_Mueller.eml',
-      date: '2026-01-11',
-      ring: 3,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    {
-      id: `${seed}-korr-001`,
-      category: 'korrespondenz',
-      filename: 'Schreiben_Nachverhandlung.pdf',
-      date: '2026-01-20',
-      ring: 3,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    {
-      id: `${seed}-email-002`,
-      category: 'email',
-      filename: 'Liefertermin_Bestaetigung.eml',
-      date: '2026-01-26',
-      ring: 3,
-      isOrphan: false,
-      parentId: `${seed}-vertrag-001`,
-    },
-    // Orphan documents
-    {
-      id: `${seed}-sonstig-001`,
-      category: 'sonstiges',
-      filename: 'Notiz_Telefonat_15012026.pdf',
-      date: '2026-01-15',
-      ring: 3,
-      isOrphan: true,
-      parentId: null,
-    },
-  ];
-
-  const links = documents
-    .filter((doc) => doc.parentId !== null)
-    .map((doc) => ({
-      sourceId: doc.parentId as string,
-      targetId: doc.id,
-      relationship: doc.ring === 1 ? 'Anlage' : doc.ring === 2 ? 'Beleg' : 'Bezug',
-    }));
-
-  return { documents, links };
-}
-
-// ---------------------------------------------------------------------------
-// Data Hook
-// ---------------------------------------------------------------------------
-
-/** Wird spaeter durch einen echten API-Aufruf ersetzt */
-function useDocumentFamilyData(documentId?: string, entityId?: string) {
-  const mockData = useMemo(
-    () => generateMockDocumentFamily(documentId, entityId),
-    [documentId, entityId],
-  );
-  return { data: mockData, isLoading: false, error: null as Error | null };
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -508,8 +357,9 @@ export function DocumentFamilyView({
         }));
       return { documents, links };
     }
-    return generateMockDocumentFamily(documentId, entityId);
-  }, [apiData, documentId, entityId]);
+    // Keine echten Daten -> leere Struktur, damit der Empty-State greift
+    return { documents: [], links: [] };
+  }, [apiData]);
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     if (!familyData || familyData.documents.length === 0) {

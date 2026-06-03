@@ -44,7 +44,7 @@ export interface StartImportResponse {
 
 // ==================== Error Handling ====================
 
-class WizardApiError extends Error {
+export class WizardApiError extends Error {
   statusCode?: number;
   originalError?: unknown;
 
@@ -120,19 +120,9 @@ export function useEmailPreview(configId: string | null) {
         );
         return response.data;
       } catch (error) {
-        // Gracefully handle 404 - endpoint may not exist yet
-        if (error instanceof Error && 'response' in error) {
-          const axiosError = error as AxiosError;
-          if (axiosError.response?.status === 404) {
-            // Return mock data as fallback
-            return {
-              itemCount: 0,
-              totalSize: 0,
-              warnings: ['Vorschau-Funktion noch nicht verfügbar'],
-              sampleItems: [],
-            };
-          }
-        }
+        // 404 wird NICHT mehr als Fake-0-Items-Vorschau kaschiert, sondern als
+        // echter Fehler durchgereicht (handleApiError setzt statusCode, z.B. 404).
+        // Die Vorschau-Komponente zeigt daraufhin einen ehrlichen Empty-State.
         handleApiError(error, 'E-Mail Vorschau laden');
       }
     },
@@ -158,19 +148,9 @@ export function useFolderPreview(configId: string | null) {
         );
         return response.data;
       } catch (error) {
-        // Gracefully handle 404 - endpoint may not exist yet
-        if (error instanceof Error && 'response' in error) {
-          const axiosError = error as AxiosError;
-          if (axiosError.response?.status === 404) {
-            // Return mock data as fallback
-            return {
-              itemCount: 0,
-              totalSize: 0,
-              warnings: ['Vorschau-Funktion noch nicht verfügbar'],
-              sampleItems: [],
-            };
-          }
-        }
+        // 404 wird NICHT mehr als Fake-0-Items-Vorschau kaschiert, sondern als
+        // echter Fehler durchgereicht (handleApiError setzt statusCode, z.B. 404).
+        // Die Vorschau-Komponente zeigt daraufhin einen ehrlichen Empty-State.
         handleApiError(error, 'Ordner Vorschau laden');
       }
     },
