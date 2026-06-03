@@ -25,6 +25,7 @@ from uuid import UUID, uuid4
 import structlog
 from prometheus_client import Counter, Histogram, Gauge
 
+from app.core.config import settings
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
@@ -664,11 +665,24 @@ class EnhancedFinTSService:
         )
 
         try:
-            # In Produktion: Echte FinTS-Transaktion
-            # Hier: Mock-Daten
-            transactions = self._generate_mock_transactions(
-                connection, date_from, date_to
-            )
+            # SECURITY (M9): Mock-Transaktionen duerfen NIEMALS echte
+            # Reconciliation (_auto_reconcile) oder Zahlungs-Benachrichtigungen
+            # (IncomingPayment) ausloesen. Eine echte FinTS-Anbindung existiert
+            # hier noch nicht. Nur wenn explizit per Settings freigeschaltet
+            # (FINTS_ALLOW_MOCK_SYNC=True, z. B. in Test-/Demo-Umgebungen)
+            # werden deterministische Test-Transaktionen erzeugt. Andernfalls
+            # bleibt die Liste leer, damit kein Fake-Eingang gebucht wird.
+            if getattr(settings, "FINTS_ALLOW_MOCK_SYNC", False):
+                transactions = self._generate_mock_transactions(
+                    connection, date_from, date_to
+                )
+            else:
+                transactions = []
+                logger.warning(
+                    "fints_mock_sync_disabled",
+                    connection_id=str(connection.id),
+                    reason="mock_transaktionen_blockiert_keine_reconciliation",
+                )
 
             # Neue Transaktionen identifizieren (async DB-Check)
             new_transactions = []

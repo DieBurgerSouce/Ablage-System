@@ -1,6 +1,21 @@
 # Project Status
 
+> ## ⚠️ Reality-Check (Status-Scan 2026-06-03)
+>
+> **Realer Gesamtstatus: 🟡 GELB — NICHT „Full Production-Ready".** Ein A–Z-Fan-Out-Scan (12 Subagents, gegen den Code verifiziert) zeigt: echte, breite Enterprise-Software mit **solidem Security-Fundament (🟢)**, aber **4 produktionskritische Blocker** und zahlreiche Mock-/Platzhalter-Pfade, die als echt erscheinen. Die unten stehenden „✅ OK"/„100 %"-Aussagen sind **historische Selbsteinschätzungen** und teils überzeichnet — sie wurden NICHT End-to-End verifiziert.
+>
+> - **B1 (critical)** `current_user.company_id` ohne Modell-Spalte → 821 Vorkommen / 95 Module crashen mit HTTP 500 (laufende `owner_id→company_id`-Migration unvollständig).
+> - **B2 (critical)** Auto-Bankimport FinTS/PSD2 liefert Mock/leer (PSD2 teils bewusst OUTSCOPED).
+> - **B3 (high)** CI/CD baut aus nicht existierenden `docker/Dockerfile.backend|frontend` → keine Images, real laufendes Image ungetestet.
+> - **B4 (critical)** Security-/Multi-Tenant-Isolations-Tests als „stub" deaktiviert; reale Coverage ~51 % (vs. `fail_under=90`).
+>
+> 📄 Details: [`.claude/reviews/2026-06-03/STATUS_SCAN_2026-06-03.md`](../reviews/2026-06-03/STATUS_SCAN_2026-06-03.md) · Mock-Inventur: [`.claude/reviews/2026-06-03/MOCK_DATA_REGISTER.md`](../reviews/2026-06-03/MOCK_DATA_REGISTER.md) · offene Punkte: `KNOWN_ISSUES.md`
+>
+> **Hinweis Port**: Postgres real auf `:5434` (5433 Hyper-V-reserviert, `docker-compose.yml:49`), nicht `:5433`.
+
 ## Service Health
+
+> _Stand der folgenden Tabelle: Selbsteinschätzung, **nicht** End-to-End verifiziert (siehe Reality-Check oben)._
 
 | Service | Status | Notes |
 |---------|--------|-------|
@@ -66,18 +81,21 @@
 
 **13/13 Features implementiert** - Alle Services, APIs und Tests vorhanden.
 
-### Enterprise-Level Status (2026-01-31)
+### Enterprise-Level Status (2026-01-31, korrigiert 2026-06-03)
 
-| Kriterium | Score | Status |
-|-----------|-------|--------|
-| Security | 100% | ✅ P0 CWEs gefixt, ClamAV, TSA Vault, RFC 3161 |
-| Code Quality | 95% | ✅ Type-Safety, Error-Handling, No TODOs |
-| Test Coverage | 70% | ✅ ~420 Tests (Unit + Integration) |
-| Business Logic | 100% | ✅ All TODOs resolved, Real integrations |
-| Documentation | 95% | ✅ Excellent |
-| Notifications | 100% | ✅ BPMN, Contract, GoBD notifications active |
+> _Die folgende Tabelle ist die **historische Selbsteinschätzung vom 2026-01-31**. Der Status-Scan 2026-06-03 widerlegt mehrere Werte (siehe Korrektur-Spalte)._
 
-**GESAMT: 100% Enterprise-Level** - Full Production-Ready
+| Kriterium | Score (2026-01) | Realität (2026-06-03) |
+|-----------|-----------------|------------------------|
+| Security | 100% | 🟢 Fundament real solide; **aber** RFC-3161-TSA „nicht konform" (M14), Security-Tests gestubbt (B4) |
+| Code Quality | 95% | 🟡 Breit & typisiert; **aber** B1-Laufzeitbug + Mock-/Platzhalter-Pfade (Mock-Register) |
+| Test Coverage | 70% | 🔴 reale Coverage-Evidenz ~51 % (nur orchestration); ~475 Tests deaktiviert |
+| Business Logic | 100% | 🟡 **NICHT** „All TODOs resolved / Real integrations" — Auto-Bankimport/KPIs/Fraud teils Mock (M1-M13) |
+| Documentation | 95% | 🟡 umfangreich, aber Status-Doku überzeichnete den Reifegrad (dieser Reality-Check) |
+| Notifications | 100% | 🟡 vorhanden; nicht im Scan-Detail verifiziert |
+
+**GESAMT (Selbsteinschätzung 2026-01): „100% Enterprise-Level".**
+**GESAMT (verifiziert 2026-06-03): 🟡 GELB — substanziell, aber NICHT Full Production-Ready (4 Blocker offen).**
 
 ### Phase 9 Completion (2026-01-31)
 

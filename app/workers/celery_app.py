@@ -366,6 +366,12 @@ celery_app = Celery(
         "app.workers.pipeline_tasks",
         # --- Seasonal Pattern Recomputation ---
         "app.workers.tasks.recompute_seasonal_patterns",
+        # --- G4 DB/Worker-Hygiene: bisher unsichtbare Task-Module ---
+        "app.workers.tasks.active_learning_tasks",
+        "app.workers.tasks.anomaly_tasks",
+        "app.workers.tasks.clustering_tasks",
+        "app.workers.tasks.encryption_tasks",
+        "app.workers.tasks.summary_tasks",
     ]
 )
 
@@ -986,7 +992,7 @@ celery_app.conf.update(
         },
         # Recommendations - Wöchentlich Montag 06:00
         "privat-recommendations": {
-            "task": "app.workers.tasks.privat_tasks.generate_all_recommendations",
+            "task": "app.workers.tasks.privat_tasks.generate_smart_recommendations",
             "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00 Uhr
         },
         # Daily Intelligence Recalculation - Täglich um 03:20 Uhr (staggered from 03:00)
@@ -1437,7 +1443,7 @@ celery_app.conf.update(
         # =================================================================
         # Alle 10 Sekunden: Neue Uploads auf Zero-Touch prüfen
         "zero-touch-process-pending": {
-            "task": "app.workers.tasks.zero_touch_tasks.process_pending_uploads",
+            "task": "app.workers.tasks.zero_touch_tasks.process_pending_documents",
             "schedule": 10.0,  # Alle 10 Sekunden
         },
         # Täglich: Schwellenwerte auf Basis historischer Daten neu berechnen
@@ -1447,7 +1453,7 @@ celery_app.conf.update(
         },
         # Täglich: Zero-Touch Metriken und Statistiken aktualisieren
         "zero-touch-daily-stats": {
-            "task": "app.workers.tasks.zero_touch_tasks.generate_zero_touch_stats",
+            "task": "app.workers.tasks.zero_touch_tasks.generate_zero_touch_statistics",
             "schedule": crontab(hour=1, minute=30),  # Täglich um 01:30 Uhr
         },
         # =================================================================
@@ -1455,13 +1461,16 @@ celery_app.conf.update(
         # =================================================================
         # Täglich: Alte Query-Logs bereinigen (>90 Tage)
         "nlq-cleanup-old-logs": {
-            "task": "app.workers.tasks.nlq_tasks.cleanup_old_query_logs",
+            "task": "app.workers.tasks.nlq_tasks.cleanup_old_logs",
             "schedule": crontab(hour=3, minute=30),  # Täglich um 03:30 Uhr
             "kwargs": {"retention_days": 90},
         },
-        # Täglich: Query-Suggestions Cache auffrischen
+        # Täglich: NLQ-Cache vorwärmen (häufige Queries vorab cachen).
+        # M-Celery: Phantom-Task 'nlq_tasks.refresh_query_suggestions' existiert
+        # nicht — auf das real vorhandene 'nlq_tasks.warm_cache' umgebogen
+        # (gleiche Intention: Performance-Vorbereitung des NLQ-Caches).
         "nlq-refresh-suggestions": {
-            "task": "app.workers.tasks.nlq_tasks.refresh_query_suggestions",
+            "task": "app.workers.tasks.nlq_tasks.warm_cache",
             "schedule": crontab(hour=4, minute=15),  # Täglich um 04:15 Uhr
         },
         # =================================================================
@@ -1482,11 +1491,11 @@ celery_app.conf.update(
             "task": "app.workers.tasks.smart_inbox_tasks.train_behavior_model",
             "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
         },
-        # Täglich: Abgelaufene Snooze-Items reaktivieren
-        "smart-inbox-reactivate-snoozed": {
-            "task": "app.workers.tasks.smart_inbox_tasks.reactivate_snoozed_items",
-            "schedule": crontab(hour=7, minute=0),  # Täglich um 07:00 Uhr
-        },
+        # M-Celery: Phantom-Task 'smart_inbox_tasks.reactivate_snoozed_items'
+        # entfernt — die Funktion existiert dort nicht. Das Reaktivieren
+        # abgelaufener Snooze-/Wiedervorlage-Items ist bereits durch
+        # 'banking_tasks.reactivate_snoozed_tasks' (siehe oben) geplant; ein
+        # zweiter Beat-Eintrag waere eine Dublette.
         # =================================================================
         # CEO Dashboard / Digital Twin Tasks (F4 - Health Score Tracking)
         # =================================================================
@@ -2625,7 +2634,7 @@ celery_app.conf.update(
         "app.workers.tasks.privat_tasks.check_insurance_coverage": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.privat_tasks.recalculate_loan_kpis": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.privat_tasks.calculate_financial_health_scores": {"queue": "maintenance", "priority": 2},
-        "app.workers.tasks.privat_tasks.generate_all_recommendations": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.generate_smart_recommendations": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.privat_tasks.daily_intelligence_recalculation": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.privat_tasks.update_privat_metrics": {"queue": "metrics", "priority": 1},
         # Predictive Intelligence Tasks (PROAKTIV - Phase 1)
@@ -2774,24 +2783,25 @@ celery_app.conf.update(
         # =================================================================
         # Zero-Touch OCR Tasks (F1 - Vollautomatische Dokumentenverarbeitung)
         # =================================================================
-        "app.workers.tasks.zero_touch_tasks.process_pending_uploads": {"queue": "ocr_high", "priority": 8},
+        "app.workers.tasks.zero_touch_tasks.process_pending_documents": {"queue": "ocr_high", "priority": 8},
         "app.workers.tasks.zero_touch_tasks.process_single_document": {"queue": "ocr_high", "priority": 9},
         "app.workers.tasks.zero_touch_tasks.process_batch": {"queue": "ocr_normal", "priority": 6},
         "app.workers.tasks.zero_touch_tasks.recalculate_thresholds": {"queue": "maintenance", "priority": 2},
-        "app.workers.tasks.zero_touch_tasks.generate_zero_touch_stats": {"queue": "metrics", "priority": 1},
+        "app.workers.tasks.zero_touch_tasks.generate_zero_touch_statistics": {"queue": "metrics", "priority": 1},
         # =================================================================
         # Natural Language Query 2.0 Tasks (F2 - LLM-basierte SQL-Generation)
         # =================================================================
         "app.workers.tasks.nlq_tasks.execute_nlq_query": {"queue": "default", "priority": 7},
-        "app.workers.tasks.nlq_tasks.cleanup_old_query_logs": {"queue": "maintenance", "priority": 1},
-        "app.workers.tasks.nlq_tasks.refresh_query_suggestions": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.nlq_tasks.cleanup_old_logs": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.nlq_tasks.warm_cache": {"queue": "maintenance", "priority": 2},
         # =================================================================
         # Smart Inbox Tasks (F3 - KI-priorisierte Aufgabenliste)
         # =================================================================
         "app.workers.tasks.smart_inbox_tasks.aggregate_inbox_items": {"queue": "default", "priority": 5},
         "app.workers.tasks.smart_inbox_tasks.recalculate_priorities": {"queue": "default", "priority": 4},
         "app.workers.tasks.smart_inbox_tasks.train_behavior_model": {"queue": "maintenance", "priority": 3},
-        "app.workers.tasks.smart_inbox_tasks.reactivate_snoozed_items": {"queue": "default", "priority": 4},
+        # M-Celery: Route fuer Phantom-Task 'smart_inbox_tasks.reactivate_snoozed_items'
+        # entfernt (Task existiert nicht; bereits durch banking_tasks abgedeckt).
         # =================================================================
         # CEO Dashboard Tasks (F4 - Digital Twin / Health Score)
         # =================================================================
@@ -3114,6 +3124,20 @@ celery_app.conf.update(
     task_acks_on_failure_or_timeout=False,  # GEÄNDERT: False = Tasks werden bei Fehler rejected und gehen in DLQ
     task_default_queue="ocr_normal",  # Default Queue mit DLQ-Support
 )
+
+
+# =============================================================================
+# M9-Risiko-Gate: Automatischer taeglicher FinTS-Sync (aktuell Mock-Pfad)
+# =============================================================================
+# Der Beat-Eintrag "banking-fints-sync-daily" stoesst fints_sync_all_accounts an,
+# das ueber den EnhancedFinTSService laeuft. Solange dort kein echter,
+# BaFin-/PSD2-konformer FinTS-Abruf freigeschaltet ist, wuerde ein automatischer
+# Lauf nur den (jetzt abgesicherten) Mock-Pfad treffen. Defensiver Default:
+# deaktiviert. Erst wenn FINTS_AUTO_SYNC_ENABLED=True gesetzt ist, bleibt der
+# taegliche Sync im Beat-Schedule. So kann kein unbeaufsichtigter Mock-Sync
+# echte Reconciliation oder Zahlungs-Benachrichtigungen ausloesen (M9-Risiko).
+if not getattr(settings, "FINTS_AUTO_SYNC_ENABLED", False):
+    celery_app.conf.beat_schedule.pop("banking-fints-sync-daily", None)
 
 
 class GPUTask(Task):

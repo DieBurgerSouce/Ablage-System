@@ -1,7 +1,7 @@
 # Ablage-System: Enterprise Document Processing Platform
 
 <!-- AUTO-MANAGED: project-header -->
-**Status**: Production-Ready (E2E Tests 2026-01-10)
+**Status**: 🟡 Substanziell, aber NICHT Full Production-Ready (Status-Scan 2026-06-03 — 4 offene Blocker). _Frühere Angabe „Production-Ready (E2E Tests 2026-01-10)" war überzeichnet._ Details: `.claude/reviews/2026-06-03/STATUS_SCAN_2026-06-03.md`, `.claude/memory/KNOWN_ISSUES.md`
 **Version**: 1.1
 **Philosophy**: Feinpoliert und durchdacht
 **Deployment**: On-premises, no cloud dependencies

@@ -8,6 +8,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+### Added
+- `app/db/all_models.py`: zentraler Modell-Aggregator (alle `models_*`, import-only) -> 468 Tabellen in `Base.metadata` (G4 DB-Hygiene)
+- `app/services/admin/worker_control_service.py`: ehrlicher Celery-Restart-Hook `request_worker_restart` (G1-Kontrakt M6; performed=False statt Fake-200)
+- `enhanced_fints_service.py`: M9-Guard — Mock-Sync nur hinter `FINTS_ALLOW_MOCK_SYNC`, sonst keine Reconciliation/Benachrichtigung (G4)
+- `OCRQualityMetricsService.get_ocr_quality_summary` (M3) + `AlertCenterService.update_alert_status` (M5): company-scoped G1-Kontrakt-Methoden (G4)
+- `app/core/config.py`: FINTS_ALLOW_MOCK_SYNC + FINTS_AUTO_SYNC_ENABLED Feature-Flags (Default False) fuer sicheres FinTS/PSD2-Rollout (G0-Prereq)
+- `.env.example`: BANKING/FinTS-Konfigurationssektion (PSD2_BASE_URL, FINTS_SERVER_ADDRESS, FINTS_BLZ, FINTS_USER_ID)
+- `.claude/reviews/2026-06-03/INTERFACE_CONTRACT_G1_G4.md`: Formaler Interface-Kontrakt G1<->G4 (Dashboard-KPIs M1-M4, Fraud-Alert-Persistenz M5, Celery-Restart-Hook M6)
+- `.claude/reviews/2026-06-03/`: Status-Scan-Artefakte (STATUS_SCAN, MOCK_DATA_REGISTER, REMEDIATION_PLAN, Goals G0-G5)
+
+### Fixed
+- `tsa_service.py`: RFC-3161-konforme TimeStampReq/Resp via `asn1crypto` (M14); fehlende Lib -> `tsa_asn1_lib_missing`, kein Handbau-Fallback (G4)
+- `gl_posting_service.py`/`explainable_anomaly_service.py`/`cashflow_prediction_service.py`: hardcodierte Confidence/occurrences durch echte Werte/COUNT-Queries bzw. transparente `is_estimated`-Kennzeichnung ersetzt (M11/M12/M13, G4)
+- `fraud_detection_service.py`: `detect_self_approval`/`analyze_audit_trail` an ApprovalRequest/ApprovalStep/AuditLog angebunden (M10, G4)
+- `celery_app.py`: 4 falsche Beat/Route-Task-Namen korrigiert; 2 Phantom-Tasks aufgeloest (`refresh_query_suggestions`->`warm_cache`, `reactivate_snoozed_items` entfernt) (G4)
+- `app/db/models_collaboration.py`: nicht-existenter Import `app.db.base` -> `app.db.models_base` (G4 DB-Hygiene)
+- `auto_transaction_import_service.py`: PSD2 sendet keinen Platzhalter-Token mehr an die echte API; FinTS-Auto-Sync OUTSCOPED (M7/M8, G4)
+- `requirements.txt`: asn1crypto==1.5.1 gepinnt (behebt potenzielle RFC-3161-TSA-Inkompatibilitaet in tsa_service.py)
+
+### Changed
+- `celery_app.py` + `app/workers/tasks/__init__.py`: 5 bisher unsichtbare Task-Module registriert (active_learning, anomaly, clustering, encryption, summary); `banking-fints-sync-daily` hinter `FINTS_AUTO_SYNC_ENABLED` (G4)
+- `compliance/gobd_service.py`: echte company_id-Checks; XL-Pruefungen ehrlich WARNING/teilgeprueft statt false PASSED (M15, G4)
+- `.claude/CLAUDE.md`: Projektstatus-Header auf 🟡 korrigiert — frueherer Eintrag „Production-Ready (E2E Tests 2026-01-10)" war ueberschaetzt; 4 verifizierte Blocker (B1-B4) offen
+- `.claude/memory/KNOWN_ISSUES.md`: 4 produktionskritische Blocker B1-B4 dokumentiert (company_id-Crash, FinTS-Mock, CI-Dockerfiles, Security-Test-Stubs)
+- `.claude/memory/PROJECT_STATUS.md`: Reality-Check-Sektion ergaenzt (A-Z-Fan-Out-Scan, 12 Subagents, Gesamtstatus GELB)
+- `.claude/memory/TECHNICAL_DEBT.md`: Debt-Level von LOW auf MITTEL-HOCH angepasst (Status-Scan-Evidenz)
+
 ## \[0.1.0\] - 2026-05-20 (Pilot-Ship)
 
 Erste produktive Pilot-Version. PR #9 squash-gemerged (`7e6bd9e7`), Tag `pilot-v0.1.0`. Konsolidiert Sprint-0 Pilot-Hardening (G01-G10), Phase A (K1-K6), Phase B (B1-B7), Multi-Agent-Review Follow-Through (Tasks A-D, F1-F4), Sprint-1 Sec-Reste (S1.1-S1.5) und den Merge von master's Tier-1-Transformation. Severity gegen den alten master: 5 CRITICAL + 11 HIGH-Security gefixt.

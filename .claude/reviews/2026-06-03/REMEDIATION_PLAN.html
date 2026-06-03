@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ablage-System — Remediation-Plan 2026-06-03</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a22; --panel2:#1e222c; --ink:#e6e9ef; --muted:#9aa3b2;
+    --line:#2a2f3a; --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --violet:#bc8cff;
+    --g1:#58a6ff; --g2:#3fb950; --g3:#bc8cff; --g4:#d29922; --g5:#f0883e; --g0:#8b949e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:30px;margin:0 0 4px} h2{font-size:22px;margin:44px 0 14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+  h3{font-size:17px;margin:0 0 6px}
+  a{color:var(--blue)} code{background:#0b0d12;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:"SF Mono",Consolas,monospace;font-size:13px}
+  .sub{color:var(--muted)}
+  .banner{background:linear-gradient(90deg,#3a2d0a,#1e222c);border:1px solid #4a3a12;border-left:5px solid var(--amber);border-radius:10px;padding:18px 22px;margin:18px 0 8px}
+  .banner b{color:#ffd479}
+  .grid{display:grid;gap:16px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card.lead{border-top:4px solid var(--line)}
+  .g1{border-top-color:var(--g1)} .g2{border-top-color:var(--g2)} .g3{border-top-color:var(--g3)}
+  .g4{border-top-color:var(--g4)} .g5{border-top-color:var(--g5)} .g0{border-top-color:var(--g0)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.4px;padding:3px 9px;border-radius:20px;text-transform:uppercase}
+  .t-g1{background:#1b2c45;color:var(--g1)} .t-g2{background:#143222;color:var(--g2)} .t-g3{background:#2c2245;color:var(--g3)}
+  .t-g4{background:#37300f;color:var(--g4)} .t-g5{background:#3a2410;color:var(--g5)} .t-g0{background:#262a31;color:#c9d1d9}
+  .eff{float:right;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;background:#0b0d12;border:1px solid var(--line)}
+  .eff.S{color:var(--green)} .eff.M{color:var(--blue)} .eff.L{color:var(--amber)} .eff.XL{color:var(--red)}
+  ul{margin:8px 0 8px;padding-left:20px} li{margin:3px 0}
+  .small li{font-size:13.5px;color:#cdd3dd}
+  .pill{display:inline-block;background:#0b0d12;border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin:2px 4px 2px 0;font-size:12.5px}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cdd3dd}
+  .matrix td{text-align:center;font-weight:700}
+  .c-none{background:#0e2a16;color:var(--green)} .c-iface{background:#332408;color:var(--amber)} .c-self{background:#13161d;color:#444}
+  .legend span{margin-right:16px;font-size:13px}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:5px}
+  .flow{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;margin:14px 0}
+  .wave{flex:1;min-width:200px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .wave h4{margin:0 0 10px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .chip{display:block;border-radius:8px;padding:9px 12px;margin:7px 0;font-weight:600;font-size:14px;border:1px solid var(--line)}
+  .chip small{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px}
+  .ch-g1{background:#10203a;border-color:#1d3a5f} .ch-g2{background:#0e2418;border-color:#1c4a30}
+  .ch-g3{background:#1e1733;border-color:#3a2c5f} .ch-g4{background:#241f0c;border-color:#4a4015}
+  .ch-g5{background:#241608;border-color:#5f3a1c} .ch-g0{background:#1a1d24;border-color:#333}
+  .arrow{display:flex;align-items:center;color:var(--muted);font-size:28px;padding:0 2px}
+  .crit{background:#1a1208;border:1px solid #4a2f10;border-left:4px solid var(--g5);border-radius:10px;padding:14px 18px;margin:12px 0}
+  .ok{color:var(--green)} .warn{color:var(--amber)} .bad{color:var(--red)}
+  .mono{font-family:"SF Mono",Consolas,monospace;font-size:12.5px;background:#0b0d12;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
+  footer{margin-top:50px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Ablage-System — Remediation-Plan</h1>
+  <div class="sub">Stand 2026-06-03 · Basis: Fan-Out-Status-Scan (gegen Code verifiziert) · Scope-Entscheid Nutzer: zuerst Wahrheit, dann Fixes · Primärziel: <b>Mocks&nbsp;→&nbsp;echt</b></div>
+
+  <div class="banner">
+    <b>Gesamtstatus: 🟡 GELB</b> — echte, breite Enterprise-Software mit solidem Security-Fundament, aber <b>NICHT Full Production-Ready</b>.
+    Dieser Plan schließt <b>4 verifizierte Blocker (B1–B4)</b> und <b>23 Mock-/Platzhalter-Stellen (M1–M23)</b> in <b>5 Arbeitsströmen (G1–G5)</b> + einer kleinen Vorbereitung (G0).
+    Detailbelege: <code>STATUS_SCAN_2026-06-03.md</code> · <code>MOCK_DATA_REGISTER.md</code>. Einfügefertige <code>/goal</code>-Prompts: <code>goals/GOAL-G*.md</code>.
+  </div>
+
+  <h2>1 · Wellen-Überblick — was läuft gleichzeitig</h2>
+  <p class="sub">Die 5 Ströme haben <b>strikt disjunkte Dateibäume</b> (verifiziert). Welle&nbsp;1 läuft komplett parallel; Welle&nbsp;2 (Tests) braucht den company_id-Fix aus G1.</p>
+  <div class="flow">
+    <div class="wave">
+      <h4>Welle 0 · Vorbereitung</h4>
+      <div class="chip ch-g0">G0 — Config &amp; Interface-Kontrakt <small>config.py-Settings, asn1crypto, G1↔G4-Signaturen fixieren · ~S</small></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="wave">
+      <h4>Welle 1 · voll parallel (4 worktrees)</h4>
+      <div class="chip ch-g1">G1 — Backend-API <small>app/api/** · company_id + KPIs + Fraud · XL</small></div>
+      <div class="chip ch-g2">G2 — CI/CD + Infra <small>.github/**, docker* · B3 · L</small></div>
+      <div class="chip ch-g3">G3 — Frontend Mocks→echt <small>frontend/src/** · M18–M23 · L</small></div>
+      <div class="chip ch-g4">G4 — Services/Workers/DB <small>app/services,workers,db · M9/Fraud/TSA/Celery · L</small></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="wave">
+      <h4>Welle 2 · nach G1/G4</h4>
+      <div class="chip ch-g5">G5 — Test-Wahrheit <small>tests/**, pytest.ini · B4 + Coverage · XL</small></div>
+    </div>
+  </div>
+  <p class="sub"><b>Voll gleichzeitig ohne Koordination:</b> <span class="pill">G1</span><span class="pill">G2</span><span class="pill">G3</span><span class="pill">G4</span> — kein einziger geteilter Pfad. Die globalen Bottlenecks <code>models.py</code> / <code>celery_app.py</code> liegen <b>exklusiv in G4</b>.</p>
+
+  <h2>2 · Die Arbeitsströme</h2>
+  <div class="grid cards">
+
+    <div class="card lead g0">
+      <span class="tag t-g0">G0 · Vorbereitung</span><span class="eff S">S</span>
+      <h3 style="margin-top:10px">Config &amp; Interface-Kontrakt</h3>
+      <p class="small">Kleine Vorab-PR, die quer zu allen Strömen liegt — sonst laufen G4/G5 ins Leere.</p>
+      <ul class="small">
+        <li><code>app/core/config.py</code>: Settings <code>FINTS_ALLOW_MOCK_SYNC=False</code>, <code>FINTS_AUTO_SYNC_ENABLED=False</code></li>
+        <li><code>requirements*.txt</code>: <code>asn1crypto</code> (für RFC-3161-TSA in G4) pinnen</li>
+        <li><b>Interface-Kontrakt G1↔G4</b> schriftlich fixieren: Service-Lesemethoden-Signaturen (+company_id), Fraud-Modellfelder (status/action), Celery-Restart-Hook-Name</li>
+        <li>Nachgelagert (nach G4-Merge): <code>alembic/env.py</code> → <code>from app.db.all_models import *</code></li>
+      </ul>
+    </div>
+
+    <div class="card lead g1">
+      <span class="tag t-g1">G1 · Backend-API</span><span class="eff XL">XL</span>
+      <h3 style="margin-top:10px">company_id-Rollout + KPIs + Fraud-Alerts</h3>
+      <p class="small">Dateibaum: <code>app/api/**</code> · Refs: B1, M1–M6</p>
+      <ul class="small">
+        <li><b>B1 (CRITICAL):</b> <code>get_user_company_id_dep</code> aus invoices.py nach <code>dependencies.py</code> zentralisieren; <b>821 × <code>current_user.company_id</code> in 95 Dateien</b> batchweise ersetzen (codemod). User-Modell NICHT ändern.</li>
+        <li><b>M1–M4:</b> Dashboard-KPIs (avg_payment_days 14.5, Cash-Flow 0.0, Approval 0, OCR 95.5/0.87) an echte Services binden; fehlt etwas → ehrlicher Fallback, nie erfundene Zahlen.</li>
+        <li><b>M5:</b> Fraud-Alert-501-Stubs → Persistenz/Aktionen (Modell von G4).</li>
+        <li><b>M6:</b> Admin-Restart ehrlich (echter Restart oder 501/503).</li>
+      </ul>
+      <p class="small"><span class="bad">Risiko:</span> Codemod darf nur <code>current_user.company_id</code> treffen, nicht <code>doc.company_id</code>; Superuser-/Cross-Company-Endpoints (holding, cross_tenant_reports) gesondert prüfen.</p>
+      <p class="small"><b>DoD:</b> <code>rg current_user.company_id app/api</code> → 0 · ruff+mypy grün · 403 statt 500 bei fehlender Firma.</p>
+    </div>
+
+    <div class="card lead g2">
+      <span class="tag t-g2">G2 · CI/CD + Infra</span><span class="eff L">L</span>
+      <h3 style="margin-top:10px">Build-Kette &amp; operative Security</h3>
+      <p class="small">Dateibaum: <code>.github/**</code>, <code>docker/**</code>, <code>docker-compose*</code>, <code>.secrets.baseline</code>, <code>.pre-commit*</code> · Refs: B3</p>
+      <ul class="small">
+        <li><b>B3:</b> Workflows auf reale Dockerfiles umbiegen (Root-<code>Dockerfile</code>, <code>frontend/Dockerfile</code>, <code>docker/Dockerfile.worker</code>) — kanonische Single Source.</li>
+        <li>Branch-Trigger <code>main</code>→<code>master</code> in ALLEN Workflows (Default-Branch ist master!).</li>
+        <li><code>docker-compose.dev.yml</code> <code>target: development</code> entfernen; deploy.yml <code>migrations/versions</code>→<code>alembic/versions</code>; canary deaktivieren; k8s-Trigger fixen.</li>
+        <li><code>.secrets.baseline</code> (leer <code>{}</code>) neu erzeugen; <code>safety || true</code> → blockierendes <code>pip-audit</code>; Dependabot auf reale Dockerfile-Pfade.</li>
+      </ul>
+      <p class="small"><b>DoD:</b> keine <code>docker/Dockerfile.backend|frontend</code>-Referenz mehr; keine <code>branches:[main]</code>; 3 kanonische Builds laufen lokal durch.</p>
+    </div>
+
+    <div class="card lead g3">
+      <span class="tag t-g3">G3 · Frontend</span><span class="eff L">L</span>
+      <h3 style="margin-top:10px">Mocks → echt (UI)</h3>
+      <p class="small">Dateibaum: <code>frontend/src/**</code> · Refs: M18–M23</p>
+      <ul class="small">
+        <li><b>M18:</b> Knowledge-Graph (3/4 Tabs) — <code>generateMock*</code> (random) raus, auf bestehende echte Hooks <code>useRiskNetwork/...</code> + Empty-State.</li>
+        <li><b>M19:</b> Streckengeschäft-Validierung (USt!) — hartes <code>mockData</code> raus, Liste per <code>useQuery</code>, Approve/Reject per echter <code>useMutation</code> persistieren.</li>
+        <li><b>M20/M21/M23:</b> stille synthetische Fallbacks (Reports, Import-Vorschau, Job-Queue-Charts) → ehrlicher Empty-State statt Fake.</li>
+        <li><b>M22:</b> Massen-Status — nicht unterstützte Optionen deaktivieren statt falsches <code>onSuccess()</code>.</li>
+      </ul>
+      <p class="small"><b>DoD:</b> <code>grep generateMock|Math.random</code> in den Views → 0 · vitest + tsc grün · degradiert elegant, wenn G1-Endpoint fehlt.</p>
+    </div>
+
+    <div class="card lead g4">
+      <span class="tag t-g4">G4 · Services/Workers/DB</span><span class="eff L">L</span>
+      <h3 style="margin-top:10px">Mock-Sicherheit, Compliance, Celery</h3>
+      <p class="small">Dateibaum: <code>app/services/**</code>, <code>app/workers/**</code>, <code>app/db/**</code> · Refs: B2, M7–M17</p>
+      <ul class="small">
+        <li><b>M9 (CRITICAL zuerst):</b> Mock-Bank-Sync darf KEINE echte Reconciliation/Buchung mehr auslösen (Flag-Guard); FinTS/PSD2 ehrlich als deaktiviert/OUTSCOPED kennzeichnen; Auto-Sync-Beat aus.</li>
+        <li><b>M10–M15:</b> Fraud-Detection-Stubs an Approval/Audit binden oder ehrlich flaggen; TSA RFC-3161 via <code>asn1crypto</code>; GoBD-Checks vervollständigen.</li>
+        <li><b>Celery:</b> 4 falsche Beat-Task-Namen fixen, 2 Phantom-Tasks auflösen, 5 unsichtbare Module in <code>include[]</code>.</li>
+        <li><b>DB:</b> <code>all_models.py</code>-Aggregator; verwaiste ORM-Modelle entscheiden.</li>
+      </ul>
+      <p class="small"><span class="warn">Hinweis:</span> <code>celery_app.py</code> (3932 Z.) ist Bottleneck — nur punktuelle additive Edits. Liegt exklusiv in G4 → kein Inter-Stream-Konflikt.</p>
+    </div>
+
+    <div class="card lead g5">
+      <span class="tag t-g5">G5 · Tests · Welle 2</span><span class="eff XL">XL</span>
+      <h3 style="margin-top:10px">Test-Wahrheit &amp; reale Coverage</h3>
+      <p class="small">Dateibaum: <code>tests/**</code>, <code>pytest.ini</code> · Refs: B4 · <b>hängt an G1</b></p>
+      <ul class="small">
+        <li><b>B4:</b> Security- (Broken-Auth/CRLF/PII) und Multi-Tenant-Isolations-Stubs → echte Tests (decken B1 ab, grün erst NACH G1).</li>
+        <li>Test-Rot abbauen (~475 deaktiviert; contracts 49 / training 27 / invoices 26).</li>
+        <li>Reale Coverage messen (<code>--cov=app</code>, ~51 %), Gate-Roadmap zu 90 %.</li>
+        <li>Marker registrieren; WeasyPrint-Collection-Errors (Windows) via <code>importorskip</code> entschärfen.</li>
+      </ul>
+      <p class="small"><b>DoD:</b> Security-/Isolationstests laufen (kein „stub") und sind grün nach G1; 0 Collection-Errors; realer Coverage-Wert dokumentiert.</p>
+    </div>
+
+  </div>
+
+  <h2>3 · Parallelisierungs-Matrix (adversarial geprüft)</h2>
+  <p class="legend">
+    <span><span class="dot" style="background:var(--green)"></span>none — voll parallel, keine Kopplung</span>
+    <span><span class="dot" style="background:var(--amber)"></span>interface — kein Dateikonflikt, nur Vertrags-/Reihenfolge-Abstimmung</span>
+  </p>
+  <table class="matrix">
+    <tr><th></th><th>G1</th><th>G2</th><th>G3</th><th>G4</th><th>G5</th></tr>
+    <tr><th>G1</th><td class="c-self">—</td><td class="c-none">none</td><td class="c-iface">iface</td><td class="c-iface">iface</td><td class="c-iface">iface</td></tr>
+    <tr><th>G2</th><td class="c-none">none</td><td class="c-self">—</td><td class="c-none">none</td><td class="c-iface">iface</td><td class="c-iface">iface</td></tr>
+    <tr><th>G3</th><td class="c-iface">iface</td><td class="c-none">none</td><td class="c-self">—</td><td class="c-none">none</td><td class="c-none">none</td></tr>
+    <tr><th>G4</th><td class="c-iface">iface</td><td class="c-iface">iface</td><td class="c-none">none</td><td class="c-self">—</td><td class="c-iface">iface</td></tr>
+    <tr><th>G5</th><td class="c-iface">iface</td><td class="c-iface">iface</td><td class="c-none">none</td><td class="c-iface">iface</td><td class="c-self">—</td></tr>
+  </table>
+  <p class="small"><b>Kein einziges <span class="bad">„file"</span>-Konfliktpaar</b> — alle Kopplungen sind reine Interface-/Reihenfolge-Abstimmungen. <code>G1×G4</code> teilen <b>keine Datei</b> (app/api vs app/services+workers+db), nur 3 Interface-Punkte (KPI-Lesemethoden, Fraud-Modell, Restart-Hook). <code>G1×G3</code>, <code>G1×G5</code> nur Runtime-Vertrag.</p>
+
+  <div class="crit">
+    <b>🛣️ Kritischer Pfad:</b> Interface-Kontrakt G1↔G4 fixieren → <b>G4</b> (Service-Lesemethoden + Fraud-Modell + Restart-Hook + all_models) → <b>G1</b> (company_id scharf, KPIs gegen reale Services) → <b>G5</b> (Isolations-/Security-Tests grün + reale Coverage).<br>
+    <span class="sub">G2 und G3 liegen NICHT auf dem kritischen Pfad — jederzeit parallel mergebar, degradieren elegant.</span>
+  </div>
+
+  <h3>Merge-Reihenfolge (Konflikte auf Dateiebene praktisch ausgeschlossen)</h3>
+  <ol class="small">
+    <li><b>G4 zuerst mergen</b> — liefert Service-Methoden, Fraud-Modell, Celery-Restart-Hook, <code>all_models.py</code>, die G1 konsumiert.</li>
+    <li><b>G1 direkt danach</b> — verdrahtet die G4-Interfaces, schaltet company_id scharf.</li>
+    <li><b>G2 &amp; G3 jederzeit</b> — keine harte Abhängigkeit; G2-CI-Guard erst nach G4 scharf stellen.</li>
+    <li><b>G5 zuletzt</b> (nach G4+G1) — Isolations-/Security-Tests grün, reale Coverage final.</li>
+  </ol>
+
+  <h3>Liegt AUSSERHALB aller 5 Ströme (→ G0 / Mini-PRs)</h3>
+  <p>
+    <span class="pill">app/core/config.py — FINTS_*-Settings</span>
+    <span class="pill">requirements — asn1crypto/cryptography</span>
+    <span class="pill">alembic/env.py → all_models (nach G4)</span>
+    <span class="pill">pyproject.toml fail_under (Coverage-Gate)</span>
+  </p>
+
+  <h2>4 · Ausführung — git-worktrees</h2>
+  <p class="sub">Aktueller Branch ist <code>master</code>. Jeder Strom in eigenem Worktree/Branch → konfliktfreie Parallelität. Pro Strom die passende <code>goals/GOAL-G*.md</code> in eine eigene Claude-Code-Session als <code>/goal</code> einfügen.</p>
+  <div class="mono">git worktree add ../ablage-g1 -b feature/g1-api-companyid master
+git worktree add ../ablage-g2 -b feature/g2-cicd          master
+git worktree add ../ablage-g3 -b feature/g3-frontend      master
+git worktree add ../ablage-g4 -b feature/g4-services-db   master
+# Welle 1: in ../ablage-g1..g4 je eine Claude-Code-Session, /goal aus GOAL-G1..G4.md
+# Merge: G4 -> G1 -> (G2,G3) ; danach:
+git worktree add ../ablage-g5 -b feature/g5-test-truth    master   # Welle 2 nach G1/G4</div>
+
+  <footer>
+    Generiert am 2026-06-03 aus dem Fan-Out-Status-Scan (12 Agents) + Remediation-Workflow (5 Stream-Agents + adversariale Parallelisierungs-Prüfung).
+    Einfügefertige Prompts: <code>.claude/reviews/2026-06-03/goals/</code>. Belege: <code>STATUS_SCAN_2026-06-03.md</code>, <code>MOCK_DATA_REGISTER.md</code>.
+    Diese Phase ändert nur Doku — die eigentlichen Fixes erfolgen über die G-Ströme nach deiner Freigabe.
+  </footer>
+
+</div>
+</body>
+</html>

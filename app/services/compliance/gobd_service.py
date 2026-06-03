@@ -42,6 +42,7 @@ from app.db.models_compliance import (
     ComplianceStatus,
     ComplianceReportType,
 )
+from app.db.models_entity_business import InvoiceTracking
 
 logger = structlog.get_logger(__name__)
 
@@ -246,31 +247,72 @@ class GoBDComplianceService:
                 "severity": "warning" if coverage >= 70 else "critical",
             })
 
-        # 2. Check for sequence gaps in audit logs
-        # (simplified - in production would check sequence_number gaps)
-        gap_count = 0  # Would be computed from actual sequence analysis
+        # 2. Sequenz-/Hash-Integritaet der Audit-Logs (M15, company_id-gefiltert).
+        # Hinweis: sequence_number ist eine GLOBALE, mandantenuebergreifende
+        # Kette. Eine vollstaendige Luecken-Pruefung der Gesamtkette ist nur
+        # global moeglich (XL) und hier bewusst NICHT abschliessend. Company-
+        # scoped pruefen wir die wichtigsten Integritaets-Signale:
+        #   - Audit-Eintraege OHNE sequence_number (nicht in die Kette verkettet)
+        #   - Audit-Eintraege OHNE integrity_hash (kein Tamper-Schutz)
+        missing_sequence = (await db.execute(
+            select(func.count(AuditLog.id)).where(
+                and_(
+                    AuditLog.company_id == company_id,
+                    AuditLog.sequence_number.is_(None),
+                )
+            )
+        )).scalar() or 0
+        missing_hash = (await db.execute(
+            select(func.count(AuditLog.id)).where(
+                and_(
+                    AuditLog.company_id == company_id,
+                    AuditLog.integrity_hash.is_(None),
+                )
+            )
+        )).scalar() or 0
+        missing_sequence = int(missing_sequence)
+        missing_hash = int(missing_hash)
 
-        # Calculate score
-        score = 100
+        if missing_sequence > 0:
+            issues.append({
+                "type": "audit_unsequenced",
+                "message": f"{missing_sequence} Audit-Eintrag/-Eintraege ohne Sequenznummer",
+                "severity": "warning",
+            })
+        if missing_hash > 0:
+            issues.append({
+                "type": "audit_unhashed",
+                "message": f"{missing_hash} Audit-Eintrag/-Eintraege ohne Integritaets-Hash",
+                "severity": "warning",
+            })
+
+        # Score
+        score = 100.0
         if coverage < 100:
             score -= (100 - coverage) * 0.5
-        if gap_count > 0:
-            score -= gap_count * 5
+        score -= min(40, missing_sequence)
+        score -= min(40, missing_hash)
         score = max(0, int(score))
 
-        # Determine status
-        if score >= 90:
-            status = ComplianceStatus.PASSED.value
-        elif score >= 70:
-            status = ComplianceStatus.WARNING.value
-        else:
+        # GoBD-Ehrlichkeit (M15): Die vollstaendige globale Ketten-Luecken-
+        # Pruefung ist XL und hier nicht abschliessend -> niemals faelschlich
+        # PASSED. Bestcase = WARNING (teilgeprueft).
+        partial_check = True
+        if score < 70:
             status = ComplianceStatus.FAILED.value
+        else:
+            status = ComplianceStatus.WARNING.value
 
         remediation = []
         if coverage < 100:
             remediation.append("Fehlende Audit-Logs für aeltere Dokumente generieren")
-        if gap_count > 0:
-            remediation.append("Sequenz-Lücken im Audit-Log untersuchen")
+        if missing_sequence > 0:
+            remediation.append("Audit-Eintraege ohne Sequenznummer untersuchen/nachverketten")
+        if missing_hash > 0:
+            remediation.append("Audit-Eintraege ohne Integritaets-Hash pruefen")
+        remediation.append(
+            "Vollstaendige globale Ketten-Luecken-Pruefung separat durchfuehren (teilgeprueft)"
+        )
 
         return CheckResult(
             check_type=GoBDCheckType.NACHVOLLZIEHBARKEIT.value,
@@ -280,7 +322,9 @@ class GoBDComplianceService:
             details={
                 "document_count": doc_count,
                 "audit_coverage": coverage,
-                "sequence_gaps": gap_count,
+                "missing_sequence_numbers": missing_sequence,
+                "missing_integrity_hashes": missing_hash,
+                "teilgeprueft": partial_check,
                 "issues": issues,
             },
             affected_documents=affected_docs,
@@ -405,30 +449,60 @@ class GoBDComplianceService:
         issues = []
         affected_docs: List[str] = []
 
-        # This would check for gaps in invoice numbers
-        # Simplified implementation - in production would analyze actual sequences
-        gap_count = 0
+        # M15: Echte, company_id-gefilterte Pruefung auf doppelte Belegnummern.
+        # Eine vollstaendige Luecken-Analyse heterogener Belegnummern-Formate
+        # (verschiedene Praefixe/Jahre/Kreise) ist XL -> Ergebnis ehrlich als
+        # teilgeprueft (WARNING) statt faelschlich PASSED.
+        duplicate_rows = (await db.execute(
+            select(InvoiceTracking.invoice_number, func.count(InvoiceTracking.id))
+            .where(
+                and_(
+                    InvoiceTracking.company_id == company_id,
+                    InvoiceTracking.invoice_number.isnot(None),
+                )
+            )
+            .group_by(InvoiceTracking.invoice_number)
+            .having(func.count(InvoiceTracking.id) > 1)
+        )).all()
+        duplicate_count = len(duplicate_rows)
 
-        score = 100 - (gap_count * 10)
+        if duplicate_count > 0:
+            issues.append({
+                "type": "duplicate_invoice_numbers",
+                "message": f"{duplicate_count} doppelte Belegnummer(n) gefunden",
+                "severity": "warning",
+            })
+
+        score = 100 - min(50, duplicate_count * 10)
         score = max(0, int(score))
 
-        status = ComplianceStatus.PASSED.value
+        # Vollstaendige Belegnummern-Luecken-Analyse ist XL -> niemals faelschlich
+        # PASSED; Bestcase = WARNING (teilgeprueft).
+        partial_check = True
         if score < 70:
             status = ComplianceStatus.FAILED.value
-        elif score < 90:
+        else:
             status = ComplianceStatus.WARNING.value
+
+        remediation = []
+        if duplicate_count > 0:
+            remediation.append("Doppelte Belegnummern bereinigen")
+        remediation.append(
+            "Vollstaendige Belegnummern-Luecken-Analyse separat durchfuehren (teilgeprueft)"
+        )
 
         return CheckResult(
             check_type=GoBDCheckType.VOLLSTAENDIGKEIT.value,
             status=status,
             score=score,
-            issues_found=gap_count,
+            issues_found=duplicate_count,
             details={
-                "sequence_gaps": gap_count,
+                "duplicate_invoice_numbers": duplicate_count,
+                "teilgeprueft": partial_check,
                 "issues": issues,
             },
             affected_documents=affected_docs,
-            remediation_steps=["Fehlende Belegnummern dokumentieren"] if gap_count > 0 else [],
+            remediation_steps=remediation,
             execution_time_ms=0,
         )
 
@@ -563,19 +637,59 @@ class GoBDComplianceService:
         company_id: UUID,
     ) -> CheckResult:
         """Zugangskontrolle - Berechtigungen."""
-        # Check access controls are in place
-        # This is a simplified check - would verify actual permissions
+        # M15: Echte, company_id-gefilterte Pruefung. Wir verifizieren, dass
+        # Zugriffe ueberhaupt protokolliert werden (DocumentAccessLog) — die
+        # Grundvoraussetzung fuer nachvollziehbare Berechtigungen. Eine
+        # vollstaendige Berechtigungs-Matrix-Pruefung (Rollen/ACLs je Dokument)
+        # ist XL -> Ergebnis ehrlich teilgeprueft (WARNING) statt PASSED.
+        doc_count = (await db.execute(
+            select(func.count(Document.id)).where(Document.company_id == company_id)
+        )).scalar() or 0
+        access_log_count = (await db.execute(
+            select(func.count(DocumentAccessLog.document_id)).where(
+                DocumentAccessLog.company_id == company_id
+            )
+        )).scalar() or 0
+
+        issues: List[Dict[str, Any]] = []
+        if doc_count > 0 and access_log_count == 0:
+            issues.append({
+                "type": "no_access_logging",
+                "message": "Keine Zugriffsprotokolle vorhanden — Berechtigungen nicht nachvollziehbar",
+                "severity": "warning",
+            })
+
         score = 100
-        status = ComplianceStatus.PASSED.value
+        if doc_count > 0 and access_log_count == 0:
+            score = 60
+        score = max(0, int(score))
+
+        partial_check = True
+        if score < 70:
+            status = ComplianceStatus.FAILED.value
+        else:
+            status = ComplianceStatus.WARNING.value
+
+        remediation: List[str] = []
+        if issues:
+            remediation.append("Zugriffsprotokollierung (DocumentAccessLog) aktivieren")
+        remediation.append(
+            "Vollstaendige Berechtigungs-Matrix-Pruefung separat durchfuehren (teilgeprueft)"
+        )
 
         return CheckResult(
             check_type=GoBDCheckType.ZUGANGSKONTROLLE.value,
             status=status,
             score=score,
-            issues_found=0,
-            details={"message": "Zugangskontrolle aktiv"},
+            issues_found=len(issues),
+            details={
+                "document_count": int(doc_count),
+                "access_log_entries": int(access_log_count),
+                "teilgeprueft": partial_check,
+                "issues": issues,
+            },
             affected_documents=[],
-            remediation_steps=[],
+            remediation_steps=remediation,
             execution_time_ms=0,
         )
 
@@ -794,9 +908,24 @@ class GoBDComplianceService:
         )
         history_list = list(history.scalars().all())
 
-        # Aggregate by day
-        trend_data: List[Dict[str, Any]] = []
-        # Simplified - would aggregate properly in production
+        # M15: Echte Aggregation der company-scoped Historie pro Tag
+        # (Durchschnitts-Score + Anzahl der Pruefungen je Tag) statt leerem
+        # Platzhalter.
+        daily_scores: Dict[str, List[int]] = {}
+        for entry in history_list:
+            if entry.checked_at is None or entry.score is None:
+                continue
+            day_key = entry.checked_at.date().isoformat()
+            daily_scores.setdefault(day_key, []).append(int(entry.score))
+
+        trend_data: List[Dict[str, Any]] = [
+            {
+                "date": day,
+                "average_score": round(sum(scores) / len(scores), 1),
+                "samples": len(scores),
+            }
+            for day, scores in sorted(daily_scores.items())
+        ]
 
         return ComplianceDashboard(
             overall_score=overall_score,

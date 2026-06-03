@@ -574,3 +574,75 @@ class TestNextSyncCalculation:
         now = datetime.now(timezone.utc)
         diff = (next_sync - now).days
         assert diff >= 364  # ~1 Jahr
+
+
+class TestMockSyncGuardM9:
+    """M9 (CRITICAL): Mock-Sync darf KEINE echte Reconciliation/Buchung ausloesen."""
+
+    @pytest.fixture
+    def service(self) -> EnhancedFinTSService:
+        """Erstellt Service-Instanz fuer Tests."""
+        return EnhancedFinTSService()
+
+    @pytest.mark.asyncio
+    async def test_mock_sync_disabled_no_reconciliation(
+        self, service: EnhancedFinTSService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """FINTS_ALLOW_MOCK_SYNC=False -> keine Mock-Transaktionen, reconciled_count==0.
+
+        Kernabsicherung gegen M9: Ohne explizite Freischaltung darf der Sync
+        weder Mock-Transaktionen erzeugen noch _auto_reconcile/IncomingPayment
+        anstossen.
+        """
+        from app.services.banking import enhanced_fints_service as module
+        monkeypatch.setattr(
+            module.settings, "FINTS_ALLOW_MOCK_SYNC", False, raising=False
+        )
+
+        gen_spy = MagicMock(return_value=[])
+        reconcile_spy = AsyncMock()
+        monkeypatch.setattr(service, "_generate_mock_transactions", gen_spy)
+        monkeypatch.setattr(service, "_auto_reconcile", reconcile_spy)
+
+        connection = BankConnection(
+            company_id=uuid4(),
+            bank_name="Mock Bank",
+            blz="12345678",
+            fints_url="https://mock.de",
+        )
+
+        result = await service._sync_connection(connection)
+
+        assert result.success is True
+        assert result.transaction_count == 0
+        assert result.new_transactions == 0
+        assert result.reconciled_count == 0
+        assert result.notifications_sent == 0
+        # Weder der Mock-Generator noch die Reconciliation duerfen laufen.
+        gen_spy.assert_not_called()
+        reconcile_spy.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_mock_sync_enabled_invokes_generator(
+        self, service: EnhancedFinTSService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """FINTS_ALLOW_MOCK_SYNC=True -> Mock-Generator bleibt fuer Tests nutzbar."""
+        from app.services.banking import enhanced_fints_service as module
+        monkeypatch.setattr(
+            module.settings, "FINTS_ALLOW_MOCK_SYNC", True, raising=False
+        )
+
+        gen_spy = MagicMock(return_value=[])
+        monkeypatch.setattr(service, "_generate_mock_transactions", gen_spy)
+
+        connection = BankConnection(
+            company_id=uuid4(),
+            bank_name="Mock Bank",
+            blz="12345678",
+            fints_url="https://mock.de",
+        )
+
+        result = await service._sync_connection(connection)
+
+        assert result.success is True
+        gen_spy.assert_called_once()

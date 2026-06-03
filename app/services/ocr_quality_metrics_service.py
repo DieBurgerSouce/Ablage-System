@@ -19,8 +19,13 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Deque
+from uuid import UUID
 
 import structlog
+from sqlalchemy import select, func, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import Document
 
 logger = structlog.get_logger(__name__)
 
@@ -198,6 +203,63 @@ class OCRQualityMetricsService:
 
         # Umlauts detected - use quality score weighted by confidence
         return (quality_score * 0.7) + (confidence * 0.3)
+
+    async def get_ocr_quality_summary(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        since: datetime,
+    ) -> Dict[str, Any]:
+        """Company-scoped, DB-gestützte OCR-Qualitäts-Zusammenfassung (G1-Kontrakt M3).
+
+        Liefert echte, mandantengetrennte Werte aus der Dokument-Tabelle statt
+        der prozess-lokalen In-Memory-Metriken. Voraussetzung fuer
+        mandantengetrennte Dashboard-KPIs (siehe Interface-Kontrakt G1<->G4).
+
+        Args:
+            db: Async-DB-Session.
+            company_id: Mandanten-ID (Pflichtfilter, Multi-Tenant).
+            since: Nur Dokumente ab diesem Zeitpunkt beruecksichtigen.
+
+        Returns:
+            Dict mit ``avg_confidence``, ``avg_german_quality``,
+            ``document_count`` und ``low_quality_count``.
+        """
+        # OCR-Confidence/German-Score liegen als 0..1-Werte vor.
+        low_quality_threshold = 0.7
+
+        agg_stmt = select(
+            func.count(Document.id),
+            func.avg(Document.ocr_confidence),
+            func.avg(Document.german_validation_score),
+        ).where(
+            and_(
+                Document.company_id == company_id,
+                Document.created_at >= since,
+            )
+        )
+        document_count, avg_confidence, avg_german_quality = (
+            await db.execute(agg_stmt)
+        ).one()
+
+        low_stmt = select(func.count(Document.id)).where(
+            and_(
+                Document.company_id == company_id,
+                Document.created_at >= since,
+                Document.ocr_confidence.isnot(None),
+                Document.ocr_confidence < low_quality_threshold,
+            )
+        )
+        low_quality_count = (await db.execute(low_stmt)).scalar() or 0
+
+        return {
+            "avg_confidence": float(avg_confidence) if avg_confidence is not None else 0.0,
+            "avg_german_quality": (
+                float(avg_german_quality) if avg_german_quality is not None else 0.0
+            ),
+            "document_count": int(document_count or 0),
+            "low_quality_count": int(low_quality_count),
+        }
 
     async def record_ocr_result(
         self,

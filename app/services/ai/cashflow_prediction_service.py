@@ -171,6 +171,9 @@ class PredictionMetrics:
     mean_absolute_error_days: float
     accuracy_rate: float
     last_evaluated: datetime
+    # True, wenn die Genauigkeit auf einer Schaetzung (Proxy aus Entity-Historie)
+    # statt auf gespeicherten historischen Vorhersagen basiert (M13-Transparenz).
+    is_estimated: bool = False
 
 
 @dataclass
@@ -560,8 +563,12 @@ class CashflowPredictionService:
         Returns:
             Metriken basierend auf historischen Vorhersagen vs. Ist-Werten
         """
-        # Vergleiche vergangene Vorhersagen mit tatsaechlichen Zahlungen
-        # Vereinfachte Implementierung - in Produktion aus gespeicherten Predictions
+        # M13-TRANSPARENZ: Diese Metrik basiert NICHT auf gespeicherten
+        # historischen Vorhersagen, sondern auf einer Schaetzung — als Proxy
+        # fuer "die damalige Vorhersage" dient die Entity-Zahlungshistorie.
+        # Das Ergebnis wird daher unten transparent als geschaetzt
+        # gekennzeichnet (is_estimated=True), statt eine echte Backtest-
+        # Genauigkeit vorzutaeuschen.
 
         now = utc_now()
         cutoff = now - timedelta(days=90)
@@ -608,12 +615,20 @@ class CashflowPredictionService:
         mae = sum(errors) / len(errors) if errors else 0.0
         accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0.0
 
+        logger.warning(
+            "cashflow_prediction_metrics_estimated",
+            company_id=str(company_id),
+            total_predictions=total_predictions,
+            reason="proxy_entity_historie_keine_gespeicherten_predictions",
+        )
+
         return PredictionMetrics(
             total_predictions=total_predictions,
             correct_predictions=correct_predictions,
             mean_absolute_error_days=round(mae, 2),
             accuracy_rate=round(accuracy * 100, 1),
             last_evaluated=now,
+            is_estimated=True,
         )
 
     async def get_payment_delay_analysis(

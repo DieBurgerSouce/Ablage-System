@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 from prometheus_client import Counter, Histogram, Gauge
 
+from app.core.config import settings
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.models_banking_connection import (
@@ -422,8 +423,20 @@ class AutoTransactionImportService:
         date_to: date,
     ) -> List[PSD2Transaction]:
         """Fetch transactions via PSD2 API."""
-        # In production: Decrypt tokens and call PSD2 API
-        # For now, return empty (implementation depends on OAuth2 flow)
+        # SECURITY (M8): Es existiert noch KEIN gesicherter Mechanismus, um den
+        # echten (verschluesselten) PSD2-Access-Token fuer den automatischen
+        # Sync zu laden. Frueher wurde an dieser Stelle ein Platzhalter-Token
+        # ("placeholder") an die ECHTE PSD2-API gesendet — das ist unzulaessig
+        # und wird hier unterbunden. Solange der automatische PSD2-Sync nicht
+        # explizit freigeschaltet ist (und ein echter Token-Abruf implementiert
+        # wurde), brechen wir frueh ab und liefern eine leere Liste.
+        if not getattr(settings, "PSD2_AUTO_SYNC_ENABLED", False):
+            logger.warning(
+                "psd2_auto_sync_disabled",
+                connection_id=str(connection.id),
+                reason="kein_echter_access_token_kein_platzhalter_an_echte_api",
+            )
+            return []
 
         all_transactions: List[PSD2Transaction] = []
         page_token = None
@@ -464,20 +477,19 @@ class AutoTransactionImportService:
         date_to: date,
     ) -> List[FinTSTransaction]:
         """Fetch transactions via FinTS."""
-        # In production: Connect via FinTS and fetch transactions
-        # For development: Generate mock data
-
-        # This would require the PIN which is session-only
-        # For automatic sync, we'd need stored session or re-authentication
-
-        logger.info(
-            "fints_transaction_fetch",
+        # M7 (BEWUSST OUTSCOPED): Ein automatischer FinTS-Abruf wuerde die
+        # session-gebundene PIN bzw. eine gespeicherte Session oder erneute
+        # Authentifizierung erfordern. Aus regulatorischen Gruenden (BaFin /
+        # PSD2 Starke Kundenauthentifizierung) ist der unbeaufsichtigte
+        # automatische FinTS-Sync hier NICHT freigegeben. Daher: bewusst leere
+        # Liste, damit der Importlauf keine erfundenen Transaktionen erhaelt.
+        logger.warning(
+            "fints_auto_sync_outscoped",
             connection_id=str(connection.id),
             date_from=date_from.isoformat(),
             date_to=date_to.isoformat(),
+            reason="bafin_sca_kein_unbeaufsichtigter_auto_sync",
         )
-
-        # Mock: Return empty for now
         return []
 
     async def _import_transaction(

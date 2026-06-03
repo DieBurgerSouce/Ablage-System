@@ -1035,6 +1035,24 @@ class Settings(BaseSettings):
     TUNE_LIST_DEFAULT_LIMIT: int = Field(default=100, ge=10, description="Standard-Limit für Tune-Liste")
     TUNE_LIST_MAX_LIMIT: int = Field(default=500, ge=100, description="Maximales Limit für Tune-Liste")
 
+    # =============================================================================
+    # FinTS / Banking Auto-Sync (Remediation-Strom G4)
+    # =============================================================================
+    # Guard, ob der FinTS-Mock-Sync echte Reconciliation/Buchung ausloesen darf.
+    # Default False: Der Mock-Sync laeuft im reinen Trockenlauf (keine echten
+    # Buchungen/Abgleiche), solange dieser Schalter nicht explizit aktiviert wird.
+    # G4 (Bank-Sync-Service) liest diesen Wert vor jeder schreibenden Aktion.
+    FINTS_ALLOW_MOCK_SYNC: bool = Field(
+        default=False,
+        description="Erlaubt dem FinTS-Mock-Sync, echte Reconciliation/Buchung auszuloesen (Default: nur Trockenlauf)"
+    )
+    # Ob der automatische Bank-Sync-Beat (periodischer Celery-Beat-Task) aktiv ist.
+    # Default False: Kein automatischer Sync, bis bewusst aktiviert.
+    FINTS_AUTO_SYNC_ENABLED: bool = Field(
+        default=False,
+        description="Aktiviert den automatischen Bank-Sync-Beat (periodischer FinTS-Abgleich)"
+    )
+
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""
