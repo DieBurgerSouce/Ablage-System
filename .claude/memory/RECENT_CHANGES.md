@@ -9,6 +9,14 @@
 - **chore(config)**: memory/KNOWN_ISSUES.md um 4 verifizierte Blocker B1-B4 ergaenzt (Status-Scan 2026-06-03)
 - **chore(config)**: memory/PROJECT_STATUS.md Reality-Check-Sektion (A-Z-Fan-Out-Scan, 12 Subagents)
 - **chore(config)**: memory/TECHNICAL_DEBT.md Debt-Level von LOW auf MITTEL-HOCH korrigiert
+- **feat(g4)**: Backend-Services/Workers/DB-Remediation (M7-M15 + G1-Kontrakt M3/M5/M6), Commit `bd272d80` auf `feature/g4-services-db` (17 Dateien)
+- **fix(g4/M9)**: enhanced_fints Mock-Sync hinter FINTS_ALLOW_MOCK_SYNC -> kein Fake-Eingang loest Reconciliation/IncomingPayment aus (Unit-Test gruen)
+- **fix(g4/M7-M8)**: auto_transaction_import — PSD2 kein Platzhalter-Token an echte API; FinTS-Auto-Sync OUTSCOPED (BaFin)
+- **fix(g4/celery)**: 4 Beat/Route-Renames; refresh_query_suggestions->warm_cache; reactivate_snoozed_items entfernt; 5 Task-Module sichtbar; fints-sync-daily hinter FINTS_AUTO_SYNC_ENABLED
+- **fix(g4/M10-M13)**: Fraud/AI-Wahrheit (ApprovalRequest/ApprovalStep/AuditLog; echte Confidence/COUNT-Queries; is_estimated)
+- **fix(g4/M14)**: TSA RFC-3161 via asn1crypto (kein Handbau-ASN.1-Fallback)
+- **fix(g4/M15)**: GoBD echte company_id-Checks; XL ehrlich WARNING/teilgeprueft statt false PASSED
+- **chore(g4/db)**: app/db/all_models.py Aggregator (468 Tabellen); models_collaboration app.db.base->models_base-Fix
 
 ## 2026-05-20 (Pilot-Ship v0.1.0 — PR #9 Squash-Merge)
 
