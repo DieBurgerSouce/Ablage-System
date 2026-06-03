@@ -44,6 +44,11 @@ except ImportError as e:
 # TEST CLIENT FIXTURES (ECHTE APP!)
 # =============================================================================
 
+# G5: Cache fuer fehlgeschlagenen App-Startup (DB nicht verfuegbar). Verhindert,
+# dass JEDER test_client-Test erneut ~20s auf den DB-Connect-Timeout wartet -
+# nach dem ersten Fehlschlag wird sofort uebersprungen.
+_APP_STARTUP_STATE: dict[str, str] = {}
+
 
 @pytest.fixture(scope="session")
 def _check_app_available():
@@ -63,8 +68,27 @@ def test_client(_check_app_available) -> Generator[TestClient, None, None]:
     if not APP_AVAILABLE:
         pytest.skip("App not available")
 
-    with TestClient(app, raise_server_exceptions=False) as client:
+    # G5 (2026-06-03): App-Startup (Lifespan) prueft die DB-Konnektivitaet und
+    # wirft RuntimeError, wenn keine Datenbank erreichbar ist. Damit die
+    # Security-Tests dann sauber UEBERSPRUNGEN statt mit ERROR abgebrochen werden
+    # (kein Tarn-Skip - in CI mit DB laufen sie regulaer), faengt der Fixture den
+    # Startup-Fehler explizit ab. Nach dem ersten Fehlschlag wird sofort
+    # uebersprungen (Cache), um den ~20s-DB-Timeout nicht je Test zu wiederholen.
+    if "startup_error" in _APP_STARTUP_STATE:
+        pytest.skip(
+            f"App-Startup nicht moeglich (Backend/DB nicht verfuegbar): "
+            f"{_APP_STARTUP_STATE['startup_error']}"
+        )
+    client_cm = TestClient(app, raise_server_exceptions=False)
+    try:
+        client = client_cm.__enter__()
+    except Exception as exc:  # Startup-Fehler (z.B. DB) -> Skip statt Error
+        _APP_STARTUP_STATE["startup_error"] = str(exc)
+        pytest.skip(f"App-Startup fehlgeschlagen (Backend/DB nicht verfuegbar): {exc}")
+    try:
         yield client
+    finally:
+        client_cm.__exit__(None, None, None)
 
 
 @pytest_asyncio.fixture

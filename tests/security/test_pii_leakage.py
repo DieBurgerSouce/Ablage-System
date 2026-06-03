@@ -363,17 +363,61 @@ class TestWebhookPayloadSanitization:
 class TestNotificationSanitization:
     """Tests dass Notifications keine PII exponieren."""
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_email_notification_sanitized(self, test_client, auth_headers):
-        """Testet dass Email-Benachrichtigungen PII begrenzen."""
-        # Emails sollten nur Links enthalten, keine eingebetteten Daten
-        pass  # Implementierungsabhaengig
+    def test_email_notification_sanitized(self):
+        """E-Mail-Notification-Templates betten keine rohe IBAN/USt-ID/Kundennummer ein.
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_slack_notification_sanitized(self, test_client, auth_headers):
-        """Testet dass Slack-Benachrichtigungen PII begrenzen."""
-        # Slack-Messages sollten keine vollstaendigen Kundendaten enthalten
-        pass  # Implementierungsabhaengig
+        Rendert JEDEN internen Notification-Typ mit einem PII-haltigen Kontext und
+        stellt sicher, dass die PII-Werte nicht in Subject/Body landen (Rule 8).
+        Geschaeftsbriefe (Mahnung/Welcome in email_service.py) enthalten die eigene
+        Firmen-IBAN bewusst und sind hier NICHT gemeint.
+        """
+        from app.services.notification_service import NotificationTemplate
+
+        pii = {
+            "iban": "DE89370400440532013000",
+            "vat_id": "DE123456789",
+            "customer_number": "KD-12345678",
+        }
+        for notification_type in NotificationTemplate.TEMPLATES:
+            rendered = NotificationTemplate.render(notification_type, pii)
+            haystack = f"{rendered['subject']}\n{rendered['body']}"
+            assert pii["iban"] not in haystack, f"IBAN in '{notification_type}'-Notification"
+            assert pii["vat_id"] not in haystack, f"USt-ID in '{notification_type}'-Notification"
+            assert pii["customer_number"] not in haystack, (
+                f"Kundennummer in '{notification_type}'-Notification"
+            )
+
+    def test_slack_notification_sanitized(self):
+        """Slack-Notification-Blocks maskieren IBAN/USt-ID/Kundennummer aus dem Kontext.
+
+        `SlackService._build_notification_blocks` ueberspringt sensible Kontext-Keys
+        (iban, vat_id, customer_number, kundennr). Verifiziert, dass die rohen Werte
+        nicht in den erzeugten Block-Kit-Bloecken erscheinen, nicht-sensible Felder
+        dagegen schon (Rule 8).
+        """
+        from app.services.slack_service import SlackService
+
+        service = SlackService()
+        context = {
+            "rechnungsnummer": "RE-2026-0001",
+            "iban": "DE89370400440532013000",
+            "vat_id": "DE123456789",
+            "customer_number": "KD-12345678",
+            "kundennr": "KD-12345678",
+            "betrag": 1234.56,
+        }
+        blocks = service._build_notification_blocks(
+            title="Neue Rechnung",
+            message="Eine Rechnung wurde erstellt.",
+            notification_type="invoice",
+            context=context,
+            icon=":receipt:",
+        )
+        serialized = str(blocks)
+        assert "DE89370400440532013000" not in serialized, "IBAN nicht maskiert"
+        assert "DE123456789" not in serialized, "USt-ID nicht maskiert"
+        assert "KD-12345678" not in serialized, "Kundennummer nicht maskiert"
+        assert "RE-2026-0001" in serialized, "Nicht-sensibles Feld fehlt unerwartet"
 
 
 # =============================================================================

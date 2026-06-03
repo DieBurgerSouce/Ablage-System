@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+### Tests — Stream G5 (Test-Wahrheit / B4, `feature/g5-test-truth`, 2026-06-03)
+- **B4 angegangen**: Security-/Multi-Tenant-Tests von „stub - nicht implementiert"-Tarn-Skips zu echten Tests. Kein solcher Skip mehr in `tests/security/**` und `tests/integration/test_multi_tenant_isolation.py`.
+- **Collection**: `pytest --collect-only` 26→0 Errors. `tests/conftest.py` mockt weasyprint, falls native GTK-Libs (libgobject) fehlen (sonst bricht `app.main`-Import auf Windows). Orchestration-Tests via Paket-Import gefixt; `pytest.ini` vollstaendige Marker-Liste (`--strict-markers`), `testpaths=tests`, `--ignore=tests/_archived` (pytest.ini ist aktive Config; pyproject-Pytest-Block wird ignoriert).
+- **Multi-Tenant** (`test_multi_tenant_isolation.py` neu): Cross-Tenant-HTTP (Firma A → 403/404 auf Ressourcen von Firma B), RLS/Transaction-Rollback, JSONB-Injection-Validierung, Timeline-PII. DB-frei gruen, DB-abhaengig sauberer Laufzeit-Skip.
+- **Security-Stubs**: `test_session_timeout` (abgelaufener Token → 401, DB-frei), `test_email/slack_notification_sanitized` (PII-Maskierung), `test_refresh_token_reuse_detection` (xfail: Token-Family-Reuse-Detection fehlt), WS-CRLF-Stub geloescht. `test_client` ueberspringt sauber bei DB-losem App-Startup statt zu erroren (594s→22s).
+- **Test-Rot**: 102 pass-only Karteileichen entfernt; training_api (40 passed/1 xfail) + validation_{queue,sample,field} entrostet (MagicMock→SimpleNamespace). Statische Skip-Marker 401→232. `ruff check tests/` in allen angefassten Dateien ohne neue Fehler (meist gesunken).
+- **Coverage**: `tests/COVERAGE_STATUS.md` — lokal 25,6 % (Import-Zeit, ohne DB), Voll-Stack ~51 %; Top-Luecken dashboard.py/fraud.py (0 %), banking/routes.py (37 %); Roadmap zu 90 %.
+- **Cross-Stream aufgedeckt** (app/**, out of scope): ✅ `Folder.permissions` Ambiguous-FK **behoben** (666b2692: `foreign_keys="FolderPermission.folder_id"`, entsperrt `configure_mappers()` + ALLE ORM-Tests; keine Migration); `validation_queue_service.assign_to_editor` nutzt nicht existentes `User.company_id`; `get_trend_data` → `TrendResponse(data=...)` Schema-Mismatch; Entity-Endpoints ohne company_id-Filter; weasyprint-Service braucht `except (ImportError, OSError)`; `fail_under=90` unrealistisch.
+
 ### Security — Stream G1 (Multi-Tenant API-Hardening, `feature/g1-api-companyid`, 2026-06-03)
 - **B1 behoben**: `get_user_company_id`/`_require_user_company_id`/`get_user_company_id_dep` zentral in `app/api/dependencies.py`; `validate_company_access` nutzt jetzt `accessible_company_ids` (in `get_current_user` via `UserCompany` aufgeloest) statt der nicht existierenden `current_user.company_id`-Spalte — behebt latenten AttributeError/HTTP-500.
 - **company_id-Rollout**: 821 `current_user.company_id`-Zugriffe in 92 API-Modulen durch `company_id: UUID = Depends(get_user_company_id_dep)` ersetzt (HTTP 403 „Kein Unternehmen zugeordnet" bei fehlender Firma). `rg current_user.company_id app/api` → 0 Treffer.

@@ -143,6 +143,11 @@ class Folder(SoftDeleteMixin, Base):
     permissions = relationship(
         "FolderPermission",
         back_populates="folder",
+        # G5 (2026-06-03): FolderPermission hat ZWEI FKs auf folders.id
+        # (folder_id + inherited_from_id) -> foreign_keys explizit setzen, sonst
+        # AmbiguousForeignKeysError in configure_mappers(). Die Gegenseite
+        # (FolderPermission.folder) pinnt bereits foreign_keys=[folder_id].
+        foreign_keys="FolderPermission.folder_id",
         cascade="all, delete-orphan",
     )
     folder_documents = relationship(

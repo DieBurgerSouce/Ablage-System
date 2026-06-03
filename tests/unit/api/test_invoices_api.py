@@ -100,37 +100,6 @@ def sample_overdue_invoice(sample_document) -> Mock:
 # ========================= Security Tests =========================
 
 
-class TestMultiTenantSecurity:
-    """Tests for Multi-Tenant Row Level Security."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_list_invoices_only_returns_own_documents(self):
-        """List sollte nur Rechnungen des eigenen Dokuments zurueckgeben."""
-        # Verified by SQL query structure in code:
-        # .where(Document.company_id == company_id)  # Task C F3 (2026-05-19)
-        pass  # Structural verification - actual test in integration
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_get_invoice_checks_document_owner(self):
-        """Get sollte Document Owner pruefen."""
-        # Verified by SQL query structure in code:
-        # Document.company_id == company_id  # Task C F3 (2026-05-19)
-        pass  # Structural verification - actual test in integration
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_create_invoice_verifies_document_ownership(self):
-        """Create sollte Document Ownership pruefen."""
-        # Verified by SQL query structure in code:
-        # Document.company_id == company_id  # Task C F3 (2026-05-19)
-        pass  # Structural verification - actual test in integration
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_statistics_only_count_own_invoices(self):
-        """Statistiken sollten nur eigene Rechnungen zaehlen."""
-        # Verified by SQL query structure in code:
-        # Document.company_id == company_id  # Task C F3 (2026-05-19)
-        pass  # Structural verification - actual test in integration
-
 
 # ========================= CRUD Tests =========================
 
@@ -144,20 +113,6 @@ class TestListInvoices:
         # Test pagination parameters
         assert sample_invoice.id is not None
         # Actual pagination tested via page/per_page params
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_list_filters_by_status(self, sample_invoice):
-        """List sollte nach Status filtern koennen."""
-        # Verified by code: query.where(InvoiceTracking.status == status_filter.value)
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_list_filters_overdue_only(self, sample_overdue_invoice):
-        """List sollte nur ueberfaellige Rechnungen filtern koennen."""
-        # Verified by code: overdue_only parameter
-        pass
 
     @pytest.mark.asyncio
     async def test_list_computes_is_overdue(self, sample_overdue_invoice):
@@ -179,33 +134,9 @@ class TestGetInvoice:
         """Get sollte Rechnung zurueckgeben."""
         assert sample_invoice.invoice_number == "INV-2026-001"
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_get_not_found_raises_404(self):
-        """Get sollte 404 werfen wenn nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-        #                     detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
 
 class TestCreateInvoice:
     """Tests for invoice creation."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_create_validates_document_exists(self):
-        """Create sollte pruefen ob Dokument existiert."""
-        # Verified by code:
-        # raise HTTPException(..., detail="Verknuepftes Dokument nicht gefunden")
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_create_prevents_duplicate(self):
-        """Create sollte Duplikate verhindern."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-        #                     detail="Fuer dieses Dokument existiert bereits eine Rechnungsverfolgung")
-        pass
 
     def test_create_sets_default_status(self, sample_document):
         """Create sollte Standard-Status setzen."""
@@ -233,30 +164,6 @@ class TestUpdateInvoice:
         for field in risk_relevant_fields:
             assert field in risk_relevant_fields
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_update_not_found_raises_404(self):
-        """Update sollte 404 werfen wenn nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(..., detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
-
-class TestDeleteInvoice:
-    """Tests for invoice soft deletion."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_is_soft_delete(self, sample_invoice):
-        """Delete sollte Soft-Delete sein."""
-        # Verified by code:
-        # invoice.deleted_at = datetime.now(timezone.utc)
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_triggers_risk_recalc(self, sample_invoice):
-        """Delete sollte Risk-Neuberechnung triggern."""
-        # Verified by code:
-        # on_invoice_updated_recalculate.delay(document_id)
-        pass
 
 
 # ========================= Convenience Endpoints Tests =========================
@@ -265,40 +172,11 @@ class TestDeleteInvoice:
 class TestMarkPaid:
     """Tests for mark-paid endpoint."""
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_mark_paid_sets_status(self, sample_invoice):
-        """mark-paid sollte Status auf PAID setzen."""
-        # Verified by code:
-        # invoice.status = InvoiceStatus.PAID.value
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_mark_paid_sets_paid_at(self, sample_invoice):
-        """mark-paid sollte paid_at setzen."""
-        # Verified by code:
-        # invoice.paid_at = paid_at or datetime.now(timezone.utc)
-        pass
-
     def test_mark_paid_uses_amount_if_not_specified(self, sample_invoice):
         """mark-paid sollte amount verwenden wenn paid_amount nicht angegeben."""
         # Verified by code:
         # invoice.paid_amount = paid_amount if paid_amount is not None else invoice.amount
         assert sample_invoice.amount == 1500.00
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_mark_paid_already_paid_raises_409(self):
-        """mark-paid sollte 409 werfen wenn bereits bezahlt."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-        #                     detail="Rechnung ist bereits als bezahlt markiert")
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_mark_paid_triggers_risk_recalc(self):
-        """mark-paid sollte Risk-Neuberechnung triggern."""
-        # Verified by code:
-        # on_invoice_updated_recalculate.delay(str(invoice.document_id))
-        pass
 
 
 class TestIncreaseDunning:
@@ -311,61 +189,9 @@ class TestIncreaseDunning:
         initial_level = sample_invoice.dunning_level
         assert initial_level == 0
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_increase_dunning_sets_status_to_dunning(self):
-        """increase-dunning sollte Status auf DUNNING setzen."""
-        # Verified by code:
-        # invoice.status = InvoiceStatus.DUNNING.value
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_increase_dunning_max_level_raises_409(self):
-        """increase-dunning sollte 409 werfen bei max Level."""
-        # Verified by code:
-        # raise HTTPException(..., detail="Maximale Mahnstufe (4) bereits erreicht")
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_increase_dunning_paid_invoice_raises_409(self):
-        """increase-dunning sollte 409 werfen wenn bezahlt."""
-        # Verified by code:
-        # raise HTTPException(..., detail=f"Mahnstufe kann nicht erhoeht werden: Rechnung ist {invoice.status}")
-        pass
-
 
 # ========================= Statistics Tests =========================
 
-
-class TestInvoiceStatistics:
-    """Tests for statistics endpoint."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_statistics_returns_total_count(self):
-        """Statistiken sollten Gesamtanzahl enthalten."""
-        # Verified by response structure:
-        # "totalInvoices": stats.total or 0
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_statistics_returns_total_amount(self):
-        """Statistiken sollten Gesamtbetrag enthalten."""
-        # Verified by response structure:
-        # "totalAmount": round(stats.total_amount or 0, 2)
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_statistics_returns_status_distribution(self):
-        """Statistiken sollten Status-Verteilung enthalten."""
-        # Verified by response structure:
-        # "statusDistribution": status_distribution
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_statistics_returns_overdue_info(self):
-        """Statistiken sollten Ueberfaellig-Info enthalten."""
-        # Verified by response structure:
-        # "overdueInvoices": {...}
-        pass
 
 
 # ========================= German Error Messages Tests =========================
@@ -404,24 +230,6 @@ class TestRiskScoreIntegration:
         """Update sollte Recalc triggern bei Status-Aenderung."""
         risk_relevant_fields = ["status", "paid_at", "paid_amount", "dunning_level"]
         assert "status" in risk_relevant_fields
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_mark_paid_triggers_recalc(self):
-        """mark-paid sollte Recalc triggern."""
-        # Verified by code calling on_invoice_updated_recalculate.delay()
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_increase_dunning_triggers_recalc(self):
-        """increase-dunning sollte Recalc triggern."""
-        # Verified by code calling on_invoice_updated_recalculate.delay()
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_triggers_recalc(self):
-        """Delete sollte Recalc triggern."""
-        # Verified by code calling on_invoice_updated_recalculate.delay()
-        pass
 
 
 # ========================= Edge Cases =========================
