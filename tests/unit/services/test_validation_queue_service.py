@@ -126,16 +126,6 @@ class TestValidationQueueServiceCreate:
     """Tests fuer Queue-Item-Erstellung."""
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        reason=(
-            "App-seitiger Blocker: add_to_queue() instanziiert intern eine echte "
-            "ValidationQueueItem-ORM-Instanz. Das erzwingt eine vollstaendige "
-            "SQLAlchemy-Mapper-Konfiguration, die auf diesem Branch fehlschlaegt "
-            "(Folder.permissions -> AmbiguousForeignKeysError). Nicht im "
-            "Test-Scope behebbar (nur app/** waere zu aendern)."
-        ),
-        strict=False,
-    )
     async def test_add_to_queue_success(
         self, validation_queue_service, mock_db, company_id, sample_document
     ):
@@ -326,16 +316,6 @@ class TestValidationQueueServiceApproveReject:
     """Tests fuer Genehmigungs- und Ablehnungs-Operationen."""
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        reason=(
-            "App-seitiger Blocker: approve_item() laedt das Item mit "
-            "selectinload(ValidationQueueItem.field_reviews). Das Anhaengen der "
-            "selectinload-Option erzwingt eine vollstaendige Mapper-Konfiguration, "
-            "die auf diesem Branch fehlschlaegt (Folder.permissions -> "
-            "AmbiguousForeignKeysError). Nicht im Test-Scope behebbar."
-        ),
-        strict=False,
-    )
     async def test_approve_item_success(
         self, validation_queue_service, mock_db, company_id, sample_queue_item
     ):
@@ -357,15 +337,6 @@ class TestValidationQueueServiceApproveReject:
         assert result.status == ValidationStatus.APPROVED.value
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        reason=(
-            "App-seitiger Blocker: approve_item() nutzt selectinload(field_reviews) "
-            "-> erzwingt Mapper-Konfiguration -> AmbiguousForeignKeysError "
-            "(Folder.permissions). Greift bereits beim Query-Bau, vor dem (hier "
-            "gemockten) execute. Nicht im Test-Scope behebbar."
-        ),
-        strict=False,
-    )
     async def test_approve_item_not_found_returns_none(
         self, validation_queue_service, mock_db, company_id
     ):
@@ -437,16 +408,6 @@ class TestValidationQueueServiceBatch:
     """
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        reason=(
-            "App-seitiger Blocker: batch_approve() ruft approve_item(), das "
-            "selectinload(field_reviews) nutzt -> Mapper-Konfiguration schlaegt "
-            "fehl (Folder.permissions -> AmbiguousForeignKeysError). Der Fehler "
-            "wird in batch_approve als failed_item gezaehlt (success_count=0). "
-            "Nicht im Test-Scope behebbar."
-        ),
-        strict=False,
-    )
     async def test_batch_approve_success(
         self, validation_queue_service, mock_db, company_id, sample_queue_item
     ):
