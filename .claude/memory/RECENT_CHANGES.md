@@ -9,6 +9,13 @@
 - **chore(config)**: memory/KNOWN_ISSUES.md um 4 verifizierte Blocker B1-B4 ergaenzt (Status-Scan 2026-06-03)
 - **chore(config)**: memory/PROJECT_STATUS.md Reality-Check-Sektion (A-Z-Fan-Out-Scan, 12 Subagents)
 - **chore(config)**: memory/TECHNICAL_DEBT.md Debt-Level von LOW auf MITTEL-HOCH korrigiert
+- **ci(g2)**: Alle 17 Workflows Branch-Trigger `main` → `master` (Gates feuerten real nie); B3-Blocker behoben
+- **ci(g2)**: ci.yml/docker.yml/docker-build.yml/dependencies.yml bauen aus 3 realen Dockerfiles (Root-`Dockerfile`, `frontend/Dockerfile`, `docker/Dockerfile.worker`)
+- **ci(g2)**: `pip-audit` blockierend in ci.yml + dependencies.yml (ersetzt `safety … || true`); JSON-Report-Artefakt bleibt
+- **ci(g2)**: `.secrets.baseline` als gültige detect-secrets-1.4.0-Baseline neu erzeugt (vormals leeres `{}`)
+- **ci(g2)**: dependabot.yml docker-Ecosystem für `/`, `/frontend`, `/docker`; toter `python-dependencies`-Job entfernt
+- **ci(g2)**: `docker-compose.dev.yml` ohne `target: development`; `deploy.yml` Pfad `alembic/versions`; `canary-deploy.yml` deaktiviert (`if: false`)
+- **ci(g2)**: `.releaserc.json` Release-Branch `main` → `master`; manuelles `release.yml` als Release-Mechanismus gewählt
 
 ## 2026-05-20 (Pilot-Ship v0.1.0 — PR #9 Squash-Merge)
 

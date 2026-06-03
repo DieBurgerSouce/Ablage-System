@@ -10,10 +10,10 @@
 |----|---------|---------|---------------|--------|
 | **B1** | `current_user.company_id` ohne Modell-Spalte → HTTP 500 | CRITICAL | `User` = `app/db/models.py:379-485` ohne `company_id`; 821 Vorkommen / 95 Dateien (`grep -c`), inkl. `app/api/dependencies.py:307/318/322` (`validate_company_access`). `invoices.py` bereits korrekt (UserCompany). | OFFEN — Fortsetzung der laufenden `owner_id→company_id`-Migration (F-Serie, siehe Resolved-Log) |
 | **B2** | Auto-Bankimport FinTS/PSD2 liefert Mock/leer | CRITICAL | `auto_transaction_import_service.py:480` „Mock: Return empty", `:434/590` `access_token="placeholder"`; `enhanced_fints_service.py:667-669,1187` Mock-Sync → echte Reconciliation (M9 gefährlich). | OFFEN — PSD2 teils bewusst OUTSCOPED (`breezy-napping-hare.md`); M9-Guard fehlt |
-| **B3** | CI/CD baut aus nicht existierenden Dockerfiles | HIGH | `ci.yml`/`docker.yml`/`docker-build.yml` → `docker/Dockerfile.backend\|frontend` existieren nicht; echte Builds = Root-`Dockerfile` + `frontend/Dockerfile` (von keinem CI referenziert). | OFFEN |
+| **B3** | CI/CD baut aus nicht existierenden Dockerfiles | HIGH | `ci.yml`/`docker.yml`/`docker-build.yml` → `docker/Dockerfile.backend\|frontend` existieren nicht; echte Builds = Root-`Dockerfile` + `frontend/Dockerfile` (von keinem CI referenziert). | ✅ RESOLVED (G2, 2026-06-03, `feature/g2-cicd`) — Workflows bauen aus 3 realen Dockerfiles; Branch-Trigger `main`→`master`; `pip-audit`-Gate + valide `.secrets.baseline` |
 | **B4** | Security-/Multi-Tenant-Tests als „stub" deaktiviert | CRITICAL | `tests/security/test_broken_auth.py`, `test_crlf_injection.py`, `test_pii_leakage.py`, `tests/integration/test_multi_tenant_isolation.py` = `@pytest.mark.skip("stub - nicht implementiert")`. Reale Coverage ~51 % vs. `fail_under=90`. | OFFEN |
 
-**Nächster Schritt** (priorisiert nach „Mocks → echt", separate Folge-Phase): siehe Roadmap in `MOCK_DATA_REGISTER.md`. Zusätzliche Medium/Low-Punkte (6 falsche Beat-Task-Namen, 5 unsichtbare Task-Module, verwaiste ORM-Modelle, Endpoint-Dubletten, leere `.secrets.baseline`, `safety || true`) in `TECHNICAL_DEBT.md`.
+**Nächster Schritt** (priorisiert nach „Mocks → echt", separate Folge-Phase): siehe Roadmap in `MOCK_DATA_REGISTER.md`. Zusätzliche Medium/Low-Punkte (6 falsche Beat-Task-Namen, 5 unsichtbare Task-Module, verwaiste ORM-Modelle, Endpoint-Dubletten, ~~leere `.secrets.baseline`~~ ✅ G2 behoben, ~~`safety || true`~~ ✅ G2 → `pip-audit`-Gate) in `TECHNICAL_DEBT.md`.
 
 ### Design-Hinweise (kein Bug)
 

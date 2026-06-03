@@ -1,6 +1,7 @@
 # Session Log
 
 | Datum | Branch | Commits | Dateien | Buckets | Modus |
+| 2026-06-03 | feature/g2-cicd | 2 | 23 | github,docker,security,release,docs | goal-g2 |
 | 2026-06-03 | feature/g0-prereq | 4 | 24 | orchestration,config,reviews | since-filter(6e877ef6) |
 | 2026-03-10 | feature/ocr-performance | 5 | 17 | infra,db,api,frontend,tests | session-documenter |
 | 2026-03-10 | feature/ocr-performance | 5 | 94 | infra,db,frontend,config,tests | session-documenter |
