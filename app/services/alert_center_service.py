@@ -677,6 +677,55 @@ class AlertCenterService:
 
         return alert
 
+    async def update_alert_status(
+        self,
+        alert_id: UUID,
+        company_id: UUID,
+        new_status: AlertStatus,
+        resolution_action: Optional[str] = None,
+        acting_user_id: Optional[UUID] = None,
+    ) -> Optional[Alert]:
+        """Setzt den Status eines Alerts (G1-Kontrakt M5, company-scoped).
+
+        Einheitlicher Einstieg fuer das Fraud-Alert-UI: setzt ``status``,
+        optional ``resolution_action`` sowie die passenden
+        ``acknowledged_*``/``resolved_*``-Felder je Zielstatus. Multi-Tenant
+        ueber ``company_id``; gibt ``None`` zurueck, wenn der Alert nicht zum
+        Mandanten gehoert oder nicht existiert.
+        """
+        alert = await self.get_alert(alert_id, company_id)
+        if not alert:
+            return None
+
+        status_value = (
+            new_status.value if isinstance(new_status, AlertStatus) else new_status
+        )
+        alert.status = status_value
+
+        now = datetime.now(timezone.utc)
+        if status_value == AlertStatus.ACKNOWLEDGED.value:
+            alert.acknowledged_at = now
+            if acting_user_id is not None:
+                alert.acknowledged_by_id = acting_user_id
+        elif status_value in (AlertStatus.RESOLVED.value, AlertStatus.DISMISSED.value):
+            alert.resolved_at = now
+            if acting_user_id is not None:
+                alert.resolved_by_id = acting_user_id
+
+        if resolution_action is not None:
+            alert.resolution_action = resolution_action
+
+        await self.session.flush()
+
+        logger.info(
+            "alert_status_updated",
+            alert_id=str(alert_id),
+            new_status=status_value,
+            action=resolution_action,
+        )
+
+        return alert
+
     async def escalate_alert(
         self,
         alert_id: UUID,

@@ -29,6 +29,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, BusinessEntity
+from app.db.models_anomaly import Anomaly
 from app.services.ai.anomaly_detection_service import (
     AnomalyDetectionService,
     AnomalyCheckResult,
@@ -99,6 +100,9 @@ class AnomalyTrend:
     occurrences_90d: int
     trend_direction: str  # "increasing", "stable", "decreasing"
     typical_severity: AnomalySeverity
+    # True, wenn die Werte geschaetzt sind (z. B. keine company_id / Query-Fehler)
+    # statt aus echten, company_id-gefilterten COUNT-Queries zu stammen.
+    is_estimated: bool = False
 
 
 @dataclass
@@ -399,17 +403,33 @@ class ExplainableAnomalyService:
         Returns:
             Liste von AnomalyTrend
         """
-        # Vereinfachte Implementierung - in Produktion aus Datenbank
-        trends = []
+        # M12: Echte, company_id-gefilterte COUNT-Queries gegen die
+        # persistierten Anomalien (Tabelle "anomalies") statt fixer Platzhalter.
+        trends: List[AnomalyTrend] = []
+        now = datetime.now(timezone.utc)
+        since_30d = now - timedelta(days=30)
+        since_90d = now - timedelta(days=max(days, 90))
 
         for anomaly_type in AnomalyType:
-            # Placeholder-Daten (in Produktion: echte Statistiken)
+            try:
+                occ_30 = await self._count_anomalies(db, company_id, anomaly_type, since_30d)
+                occ_90 = await self._count_anomalies(db, company_id, anomaly_type, since_90d)
+                estimated = False
+            except Exception as exc:  # noqa: BLE001 - ehrliche Degradation, kein PII
+                logger.warning(
+                    "anomaly_trend_count_failed",
+                    anomaly_type=anomaly_type.value,
+                    error=type(exc).__name__,
+                )
+                occ_30, occ_90, estimated = 0, 0, True
+
             trends.append(AnomalyTrend(
                 anomaly_type=anomaly_type,
-                occurrences_30d=5,  # Placeholder
-                occurrences_90d=15,  # Placeholder
-                trend_direction="stable",
+                occurrences_30d=occ_30,
+                occurrences_90d=occ_90,
+                trend_direction=self._derive_trend_direction(occ_30, occ_90),
                 typical_severity=AnomalySeverity.MEDIUM,
+                is_estimated=estimated,
             ))
 
         return trends
@@ -417,6 +437,42 @@ class ExplainableAnomalyService:
     # =========================================================================
     # PRIVATE METHODS
     # =========================================================================
+
+    async def _count_anomalies(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+        anomaly_type: AnomalyType,
+        since: datetime,
+    ) -> int:
+        """Zaehlt persistierte Anomalien eines Typs ab ``since``.
+
+        STRIKT company_id-gefiltert (Multi-Tenant). Liefert die reale Anzahl
+        aus der Tabelle ``anomalies`` statt geschaetzter Platzhalter.
+        """
+        stmt = select(func.count(Anomaly.id)).where(
+            and_(
+                Anomaly.company_id == company_id,
+                Anomaly.anomaly_type == anomaly_type.value,
+                Anomaly.created_at >= since,
+            )
+        )
+        result = await db.execute(stmt)
+        return int(result.scalar() or 0)
+
+    @staticmethod
+    def _derive_trend_direction(occurrences_30d: int, occurrences_90d: int) -> str:
+        """Leitet die Trendrichtung aus der 30d-Rate vs. erwarteter 90d-Rate ab."""
+        # Erwartete 30d-Menge bei gleichmaessiger Verteilung der 90d-Menge
+        expected_30d = occurrences_90d / 3.0
+        if expected_30d <= 0:
+            return "increasing" if occurrences_30d > 0 else "stable"
+        ratio = occurrences_30d / expected_30d
+        if ratio >= 1.3:
+            return "increasing"
+        if ratio <= 0.7:
+            return "decreasing"
+        return "stable"
 
     async def _explain_anomaly(
         self,
@@ -456,14 +512,45 @@ class ExplainableAnomalyService:
         # Betroffene Felder
         affected_fields = self._get_affected_fields(anomaly.anomaly_type)
 
-        # Historische Trends (vereinfacht)
+        # M12: Historische Trends + aehnliche Faelle aus echten,
+        # company_id-gefilterten COUNT-Queries (Tabelle "anomalies").
+        now = datetime.now(timezone.utc)
+        if company_id is not None:
+            try:
+                occ_30 = await self._count_anomalies(
+                    db, company_id, anomaly.anomaly_type, now - timedelta(days=30)
+                )
+                occ_90 = await self._count_anomalies(
+                    db, company_id, anomaly.anomaly_type, now - timedelta(days=90)
+                )
+                trend_estimated = False
+            except Exception as exc:  # noqa: BLE001 - ehrliche Degradation, kein PII
+                logger.warning(
+                    "anomaly_explain_trend_count_failed",
+                    anomaly_type=anomaly.anomaly_type.value,
+                    error=type(exc).__name__,
+                )
+                occ_30, occ_90, trend_estimated = 0, 0, True
+        else:
+            # Ohne company_id keine Multi-Tenant-sichere Query -> ehrlich als
+            # geschaetzt kennzeichnen statt erfundene Zahlen zu liefern.
+            logger.warning(
+                "anomaly_explain_trend_no_company",
+                anomaly_type=anomaly.anomaly_type.value,
+            )
+            occ_30, occ_90, trend_estimated = 0, 0, True
+
         trend = AnomalyTrend(
             anomaly_type=anomaly.anomaly_type,
-            occurrences_30d=3,
-            occurrences_90d=10,
-            trend_direction="stable",
+            occurrences_30d=occ_30,
+            occurrences_90d=occ_90,
+            trend_direction=self._derive_trend_direction(occ_30, occ_90),
             typical_severity=anomaly.severity,
+            is_estimated=trend_estimated,
         )
+
+        # Aehnliche Faelle = gleiche Anomalie-Art im 90-Tage-Fenster (company-scoped)
+        similar_cases_count = occ_90
 
         return ExplainedAnomaly(
             anomaly_type=anomaly.anomaly_type,
@@ -477,10 +564,11 @@ class ExplainableAnomalyService:
             affected_fields=affected_fields,
             evidence=anomaly.details,
             historical_trend=trend,
-            similar_cases_count=5,  # Placeholder
+            similar_cases_count=similar_cases_count,
             metadata={
                 "original_description": anomaly.description,
                 "original_recommendation": anomaly.recommendation,
+                "similar_cases_estimated": trend_estimated,
             },
         )
 

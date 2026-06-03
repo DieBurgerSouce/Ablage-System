@@ -164,7 +164,8 @@ class TestGoBDComplianceService:
         )
 
         assert result.check_type == GoBDCheckType.VOLLSTAENDIGKEIT.value
-        assert "sequence_gaps" in result.details
+        # M15: Pruefung liefert jetzt doppelte Belegnummern (teilgeprueft)
+        assert "duplicate_invoice_numbers" in result.details
 
     @pytest.mark.asyncio
     async def test_run_check_aufbewahrung(
@@ -215,7 +216,9 @@ class TestGoBDComplianceService:
         )
 
         assert result.check_type == GoBDCheckType.ZUGANGSKONTROLLE.value
-        assert result.status == ComplianceStatus.PASSED.value
+        # M15: ehrlich teilgeprueft (WARNING) statt faelschlich PASSED,
+        # da die vollstaendige Berechtigungs-Matrix-Pruefung XL ist.
+        assert result.status == ComplianceStatus.WARNING.value
 
     @pytest.mark.asyncio
     async def test_run_check_maschinelle_auswertbarkeit(
@@ -336,7 +339,10 @@ class TestGoBDComplianceService:
         )
 
         assert result.score >= 90
-        assert result.status == ComplianceStatus.PASSED.value
+        # M15: Selbst bei voller Coverage wird die Nachvollziehbarkeit ehrlich
+        # als WARNING (teilgeprueft) gemeldet — die vollstaendige globale
+        # Ketten-Luecken-Pruefung ist XL und hier nicht abschliessend.
+        assert result.status == ComplianceStatus.WARNING.value
 
     @pytest.mark.asyncio
     async def test_nachvollziehbarkeit_low_coverage(
@@ -875,6 +881,9 @@ class TestGoBDComplianceService:
             elif call_count[0] == 2:
                 mock_result.scalar.return_value = 80  # Docs with audit
             else:
+                # M15: Sequenz-/Hash-Integritaets-Queries sauber (0 Luecken),
+                # damit der Score nur die Coverage widerspiegelt.
+                mock_result.scalar.return_value = 0
                 mock_result.scalar_one_or_none.return_value = None
                 mock_result.scalars.return_value.all.return_value = []
             return mock_result

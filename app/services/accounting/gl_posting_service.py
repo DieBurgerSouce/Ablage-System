@@ -404,6 +404,11 @@ class GLPostingService:
                 extracted, invoice_total, tax_amount, net_amount
             )
 
+        # M11: Echten Extraktions-Confidence verwenden statt fixem Platzhalter.
+        # Ein fixer Wert von 0.85 entspraeche exakt der Auto-Post-Schwelle und
+        # wuerde diese faelschlich IMMER erreichen.
+        booking_confidence = self._resolve_extraction_confidence(extracted, doc)
+
         entry = await self.create_journal_entry(
             company_id=company_id,
             lines=lines,
@@ -411,7 +416,7 @@ class GLPostingService:
             description=f"Auto: {extracted.get('invoice_number', 'N/A')}",
             document_id=document_id,
             source=JournalEntrySource.AUTO_BOOKING.value,
-            confidence=0.85,  # Placeholder
+            confidence=booking_confidence,
             created_by=posted_by,
         )
 
@@ -419,6 +424,49 @@ class GLPostingService:
         await self.post_journal_entry(entry.id, posted_by)
 
         return entry
+
+    def _resolve_extraction_confidence(
+        self,
+        extracted: Dict[str, Union[str, int, float, Decimal, None]],
+        doc: Document,
+    ) -> float:
+        """Ermittelt den echten Extraktions-Confidence (0.0-1.0).
+
+        Reihenfolge: explizit extrahierter Confidence-Wert > OCR-Confidence des
+        Dokuments > konservativer Default mit ehrlichem Warn-Log. So wird kein
+        fixer Wert verwendet, der die Auto-Post-Schwelle kuenstlich erreicht.
+        """
+        conservative_default = 0.5
+
+        raw: Optional[float] = None
+        for key in ("extraction_confidence", "confidence", "ocr_confidence"):
+            value = extracted.get(key)
+            if value is not None:
+                try:
+                    raw = float(value)  # type: ignore[arg-type]
+                    break
+                except (TypeError, ValueError):
+                    raw = None
+
+        if raw is None and doc.ocr_confidence is not None:
+            try:
+                raw = float(doc.ocr_confidence)
+            except (TypeError, ValueError):
+                raw = None
+
+        if raw is None:
+            logger.warning(
+                "gl_auto_booking_confidence_fallback",
+                document_id=str(doc.id),
+                fallback=conservative_default,
+            )
+            return conservative_default
+
+        # Normalisieren: Werte > 1.0 werden als Prozent (0-100) interpretiert
+        if raw > 1.0:
+            raw = raw / 100.0
+
+        return max(0.0, min(1.0, raw))
 
     def _simple_expense_lines(
         self,

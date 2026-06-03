@@ -32,7 +32,8 @@ import structlog
 from sqlalchemy import select, func, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Document, BusinessEntity, InvoiceTracking
+from app.db.models import Document, BusinessEntity, InvoiceTracking, AuditLog
+from app.db.models_privat_enterprise import ApprovalRequest, ApprovalStep
 from app.db.models_fraud import (
     IBANBaseline,
     FraudScanResult,
@@ -553,9 +554,82 @@ class EnhancedFraudDetectionService:
         Returns:
             FraudDetectionResult for self-approval
         """
-        # This would integrate with approval workflow system
-        # For now, return empty result as placeholder
-        return self._empty_result(FraudScanType.INTERNAL_IRREGULARITY)
+        # M10: ApprovalRequest company-scoped laden (Ownership-/Multi-Tenant-Check)
+        stmt = select(ApprovalRequest).where(
+            and_(
+                ApprovalRequest.id == approval_id,
+                ApprovalRequest.company_id == company_id,
+            )
+        )
+        approval = (await self.session.execute(stmt)).scalar_one_or_none()
+
+        if approval is None:
+            # Keine Daten -> ehrliches Leerergebnis (confidence=0.0), kein PII
+            logger.warning(
+                "fraud_self_approval_request_not_found",
+                approval_id=str(approval_id),
+            )
+            return self._empty_result(FraudScanType.INTERNAL_IRREGULARITY)
+
+        requester_id = approval.requested_by_id
+        if requester_id is None:
+            # Antragsteller nicht erfasst -> ehrlich nicht bewertbar (confidence=0.0)
+            logger.warning(
+                "fraud_self_approval_no_requester",
+                approval_id=str(approval_id),
+            )
+            return self._empty_result(FraudScanType.INTERNAL_IRREGULARITY)
+
+        indicators: List[FraudIndicator] = []
+
+        # (1) Abschliessende Aufloesung durch den Antragsteller selbst
+        if approval.resolved_by_id is not None and approval.resolved_by_id == requester_id:
+            indicators.append(
+                FraudIndicator(
+                    name="self_resolution",
+                    weight=0.6,
+                    description=(
+                        "Antragsteller hat die eigene Genehmigungsanfrage selbst "
+                        "abschliessend aufgeloest (Vier-Augen-Prinzip verletzt)."
+                    ),
+                    details={"approval_id": str(approval_id)},
+                )
+            )
+
+        # (2) Mindestens ein Genehmigungsschritt durch den Antragsteller freigegeben
+        stmt_steps = select(func.count(ApprovalStep.id)).where(
+            and_(
+                ApprovalStep.approval_request_id == approval.id,
+                ApprovalStep.decision_by_id == requester_id,
+                ApprovalStep.decision == "approved",
+            )
+        )
+        self_approved_steps = (await self.session.execute(stmt_steps)).scalar() or 0
+        if self_approved_steps > 0:
+            indicators.append(
+                FraudIndicator(
+                    name="self_approval_step",
+                    weight=0.7,
+                    description=(
+                        "Antragsteller hat mindestens einen Genehmigungsschritt der "
+                        "eigenen Anfrage selbst freigegeben."
+                    ),
+                    details={"self_approved_steps": int(self_approved_steps)},
+                )
+            )
+
+        risk_score = min(1.0, sum(ind.weight for ind in indicators))
+        risk_level = self._calculate_risk_level(risk_score)
+
+        return FraudDetectionResult(
+            scan_type=FraudScanType.INTERNAL_IRREGULARITY,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            # Echte Pruefung durchgefuehrt -> hohe Confidence (auch bei sauberem Ergebnis)
+            confidence=0.9,
+            indicators=indicators,
+            explanation={"approval_id": str(approval_id), "check": "self_approval"},
+        )
 
     async def detect_unusual_approval_pattern(
         self,
@@ -582,8 +656,15 @@ class EnhancedFraudDetectionService:
         """
         indicators: List[FraudIndicator] = []
 
-        # Placeholder for approval pattern analysis
-        # Would integrate with approval workflow tables
+        # M10: Eine belastbare Muster-Analyse (Approval-Volumen vs. Peers,
+        # knapp-unter-Schwelle, wiederholte Entitaeten, Off-Hours) erfordert
+        # zusaetzliche Aggregations-/Baseline-Daten, die noch nicht angebunden
+        # sind. Bis dahin ehrlich: KEINE Indikatoren, confidence=0.0 (kein
+        # faelschlich gruenes Ergebnis), mit klarem Warn-Log statt Stillschweigen.
+        logger.warning(
+            "fraud_unusual_approval_pattern_not_implemented",
+            analysis_period_days=days,
+        )
 
         risk_score = sum(ind.weight for ind in indicators)
         risk_level = self._calculate_risk_level(risk_score)
@@ -592,9 +673,12 @@ class EnhancedFraudDetectionService:
             scan_type=FraudScanType.INTERNAL_IRREGULARITY,
             risk_score=risk_score,
             risk_level=risk_level,
-            confidence=0.7 if indicators else 0.0,
+            confidence=0.0,
             indicators=indicators,
-            explanation={"analysis_period_days": days},
+            explanation={
+                "analysis_period_days": days,
+                "status": "nicht_implementiert",
+            },
         )
 
     async def analyze_audit_trail(
@@ -622,8 +706,130 @@ class EnhancedFraudDetectionService:
         """
         results: List[FraudDetectionResult] = []
 
-        # Placeholder for audit trail analysis
-        # Would integrate with audit log tables
+        # M10: Echte Audit-Trail-Analyse auf Basis von AuditLog
+        # (app.db.models.AuditLog). Alle Queries strikt company_id-gefiltert
+        # (Multi-Tenant). KEIN PII-Logging — nur aggregierte Zahlen.
+
+        # (1) Bulk-Deletes: einzelne Nutzer mit auffaellig vielen Loesch-Aktionen
+        bulk_delete_threshold = 20
+        try:
+            stmt_deletes = (
+                select(
+                    AuditLog.user_id,
+                    func.count(AuditLog.id).label("delete_count"),
+                )
+                .where(
+                    and_(
+                        AuditLog.company_id == company_id,
+                        AuditLog.user_id.isnot(None),
+                        AuditLog.created_at >= start_date,
+                        AuditLog.created_at <= end_date,
+                        or_(
+                            AuditLog.action.ilike("%delete%"),
+                            AuditLog.action.ilike("%loesch%"),
+                            AuditLog.action.ilike("%lösch%"),
+                        ),
+                    )
+                )
+                .group_by(AuditLog.user_id)
+                .having(func.count(AuditLog.id) >= bulk_delete_threshold)
+            )
+            delete_rows = (await self.session.execute(stmt_deletes)).all()
+        except Exception as exc:  # noqa: BLE001 - ehrliche Degradation
+            logger.warning("fraud_audit_bulk_delete_query_failed", error=safe_error_log(exc))
+            delete_rows = []
+
+        for row in delete_rows:
+            delete_count = int(row.delete_count)
+            weight = min(1.0, 0.3 + delete_count / 200.0)
+            indicator = FraudIndicator(
+                name="bulk_deletions",
+                weight=weight,
+                description=(
+                    "Ungewoehnlich viele Loesch-Aktionen durch einen einzelnen "
+                    "Nutzer im Audit-Trail des Zeitraums."
+                ),
+                details={
+                    "user_id": str(row.user_id),
+                    "delete_count": delete_count,
+                },
+            )
+            results.append(
+                FraudDetectionResult(
+                    scan_type=FraudScanType.INTERNAL_IRREGULARITY,
+                    risk_score=weight,
+                    risk_level=self._calculate_risk_level(weight),
+                    confidence=0.85,
+                    indicators=[indicator],
+                    explanation={
+                        "check": "bulk_deletions",
+                        "threshold": bulk_delete_threshold,
+                    },
+                )
+            )
+
+        # (2) Off-Hours-Aktivitaet: Aktionen ausserhalb der Geschaeftszeiten
+        # (vor 06:00, ab 22:00 oder am Wochenende). func.extract ist
+        # PostgreSQL-Standard; bei abweichendem Dialekt degradiert die Pruefung
+        # ehrlich (Warn-Log) statt ein falsch-gruenes Ergebnis zu liefern.
+        off_hours_threshold = 25
+        try:
+            hour_col = func.extract("hour", AuditLog.created_at)
+            dow_col = func.extract("dow", AuditLog.created_at)  # 0=So ... 6=Sa
+            stmt_off_hours = (
+                select(
+                    AuditLog.user_id,
+                    func.count(AuditLog.id).label("off_hours_count"),
+                )
+                .where(
+                    and_(
+                        AuditLog.company_id == company_id,
+                        AuditLog.user_id.isnot(None),
+                        AuditLog.created_at >= start_date,
+                        AuditLog.created_at <= end_date,
+                        or_(
+                            hour_col < 6,
+                            hour_col >= 22,
+                            dow_col.in_([0, 6]),
+                        ),
+                    )
+                )
+                .group_by(AuditLog.user_id)
+                .having(func.count(AuditLog.id) >= off_hours_threshold)
+            )
+            off_hours_rows = (await self.session.execute(stmt_off_hours)).all()
+        except Exception as exc:  # noqa: BLE001 - ehrliche Degradation
+            logger.warning("fraud_audit_off_hours_query_failed", error=safe_error_log(exc))
+            off_hours_rows = []
+
+        for row in off_hours_rows:
+            off_hours_count = int(row.off_hours_count)
+            weight = min(1.0, 0.25 + off_hours_count / 300.0)
+            indicator = FraudIndicator(
+                name="off_hours_activity",
+                weight=weight,
+                description=(
+                    "Auffaellig viele Audit-Aktionen ausserhalb der "
+                    "Geschaeftszeiten (nachts/Wochenende)."
+                ),
+                details={
+                    "user_id": str(row.user_id),
+                    "off_hours_count": off_hours_count,
+                },
+            )
+            results.append(
+                FraudDetectionResult(
+                    scan_type=FraudScanType.INTERNAL_IRREGULARITY,
+                    risk_score=weight,
+                    risk_level=self._calculate_risk_level(weight),
+                    confidence=0.8,
+                    indicators=[indicator],
+                    explanation={
+                        "check": "off_hours_activity",
+                        "threshold": off_hours_threshold,
+                    },
+                )
+            )
 
         return results
 

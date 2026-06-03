@@ -715,6 +715,42 @@ try:
 except ImportError as _exc:
     _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
+# --- G4 DB/Worker-Hygiene: bisher unsichtbare Task-Module sichtbar machen ---
+try:
+    from app.workers.tasks.active_learning_tasks import (
+        populate_active_learning_queue, calculate_learning_metrics, train_from_corrections,
+    )
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
+
+try:
+    from app.workers.tasks.anomaly_tasks import (
+        run_anomaly_detection_task, check_single_document_anomalies_task,
+    )
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
+
+try:
+    from app.workers.tasks.clustering_tasks import (
+        generate_cluster_suggestions, rebuild_cluster_centroids, auto_cluster_company,
+    )
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
+
+try:
+    from app.workers.tasks.encryption_tasks import (
+        encrypt_field_task, rotate_key_task, verify_encryption_task,
+    )
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
+
+try:
+    from app.workers.tasks.summary_tasks import (
+        generate_document_summary_task, batch_generate_summaries_task,
+    )
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
+
 __all__ = [
     # OCR tasks
     "process_document_task",
@@ -1287,4 +1323,23 @@ __all__ = [
     "process_pending_documents",
     "recalculate_thresholds",
     "generate_zero_touch_statistics",
+    # G4 DB/Worker-Hygiene: bisher unsichtbare Task-Module
+    # Active Learning tasks
+    "populate_active_learning_queue",
+    "calculate_learning_metrics",
+    "train_from_corrections",
+    # Anomaly tasks
+    "run_anomaly_detection_task",
+    "check_single_document_anomalies_task",
+    # Clustering tasks
+    "generate_cluster_suggestions",
+    "rebuild_cluster_centroids",
+    "auto_cluster_company",
+    # Encryption tasks
+    "encrypt_field_task",
+    "rotate_key_task",
+    "verify_encryption_task",
+    # Summary tasks
+    "generate_document_summary_task",
+    "batch_generate_summaries_task",
 ]

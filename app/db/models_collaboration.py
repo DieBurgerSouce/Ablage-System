@@ -14,7 +14,9 @@ from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String, Tex
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.core.datetime_utils import utc_now
-from app.db.base import Base
+# G4 DB-Hygiene: 'app.db.base' existiert nicht — kanonische Base-Quelle ist
+# app.db.models_base (dieselbe Base-Instanz, die app.db.models re-exportiert).
+from app.db.models_base import Base
 
 # Import canonical DocumentActivity to avoid duplicate __tablename__
 from app.db.models_notification import DocumentActivity  # noqa: F401

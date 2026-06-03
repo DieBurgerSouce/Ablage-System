@@ -33,6 +33,15 @@ from app.core.safe_errors import safe_error_log, safe_error_detail
 logger = structlog.get_logger(__name__)
 
 
+class TSALibraryMissingError(RuntimeError):
+    """Fehlende RFC-3161-faehige ASN.1-Bibliothek.
+
+    Wird ausgeloest, wenn ``asn1crypto`` nicht verfuegbar ist. Es gibt bewusst
+    KEINEN unsicheren Handbau-ASN.1-Fallback (M14): lieber ein klarer Fehler
+    als ein nicht-RFC-konformer Zeitstempel.
+    """
+
+
 class TSAStatus(str, Enum):
     """Status einer TSA-Anfrage."""
     SUCCESS = "success"
@@ -129,8 +138,16 @@ class TimestampAuthorityService:
         # Nonce generieren (8 bytes, random)
         nonce = int.from_bytes(uuid.uuid4().bytes[:8], byteorder='big')
 
-        # TSA Request bauen (RFC 3161 TimeStampReq)
-        tsa_request = self._build_tsa_request(data_hash, nonce)
+        # TSA Request bauen (RFC 3161 TimeStampReq via asn1crypto)
+        try:
+            tsa_request = self._build_tsa_request(data_hash, nonce)
+        except TSALibraryMissingError as exc:
+            logger.error("tsa_asn1_lib_missing", tsa_url=tsa_url)
+            return TimestampResponse(
+                status=TSAStatus.INVALID_RESPONSE,
+                error_message=str(exc),
+                response_time_ms=0,
+            )
 
         try:
             client = await self._get_client()
@@ -580,43 +597,42 @@ class TimestampAuthorityService:
         data_hash: bytes,
         nonce: int,
     ) -> bytes:
-        """Baut eine RFC 3161 TimeStampReq Nachricht.
+        """Baut eine RFC 3161 ``TimeStampReq`` Nachricht (DER-kodiert).
 
-        Vereinfachte Implementation - in Produktion sollte
-        eine vollständige ASN.1-Bibliothek verwendet werden.
+        M14: Verwendet ``asn1crypto`` fuer eine vollstaendig RFC-3161-konforme
+        Kodierung. Ist die Bibliothek nicht installiert, wird ein klarer Fehler
+        (``TSALibraryMissingError`` / ``tsa_asn1_lib_missing``) ausgeloest —
+        KEIN unsicherer Handbau-ASN.1-Fallback.
+
+        Args:
+            data_hash: SHA-256 Hash der zu stempelnden Daten (32 Bytes).
+            nonce: Zufaelliger Nonce-Wert (Replay-Schutz).
+
+        Returns:
+            DER-kodierte ``TimeStampReq``.
         """
-        # Vereinfachter TSA Request (nicht vollständig RFC-konform)
-        # In Produktion: pyasn1 oder cryptography library verwenden
+        try:
+            from asn1crypto import tsp, algos
+        except ImportError as exc:
+            raise TSALibraryMissingError(
+                "tsa_asn1_lib_missing: asn1crypto ist nicht installiert — "
+                "RFC-3161-Zeitstempel koennen nicht erzeugt werden "
+                "(kein unsicherer Handbau-Fallback)."
+            ) from exc
 
-        # SHA-256 OID: 2.16.840.1.101.3.4.2.1
-        sha256_oid = bytes([
-            0x06, 0x09,  # OID Tag + Länge
-            0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01
-        ])
+        message_imprint = tsp.MessageImprint({
+            "hash_algorithm": algos.DigestAlgorithm({"algorithm": "sha256"}),
+            "hashed_message": data_hash,
+        })
 
-        # MessageImprint (Hash-Algorithmus + Hash)
-        hash_algorithm = bytes([0x30, 0x0d]) + sha256_oid + bytes([0x05, 0x00])  # NULL params
-        message_imprint = (
-            bytes([0x30, len(hash_algorithm) + len(data_hash) + 2])
-            + hash_algorithm
-            + bytes([0x04, len(data_hash)])  # OCTET STRING
-            + data_hash
-        )
+        request = tsp.TimeStampReq({
+            "version": "v1",
+            "message_imprint": message_imprint,
+            "nonce": nonce,
+            "cert_req": True,
+        })
 
-        # Nonce (INTEGER)
-        nonce_bytes = nonce.to_bytes(8, byteorder='big')
-        nonce_encoded = bytes([0x02, len(nonce_bytes)]) + nonce_bytes
-
-        # CertReq (BOOLEAN TRUE)
-        cert_req = bytes([0x01, 0x01, 0xff])
-
-        # TimeStampReq (SEQUENCE)
-        version = bytes([0x02, 0x01, 0x01])  # Version 1
-
-        inner_content = version + message_imprint + nonce_encoded + cert_req
-        tsa_request = bytes([0x30, len(inner_content)]) + inner_content
-
-        return tsa_request
+        return request.dump()
 
     def _parse_tsa_response(
         self,
@@ -624,32 +640,70 @@ class TimestampAuthorityService:
         tsa_url: str,
         duration_ms: float,
     ) -> TimestampResponse:
-        """Parst eine RFC 3161 TimeStampResp Nachricht.
+        """Parst eine RFC 3161 ``TimeStampResp`` Nachricht.
 
-        Vereinfachte Implementation.
+        M14: Vollstaendiges, RFC-3161-konformes Parsing via ``asn1crypto``:
+        - validiert den ``PKIStatus`` (nur ``granted``/``granted_with_mods``),
+        - extrahiert ``genTime`` und Seriennummer aus dem ``TSTInfo``.
+        Ist ``asn1crypto`` nicht verfuegbar, wird ein klarer Fehler
+        (``tsa_asn1_lib_missing``) geliefert — KEIN unsicheres Teil-Parsing.
         """
         try:
-            # Basis-Validierung
-            if len(response_data) < 10:
+            from asn1crypto import tsp
+        except ImportError:
+            logger.error("tsa_asn1_lib_missing", tsa_url=tsa_url)
+            return TimestampResponse(
+                status=TSAStatus.INVALID_RESPONSE,
+                error_message=(
+                    "tsa_asn1_lib_missing: asn1crypto ist nicht installiert — "
+                    "TSA-Antwort kann nicht RFC-3161-konform geparst werden."
+                ),
+                response_time_ms=duration_ms,
+            )
+
+        try:
+            ts_resp = tsp.TimeStampResp.load(response_data)
+
+            # PKIStatus pruefen: nur granted / granted_with_mods sind gueltig
+            status_info = ts_resp["status"]
+            pki_status = status_info["status"].native
+            if pki_status not in ("granted", "granted_with_mods"):
+                logger.warning(
+                    "tsa_response_not_granted",
+                    tsa_url=tsa_url,
+                    pki_status=str(pki_status),
+                )
                 return TimestampResponse(
                     status=TSAStatus.INVALID_RESPONSE,
-                    error_message="Response too short",
+                    error_message=f"TSA-Status nicht granted: {pki_status}",
                     response_time_ms=duration_ms,
                 )
 
-            # Prüfe SEQUENCE Tag
-            if response_data[0] != 0x30:
+            token = ts_resp["time_stamp_token"]
+            if token.native is None:
                 return TimestampResponse(
                     status=TSAStatus.INVALID_RESPONSE,
-                    error_message="Invalid ASN.1 format",
+                    error_message="TSA-Antwort ohne TimeStampToken",
                     response_time_ms=duration_ms,
                 )
 
-            # Extrahiere Status (erste paar Bytes nach dem Header)
-            # Status 0 = granted
-            # In Produktion: vollständiges ASN.1 Parsing
+            # genTime + Seriennummer aus TSTInfo extrahieren (defensiv: bei
+            # Strukturabweichungen degradiert nur die genTime, nicht der Erfolg).
+            gen_time: Optional[datetime] = None
+            serial_number: Optional[str] = None
+            try:
+                signed_data = token["content"]
+                encap_content = signed_data["encap_content_info"]["content"]
+                tst_info = tsp.TSTInfo.load(encap_content.native)
+                gen_time = tst_info["gen_time"].native
+                serial_number = str(tst_info["serial_number"].native)
+            except Exception as exc:  # noqa: BLE001 - genTime ist optional
+                logger.warning(
+                    "tsa_tstinfo_parse_partial",
+                    tsa_url=tsa_url,
+                    error=type(exc).__name__,
+                )
 
-            # Token als Base64 speichern
             token_base64 = base64.b64encode(response_data).decode("ascii")
 
             logger.info(
@@ -660,8 +714,9 @@ class TimestampAuthorityService:
 
             return TimestampResponse(
                 status=TSAStatus.SUCCESS,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=gen_time or datetime.now(timezone.utc),
                 token_base64=token_base64,
+                serial_number=serial_number,
                 tsa_name=tsa_url,
                 response_time_ms=duration_ms,
             )
