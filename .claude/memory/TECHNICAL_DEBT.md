@@ -1,21 +1,35 @@
 # Technical Debt Tracking
 
-**Last Updated**: 2026-02-14
-**Overall Debt Level**: 🟢 LOW
+**Last Updated**: 2026-06-03 (Reality-Check via Status-Scan)
+**Overall Debt Level**: 🟡 **MITTEL-HOCH** (zuvor fälschlich „🟢 LOW" — durch Status-Scan 2026-06-03 widerlegt)
 
 ---
 
-## Debt Categories
+## Debt Categories (korrigiert 2026-06-03)
 
-| Category | Level | Priority | Estimated Effort |
-|----------|-------|----------|------------------|
-| Code Quality | None | - | 0 days |
-| Security | None | - | 0 days |
-| Architecture | None | - | 0 days |
-| Testing | None | - | 0 days |
-| Documentation | Minimal | Low | 1-2 days |
+| Category | Level | Priority | Hinweis (Scan 2026-06-03) |
+|----------|-------|----------|---------------------------|
+| Code Quality | Mittel | Hoch | B1 `company_id`-Laufzeitbug (95 Module); Mock-/Platzhalter-Pfade (Mock-Register M1-M23) |
+| Security | Mittel | Hoch | B4 Security-/Isolationstests gestubbt; `.secrets.baseline` leer; `safety \|\| true` nicht-blockierend |
+| Architecture | Niedrig-Mittel | Mittel | 3 divergierende Backend-Dockerfiles; verwaiste ORM-Modelle; Endpoint-Dubletten |
+| Testing | **Hoch** | Hoch | ~475 deaktivierte Tests; reale Coverage ~51 % vs. `fail_under=90`; CI triggert nur `main/develop` (Default = `master`) |
+| Documentation | Mittel | Mittel | Status-Doku überzeichnete Reifegrad (dieser Reality-Check) |
 
-**Total Estimated Effort to Zero Debt**: 1 Sprint (L3 Monitoring Dashboard)
+> Frühere Aussage „Total Effort to Zero Debt: 1 Sprint" ist hinfällig. Reale Aufwände siehe Backlog im Status-Scan.
+
+---
+
+## 🔴 Status-Scan 2026-06-03 — neu erfasste Schulden
+
+> Vollständig: `.claude/reviews/2026-06-03/STATUS_SCAN_2026-06-03.md`. Blocker B1-B4 in `KNOWN_ISSUES.md`. Mock-Inventur: `MOCK_DATA_REGISTER.md`.
+
+- **Test-Schuld (Hoch)**: ~475 deaktivierte Tests (164 „stub - nicht implementiert" + Drift „API geändert"/„Mock-Setup unvollständig", u. a. `test_contracts_api.py` 49, `test_training_api.py` 27, `test_invoices_api.py` 26). Reale Coverage-Evidenz ~51 % (nur `orchestration`).
+- **CI-Schuld (Hoch)**: B3 (fehlende Dockerfiles); CI-Trigger nur `main/develop` statt `master`; `deploy.yml` prüft `migrations/versions` statt `alembic/versions`; `canary-deploy.yml` nutzt nicht existierenden `nginx`-Service; `k8s-deploy.yml` triggert auf fehlendes `infrastructure/kubernetes/`.
+- **Celery-Verdrahtung (Hoch)**: 6 Beat-Schedules → nicht registrierte Task-Namen (NotRegistered zur Laufzeit); 5 Task-Module (`active_learning_tasks`, `anomaly_tasks`, `clustering_tasks`, `encryption_tasks`, `summary_tasks`) fehlen in `include=[]`/`tasks/__init__.py` → Worker führt sie nie aus.
+- **DB-Hygiene (Mittel)**: verwaiste ORM-Modelle `models_categorization_feedback` (keine Migration) und `models_knowledge_graph` (nicht an `Base.metadata`); Autogenerate-Sichtbarkeit hängt an handgepflegter Import-Liste in `alembic/env.py`.
+- **Backend-Dubletten (Niedrig)**: `document_chains` vs. `_v2`; `annotations*`/`approval*`/`cashflow*`-Varianten — kanonische Version unklar.
+- **Security operativ (Mittel)**: `.secrets.baseline` leer (`{}`); `safety` im CI nicht-blockierend; alternde Pins (fastapi 0.110.0, sqlalchemy 2.0.25, pillow 10.2.0); JWT Bearer/sessionStorage statt httpOnly-Cookie (weicht von CLAUDE.md-Guideline ab).
+- **Mock-/Platzhalter-Schuld (Hoch, Nutzer-Primärziel)**: 23 Stellen geben Mock/Platzhalter als echt aus — siehe `MOCK_DATA_REGISTER.md` (M1-M23). Gefährlichste: M9 (Mock-Bank-Sync in echte Buchung), M14/M15 (GoBD/TSA-Compliance nicht garantiert).
 
 ---
 
