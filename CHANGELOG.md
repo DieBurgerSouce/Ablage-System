@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+### Added
+- `app/core/config.py`: FINTS_ALLOW_MOCK_SYNC + FINTS_AUTO_SYNC_ENABLED Feature-Flags (Default False) fuer sicheres FinTS/PSD2-Rollout (G0-Prereq)
+- `.env.example`: BANKING/FinTS-Konfigurationssektion (PSD2_BASE_URL, FINTS_SERVER_ADDRESS, FINTS_BLZ, FINTS_USER_ID)
+- `.claude/reviews/2026-06-03/INTERFACE_CONTRACT_G1_G4.md`: Formaler Interface-Kontrakt G1<->G4 (Dashboard-KPIs M1-M4, Fraud-Alert-Persistenz M5, Celery-Restart-Hook M6)
+- `.claude/reviews/2026-06-03/`: Status-Scan-Artefakte (STATUS_SCAN, MOCK_DATA_REGISTER, REMEDIATION_PLAN, Goals G0-G5)
+
+### Fixed
+- `requirements.txt`: asn1crypto==1.5.1 gepinnt (behebt potenzielle RFC-3161-TSA-Inkompatibilitaet in tsa_service.py)
+
+### Changed
+- `.claude/CLAUDE.md`: Projektstatus-Header auf 🟡 korrigiert — frueherer Eintrag „Production-Ready (E2E Tests 2026-01-10)" war ueberschaetzt; 4 verifizierte Blocker (B1-B4) offen
+- `.claude/memory/KNOWN_ISSUES.md`: 4 produktionskritische Blocker B1-B4 dokumentiert (company_id-Crash, FinTS-Mock, CI-Dockerfiles, Security-Test-Stubs)
+- `.claude/memory/PROJECT_STATUS.md`: Reality-Check-Sektion ergaenzt (A-Z-Fan-Out-Scan, 12 Subagents, Gesamtstatus GELB)
+- `.claude/memory/TECHNICAL_DEBT.md`: Debt-Level von LOW auf MITTEL-HOCH angepasst (Status-Scan-Evidenz)
+
 ## \[0.1.0\] - 2026-05-20 (Pilot-Ship)
 
 Erste produktive Pilot-Version. PR #9 squash-gemerged (`7e6bd9e7`), Tag `pilot-v0.1.0`. Konsolidiert Sprint-0 Pilot-Hardening (G01-G10), Phase A (K1-K6), Phase B (B1-B7), Multi-Agent-Review Follow-Through (Tasks A-D, F1-F4), Sprint-1 Sec-Reste (S1.1-S1.5) und den Merge von master's Tier-1-Transformation. Severity gegen den alten master: 5 CRITICAL + 11 HIGH-Security gefixt.
