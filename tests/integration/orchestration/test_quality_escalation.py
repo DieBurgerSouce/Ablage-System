@@ -6,11 +6,12 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 # Add orchestration to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "orchestration"))
+# G5 (2026-06-03): Import ueber das Paket `orchestration` (relative Imports in den Modulen).
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude"))
 
-from orchestrator import Orchestrator, OrchestrationResult
-from task_classifier import ModelTier
-from quality_gate import QualityResult, QualityLevel
+from orchestration.orchestrator import Orchestrator, OrchestrationResult
+from orchestration.task_classifier import ModelTier
+from orchestration.quality_gate import QualityResult, QualityLevel
 
 
 @pytest.mark.integration

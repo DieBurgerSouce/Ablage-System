@@ -39,8 +39,35 @@ def _mock_gpu_modules() -> None:
                 sys.modules[mod_name] = mock_mod
 
 
+def _mock_weasyprint_if_unavailable() -> None:
+    """Mockt weasyprint, falls native Bibliotheken (libgobject/pango/GTK) fehlen.
+
+    Auf Windows-Entwicklungsmaschinen ohne GTK-Stack wirft ``import weasyprint``
+    einen ``OSError`` (nicht nur ``ImportError``). Der app-seitige
+    ``try/except ImportError`` in ``app/services/templates/template_engine.py``
+    faengt diesen ``OSError`` NICHT -> dadurch bricht bereits
+    ``from app.main import app``, und alle App-abhaengigen Security-/
+    Integrationstests werden faelschlich uebersprungen statt ausgefuehrt
+    (Schein-Gruen statt Test-Wahrheit).
+
+    Cross-Stream-Fix (out of scope, app/**): ``except (ImportError, OSError)``
+    um die weasyprint-Importe in den Template-Services. Bis dahin ueberbrueckt
+    dieser test-seitige Mock das Problem. Ist die echte Bibliothek vorhanden
+    (Docker/CI mit GTK), bleibt sie aktiv - der Mock greift nur als Fallback.
+    """
+    if "weasyprint" in sys.modules:
+        return
+    try:
+        import weasyprint  # noqa: F401  # echte Bibliothek bevorzugen (Docker/CI)
+    except (ImportError, OSError):
+        sys.modules["weasyprint"] = MagicMock()
+
+
 # Mock GPU modules BEFORE any app imports
 _mock_gpu_modules()
+
+# Mock weasyprint, falls native GTK-Libs fehlen (Windows) - sonst bricht app.main
+_mock_weasyprint_if_unavailable()
 
 # IMPORTANT: Set DEBUG=true BEFORE any app imports to pass CORS validation
 # This must happen before pydantic_settings loads the .env file

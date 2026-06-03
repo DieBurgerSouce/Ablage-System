@@ -8,12 +8,15 @@ from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any
 
 # Add orchestration to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "orchestration"))
+# G5 (2026-06-03): Import ueber das Paket `orchestration`, nicht die Module flach.
+# `.claude/orchestration/orchestrator.py` nutzt relative Imports (from .task_classifier);
+# ein flacher Import bricht mit "attempted relative import with no known parent package".
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude"))
 
-from orchestrator import Orchestrator, OverrideMode, OrchestrationResult
-from task_classifier import TaskClassifier, ModelTier
-from quality_gate import QualityGate, QualityResult, QualityLevel
-from decision_cache import DecisionCache
+from orchestration.orchestrator import Orchestrator, OverrideMode, OrchestrationResult
+from orchestration.task_classifier import TaskClassifier, ModelTier
+from orchestration.quality_gate import QualityGate, QualityResult, QualityLevel
+from orchestration.decision_cache import DecisionCache
 
 
 @pytest.mark.integration
