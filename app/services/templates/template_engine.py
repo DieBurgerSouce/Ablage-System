@@ -34,7 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 try:
     from weasyprint import HTML
     WEASYPRINT_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):  # OSError: native GTK-Libs (libgobject/pango) fehlen (z.B. Windows)
     HTML = None  # type: ignore
     WEASYPRINT_AVAILABLE = False
     structlog.get_logger(__name__).warning("weasyprint not installed - PDF generation disabled")

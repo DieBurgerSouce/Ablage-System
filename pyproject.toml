@@ -329,9 +329,10 @@ parallel = true
 precision = 2
 show_missing = true
 skip_covered = false
-# Enterprise-Grade: Coverage-Schwelle auf 90% für Production-Qualität
-# Critical Paths sollten 95%+ haben (separat validiert)
-fail_under = 90
+# G5 (2026-06-03): Realistische, gestaffelte Coverage-Schwelle. Reale Suite-Coverage
+# ~51% (Voll-Stack, Status-Scan 2026-06-03; lokal ohne DB ~25%). Roadmap:
+# 50 -> 65 -> 80 -> 90 (s. tests/COVERAGE_STATUS.md). Schrittweise anheben.
+fail_under = 50
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

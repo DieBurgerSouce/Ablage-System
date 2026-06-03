@@ -949,7 +949,7 @@ Alle Änderungen am System werden dokumentiert:
             html_content = self._export_html(documentation)
             pdf_bytes = HTML(string=html_content.decode("utf-8")).write_pdf()
             return pdf_bytes
-        except ImportError:
+        except (ImportError, OSError):
             logger.warning("weasyprint_not_installed", fallback="html")
             # Fallback: HTML zurückgeben mit Hinweis
             return self._export_html(documentation)

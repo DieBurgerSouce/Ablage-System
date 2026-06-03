@@ -707,7 +707,42 @@ async def get_trend_data(
     service = get_feedback_learning_service()
     data = await service.get_trend_data(db=db, backend=backend, days=days)
 
-    return TrendResponse(data=data)
+    # G5: TrendResponse modelliert EINE Metrik-Serie. Der Service liefert taegliche
+    # Rohpunkte -> auf die OCR-Qualitaetsmetrik avg_cer abbilden.
+    # data_points als dicts -> Pydantic coerced auf den deklarierten TrendDataPoint-Typ
+    # von TrendResponse (vermeidet die doppelte TrendDataPoint-Klasse in schemas.py).
+    points = []
+    values = []
+    for row in data:
+        cer = row.get("avg_cer")
+        raw_date = row.get("date")
+        if cer is None or not raw_date:
+            continue
+        try:
+            ts = datetime.fromisoformat(raw_date)
+        except (ValueError, TypeError):
+            continue
+        cer_value = float(cer)
+        points.append({"date": ts, "value": cer_value})
+        values.append(cer_value)
+
+    if len(values) >= 2 and values[0]:
+        change_percent = round((values[-1] - values[0]) / values[0] * 100, 2)
+        # Niedrigere CER = bessere Qualitaet
+        trend_direction = (
+            "down" if change_percent < -1 else "up" if change_percent > 1 else "stable"
+        )
+    else:
+        change_percent = 0.0
+        trend_direction = "stable"
+
+    return TrendResponse(
+        metric="avg_cer",
+        backend=backend or "all",
+        data_points=points,
+        trend_direction=trend_direction,
+        change_percent=change_percent,
+    )
 
 
 @router.get("/stats/learned-weights")
