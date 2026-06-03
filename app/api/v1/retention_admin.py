@@ -22,7 +22,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, RetentionSetting, DocumentArchive
-from app.api.dependencies import get_db, get_current_superuser
+from app.api.dependencies import get_db, get_current_superuser, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.core.rate_limiting import limiter, get_user_identifier
 
@@ -124,6 +124,7 @@ async def get_retention_config(
     request: Request,  # Required for rate limiter
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[RetentionSettingResponse]:
     """
     Ruft alle Retention Settings für die Firma des aktuellen Admin-Users ab.
@@ -138,7 +139,7 @@ async def get_retention_config(
     try:
         # Alle RetentionSettings für die Company des Users laden
         stmt = select(RetentionSetting).where(
-            RetentionSetting.company_id == current_user.company_id
+            RetentionSetting.company_id == company_id
         ).order_by(RetentionSetting.category)
 
         result = await db.execute(stmt)
@@ -147,7 +148,7 @@ async def get_retention_config(
         logger.info(
             "retention_config_retrieved",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             settings_count=len(settings)
         )
 
@@ -182,6 +183,7 @@ async def update_retention_config(
     config: RetentionSettingUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RetentionSettingResponse:
     """
     Aktualisiert oder erstellt eine Retention-Setting Konfiguration.
@@ -199,7 +201,7 @@ async def update_retention_config(
         stmt = select(RetentionSetting).where(
             and_(
                 RetentionSetting.category == config.category,
-                RetentionSetting.company_id == current_user.company_id
+                RetentionSetting.company_id == company_id
             )
         )
         result = await db.execute(stmt)
@@ -219,7 +221,7 @@ async def update_retention_config(
             logger.info(
                 "retention_setting_updated",
                 user_id=str(current_user.id),
-                company_id=str(current_user.company_id),
+                company_id=str(company_id),
                 category=config.category,
                 auto_delete=config.auto_delete_enabled
             )
@@ -234,7 +236,7 @@ async def update_retention_config(
                 retention_years=config.retention_years,
                 auto_delete_enabled=config.auto_delete_enabled,
                 requires_approval_for_delete=config.requires_approval_for_delete,
-                company_id=current_user.company_id
+                company_id=company_id
             )
 
             db.add(new_setting)
@@ -244,7 +246,7 @@ async def update_retention_config(
             logger.info(
                 "retention_setting_created",
                 user_id=str(current_user.id),
-                company_id=str(current_user.company_id),
+                company_id=str(company_id),
                 category=config.category
             )
 
@@ -286,6 +288,7 @@ async def get_upcoming_deletions(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> UpcomingDeletionsResponse:
     """
     Listet alle Dokumente auf, deren Aufbewahrungsfrist in den nächsten X Tagen ablaeuft.
@@ -305,7 +308,7 @@ async def get_upcoming_deletions(
         # DocumentArchive Einträge finden, die in der Zeitspanne ablaufen
         stmt = select(DocumentArchive).where(
             and_(
-                DocumentArchive.company_id == current_user.company_id,
+                DocumentArchive.company_id == company_id,
                 DocumentArchive.retention_expires_at >= today,
                 DocumentArchive.retention_expires_at <= threshold_date
             )
@@ -322,7 +325,7 @@ async def get_upcoming_deletions(
             setting_stmt = select(RetentionSetting).where(
                 and_(
                     RetentionSetting.category == archive.retention_category,
-                    RetentionSetting.company_id == current_user.company_id
+                    RetentionSetting.company_id == company_id
                 )
             )
             setting_result = await db.execute(setting_stmt)
@@ -343,7 +346,7 @@ async def get_upcoming_deletions(
         logger.info(
             "upcoming_deletions_retrieved",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             days_ahead=days_ahead,
             count=len(items)
         )

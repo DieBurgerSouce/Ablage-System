@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.db.models_banking_connection import (
     ConnectionType,
@@ -303,6 +303,7 @@ async def init_psd2_connection(
     request: InitPSD2ConnectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Starte PSD2 Verbindung (OAuth2 Flow).
@@ -313,7 +314,7 @@ async def init_psd2_connection(
     service = get_account_connection_service()
     result = await service.init_psd2_connection(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         bank_code=request.bank_code,
         redirect_uri=request.redirect_uri,
@@ -337,6 +338,7 @@ async def psd2_callback(
     error: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     PSD2 OAuth2 Callback nach Bank-Redirect.
@@ -353,7 +355,7 @@ async def psd2_callback(
     result = await service.complete_psd2_connection(
         db=db,
         connection_id=connection_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         authorization_code=code,
         state=state,
     )
@@ -372,6 +374,7 @@ async def init_fints_connection(
     request: InitFinTSConnectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Starte FinTS Verbindung.
@@ -382,7 +385,7 @@ async def init_fints_connection(
     service = get_account_connection_service()
     result = await service.init_fints_connection(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         bank_code=request.bank_code,
         login_id=request.login_id,
@@ -406,6 +409,7 @@ async def complete_fints_connection(
     request: CompleteFinTSRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Schliesse FinTS Verbindung mit TAN ab.
@@ -414,7 +418,7 @@ async def complete_fints_connection(
     result = await service.complete_fints_connection(
         db=db,
         connection_id=connection_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         tan=request.tan,
     )
 
@@ -430,6 +434,7 @@ async def list_connections(
     include_inactive: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Liste aller Bank-Verbindungen.
@@ -437,7 +442,7 @@ async def list_connections(
     service = get_account_connection_service()
     connections = await service.get_connections(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_inactive=include_inactive,
     )
 
@@ -470,6 +475,7 @@ async def get_connection_accounts(
     connection_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Liste aller Konten einer Verbindung.
@@ -478,7 +484,7 @@ async def get_connection_accounts(
     accounts = await service.get_accounts(
         db=db,
         connection_id=connection_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return [
@@ -502,6 +508,7 @@ async def update_connection(
     request: UpdateConnectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Aktualisiere Verbindungseinstellungen.
@@ -510,7 +517,7 @@ async def update_connection(
     connection = await service.update_connection(
         db=db,
         connection_id=connection_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         auto_sync_enabled=request.auto_sync_enabled,
         sync_interval_hours=request.sync_interval_hours,
     )
@@ -544,6 +551,7 @@ async def delete_connection(
     connection_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Lösche eine Bank-Verbindung.
@@ -554,7 +562,7 @@ async def delete_connection(
     success = await service.delete_connection(
         db=db,
         connection_id=connection_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
     )
 
@@ -577,6 +585,7 @@ async def sync_connection(
     request: Optional[SyncRequest] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Manuelle Synchronisation einer Verbindung.
@@ -587,7 +596,7 @@ async def sync_connection(
     result = await service.sync_connection(
         db=db,
         connection_id=connection_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         date_from=request.date_from if request else None,
         date_to=request.date_to if request else None,
         triggered_by="manual",
@@ -616,6 +625,7 @@ async def initiate_payment(
     redirect_uri: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Initiiere eine SEPA-Überweisung.
@@ -625,7 +635,7 @@ async def initiate_payment(
     """
     service = get_payment_initiation_service()
     payment_request = PaymentRequest(
-        company_id=current_user.company_id,
+        company_id=company_id,
         account_id=request.account_id,
         creditor_name=request.creditor_name,
         creditor_iban=request.creditor_iban,
@@ -660,6 +670,7 @@ async def approve_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Freigabe einer Zahlung (4-Augen-Prinzip).
@@ -670,7 +681,7 @@ async def approve_payment(
     result = await service.approve_payment(
         db=db,
         payment_id=payment_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         approver_id=current_user.id,
     )
 
@@ -689,6 +700,7 @@ async def cancel_payment(
     reason: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Storniere eine ausstehende Zahlung.
@@ -697,7 +709,7 @@ async def cancel_payment(
     result = await service.cancel_payment(
         db=db,
         payment_id=payment_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         reason=reason,
     )
@@ -723,6 +735,7 @@ async def get_reconciliation_suggestions(
     transaction_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Hole Abgleich-Vorschläge für eine Transaktion.
@@ -731,7 +744,7 @@ async def get_reconciliation_suggestions(
     result = await service.reconcile_transaction(
         db=db,
         transaction_id=transaction_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         auto_apply=False,  # Only get suggestions
     )
 
@@ -766,6 +779,7 @@ async def manual_match_transaction(
     request: ManualMatchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Manueller Abgleich einer Transaktion mit einer Rechnung.
@@ -775,7 +789,7 @@ async def manual_match_transaction(
         db=db,
         transaction_id=transaction_id,
         invoice_id=request.invoice_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         notes=request.notes,
     )
@@ -795,6 +809,7 @@ async def split_transaction(
     request: SplitMatchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Aufteilen einer Transaktion auf mehrere Rechnungen.
@@ -805,7 +820,7 @@ async def split_transaction(
     result = await service.split_transaction(
         db=db,
         transaction_id=transaction_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         allocations=[
             {"invoice_id": str(a.invoice_id), "amount": a.amount}

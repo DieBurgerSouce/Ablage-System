@@ -18,7 +18,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from uuid import UUID
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.data_quality_service import (
@@ -59,6 +60,7 @@ class FixActionResponse(BaseModel):
 )
 async def get_data_quality_report(
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -67,7 +69,7 @@ async def get_data_quality_report(
     Returns:
         Data Quality Report mit Issues und Score
     """
-    if not current_user.company_id:
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Benutzer hat keine Firma zugewiesen",
@@ -75,12 +77,12 @@ async def get_data_quality_report(
 
     try:
         service = get_data_quality_service(db)
-        report = await service.get_quality_report(current_user.company_id)
+        report = await service.get_quality_report(company_id)
 
         logger.info(
             "data_quality_report_retrieved",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             overall_score=report.overall_score,
         )
 
@@ -123,6 +125,7 @@ async def get_data_quality_report(
 async def get_data_quality_trend(
     months: int = Query(6, ge=1, le=24, description="Anzahl Monate"),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[Dict[str, Any]]:
     """
@@ -134,7 +137,7 @@ async def get_data_quality_trend(
     Returns:
         List of monthly trend points
     """
-    if not current_user.company_id:
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Benutzer hat keine Firma zugewiesen",
@@ -142,12 +145,12 @@ async def get_data_quality_trend(
 
     try:
         service = get_data_quality_service(db)
-        trend = await service.get_quality_trend(current_user.company_id, months)
+        trend = await service.get_quality_trend(company_id, months)
 
         logger.info(
             "data_quality_trend_retrieved",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             months=months,
         )
 
@@ -173,6 +176,7 @@ async def get_data_quality_trend(
 )
 async def get_correction_suggestions(
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[Dict[str, str]]:
     """
@@ -181,7 +185,7 @@ async def get_correction_suggestions(
     Returns:
         Liste von Vorschlägen mit Prioritaet, Titel und Beschreibung
     """
-    if not current_user.company_id:
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Benutzer hat keine Firma zugewiesen",
@@ -190,13 +194,13 @@ async def get_correction_suggestions(
     try:
         service = get_data_quality_service(db)
         suggestions = await service.get_correction_suggestions(
-            current_user.company_id,
+            company_id,
         )
 
         logger.info(
             "data_quality_suggestions_retrieved",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             suggestion_count=len(suggestions),
         )
 
@@ -224,6 +228,7 @@ async def fix_data_quality_issue(
     category: str,
     request: FixActionRequest,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> FixActionResponse:
     """
@@ -236,7 +241,7 @@ async def fix_data_quality_issue(
     Returns:
         Number of items fixed
     """
-    if not current_user.company_id:
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Benutzer hat keine Firma zugewiesen",
@@ -254,7 +259,7 @@ async def fix_data_quality_issue(
     try:
         service = get_data_quality_service(db)
         fixed_count = await service.fix_issue(
-            current_user.company_id,
+            company_id,
             quality_category,
             request.action,
         )
@@ -262,7 +267,7 @@ async def fix_data_quality_issue(
         logger.info(
             "data_quality_issue_fixed",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             category=category,
             action=request.action,
             fixed_count=fixed_count,

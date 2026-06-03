@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.compliance.dpia_service import (
@@ -224,6 +224,7 @@ async def create_dpia_from_template(
     body: CreateFromTemplateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Erstelle neue DPIA aus Template.
@@ -244,7 +245,7 @@ async def create_dpia_from_template(
             dpo_name=body.dpo_name,
             dpo_contact=body.dpo_contact,
             assessor_name=current_user.full_name or current_user.email,
-            company_id=current_user.company_id,
+            company_id=company_id,
             created_by_id=current_user.id,
         )
     except ValueError as e:
@@ -270,6 +271,7 @@ async def list_dpias(
     status_filter: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[DPIASummary]:
     """Liste DPIAs des Unternehmens."""
     service = get_dpia_service()
@@ -283,7 +285,7 @@ async def list_dpias(
 
     dpias = await service.list_dpias(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status=status_enum,
     )
 
@@ -307,10 +309,11 @@ async def get_dpia(
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Hole DPIA nach ID."""
     service = get_dpia_service()
-    dpia = await service.get_by_id(db, dpia_id, company_id=current_user.company_id)
+    dpia = await service.get_by_id(db, dpia_id, company_id=company_id)
 
     if not dpia:
         raise HTTPException(
@@ -319,7 +322,7 @@ async def get_dpia(
         )
 
     # Defense-in-depth: NULL company_id wird ebenfalls abgelehnt
-    if dpia.company_id != current_user.company_id:
+    if dpia.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="DPIA nicht gefunden",
@@ -336,6 +339,7 @@ async def update_dpia_status(
     body: UpdateStatusRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Aktualisiere DPIA Status."""
     service = get_dpia_service()
@@ -356,7 +360,7 @@ async def update_dpia_status(
             new_status=new_status,
             user_name=current_user.full_name or current_user.email,
             comment=body.comment,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -382,6 +386,7 @@ async def add_dpo_consultation(
     body: DPOConsultationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Fuege DPO-Konsultation hinzu.
@@ -399,7 +404,7 @@ async def add_dpo_consultation(
             recommendations=body.recommendations,
             approval=body.approval,
             conditions=body.conditions,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -424,12 +429,13 @@ async def get_recommendations(
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[RecommendationResponse]:
     """Generiere Empfehlungen basierend auf Risikoprofil."""
     service = get_dpia_service()
-    dpia = await service.get_by_id(db, dpia_id, company_id=current_user.company_id)
+    dpia = await service.get_by_id(db, dpia_id, company_id=company_id)
 
-    if not dpia or dpia.company_id != current_user.company_id:
+    if not dpia or dpia.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="DPIA nicht gefunden",
@@ -447,12 +453,13 @@ async def get_audit_trail(
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[JSONDict]:
     """Hole Audit-Trail der DPIA."""
     service = get_dpia_service()
-    dpia = await service.get_by_id(db, dpia_id, company_id=current_user.company_id)
+    dpia = await service.get_by_id(db, dpia_id, company_id=company_id)
 
-    if not dpia or dpia.company_id != current_user.company_id:
+    if not dpia or dpia.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="DPIA nicht gefunden",

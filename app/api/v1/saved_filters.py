@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User, SavedFilter
 from app.services.saved_filter_service import SavedFilterService, ALLOWED_FEATURES
 from app.core.exceptions import NotFoundError, ForbiddenError, ValidationError
@@ -124,6 +124,7 @@ async def list_saved_filters(
     include_shared: bool = Query(True, description="Geteilte Filter einschließen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterListResponse:
     """Liste alle gespeicherten Filter für ein Feature.
 
@@ -135,7 +136,7 @@ async def list_saved_filters(
     try:
         filters = await service.get_filters_for_feature(
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             feature=feature,
             include_shared=include_shared,
         )
@@ -160,6 +161,7 @@ async def get_saved_filter(
     filter_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterResponse:
     """Hole einen einzelnen gespeicherten Filter.
 
@@ -173,7 +175,7 @@ async def get_saved_filter(
         saved_filter = await service.get_filter_by_id(
             filter_id=filter_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
     except NotFoundError as e:
         raise HTTPException(
@@ -194,6 +196,7 @@ async def create_saved_filter(
     data: SavedFilterCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterResponse:
     """Erstelle einen neuen gespeicherten Filter.
 
@@ -205,7 +208,7 @@ async def create_saved_filter(
     try:
         saved_filter = await service.create_filter(
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             name=data.name,
             feature=data.feature,
             filter_config=data.filter_config,
@@ -229,6 +232,7 @@ async def update_saved_filter(
     data: SavedFilterUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterResponse:
     """Aktualisiere einen gespeicherten Filter.
 
@@ -240,7 +244,7 @@ async def update_saved_filter(
         saved_filter = await service.update_filter(
             filter_id=filter_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             name=data.name,
             filter_config=data.filter_config,
             description=data.description,
@@ -305,6 +309,7 @@ async def record_filter_usage(
     filter_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Zeichne Nutzung eines Filters auf.
 
@@ -317,7 +322,7 @@ async def record_filter_usage(
         await service.record_filter_usage(
             filter_id=filter_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
         await db.commit()
     except NotFoundError as e:
@@ -338,6 +343,7 @@ async def duplicate_saved_filter(
     data: DuplicateFilterRequest = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterResponse:
     """Dupliziere einen Filter.
 
@@ -351,7 +357,7 @@ async def duplicate_saved_filter(
         new_filter = await service.duplicate_filter(
             filter_id=filter_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             new_name=data.new_name if data else None,
         )
         await db.commit()
@@ -379,6 +385,7 @@ async def set_default_filter(
     filter_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterResponse:
     """Setze einen Filter als Standard für das Feature.
 
@@ -391,7 +398,7 @@ async def set_default_filter(
         saved_filter = await service.set_default_filter(
             filter_id=filter_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
         await db.commit()
     except NotFoundError as e:
@@ -448,6 +455,7 @@ async def share_saved_filter(
     filter_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterResponse:
     """Teile einen Filter mit der Company.
 
@@ -460,7 +468,7 @@ async def share_saved_filter(
         saved_filter = await service.share_filter(
             filter_id=filter_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
         await db.commit()
     except NotFoundError as e:
@@ -482,6 +490,7 @@ async def list_shared_filters(
     feature: Optional[str] = Query(None, description=f"Feature: {', '.join(sorted(ALLOWED_FEATURES))}"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SavedFilterListResponse:
     """Liste alle mit mir geteilte Filter.
 
@@ -493,7 +502,7 @@ async def list_shared_filters(
     try:
         filters = await service.get_shared_filters(
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             feature=feature,
         )
     except ValidationError as e:

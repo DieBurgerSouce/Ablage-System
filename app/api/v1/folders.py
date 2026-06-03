@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_folder import FolderPermissionLevel, FolderType
@@ -184,6 +184,7 @@ def _folder_to_response(folder) -> FolderResponse:
 async def create_folder(
     body: FolderCreate,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> FolderResponse:
     """Neuen Ordner erstellen."""
@@ -191,7 +192,7 @@ async def create_folder(
     try:
         folder = await service.create_folder(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             name=body.name,
             created_by_id=current_user.id,
             parent_id=body.parent_id,
@@ -229,6 +230,7 @@ async def list_folders(
     page: int = Query(1, ge=1, description="Seitennummer"),
     per_page: int = Query(50, ge=1, le=200, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[FolderResponse]:
     """Ordner auflisten mit optionaler Filterung."""
@@ -237,7 +239,7 @@ async def list_folders(
     from app.db.models_folder import Folder
 
     conditions = [
-        Folder.company_id == current_user.company_id,
+        Folder.company_id == company_id,
         Folder.deleted_at.is_(None),
     ]
 
@@ -270,12 +272,13 @@ async def list_folders(
 async def get_folder(
     folder_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> FolderResponse:
     """Einzelnen Ordner abrufen."""
     service = get_folder_service()
     folder = await service.get_folder(
-        db, folder_id, current_user.company_id, current_user.id
+        db, folder_id, company_id, current_user.id
     )
     if not folder:
         raise HTTPException(
@@ -295,6 +298,7 @@ async def update_folder(
     folder_id: UUID,
     body: FolderUpdate,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> FolderResponse:
     """Ordner aktualisieren."""
@@ -303,7 +307,7 @@ async def update_folder(
         folder = await service.update_folder(
             db,
             folder_id,
-            current_user.company_id,
+            company_id,
             current_user.id,
             name=body.name,
             description=body.description,
@@ -334,13 +338,14 @@ async def update_folder(
 async def delete_folder(
     folder_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Ordner löschen (Soft Delete)."""
     service = get_folder_service()
     try:
         deleted = await service.soft_delete_folder(
-            db, folder_id, current_user.company_id, current_user.id
+            db, folder_id, company_id, current_user.id
         )
         if not deleted:
             raise HTTPException(
@@ -368,12 +373,13 @@ async def get_folder_tree(
     parent_id: Optional[UUID] = Query(None, description="Start-Ordner"),
     max_depth: int = Query(10, ge=1, le=20, description="Max. Tiefe"),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[Dict]:
     """Ordnerbaum als verschachtelte Struktur."""
     service = get_folder_service()
     return await service.get_folder_tree(
-        db, current_user.company_id, current_user.id, parent_id, max_depth
+        db, company_id, current_user.id, parent_id, max_depth
     )
 
 
@@ -386,11 +392,12 @@ async def get_folder_tree(
 async def get_breadcrumbs(
     folder_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[BreadcrumbItem]:
     """Breadcrumb-Pfad abrufen."""
     service = get_folder_service()
-    crumbs = await service.get_breadcrumbs(db, folder_id, current_user.company_id)
+    crumbs = await service.get_breadcrumbs(db, folder_id, company_id)
     return [BreadcrumbItem(**c) for c in crumbs]
 
 
@@ -404,13 +411,14 @@ async def move_folder(
     folder_id: UUID,
     body: FolderMoveRequest,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> FolderResponse:
     """Ordner verschieben."""
     service = get_folder_service()
     try:
         folder = await service.move_folder(
-            db, folder_id, body.new_parent_id, current_user.company_id, current_user.id
+            db, folder_id, body.new_parent_id, company_id, current_user.id
         )
         if not folder:
             raise HTTPException(
@@ -440,6 +448,7 @@ async def add_document_to_folder(
     folder_id: UUID,
     body: DocumentAddRequest,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Dict:
     """Dokument zum Ordner hinzufuegen."""
@@ -447,7 +456,7 @@ async def add_document_to_folder(
     try:
         fd = await service.add_document_to_folder(
             db, folder_id, body.document_id, current_user.id,
-            current_user.company_id, body.is_primary,
+            company_id, body.is_primary,
         )
         await db.commit()
         return {
@@ -500,12 +509,13 @@ async def list_folder_documents(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Dict:
     """Dokumente eines Ordners auflisten."""
     service = get_folder_service()
     documents, total = await service.get_folder_documents(
-        db, folder_id, current_user.id, current_user.company_id, page, per_page
+        db, folder_id, current_user.id, company_id, page, per_page
     )
     return {
         "items": [
@@ -535,6 +545,7 @@ async def move_document(
     document_id: UUID,
     body: DocumentMoveRequest,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Dict:
     """Dokument zwischen Ordnern verschieben."""
@@ -542,7 +553,7 @@ async def move_document(
     try:
         moved = await service.move_document_between_folders(
             db, document_id, folder_id, body.target_folder_id,
-            current_user.id, current_user.company_id,
+            current_user.id, company_id,
         )
         if not moved:
             raise HTTPException(
@@ -569,12 +580,13 @@ async def reorder_folders(
     folder_id: UUID,
     body: ReorderRequest,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Dict:
     """Unterordner neu sortieren."""
     service = get_folder_service()
     success = await service.reorder_folders(
-        db, folder_id, current_user.company_id, current_user.id, body.folder_order
+        db, folder_id, company_id, current_user.id, body.folder_order
     )
     if success:
         await db.commit()
@@ -629,6 +641,7 @@ async def set_permission(
     folder_id: UUID,
     body: PermissionSetRequest,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Dict:
     """Berechtigung für einen Ordner vergeben."""
@@ -636,7 +649,7 @@ async def set_permission(
     try:
         perm = await service.set_folder_permission(
             db, folder_id, body.user_id, body.permission_level,
-            current_user.id, current_user.company_id, body.propagate,
+            current_user.id, company_id, body.propagate,
         )
         await db.commit()
         return {
@@ -662,11 +675,12 @@ async def set_permission(
 async def get_folder_stats(
     folder_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> FolderStatsResponse:
     """Ordner-Statistiken abrufen."""
     service = get_folder_service()
-    stats = await service.get_folder_stats(db, folder_id, current_user.company_id)
+    stats = await service.get_folder_stats(db, folder_id, company_id)
     if not stats:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -691,12 +705,13 @@ async def search_folders(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Dict:
     """Ordner suchen."""
     service = get_folder_service()
     folders, total = await service.search_folders(
-        db, current_user.company_id, current_user.id,
+        db, company_id, current_user.id,
         q, folder_type, page, per_page,
     )
     return {

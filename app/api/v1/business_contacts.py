@@ -21,7 +21,7 @@ from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import selectinload
 
 from app.db.models import User, Document, BusinessContact, DocumentContact, ContactType
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.schemas import (
     BusinessContactCreate,
     BusinessContactUpdate,
@@ -105,6 +105,7 @@ async def create_contact(
     data: BusinessContactCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessContactResponse:
     """Erstellt einen neuen Geschäftskontakt."""
     logger.info(
@@ -113,9 +114,6 @@ async def create_contact(
         name=data.name,
         contact_type=data.contact_type,
     )
-
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     # Check for existing with same VAT ID within company
     if data.vat_id:
@@ -197,10 +195,9 @@ async def list_contacts(
     sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessContactListResponse:
     """Listet Geschäftskontakte mit Filtern und Paginierung."""
-    # Multi-Tenant: company_id aus User-Context
-    company_id = current_user.company_id
 
     # Build query with company_id filter for Multi-Tenant isolation
     query = select(BusinessContact).where(
@@ -288,10 +285,9 @@ async def list_contacts(
 async def get_contact_stats(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ContactStatsResponse:
     """Statistiken über Geschäftskontakte."""
-    # Multi-Tenant: company_id aus User-Context
-    company_id = current_user.company_id
 
     # Total contacts
     total_result = await db.execute(
@@ -407,10 +403,9 @@ async def get_contact(
     contact_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessContactResponse:
     """Holt einen einzelnen Geschäftskontakt."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     result = await db.execute(
         select(BusinessContact).where(
@@ -441,10 +436,9 @@ async def update_contact(
     data: BusinessContactUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessContactResponse:
     """Aktualisiert einen Geschäftskontakt."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     result = await db.execute(
         select(BusinessContact).where(
@@ -497,10 +491,9 @@ async def delete_contact(
     hard_delete: bool = Query(False, description="Permanent löschen statt deaktivieren"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """Löscht oder deaktiviert einen Geschäftskontakt."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     result = await db.execute(
         select(BusinessContact).where(
@@ -545,10 +538,9 @@ async def get_contact_documents(
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ContactDocumentsResponse:
     """Listet alle Dokumente eines Kontakts."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     # Get contact with company_id validation
     contact_result = await db.execute(
@@ -624,10 +616,9 @@ async def merge_contacts(
     request: MergeContactsRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MergeContactsResponse:
     """Führt zwei Kontakte zusammen."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
     service = get_customer_detection_service()
 
     # Verify both contacts exist and belong to company
@@ -714,10 +705,9 @@ async def detect_contacts(
     request: DetectContactsRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DetectContactsResponse:
     """Erkennt Kontakte aus einem Dokument."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     # Get document - Multi-Tenant Isolation via company_id
     doc_result = await db.execute(
@@ -765,10 +755,9 @@ async def verify_contact(
     contact_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessContactResponse:
     """Markiert einen Kontakt als manuell verifiziert."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     result = await db.execute(
         select(BusinessContact).where(
@@ -803,10 +792,9 @@ async def find_similar_contacts(
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BusinessContactResponse]:
     """Findet ähnliche Kontakte (potenzielle Duplikate)."""
-    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
-    company_id = current_user.company_id
 
     # Get source contact
     result = await db.execute(

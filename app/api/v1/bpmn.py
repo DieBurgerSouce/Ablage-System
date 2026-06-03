@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import (
     User,
@@ -181,7 +181,8 @@ class PaginatedResponse(BaseModel):
 async def deploy_process_definition(
     request: ProcessDefinitionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Deployt eine neue Prozess-Definition.
 
@@ -195,7 +196,7 @@ async def deploy_process_definition(
             definition = await service.deploy(
                 key=request.key,
                 name=request.name,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 bpmn_xml=request.bpmn_xml,
                 description=request.description,
                 category=request.category,
@@ -206,7 +207,7 @@ async def deploy_process_definition(
             definition = await service.deploy_from_json(
                 key=request.key,
                 name=request.name,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 process_json=request.process_json,
                 description=request.description,
                 category=request.category,
@@ -239,13 +240,14 @@ async def list_process_definitions(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Listet alle Prozess-Definitionen auf."""
     service = get_process_definition_service(db)
 
     definitions, total = await service.list_definitions(
-        company_id=current_user.company_id,
+        company_id=company_id,
         category=category,
         only_active=only_active,
         page=page,
@@ -269,12 +271,13 @@ async def list_process_definitions(
 async def get_process_definition(
     definition_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt eine einzelne Prozess-Definition zurück."""
     service = get_process_definition_service(db)
 
-    definition = await service.get_by_id(definition_id, current_user.company_id)
+    definition = await service.get_by_id(definition_id, company_id)
     if not definition:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -292,13 +295,14 @@ async def get_process_definition(
 async def export_process_definition(
     definition_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Exportiert Prozess-Definition als BPMN 2.0 XML."""
     service = get_process_definition_service(db)
 
     try:
-        bpmn_xml = await service.export_bpmn(definition_id, current_user.company_id)
+        bpmn_xml = await service.export_bpmn(definition_id, company_id)
         return {"bpmn_xml": bpmn_xml}
     except ValueError as e:
         raise HTTPException(
@@ -315,7 +319,8 @@ async def export_process_definition(
 async def activate_process_definition(
     definition_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Aktiviert eine Prozess-Definition.
 
@@ -326,7 +331,7 @@ async def activate_process_definition(
     try:
         definition = await service.activate(
             definition_id=definition_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id
         )
         return definition
@@ -345,7 +350,8 @@ async def activate_process_definition(
 async def deactivate_process_definition(
     definition_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Deaktiviert eine Prozess-Definition."""
     service = get_process_definition_service(db)
@@ -353,7 +359,7 @@ async def deactivate_process_definition(
     try:
         definition = await service.deactivate(
             definition_id=definition_id,
-            company_id=current_user.company_id
+            company_id=company_id
         )
         return definition
     except ValueError as e:
@@ -369,11 +375,12 @@ async def deactivate_process_definition(
 )
 async def get_process_statistics(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Statistiken zu Prozess-Definitionen zurück."""
     service = get_process_definition_service(db)
-    return await service.get_statistics(current_user.company_id)
+    return await service.get_statistics(company_id)
 
 
 # =============================================================================
@@ -389,7 +396,8 @@ async def get_process_statistics(
 async def start_process_instance(
     request: ProcessInstanceStart,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Startet eine neue Prozess-Instanz.
 
@@ -400,7 +408,7 @@ async def start_process_instance(
     try:
         instance = await service.start(
             definition_key=request.definition_key,
-            company_id=current_user.company_id,
+            company_id=company_id,
             variables=request.variables,
             business_key=request.business_key,
             started_by_id=current_user.id,
@@ -427,13 +435,14 @@ async def list_process_instances(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Listet Prozess-Instanzen auf."""
     service = get_process_execution_service(db)
 
     instances, total = await service.list_instances(
-        company_id=current_user.company_id,
+        company_id=company_id,
         definition_key=definition_key,
         status=status,
         started_by_id=current_user.id if my_processes else None,
@@ -459,12 +468,13 @@ async def list_process_instances(
 async def get_process_instance(
     instance_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt eine einzelne Prozess-Instanz zurück."""
     service = get_process_execution_service(db)
 
-    instance = await service.get_instance(instance_id, current_user.company_id)
+    instance = await service.get_instance(instance_id, company_id)
     if not instance:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -483,7 +493,8 @@ async def terminate_process_instance(
     instance_id: UUID,
     reason: Optional[str] = Body(None, embed=True),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Terminiert eine laufende Prozess-Instanz.
 
@@ -494,7 +505,7 @@ async def terminate_process_instance(
     try:
         instance = await service.terminate(
             instance_id=instance_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             reason=reason,
             user_id=current_user.id,
         )
@@ -516,7 +527,8 @@ async def send_signal_to_instance(
     signal_name: str = Body(..., embed=True),
     variables: Optional[JSONDict] = Body(None, embed=True),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Sendet ein Signal an eine Prozess-Instanz."""
     service = get_process_execution_service(db)
@@ -524,7 +536,7 @@ async def send_signal_to_instance(
     try:
         instance = await service.signal(
             instance_id=instance_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             signal_name=signal_name,
             variables=variables,
             user_id=current_user.id,
@@ -546,14 +558,15 @@ async def get_process_history(
     instance_id: UUID,
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt die Historie einer Prozess-Instanz zurück."""
     service = get_process_execution_service(db)
 
     history = await service.get_history(
         instance_id=instance_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         limit=limit
     )
 
@@ -575,7 +588,8 @@ async def get_my_tasks(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Tasks für den aktuellen Benutzer zurück.
 
@@ -590,7 +604,7 @@ async def get_my_tasks(
 
     tasks, total = await service.get_user_tasks(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status=status,
         include_group_tasks=include_group_tasks,
         user_groups=user_groups,
@@ -626,14 +640,15 @@ async def get_group_tasks(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt unzugewiesene Tasks für eine Gruppe zurück."""
     service = get_task_service(db)
 
     tasks, total = await service.get_group_tasks(
         group_name=group_name,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status=status,
         page=page,
         per_page=per_page,
@@ -656,12 +671,13 @@ async def get_group_tasks(
 async def get_task(
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt einen einzelnen Task zurück."""
     service = get_task_service(db)
 
-    task = await service.get_task(task_id, current_user.company_id)
+    task = await service.get_task(task_id, company_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -679,7 +695,8 @@ async def get_task(
 async def claim_task(
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Übernimmt einen Task."""
     service = get_task_service(db)
@@ -688,7 +705,7 @@ async def claim_task(
         task = await service.claim(
             task_id=task_id,
             user_id=current_user.id,
-            company_id=current_user.company_id
+            company_id=company_id
         )
         return task
     except ValueError as e:
@@ -706,7 +723,8 @@ async def claim_task(
 async def unclaim_task(
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt einen Task wieder frei."""
     service = get_task_service(db)
@@ -715,7 +733,7 @@ async def unclaim_task(
         task = await service.unclaim(
             task_id=task_id,
             user_id=current_user.id,
-            company_id=current_user.company_id
+            company_id=company_id
         )
         return task
     except ValueError as e:
@@ -734,7 +752,8 @@ async def complete_task(
     task_id: UUID,
     request: TaskCompleteRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Schließt einen Task ab.
 
@@ -747,7 +766,7 @@ async def complete_task(
         task = await service.complete(
             task_id=task_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             variables=request.variables
         )
         return task
@@ -767,7 +786,8 @@ async def delegate_task(
     task_id: UUID,
     request: TaskDelegateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Delegiert einen Task an einen anderen Benutzer."""
     service = get_task_service(db)
@@ -777,7 +797,7 @@ async def delegate_task(
             task_id=task_id,
             from_user_id=current_user.id,
             to_user_id=request.to_user_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             comment=request.comment
         )
         return task
@@ -796,13 +816,14 @@ async def delegate_task(
 async def get_overdue_tasks(
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt alle überfälligen Tasks zurück."""
     service = get_task_service(db)
 
     tasks = await service.get_overdue_tasks(
-        company_id=current_user.company_id,
+        company_id=company_id,
         limit=limit
     )
 
@@ -816,13 +837,14 @@ async def get_overdue_tasks(
 async def get_task_statistics(
     user_id: Optional[UUID] = Query(None, description="Filter nach User"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Task-Statistiken zurück."""
     service = get_task_service(db)
 
     return await service.get_task_statistics(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=user_id
     )
 
@@ -837,11 +859,12 @@ async def get_task_statistics(
 )
 async def get_timer_statistics(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Timer-Statistiken zurück."""
     service = get_timer_service(db)
-    return await service.get_timer_statistics(current_user.company_id)
+    return await service.get_timer_statistics(company_id)
 
 
 # =============================================================================
@@ -928,7 +951,8 @@ async def get_template(
 async def deploy_template(
     request: WorkflowTemplateDeployRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Deployed ein Workflow-Template als neue Prozess-Definition."""
     from app.services.bpmn.workflow_templates import get_workflow_template
@@ -950,7 +974,7 @@ async def deploy_template(
             category=template.get("category"),
             tags=template.get("tags", []),
             process_json=template["process_json"],
-            company_id=current_user.company_id,
+            company_id=company_id,
             deployed_by_id=current_user.id
         )
         return definition

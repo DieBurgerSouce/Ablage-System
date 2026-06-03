@@ -10,12 +10,13 @@ Provides OCR Self-Learning progress metrics:
 """
 
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user, get_user_company_id_dep
 from app.db.models import User
 from app.services.ml_dashboard_service import get_ml_dashboard_service
 
@@ -99,6 +100,7 @@ async def get_ml_dashboard(
     months: int = Query(6, ge=1, le=24, description="Zeitraum in Monaten"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MLDashboardData:
     """
     Liefert ML Dashboard Daten.
@@ -113,15 +115,8 @@ async def get_ml_dashboard(
     **Beispiel Summary:**
     "127 Korrekturen, +4.2% Genauigkeit"
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_ml_dashboard_service(db)
-    dashboard_data = await service.get_dashboard_data(current_user.company_id, months)
+    dashboard_data = await service.get_dashboard_data(company_id, months)
 
     return MLDashboardData(**dashboard_data)
 
@@ -136,6 +131,7 @@ async def get_learning_curve(
     months: int = Query(6, ge=1, le=24, description="Zeitraum in Monaten"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[LearningPoint]:
     """
     Liefert Learning Curve.
@@ -150,15 +146,8 @@ async def get_learning_curve(
     - Visualisierung als Liniendiagramm
     - Zeigt ob System besser wird über Zeit
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_ml_dashboard_service(db)
-    learning_curve = await service.get_learning_curve(current_user.company_id, months)
+    learning_curve = await service.get_learning_curve(company_id, months)
 
     return [LearningPoint(**point) for point in learning_curve]
 
@@ -172,6 +161,7 @@ async def get_learning_curve(
 async def get_error_stats(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ErrorStatistics:
     """
     Liefert Fehlertyp-Statistiken.
@@ -188,15 +178,8 @@ async def get_error_stats(
     - Zeigt wo OCR am meisten Probleme hat
     - Priorisierung für Model-Training
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_ml_dashboard_service(db)
-    error_stats = await service.get_error_statistics(current_user.company_id)
+    error_stats = await service.get_error_statistics(company_id)
 
     return ErrorStatistics(**error_stats)
 
@@ -211,6 +194,7 @@ async def get_correction_impact(
     months: int = Query(6, ge=1, le=24, description="Zeitraum in Monaten"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CorrectionImpact:
     """
     Liefert Korrektur-Impact.
@@ -227,13 +211,6 @@ async def get_correction_impact(
     - Positiver Wert: System wird besser
     - Negativer Wert: Model braucht Re-Training
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_ml_dashboard_service(db)
 
     # Calculate period start
@@ -241,7 +218,7 @@ async def get_correction_impact(
     period_start = datetime.now(timezone.utc) - timedelta(days=months * 30)
 
     correction_impact = await service.get_correction_impact(
-        current_user.company_id,
+        company_id,
         period_start
     )
 
@@ -257,6 +234,7 @@ async def get_correction_impact(
 async def get_model_performance(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ModelPerformance]:
     """
     Liefert Model-Performance pro Dokumenttyp.
@@ -271,14 +249,7 @@ async def get_model_performance(
     - Identifiziere welche Dokumenttypen gut/schlecht erkannt werden
     - Priorisierung für spezifisches Model-Training
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_ml_dashboard_service(db)
-    performance = await service.get_model_performance_by_type(current_user.company_id)
+    performance = await service.get_model_performance_by_type(company_id)
 
     return [ModelPerformance(**perf) for perf in performance]

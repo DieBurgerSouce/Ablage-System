@@ -62,7 +62,7 @@ from app.db.schemas import (
     ValidationStatusEnum,
     SampleSourceEnum,
 )
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, get_user_company_id_dep
 from app.core.rbac import require_permission, require_any_permission
 from app.services.validation_queue_service import get_validation_queue_service
 from app.services.validation_field_service import get_validation_field_service
@@ -101,6 +101,7 @@ async def list_queue_items(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     # Auth
     current_user: User = Depends(require_permission("validation:read")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -148,7 +149,7 @@ async def list_queue_items(
 
     # SECURITY: Multi-Tenant Isolation via company_id
     items, total = await service.get_queue_items(
-        company_id=current_user.company_id,
+        company_id=company_id,
         filters=filters,
         sort_by=sort_enum,
         page=page,
@@ -170,6 +171,7 @@ async def list_queue_items(
 @router.get("/queue/stats")
 async def get_queue_stats(
     current_user: User = Depends(require_permission("validation:read")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -179,7 +181,7 @@ async def get_queue_stats(
     """
     service = get_validation_queue_service(db)
     # SECURITY: Multi-Tenant Isolation via company_id
-    stats = await service.get_queue_stats(company_id=current_user.company_id)
+    stats = await service.get_queue_stats(company_id=company_id)
     return stats
 
 
@@ -189,6 +191,7 @@ async def get_my_assigned_items(
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -201,7 +204,7 @@ async def get_my_assigned_items(
     # SECURITY: Multi-Tenant Isolation via company_id
     items, total = await service.get_my_assigned_items(
         editor_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status=status.value if status else None,
         limit=per_page,
         offset=(page - 1) * per_page
@@ -225,6 +228,7 @@ async def create_queue_item(
     request: Request,
     item_data: ValidationQueueItemCreate,
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -236,7 +240,7 @@ async def create_queue_item(
     # SECURITY: Multi-Tenant Isolation via company_id
     item = await service.add_to_queue(
         document_id=item_data.document_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         source=item_data.sample_source if item_data.sample_source else SampleSourceEnum.MANUAL,
         priority=item_data.priority or 50,
         created_by_id=current_user.id,
@@ -250,6 +254,7 @@ async def create_queue_item(
 async def get_queue_item(
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:read")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -259,7 +264,7 @@ async def get_queue_item(
     """
     service = get_validation_queue_service(db)
     # SECURITY: Multi-Tenant Isolation via company_id
-    item = await service.get_queue_item(item_id, company_id=current_user.company_id)
+    item = await service.get_queue_item(item_id, company_id=company_id)
 
     if not item:
         raise HTTPException(
@@ -282,6 +287,7 @@ async def update_queue_item(
     update_data: ValidationQueueItemUpdate,
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -291,7 +297,7 @@ async def update_queue_item(
     """
     service = get_validation_queue_service(db)
     # SECURITY: Multi-Tenant Isolation via company_id
-    item = await service.update_queue_item(item_id, current_user.company_id, update_data)
+    item = await service.update_queue_item(item_id, company_id, update_data)
 
     if not item:
         raise HTTPException(
@@ -306,6 +312,7 @@ async def update_queue_item(
 async def delete_queue_item(
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:manage")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -315,7 +322,7 @@ async def delete_queue_item(
     """
     service = get_validation_queue_service(db)
     # SECURITY: Multi-Tenant Isolation via company_id
-    deleted = await service.delete_queue_item(item_id, current_user.company_id)
+    deleted = await service.delete_queue_item(item_id, company_id)
 
     if not deleted:
         raise HTTPException(
@@ -337,6 +344,7 @@ async def assign_queue_item(
     assign_data: ValidationQueueItemAssign,
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:manage")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -351,7 +359,7 @@ async def assign_queue_item(
         item = await service.assign_to_editor(
             item_id=item_id,
             editor_id=assign_data.editor_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
@@ -370,6 +378,7 @@ async def assign_queue_item(
 async def unassign_queue_item(
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:manage")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -379,7 +388,7 @@ async def unassign_queue_item(
     """
     service = get_validation_queue_service(db)
     # SECURITY: Multi-Tenant Isolation via company_id
-    item = await service.unassign(item_id, current_user.company_id)
+    item = await service.unassign(item_id, company_id)
 
     if not item:
         raise HTTPException(
@@ -401,6 +410,7 @@ async def approve_queue_item(
     approve_data: ValidationQueueItemApprove,
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -424,7 +434,7 @@ async def approve_queue_item(
         item = await service.approve_item(
             item_id=item_id,
             validated_by_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             notes=sanitized_notes
         )
     except ValueError as e:
@@ -447,6 +457,7 @@ async def reject_queue_item(
     reject_data: ValidationQueueItemReject,
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -468,7 +479,7 @@ async def reject_queue_item(
         item = await service.reject_item(
             item_id=item_id,
             validated_by_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             reason=sanitized_reason,
             category=reject_data.rejection_category if reject_data.rejection_category else None
         )
@@ -495,6 +506,7 @@ async def batch_approve(
     request: Request,
     batch_data: BatchApproveRequest,
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -517,7 +529,7 @@ async def batch_approve(
     result = await service.batch_approve(
         item_ids=batch_data.item_ids,
         validated_by_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         notes=sanitized_notes
     )
 
@@ -530,6 +542,7 @@ async def batch_reject(
     request: Request,
     batch_data: BatchRejectRequest,
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -550,7 +563,7 @@ async def batch_reject(
     result = await service.batch_reject(
         item_ids=batch_data.item_ids,
         validated_by_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         reason=sanitized_reason,
         category=batch_data.rejection_category if batch_data.rejection_category else None
     )
@@ -564,6 +577,7 @@ async def batch_assign(
     request: Request,
     batch_data: BatchAssignRequest,
     current_user: User = Depends(require_permission("validation:manage")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -577,7 +591,7 @@ async def batch_assign(
     result = await service.batch_assign(
         item_ids=batch_data.item_ids,
         editor_id=batch_data.editor_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return BatchOperationResult(**result)
@@ -591,6 +605,7 @@ async def batch_assign(
 async def get_queue_item_fields(
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:read")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -600,7 +615,7 @@ async def get_queue_item_fields(
     """
     # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
-    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    item = await queue_service.get_queue_item(item_id, company_id=company_id)
     if not item:
         raise HTTPException(
             status_code=404,
@@ -618,6 +633,7 @@ async def update_field(
     item_id: UUID = Path(..., description="Queue Item ID"),
     field_id: UUID = Path(..., description="Field Review ID"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -627,7 +643,7 @@ async def update_field(
     """
     # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
-    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    item = await queue_service.get_queue_item(item_id, company_id=company_id)
     if not item:
         raise HTTPException(
             status_code=404,
@@ -656,6 +672,7 @@ async def validate_field(
     item_id: UUID = Path(..., description="Queue Item ID"),
     field_id: UUID = Path(..., description="Field Review ID"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -665,7 +682,7 @@ async def validate_field(
     """
     # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
-    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    item = await queue_service.get_queue_item(item_id, company_id=company_id)
     if not item:
         raise HTTPException(
             status_code=404,
@@ -687,6 +704,7 @@ async def validate_field(
 async def validate_all_fields(
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -696,7 +714,7 @@ async def validate_all_fields(
     """
     # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
-    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    item = await queue_service.get_queue_item(item_id, company_id=company_id)
     if not item:
         raise HTTPException(
             status_code=404,
@@ -712,6 +730,7 @@ async def validate_all_fields(
 async def get_field_stats(
     item_id: UUID = Path(..., description="Queue Item ID"),
     current_user: User = Depends(require_permission("validation:read")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -721,7 +740,7 @@ async def get_field_stats(
     """
     # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
-    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    item = await queue_service.get_queue_item(item_id, company_id=company_id)
     if not item:
         raise HTTPException(
             status_code=404,
@@ -1020,6 +1039,7 @@ async def queue_document_for_validation(
     priority: int = Query(50, ge=0, le=100, description="Prioritaet"),
     notes: Optional[str] = Query(None, description="Notizen"),
     current_user: User = Depends(require_permission("validation:write")),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -1033,7 +1053,7 @@ async def queue_document_for_validation(
         # SECURITY: Multi-Tenant Isolation via company_id
         item = await service.add_to_queue(
             document_id=document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             source=SampleSourceEnum.MANUAL,
             priority=priority,
             created_by_id=current_user.id,

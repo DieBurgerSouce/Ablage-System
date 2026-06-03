@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, Document
 from app.db.bpmn_models.gobd import (
@@ -228,6 +228,7 @@ async def generate_compliance_report(
     report_date: Optional[date] = Query(None, description="Stichtag"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Generiert einen GoBD-Compliance-Bericht.
 
@@ -241,7 +242,7 @@ async def generate_compliance_report(
     """
     report = await gobd_compliance_service.generate_compliance_report(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         report_date=report_date,
         include_details=include_details,
     )
@@ -252,11 +253,12 @@ async def generate_compliance_report(
 async def get_quick_compliance_status(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Schneller Compliance-Status für Dashboard-Widgets."""
     return await gobd_compliance_service.get_quick_compliance_status(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
 
@@ -267,6 +269,7 @@ async def archive_document(
     request: ArchiveDocumentRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Archiviert ein Dokument GoBD-konform.
 
@@ -280,7 +283,7 @@ async def archive_document(
     result = await db.execute(
         select(Document).where(
             Document.id == request.document_id,
-            Document.company_id == current_user.company_id,
+            Document.company_id == company_id,
         )
     )
     document = result.scalar_one_or_none()
@@ -333,7 +336,7 @@ async def archive_document(
         result = await gobd_archive_service.archive_document(
             db=db,
             document_id=request.document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             category=request.category,
             document_content=document_content,
             document_date=request.document_date,
@@ -379,12 +382,13 @@ async def get_document_archive(
     document_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt die Archiv-Informationen für ein Dokument."""
     archive = await gobd_archive_service.get_archive_by_document(
         db=db,
         document_id=document_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not archive:
@@ -411,11 +415,12 @@ async def get_document_archive(
 async def get_archive_statistics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt Archivierungs-Statistiken."""
     return await gobd_archive_service.get_archive_statistics(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
 
@@ -424,6 +429,7 @@ async def verify_archive_integrity(
     request: IntegrityCheckRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Verifiziert die Integritaet eines archivierten Dokuments.
 
@@ -436,7 +442,7 @@ async def verify_archive_integrity(
     archive_result = await db.execute(
         select(DocumentArchive).where(
             DocumentArchive.id == request.archive_id,
-            DocumentArchive.company_id == current_user.company_id,
+            DocumentArchive.company_id == company_id,
         )
     )
     archive = archive_result.scalar_one_or_none()
@@ -451,7 +457,7 @@ async def verify_archive_integrity(
     doc_result = await db.execute(
         select(Document).where(
             Document.id == archive.document_id,
-            Document.company_id == current_user.company_id,
+            Document.company_id == company_id,
         )
     )
     document = doc_result.scalar_one_or_none()
@@ -504,7 +510,7 @@ async def verify_archive_integrity(
         result = await gobd_archive_service.verify_archive_integrity(
             db=db,
             archive_id=request.archive_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             document_content=document_content,
             triggered_by_id=current_user.id,
             check_type="manual",
@@ -547,6 +553,7 @@ async def verify_archive_integrity(
 async def get_failed_verifications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt alle Archive mit fehlgeschlagener Integritaetsprüfung.
 
@@ -554,7 +561,7 @@ async def get_failed_verifications(
     """
     archives = await gobd_archive_service.get_archives_with_failed_verification(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return {
@@ -580,6 +587,7 @@ async def get_audit_chain_entries(
     per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt Einträge der Audit-Chain.
 
@@ -588,7 +596,7 @@ async def get_audit_chain_entries(
     if document_id:
         entries = await audit_chain_service.get_entries_by_document(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             document_id=document_id,
             limit=per_page,
         )
@@ -599,7 +607,7 @@ async def get_audit_chain_entries(
 
         result = await db.execute(
             select(AuditChainEntry)
-            .where(AuditChainEntry.company_id == current_user.company_id)
+            .where(AuditChainEntry.company_id == company_id)
             .order_by(desc(AuditChainEntry.sequence_number))
             .offset((page - 1) * per_page)
             .limit(per_page)
@@ -626,11 +634,12 @@ async def get_audit_chain_entry(
     sequence_number: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt einen spezifischen Audit-Chain Eintrag nach Sequenznummer."""
     entry = await audit_chain_service.get_entry_by_sequence(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         sequence_number=sequence_number,
     )
 
@@ -658,6 +667,7 @@ async def verify_audit_chain(
     end_sequence: Optional[int] = Query(None, description="End-Sequenznummer"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Verifiziert die Integritaet der Audit-Chain.
 
@@ -666,7 +676,7 @@ async def verify_audit_chain(
     """
     result = await audit_chain_service.verify_chain(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         start_sequence=start_sequence,
         end_sequence=end_sequence,
     )
@@ -687,11 +697,12 @@ async def verify_audit_chain(
 async def get_audit_chain_statistics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt Statistiken über die Audit-Chain."""
     stats = await audit_chain_service.get_chain_statistics(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
     return ChainStatisticsResponse(**stats)
 
@@ -703,11 +714,12 @@ async def get_retention_alerts(
     days_ahead: int = Query(180, ge=1, le=365, description="Tage voraus prüfen"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt Warnungen für bald ablaufende Aufbewahrungsfristen."""
     alerts = await retention_service.get_expiring_archives(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         days_ahead=days_ahead,
     )
 
@@ -728,11 +740,12 @@ async def get_retention_alerts(
 async def get_retention_statistics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt Statistiken zu Aufbewahrungsfristen."""
     stats = await retention_service.get_retention_statistics(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return RetentionStatsResponse(
@@ -749,11 +762,12 @@ async def get_retention_statistics(
 async def get_expired_archives(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt alle Archive mit abgelaufener Aufbewahrungsfrist."""
     archives = await retention_service.get_expired_archives(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return {
@@ -776,13 +790,14 @@ async def get_expired_archives(
 async def get_retention_policies(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt alle Aufbewahrungsrichtlinien."""
     from sqlalchemy import select
 
     result = await db.execute(
         select(RetentionPolicy)
-        .where(RetentionPolicy.company_id == current_user.company_id)
+        .where(RetentionPolicy.company_id == company_id)
         .order_by(RetentionPolicy.document_category)
     )
     policies = result.scalars().all()
@@ -807,12 +822,13 @@ async def create_retention_policy(
     request: RetentionPolicyCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Erstellt eine neue Aufbewahrungsrichtlinie."""
     try:
         policy = await retention_service.create_retention_policy(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             category=request.category,
             retention_years=request.retention_years,
             legal_basis=request.legal_basis,
@@ -848,11 +864,12 @@ async def create_retention_policy(
 async def initialize_retention_policies(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Initialisiert Standard-Aufbewahrungsrichtlinien nach deutschem Recht."""
     policies = await retention_service.initialize_company_policies(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         created_by_id=current_user.id,
     )
 
@@ -872,12 +889,13 @@ async def create_deletion_request(
     request: DeletionRequestCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Erstellt eine Löschanfrage für ein abgelaufenes Archiv."""
     try:
         deletion_request = await retention_service.request_deletion(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             archive_id=request.archive_id,
             reason=request.reason,
             requested_by_id=current_user.id,
@@ -906,12 +924,13 @@ async def get_deletion_requests(
     status_filter: Optional[str] = Query(None, description="Filter nach Status"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt alle Löschanfragen."""
     from sqlalchemy import select
 
     query = select(RetentionDeletionRequest).where(
-        RetentionDeletionRequest.company_id == current_user.company_id
+        RetentionDeletionRequest.company_id == company_id
     )
 
     if status_filter:
@@ -941,12 +960,13 @@ async def approve_deletion_request(
     request: DeletionApprovalRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Genehmigt eine Löschanfrage."""
     try:
         deletion_request = await retention_service.approve_deletion(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             request_id=request_id,
             approved_by_id=current_user.id,
             comment=request.comment,
@@ -973,12 +993,13 @@ async def reject_deletion_request(
     reason: str = Query(..., min_length=10, description="Ablehnungsgrund"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Lehnt eine Löschanfrage ab."""
     try:
         deletion_request = await retention_service.reject_deletion(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             request_id=request_id,
             rejected_by_id=current_user.id,
             reason=reason,
@@ -1008,6 +1029,7 @@ async def get_verfahrensdokumentation(
     history_limit: int = Query(50, ge=10, le=500, description="Max. Anzahl Historie-Einträge"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Generiert die GoBD-konforme Verfahrensdokumentation.
 
@@ -1027,7 +1049,7 @@ async def get_verfahrensdokumentation(
     try:
         doc = await gobd_compliance_service.generate_verfahrensdokumentation(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             include_full_history=include_full_history,
             history_limit=history_limit,
         )
@@ -1046,6 +1068,7 @@ async def get_verfahrensdokumentation(
 async def export_verfahrensdokumentation_pdf(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Exportiert die Verfahrensdokumentation als PDF.
 
@@ -1068,7 +1091,7 @@ async def export_verfahrensdokumentation_pdf(
         # Neue Service-Implementation nutzen
         pdf_bytes = await generate_procedure_documentation(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             format=DocumentFormat.PDF,
         )
@@ -1093,6 +1116,7 @@ async def export_verfahrensdokumentation_pdf(
 async def export_verfahrensdokumentation_markdown(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Exportiert die Verfahrensdokumentation als Markdown.
 
@@ -1107,7 +1131,7 @@ async def export_verfahrensdokumentation_markdown(
     try:
         md_bytes = await generate_procedure_documentation(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             format=DocumentFormat.MARKDOWN,
         )
@@ -1132,6 +1156,7 @@ async def export_verfahrensdokumentation_markdown(
 async def export_verfahrensdokumentation_html(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Exportiert die Verfahrensdokumentation als HTML.
 
@@ -1146,7 +1171,7 @@ async def export_verfahrensdokumentation_html(
     try:
         html_bytes = await generate_procedure_documentation(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             format=DocumentFormat.HTML,
         )
@@ -1167,6 +1192,7 @@ async def get_steuerberater_export(
     zeitraum_bis: Optional[date] = Query(None, description="Ende des Zeitraums"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Exportiert Daten für den Steuerberater-Zugang.
 
@@ -1184,7 +1210,7 @@ async def get_steuerberater_export(
         # Verfahrensdokumentation (Kurzfassung)
         doc = await gobd_compliance_service.generate_verfahrensdokumentation(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             include_full_history=False,
             history_limit=20,
         )
@@ -1192,26 +1218,26 @@ async def get_steuerberater_export(
         # Compliance-Report
         report = await gobd_compliance_service.generate_compliance_report(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             include_details=True,
         )
 
         # Archiv-Statistiken
         archive_stats = await gobd_archive_service.get_archive_statistics(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         # Retention-Statistiken
         retention_stats = await retention_service.get_retention_statistics(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         # Audit-Chain-Statistiken
         chain_stats = await audit_chain_service.get_chain_statistics(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return {
@@ -1340,6 +1366,7 @@ async def report_data_breach(
     request: BreachReportRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Meldet eine Datenschutzverletzung nach Art. 33 DSGVO.
 
@@ -1400,7 +1427,7 @@ async def report_data_breach(
         affected_subjects_count=request.affected_subjects_count,
         affected_data_categories=categories,
         reported_by=str(current_user.id),
-        company_id=str(current_user.company_id) if current_user.company_id else None,
+        company_id=str(company_id) if company_id else None,
         occurred_at=occurred_at,
         is_estimate=request.is_estimate,
     )
@@ -1437,6 +1464,7 @@ async def list_breaches(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Listet alle Datenschutzverletzungen auf.
 
@@ -1467,7 +1495,7 @@ async def list_breaches(
     service = get_breach_notification_service()
     breaches, total = await service.list_breaches(
         db=db,
-        company_id=str(current_user.company_id) if current_user.company_id else None,
+        company_id=str(company_id) if company_id else None,
         status=status_enum,
         severity=severity_enum,
         limit=per_page,
@@ -1500,6 +1528,7 @@ async def list_breaches(
 async def get_breach_deadlines(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt alle Breaches mit anstehenden 72-Stunden-Deadlines zurück.
 
@@ -1508,7 +1537,7 @@ async def get_breach_deadlines(
     service = get_breach_notification_service()
     deadlines = await service.get_pending_deadlines(
         db=db,
-        company_id=str(current_user.company_id) if current_user.company_id else None,
+        company_id=str(company_id) if company_id else None,
     )
 
     return {
@@ -1522,6 +1551,7 @@ async def get_breach_details(
     breach_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Holt Details einer Datenschutzverletzung."""
     service = get_breach_notification_service()
@@ -1534,8 +1564,8 @@ async def get_breach_details(
         )
 
     # Prüfe Company-Zugehoerigkeit
-    if breach.company_id and current_user.company_id:
-        if breach.company_id != str(current_user.company_id):
+    if breach.company_id and company_id:
+        if breach.company_id != str(company_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Keine Berechtigung für diesen Breach",
