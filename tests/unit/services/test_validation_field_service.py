@@ -133,134 +133,8 @@ class TestValidationFieldServiceValidation:
         assert isinstance(result, list)
 
 
-class TestValidationFieldServiceUmlautValidation:
-    """Tests fuer Umlaut-Validierung (Deutsch-spezifisch)."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: _check_umlaut_issues() Methode existiert nicht mehr im ValidationFieldService. Umlaut-Pruefung wurde in separaten Service ausgelagert.")
-    async def test_detect_umlaut_issues(self, validation_field_service):
-        """Test: Umlaut-Probleme erkennen."""
-        # Text mit problematischen Umlaut-Ersetzungen
-        text_with_issues = "Muenchen, Strasse, Buero"
-
-        result = validation_field_service._check_umlaut_issues(text_with_issues)
-
-        # Sollte Probleme finden: ue->ue, ae->ae, etc.
-        assert isinstance(result, list)
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: _check_umlaut_issues() Methode existiert nicht mehr im ValidationFieldService. Umlaut-Pruefung wurde in separaten Service ausgelagert.")
-    async def test_correct_umlaut(self, validation_field_service):
-        """Test: Umlaute korrekt erkennen."""
-        # Korrekter Text mit echten Umlauten
-        correct_text = "Muenchen"
-
-        result = validation_field_service._check_umlaut_issues(correct_text)
-
-        # Findet ue -> u Problem wenn implementiert
-        assert isinstance(result, list)
 
 
-class TestValidationFieldServiceFormatValidation:
-    """Tests fuer Format-Validierung."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: _validate_format() Methode existiert nicht mehr im ValidationFieldService. Format-Validierung wurde in separaten Service ausgelagert.")
-    async def test_validate_date_format(self, validation_field_service):
-        """Test: Deutsches Datumsformat validieren (DD.MM.YYYY)."""
-        valid_date = "24.12.2024"
-        invalid_date = "2024-12-24"
-
-        result_valid = validation_field_service._validate_format("date", valid_date)
-        result_invalid = validation_field_service._validate_format("date", invalid_date)
-
-        # Erwarte True fuer gueltiges deutsches Datum
-        assert result_valid is True or result_valid.get("is_valid", False)
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: _validate_format() Methode existiert nicht mehr im ValidationFieldService. Format-Validierung wurde in separaten Service ausgelagert.")
-    async def test_validate_currency_format(self, validation_field_service):
-        """Test: Deutsches Waehrungsformat validieren (1.234,56 EUR)."""
-        valid_currency = "1.234,56 EUR"
-        invalid_currency = "$1,234.56"
-
-        result = validation_field_service._validate_format("currency", valid_currency)
-
-        assert isinstance(result, (bool, dict))
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: _validate_format() Methode existiert nicht mehr im ValidationFieldService. Format-Validierung wurde in separaten Service ausgelagert.")
-    async def test_validate_iban_format(self, validation_field_service):
-        """Test: IBAN-Format validieren."""
-        valid_iban = "DE89370400440532013000"
-        invalid_iban = "INVALID123"
-
-        result_valid = validation_field_service._validate_format("iban", valid_iban)
-        result_invalid = validation_field_service._validate_format("iban", invalid_iban)
-
-        # IBAN-Validierung sollte Laenge und Praefix pruefen
-        assert isinstance(result_valid, (bool, dict))
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: _validate_format() Methode existiert nicht mehr im ValidationFieldService. Format-Validierung wurde in separaten Service ausgelagert.")
-    async def test_validate_vat_id_format(self, validation_field_service):
-        """Test: Deutsche USt-IdNr. validieren."""
-        valid_vat = "DE123456789"
-        invalid_vat = "123456789"
-
-        result = validation_field_service._validate_format("vat_id", valid_vat)
-
-        assert isinstance(result, (bool, dict))
-
-
-class TestValidationFieldServiceCrossFieldValidation:
-    """Tests fuer Cross-Field-Konsistenzpruefungen."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: check_cross_field_consistency() Methode existiert nicht mehr im ValidationFieldService. Cross-Field-Validierung wurde in separaten Service ausgelagert.")
-    async def test_check_cross_field_consistency(self, validation_field_service, mock_db, sample_field_review):
-        """Test: Cross-Field-Konsistenz pruefen."""
-        # Erstelle Felder die zusammenpassen sollten
-        fields = [
-            {"field_key": "total_net", "corrected_value": "100.00"},
-            {"field_key": "vat_amount", "corrected_value": "19.00"},
-            {"field_key": "total_gross", "corrected_value": "119.00"},
-        ]
-
-        result = await validation_field_service.check_cross_field_consistency(fields)
-
-        assert isinstance(result, dict)
-        assert "is_consistent" in result or "errors" in result
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: check_cross_field_consistency() Methode existiert nicht mehr im ValidationFieldService. Cross-Field-Validierung wurde in separaten Service ausgelagert.")
-    async def test_inconsistent_amounts_detected(self, validation_field_service):
-        """Test: Inkonsistente Betraege werden erkannt."""
-        # Betraege die nicht zusammenpassen
-        fields = [
-            {"field_key": "total_net", "corrected_value": "100.00"},
-            {"field_key": "vat_amount", "corrected_value": "19.00"},
-            {"field_key": "total_gross", "corrected_value": "150.00"},  # Falsch!
-        ]
-
-        result = await validation_field_service.check_cross_field_consistency(fields)
-
-        # Sollte Inkonsistenz erkennen
-        assert isinstance(result, dict)
-
-
-class TestValidationFieldServiceStats:
-    """Tests fuer Feld-Statistiken."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: get_field_stats() Methode existiert nicht mehr im ValidationFieldService. Statistik-Funktionen wurden in separaten Service ausgelagert.")
-    async def test_get_field_stats(self, validation_field_service, mock_db):
-        """Test: Feld-Statistiken abrufen."""
-        mock_db.execute.return_value.scalar.return_value = 10
-
-        result = await validation_field_service.get_field_stats(str(uuid4()))
-
-        assert result is not None
 
 
 class TestValidationFieldServiceEdgeCases:
@@ -277,16 +151,6 @@ class TestValidationFieldServiceEdgeCases:
         result = await validation_field_service.validate_field(str(sample_field_review.id))
 
         assert "is_valid" in result
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API geaendert: _check_umlaut_issues() Methode existiert nicht mehr im ValidationFieldService. Umlaut-Pruefung wurde in separaten Service ausgelagert.")
-    async def test_special_characters_handling(self, validation_field_service):
-        """Test: Sonderzeichen werden korrekt behandelt."""
-        text_with_special = "Firma GmbH & Co. KG"
-
-        result = validation_field_service._check_umlaut_issues(text_with_special)
-
-        assert isinstance(result, list)
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="API geaendert: validate_field() gibt jetzt anderes Format zurueck. Mock-Setup mit scalar_one_or_none muss als AsyncMock konfiguriert werden.")
