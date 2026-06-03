@@ -45,19 +45,6 @@ interface QueueLengthChartProps {
   height?: number;
 }
 
-// ==================== Mock Data Generator ====================
-
-function generateMockData(): QueueData[] {
-  return [
-    { name: 'ocr', displayName: 'OCR', length: 45, processing: 3, maxCapacity: 100 },
-    { name: 'embedding', displayName: 'Embedding', length: 23, processing: 2, maxCapacity: 50 },
-    { name: 'export', displayName: 'Export', length: 12, processing: 1, maxCapacity: 30 },
-    { name: 'backup', displayName: 'Backup', length: 5, processing: 1, maxCapacity: 20 },
-    { name: 'gdpr', displayName: 'GDPR', length: 2, processing: 0, maxCapacity: 10 },
-    { name: 'maintenance', displayName: 'Wartung', length: 8, processing: 1, maxCapacity: 15 },
-  ];
-}
-
 // ==================== Color Helper ====================
 // Nutzt zentrale getQueueBarColor aus constants/thresholds.ts
 
@@ -117,9 +104,8 @@ export function QueueLengthChart({
   criticalThreshold = QUEUE_UTILIZATION_THRESHOLDS.CRITICAL,
   height = 250,
 }: QueueLengthChartProps) {
-  // Use mock data if no data provided
   const chartData = useMemo(() => {
-    return data || generateMockData();
+    return data ?? [];
   }, [data]);
 
   // Calculate totals
@@ -150,6 +136,28 @@ export function QueueLengthChart({
         </CardHeader>
         <CardContent>
           <Skeleton className="h-[250px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            {title}
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="flex items-center justify-center text-sm text-muted-foreground"
+            style={{ height }}
+          >
+            Keine Daten für den gewählten Zeitraum
+          </div>
         </CardContent>
       </Card>
     );

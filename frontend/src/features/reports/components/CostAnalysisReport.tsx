@@ -43,6 +43,7 @@ import {
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent'
 import { FileDown, TrendingDown, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
+import { EmptyState } from '@/components/ui/empty-state'
 import { fetchReportData, exportReport, type CostAnalysisData } from '../api/report-data-api'
 
 // =============================================================================
@@ -109,7 +110,7 @@ export function CostAnalysisReport() {
   const [period, setPeriod] = useState<string>('monat')
   const [comparison, setComparison] = useState(false)
 
-  const { data, isLoading } = useQuery<CostAnalysisData>({
+  const { data, isLoading, isError, refetch } = useQuery<CostAnalysisData>({
     queryKey: ['report', 'cost-analysis', period, comparison],
     queryFn: () => fetchReportData('cost-analysis', { period, comparison }),
   })
@@ -141,6 +142,19 @@ export function CostAnalysisReport() {
           <Skeleton className="h-[400px]" />
           <Skeleton className="h-[400px]" />
         </div>
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="container mx-auto p-6">
+        <EmptyState
+          variant="error"
+          title="Berichtsdaten nicht verfügbar"
+          description="Die Berichtsdaten sind derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
+          action={{ label: 'Erneut versuchen', onClick: () => { void refetch(); } }}
+        />
       </div>
     )
   }

@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 import {
@@ -31,6 +32,7 @@ import {
   useEmailPreview,
   useFolderPreview,
   useStartImport,
+  WizardApiError,
 } from '../api/wizard-api';
 import { emailConfigService, folderConfigService, importRulesService } from '@/features/imports/api/imports-api';
 import type { EmailConfigListItem, FolderConfigListItem } from '@/features/imports/types/import-types';
@@ -438,13 +440,26 @@ function Step3Preview({ sourceType, configId, onNext, onBack }: Step3Props) {
   }
 
   if (error) {
+    // 404 = Vorschau-Endpunkt (noch) nicht verfügbar -> ehrlicher Empty-State
+    // statt eines vorgetäuschten 0-Elemente-Ergebnisses.
+    const previewUnavailable =
+      error instanceof WizardApiError && error.statusCode === 404;
+
     return (
       <div>
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Fehler beim Laden der Vorschau</AlertTitle>
-          <AlertDescription>{(error as Error).message}</AlertDescription>
-        </Alert>
+        {previewUnavailable ? (
+          <EmptyState
+            variant="default"
+            title="Vorschau noch nicht verfügbar"
+            description="Für diese Importquelle steht derzeit keine Vorschau zur Verfügung."
+          />
+        ) : (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Fehler beim Laden der Vorschau</AlertTitle>
+            <AlertDescription>{(error as Error).message}</AlertDescription>
+          </Alert>
+        )}
         <div className="mt-6 flex gap-2">
           <Button variant="outline" onClick={onBack}>
             <ChevronLeft className="mr-2 h-4 w-4" />

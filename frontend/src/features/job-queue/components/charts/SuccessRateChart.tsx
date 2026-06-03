@@ -41,36 +41,6 @@ interface SuccessRateChartProps {
   height?: number;
 }
 
-// ==================== Mock Data Generator ====================
-
-function generateMockData(): SuccessRateDataPoint[] {
-  const data: SuccessRateDataPoint[] = [];
-  const now = new Date();
-
-  for (let i = 23; i >= 0; i--) {
-    const date = new Date(now);
-    date.setHours(date.getHours() - i);
-
-    // Generate varying success rates (80-100%)
-    const baseRate = 85 + Math.random() * 15;
-    const variance = (Math.random() - 0.5) * 10;
-    const successRate = Math.max(70, Math.min(100, baseRate + variance));
-
-    const total = Math.floor(Math.random() * 50) + 20;
-    const completed = Math.floor(total * (successRate / 100));
-
-    data.push({
-      hour: date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-      timestamp: date.toISOString(),
-      successRate: Math.round(successRate * 10) / 10,
-      completed,
-      total,
-    });
-  }
-
-  return data;
-}
-
 // ==================== Custom Tooltip ====================
 
 interface TooltipProps {
@@ -119,9 +89,8 @@ export function SuccessRateChart({
   targetRate = 95,
   height = 250,
 }: SuccessRateChartProps) {
-  // Use mock data if no data provided
   const chartData = useMemo(() => {
-    return data || generateMockData();
+    return data ?? [];
   }, [data]);
 
   // Calculate average success rate
@@ -147,6 +116,28 @@ export function SuccessRateChart({
         </CardHeader>
         <CardContent>
           <Skeleton className="h-[250px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            {title}
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="flex items-center justify-center text-sm text-muted-foreground"
+            style={{ height }}
+          >
+            Keine Daten für den gewählten Zeitraum
+          </div>
         </CardContent>
       </Card>
     );
