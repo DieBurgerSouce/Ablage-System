@@ -1,6 +1,6 @@
 {
   "branches": [
-    "main",
+    "master",
     {
       "name": "beta",
       "prerelease": true
@@ -189,7 +189,7 @@
         "successComment": false,
         "failComment": false,
         "releasedLabels": [
-          "released<%= nextRelease.channel ? \` on @\${nextRelease.channel}` : \"\" %> "
+          "released<%= nextRelease.channel ? ` on @${nextRelease.channel}` : \"\" %> "
         ]
       }
     ],

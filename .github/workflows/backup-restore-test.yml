@@ -329,20 +329,9 @@ jobs:
           # If no smoke tests directory, run basic health checks
           if [ ! -d "tests/smoke" ]; then
             echo "No smoke tests found, running basic verification..."
-            python -c "
-from sqlalchemy import create_engine, text
-import os
-
-engine = create_engine(os.environ['DATABASE_URL'])
-with engine.connect() as conn:
-    result = conn.execute(text('SELECT COUNT(*) FROM documents'))
-    count = result.scalar()
-    print(f'Documents in restored DB: {count}')
-    if count >= 0:
-        print('Basic data verification passed')
-    else:
-        raise Exception('Data verification failed')
-"
+            # G2 (2026-06-03): Python-Pruefung als Einzeiler (-c). Vorher stand der
+            # Python-Code auf Spalte 0 im YAML-Block-Scalar -> ungueltiges Workflow-YAML.
+            python -c "import os; from sqlalchemy import create_engine, text; conn = create_engine(os.environ['DATABASE_URL']).connect(); count = conn.execute(text('SELECT COUNT(*) FROM documents')).scalar(); conn.close(); assert count is not None and count >= 0, 'Data verification failed'; print(f'Documents in restored DB: {count}'); print('Basic data verification passed')"
           fi
 
           echo "Smoke tests completed"

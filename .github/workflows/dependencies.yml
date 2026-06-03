@@ -10,59 +10,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Check for Python dependency updates
-  python-dependencies:
-    name: Python Dependencies
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
-        with:
-          python-version: "3.11"
-
-      - name: Install pip-tools
-        run: pip install pip-tools
-
-      - name: Check for Updates
-        id: check_updates
-        run: |
-          # Compile requirements to see what would update
-          pip-compile requirements.in --upgrade --output-file requirements-new.txt || true
-
-          if [ -f requirements-new.txt ]; then
-            if ! diff -q requirements.txt requirements-new.txt > /dev/null; then
-              echo "updates_available=true" >> $GITHUB_OUTPUT
-              echo "✅ Updates available"
-            else
-              echo "updates_available=false" >> $GITHUB_OUTPUT
-              echo "✅ No updates available"
-            fi
-          fi
-
-      - name: Generate Update Report
-        if: steps.check_updates.outputs.updates_available == 'true'
-        run: |
-          echo "## Python Dependency Updates Available" > update_report.md
-          echo "" >> update_report.md
-          echo "\`\`\`diff" >> update_report.md
-          diff requirements.txt requirements-new.txt || true
-          echo "\`\`\`" >> update_report.md
-
-      - name: Create Pull Request
-        if: steps.check_updates.outputs.updates_available == 'true'
-        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore(deps): update Python dependencies"
-          title: "chore(deps): Update Python dependencies"
-          body-path: update_report.md
-          branch: deps/python-updates
-          delete-branch: true
-          labels: dependencies,python
+  # G2 (2026-06-03): Job `python-dependencies` (pip-compile requirements.in)
+  # entfernt - requirements.in existierte nie. Python-Updates uebernimmt
+  # Dependabot (.github/dependabot.yml, pip-Ecosystem).
 
   # Check for security vulnerabilities
   security-audit:
@@ -78,57 +28,26 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Safety
-        run: pip install safety
+      - name: Install pip-audit
+        run: pip install pip-audit
 
-      - name: Run Safety Check
-        id: safety
-        run: |
-          safety check --file requirements.txt --json --output safety-report.json || true
-          safety check --file requirements.txt || true
+      # G2 (2026-06-03): safety durch pip-audit ersetzt. Der JSON-Report wird als
+      # Artefakt hochgeladen; das `|| true` haengt NUR am Report-Step, damit das
+      # Artefakt auch bei Funden entsteht. Das eigentliche Gate (Step danach)
+      # laeuft OHNE `|| true` und blockiert bei Schwachstellen (exit != 0).
+      - name: Generate pip-audit JSON Report
+        run: pip-audit -r requirements.txt -f json -o pip-audit-report.json || true
 
-          if [ -s safety-report.json ]; then
-            VULN_COUNT=$(cat safety-report.json | jq '.vulnerabilities | length')
-            echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
-
-            if [ "$VULN_COUNT" -gt 0 ]; then
-              echo "⚠️  Found $VULN_COUNT vulnerabilities"
-            fi
-          fi
-
-      - name: Upload Safety Report
+      - name: Upload pip-audit Report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6db9a8b9c8bb8a1a6e62af5c2e0c7 # v4.6.2
         with:
-          name: safety-security-report
-          path: safety-report.json
+          name: pip-audit-report
+          path: pip-audit-report.json
           retention-days: 30
 
-      - name: Create Security Issue
-        if: steps.safety.outputs.vulnerabilities > 0
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
-        with:
-          script: |
-            const fs = require('fs');
-            const report = JSON.parse(fs.readFileSync('safety-report.json', 'utf8'));
-
-            let body = '## 🔒 Security Vulnerabilities Detected\n\n';
-            body += `Found ${report.vulnerabilities.length} vulnerabilities:\n\n`;
-
-            report.vulnerabilities.forEach(vuln => {
-              body += `### ${vuln.package_name} ${vuln.vulnerable_versions}\n`;
-              body += `- **Severity:** ${vuln.severity}\n`;
-              body += `- **Description:** ${vuln.description}\n`;
-              body += `- **Fixed in:** ${vuln.fixed_versions}\n\n`;
-            });
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '🔒 Security: Dependency vulnerabilities detected',
-              body: body,
-              labels: ['security', 'dependencies']
-            });
+      - name: Run pip-audit (blocking gate)
+        run: pip-audit -r requirements.txt
 
   # Check Docker base images
   docker-updates:
@@ -138,9 +57,9 @@ jobs:
     strategy:
       matrix:
         dockerfile:
-          - docker/Dockerfile.backend
+          - Dockerfile
           - docker/Dockerfile.worker
-          - docker/Dockerfile.frontend
+          - frontend/Dockerfile
 
     steps:
       - name: Checkout Code
@@ -164,13 +83,13 @@ jobs:
 
           # Check if there are updates
           # (This is a simplified check - in production, use a tool like Renovate)
-          echo "✅ Base image check complete"
+          echo "Base image check complete"
 
   # Dependency summary
   dependency-summary:
     name: Dependency Summary
     runs-on: ubuntu-latest
-    needs: [python-dependencies, security-audit, docker-updates]
+    needs: [security-audit, docker-updates]
     if: always()
 
     steps:
@@ -180,7 +99,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Python Dependencies | ${{ needs.python-dependencies.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Docker Images | ${{ needs.docker-updates.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

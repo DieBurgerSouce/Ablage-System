@@ -7,7 +7,7 @@ name: Docker Build
 on:
   push:
     branches:
-      - main
+      - master
       - develop
     paths:
       - 'app/**'
@@ -20,7 +20,7 @@ on:
       - 'v*'
   pull_request:
     branches:
-      - main
+      - master
     paths:
       - 'app/**'
       - 'frontend/**'
@@ -85,7 +85,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc4c1f # v5.4.0
         with:
           context: .
-          file: docker/Dockerfile.backend
+          file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -207,7 +207,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc4c1f # v5.4.0
         with:
           context: frontend
-          file: docker/Dockerfile.frontend
+          file: frontend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -253,7 +253,7 @@ jobs:
     name: Update GitOps
     runs-on: ubuntu-latest
     needs: [build-backend, build-worker, build-frontend, scan]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
 
     steps:
       - name: Checkout code

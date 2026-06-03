@@ -106,55 +106,49 @@ jobs:
           DOCS=$(echo "$COMMITS" | grep -i "^- docs" || echo "")
           OTHERS=$(echo "$COMMITS" | grep -vi "^- feat\|^- fix\|^- docs" || echo "")
 
-          # Build changelog
-          CHANGELOG="## Release v$NEW_VERSION
+          # G2 (2026-06-03): Changelog wird direkt nach RELEASE_NOTES.md
+          # geschrieben. Vorher wurden mehrzeilige Bash-Strings mit Inhaltszeilen
+          # auf Spalte 0 verwendet -> diese beendeten den YAML-Block-Scalar
+          # vorzeitig (ungueltiges Workflow-YAML). Jetzt: korrekt eingerueckte
+          # echo-Bloecke (YAML-valide), gleicher Markdown-Output.
+          {
+            echo "## Release v$NEW_VERSION"
+            echo ""
+            echo "**Release Date:** $(date +%Y-%m-%d)"
+            echo ""
+            if [ -n "$FEATURES" ]; then
+              echo "### ✨ New Features"
+              echo ""
+              echo "$FEATURES"
+              echo ""
+            fi
+            if [ -n "$FIXES" ]; then
+              echo "### 🐛 Bug Fixes"
+              echo ""
+              echo "$FIXES"
+              echo ""
+            fi
+            if [ -n "$DOCS" ]; then
+              echo "### 📚 Documentation"
+              echo ""
+              echo "$DOCS"
+              echo ""
+            fi
+            if [ -n "$OTHERS" ]; then
+              echo "### 🔧 Other Changes"
+              echo ""
+              echo "$OTHERS"
+              echo ""
+            fi
+          } > RELEASE_NOTES.md
 
-**Release Date:** $(date +%Y-%m-%d)
-
-"
-
-          if [ -n "$FEATURES" ]; then
-            CHANGELOG+="### ✨ New Features
-
-$FEATURES
-
-"
-          fi
-
-          if [ -n "$FIXES" ]; then
-            CHANGELOG+="### 🐛 Bug Fixes
-
-$FIXES
-
-"
-          fi
-
-          if [ -n "$DOCS" ]; then
-            CHANGELOG+="### 📚 Documentation
-
-$DOCS
-
-"
-          fi
-
-          if [ -n "$OTHERS" ]; then
-            CHANGELOG+="### 🔧 Other Changes
-
-$OTHERS
-
-"
-          fi
-
-          # Save to file
-          echo "$CHANGELOG" > RELEASE_NOTES.md
-
-          # Save to output (escape newlines for GitHub Actions)
-          CHANGELOG_ESCAPED="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG_ESCAPED="${CHANGELOG_ESCAPED//$'\n'/'%0A'}"
-          CHANGELOG_ESCAPED="${CHANGELOG_ESCAPED//$'\r'/'%0D'}"
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Save to output (multiline via GITHUB_OUTPUT-Heredoc-Delimiter,
+          # ersetzt das fragile %0A/%25-Escaping).
+          {
+            echo "notes<<CHANGELOG_EOF"
+            cat RELEASE_NOTES.md
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Update VERSION file
         run: |
@@ -180,7 +174,7 @@ $OTHERS
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new }}"
           git commit -m "chore: bump version to $NEW_VERSION"
-          git push origin main
+          git push origin master
 
       - name: Create Git Tag
         run: |
@@ -189,12 +183,15 @@ $OTHERS
           git push origin "v$NEW_VERSION"
 
       - name: Create GitHub Release
-        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
+        # actions/create-release ist archiviert/deprecated. Ersetzt durch
+        # softprops/action-gh-release (idempotent, identischer SHA-Pin wie der
+        # spaetere Asset-Upload-Step). release_name -> name (softprops-Schema).
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.new_version.outputs.new }}
-          release_name: Release v${{ steps.new_version.outputs.new }}
+          name: Release v${{ steps.new_version.outputs.new }}
           body: ${{ steps.changelog.outputs.notes }}
           draft: false
           prerelease: ${{ github.event.inputs.prerelease }}
@@ -216,7 +213,7 @@ $OTHERS
           echo "$DEV_VERSION" > VERSION
           git add VERSION
           git commit -m "chore: set development version to $DEV_VERSION"
-          git push origin main
+          git push origin master
 
       - name: Build Release Artifacts
         run: |

@@ -31,7 +31,7 @@ on:
         type: string
   push:
     branches:
-      - main
+      - master
     paths:
       - 'infrastructure/kubernetes/**'
       - 'infrastructure/helm/**'
