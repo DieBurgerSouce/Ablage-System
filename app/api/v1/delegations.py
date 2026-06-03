@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_delegation import (
@@ -335,6 +335,7 @@ def _delegation_to_response(delegation) -> DelegationResponse:
 async def create_delegation(
     data: DelegationCreate,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationResponse:
     """Erstellt eine neue Delegation.
@@ -347,7 +348,7 @@ async def create_delegation(
         delegation = await service.create_delegation(
             delegator_id=current_user.id,
             delegate_id=data.delegate_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             valid_from=data.valid_from,
             valid_until=data.valid_until,
             delegation_type=data.delegation_type,
@@ -366,7 +367,7 @@ async def create_delegation(
         await db.commit()
 
         # Reload mit Relationships
-        delegation = await service.get_delegation(delegation.id, current_user.company_id)
+        delegation = await service.get_delegation(delegation.id, company_id)
 
         return _delegation_to_response(delegation)
 
@@ -381,6 +382,7 @@ async def create_delegation(
 async def create_delegation_from_template(
     data: DelegationFromTemplate,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationResponse:
     """Erstellt Delegation aus Template."""
@@ -391,7 +393,7 @@ async def create_delegation_from_template(
             template_id=data.template_id,
             delegator_id=current_user.id,
             delegate_id=data.delegate_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             valid_from=data.valid_from,
             valid_until=data.valid_until,
             reason=data.reason,
@@ -399,7 +401,7 @@ async def create_delegation_from_template(
         )
         await db.commit()
 
-        delegation = await service.get_delegation(delegation.id, current_user.company_id)
+        delegation = await service.get_delegation(delegation.id, company_id)
 
         return _delegation_to_response(delegation)
 
@@ -421,13 +423,14 @@ async def list_delegations(
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationListResponse:
     """Listet Delegationen des eingeloggten Users auf."""
     service = DelegationService(db)
 
     delegations = await service.list_delegations(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         as_delegator=as_delegator,
         as_delegate=as_delegate,
@@ -438,7 +441,7 @@ async def list_delegations(
     )
 
     total = await service.count_delegations(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         status=status_filter,
     )
@@ -454,6 +457,7 @@ async def list_delegations(
 @router.get("/pending", response_model=List[DelegationResponse])
 async def get_pending_delegations(
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[DelegationResponse]:
     """Holt ausstehende Delegationen die auf Bestätigung warten."""
@@ -461,7 +465,7 @@ async def get_pending_delegations(
 
     delegations = await service.get_pending_delegations_for_user(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return [_delegation_to_response(d) for d in delegations]
@@ -470,6 +474,7 @@ async def get_pending_delegations(
 @router.get("/active", response_model=List[DelegationResponse])
 async def get_active_delegations(
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[DelegationResponse]:
     """Holt aktive Delegationen des Users (als Delegate)."""
@@ -477,7 +482,7 @@ async def get_active_delegations(
 
     delegations = await service.get_active_delegations_for_user(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return [_delegation_to_response(d) for d in delegations]
@@ -487,12 +492,13 @@ async def get_active_delegations(
 async def get_delegation(
     delegation_id: UUID,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationResponse:
     """Holt eine spezifische Delegation."""
     service = DelegationService(db)
 
-    delegation = await service.get_delegation(delegation_id, current_user.company_id)
+    delegation = await service.get_delegation(delegation_id, company_id)
     if not delegation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -518,6 +524,7 @@ async def update_delegation(
     delegation_id: UUID,
     data: DelegationUpdate,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationResponse:
     """Aktualisiert eine Delegation.
@@ -526,7 +533,7 @@ async def update_delegation(
     """
     service = DelegationService(db)
 
-    delegation = await service.get_delegation(delegation_id, current_user.company_id)
+    delegation = await service.get_delegation(delegation_id, company_id)
     if not delegation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -542,12 +549,12 @@ async def update_delegation(
     updates = data.model_dump(exclude_unset=True)
     delegation = await service.update_delegation(
         delegation_id=delegation_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         **updates,
     )
     await db.commit()
 
-    delegation = await service.get_delegation(delegation_id, current_user.company_id)
+    delegation = await service.get_delegation(delegation_id, company_id)
 
     return _delegation_to_response(delegation)
 
@@ -556,6 +563,7 @@ async def update_delegation(
 async def accept_delegation(
     delegation_id: UUID,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationResponse:
     """Delegate akzeptiert eine Delegation."""
@@ -565,11 +573,11 @@ async def accept_delegation(
         delegation = await service.accept_delegation(
             delegation_id=delegation_id,
             delegate_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
         await db.commit()
 
-        delegation = await service.get_delegation(delegation_id, current_user.company_id)
+        delegation = await service.get_delegation(delegation_id, company_id)
 
         return _delegation_to_response(delegation)
 
@@ -585,6 +593,7 @@ async def decline_delegation(
     delegation_id: UUID,
     data: DeclineRequest,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationResponse:
     """Delegate lehnt eine Delegation ab."""
@@ -594,12 +603,12 @@ async def decline_delegation(
         delegation = await service.decline_delegation(
             delegation_id=delegation_id,
             delegate_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             reason=data.reason,
         )
         await db.commit()
 
-        delegation = await service.get_delegation(delegation_id, current_user.company_id)
+        delegation = await service.get_delegation(delegation_id, company_id)
 
         return _delegation_to_response(delegation)
 
@@ -615,6 +624,7 @@ async def revoke_delegation(
     delegation_id: UUID,
     data: RevokeRequest,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationResponse:
     """Widerruft eine Delegation.
@@ -623,7 +633,7 @@ async def revoke_delegation(
     """
     service = DelegationService(db)
 
-    delegation = await service.get_delegation(delegation_id, current_user.company_id)
+    delegation = await service.get_delegation(delegation_id, company_id)
     if not delegation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -641,12 +651,12 @@ async def revoke_delegation(
         delegation = await service.revoke_delegation(
             delegation_id=delegation_id,
             revoked_by_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             reason=data.reason,
         )
         await db.commit()
 
-        delegation = await service.get_delegation(delegation_id, current_user.company_id)
+        delegation = await service.get_delegation(delegation_id, company_id)
 
         return _delegation_to_response(delegation)
 
@@ -668,12 +678,13 @@ async def get_delegation_audit_logs(
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> AuditLogListResponse:
     """Holt Audit-Logs einer Delegation."""
     service = DelegationService(db)
 
-    delegation = await service.get_delegation(delegation_id, current_user.company_id)
+    delegation = await service.get_delegation(delegation_id, company_id)
     if not delegation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -693,7 +704,7 @@ async def get_delegation_audit_logs(
 
     logs = await service.get_audit_logs(
         delegation_id=delegation_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         limit=per_page,
         offset=(page - 1) * per_page,
     )
@@ -729,6 +740,7 @@ async def check_permission_with_delegation(
     data: PermissionCheckRequest,
     request: Request,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> PermissionCheckResponse:
     """Prüft Berechtigung unter Berücksichtigung von Delegationen.
@@ -744,7 +756,7 @@ async def check_permission_with_delegation(
 
     result = await service.check_permission_with_delegation(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         permission=data.permission,
         resource_type=data.resource_type,
         resource_id=data.resource_id,
@@ -773,13 +785,14 @@ async def check_permission_with_delegation(
 async def list_templates(
     include_inactive: bool = Query(False, description="Inaktive einbeziehen"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[TemplateResponse]:
     """Listet verfügbare Delegations-Templates."""
     service = DelegationService(db)
 
     templates = await service.list_templates(
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_inactive=include_inactive,
     )
 
@@ -809,6 +822,7 @@ async def list_templates(
 async def create_template(
     data: TemplateCreate,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TemplateResponse:
     """Erstellt ein neues Delegations-Template.
@@ -824,7 +838,7 @@ async def create_template(
     service = DelegationService(db)
 
     template = await service.create_template(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=data.name,
         description=data.description,
         delegation_type=data.delegation_type,

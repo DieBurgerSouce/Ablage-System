@@ -19,7 +19,7 @@ from app.core.types import JSONDict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_, or_
 
 from app.db.models import (
     ApprovalPriority,
@@ -30,7 +30,7 @@ from app.db.models import (
     ApprovalStep,
     User,
 )
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.services.approval.approval_service import ApprovalService
 from app.services.approval.approval_rule_service import ApprovalRuleService
 from app.services.approval.auto_approval_service import (
@@ -353,13 +353,14 @@ async def list_approval_rules(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRulesListResponse:
     """Listet alle Approval-Regeln für die aktuelle Firma."""
     service = ApprovalRuleService(db)
 
     # Basis-Query
     rules = await service.get_rules_for_company(
-        company_id=current_user.company_id,
+        company_id=company_id,
         active_only=active_only,
     )
 
@@ -376,7 +377,7 @@ async def list_approval_rules(
 
     logger.info(
         "approval_rules_listed",
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         total=total,
         user_id=str(current_user.id),
     )
@@ -392,12 +393,13 @@ async def create_approval_rule(
     request: ApprovalRuleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRuleResponse:
     """Erstellt eine neue Approval-Regel."""
     service = ApprovalRuleService(db)
 
     rule = await service.create_rule(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=request.name,
         rule_type=request.rule_type,
         entity_types=request.entity_types,
@@ -415,7 +417,7 @@ async def create_approval_rule(
         "approval_rule_created",
         rule_id=str(rule.id),
         rule_name=rule.name,
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         user_id=str(current_user.id),
     )
 
@@ -427,12 +429,13 @@ async def get_approval_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRuleResponse:
     """Holt eine einzelne Approval-Regel."""
     service = ApprovalRuleService(db)
 
     # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
-    rule = await service.get_rule(rule_id, company_id=current_user.company_id)
+    rule = await service.get_rule(rule_id, company_id=company_id)
     if not rule:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -448,6 +451,7 @@ async def update_approval_rule(
     request: ApprovalRuleUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRuleResponse:
     """Aktualisiert eine Approval-Regel."""
     service = ApprovalRuleService(db)
@@ -462,7 +466,7 @@ async def update_approval_rule(
     # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
     rule = await service.update_rule(
         rule_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         **update_data,
     )
     if not rule:
@@ -474,7 +478,7 @@ async def update_approval_rule(
     logger.info(
         "approval_rule_updated",
         rule_id=str(rule_id),
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         user_id=str(current_user.id),
     )
 
@@ -486,12 +490,13 @@ async def delete_approval_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Approval-Regel (Soft-Delete via is_active=False)."""
     service = ApprovalRuleService(db)
 
     # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
-    deleted = await service.delete_rule(rule_id, company_id=current_user.company_id)
+    deleted = await service.delete_rule(rule_id, company_id=company_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -501,7 +506,7 @@ async def delete_approval_rule(
     logger.info(
         "approval_rule_deleted",
         rule_id=str(rule_id),
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         user_id=str(current_user.id),
     )
 
@@ -512,12 +517,13 @@ async def preview_approval_rule(
     test_data: JSONDict,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Simuliert eine Regel gegen Testdaten (Preview/Dry-Run)."""
     service = ApprovalRuleService(db)
 
     # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
-    rule = await service.get_rule(rule_id, company_id=current_user.company_id)
+    rule = await service.get_rule(rule_id, company_id=company_id)
     if not rule:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -549,12 +555,13 @@ async def list_approval_requests(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRequestsListResponse:
     """Listet Genehmigungsanfragen."""
     service = ApprovalService(db)
 
     requests = await service.get_requests_for_company(
-        company_id=current_user.company_id,
+        company_id=company_id,
         status_filter=status_filter,
         entity_type=entity_type,
         for_user_id=current_user.id if my_pending else None,
@@ -563,7 +570,7 @@ async def list_approval_requests(
     )
 
     total = await service.count_requests_for_company(
-        company_id=current_user.company_id,
+        company_id=company_id,
         status_filter=status_filter,
         entity_type=entity_type,
         for_user_id=current_user.id if my_pending else None,
@@ -580,6 +587,7 @@ async def get_approval_request(
     request_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRequestResponse:
     """Holt eine einzelne Genehmigungsanfrage mit Steps."""
     service = ApprovalService(db)
@@ -587,7 +595,7 @@ async def get_approval_request(
     # SECURITY: Multi-Tenant Isolation via company_id
     request = await service.get_request(
         request_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_steps=True,
     )
     if not request:
@@ -605,6 +613,7 @@ async def approve_request(
     decision: ApprovalDecisionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRequestResponse:
     """Genehmigt eine Anfrage (für den aktuellen Schritt)."""
     if decision.decision != "approved":
@@ -618,7 +627,7 @@ async def approve_request(
     # SECURITY: Multi-Tenant Isolation via company_id
     request = await service.get_request(
         request_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_steps=True,
     )
     if not request:
@@ -644,7 +653,7 @@ async def approve_request(
         request_id=request_id,
         user_id=current_user.id,
         decision="approved",
-        company_id=current_user.company_id,
+        company_id=company_id,
         notes=decision.notes,
     )
 
@@ -657,7 +666,7 @@ async def approve_request(
     # Refetch with updated data
     updated_request = await service.get_request(
         request_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_steps=True,
     )
 
@@ -677,6 +686,7 @@ async def reject_request(
     decision: ApprovalDecisionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRequestResponse:
     """Lehnt eine Anfrage ab."""
     if decision.decision != "rejected":
@@ -690,7 +700,7 @@ async def reject_request(
     # SECURITY: Multi-Tenant Isolation via company_id
     request = await service.get_request(
         request_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_steps=True,
     )
     if not request:
@@ -715,7 +725,7 @@ async def reject_request(
         request_id=request_id,
         user_id=current_user.id,
         decision="rejected",
-        company_id=current_user.company_id,
+        company_id=company_id,
         notes=decision.notes,
     )
 
@@ -727,7 +737,7 @@ async def reject_request(
 
     updated_request = await service.get_request(
         request_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_steps=True,
     )
 
@@ -747,6 +757,7 @@ async def escalate_request(
     escalation: ApprovalEscalationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalRequestResponse:
     """Eskaliert eine Anfrage manuell."""
     service = ApprovalService(db)
@@ -754,7 +765,7 @@ async def escalate_request(
     # SECURITY: Multi-Tenant Isolation via company_id
     request = await service.get_request(
         request_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_steps=True,
     )
     if not request:
@@ -773,7 +784,7 @@ async def escalate_request(
     result = await service.escalate_request(
         request_id=request_id,
         reason=escalation.escalation_reason,
-        company_id=current_user.company_id,
+        company_id=company_id,
         escalate_to_role=escalation.escalate_to_role,
         escalated_by_id=current_user.id,
     )
@@ -786,7 +797,7 @@ async def escalate_request(
 
     updated_request = await service.get_request(
         request_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_steps=True,
     )
 
@@ -810,12 +821,13 @@ async def update_approval_step(
     update: ApprovalStepUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalStepResponse:
     """Aktualisiert einen Schritt (Delegation)."""
     service = ApprovalService(db)
 
     # SECURITY: Multi-Tenant Isolation via company_id
-    step = await service.get_step(step_id, company_id=current_user.company_id)
+    step = await service.get_step(step_id, company_id=company_id)
     if not step:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -829,11 +841,11 @@ async def update_approval_step(
             step_id=step_id,
             delegate_to_id=delegate_to_uuid,
             delegated_by_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             reason=update.delegation_reason,
         )
 
-    updated_step = await service.get_step(step_id, company_id=current_user.company_id)
+    updated_step = await service.get_step(step_id, company_id=company_id)
 
     logger.info(
         "approval_step_delegated",
@@ -853,12 +865,13 @@ async def update_approval_step(
 async def get_approval_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Holt Zusammenfassung für Dashboard."""
     service = ApprovalService(db)
 
     summary = await service.get_approval_summary(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
     )
 
@@ -991,6 +1004,7 @@ async def check_auto_approval(
     request: AutoApprovalCheckRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoApprovalResultResponse:
     """Prüft ob ein Dokument/Rechnung automatisch genehmigt werden kann.
 
@@ -1005,7 +1019,7 @@ async def check_auto_approval(
         amount=request.amount,
         document_type=request.document_type,
         category=request.category,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
     )
 
@@ -1027,6 +1041,7 @@ async def apply_auto_approval(
     request: AutoApprovalCheckRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoApprovalResultResponse:
     """Prüft und wendet Auto-Approval an wenn möglich.
 
@@ -1042,7 +1057,7 @@ async def apply_auto_approval(
         amount=request.amount,
         document_type=request.document_type,
         category=request.category,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
     )
 
@@ -1057,7 +1072,7 @@ async def apply_auto_approval(
             approval_request = await service.apply_auto_approval(
                 entity_type=entity_type,
                 entity_id=entity_id,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 amount=request.amount,
                 title=f"Auto-Approval: {entity_type}",
             )
@@ -1234,6 +1249,7 @@ async def get_auto_approval_stats(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Holt Statistiken zu Auto-Approvals."""
     from datetime import timedelta
@@ -1245,7 +1261,7 @@ async def get_auto_approval_stats(
     # Auto-Approved Anfragen
     auto_approved_stmt = select(func.count(ApprovalRequest.id)).where(
         and_(
-            ApprovalRequest.company_id == current_user.company_id,
+            ApprovalRequest.company_id == company_id,
             ApprovalRequest.metadata["auto_approved"].astext == "true",
             ApprovalRequest.created_at >= cutoff,
         )
@@ -1256,7 +1272,7 @@ async def get_auto_approval_stats(
     # Manuelle Approvals
     manual_stmt = select(func.count(ApprovalRequest.id)).where(
         and_(
-            ApprovalRequest.company_id == current_user.company_id,
+            ApprovalRequest.company_id == company_id,
             or_(
                 ApprovalRequest.metadata["auto_approved"].is_(None),
                 ApprovalRequest.metadata["auto_approved"].astext != "true",

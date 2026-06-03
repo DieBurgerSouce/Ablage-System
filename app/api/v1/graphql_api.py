@@ -12,7 +12,7 @@ from sqlalchemy import select, and_, or_, desc, asc
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import Select
 
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.core.rate_limiting import limiter, get_user_identifier
@@ -388,13 +388,14 @@ async def execute_query(
     body: GraphQLQueryRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> GraphQLQueryResponse:
     """Führt GraphQL-ähnliche Query aus."""
     try:
         # Query ausführen
         items, total_count = await QueryBuilder.build_query(
             body=body,
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 

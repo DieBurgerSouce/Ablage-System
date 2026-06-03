@@ -37,7 +37,7 @@ from app.db.models_team import (
     TeamDocument,
     TeamDocumentPermission,
 )
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.services.team_service import TeamService, get_team_service
 
 
@@ -242,6 +242,7 @@ async def create_team(
     data: TeamCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TeamResponse:
     """Erstellt ein neues Team."""
     service = get_team_service(db)
@@ -249,7 +250,7 @@ async def create_team(
     try:
         team = await service.create_team(
             name=data.name,
-            company_id=current_user.company_id,
+            company_id=company_id,
             created_by_id=current_user.id,
             team_type=data.team_type,
             description=data.description,
@@ -293,12 +294,13 @@ async def list_teams(
     include_inactive: bool = Query(False, description="Inaktive einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TeamListResponse:
     """Listet Teams auf."""
     service = get_team_service(db)
 
     teams, total = await service.list_teams(
-        company_id=current_user.company_id,
+        company_id=company_id,
         team_type=team_type,
         status=status,
         parent_team_id=parent_team_id,
@@ -328,13 +330,14 @@ async def get_my_teams(
     include_inactive: bool = Query(False, description="Inaktive einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[TeamResponse]:
     """Holt Teams des aktuellen Users."""
     service = get_team_service(db)
 
     teams = await service.get_user_teams(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_inactive=include_inactive,
     )
 
@@ -351,6 +354,7 @@ async def get_team(
     team_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TeamDetailResponse:
     """Holt ein Team nach ID."""
     service = get_team_service(db)
@@ -363,7 +367,7 @@ async def get_team(
         )
 
     # Zugangsprüfung
-    if team.company_id != current_user.company_id:
+    if team.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Kein Zugriff auf dieses Team"
@@ -504,13 +508,14 @@ async def list_members(
     include_inactive: bool = Query(False, description="Inaktive einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[TeamMemberResponse]:
     """Listet Team-Mitglieder."""
     service = get_team_service(db)
 
     # Zugriffsprüfung
     team = await service.get_team(team_id)
-    if not team or team.company_id != current_user.company_id:
+    if not team or team.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Team nicht gefunden"

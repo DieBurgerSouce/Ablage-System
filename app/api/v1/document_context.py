@@ -9,7 +9,7 @@ from datetime import date
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.document_context_aggregator import (
     DocumentContextAggregatorService,
@@ -98,6 +98,7 @@ async def get_document_context(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DocumentContextResponse:
     """
     Aggregierter Cross-Module Kontext für ein Dokument.
@@ -121,7 +122,7 @@ async def get_document_context(
         HTTPException: 404 wenn Dokument nicht gefunden
     """
     service = DocumentContextAggregatorService(db)
-    context = await service.get_context(document_id, current_user.company_id)
+    context = await service.get_context(document_id, company_id)
 
     # Wenn kein Dokument gefunden wurde, 404 zurückgeben
     # (context ist leer aber nicht None bei fehlendem Dokument)

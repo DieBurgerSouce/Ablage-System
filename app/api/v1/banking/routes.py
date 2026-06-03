@@ -25,7 +25,7 @@ from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.core.security_auth import build_content_disposition
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.db.models import User
 from app.services.banking.account_service import AccountService
 from app.services.banking.import_service import ImportService
@@ -3476,6 +3476,7 @@ async def get_payment_suggestions(
     include_overdue: bool = Query(True, description="Überfällige einbeziehen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[PaymentSuggestionResponse]:
     """Generiere Zahlungsvorschläge.
 
@@ -3484,7 +3485,7 @@ async def get_payment_suggestions(
     """
     suggestions = await payment_automation_service.generate_payment_suggestions(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         strategy=strategy,
         lookahead_days=lookahead_days,
         include_overdue=include_overdue,
@@ -3522,11 +3523,12 @@ async def list_payment_batches(
     per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[PaymentBatchResponse]:
     """Liste alle Zahlungs-Batches."""
     batches = await payment_automation_service.list_batches(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status=status,
         limit=per_page,
         offset=(page - 1) * per_page,
@@ -3564,12 +3566,13 @@ async def create_payment_batch(
     request: CreateBatchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentBatchResponse:
     """Erstelle einen neuen Zahlungs-Batch."""
     # Hole Suggestions für die angegebenen Rechnungen
     suggestions = await payment_automation_service.get_suggestions_for_invoices(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         invoice_ids=request.invoice_ids,
     )
 
@@ -3581,7 +3584,7 @@ async def create_payment_batch(
 
     batch = await payment_automation_service.create_payment_batch(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         suggestions=suggestions,
         name=request.name,
         debtor_account_id=request.debtor_account_id,
@@ -3617,13 +3620,14 @@ async def create_optimized_batch(
     request: CreateOptimizedBatchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentBatchResponse:
     """Erstelle einen optimierten Zahlungs-Batch."""
     max_amount = Decimal(str(request.max_amount)) if request.max_amount else None
 
     batch = await payment_automation_service.create_optimized_batch(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         strategy=request.strategy,
         max_amount=max_amount,
         debtor_account_id=request.debtor_account_id,
@@ -3664,12 +3668,13 @@ async def get_payment_batch(
     batch_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentBatchResponse:
     """Hole Details eines Zahlungs-Batches."""
     batch = await payment_automation_service.get_batch(
         db=db,
         batch_id=batch_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not batch:
@@ -3706,12 +3711,13 @@ async def approve_payment_batch(
     batch_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentBatchResponse:
     """Genehmige einen Zahlungs-Batch."""
     batch = await payment_automation_service.get_batch(
         db=db,
         batch_id=batch_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not batch:
@@ -3761,12 +3767,13 @@ async def reject_payment_batch(
     reason: str = Query(..., min_length=1, max_length=500, description="Ablehnungsgrund"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentBatchResponse:
     """Lehne einen Zahlungs-Batch ab."""
     batch = await payment_automation_service.get_batch(
         db=db,
         batch_id=batch_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not batch:
@@ -3817,12 +3824,13 @@ async def generate_sepa_file(
     request: GenerateSepaRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Generiere SEPA-Datei für einen Batch."""
     batch = await payment_automation_service.get_batch(
         db=db,
         batch_id=batch_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not batch:
@@ -3872,11 +3880,12 @@ async def get_payment_schedule(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentScheduleResponse:
     """Erstelle einen Zahlungsplan."""
     schedule = await payment_automation_service.create_payment_schedule(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
         strategy=strategy,
     )
@@ -3910,11 +3919,12 @@ async def get_automation_statistics(
     days: int = Query(30, ge=7, le=365, description="Betrachtungszeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutomationStatisticsResponse:
     """Hole Statistiken zur Zahlungsautomation."""
     stats = await payment_automation_service.get_automation_statistics(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         days=days,
     )
 
@@ -3940,11 +3950,12 @@ async def get_automation_statistics(
 async def get_automation_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Hole Automationskonfiguration."""
     config = await payment_automation_service.get_config(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return {
@@ -3974,6 +3985,7 @@ async def update_automation_config(
     daily_limit: Optional[float] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Aktualisiere Automationskonfiguration."""
     updates = {}
@@ -4001,7 +4013,7 @@ async def update_automation_config(
 
     config = await payment_automation_service.update_config(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         **updates,
     )
 
@@ -4026,6 +4038,7 @@ async def get_skonto_alerts(
     days: int = Query(3, ge=1, le=14, description="Vorwarnzeit in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """Hole Rechnungen mit ablaufenden Skonto-Fristen.
 
@@ -4043,7 +4056,7 @@ async def get_skonto_alerts(
     """
     return await payment_automation_service.get_skonto_alerts(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         days=days,
     )
 

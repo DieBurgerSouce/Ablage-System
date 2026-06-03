@@ -28,7 +28,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail
 from app.db.models import User, Workflow
 from app.services.workflow.bpmn_converter import (
@@ -125,7 +125,8 @@ class BPMNPreviewResponse(BaseModel):
 async def import_bpmn(
     request: BPMNImportRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> WorkflowImportResponse:
     """Importiert BPMN 2.0 XML und erstellt einen Workflow.
 
@@ -174,7 +175,7 @@ async def import_bpmn(
             nodes=nodes,
             edges=edges,
             description=request.description or workflow_def.description,
-            company_id=current_user.company_id,
+            company_id=company_id,
             variables=workflow_def.variables,
         )
 
@@ -183,7 +184,7 @@ async def import_bpmn(
             workflow = await workflow_service.toggle_workflow(
                 workflow_id=workflow.id,
                 user_id=current_user.id,
-                company_id=current_user.company_id,
+                company_id=company_id,
             )
 
         return WorkflowImportResponse(
@@ -215,7 +216,8 @@ async def import_bpmn_file(
     name: Optional[str] = Query(None, max_length=255, description="Optionaler Workflow-Name"),
     activate: bool = Query(False, description="Workflow direkt aktivieren"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> WorkflowImportResponse:
     """Importiert eine BPMN 2.0 XML Datei und erstellt einen Workflow.
 
@@ -272,7 +274,7 @@ async def import_bpmn_file(
         activate=activate,
     )
 
-    return await import_bpmn(request=request, db=db, current_user=current_user)
+    return await import_bpmn(request=request, db=db, current_user=current_user, company_id=company_id)
 
 
 # =============================================================================
@@ -288,7 +290,8 @@ async def export_bpmn(
     workflow_id: UUID,
     download: bool = Query(False, description="Als Datei-Download"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """Exportiert einen Workflow als BPMN 2.0 XML.
 
@@ -305,7 +308,7 @@ async def export_bpmn(
     workflow = await workflow_service.get_workflow(
         workflow_id=workflow_id,
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not workflow:
@@ -491,7 +494,8 @@ async def validate_bpmn_file(
 async def preview_bpmn(
     workflow_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BPMNPreviewResponse:
     """Gibt Informationen zur BPMN-Diagramm-Vorschau zurück.
 
@@ -504,7 +508,7 @@ async def preview_bpmn(
     workflow = await workflow_service.get_workflow(
         workflow_id=workflow_id,
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not workflow:

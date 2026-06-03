@@ -14,7 +14,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user
+from uuid import UUID
+from app.api.dependencies import get_current_user, get_user_company_id_dep
 from app.db.session import get_async_session
 from app.services.diff.visual_diff_service import VisualDiffService
 
@@ -264,6 +265,7 @@ async def compare_documents_by_id(
     request: DocumentDiffRequest,
     db: AsyncSession = Depends(get_async_session),
     current_user: "User" = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DiffResponse:
     """Vergleicht zwei Dokumente anhand ihrer IDs per Text-Diff.
 
@@ -287,7 +289,7 @@ async def compare_documents_by_id(
             )
 
         # Multi-Tenant-Isolation fuer Dokument A pruefen
-        if doc_a.company_id != current_user.company_id:
+        if doc_a.company_id != company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Kein Zugriff auf dieses Dokument",
@@ -305,7 +307,7 @@ async def compare_documents_by_id(
             )
 
         # Multi-Tenant-Isolation fuer Dokument B pruefen
-        if doc_b.company_id != current_user.company_id:
+        if doc_b.company_id != company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Kein Zugriff auf dieses Dokument",

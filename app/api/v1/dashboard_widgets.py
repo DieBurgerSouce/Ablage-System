@@ -16,13 +16,14 @@ Enterprise Feature: Phase 7 Dashboard Widgets (Januar 2026)
 from datetime import date
 from decimal import Decimal
 from typing import Dict, List, Optional
+from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_log
 from app.db.models import User
@@ -196,6 +197,7 @@ async def get_cash_flow_forecast(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CashFlowForecastResponse:
     """
     Ruft Cash-Flow Prognose für Dashboard-Widget ab.
@@ -219,7 +221,7 @@ async def get_cash_flow_forecast(
         result = await service.get_forecast(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             starting_balance=balance,
         )
 
@@ -300,6 +302,7 @@ async def get_cash_flow_chart_data(
     days: int = Query(30, ge=7, le=90, description="Anzahl Tage (7, 30, 60, 90)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ForecastDataPointResponse]:
     """
     Liefert Chart-Daten für Cash-Flow Visualisierung.
@@ -315,7 +318,7 @@ async def get_cash_flow_chart_data(
         data = await service.get_chart_data(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             days=days,
         )
 
@@ -357,6 +360,7 @@ async def get_supplier_performance(
     period_days: int = Query(90, ge=7, le=365, description="Auswertungszeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SupplierPerformanceResponse:
     """
     Ruft Lieferanten-Performance für Dashboard-Widget ab.
@@ -379,7 +383,7 @@ async def get_supplier_performance(
         data = await service.get_widget_data(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_days=period_days,
         )
 
@@ -432,6 +436,7 @@ async def get_customer_ltv(
     period_days: int = Query(365, ge=30, le=730, description="Auswertungszeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CustomerLTVResponse:
     """
     Ruft Customer Lifetime Value für Dashboard-Widget ab.
@@ -454,7 +459,7 @@ async def get_customer_ltv(
         data = await service.get_widget_data(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_days=period_days,
         )
 
@@ -637,6 +642,7 @@ async def get_revenue_trend(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RevenueTrendResponse:
     """
     Ruft Umsatz-Trend für Dashboard-Widget ab.
@@ -657,7 +663,7 @@ async def get_revenue_trend(
         result = await service.get_revenue_trend(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             date_from=date_from,
             date_to=date_to,
             compare_period=compare_period,
@@ -723,6 +729,7 @@ async def get_dso_tracker(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DSOTrackerResponse:
     """
     Ruft DSO-Metriken für Dashboard-Widget ab.
@@ -745,7 +752,7 @@ async def get_dso_tracker(
         result = await service.get_dso_data(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             date_from=date_from,
             date_to=date_to,
             compare_period=compare_period,
@@ -821,6 +828,7 @@ async def get_margin_analyzer(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MarginAnalyzerResponse:
     """
     Ruft Margen-Analyse für Dashboard-Widget ab.
@@ -843,7 +851,7 @@ async def get_margin_analyzer(
         result = await service.get_margin_data(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             date_from=date_from,
             date_to=date_to,
             compare_period=compare_period,

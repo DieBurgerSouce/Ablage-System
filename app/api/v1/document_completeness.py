@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
@@ -156,12 +156,13 @@ async def get_completeness_report(
     month: Optional[int] = Query(None, ge=1, le=12, description="Monat"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CompletenessReportResponse:
     """Generiert einen vollständigen Belegcheck-Report."""
     try:
         report = await document_completeness_service.generate_completeness_report(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             year=year,
             quarter=quarter,
             month=month,
@@ -259,6 +260,7 @@ async def get_score(
     period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ScoreResponse:
     """Berechnet den Vollständigkeits-Score."""
     if period_end < period_start:
@@ -270,13 +272,13 @@ async def get_score(
     try:
         score = await document_completeness_service.get_completeness_score(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_start=period_start,
             period_end=period_end,
         )
 
         return ScoreResponse(
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_start=period_start,
             period_end=period_end,
             score=score,
@@ -303,6 +305,7 @@ async def get_unmatched_bookings(
     period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[UnmatchedBookingResponse]:
     """Findet Bankbuchungen ohne zugeordneten Beleg."""
     if period_end < period_start:
@@ -314,7 +317,7 @@ async def get_unmatched_bookings(
     try:
         bookings = await document_completeness_service.check_bookings_without_receipts(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_start=period_start,
             period_end=period_end,
         )
@@ -352,12 +355,13 @@ async def get_invoice_gaps(
     year: Optional[int] = Query(None, ge=2000, le=2100, description="Jahr (optional)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[InvoiceGapResponse]:
     """Prüft Lücken in Rechnungsnummern-Sequenzen."""
     try:
         gaps = await document_completeness_service.check_invoice_number_gaps(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             vendor_entity_id=vendor_id,
             year=year,
         )
@@ -394,12 +398,13 @@ async def get_missing_monthly(
     year: int = Query(..., ge=2000, le=2100, description="Prüf-Jahr"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[MissingMonthlyInvoiceResponse]:
     """Findet fehlende monatliche Rechnungen."""
     try:
         missing = await document_completeness_service.check_missing_monthly_invoices(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             year=year,
         )
 
@@ -436,6 +441,7 @@ async def get_plausibility_issues(
     period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[PlausibilityIssueResponse]:
     """Prüft Plausibilitaet von Betraegen."""
     if period_end < period_start:
@@ -447,7 +453,7 @@ async def get_plausibility_issues(
     try:
         issues = await document_completeness_service.check_amount_plausibility(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_start=period_start,
             period_end=period_end,
         )
@@ -486,6 +492,7 @@ async def get_date_issues(
     period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[DateIssueResponse]:
     """Prüft Datumskonsistenz von Belegen."""
     if period_end < period_start:
@@ -497,7 +504,7 @@ async def get_date_issues(
     try:
         issues = await document_completeness_service.check_date_consistency(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_start=period_start,
             period_end=period_end,
         )

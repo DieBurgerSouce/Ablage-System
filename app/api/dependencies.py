@@ -10,6 +10,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 import structlog
@@ -19,7 +20,7 @@ logger = structlog.get_logger(__name__)
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log
 from app.core.security import decode_token, verify_token_type, extract_user_id_from_token
-from app.db.models import User
+from app.db.models import User, UserCompany, Company
 from app.services.user_service import UserService
 
 # Re-export company context functions for convenient access
@@ -211,6 +212,15 @@ async def get_current_user(
             detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
         )
 
+    # B1 Multi-Tenant: zugängliche Firmen-IDs am User-Objekt hinterlegen, damit
+    # synchrone Checks (validate_company_access) ohne erneuten DB-Zugriff funktionieren.
+    # Das User-Modell hat KEINE company_id-Spalte – die Firmen kommen aus UserCompany.
+    setattr(
+        user,
+        "accessible_company_ids",
+        await _resolve_accessible_company_ids(db, user),
+    )
+
     return user
 
 
@@ -303,8 +313,14 @@ def validate_company_access(company_id: UUID, current_user: User) -> None:
     if current_user.is_superuser:
         return
 
-    # Check if user belongs to the requested company
-    if current_user.company_id is None:
+    # B1 Multi-Tenant: Das User-Modell hat KEINE company_id-Spalte. Die zugänglichen
+    # Firmen werden in get_current_user über UserCompany aufgelöst und am User-Objekt
+    # als ``accessible_company_ids`` hinterlegt (frozenset von UUIDs).
+    accessible: Optional[frozenset[UUID]] = getattr(
+        current_user, "accessible_company_ids", None
+    )
+
+    if not accessible:
         logger.warning(
             "user_without_company_accessing_company_data",
             user_id=str(current_user.id),
@@ -315,11 +331,10 @@ def validate_company_access(company_id: UUID, current_user: User) -> None:
             detail="Benutzer ist keiner Firma zugeordnet",
         )
 
-    if str(current_user.company_id) != str(company_id):
+    if company_id not in accessible:
         logger.warning(
             "cross_company_access_attempt",
             user_id=str(current_user.id),
-            user_company_id=str(current_user.company_id),
             requested_company_id=str(company_id),
         )
         raise HTTPException(
@@ -357,6 +372,83 @@ async def get_validated_company_id(
     """
     validate_company_access(company_id, current_user)
     return company_id
+
+
+# ==================== Multi-Tenant Company Resolution (B1) ====================
+
+
+async def _resolve_accessible_company_ids(db: AsyncSession, user: User) -> frozenset[UUID]:
+    """Ermittelt alle aktiven Firmen-IDs, auf die der User via UserCompany Zugriff hat."""
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(Company.is_active == True)  # noqa: E712
+        .where(Company.deleted_at.is_(None))
+    )
+    return frozenset(result.scalars().all())
+
+
+async def get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
+    """Ermittelt die aktive Company-ID des Users via UserCompany-Tabelle.
+
+    SECURITY FIX (B1): Das User-Modell hat KEIN Firmen-Feld - die Firma muss
+    über ``UserCompany`` geholt werden. Ersetzt das vorher genutzte (latent broken)
+    Direktzugriff-Pattern auf eine nicht existierende User-Spalte, das im Betrieb
+    einen ``AttributeError`` ausgelöst hätte. Zentralisiert aus invoices.py.
+
+    Returns:
+        Aktive Company-ID oder None, wenn keine Zuordnung existiert.
+    """
+    # 1. Aktuelle Firma (is_current=True)
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.is_current == True)  # noqa: E712
+        .where(Company.is_active == True)  # noqa: E712
+        .where(Company.deleted_at.is_(None))
+    )
+    current_company_id = result.scalar_one_or_none()
+
+    if current_company_id:
+        return current_company_id
+
+    # 2. Fallback: Erste verfügbare Firma
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(Company.is_active == True)  # noqa: E712
+        .where(Company.deleted_at.is_(None))
+        .order_by(UserCompany.created_at)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _require_user_company_id(db: AsyncSession, user: User) -> UUID:
+    """Wie ``get_user_company_id``, wirft aber 403, wenn keine Firma zugeordnet ist."""
+    company_id = await get_user_company_id(db, user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kein Unternehmen zugeordnet",
+        )
+    return company_id
+
+
+async def get_user_company_id_dep(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> UUID:
+    """FastAPI-Dependency: liefert die aktive Firmen-ID des Users.
+
+    Wirft 403, wenn keine Firmenzuordnung existiert. Nutzung als Endpoint-Parameter::
+
+        company_id: UUID = Depends(get_user_company_id_dep)
+    """
+    return await _require_user_company_id(db, current_user)
 
 
 # ==================== Optional Authentication ====================

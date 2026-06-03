@@ -348,7 +348,7 @@ async def create_workflow(
     """Erstellt einen neuen Workflow."""
     service = WorkflowService(db)
 
-    # SECURITY FIX: company_id via UserCompany-Tabelle (nicht current_user.company_id)
+    # SECURITY FIX: company_id via UserCompany-Tabelle (User-Modell hat keine Firmen-Spalte)
     company_id = await get_user_company_id(db, current_user)
 
     workflow = await service.create_workflow(
@@ -387,7 +387,7 @@ async def list_workflows(
     """Listet Workflows mit optionalen Filtern."""
     service = WorkflowService(db)
 
-    # SECURITY FIX: company_id via UserCompany-Tabelle (nicht current_user.company_id)
+    # SECURITY FIX: company_id via UserCompany-Tabelle (User-Modell hat keine Firmen-Spalte)
     company_id = await get_user_company_id(db, current_user)
 
     workflows, total = await service.list_workflows(

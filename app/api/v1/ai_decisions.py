@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, and_, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User, AIDecision, Document
 from app.core.german_messages import HTTPErrors
 from app.core.safe_errors import safe_error_detail, safe_error_log
@@ -153,6 +153,7 @@ async def list_ai_decisions(
     requires_review: Optional[bool] = Query(None, description="Nur Review-Entscheidungen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AIDecisionListResponse:
     """
     Listet AI-Entscheidungen mit Filterung und Paginierung.
@@ -164,7 +165,7 @@ async def list_ai_decisions(
     - requires_review: Nur zur Überprüfung markierte
     """
     # Query aufbauen
-    conditions = [AIDecision.company_id == current_user.company_id]
+    conditions = [AIDecision.company_id == company_id]
 
     if document_id:
         conditions.append(AIDecision.document_id == document_id)
@@ -209,6 +210,7 @@ async def get_decision_stats(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DecisionStatsSchema:
     """
     Liefert Statistiken zu AI-Entscheidungen.
@@ -224,7 +226,7 @@ async def get_decision_stats(
 
     # Basis-Query
     base_condition = and_(
-        AIDecision.company_id == current_user.company_id,
+        AIDecision.company_id == company_id,
         AIDecision.created_at >= cutoff_date,
     )
 
@@ -302,6 +304,7 @@ async def get_ai_decision(
     decision_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AIDecisionDetailSchema:
     """
     Liefert detaillierte Informationen zu einer AI-Entscheidung.
@@ -315,7 +318,7 @@ async def get_ai_decision(
     stmt = select(AIDecision).where(
         and_(
             AIDecision.id == decision_id,
-            AIDecision.company_id == current_user.company_id,
+            AIDecision.company_id == company_id,
         )
     )
 
@@ -369,6 +372,7 @@ async def submit_feedback(
     feedback: FeedbackRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Übermittelt Benutzer-Feedback zu einer AI-Entscheidung.
@@ -382,7 +386,7 @@ async def submit_feedback(
     stmt = select(AIDecision).where(
         and_(
             AIDecision.id == decision_id,
-            AIDecision.company_id == current_user.company_id,
+            AIDecision.company_id == company_id,
         )
     )
 
@@ -432,6 +436,7 @@ async def accept_decision(
     decision_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Akzeptiert eine AI-Entscheidung (markiert als final).
@@ -444,7 +449,7 @@ async def accept_decision(
     stmt = select(AIDecision).where(
         and_(
             AIDecision.id == decision_id,
-            AIDecision.company_id == current_user.company_id,
+            AIDecision.company_id == company_id,
         )
     )
 
@@ -485,6 +490,7 @@ async def reject_decision(
     correction: Optional[JSONDict] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Lehnt eine AI-Entscheidung ab.
@@ -494,7 +500,7 @@ async def reject_decision(
     stmt = select(AIDecision).where(
         and_(
             AIDecision.id == decision_id,
-            AIDecision.company_id == current_user.company_id,
+            AIDecision.company_id == company_id,
         )
     )
 
@@ -608,6 +614,7 @@ async def get_document_decisions(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AIDecisionSchema]:
     """
     Listet alle AI-Entscheidungen für ein bestimmtes Dokument.
@@ -620,7 +627,7 @@ async def get_document_decisions(
         .where(
             and_(
                 AIDecision.document_id == document_id,
-                AIDecision.company_id == current_user.company_id,
+                AIDecision.company_id == company_id,
             )
         )
         .order_by(AIDecision.created_at.asc())

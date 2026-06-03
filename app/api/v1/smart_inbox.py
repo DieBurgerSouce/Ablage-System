@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail
 from app.db.models import User
 from app.services.ai.smart_inbox.smart_inbox_service import SmartInboxService
@@ -127,6 +127,7 @@ async def get_smart_inbox(
     category: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SmartInboxListResponse:
     """
     Gibt priorisierte Inbox Items zurück.
@@ -152,7 +153,7 @@ async def get_smart_inbox(
         service = SmartInboxService(db=db, user_id=current_user.id)
 
         result = await service.get_prioritized_items(
-            company_id=current_user.company_id,
+            company_id=company_id,
             limit=per_page,
             offset=(page - 1) * per_page,
             status=status_filter,
@@ -180,6 +181,7 @@ async def perform_inbox_action(
     request: SmartInboxActionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """
     Führt eine Aktion auf einem Inbox Item aus.
@@ -202,7 +204,7 @@ async def perform_inbox_action(
             item_id=item_id,
             action=request.action,
             action_data=request.data,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
     except ValueError as e:
@@ -228,6 +230,7 @@ async def snooze_inbox_item(
     request: SmartInboxSnoozeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """
     Snoozed ein Inbox Item bis zu einem bestimmten Zeitpunkt.
@@ -256,7 +259,7 @@ async def snooze_inbox_item(
         await service.snooze_item(
             item_id=item_id,
             snooze_until=request.snooze_until,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
     except ValueError as e:
@@ -283,6 +286,7 @@ async def dismiss_inbox_item(
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """
     Verwirft ein Inbox Item.
@@ -301,7 +305,7 @@ async def dismiss_inbox_item(
         service = SmartInboxService(db=db, user_id=current_user.id)
 
         await service.dismiss_item(
-            item_id=item_id, company_id=current_user.company_id
+            item_id=item_id, company_id=company_id
         )
 
     except ValueError as e:
@@ -325,6 +329,7 @@ async def dismiss_inbox_item(
 async def get_inbox_insights(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SmartInboxInsightsResponse:
     """
     Gibt KI-Insights über Benutzerverhalten zurück.
@@ -346,7 +351,7 @@ async def get_inbox_insights(
         service = SmartInboxService(db=db, user_id=current_user.id)
 
         insights = await service.get_user_insights(
-            company_id=current_user.company_id
+            company_id=company_id
         )
 
         return SmartInboxInsightsResponse(
@@ -373,6 +378,7 @@ async def get_inbox_insights(
 async def trigger_manual_aggregation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, str]:
     """
     Triggert eine manuelle Aggregation von Inbox Items.
@@ -394,7 +400,7 @@ async def trigger_manual_aggregation(
         service = SmartInboxService(db=db, user_id=current_user.id)
 
         task_id = await service.trigger_aggregation(
-            company_id=current_user.company_id
+            company_id=company_id
         )
 
         return {
@@ -413,6 +419,7 @@ async def trigger_manual_aggregation(
 async def get_inbox_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SmartInboxStatsResponse:
     """
     Gibt Statistiken über den Smart Inbox zurück.
@@ -433,7 +440,7 @@ async def get_inbox_stats(
     try:
         service = SmartInboxService(db=db, user_id=current_user.id)
 
-        stats = await service.get_statistics(company_id=current_user.company_id)
+        stats = await service.get_statistics(company_id=company_id)
 
         return SmartInboxStatsResponse(
             total=stats["total"],

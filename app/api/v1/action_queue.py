@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.rbac import require_permission
 from app.db.models import User
 from app.db.models_autonomy import (
@@ -225,6 +225,7 @@ async def _get_or_create_autonomy_settings(
 async def get_autonomy_level(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutonomyLevelResponse:
     """
     Ruft das aktuelle Autonomie-Level der Company ab.
@@ -234,7 +235,7 @@ async def get_autonomy_level(
     Returns:
         AutonomyLevelResponse mit Level-Details
     """
-    settings = await _get_or_create_autonomy_settings(db, current_user.company_id)
+    settings = await _get_or_create_autonomy_settings(db, company_id)
     level = _db_level_to_autonomy_level(settings.autonomy_level)
 
     return AutonomyLevelResponse(
@@ -256,6 +257,7 @@ async def update_autonomy_level(
     request: AutonomyLevelUpdate,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutonomyLevelResponse:
     """
     Ändert das Autonomie-Level der Company.
@@ -278,7 +280,7 @@ async def update_autonomy_level(
         )
 
     # Hole oder erstelle Settings
-    settings = await _get_or_create_autonomy_settings(db, current_user.company_id)
+    settings = await _get_or_create_autonomy_settings(db, company_id)
 
     # Speichere alten Wert für Audit
     old_level = settings.autonomy_level
@@ -293,7 +295,7 @@ async def update_autonomy_level(
     # Audit-Log
     logger.info(
         "autonomy_level_changed",
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         user_id=str(current_user.id),
         old_level=old_level,
         new_level=settings.autonomy_level,
@@ -344,6 +346,7 @@ async def get_pending_actions(
     limit: int = Query(50, ge=1, le=200),
     priority: int | None = Query(None, ge=1, le=5),
     category: str | None = Query(None),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> list[QueuedActionResponse]:
     """
     Ruft ausstehende Aktionen aus der Genehmigungsqueue ab.
@@ -372,7 +375,7 @@ async def get_pending_actions(
 
     actions = await queue.get_pending(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         limit=limit,
         priority_filter=priority_filter,
         category_filter=category_filter,
@@ -407,6 +410,7 @@ async def approve_action(
     request: ApproveActionRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> QueuedActionResponse:
     """
     Genehmigt eine ausstehende Aktion.
@@ -422,7 +426,7 @@ async def approve_action(
 
     action = await queue.approve(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         action_id=action_id,
         approved_by=current_user.id,
         comment=request.comment,
@@ -460,6 +464,7 @@ async def reject_action(
     request: RejectActionRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> QueuedActionResponse:
     """
     Lehnt eine ausstehende Aktion ab.
@@ -475,7 +480,7 @@ async def reject_action(
 
     action = await queue.reject(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         action_id=action_id,
         rejected_by=current_user.id,
         reason=request.reason,
@@ -512,6 +517,7 @@ async def bulk_approve_actions(
     request: BulkApproveRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BulkApproveResponse:
     """
     Genehmigt mehrere Aktionen auf einmal.
@@ -526,7 +532,7 @@ async def bulk_approve_actions(
 
     results = await queue.bulk_approve(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         action_ids=request.action_ids,
         approved_by=current_user.id,
     )
@@ -549,6 +555,7 @@ async def bulk_approve_actions(
 async def get_queue_stats(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> QueueStatsResponse:
     """
     Ruft Statistiken der Genehmigungsqueue ab.
@@ -557,7 +564,7 @@ async def get_queue_stats(
         Zusammenfassung der Queue-Statistiken
     """
     queue = get_action_queue()
-    stats = await queue.get_stats(db, current_user.company_id)
+    stats = await queue.get_stats(db, company_id)
 
     return QueueStatsResponse(**stats)
 
@@ -571,6 +578,7 @@ async def get_routing_stats(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     days: int = Query(30, ge=1, le=365),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RoutingStatsResponse:
     """
     Ruft umfassende Routing-Statistiken ab.
@@ -584,7 +592,7 @@ async def get_routing_stats(
     router_instance = get_confidence_router()
     stats = await router_instance.get_routing_stats(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         days=days,
     )
 

@@ -29,7 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter
 from app.db.models import User
 from app.core.safe_errors import safe_error_log
@@ -199,15 +199,9 @@ async def get_monitoring_status(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MonitoringStatusResponse:
     """Zeigt den Status des Handelsregister-Monitorings."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
     status_data = await service.get_monitoring_status(db, company_id)
 
@@ -232,19 +226,13 @@ async def get_monitoring_alerts(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     include_acknowledged: bool = Query(False, description="Auch bestätigte zeigen"),
     severity: Optional[str] = Query(None, description="Filter nach Schweregrad"),
     page: int = Query(1, ge=1, description="Seite"),
     page_size: int = Query(50, ge=1, le=100, description="Pro Seite"),
 ) -> List[MonitoringAlertResponse]:
     """Zeigt aktive Handelsregister-Alerts."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
     alerts = await service.get_alerts(
         db=db,
@@ -285,15 +273,9 @@ async def acknowledge_alert(
     alert_id: UUID = Path(..., description="Alert-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Bestätigt einen Monitoring-Alert."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
 
     try:
@@ -346,16 +328,10 @@ async def list_monitored_entities(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     status_filter: Optional[str] = Query(None, description="Filter nach Status"),
 ) -> List[MonitoredEntityResponse]:
     """Listet alle überwachten Entities."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
     entities = await service.list_monitored_entities(
         db=db,
@@ -393,19 +369,13 @@ async def add_entity_to_monitoring(
     data: EntityMonitoringRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MonitoredEntityResponse:
     """
     Fügt eine Entity zur Überwachung hinzu.
 
     Die Entity wird regelmäßig auf Änderungen und Insolvenz geprüft.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
 
     entity, error = await service.add_entity_to_monitoring(
@@ -457,15 +427,9 @@ async def remove_entity_from_monitoring(
     entity_id: UUID = Path(..., description="Entity-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Entfernt eine Entity aus der Überwachung."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
     success = await service.remove_entity_from_monitoring(
         db=db,
@@ -506,6 +470,7 @@ async def validate_company(
     data: CompanyValidationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CompanyValidationResponse:
     """
     Validiert eine Firma gegen das Handelsregister.
@@ -516,13 +481,6 @@ async def validate_company(
     - Übereinstimmung der Daten
     - Insolvenz-Status
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
 
     result = await service.validate_company(
@@ -566,6 +524,7 @@ async def get_insolvency_status(
     entity_id: UUID = Path(..., description="Entity-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InsolvencyStatusResponse:
     """
     Ruft den Insolvenz-Status ab.
@@ -575,13 +534,6 @@ async def get_insolvency_status(
     - Historische Verfahren
     - Risikostufe
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
 
     result = await service.get_insolvency_status(db, entity_id)
@@ -629,6 +581,7 @@ async def get_company_changes(
     entity_id: UUID = Path(..., description="Entity-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     date_from: Optional[date] = Query(None, description="Von Datum"),
     date_to: Optional[date] = Query(None, description="Bis Datum"),
     change_type: Optional[str] = Query(None, description="Änderungstyp"),
@@ -644,13 +597,6 @@ async def get_company_changes(
     - purpose_change: Gegenstandsänderung
     - legal_form_change: Rechtsformwechsel
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
 
     changes = await service.get_company_changes(
@@ -693,19 +639,13 @@ async def search_companies(
     data: CompanySearchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[CompanySearchResultResponse]:
     """
     Sucht Firmen im Handelsregister.
 
     Kann nach Firmenname, HRB-Nummer oder Adresse suchen.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
 
     results = await service.search_companies(
@@ -743,6 +683,7 @@ async def check_all_monitored_entities(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Prüft alle überwachten Entities sofort.
@@ -750,13 +691,6 @@ async def check_all_monitored_entities(
     Normalerweise erfolgt die Prüfung automatisch alle 24 Stunden.
     Dieser Endpoint erlaubt eine manuelle Sofortprüfung.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_handelsregister_monitoring_service()
 
     result = await service.check_all_entities(db, company_id)

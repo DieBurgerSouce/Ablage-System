@@ -13,13 +13,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional
+from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.collaboration_service import (
@@ -280,6 +281,7 @@ async def get_mentions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     service: CollaborationService = Depends(get_collaboration_service),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[MentionResponse]:
     """Holt Mentions für den aktuellen Benutzer."""
     try:
@@ -287,13 +289,13 @@ async def get_mentions(
             mentions = await service.get_unread_mentions(
                 db=db,
                 user_id=current_user.id,
-                company_id=current_user.company_id,
+                company_id=company_id,
             )
         else:
             mentions = await service.get_all_mentions(
                 db=db,
                 user_id=current_user.id,
-                company_id=current_user.company_id,
+                company_id=company_id,
             )
 
         return [
@@ -330,6 +332,7 @@ async def create_mention(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     service: CollaborationService = Depends(get_collaboration_service),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MentionResponse:
     """Erstellt eine neue @Mention."""
     try:
@@ -339,7 +342,7 @@ async def create_mention(
             mentioned_user_id=uuid.UUID(request.mentioned_user_id),
             mentioned_by_id=current_user.id,
             context=request.context,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return MentionResponse(
@@ -457,13 +460,14 @@ async def get_activity_feed(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     service: CollaborationService = Depends(get_collaboration_service),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ActivityEntryResponse]:
     """Holt persönlichen Activity Feed."""
     try:
         activities = await service.get_user_activity_feed(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             limit=limit,
         )
 

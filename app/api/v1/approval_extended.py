@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.db.models_approval_extended import (
     ConditionalApprovalRule,
@@ -293,16 +293,17 @@ async def list_conditional_rules(
     active_only: bool = Query(True, description="Nur aktive Regeln"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ConditionalRuleResponse]:
     """Listet alle bedingten Genehmigungsregeln der Firma auf."""
     service = ConditionalLogicService(db)
-    rules = await service._get_active_rules(current_user.company_id)
+    rules = await service._get_active_rules(company_id)
 
     if not active_only:
         from sqlalchemy import select
 
         stmt = select(ConditionalApprovalRule).where(
-            ConditionalApprovalRule.company_id == current_user.company_id
+            ConditionalApprovalRule.company_id == company_id
         )
         result = await db.execute(stmt)
         rules = result.scalars().all()
@@ -320,10 +321,11 @@ async def create_conditional_rule(
     request: ConditionalRuleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConditionalRuleResponse:
     """Erstellt eine neue bedingte Genehmigungsregel."""
     rule = ConditionalApprovalRule(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=request.name,
         description=request.description,
         is_active=request.is_active,
@@ -357,6 +359,7 @@ async def delete_conditional_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine bedingte Genehmigungsregel."""
     from sqlalchemy import and_, select
@@ -364,7 +367,7 @@ async def delete_conditional_rule(
     stmt = select(ConditionalApprovalRule).where(
         and_(
             ConditionalApprovalRule.id == rule_id,
-            ConditionalApprovalRule.company_id == current_user.company_id,
+            ConditionalApprovalRule.company_id == company_id,
         )
     )
     result = await db.execute(stmt)
@@ -400,11 +403,12 @@ async def list_escalation_rules(
     active_only: bool = Query(True, description="Nur aktive Regeln"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[EscalationRuleResponse]:
     """Listet alle Eskalationsregeln der Firma auf."""
     service = EscalationService(db)
     rules = await service.get_escalation_rules(
-        current_user.company_id, active_only=active_only
+        company_id, active_only=active_only
     )
     return [EscalationRuleResponse.model_validate(r) for r in rules]
 
@@ -419,6 +423,7 @@ async def create_escalation_rule(
     request: EscalationRuleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> EscalationRuleResponse:
     """Erstellt eine neue Eskalationsregel."""
     if (
@@ -434,7 +439,7 @@ async def create_escalation_rule(
         )
 
     rule = EscalationRule(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=request.name,
         timeout_hours=request.timeout_hours,
         escalation_target_user_id=request.escalation_target_user_id,
@@ -468,6 +473,7 @@ async def delete_escalation_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Eskalationsregel."""
     from sqlalchemy import and_, select
@@ -475,7 +481,7 @@ async def delete_escalation_rule(
     stmt = select(EscalationRule).where(
         and_(
             EscalationRule.id == rule_id,
-            EscalationRule.company_id == current_user.company_id,
+            EscalationRule.company_id == company_id,
         )
     )
     result = await db.execute(stmt)
@@ -511,11 +517,12 @@ async def list_substitutions(
     active_only: bool = Query(True, description="Nur aktive Vertretungen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[SubstitutionResponse]:
     """Listet alle Stellvertretungen der Firma auf."""
     service = EscalationService(db)
     rules = await service.get_substitution_rules(
-        current_user.company_id, active_only=active_only
+        company_id, active_only=active_only
     )
     return [SubstitutionResponse.model_validate(r) for r in rules]
 
@@ -530,13 +537,14 @@ async def create_substitution(
     request: SubstitutionCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SubstitutionResponse:
     """Erstellt eine neue Stellvertretung."""
     service = EscalationService(db)
 
     try:
         rule = await service.create_substitution(
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=request.user_id,
             substitute_user_id=request.substitute_user_id,
             valid_from=request.valid_from,
@@ -561,11 +569,12 @@ async def delete_substitution(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Stellvertretung."""
     service = EscalationService(db)
     deleted = await service.delete_substitution(
-        rule_id, current_user.company_id
+        rule_id, company_id
     )
 
     if not deleted:
@@ -583,11 +592,12 @@ async def get_active_substitution(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, object]:
     """Findet die aktive Stellvertretung für einen User."""
     service = EscalationService(db)
     sub = await service.find_substitute(
-        db, user_id, current_user.company_id
+        db, user_id, company_id
     )
 
     if not sub:
@@ -621,11 +631,12 @@ async def get_sla_dashboard(
     period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SLADashboardResponse:
     """Liefert SLA-Dashboard-Daten mit Metriken und Compliance-Rate."""
     service = SLAMonitoringService(db)
     dashboard = await service.get_sla_dashboard(
-        db, current_user.company_id, period_days
+        db, company_id, period_days
     )
 
     return SLADashboardResponse(
@@ -648,11 +659,12 @@ async def get_sla_dashboard(
 async def get_sla_breaches(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[SLABreachResponse]:
     """Listet alle aktuellen SLA-Verletzungen auf."""
     service = SLAMonitoringService(db)
     breaches = await service.check_sla_breaches(
-        db, current_user.company_id
+        db, company_id
     )
 
     return [
@@ -669,9 +681,10 @@ async def get_sla_bottlenecks(
     period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[Dict[str, object]]:
     """Detaillierte Bottleneck-Analyse: Langsamste Genehmiger."""
     service = SLAMonitoringService(db)
     return await service.get_bottleneck_analysis(
-        db, current_user.company_id, period_days
+        db, company_id, period_days
     )

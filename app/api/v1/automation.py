@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.automation.auto_filing_service import AutoFilingService
 from app.services.automation.auto_matching_service import AutoMatchingService
@@ -181,11 +181,12 @@ async def list_filing_rules(
     active_only: bool = Query(True, description="Nur aktive Regeln"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AutoFilingRuleResponse]:
     """Listet alle Auto-Filing-Regeln der Firma auf."""
     service = AutoFilingService(db)
     rules = await service.get_rules(
-        db, current_user.company_id, active_only=active_only
+        db, company_id, active_only=active_only
     )
     return [AutoFilingRuleResponse.model_validate(r) for r in rules]
 
@@ -200,6 +201,7 @@ async def create_filing_rule(
     request: AutoFilingRuleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoFilingRuleResponse:
     """Erstellt eine neue Auto-Filing-Regel."""
     service = AutoFilingService(db)
@@ -207,7 +209,7 @@ async def create_filing_rule(
     try:
         rule = await service.create_rule(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             name=request.name,
             model_type=request.model_type,
             confidence_threshold=request.confidence_threshold,
@@ -236,6 +238,7 @@ async def update_filing_rule(
     request: AutoFilingRuleUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoFilingRuleResponse:
     """Aktualisiert eine Auto-Filing-Regel."""
     service = AutoFilingService(db)
@@ -248,7 +251,7 @@ async def update_filing_rule(
         )
 
     rule = await service.update_rule(
-        db, current_user.company_id, rule_id, updates
+        db, company_id, rule_id, updates
     )
 
     if not rule:
@@ -270,11 +273,12 @@ async def delete_filing_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Auto-Filing-Regel."""
     service = AutoFilingService(db)
     deleted = await service.delete_rule(
-        db, current_user.company_id, rule_id
+        db, company_id, rule_id
     )
 
     if not deleted:
@@ -300,11 +304,12 @@ async def get_filing_suggestions(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[FilingSuggestionResponse]:
     """Liefert Ablage-Vorschläge für ein Dokument."""
     service = AutoFilingService(db)
     suggestions = await service.classify_document(
-        db, current_user.company_id, document_id
+        db, company_id, document_id
     )
 
     return [
@@ -329,13 +334,14 @@ async def train_filing_model(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, object]:
     """Trainiert ein Filing-Modell basierend auf historischen Daten."""
     service = AutoFilingService(db)
 
     try:
         result = await service.train_model(
-            db, current_user.company_id, rule_id
+            db, company_id, rule_id
         )
     except ValueError as exc:
         raise HTTPException(
@@ -355,11 +361,12 @@ async def train_filing_model(
 async def get_filing_accuracy_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AccuracyStatsResponse:
     """Liefert aggregierte Accuracy-Statistiken für alle Filing-Modelle."""
     service = AutoFilingService(db)
     stats = await service.get_accuracy_stats(
-        db, current_user.company_id
+        db, company_id
     )
 
     return AccuracyStatsResponse(
@@ -387,11 +394,12 @@ async def get_document_matches(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AutoMatchResponse]:
     """Holt alle Matching-Ergebnisse für ein Dokument."""
     service = AutoMatchingService(db)
     matches = await service.get_matches_for_document(
-        db, current_user.company_id, document_id
+        db, company_id, document_id
     )
     return [AutoMatchResponse.model_validate(m) for m in matches]
 
@@ -405,11 +413,12 @@ async def confirm_match(
     match_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoMatchResponse:
     """Bestätigt ein automatisches Match."""
     service = AutoMatchingService(db)
     match = await service.confirm_match(
-        db, current_user.company_id, match_id, current_user.id
+        db, company_id, match_id, current_user.id
     )
 
     if not match:
@@ -431,11 +440,12 @@ async def reject_match(
     match_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Lehnt ein automatisches Match ab (löscht es)."""
     service = AutoMatchingService(db)
     deleted = await service.reject_match(
-        db, current_user.company_id, match_id
+        db, company_id, match_id
     )
 
     if not deleted:
@@ -455,11 +465,12 @@ async def reject_match(
 async def get_match_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MatchStatisticsResponse:
     """Liefert aggregierte Match-Statistiken."""
     service = AutoMatchingService(db)
     stats = await service.get_match_statistics(
-        db, current_user.company_id
+        db, company_id
     )
 
     return MatchStatisticsResponse(
@@ -489,12 +500,13 @@ async def get_unmatched_documents(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[Dict[str, object]]:
     """Findet Dokumente ohne Matching-Partner."""
     service = AutoMatchingService(db)
     return await service.get_unmatched_documents(
         db,
-        current_user.company_id,
+        company_id,
         document_type=document_type,
         limit=limit,
     )

@@ -26,7 +26,7 @@ import structlog
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail, safe_error_log
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.db.models import User
 from app.db.schemas import (
     DeletionRequestCreate,
@@ -741,7 +741,8 @@ consent_router = APIRouter(prefix="/consent", tags=["GDPR - Einwilligung"])
 async def get_consent_status(
     request: Request,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConsentStatusResponse:
     """
     Zeigt den aktuellen Einwilligungs-Status für alle Bereiche.
@@ -764,7 +765,7 @@ async def get_consent_status(
             db=db,
             user_id=current_user.id,
             scope=scope,
-            company_id=current_user.company_id
+            company_id=company_id
         )
 
         scope_descriptions = {
@@ -808,7 +809,8 @@ async def grant_consent(
     request: Request,
     consent_request: ConsentGrantRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConsentGrantResponse:
     """
     Erteilt oder aktualisiert eine Einwilligung für einen bestimmten Bereich.
@@ -846,7 +848,7 @@ async def grant_consent(
                 db=db,
                 user_id=current_user.id,
                 scope=scope,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 consent_method=ConsentMethod.WEB_FORM,
                 ip_address=client_ip,
                 user_agent=user_agent[:500] if user_agent else None,
@@ -859,7 +861,7 @@ async def grant_consent(
                 db=db,
                 user_id=current_user.id,
                 scope=scope,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 reason="Benutzer hat Einwilligung abgelehnt",
                 ip_address=client_ip,
                 user_agent=user_agent[:500] if user_agent else None,
@@ -919,7 +921,8 @@ async def withdraw_consent(
     request: Request,
     reason: Optional[str] = Query(None, description="Optionaler Grund"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConsentWithdrawResponse:
     """
     Widerruft eine bestehende Einwilligung.
@@ -958,7 +961,7 @@ async def withdraw_consent(
             db=db,
             user_id=current_user.id,
             scope=consent_scope,
-            company_id=current_user.company_id,
+            company_id=company_id,
             reason=reason,
             ip_address=client_ip,
             user_agent=user_agent[:500] if user_agent else None,
@@ -999,7 +1002,8 @@ async def get_consent_history(
     scope: Optional[str] = Query(None, description="Filter nach Bereich"),
     limit: int = Query(50, ge=1, le=200),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConsentHistoryResponse:
     """
     Zeigt die vollständige Historie aller Einwilligungs-Änderungen.
@@ -1029,7 +1033,7 @@ async def get_consent_history(
     history = await consent_service.get_consent_history(
         db=db,
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         scope=consent_scope,
         limit=limit
     )
@@ -1072,7 +1076,8 @@ async def create_dsr_request(
     request: Request,
     dsr_request: DSRCreateRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DSRCreateResponse:
     """
     Erstellt eine neue Betroffenenrechte-Anfrage (Data Subject Request).
@@ -1126,7 +1131,7 @@ async def create_dsr_request(
             request_type=request_type,
             requester_email=current_user.email,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             description=dsr_request.description,
             affected_data_categories=data_categories,
             rectification_details=dsr_request.rectification_details,
@@ -1179,7 +1184,8 @@ async def list_dsr_requests(
     status_filter: Optional[str] = Query(None, description="Filter nach Status"),
     request_type: Optional[str] = Query(None, description="Filter nach Typ"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DSRListResponse:
     """
     Listet alle Betroffenenrechte-Anfragen des Benutzers auf.
@@ -1219,7 +1225,7 @@ async def list_dsr_requests(
     requests = await dsr_service.list_requests(
         db=db,
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status=dsr_status,
         request_type=dsr_type,
     )
@@ -1460,7 +1466,8 @@ async def get_my_data(
     include_documents: bool = Query(True, description="Dokumente einschließen"),
     include_activity: bool = Query(True, description="Aktivitäten einschließen"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Vollständige Auskunft über alle gespeicherten personenbezogenen Daten.
@@ -1487,7 +1494,7 @@ async def get_my_data(
         export = await dsr_service.export_personal_data_summary(
             db=db,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             include_documents=include_documents,
             include_activity=include_activity,
         )

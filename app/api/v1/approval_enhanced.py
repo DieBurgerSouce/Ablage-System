@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.core.safe_errors import safe_error_detail, safe_error_log
 
@@ -362,13 +362,14 @@ async def list_conditional_rules(
     active_only: bool = Query(True, description="Nur aktive Regeln"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ConditionalRuleResponse]:
     """Listet alle bedingten Genehmigungsregeln der Firma auf."""
     from app.db.models_approval_extended import ConditionalApprovalRule
     from sqlalchemy import select, and_
 
     stmt = select(ConditionalApprovalRule).where(
-        ConditionalApprovalRule.company_id == current_user.company_id
+        ConditionalApprovalRule.company_id == company_id
     )
     if active_only:
         stmt = stmt.where(ConditionalApprovalRule.is_active.is_(True))
@@ -390,12 +391,13 @@ async def create_conditional_rule(
     request: ConditionalRuleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConditionalRuleResponse:
     """Erstellt eine neue bedingte Genehmigungsregel."""
     from app.db.models_approval_extended import ConditionalApprovalRule
 
     rule = ConditionalApprovalRule(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=request.name,
         description=request.description,
         conditions=[c.model_dump() for c in request.conditions],
@@ -426,6 +428,7 @@ async def update_conditional_rule(
     request: ConditionalRuleUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConditionalRuleResponse:
     """Aktualisiert eine bedingte Genehmigungsregel."""
     from app.db.models_approval_extended import ConditionalApprovalRule
@@ -434,7 +437,7 @@ async def update_conditional_rule(
     stmt = select(ConditionalApprovalRule).where(
         and_(
             ConditionalApprovalRule.id == rule_id,
-            ConditionalApprovalRule.company_id == current_user.company_id,
+            ConditionalApprovalRule.company_id == company_id,
         )
     )
     result = await db.execute(stmt)
@@ -474,6 +477,7 @@ async def delete_conditional_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine bedingte Genehmigungsregel."""
     from app.db.models_approval_extended import ConditionalApprovalRule
@@ -482,7 +486,7 @@ async def delete_conditional_rule(
     stmt = select(ConditionalApprovalRule).where(
         and_(
             ConditionalApprovalRule.id == rule_id,
-            ConditionalApprovalRule.company_id == current_user.company_id,
+            ConditionalApprovalRule.company_id == company_id,
         )
     )
     result = await db.execute(stmt)
@@ -507,13 +511,14 @@ async def evaluate_conditions(
     document_data: JSONDict,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ConditionalRuleResponse]:
     """Evaluiert alle aktiven bedingten Regeln gegen übergebene Dokumentdaten."""
     from app.services.approval.conditional_logic_engine import ConditionalLogicEngine
 
     engine = ConditionalLogicEngine(db)
     matching_rules = await engine.evaluate_conditions(
-        db, current_user.company_id, document_data
+        db, company_id, document_data
     )
 
     return [_build_conditional_rule_response(r) for r in matching_rules]
@@ -533,13 +538,14 @@ async def list_escalation_rules(
     active_only: bool = Query(True, description="Nur aktive Regeln"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[EscalationRuleResponse]:
     """Listet alle Eskalationsregeln der Firma auf."""
     from app.services.approval.escalation_service import EscalationService
 
     service = EscalationService(db)
     rules = await service.get_escalation_rules(
-        current_user.company_id, active_only=active_only
+        company_id, active_only=active_only
     )
 
     return [_build_escalation_rule_response(r) for r in rules]
@@ -555,12 +561,13 @@ async def create_escalation_rule(
     request: EscalationRuleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> EscalationRuleResponse:
     """Erstellt eine neue Eskalationsregel."""
     from app.db.models_approval_extended import EscalationRule
 
     rule = EscalationRule(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=request.name,
         timeout_hours=request.timeout_hours,
         escalation_target_user_id=(
@@ -595,6 +602,7 @@ async def delete_escalation_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Eskalationsregel."""
     from app.db.models_approval_extended import EscalationRule
@@ -603,7 +611,7 @@ async def delete_escalation_rule(
     stmt = select(EscalationRule).where(
         and_(
             EscalationRule.id == rule_id,
-            EscalationRule.company_id == current_user.company_id,
+            EscalationRule.company_id == company_id,
         )
     )
     result = await db.execute(stmt)
@@ -633,13 +641,14 @@ async def list_substitutions(
     active_only: bool = Query(True, description="Nur aktive Stellvertretungen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[SubstitutionResponse]:
     """Listet alle Stellvertretungsregeln der Firma auf."""
     from app.services.approval.escalation_service import EscalationService
 
     service = EscalationService(db)
     rules = await service.get_substitution_rules(
-        current_user.company_id, active_only=active_only
+        company_id, active_only=active_only
     )
 
     return [_build_substitution_response(r) for r in rules]
@@ -655,6 +664,7 @@ async def create_substitution(
     request: SubstitutionCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SubstitutionResponse:
     """Erstellt eine neue Stellvertretungsregel."""
     from app.services.approval.escalation_service import EscalationService
@@ -663,7 +673,7 @@ async def create_substitution(
 
     try:
         rule = await service.create_substitution(
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=UUID(request.user_id),
             substitute_user_id=UUID(request.substitute_user_id),
             valid_from=request.valid_from,
@@ -688,12 +698,13 @@ async def delete_substitution(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Stellvertretungsregel."""
     from app.services.approval.escalation_service import EscalationService
 
     service = EscalationService(db)
-    deleted = await service.delete_substitution(rule_id, current_user.company_id)
+    deleted = await service.delete_substitution(rule_id, company_id)
 
     if not deleted:
         raise HTTPException(
@@ -716,13 +727,14 @@ async def get_sla_dashboard(
     period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SLADashboardResponse:
     """Liefert das SLA-Dashboard mit Metriken und Bottleneck-Analyse."""
     from app.services.approval.sla_monitoring_service import SLAMonitoringService
 
     service = SLAMonitoringService(db)
     dashboard = await service.get_sla_dashboard(
-        db, current_user.company_id, period_days=period_days
+        db, company_id, period_days=period_days
     )
 
     return SLADashboardResponse(
@@ -745,12 +757,13 @@ async def get_sla_dashboard(
 async def get_sla_breaches(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[Dict[str, object]]:
     """Liefert alle aktuell verletzten SLAs (offene Genehmigungen über Limit)."""
     from app.services.approval.sla_monitoring_service import SLAMonitoringService
 
     service = SLAMonitoringService(db)
-    return await service.check_sla_breaches(db, current_user.company_id)
+    return await service.check_sla_breaches(db, company_id)
 
 
 @router.get(
@@ -762,13 +775,14 @@ async def get_bottleneck_analysis(
     period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[Dict[str, object]]:
     """Detaillierte Bottleneck-Analyse: Wer ist der langsamste Genehmiger?"""
     from app.services.approval.sla_monitoring_service import SLAMonitoringService
 
     service = SLAMonitoringService(db)
     return await service.get_bottleneck_analysis(
-        db, current_user.company_id, period_days=period_days
+        db, company_id, period_days=period_days
     )
 
 
@@ -786,13 +800,14 @@ async def list_auto_filing_rules(
     active_only: bool = Query(True, description="Nur aktive Regeln"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AutoFilingRuleResponse]:
     """Listet alle Auto-Filing-Regeln der Firma auf."""
     from app.db.models_approval_extended import AutoFilingRule
     from sqlalchemy import select, and_
 
     stmt = select(AutoFilingRule).where(
-        AutoFilingRule.company_id == current_user.company_id
+        AutoFilingRule.company_id == company_id
     )
     if active_only:
         stmt = stmt.where(AutoFilingRule.is_active.is_(True))
@@ -814,12 +829,13 @@ async def create_auto_filing_rule(
     request: AutoFilingRuleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoFilingRuleResponse:
     """Erstellt eine neue Auto-Filing-Regel."""
     from app.db.models_approval_extended import AutoFilingRule
 
     rule = AutoFilingRule(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=request.name,
         description=request.description,
         model_type=request.model_type,
@@ -854,6 +870,7 @@ async def delete_auto_filing_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Auto-Filing-Regel."""
     from app.db.models_approval_extended import AutoFilingRule
@@ -862,7 +879,7 @@ async def delete_auto_filing_rule(
     stmt = select(AutoFilingRule).where(
         and_(
             AutoFilingRule.id == rule_id,
-            AutoFilingRule.company_id == current_user.company_id,
+            AutoFilingRule.company_id == company_id,
         )
     )
     result = await db.execute(stmt)
@@ -887,6 +904,7 @@ async def auto_file_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, object]:
     """Klassifiziert ein Dokument und ordnet es automatisch ein."""
     from app.services.auto_filing_service import AutoFilingService
@@ -895,7 +913,7 @@ async def auto_file_document(
 
     try:
         result = await service.auto_file_document(
-            db, current_user.company_id, document_id
+            db, company_id, document_id
         )
         await db.commit()
         return result
@@ -927,13 +945,14 @@ async def list_auto_match_results(
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AutoMatchResponse]:
     """Listet Auto-Match-Ergebnisse auf."""
     from app.db.models_approval_extended import AutoMatchResult
     from sqlalchemy import select, and_
 
     stmt = select(AutoMatchResult).where(
-        AutoMatchResult.company_id == current_user.company_id
+        AutoMatchResult.company_id == company_id
     )
 
     if document_id:
@@ -962,6 +981,7 @@ async def run_auto_matching(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AutoMatchResponse]:
     """Führt Auto-Matching für ein spezifisches Dokument aus."""
     from app.services.auto_matching_service import AutoMatchingService
@@ -970,7 +990,7 @@ async def run_auto_matching(
 
     try:
         matches = await service.find_matches(
-            db, current_user.company_id, document_id
+            db, company_id, document_id
         )
         await db.commit()
         return [_build_auto_match_response(m) for m in matches]
@@ -995,13 +1015,14 @@ async def confirm_auto_match(
     match_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoMatchResponse:
     """Bestätigt ein Auto-Match-Ergebnis manuell."""
     from app.services.auto_matching_service import AutoMatchingService
 
     service = AutoMatchingService(db)
     match = await service.confirm_match(
-        db, match_id, current_user.id, current_user.company_id
+        db, match_id, current_user.id, company_id
     )
 
     if not match:
@@ -1023,11 +1044,12 @@ async def list_unmatched_documents(
     limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[Dict[str, object]]:
     """Listet Dokumente auf die noch kein Match haben."""
     from app.services.auto_matching_service import AutoMatchingService
 
     service = AutoMatchingService(db)
     return await service.get_unmatched_documents(
-        db, current_user.company_id, limit=limit
+        db, company_id, limit=limit
     )

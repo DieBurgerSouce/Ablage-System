@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.db.models import User, Document, DocumentComment
 from app.db.models_comments import (
     CommentAnchor,
@@ -143,6 +143,7 @@ async def create_thread(
     data: ThreadCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ThreadResponse:
     """Erstellt einen neuen Kommentar-Thread."""
     # Dokument prüfen
@@ -156,7 +157,7 @@ async def create_thread(
             detail="Dokument nicht gefunden",
         )
 
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument",
@@ -180,7 +181,7 @@ async def create_thread(
 
     thread = CommentThread(
         document_id=data.document_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         root_comment_id=data.root_comment_id,
         subject=data.subject,
         status=ThreadStatus.OFFEN.value,
@@ -205,11 +206,12 @@ async def get_document_threads(
     status_filter: Optional[str] = Query(None, description="Status-Filter (offen/geloest/geschlossen)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ThreadResponse]:
     """Ruft alle Threads eines Dokuments ab."""
     conditions = [
         CommentThread.document_id == document_id,
-        CommentThread.company_id == current_user.company_id,
+        CommentThread.company_id == company_id,
     ]
     if status_filter:
         conditions.append(CommentThread.status == status_filter)
@@ -232,11 +234,12 @@ async def resolve_thread(
     thread_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ThreadResponse:
     """Markiert einen Thread als geloest."""
     result = await db.execute(
         select(CommentThread).where(
-            and_(CommentThread.id == thread_id, CommentThread.company_id == current_user.company_id)
+            and_(CommentThread.id == thread_id, CommentThread.company_id == company_id)
         )
     )
     thread = result.scalar_one_or_none()
@@ -262,11 +265,12 @@ async def reopen_thread(
     thread_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ThreadResponse:
     """Öffnet einen Thread wieder."""
     result = await db.execute(
         select(CommentThread).where(
-            and_(CommentThread.id == thread_id, CommentThread.company_id == current_user.company_id)
+            and_(CommentThread.id == thread_id, CommentThread.company_id == company_id)
         )
     )
     thread = result.scalar_one_or_none()
@@ -375,12 +379,13 @@ async def create_suggestion(
     data: SuggestionCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SuggestionResponse:
     """Erstellt einen Änderungsvorschlag."""
     # Dokument prüfen
     result = await db.execute(
         select(Document).where(
-            and_(Document.id == data.document_id, Document.company_id == current_user.company_id)
+            and_(Document.id == data.document_id, Document.company_id == company_id)
         )
     )
     document = result.scalar_one_or_none()

@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.api.schemas.approval_matrix import (
     ApprovalMatrixCreate,
@@ -69,17 +69,12 @@ async def list_matrices(
     active_only: bool = Query(True, description="Nur aktive Eintraege"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ApprovalMatrixResponse]:
     """Listet Matrix-Eintraege auf."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     service = ApprovalMatrixService(db)
     matrices = await service.list_matrix_entries(
-        company_id=current_user.company_id,
+        company_id=company_id,
         department=department,
         active_only=active_only,
     )
@@ -100,17 +95,12 @@ async def create_matrix(
     data: ApprovalMatrixCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalMatrixResponse:
     """Erstellt einen Matrix-Eintrag."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     service = ApprovalMatrixService(db)
     matrix = await service.create_matrix_entry(
-        company_id=current_user.company_id,
+        company_id=company_id,
         department=data.department,
         amount_min=data.amount_min,
         amount_max=data.amount_max,
@@ -138,19 +128,14 @@ async def update_matrix(
     data: ApprovalMatrixUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalMatrixResponse:
     """Aktualisiert einen Matrix-Eintrag."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     # Security: Check ownership
     query = select(ApprovalMatrix).where(
         and_(
             ApprovalMatrix.id == matrix_id,
-            ApprovalMatrix.company_id == current_user.company_id,
+            ApprovalMatrix.company_id == company_id,
         )
     )
     result = await db.execute(query)
@@ -187,19 +172,14 @@ async def delete_matrix(
     matrix_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Deaktiviert einen Matrix-Eintrag."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     # Security: Check ownership
     query = select(ApprovalMatrix).where(
         and_(
             ApprovalMatrix.id == matrix_id,
-            ApprovalMatrix.company_id == current_user.company_id,
+            ApprovalMatrix.company_id == company_id,
         )
     )
     result = await db.execute(query)
@@ -237,17 +217,12 @@ async def list_chain_templates(
     active_only: bool = Query(True, description="Nur aktive Templates"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ApprovalChainTemplateResponse]:
     """Listet Chain Templates auf."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     service = ApprovalMatrixService(db)
     templates = await service.list_chain_templates(
-        company_id=current_user.company_id,
+        company_id=company_id,
         active_only=active_only,
     )
 
@@ -267,21 +242,16 @@ async def create_chain_template(
     data: ApprovalChainTemplateCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalChainTemplateResponse:
     """Erstellt eine Chain Template."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     service = ApprovalMatrixService(db)
 
     # Convert Pydantic models to dicts for JSONB storage
     steps_config = [step.model_dump() for step in data.steps_config]
 
     template = await service.create_chain_template(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=data.name,
         steps_config=steps_config,
         created_by_id=current_user.id,
@@ -305,19 +275,14 @@ async def update_chain_template(
     data: ApprovalChainTemplateUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalChainTemplateResponse:
     """Aktualisiert eine Chain Template."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     # Security: Check ownership
     query = select(ApprovalChainTemplate).where(
         and_(
             ApprovalChainTemplate.id == template_id,
-            ApprovalChainTemplate.company_id == current_user.company_id,
+            ApprovalChainTemplate.company_id == company_id,
         )
     )
     result = await db.execute(query)
@@ -354,19 +319,14 @@ async def delete_chain_template(
     template_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Deaktiviert eine Chain Template."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     # Security: Check ownership
     query = select(ApprovalChainTemplate).where(
         and_(
             ApprovalChainTemplate.id == template_id,
-            ApprovalChainTemplate.company_id == current_user.company_id,
+            ApprovalChainTemplate.company_id == company_id,
         )
     )
     result = await db.execute(query)
@@ -398,20 +358,15 @@ async def get_audit_trail(
     request_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ApprovalAuditLogResponse]:
     """Ruft Audit Trail ab."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     # Security: Check request belongs to company
     from app.db.models import ApprovalRequest
     query = select(ApprovalRequest).where(
         and_(
             ApprovalRequest.id == request_id,
-            ApprovalRequest.company_id == current_user.company_id,
+            ApprovalRequest.company_id == company_id,
         )
     )
     result = await db.execute(query)
@@ -429,7 +384,7 @@ async def get_audit_trail(
     return [
         ApprovalAuditLogResponse(
             id=entry.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             request_id=entry.request_id,
             step_id=entry.step_id,
             actor_id=entry.actor_id,
@@ -461,15 +416,10 @@ async def list_groups(
     active_only: bool = Query(True, description="Nur aktive Gruppen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ApprovalGroupResponse]:
     """Listet Genehmigungsgruppen auf."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
-    conditions = [ApprovalGroup.company_id == current_user.company_id]
+    conditions = [ApprovalGroup.company_id == company_id]
     if active_only:
         conditions.append(ApprovalGroup.is_active.is_(True))
 
@@ -498,16 +448,11 @@ async def create_group(
     data: ApprovalGroupCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalGroupResponse:
     """Erstellt eine Genehmigungsgruppe."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     group = ApprovalGroup(
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=data.name,
         description=data.description,
         decision_mode=data.decision_mode,
@@ -533,19 +478,14 @@ async def add_group_member(
     data: ApprovalGroupMemberAdd,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalGroupMemberResponse:
     """Fuegt Gruppenmitglied hinzu."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     # Security: Check group ownership
     query = select(ApprovalGroup).where(
         and_(
             ApprovalGroup.id == group_id,
-            ApprovalGroup.company_id == current_user.company_id,
+            ApprovalGroup.company_id == company_id,
         )
     )
     result = await db.execute(query)
@@ -585,19 +525,14 @@ async def remove_group_member(
     user_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Entfernt Gruppenmitglied."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     # Security: Check group ownership
     query_group = select(ApprovalGroup).where(
         and_(
             ApprovalGroup.id == group_id,
-            ApprovalGroup.company_id == current_user.company_id,
+            ApprovalGroup.company_id == company_id,
         )
     )
     result_group = await db.execute(query_group)
@@ -645,17 +580,12 @@ async def lookup_matrix(
     data: MatrixLookupRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MatrixLookupResponse:
     """Findet passenden Matrix-Eintrag."""
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen"
-        )
-
     service = ApprovalMatrixService(db)
     match = await service.find_matching_matrix(
-        company_id=current_user.company_id,
+        company_id=company_id,
         department=data.department,
         amount=data.amount,
         document_type=data.document_type,

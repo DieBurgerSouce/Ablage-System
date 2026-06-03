@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, and_, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_log
 from app.db.models import Document, User
 
@@ -89,13 +89,13 @@ async def get_review_queue(
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ReviewQueueResponse:
     """
     Holt alle Dokumente die Review brauchen.
 
     Filtert nach ai_metadata->pipeline_result->requires_review = true.
     """
-    company_id = current_user.company_id
 
     try:
         # Count total
@@ -208,14 +208,13 @@ async def confirm_filing(
     request: ConfirmFilingRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConfirmFilingResponse:
     """
     Bestaetigt oder korrigiert die Auto-Zuordnung eines Dokuments.
 
     Bei Korrektur werden die Daten fuer die OCR-Learning-Pipeline gespeichert.
     """
-    company_id = current_user.company_id
-
     # Dokument laden
     stmt = select(Document).where(
         and_(

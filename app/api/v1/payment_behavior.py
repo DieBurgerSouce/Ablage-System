@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.payment_behavior_report_service import (
     get_payment_behavior_report_service,
@@ -237,6 +237,7 @@ async def get_customer_payment_behavior(
     period_days: int = Query(365, ge=30, le=730, description="Auswertungszeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Analysiert Zahlungsverhalten eines Kunden.
@@ -255,7 +256,7 @@ async def get_customer_payment_behavior(
     metrics = await service.analyze_customer_payment_behavior(
         db=db,
         entity_id=entity_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
     )
 
@@ -279,6 +280,7 @@ async def get_payment_behavior_report(
     top_n: int = Query(10, ge=1, le=50, description="Anzahl Top/Bottom Kunden"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Erstellt Gesamt-Report über Kunden-Zahlungsverhalten.
@@ -298,7 +300,7 @@ async def get_payment_behavior_report(
 
     report = await service.generate_payment_behavior_report(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
         top_n=top_n,
     )
@@ -353,6 +355,7 @@ async def get_customer_payment_ranking(
     sort_desc: bool = Query(True, description="Absteigend sortieren"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Ruft Kunden-Ranking nach Zahlungsverhalten ab.
@@ -375,7 +378,7 @@ async def get_customer_payment_ranking(
 
     ranking = await service.get_customer_ranking_by_payment(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
         limit=limit,
         sort_by=sort_by,
@@ -395,6 +398,7 @@ async def get_category_distribution(
     period_days: int = Query(365, ge=30, le=730, description="Auswertungszeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Schnelle Übersicht über Kategorien-Verteilung.
@@ -410,7 +414,7 @@ async def get_category_distribution(
 
     report = await service.generate_payment_behavior_report(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
         top_n=1,  # Minimale Daten
     )

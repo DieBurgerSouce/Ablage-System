@@ -12,8 +12,10 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
+from app.db.models_alert import Alert, AlertCategory
+from app.services.alert_center_service import get_alert_center_service
 from app.services.finanzki.fraud_detection_service import (
     FraudDetectionService,
     FraudType,
@@ -93,6 +95,9 @@ class AlertActionRequest(BaseModel):
     """Request für Alert-Aktionen."""
     action: str = Field(..., description="dismiss, investigate, escalate, false_positive")
     comment: Optional[str] = None
+    escalate_to: Optional[UUID] = Field(
+        None, description="Ziel-Benutzer für escalate (optional; sonst an den Aufrufer)"
+    )
 
 
 # ==================== Endpoints ====================
@@ -103,6 +108,7 @@ async def analyze_fraud(
     days: int = Query(90, ge=7, le=365, description="Analysezeitraum in Tagen"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Führt vollständige Fraud-Analyse durch.
@@ -118,15 +124,12 @@ async def analyze_fraud(
     - Invoice-Splitting
     - Wochenend-Rechnungen
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=days)
 
     service = FraudDetectionService(db)
     result = await service.analyze_all(
-        company_id=current_user.company_id,
+        company_id=company_id,
         start_date=start_date,
         end_date=end_date,
     )
@@ -138,6 +141,7 @@ async def analyze_fraud(
 async def get_fraud_dashboard(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Liefert Dashboard-Statistiken für Fraud Detection.
@@ -149,16 +153,13 @@ async def get_fraud_dashboard(
     - Top Betrugsarten
     - Trend
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = FraudDetectionService(db)
 
     # Aktuelle 30 Tage
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=30)
     current = await service.analyze_all(
-        company_id=current_user.company_id,
+        company_id=company_id,
         start_date=start_date,
         end_date=end_date,
     )
@@ -167,7 +168,7 @@ async def get_fraud_dashboard(
     prev_end = start_date
     prev_start = prev_end - timedelta(days=30)
     previous = await service.analyze_all(
-        company_id=current_user.company_id,
+        company_id=company_id,
         start_date=prev_start,
         end_date=prev_end,
     )
@@ -211,19 +212,17 @@ async def get_fraud_alerts(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Listet Fraud-Alerts mit Filterung.
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = FraudDetectionService(db)
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=days)
 
     result = await service.analyze_all(
-        company_id=current_user.company_id,
+        company_id=company_id,
         start_date=start_date,
         end_date=end_date,
     )
@@ -247,42 +246,89 @@ async def get_fraud_alerts(
 
 @router.get("/alerts/{alert_id}")
 async def get_fraud_alert_detail(
-    alert_id: str,
+    alert_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+    company_id: UUID = Depends(get_user_company_id_dep),
+) -> dict:
     """
-    Liefert Details zu einem spezifischen Alert.
+    Liefert Details zu einem persistierten Fraud-Alert (mandantengetrennt).
 
-    Hinweis: Alerts werden on-the-fly generiert und nicht persistent gespeichert.
-    Diese Route ist für zukuenftige Erweiterung mit persistenter Alert-Speicherung.
+    Liest den Alert aus dem zentralen Alert-Center (Kategorie "fraud"), gefiltert
+    nach der Firma des Benutzers. 404, falls kein passender Alert existiert.
     """
-    raise HTTPException(
-        status_code=501,
-        detail="Alert-Persistierung noch nicht implementiert. Nutzen Sie /analyze für aktuelle Alerts."
-    )
+    service = get_alert_center_service(db)
+    alert = await service.get_alert(alert_id, company_id=company_id)
+    if alert is None or alert.category != AlertCategory.FRAUD.value:
+        raise HTTPException(status_code=404, detail="Alert nicht gefunden")
+    return alert.to_dict()
 
 
 @router.post("/alerts/{alert_id}/action")
 async def take_alert_action(
-    alert_id: str,
+    alert_id: UUID,
     action: AlertActionRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+    company_id: UUID = Depends(get_user_company_id_dep),
+) -> dict:
     """
-    Führt Aktion auf Alert aus.
+    Führt eine Aktion auf einem persistierten Fraud-Alert aus (mit Statuspersistenz).
 
     Aktionen:
     - dismiss: Alert verwerfen
-    - investigate: Zur Untersuchung markieren
-    - escalate: An Vorgesetzten eskalieren
-    - false_positive: Als Fehlalarm markieren
+    - investigate: Zur Untersuchung markieren (in Bearbeitung)
+    - escalate: An (optional benannten) Benutzer eskalieren
+    - false_positive: Als Fehlalarm verwerfen
     """
-    raise HTTPException(
-        status_code=501,
-        detail="Alert-Aktionen noch nicht implementiert. Geplant für zukuenftige Version."
-    )
+    service = get_alert_center_service(db)
+
+    # Existenz + Mandanten-Scope prüfen (404 statt Information Leak)
+    alert = await service.get_alert(alert_id, company_id=company_id)
+    if alert is None or alert.category != AlertCategory.FRAUD.value:
+        raise HTTPException(status_code=404, detail="Alert nicht gefunden")
+
+    action_name = action.action.strip().lower()
+    updated: Optional[Alert]
+
+    if action_name == "dismiss":
+        updated = await service.dismiss_alert(
+            alert_id, user_id=current_user.id, reason=action.comment, company_id=company_id
+        )
+    elif action_name == "false_positive":
+        updated = await service.dismiss_alert(
+            alert_id,
+            user_id=current_user.id,
+            reason=action.comment or "Als Fehlalarm markiert",
+            company_id=company_id,
+        )
+    elif action_name == "investigate":
+        updated = await service.acknowledge_alert(
+            alert_id, user_id=current_user.id, company_id=company_id
+        )
+    elif action_name == "escalate":
+        # Ohne explizites Ziel wird an den ausführenden Benutzer eskaliert.
+        updated = await service.escalate_alert(
+            alert_id,
+            escalate_to_id=action.escalate_to or current_user.id,
+            escalated_by_id=current_user.id,
+            reason=action.comment,
+            company_id=company_id,
+        )
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unbekannte Aktion: {action.action}. "
+                "Erlaubt: dismiss, investigate, escalate, false_positive"
+            ),
+        )
+
+    if updated is None:
+        # Sollte nach der Existenzpruefung nicht auftreten (z.B. Race Condition)
+        raise HTTPException(status_code=404, detail="Alert nicht gefunden")
+
+    return updated.to_dict()
 
 
 @router.get("/config", response_model=FraudConfigSchema)
@@ -414,13 +460,11 @@ async def get_entity_risk_profile(
     entity_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Liefert Fraud-Risikoprofil für eine Entity (Kunde/Lieferant).
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = FraudDetectionService(db)
 
     # Analyse für letztes Jahr
@@ -428,7 +472,7 @@ async def get_entity_risk_profile(
     start_date = end_date - timedelta(days=365)
 
     result = await service.analyze_all(
-        company_id=current_user.company_id,
+        company_id=company_id,
         start_date=start_date,
         end_date=end_date,
     )

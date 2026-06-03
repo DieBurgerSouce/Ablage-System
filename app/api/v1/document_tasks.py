@@ -35,7 +35,7 @@ from app.db.models import (
     DocumentAccess,
     AccessLevel,
 )
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.schemas import (
     TaskCreate,
     TaskUpdate,
@@ -252,6 +252,7 @@ async def list_tasks(
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
     """Listet Aufgaben mit optionalen Filtern auf."""
@@ -265,7 +266,7 @@ async def list_tasks(
 
     offset = (page - 1) * per_page
     tasks, total = await task_service.list_tasks(
-        company_id=current_user.company_id,
+        company_id=company_id,
         document_id=document_id,
         assigned_to_id=assigned_to_id,
         created_by_id=created_by_id,
@@ -296,6 +297,7 @@ async def get_my_tasks(
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
     """Holt alle dem aktuellen Benutzer zugewiesenen Aufgaben."""
@@ -306,7 +308,7 @@ async def get_my_tasks(
     offset = (page - 1) * per_page
     tasks, total = await task_service.get_my_tasks(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status=status_value,
         limit=per_page,
         offset=offset,
@@ -330,13 +332,14 @@ async def get_my_tasks(
 async def get_overdue_tasks(
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
     """Holt alle überfälligen Aufgaben."""
     task_service = get_document_task_service(db)
 
     tasks = await task_service.get_overdue_tasks(
-        company_id=current_user.company_id,
+        company_id=company_id,
         limit=limit,
     )
 
@@ -358,6 +361,7 @@ async def get_overdue_tasks(
 async def get_task_statistics(
     my_stats_only: bool = Query(False, description="Nur eigene Statistiken"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskStatistics:
     """Berechnet Aufgaben-Statistiken."""
@@ -366,7 +370,7 @@ async def get_task_statistics(
     user_id = current_user.id if my_stats_only else None
 
     stats = await task_service.get_task_statistics(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=user_id,
     )
 
@@ -382,6 +386,7 @@ async def get_task_statistics(
 async def get_task(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Ruft eine einzelne Aufgabe ab."""
@@ -389,7 +394,7 @@ async def get_task(
 
     task = await task_service.get_task(
         task_id=task_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not task:
@@ -411,6 +416,7 @@ async def update_task(
     task_id: UUID,
     task_data: TaskUpdate,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Aktualisiert eine Aufgabe."""
@@ -419,7 +425,7 @@ async def update_task(
     try:
         task = await task_service.update_task(
             task_id=task_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             updated_by_id=current_user.id,
             title=task_data.title,
             description=task_data.description,
@@ -459,6 +465,7 @@ async def update_task(
 async def delete_task(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Löscht eine Aufgabe."""
@@ -466,7 +473,7 @@ async def delete_task(
 
     deleted = await task_service.delete_task(
         task_id=task_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         deleted_by_id=current_user.id,
     )
 
@@ -499,6 +506,7 @@ async def delete_task(
 async def start_task(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Startet die Bearbeitung einer Aufgabe."""
@@ -507,7 +515,7 @@ async def start_task(
     try:
         task = await task_service.start_task(
             task_id=task_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
         )
 
@@ -542,6 +550,7 @@ async def complete_task(
     task_id: UUID,
     request_body: Optional[TaskCompleteRequest] = None,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Schließt eine Aufgabe ab."""
@@ -552,7 +561,7 @@ async def complete_task(
     try:
         task = await task_service.complete_task(
             task_id=task_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             completed_by_id=current_user.id,
             completion_notes=completion_notes,
         )
@@ -588,6 +597,7 @@ async def cancel_task(
     task_id: UUID,
     reason: Optional[str] = Query(None, description="Grund für Abbruch"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Bricht eine Aufgabe ab."""
@@ -596,7 +606,7 @@ async def cancel_task(
     try:
         task = await task_service.cancel_task(
             task_id=task_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             cancelled_by_id=current_user.id,
             reason=reason,
         )
@@ -632,6 +642,7 @@ async def block_task(
     task_id: UUID,
     reason: str = Query(..., description="Grund für Blockierung"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Markiert eine Aufgabe als blockiert."""
@@ -640,7 +651,7 @@ async def block_task(
     try:
         task = await task_service.block_task(
             task_id=task_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             blocked_by_id=current_user.id,
             reason=reason,
         )
@@ -675,6 +686,7 @@ async def block_task(
 async def unblock_task(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Hebt die Blockierung einer Aufgabe auf."""
@@ -683,7 +695,7 @@ async def unblock_task(
     try:
         task = await task_service.unblock_task(
             task_id=task_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             unblocked_by_id=current_user.id,
         )
 
@@ -723,6 +735,7 @@ async def assign_task(
     task_id: UUID,
     request_body: TaskAssignRequest,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Weist eine Aufgabe einem Benutzer zu."""
@@ -731,7 +744,7 @@ async def assign_task(
     try:
         task = await task_service.assign_task(
             task_id=task_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             assigned_to_id=request_body.assignedToId,
             assigned_by_id=current_user.id,
             notify_assignee=request_body.notifyAssignee,
@@ -768,6 +781,7 @@ async def assign_task(
 async def unassign_task(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
     """Entfernt die Zuweisung einer Aufgabe."""
@@ -775,7 +789,7 @@ async def unassign_task(
 
     task = await task_service.unassign_task(
         task_id=task_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         unassigned_by_id=current_user.id,
     )
 
@@ -809,6 +823,7 @@ async def get_document_tasks(
     document_id: UUID,
     include_completed: bool = Query(False, description="Auch abgeschlossene einbeziehen"),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
     """Holt alle Aufgaben für ein bestimmtes Dokument."""
@@ -819,7 +834,7 @@ async def get_document_tasks(
 
     tasks = await task_service.get_document_tasks(
         document_id=document_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_completed=include_completed,
     )
 

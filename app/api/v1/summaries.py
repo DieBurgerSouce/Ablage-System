@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_log
 from app.db.models import Document, User
@@ -97,6 +97,7 @@ async def generate_summary(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SummaryGenerateResponse:
     """Generiert oder regeneriert die Zusammenfassung fuer ein Dokument."""
     from app.services.summarization.summary_service import SummaryService
@@ -105,7 +106,7 @@ async def generate_summary(
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
-            Document.company_id == current_user.company_id,
+            Document.company_id == company_id,
             Document.deleted_at.is_(None),
         )
     )
@@ -164,12 +165,13 @@ async def get_summary(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SummaryResponse:
     """Gibt die gespeicherte Zusammenfassung eines Dokuments zurueck."""
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
-            Document.company_id == current_user.company_id,
+            Document.company_id == company_id,
             Document.deleted_at.is_(None),
         )
     )
@@ -208,18 +210,19 @@ async def batch_generate(
     body: BatchGenerateRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BatchGenerateResponse:
     """Startet asynchrone Batch-Generierung von Zusammenfassungen."""
     from app.workers.tasks.summary_tasks import batch_generate_summaries_task
 
     task = batch_generate_summaries_task.apply_async(
-        args=[str(current_user.company_id)],
+        args=[str(company_id)],
         kwargs={"limit": body.limit},
     )
 
     logger.info(
         "batch_summary_triggered",
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         task_id=task.id,
         limit=body.limit,
     )
@@ -227,7 +230,7 @@ async def batch_generate(
     return BatchGenerateResponse(
         message=f"Batch-Generierung gestartet fuer bis zu {body.limit} Dokumente",
         task_id=task.id,
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         limit=body.limit,
     )
 
@@ -243,12 +246,13 @@ async def get_stats(
     request,  # noqa: ANN001 - Required by slowapi limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SummaryStatsResponse:
     """Gibt Summary-Statistiken fuer den aktuellen Mandanten zurueck."""
     from app.services.summarization.summary_service import SummaryService
 
     service = SummaryService(db)
-    stats = await service.get_summary_stats(company_id=current_user.company_id)
+    stats = await service.get_summary_stats(company_id=company_id)
 
     return SummaryStatsResponse(
         total_documents=stats["total_documents"],

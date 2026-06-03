@@ -241,7 +241,7 @@ async def get_backends_status(
     }
 
 
-# ==================== Service Restart (Placeholder) ====================
+# ==================== Service Restart ====================
 
 @router.post(
     "/restart/{service}",
@@ -267,9 +267,36 @@ async def restart_service(
             detail=HTTPErrors.SERVICE_NOT_SUPPORTED.format(service=service),
         )
 
-    # In a real implementation, this would trigger a service restart
-    # For now, return a placeholder response
+    # M6: Ehrlicher Neustart statt Fake-Erfolg (Interface-Kontrakt M6).
+    # G4 stellt den Worker-Control-Hook bereit:
+    #   app/services/admin/worker_control_service.request_worker_restart(reason)
+    #       -> WorkerRestartResult{performed: bool, mechanism: str, detail: str}
+    # Solange der Hook NICHT verdrahtet ist (Service existiert noch nicht), antworten
+    # wir ehrlich mit HTTP 501 statt einen erfolgreichen Neustart vorzutäuschen.
+    import importlib
+
+    restart_unsupported = HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Automatischer Neustart in dieser Umgebung nicht unterstützt",
+    )
+
+    try:
+        # TODO(G4): worker_control_service bereitstellen (siehe Interface-Kontrakt M6)
+        worker_control = importlib.import_module(
+            "app.services.admin.worker_control_service"
+        )
+    except ModuleNotFoundError:
+        raise restart_unsupported from None
+
+    request_restart = getattr(worker_control, "request_worker_restart", None)
+    if request_restart is None:
+        raise restart_unsupported
+
+    result = await request_restart(reason=f"Admin-Neustart angefordert: {service}")
+    if not bool(getattr(result, "performed", False)):
+        raise restart_unsupported
+
     return MessageResponse(
-        message=f"Neustart von '{service}' wurde angefordert",
-        detail="Der Dienst wird in Kürze neu gestartet. Dies kann einige Sekunden dauern.",
+        message=f"Neustart von '{service}' wurde ausgeführt",
+        detail=str(getattr(result, "detail", "Der Dienst wurde neu gestartet.")),
     )

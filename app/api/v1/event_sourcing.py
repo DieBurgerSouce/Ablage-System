@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.event_sourcing import EventStore, ProjectionService, SnapshotService
@@ -136,6 +136,7 @@ async def get_events(
     after_sequence: int = Query(0, description="Nur Events nach dieser Sequenznummer"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[EventResponse]:
     """Holt Events für ein Aggregat."""
     _validate_aggregate_type(aggregate_type)
@@ -145,7 +146,7 @@ async def get_events(
         events = await event_store.get_events(
             aggregate_type=aggregate_type,
             aggregate_id=aggregate_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             after_sequence=after_sequence,
             db=db,
         )
@@ -188,6 +189,7 @@ async def get_snapshot(
     aggregate_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Optional[SnapshotResponse]:
     """Holt den neuesten Snapshot."""
     _validate_aggregate_type(aggregate_type)
@@ -197,7 +199,7 @@ async def get_snapshot(
         snapshot = await snapshot_service.get_latest_snapshot(
             aggregate_type=aggregate_type,
             aggregate_id=aggregate_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 
@@ -233,6 +235,7 @@ async def get_projection(
     at_sequence: Optional[int] = Query(None, description="Zustand bei Sequenznummer (Zeitreise)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ProjectionResponse:
     """Projiziert den aktuellen Zustand."""
     _validate_aggregate_type(aggregate_type)
@@ -246,14 +249,14 @@ async def get_projection(
                 aggregate_type=aggregate_type,
                 aggregate_id=aggregate_id,
                 target_sequence=at_sequence,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 db=db,
             )
         else:
             state = await projection_service.project(
                 aggregate_type=aggregate_type,
                 aggregate_id=aggregate_id,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 db=db,
             )
 
@@ -261,7 +264,7 @@ async def get_projection(
         event_count = await event_store.get_event_count(
             aggregate_type=aggregate_type,
             aggregate_id=aggregate_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 
@@ -269,7 +272,7 @@ async def get_projection(
         events = await event_store.get_events(
             aggregate_type=aggregate_type,
             aggregate_id=aggregate_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             after_sequence=0,
             db=db,
         )
@@ -302,6 +305,7 @@ async def get_event_stats(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> EventStatsResponse:
     """Holt Event-Statistiken."""
     try:
@@ -310,7 +314,7 @@ async def get_event_stats(
 
         # Gesamt-Events
         total_stmt = select(func.count(DomainEvent.id)).where(
-            DomainEvent.company_id == current_user.company_id
+            DomainEvent.company_id == company_id
         )
         total_result = await db.execute(total_stmt)
         total_events = total_result.scalar() or 0
@@ -320,7 +324,7 @@ async def get_event_stats(
             DomainEvent.event_type,
             func.count(DomainEvent.id).label("count")
         ).where(
-            DomainEvent.company_id == current_user.company_id
+            DomainEvent.company_id == company_id
         ).group_by(
             DomainEvent.event_type
         )
@@ -332,7 +336,7 @@ async def get_event_stats(
             DomainEvent.aggregate_type,
             func.count(DomainEvent.id).label("count")
         ).where(
-            DomainEvent.company_id == current_user.company_id
+            DomainEvent.company_id == company_id
         ).group_by(
             DomainEvent.aggregate_type
         )
@@ -341,7 +345,7 @@ async def get_event_stats(
 
         # Snapshot-Anzahl
         snap_stmt = select(func.count(EventSnapshot.id)).where(
-            EventSnapshot.company_id == current_user.company_id
+            EventSnapshot.company_id == company_id
         )
         snap_result = await db.execute(snap_stmt)
         snapshots_count = snap_result.scalar() or 0

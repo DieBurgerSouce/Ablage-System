@@ -33,7 +33,7 @@ from app.db.models_recurring_invoice import (
     OccurrenceStatus,
     OccurrenceMatchMethod,
 )
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.services.finance.recurring_invoice_service import (
     get_recurring_invoice_service,
@@ -342,6 +342,7 @@ async def detect_recurring_invoices(
     lookback_months: int = Query(12, ge=3, le=36, description="Analysezeitraum in Monaten"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[DetectedPatternResponse]:
     """Erkennt wiederkehrende Rechnungsmuster aus der Rechnungshistorie."""
     service = get_recurring_invoice_service()
@@ -349,7 +350,7 @@ async def detect_recurring_invoices(
     try:
         patterns = await service.detect_recurring_invoices(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             min_occurrences=min_occurrences,
             lookback_months=lookback_months,
         )
@@ -398,13 +399,14 @@ async def list_recurring_invoices(
     page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RecurringInvoiceListResponse:
     """Listet wiederkehrende Rechnungen."""
     service = get_recurring_invoice_service()
 
     items, total = await service.list_recurring_invoices(
         db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         status_filter=status_filter,
         page=page,
         page_size=page_size,
@@ -430,6 +432,7 @@ async def get_recurring_invoice(
     recurring_id: UUID = Path(..., description="Wiederkehrende-Rechnung-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RecurringInvoiceDetailResponse:
     """Ruft eine wiederkehrende Rechnung ab."""
     service = get_recurring_invoice_service()
@@ -439,7 +442,7 @@ async def get_recurring_invoice(
     if not recurring:
         raise HTTPException(status_code=404, detail="Wiederkehrende Rechnung nicht gefunden")
 
-    if recurring.company_id != current_user.company_id:
+    if recurring.company_id != company_id:
         raise HTTPException(status_code=403, detail="Kein Zugriff auf diese Rechnung")
 
     base = _build_recurring_response(recurring)
@@ -464,6 +467,7 @@ async def create_recurring_invoice(
     data: RecurringInvoiceCreateSchema,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RecurringInvoiceResponse:
     """Erstellt eine neue wiederkehrende Rechnung."""
     service = get_recurring_invoice_service()
@@ -472,7 +476,7 @@ async def create_recurring_invoice(
         recurring = await service.create_recurring_invoice(
             db,
             RecurringInvoiceCreateRequest(
-                company_id=current_user.company_id,
+                company_id=company_id,
                 vendor_name=data.vendor_name,
                 interval_type=data.interval_type,
                 interval_months=data.interval_months,
@@ -563,12 +567,13 @@ async def get_missing_invoices(
     request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[MissingInvoiceResponse]:
     """Gibt fehlende/überfällige Rechnungen zurück."""
     service = get_recurring_invoice_service()
 
     try:
-        missing = await service.check_missing_invoices(db, current_user.company_id)
+        missing = await service.check_missing_invoices(db, company_id)
 
         return [
             MissingInvoiceResponse(
@@ -597,12 +602,13 @@ async def get_price_changes(
     request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[PriceChangeResponse]:
     """Gibt Preisänderungen bei wiederkehrenden Rechnungen zurück."""
     service = get_recurring_invoice_service()
 
     try:
-        changes = await service.check_price_changes(db, current_user.company_id)
+        changes = await service.check_price_changes(db, company_id)
 
         return [
             PriceChangeResponse(
@@ -634,6 +640,7 @@ async def get_soll_ist_report(
     month: int = Query(..., ge=1, le=12, description="Monat"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SollIstReportResponse:
     """Gibt Soll/Ist-Vergleichsbericht zurück."""
     service = get_recurring_invoice_service()
@@ -641,7 +648,7 @@ async def get_soll_ist_report(
     try:
         report = await service.get_soll_ist_report(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             year=year,
             month=month,
         )

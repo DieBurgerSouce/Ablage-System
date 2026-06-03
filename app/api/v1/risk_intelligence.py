@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.finanzki.risk_intelligence_service import (
     RiskIntelligenceService,
@@ -109,6 +109,7 @@ async def get_risk_profile(
     entity_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Liefert umfassendes Risikoprofil für eine Entity.
@@ -119,13 +120,10 @@ async def get_risk_profile(
     - Branchen-Benchmark-Vergleich
     - Netzwerk-Analyse (Verbindungen zu anderen Entities)
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = RiskIntelligenceService(db)
     result = await service.get_comprehensive_risk_profile(
         entity_id=entity_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if "error" in result:
@@ -140,15 +138,13 @@ async def get_entity_trend(
     quarters: int = Query(4, ge=2, le=8, description="Anzahl Quartale"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Liefert detaillierte Trend-Analyse für eine Entity.
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = RiskIntelligenceService(db)
-    result = await service._analyze_trends(entity_id, current_user.company_id)
+    result = await service._analyze_trends(entity_id, company_id)
 
     return {
         "entity_id": str(entity_id),
@@ -162,16 +158,14 @@ async def get_entity_benchmark(
     industry: Optional[str] = Query(None, description="Branche für Vergleich"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Vergleicht Entity mit Branchen-Benchmark.
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = RiskIntelligenceService(db)
     result = await service._compare_with_benchmarks(
-        entity_id, current_user.company_id, industry or "default"
+        entity_id, company_id, industry or "default"
     )
 
     return {
@@ -185,6 +179,7 @@ async def get_entity_network(
     entity_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Analysiert Netzwerk-Verbindungen der Entity.
@@ -193,11 +188,8 @@ async def get_entity_network(
     - Gleicher IBAN (hoher Risiko-Indikator)
     - Gleicher Adresse (mittlerer Risiko-Indikator)
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = RiskIntelligenceService(db)
-    result = await service._analyze_network(entity_id, current_user.company_id)
+    result = await service._analyze_network(entity_id, company_id)
 
     return {
         "entity_id": str(entity_id),
@@ -210,6 +202,7 @@ async def check_external_sources(
     entity_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Prüft externe Datenquellen für Entity.
@@ -220,11 +213,8 @@ async def check_external_sources(
     - Creditreform (wenn konfiguriert)
     - SCHUFA (wenn konfiguriert)
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = RiskIntelligenceService(db)
-    result = await service.check_external_sources(entity_id, current_user.company_id)
+    result = await service.check_external_sources(entity_id, company_id)
 
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
@@ -237,6 +227,7 @@ async def get_portfolio_risk(
     entity_type: Optional[str] = Query(None, description="customer oder supplier"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Liefert Portfolio-Risikoübersicht für alle Entities.
@@ -247,12 +238,9 @@ async def get_portfolio_risk(
     - Gesamtexposure
     - Portfolio-Risikoscore
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
-
     service = RiskIntelligenceService(db)
     result = await service.get_portfolio_risk_overview(
-        company_id=current_user.company_id,
+        company_id=company_id,
         entity_type=entity_type,
     )
 

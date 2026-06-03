@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.db.models_fraud import (
     FraudScanResult,
@@ -176,6 +176,7 @@ async def scan_document_for_fraud(
     request: FraudScanRequestSchema,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> FraudScanResultSchema:
     """
     Manually trigger a fraud scan on a specific document.
@@ -187,19 +188,13 @@ async def scan_document_for_fraud(
 
     Returns fraud scan result with risk assessment.
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     service = get_enhanced_fraud_detection_service(db)
 
     try:
         if request.scan_type == "ceo_fraud":
             result = await service.detect_ceo_fraud(
                 document_id=document_id,
-                company_id=current_user.company_id,
+                company_id=company_id,
             )
         else:
             raise HTTPException(
@@ -260,6 +255,7 @@ async def scan_invoice_for_duplicates(
     invoice_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> FraudScanResultSchema:
     """
     Scan an invoice for duplicate payment detection.
@@ -269,18 +265,12 @@ async def scan_invoice_for_duplicates(
     - Fuzzy matching (similar amounts +/- 5%, similar dates +/- 3 days)
     - Same invoice number with different entity
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     service = get_enhanced_fraud_detection_service(db)
 
     try:
         result = await service.detect_duplicate_payment(
             invoice_id=invoice_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         await db.commit()
@@ -341,6 +331,7 @@ async def verify_iban_change(
     request: IBANVerificationRequestSchema,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> FraudScanResultSchema:
     """
     Verify an IBAN change for potential manipulation.
@@ -351,19 +342,13 @@ async def verify_iban_change(
     - Frequency of IBAN changes
     - Country change (DE -> foreign)
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     service = get_enhanced_fraud_detection_service(db)
 
     try:
         result = await service.detect_iban_manipulation(
             entity_id=request.entity_id,
             new_iban=request.new_iban,
-            company_id=current_user.company_id,
+            company_id=company_id,
             source_document_id=request.source_document_id,
         )
 
@@ -420,24 +405,19 @@ async def get_iban_history(
     entity_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[IBANHistorySchema]:
     """
     Get IBAN change history for an entity.
 
     Returns masked IBANs for security.
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     stmt = (
         select(IBANBaseline)
         .where(
             and_(
                 IBANBaseline.entity_id == entity_id,
-                IBANBaseline.company_id == current_user.company_id,
+                IBANBaseline.company_id == company_id,
             )
         )
         .order_by(IBANBaseline.first_seen_at.desc())
@@ -468,19 +448,14 @@ async def list_iban_change_requests(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[IBANChangeRequestSchema]:
     """
     List IBAN change requests pending verification.
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     stmt = (
         select(IBANChangeRequest)
-        .where(IBANChangeRequest.company_id == current_user.company_id)
+        .where(IBANChangeRequest.company_id == company_id)
         .order_by(IBANChangeRequest.created_at.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
@@ -514,25 +489,20 @@ async def approve_iban_change(
     request_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Approve an IBAN change request.
 
     Updates the IBAN baseline and marks request as approved.
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     # Get the request
     stmt = (
         select(IBANChangeRequest)
         .where(
             and_(
                 IBANChangeRequest.id == request_id,
-                IBANChangeRequest.company_id == current_user.company_id,
+                IBANChangeRequest.company_id == company_id,
             )
         )
     )
@@ -586,22 +556,17 @@ async def reject_iban_change(
     reason: Optional[str] = Query(None, max_length=500),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Reject an IBAN change request.
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     stmt = (
         select(IBANChangeRequest)
         .where(
             and_(
                 IBANChangeRequest.id == request_id,
-                IBANChangeRequest.company_id == current_user.company_id,
+                IBANChangeRequest.company_id == company_id,
             )
         )
     )
@@ -649,23 +614,18 @@ async def list_fraud_alerts(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[FraudScanResultSchema]:
     """
     List fraud scan results/alerts with filtering.
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     stmt = (
         select(FraudScanResult)
         .where(
             and_(
-                FraudScanResult.company_id == current_user.company_id,
+                FraudScanResult.company_id == company_id,
                 FraudScanResult.created_at >= cutoff,
             )
         )
@@ -710,22 +670,17 @@ async def update_fraud_alert_status(
     request: UpdateScanStatusRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Update fraud alert status (reviewed, false_positive, confirmed, etc.).
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     stmt = (
         select(FraudScanResult)
         .where(
             and_(
                 FraudScanResult.id == alert_id,
-                FraudScanResult.company_id == current_user.company_id,
+                FraudScanResult.company_id == company_id,
             )
         )
     )
@@ -763,16 +718,11 @@ async def get_fraud_statistics(
     days: int = Query(30, ge=1, le=365),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> FraudStatisticsSchema:
     """
     Get fraud detection statistics.
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma zugewiesen",
-        )
-
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Count by scan type
@@ -783,7 +733,7 @@ async def get_fraud_statistics(
         )
         .where(
             and_(
-                FraudScanResult.company_id == current_user.company_id,
+                FraudScanResult.company_id == company_id,
                 FraudScanResult.created_at >= cutoff,
             )
         )
@@ -800,7 +750,7 @@ async def get_fraud_statistics(
         )
         .where(
             and_(
-                FraudScanResult.company_id == current_user.company_id,
+                FraudScanResult.company_id == company_id,
                 FraudScanResult.created_at >= cutoff,
             )
         )
@@ -817,7 +767,7 @@ async def get_fraud_statistics(
         )
         .where(
             and_(
-                FraudScanResult.company_id == current_user.company_id,
+                FraudScanResult.company_id == company_id,
                 FraudScanResult.created_at >= cutoff,
             )
         )
@@ -831,7 +781,7 @@ async def get_fraud_statistics(
         select(func.avg(FraudScanResult.risk_score))
         .where(
             and_(
-                FraudScanResult.company_id == current_user.company_id,
+                FraudScanResult.company_id == company_id,
                 FraudScanResult.created_at >= cutoff,
             )
         )

@@ -30,7 +30,7 @@ from app.db.models_budget import (
     AllocationSource,
     AlertSeverity,
 )
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.services.finance.budget_service import (
     get_budget_service,
     BudgetFilter,
@@ -320,6 +320,7 @@ async def create_kostenstelle(
     data: KostenstelleCreateSchema,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> KostenstelleResponse:
     """Erstellt eine neue Kostenstelle."""
     service = get_budget_service()
@@ -330,7 +331,7 @@ async def create_kostenstelle(
             KostenstelleCreateRequest(
                 code=data.code,
                 name=data.name,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 description=data.description,
                 parent_id=data.parent_id,
                 responsible_user_id=data.responsible_user_id,
@@ -361,13 +362,14 @@ async def list_kostenstellen(
     parent_id: Optional[UUID] = Query(None, description="Nur Kinder dieser Kostenstelle"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[KostenstelleResponse]:
     """Listet alle Kostenstellen."""
     service = get_budget_service()
 
     kostenstellen = await service.list_kostenstellen(
         db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         include_inactive=include_inactive,
         parent_id=parent_id,
     )
@@ -384,11 +386,12 @@ async def list_kostenstellen(
 async def get_kostenstellen_tree(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[KostenstelleTreeNode]:
     """Gibt Kostenstellen als Baum zurück."""
     service = get_budget_service()
 
-    tree = await service.get_kostenstelle_tree(db, current_user.company_id)
+    tree = await service.get_kostenstelle_tree(db, company_id)
 
     return [KostenstelleTreeNode(**node) for node in tree]
 
@@ -409,6 +412,7 @@ async def create_budget(
     data: BudgetCreateSchema,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BudgetResponse:
     """Erstellt ein neues Budget."""
     service = get_budget_service()
@@ -418,7 +422,7 @@ async def create_budget(
             db,
             BudgetCreateRequest(
                 name=data.name,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 description=data.description,
                 period_type=data.period_type,
                 year=data.year,
@@ -483,6 +487,7 @@ async def list_budgets(
     page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BudgetListResponse:
     """Listet Budgets."""
     service = get_budget_service()
@@ -490,7 +495,7 @@ async def list_budgets(
     budgets, total = await service.list_budgets(
         db,
         BudgetFilter(
-            company_id=current_user.company_id,
+            company_id=company_id,
             year=year,
             quarter=quarter,
             month=month,
@@ -541,6 +546,7 @@ async def get_budget(
     budget_id: UUID = Path(..., description="Budget-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BudgetResponse:
     """Ruft ein Budget ab."""
     service = get_budget_service()
@@ -551,7 +557,7 @@ async def get_budget(
         raise HTTPException(status_code=404, detail="Budget nicht gefunden")
 
     # Prüfe Zugriff
-    if budget.company_id != current_user.company_id:
+    if budget.company_id != company_id:
         raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Budget")
 
     return BudgetResponse(
@@ -999,13 +1005,14 @@ async def list_alerts(
     severity: Optional[AlertSeverity] = Query(None, description="Schweregrad-Filter"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BudgetAlertResponse]:
     """Listet unbestätigte Alerts."""
     service = get_budget_service()
 
     alerts = await service.list_unacknowledged_alerts(
         db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         severity=severity,
     )
 

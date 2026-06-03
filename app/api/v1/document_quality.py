@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.core.safe_errors import safe_error_log
 from app.core.rate_limiting import limiter, get_user_identifier
@@ -129,15 +129,16 @@ async def get_company_quality_overview(
     request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CompanyQualityOverviewResponse:
     """Unternehmensweite Qualitaetsübersicht."""
     from app.services.ocr.document_quality_score_service import get_document_quality_service
 
     service = get_document_quality_service()
-    company_id = str(current_user.company_id) if hasattr(current_user, 'company_id') and current_user.company_id else str(current_user.id)
+    company_id_str = str(company_id)
 
     try:
-        overview = await service.get_company_quality_overview(company_id, db)
+        overview = await service.get_company_quality_overview(company_id_str, db)
     except Exception as e:
         logger.error(
             "quality_overview_error",

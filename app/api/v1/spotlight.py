@@ -10,7 +10,8 @@ Ziel: <200ms Antwortzeit.
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from uuid import UUID
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail
 from app.db.models import User
@@ -39,6 +40,7 @@ async def spotlight_search(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SpotlightResponse:
     """
     Spotlight-Schnellsuche für Cmd+K Dialog.
@@ -67,7 +69,7 @@ async def spotlight_search(
             db=db,
             query=q,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             limit=limit,
         )
 

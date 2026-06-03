@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_log
 from app.core.security_auth import build_content_disposition
 from app.db.models import User
@@ -108,6 +108,7 @@ async def run_compliance_scan(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ComplianceScanResponse:
     """
     Führt vollständigen Compliance-Scan durch.
@@ -128,13 +129,13 @@ async def run_compliance_scan(
     logger.info(
         "compliance_scan_requested",
         user_id=str(current_user.id),
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
     )
 
     try:
         service = ComplianceAutopilotService()
         result = await service.run_compliance_scan(
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 
@@ -171,6 +172,7 @@ async def get_retention_report(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RetentionReportResponse:
     """
     Gibt Aufbewahrungsfristen-Report zurück.
@@ -195,7 +197,7 @@ async def get_retention_report(
     try:
         service = ComplianceAutopilotService()
         report = await service.check_retention(
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 
@@ -223,6 +225,7 @@ async def prepare_audit_package(
     body: AuditPreparationRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> StreamingResponse:
     """
     Bereitet Audit-Paket für Steuerprüfung vor.
@@ -249,7 +252,7 @@ async def prepare_audit_package(
     try:
         service = ComplianceAutopilotService()
         package = await service.prepare_audit(
-            company_id=current_user.company_id,
+            company_id=company_id,
             date_range=(body.start_date, body.end_date),
             db=db,
         )
@@ -277,6 +280,7 @@ async def run_gdpr_check(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> GDPRCheckResponse:
     """
     Führt GDPR-Compliance-Check durch.
@@ -301,7 +305,7 @@ async def run_gdpr_check(
     try:
         service = ComplianceAutopilotService()
         result = await service.run_gdpr_check(
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 
@@ -327,6 +331,7 @@ async def get_last_scan_status(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ComplianceScanResponse:
     """
     Gibt letzten Scan-Status zurück (oder führt neuen Scan durch).
@@ -348,7 +353,7 @@ async def get_last_scan_status(
     try:
         service = ComplianceAutopilotService()
         result = await service.run_compliance_scan(
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 

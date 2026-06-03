@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail
 from app.db.models import User, Document, BusinessEntity
 from app.services.datev.booking_suggestion_service import (
@@ -232,6 +232,7 @@ async def suggest_from_document(
     request: SuggestFromDocumentRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BookingSuggestionResponse:
     """
     Generiere Buchungsvorschlag aus bestehendem Dokument.
@@ -243,7 +244,7 @@ async def suggest_from_document(
     result = await db.execute(
         select(Document).where(
             Document.id == request.document_id,
-            Document.company_id == current_user.company_id,
+            Document.company_id == company_id,
         )
     )
     document = result.scalar_one_or_none()
@@ -261,7 +262,7 @@ async def suggest_from_document(
         entity_result = await db.execute(
             select(BusinessEntity).where(
                 BusinessEntity.id == document.entity_id,
-                BusinessEntity.company_id == current_user.company_id,
+                BusinessEntity.company_id == company_id,
             )
         )
         entity = entity_result.scalar_one_or_none()
@@ -297,6 +298,7 @@ async def batch_suggest(
     request: BatchSuggestRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BatchSuggestionResponse:
     """
     Generiere Buchungsvorschläge für mehrere Dokumente.
@@ -307,7 +309,7 @@ async def batch_suggest(
     result = await db.execute(
         select(Document).where(
             Document.id.in_(request.document_ids),
-            Document.company_id == current_user.company_id,
+            Document.company_id == company_id,
         )
     )
     documents = {doc.id: doc for doc in result.scalars().all()}
@@ -321,7 +323,7 @@ async def batch_suggest(
         entity_result = await db.execute(
             select(BusinessEntity).where(
                 BusinessEntity.id.in_(entity_ids),
-                BusinessEntity.company_id == current_user.company_id,
+                BusinessEntity.company_id == company_id,
             )
         )
         entities = {e.id: e for e in entity_result.scalars().all()}
@@ -378,6 +380,7 @@ async def export_to_datev(
     request: ExportRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ExportResponse:
     """
     Exportiere Buchungsvorschläge im DATEV-Format.
@@ -389,7 +392,7 @@ async def export_to_datev(
     result = await db.execute(
         select(Document).where(
             Document.id.in_(request.document_ids),
-            Document.company_id == current_user.company_id,
+            Document.company_id == company_id,
         )
     )
     documents = list(result.scalars().all())
@@ -407,7 +410,7 @@ async def export_to_datev(
         entity_result = await db.execute(
             select(BusinessEntity).where(
                 BusinessEntity.id.in_(entity_ids),
-                BusinessEntity.company_id == current_user.company_id,
+                BusinessEntity.company_id == company_id,
             )
         )
         entities = {e.id: e for e in entity_result.scalars().all()}
@@ -614,6 +617,7 @@ async def get_zero_touch_stats(
     period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ZeroTouchStatsResponse:
     """
     Gibt Zero-Touch-Buchungsstatistiken zurueck.
@@ -624,7 +628,7 @@ async def get_zero_touch_stats(
     orchestrator = get_scan_to_booking_orchestrator()
 
     stats = await orchestrator.get_zero_touch_stats(
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
         db=db,
     )
@@ -650,6 +654,7 @@ async def process_booking(
     document_id: UUID = Path(..., description="Dokument-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ProcessBookingResponse:
     """
     Loest den Buchungsworkflow fuer ein Dokument manuell aus.
@@ -661,7 +666,7 @@ async def process_booking(
 
     result = await orchestrator.process_document_for_booking(
         document_id=document_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         db=db,
     )
 

@@ -1,6 +1,9 @@
 # Recent Changes
 
 ## 2026-06-03
+- **fix(g1)**: B1 Multi-Tenant — `get_user_company_id_dep` zentral in `dependencies.py`; `validate_company_access` via `accessible_company_ids` (behebt AttributeError/HTTP-500). Branch `feature/g1-api-companyid`.
+- **fix(g1)**: company_id-Rollout — 821 `current_user.company_id` in 92 API-Modulen → `Depends(get_user_company_id_dep)` (HTTP 403 bei fehlender Firma); `rg current_user.company_id app/api` → 0.
+- **feat(g1)**: Dashboard-KPIs echt (avg_payment_days/Cashflow/Approvals), OCR ehrliche None; Fraud-Alerts `/alerts/{id}`+`/action` 200/404/400 statt 501; Admin-Restart ehrlicher 501 (M1-M6).
 - **chore(config)**: FINTS_ALLOW_MOCK_SYNC + FINTS_AUTO_SYNC_ENABLED Flags in app/core/config.py (beide Default False, G0-Prereq)
 - **chore(infra)**: asn1crypto==1.5.1 in requirements.txt gepinnt (RFC-3161-TSA, tsa_service.py)
 - **docs(env)**: .env.example BANKING/FinTS-Sektion ergaenzt (PSD2-Konfigurationsvariablen)
