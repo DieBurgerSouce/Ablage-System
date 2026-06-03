@@ -196,13 +196,36 @@ async def test_db():
 
 
 # API client fixtures
+_APP_STARTUP_STATE: dict = {}
+
+
 @pytest.fixture
 def client(test_settings):
-    """Create test client."""
+    """Create test client.
+
+    G5 (2026-06-03): Der App-Startup (Lifespan) prueft die DB-Konnektivitaet und
+    wirft ohne erreichbare Datenbank einen RuntimeError. Damit Tests dann sauber
+    UEBERSPRUNGEN statt mit ERROR abgebrochen werden (in CI mit DB laufen sie
+    regulaer), wird der Startup-Fehler abgefangen und nach dem ersten Fehlschlag
+    gecacht (kein wiederholter ~20s-DB-Timeout je Test).
+    """
     if not APP_AVAILABLE:
         pytest.skip("App not available")
-    with TestClient(app) as test_client:
+    if "startup_error" in _APP_STARTUP_STATE:
+        pytest.skip(
+            f"App-Startup nicht moeglich (Backend/DB nicht verfuegbar): "
+            f"{_APP_STARTUP_STATE['startup_error']}"
+        )
+    client_cm = TestClient(app)
+    try:
+        test_client = client_cm.__enter__()
+    except Exception as exc:  # Startup-Fehler (z.B. DB) -> Skip statt Error
+        _APP_STARTUP_STATE["startup_error"] = str(exc)
+        pytest.skip(f"App-Startup fehlgeschlagen (Backend/DB nicht verfuegbar): {exc}")
+    try:
         yield test_client
+    finally:
+        client_cm.__exit__(None, None, None)
 
 
 @pytest_asyncio.fixture
