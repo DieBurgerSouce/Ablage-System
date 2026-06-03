@@ -1085,7 +1085,7 @@ class DocumentTemplateService:
 
             pdf_bytes = HTML(string=html_content).write_pdf()
             return pdf_bytes
-        except ImportError:
+        except (ImportError, OSError):
             logger.warning("WeasyPrint nicht verfügbar, PDF-Rendering deaktiviert")
             # Fallback: HTML als bytes zurückgeben
             return html_content.encode("utf-8")

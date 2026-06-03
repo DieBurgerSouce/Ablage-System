@@ -834,36 +834,29 @@ class TestStatisticsEndpoints:
 
             assert len(result) == 2
 
-    @pytest.mark.xfail(
-        reason=(
-            "App-Bug: Endpoint get_trend_data konstruiert TrendResponse(data=...), "
-            "aber TrendResponse besitzt kein Feld 'data' (Pflichtfelder: metric, "
-            "backend, data_points, trend_direction, change_percent). Der Aufruf "
-            "loest pydantic.ValidationError aus. Fix gehoert in app/api/v1/training.py "
-            "bzw. app/db/schemas.py, nicht in den Test."
-        ),
-        strict=False,
-        raises=Exception,
-    )
     @pytest.mark.asyncio
     async def test_get_trend_data(self, mock_feedback_service, mock_db, mock_user):
-        """Sollte Trend-Daten zurueckgeben (derzeit durch App-Bug blockiert)."""
+        """Sollte Trend-Daten als TrendResponse (avg_cer-Serie) zurueckgeben."""
         from app.api.v1.training import get_trend_data
 
         mock_feedback_service.get_trend_data = AsyncMock(return_value=[
-            {"date": "2024-01-01", "cer": 0.02},
-            {"date": "2024-01-02", "cer": 0.019},
+            {"date": "2024-01-01", "backend": "deepseek", "avg_cer": 0.02},
+            {"date": "2024-01-02", "backend": "deepseek", "avg_cer": 0.019},
         ])
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_user
 
             result = await get_trend_data(
+                backend=None,
+                days=30,
                 current_user=mock_user,
                 db=mock_db,
             )
 
-            assert len(result.data) == 2
+            assert result.metric == "avg_cer"
+            assert len(result.data_points) == 2
+            assert result.trend_direction in ("up", "down", "stable")
 
     @pytest.mark.asyncio
     async def test_get_learned_weights(self, mock_feedback_service, mock_db, mock_user):

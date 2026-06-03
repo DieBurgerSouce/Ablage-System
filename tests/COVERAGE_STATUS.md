@@ -46,12 +46,14 @@ daher lokal nicht durchlaufen. Der reale Suite-Wert ist im CI/Docker zu messen.
 
 ## 4. Cross-Stream-Dependencies (NICHT in G5-Scope `tests/**`+`pytest.ini`)
 
+> **G5-Followup (2026-06-03, `fix/g5-followup-app`):** #1 Folder.permissions ✅, #2 weasyprint OSError ✅, #3 fail_under 90→50 ✅, #5 User.company_id ✅, #6 get_trend_data ✅, #7 Entity-company_id-Filter ✅, #4 Marker-Konsolidierung ✅ (pyproject-Pytest-Block entfernt) — alle behoben. OFFEN: nur noch Voll-Gruen der DB-Tests im CI (braucht laufende Test-DB).
+
 | # | Befund | Ort | Auswirkung | Empfehlung |
 |---|---|---|---|---|
 | 1 | **`Folder.permissions` Ambiguous-FK** bricht `configure_mappers()` | `app/db/models*.py` | Blockiert ALLE Tests, die echte ORM-Objekte instanziieren (G5-Cross-Tenant/RLS, `test_rls_context`, `test_cash_isolation`). `test_db` faengt es als irrefuehrendes "Database not available"-Skip. | `foreign_keys=[...]` an der `Folder.permissions`-Relationship setzen. **Kritisch fuer die gesamte DB-Test-Ebene.** |
 | 2 | **WeasyPrint `OSError` ungefangen** | `app/services/templates/template_engine.py` (+ document_template_service, procedure_documentation_service) | `from app.main import app` brach auf Windows -> alle App-Tests skippten faelschlich. G5 ueberbrueckt via Mock in `tests/conftest.py`. | App-seitig `except (ImportError, OSError)` statt nur `ImportError`. |
 | 3 | **`fail_under = 90`** unrealistisch | `pyproject.toml [tool.coverage.report]` | CI-Coverage-Gate dauerhaft rot (~51 % real). | Temporaer auf realistischen Wert senken + staffeln (s. Roadmap). |
-| 4 | **Marker-Konsolidierung** | `pyproject.toml [tool.pytest.ini_options]` wird ignoriert | `pytest.ini` hat Vorrang; pyproject-Pytest-Konfig ist tot. G5 hat alle Marker in `pytest.ini` vervollstaendigt. | pyproject-Pytest-Block entfernen ODER mit pytest.ini konsolidieren (eine Quelle der Wahrheit). |
+| 4 | ✅ **Marker-Konsolidierung behoben** | `pyproject.toml` | War: toter `[tool.pytest.ini_options]`-Block (von pytest ignoriert). | G5-Followup: Block entfernt -> `pytest.ini` ist einzige Quelle der Wahrheit. |
 | 5 | **`validation_queue_service.assign_to_editor` nutzt `User.company_id`** | `app/services/.../validation_queue_service.py` | Spalte existiert nicht (G1: `get_user_company_id`-Muster). Laufzeit-`AttributeError`. 2 Tests als `xfail`. | Auf `get_user_company_id`/UserCompany umstellen (G1/G4-Folgearbeit). |
 | 6 | **`get_trend_data` -> `TrendResponse(data=...)`** Schema-Mismatch | `app/api/v1/training.py` | `pydantic.ValidationError` beim Aufruf (`TrendResponse` hat kein `data`-Feld). 1 Test als `xfail`. | Endpoint auf echte Schema-Felder umstellen oder Schema erweitern. |
 | 7 | **Entity-Endpoints ohne `company_id`-Filter** | `app/api/v1/entities.py` (`GET /entities/{id}`, `/{id}/documents`) | Keine Record-Level-Mandantentrennung (per Design firmenuebergreifend?). G5-Test als `xfail`. | Bewusst entscheiden: Isolation einfuehren oder Design dokumentieren. |

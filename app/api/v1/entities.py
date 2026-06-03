@@ -1198,15 +1198,22 @@ async def get_entity(
     include_documents: bool = Query(False, description="Dokumente mitladen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessEntityDetailResponse:
     """
     Ruft einen Geschäftspartner mit allen Details ab.
 
     Optional können verknüpfte Dokumente mitgeladen werden.
     """
+    # G5: Mandanten-Isolation - eigene oder firmenuebergreifende (company_id IS NULL)
+    # Entities; fremde company_id -> 404 (kein Cross-Tenant-Leak).
     query = select(BusinessEntity).where(
         BusinessEntity.id == entity_id,
-        BusinessEntity.deleted_at.is_(None)
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.company_id == company_id,
+            BusinessEntity.company_id.is_(None),
+        ),
     )
 
     if include_documents:
@@ -1475,15 +1482,21 @@ async def get_entity_documents(
     per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Listet alle Dokumente die mit diesem Geschäftspartner verknüpft sind.
     """
     # Entity prüfen
+    # G5: Mandanten-Isolation (eigene oder firmenuebergreifende Entity)
     entity_result = await db.execute(
         select(BusinessEntity).where(
             BusinessEntity.id == entity_id,
-            BusinessEntity.deleted_at.is_(None)
+            BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.company_id == company_id,
+            BusinessEntity.company_id.is_(None),
+        ),
         )
     )
     if not entity_result.scalar_one_or_none():
@@ -1492,11 +1505,12 @@ async def get_entity_documents(
             detail="Geschäftspartner nicht gefunden"
         )
 
-    # Dokumente zaehlen
+    # Dokumente der eigenen Firma zaehlen (kein Cross-Tenant-Leak)
     count_query = select(func.count()).select_from(
         select(Document).where(
             Document.business_entity_id == entity_id,
-            Document.deleted_at.is_(None)
+            Document.deleted_at.is_(None),
+            Document.company_id == company_id,
         ).subquery()
     )
     total = (await db.execute(count_query)).scalar() or 0
@@ -1507,7 +1521,8 @@ async def get_entity_documents(
         select(Document)
         .where(
             Document.business_entity_id == entity_id,
-            Document.deleted_at.is_(None)
+            Document.deleted_at.is_(None),
+            Document.company_id == company_id,
         )
         .order_by(Document.created_at.desc())
         .offset(offset)

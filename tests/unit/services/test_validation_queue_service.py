@@ -236,15 +236,6 @@ class TestValidationQueueServiceAssign:
     """Tests fuer Zuweisungs-Operationen."""
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        reason=(
-            "App-seitiger Blocker: assign_to_editor() referenziert User.company_id "
-            "fuer die Editor-Company-Validierung. Das User-Modell besitzt auf "
-            "diesem Branch keine company_id-Spalte (G1-Rollout noch nicht gemerged) "
-            "-> AttributeError. Nicht im Test-Scope behebbar."
-        ),
-        strict=False,
-    )
     async def test_assign_to_editor_success(
         self, validation_queue_service, mock_db, company_id, sample_queue_item
     ):
@@ -444,16 +435,6 @@ class TestValidationQueueServiceBatch:
         assert result.failed_count == 0
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        reason=(
-            "App-seitiger Blocker: batch_assign() ruft assign_to_editor(), das "
-            "User.company_id referenziert. Das User-Modell hat auf diesem Branch "
-            "keine company_id-Spalte (G1 nicht gemerged) -> AttributeError wird "
-            "als failed_item gezaehlt (success_count=0). Nicht im Test-Scope "
-            "behebbar."
-        ),
-        strict=False,
-    )
     async def test_batch_assign_success(
         self, validation_queue_service, mock_db, company_id, sample_queue_item
     ):

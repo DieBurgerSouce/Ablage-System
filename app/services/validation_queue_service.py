@@ -28,7 +28,8 @@ from app.db.models import (
     ValidationStatus,
     SampleSource,
     Document,
-    User
+    User,
+    UserCompany,
 )
 from app.db.schemas import (
     ValidationQueueItemCreate,
@@ -426,11 +427,15 @@ class ValidationQueueService:
             return None
 
         # SECURITY: Prüfen ob Editor zur selben Company gehoert
+        # G5: User hat keine company_id-Spalte (G1-Design) -> Zugehoerigkeit
+        # ueber die UserCompany-Mitgliedschaft pruefen.
         editor_result = await self.db.execute(
-            select(User).where(
+            select(User)
+            .join(UserCompany, UserCompany.user_id == User.id)
+            .where(
                 and_(
                     User.id == editor_id,
-                    User.company_id == company_id,
+                    UserCompany.company_id == company_id,
                 )
             )
         )

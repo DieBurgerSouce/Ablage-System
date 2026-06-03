@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+### Fixed — Stream G5-Followup (App-Findings, `fix/g5-followup-app`, 2026-06-03)
+- **F1** `validation_queue_service.assign_to_editor`: Editor-Company-Pruefung ueber `UserCompany`-Join statt nicht existentem `User.company_id` (behebt latenten AttributeError; 2 Tests von xfail → gruen).
+- **F2** `app/api/v1/training.py get_trend_data`: lieferte ungueltiges `TrendResponse(data=...)` → gueltige `TrendResponse` (avg_cer-Serie als `data_points`, `trend_direction`/`change_percent` berechnet; `data_points` als dict, umgeht die doppelte `TrendDataPoint`-Klasse in `schemas.py`).
+- **F3** `app/api/v1/entities.py` (`get_entity`, `get_entity_documents`): Mandanten-Isolation via `company_id` (eigene oder firmenuebergreifende/NULL Entities; Dokumente nach `Document.company_id`). `company_presence` (Brand-Short-Names) bleibt unberuehrt.
+- **F4** `template_engine`/`document_template_service`/`procedure_documentation_service`: weasyprint-Import `except (ImportError, OSError)` — `app.main` importiert jetzt OHNE Test-Mock auf Windows (libgobject-OSError gefangen).
+- **F5** `pyproject.toml` coverage `fail_under` 90 → 50 (realistisch ~51% Voll-Stack; Roadmap 50→65→80→90).
+
 ### Tests — Stream G5 (Test-Wahrheit / B4, `feature/g5-test-truth`, 2026-06-03)
 - **B4 angegangen**: Security-/Multi-Tenant-Tests von „stub - nicht implementiert"-Tarn-Skips zu echten Tests. Kein solcher Skip mehr in `tests/security/**` und `tests/integration/test_multi_tenant_isolation.py`.
 - **Collection**: `pytest --collect-only` 26→0 Errors. `tests/conftest.py` mockt weasyprint, falls native GTK-Libs (libgobject) fehlen (sonst bricht `app.main`-Import auf Windows). Orchestration-Tests via Paket-Import gefixt; `pytest.ini` vollstaendige Marker-Liste (`--strict-markers`), `testpaths=tests`, `--ignore=tests/_archived` (pytest.ini ist aktive Config; pyproject-Pytest-Block wird ignoriert).

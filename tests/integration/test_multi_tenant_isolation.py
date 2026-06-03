@@ -192,25 +192,21 @@ class TestCrossCompanyAccessPrevention:
             f"Erwartet 403/404 fuer Cross-Tenant-Zugriff, erhalten {response.status_code}"
         )
 
-    @pytest.mark.xfail(
-        reason="Entity-Endpoints filtern (noch) nicht nach company_id - BusinessEntity ist per "
-        "Design firmenuebergreifend. Record-Level-Isolation ausstehend (Cross-Stream-Finding, "
-        "app/api/v1/entities.py).",
-        strict=False,
-    )
     @pytest.mark.asyncio
     async def test_cannot_access_other_company_entities(self, test_db: AsyncSession) -> None:
-        """CWE-639: Firma A sollte 403/404 auf einen Geschaeftspartner von Firma B erhalten.
+        """CWE-639: Firma A erhaelt 403/404 (nie 200) auf einen Geschaeftspartner von Firma B.
 
-        Aktuell liefert ``GET /entities/{id}`` 200 ohne company_id-Filter -> dieser
-        Test ist als xfail markiert und schlaegt absichtlich fehl, bis eine
-        Record-Level-Mandantentrennung eingefuehrt wird (dann xpass -> faellt auf).
+        Seit G5-Followup filtern die Entity-Endpoints nach company_id (eigene oder
+        firmenuebergreifende/NULL Entities); eine Entity mit fremder company_id ist
+        nicht zugreifbar -> 404.
         """
         company_a = await _seed_company(test_db, "Firma A GmbH", COMPANY_A_ID)
-        await _seed_company(test_db, "Firma B AG", COMPANY_B_ID)
+        company_b = await _seed_company(test_db, "Firma B AG", COMPANY_B_ID)
         user_a = await _seed_user_in_company(test_db, company_a.id, "user-a@firma-a.local")
 
-        entity_b = BusinessEntity(id=uuid.uuid4(), name="Geheimer Partner von B")
+        entity_b = BusinessEntity(
+            id=uuid.uuid4(), name="Geheimer Partner von B", company_id=company_b.id
+        )
         test_db.add(entity_b)
         await test_db.flush()
 
