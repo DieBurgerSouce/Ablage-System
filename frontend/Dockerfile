@@ -17,7 +17,7 @@ RUN npm run build
 # Stage 2: Production
 # Pin base image digest for reproducible builds
 # Update digest via: docker manifest inspect nginx:1.27-alpine3.20
-FROM nginx:1.27-alpine3.20@sha256:679a5fd058f6ca754a561846fe27927e408074431d63556e8fc588fc38be6901 AS production
+FROM nginx:1.27-alpine3.20@sha256:814a8e88df978ade80e584cc5b333144b9372a8e3c98872d07137dbf3b44d0e4 AS production
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
