@@ -103,7 +103,7 @@ Ablage-System is an intelligent document processing platform for German document
 +-------------------------------------------------------------+
 |                    FastAPI Backend (:8000)                  |
 +-------------------------------------------------------------+
-|  Celery Workers  |  Redis (:6380)  |  PostgreSQL (:5433)    |
+|  Celery Workers  |  Redis (:6380)  |  PostgreSQL (:5434)    |
 +-------------------------------------------------------------+
 |  OCR: DeepSeek | GOT-OCR | Surya | Surya-GPU               |
 +-------------------------------------------------------------+
