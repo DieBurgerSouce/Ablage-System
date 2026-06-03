@@ -1,5 +1,37 @@
 # Recent Changes
 
+## 2026-06-03 (G3 — Frontend Mocks → echt, M18–M23)
+
+Branch `feature/g3-frontend-mocks` (Worktree). Remediation-Strom G3 aus
+`.claude/reviews/2026-06-03/MOCK_DATA_REGISTER.md`: erfundene Mock-/Zufallsdaten
+(`Math.random`, `generateMock*`) aus dem Render-Pfad mehrerer Views entfernt und
+durch ehrliche Empty-States ersetzt. Nur `frontend/src/**` geaendert (konfliktfrei
+parallel zu G1/G2/G4). Code-Commit `2f9c2890`.
+
+- M18 Knowledge-Graph (3 Views + Tests): Mock-Fallbacks raus, leere Strukturen,
+  `mockData`→`networkData`, je View Empty-State-Test.
+- M19 Streckengeschaeft-Validierung: echte `useDropShipmentList`-Liste,
+  Approve/Reject als echte `useConfirmClassification`/`useOverrideClassification`-
+  Mutationen (kein lokaler State), Toast nur bei Erfolg.
+- M20 Reports: `_getFallbackData`/`Math.random` raus, typisierte
+  `ReportDataUnavailableError`, Views → Empty-State.
+- M21 Import-Wizard: 404-Fake-Preview raus, `WizardApiError(404)` durchgereicht,
+  echter Empty-State.
+- M22 StatusChangeDropdown: `supported`-Flag, nicht unterstuetzte Status disabled,
+  `onSuccess()` nur nach erfolgreicher Mutation.
+- M23 Job-Queue-Charts (3) + OverviewTab: `generateMockData` raus, `data ?? []`,
+  Empty-State „Keine Daten fuer den gewaehlten Zeitraum".
+- #8 (nur Doku): Token sessionStorage→httpOnly-Cookie als G1/G2-Abhaengigkeit in
+  `lib/api/client.ts` vermerkt, kein Code-Change.
+
+Verifikation: `tsc --noEmit` sauber, ESLint sauber, KG-Tests 18/18 gruen,
+`grep generateMock|Math.random` in den 9 Zieldateien = 0 Treffer. Die restlichen
+86 vitest-Fehler sind vorbestehend (auf Eltern-Commit `6e877ef6` identisch) und
+ausserhalb von G3 (invoices, dashboard/websocket, portal, settings).
+
+Folgepunkte an G1: dedizierter Reject-Status im Streckengeschaeft-Backend;
+24h-Verlaufs-Endpoint (Throughput/Erfolgsrate) fuer die Job-Queue-Charts.
+
 ## 2026-05-20 (Pilot-Ship v0.1.0 — PR #9 Squash-Merge)
 
 PR #9 (`option-b-cherry-pick-identity`) squash-gemerged nach master:
