@@ -14,11 +14,149 @@ Testet alle Training API Endpunkte:
 
 import pytest
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from uuid import uuid4
 from unittest.mock import MagicMock, AsyncMock, patch
 from io import BytesIO
 
 from fastapi import HTTPException
+
+
+# ==================== Test-Daten-Builder ====================
+# Diese Builder liefern Objekte mit ALLEN Attributen, die die jeweiligen
+# Pydantic-Response-Modelle (from_attributes=True) erwarten. So validieren
+# die Endpunkt-Antworten korrekt - statt nackter MagicMocks (Schein-Gruen).
+# Alle Werte sind synthetisch (keine echten IBANs/USt-IDs/Kundennummern).
+
+
+def _build_training_sample(sample_id: object = None, **overrides: object) -> SimpleNamespace:
+    """Liefert ein Objekt das TrainingSampleResponse.model_validate akzeptiert."""
+    now = datetime.now(timezone.utc)
+    data = {
+        "id": sample_id or uuid4(),
+        "language": "de",
+        "document_type": "invoice",
+        "difficulty": "medium",
+        "has_umlauts": True,
+        "has_fraktur": False,
+        "has_tables": False,
+        "has_handwriting": False,
+        "has_stamps": False,
+        "has_signatures": False,
+        "file_path": "/data/training/sample-001.pdf",
+        "file_hash": "a" * 64,
+        "thumbnail_path": None,
+        "ground_truth_text": "Beispiel-Rechnungstext mit Umlauten: Müller GmbH",
+        "umlaut_words": ["Müller", "Köln"],
+        "extracted_fields": {"betrag": "199,00"},
+        "status": "pending",
+        "annotated_by_id": None,
+        "verified_by_id": None,
+        "annotation_notes": None,
+        "created_at": now,
+        "updated_at": now,
+        "annotated_at": None,
+        "verified_at": None,
+    }
+    data.update(overrides)
+    return SimpleNamespace(**data)
+
+
+def _build_correction(correction_id: object = None, **overrides: object) -> SimpleNamespace:
+    """Liefert ein Objekt das CorrectionResponse.model_validate akzeptiert."""
+    now = datetime.now(timezone.utc)
+    data = {
+        "id": correction_id or uuid4(),
+        "document_id": None,
+        "original_text": "Fehlertext",
+        "corrected_text": "Korrigierter Text",
+        "correction_type": "general",
+        "field_corrected": None,
+        "backend_used": "deepseek",
+        "confidence_before": 0.82,
+        "applies_to_training": True,
+        "learning_processed": False,
+        "learning_processed_at": None,
+        "corrector_id": uuid4(),
+        "created_at": now,
+    }
+    data.update(overrides)
+    return SimpleNamespace(**data)
+
+
+def _build_batch(batch_id: object = None, **overrides: object) -> SimpleNamespace:
+    """Liefert ein Objekt das BatchResponse/BatchDetailResponse akzeptiert."""
+    now = datetime.now(timezone.utc)
+    data = {
+        "id": batch_id or uuid4(),
+        "name": "Stichprobe Q1",
+        "description": "Stratifizierte Stichprobe",
+        "batch_type": "stratified",
+        "stratification_config": None,
+        "target_size": 100,
+        "actual_size": 50,
+        "status": "draft",
+        "items_pending": 50,
+        "items_completed": 0,
+        "progress_percent": 0.0,
+        "created_by_id": uuid4(),
+        "created_at": now,
+        "updated_at": now,
+        "completed_at": None,
+    }
+    data.update(overrides)
+    return SimpleNamespace(**data)
+
+
+def _build_batch_item(item_id: object = None, **overrides: object) -> SimpleNamespace:
+    """Liefert ein Objekt das BatchItemResponse.model_validate akzeptiert."""
+    now = datetime.now(timezone.utc)
+    data = {
+        "id": item_id or uuid4(),
+        "batch_id": uuid4(),
+        "training_sample_id": uuid4(),
+        "sequence_number": 1,
+        "assigned_to_id": None,
+        "status": "pending",
+        "validation_notes": None,
+        "validation_time_seconds": None,
+        "created_at": now,
+        "started_at": None,
+        "completed_at": None,
+        "sample": None,
+    }
+    data.update(overrides)
+    return SimpleNamespace(**data)
+
+
+def _build_bulk_job(job_id: object = None, **overrides: object) -> SimpleNamespace:
+    """Liefert ein Objekt das BulkProcessingJobResponse.model_validate akzeptiert."""
+    now = datetime.now(timezone.utc)
+    data = {
+        "id": job_id or uuid4(),
+        "name": "Test Job",
+        "description": "Test Description",
+        "status": "running",
+        "backends": ["deepseek-janus-pro"],
+        "total_documents": 100,
+        "processed_documents": 50,
+        "failed_documents": 0,
+        "current_backend": "deepseek-janus-pro",
+        "current_backend_index": 0,
+        "current_document_index": 50,
+        "documents_per_backend": {"deepseek-janus-pro": 100},
+        "configuration": {},
+        "error_log": [],
+        "created_at": now,
+        "updated_at": now,
+        "started_at": now,
+        "completed_at": None,
+        "paused_at": None,
+        "last_checkpoint_at": None,
+        "created_by_id": uuid4(),
+    }
+    data.update(overrides)
+    return SimpleNamespace(**data)
 
 
 # ==================== Training Samples Tests ====================
@@ -53,7 +191,6 @@ class TestTrainingSamplesEndpoints:
         user.role = "editor"
         return user
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_list_training_samples(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Training Samples auflisten."""
@@ -61,25 +198,26 @@ class TestTrainingSamplesEndpoints:
 
         sample_id = uuid4()
         mock_training_service.list_training_samples = AsyncMock(return_value=(
-            [MagicMock(
-                id=sample_id,
-                document_type="invoice",
-                language="de",
-                status="pending",
-            )],
+            [_build_training_sample(sample_id=sample_id)],
             1,
         ))
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
 
+            # page/per_page explizit setzen: Direktaufruf umgeht FastAPIs
+            # Query()-Default-Aufloesung, sonst bleiben es Query-Objekte.
             result = await list_training_samples(
+                page=1,
+                per_page=50,
                 current_user=mock_admin_user,
                 db=mock_db,
             )
 
             assert result.total == 1
             assert len(result.samples) == 1
+            assert result.samples[0].id == sample_id
+            assert result.samples[0].document_type == "invoice"
 
     @pytest.mark.asyncio
     async def test_list_training_samples_with_filters(self, mock_training_service, mock_db, mock_admin_user):
@@ -91,14 +229,16 @@ class TestTrainingSamplesEndpoints:
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
 
+            # Endpoint hat page/per_page (nicht limit/offset); diese werden
+            # intern in limit=per_page, offset=(page-1)*per_page uebersetzt.
             await list_training_samples(
                 status="verified",
                 language="de",
                 document_type="invoice",
                 has_ground_truth=True,
                 verified_only=True,
-                limit=100,
-                offset=50,
+                page=2,
+                per_page=100,
                 current_user=mock_admin_user,
                 db=mock_db,
             )
@@ -107,8 +247,9 @@ class TestTrainingSamplesEndpoints:
             call_args = mock_training_service.list_training_samples.call_args
             assert call_args.kwargs["status"] == "verified"
             assert call_args.kwargs["language"] == "de"
+            assert call_args.kwargs["limit"] == 100
+            assert call_args.kwargs["offset"] == 100
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_create_training_sample(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Training Sample erstellen."""
@@ -116,12 +257,9 @@ class TestTrainingSamplesEndpoints:
         from app.db.schemas import TrainingSampleCreate
 
         sample_id = uuid4()
-        mock_training_service.create_training_sample = AsyncMock(return_value=MagicMock(
-            id=sample_id,
-            document_type="invoice",
-            language="de",
-            status="pending",
-        ))
+        mock_training_service.create_training_sample = AsyncMock(
+            return_value=_build_training_sample(sample_id=sample_id)
+        )
 
         sample_data = MagicMock(spec=TrainingSampleCreate)
 
@@ -136,17 +274,15 @@ class TestTrainingSamplesEndpoints:
 
             assert result.id == sample_id
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_get_training_sample(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte einzelnes Training Sample zurueckgeben."""
         from app.api.v1.training import get_training_sample
 
         sample_id = uuid4()
-        mock_training_service.get_training_sample = AsyncMock(return_value=MagicMock(
-            id=sample_id,
-            document_type="invoice",
-        ))
+        mock_training_service.get_training_sample = AsyncMock(
+            return_value=_build_training_sample(sample_id=sample_id)
+        )
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
@@ -178,7 +314,6 @@ class TestTrainingSamplesEndpoints:
 
             assert exc.value.status_code == 404
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_update_training_sample(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Training Sample aktualisieren."""
@@ -186,10 +321,11 @@ class TestTrainingSamplesEndpoints:
         from app.db.schemas import TrainingSampleUpdate
 
         sample_id = uuid4()
-        mock_training_service.update_training_sample = AsyncMock(return_value=MagicMock(
-            id=sample_id,
-            ground_truth_text="Korrigierter Text",
-        ))
+        mock_training_service.update_training_sample = AsyncMock(
+            return_value=_build_training_sample(
+                sample_id=sample_id, ground_truth_text="Korrigierter Text"
+            )
+        )
 
         update_data = MagicMock(spec=TrainingSampleUpdate)
 
@@ -205,17 +341,15 @@ class TestTrainingSamplesEndpoints:
 
             assert result.ground_truth_text == "Korrigierter Text"
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_verify_training_sample(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Training Sample verifizieren (Admin-only)."""
         from app.api.v1.training import verify_training_sample
 
         sample_id = uuid4()
-        mock_training_service.verify_training_sample = AsyncMock(return_value=MagicMock(
-            id=sample_id,
-            status="verified",
-        ))
+        mock_training_service.verify_training_sample = AsyncMock(
+            return_value=_build_training_sample(sample_id=sample_id, status="verified")
+        )
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
@@ -290,14 +424,15 @@ class TestBenchmarkEndpoints:
         user.role = "admin"
         return user
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_run_benchmark(self, mock_db, mock_admin_user):
         """Sollte Benchmark starten."""
         from app.api.v1.training import run_benchmark
         from app.db.schemas import BenchmarkRunRequest
 
-        with patch('app.api.v1.training.run_benchmark_batch') as mock_task:
+        # Der Endpoint importiert run_benchmark_batch lokal aus dem Worker-Modul,
+        # daher wird dort gepatcht (nicht im training-Modul-Namespace).
+        with patch('app.workers.tasks.training_tasks.run_benchmark_batch') as mock_task:
             mock_task.delay.return_value = MagicMock(id="task-123")
 
             request = MagicMock(spec=BenchmarkRunRequest)
@@ -376,7 +511,6 @@ class TestCorrectionsEndpoints:
         user.id = uuid4()
         return user
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_create_correction(self, mock_training_service, mock_db, mock_user):
         """Sollte Korrektur erstellen."""
@@ -384,11 +518,9 @@ class TestCorrectionsEndpoints:
         from app.db.schemas import CorrectionCreate
 
         correction_id = uuid4()
-        mock_training_service.create_correction = AsyncMock(return_value=MagicMock(
-            id=correction_id,
-            original_text="Fehlertext",
-            corrected_text="Korrigierter Text",
-        ))
+        mock_training_service.create_correction = AsyncMock(
+            return_value=_build_correction(correction_id=correction_id)
+        )
 
         correction_data = MagicMock(spec=CorrectionCreate)
 
@@ -403,14 +535,13 @@ class TestCorrectionsEndpoints:
 
             assert result.id == correction_id
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_list_corrections(self, mock_training_service, mock_db, mock_user):
         """Sollte Korrekturen auflisten (Admin-only)."""
         from app.api.v1.training import list_corrections
 
         mock_training_service.list_corrections = AsyncMock(return_value=(
-            [MagicMock(id=uuid4())],
+            [_build_correction()],
             10,
         ))
 
@@ -418,11 +549,14 @@ class TestCorrectionsEndpoints:
             mock_role.return_value = lambda: mock_user
 
             result = await list_corrections(
+                page=1,
+                per_page=50,
                 current_user=mock_user,
                 db=mock_db,
             )
 
             assert result.total == 10
+            assert len(result.corrections) == 1
 
 
 # ==================== Training Batches Tests ====================
@@ -448,14 +582,13 @@ class TestTrainingBatchesEndpoints:
         user.role = "admin"
         return user
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_list_training_batches(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Training Batches auflisten."""
         from app.api.v1.training import list_training_batches
 
         mock_training_service.list_training_batches = AsyncMock(return_value=(
-            [MagicMock(id=uuid4(), name="Batch 1")],
+            [_build_batch(name="Batch 1")],
             5,
         ))
 
@@ -463,13 +596,15 @@ class TestTrainingBatchesEndpoints:
             mock_role.return_value = lambda: mock_admin_user
 
             result = await list_training_batches(
+                page=1,
+                per_page=20,
                 current_user=mock_admin_user,
                 db=mock_db,
             )
 
             assert result.total == 5
+            assert len(result.batches) == 1
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_create_training_batch(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Training Batch erstellen."""
@@ -477,10 +612,9 @@ class TestTrainingBatchesEndpoints:
         from app.db.schemas import BatchCreate
 
         batch_id = uuid4()
-        mock_training_service.create_training_batch = AsyncMock(return_value=MagicMock(
-            id=batch_id,
-            name="Stichprobe Q1",
-        ))
+        mock_training_service.create_training_batch = AsyncMock(
+            return_value=_build_batch(batch_id=batch_id, name="Stichprobe Q1")
+        )
 
         batch_data = MagicMock(spec=BatchCreate)
 
@@ -495,17 +629,18 @@ class TestTrainingBatchesEndpoints:
 
             assert result.id == batch_id
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_get_training_batch(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte einzelnen Batch zurueckgeben."""
         from app.api.v1.training import get_training_batch
 
         batch_id = uuid4()
-        mock_training_service.get_training_batch = AsyncMock(return_value=MagicMock(
-            id=batch_id,
-            items=[MagicMock(), MagicMock()],
-        ))
+        mock_training_service.get_training_batch = AsyncMock(
+            return_value=_build_batch(
+                batch_id=batch_id,
+                items=[_build_batch_item(), _build_batch_item()],
+            )
+        )
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
@@ -518,17 +653,15 @@ class TestTrainingBatchesEndpoints:
 
             assert result.id == batch_id
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_start_training_batch(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Batch starten."""
         from app.api.v1.training import start_training_batch
 
         batch_id = uuid4()
-        mock_training_service.start_batch = AsyncMock(return_value=MagicMock(
-            id=batch_id,
-            status="in_progress",
-        ))
+        mock_training_service.start_batch = AsyncMock(
+            return_value=_build_batch(batch_id=batch_id, status="active")
+        )
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
@@ -539,19 +672,18 @@ class TestTrainingBatchesEndpoints:
                 db=mock_db,
             )
 
-            assert result.status == "in_progress"
+            # BatchResponse.status ist TrainingBatchStatus-Enum (draft/active/...)
+            assert result.status.value == "active"
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_complete_training_batch(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Batch abschliessen."""
         from app.api.v1.training import complete_training_batch
 
         batch_id = uuid4()
-        mock_training_service.complete_batch = AsyncMock(return_value=MagicMock(
-            id=batch_id,
-            status="completed",
-        ))
+        mock_training_service.complete_batch = AsyncMock(
+            return_value=_build_batch(batch_id=batch_id, status="completed")
+        )
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
@@ -564,17 +696,15 @@ class TestTrainingBatchesEndpoints:
 
             assert result.status == "completed"
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_get_next_batch_item(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte naechstes Batch-Item zurueckgeben."""
         from app.api.v1.training import get_next_batch_item
 
         item_id = uuid4()
-        mock_training_service.get_next_batch_item = AsyncMock(return_value=MagicMock(
-            id=item_id,
-            status="pending",
-        ))
+        mock_training_service.get_next_batch_item = AsyncMock(
+            return_value=_build_batch_item(item_id=item_id, status="pending")
+        )
 
         with patch('app.api.v1.training.require_any_role') as mock_role:
             mock_role.return_value = lambda: mock_admin_user
@@ -606,7 +736,6 @@ class TestTrainingBatchesEndpoints:
 
             assert exc.value.status_code == 404
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_update_batch_item(self, mock_training_service, mock_db, mock_admin_user):
         """Sollte Batch-Item aktualisieren."""
@@ -614,10 +743,9 @@ class TestTrainingBatchesEndpoints:
         from app.db.schemas import BatchItemUpdate
 
         item_id = uuid4()
-        mock_training_service.update_batch_item = AsyncMock(return_value=MagicMock(
-            id=item_id,
-            status="reviewed",
-        ))
+        mock_training_service.update_batch_item = AsyncMock(
+            return_value=_build_batch_item(item_id=item_id, status="reviewed")
+        )
 
         update_data = MagicMock(spec=BatchItemUpdate)
 
@@ -706,10 +834,20 @@ class TestStatisticsEndpoints:
 
             assert len(result) == 2
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
+    @pytest.mark.xfail(
+        reason=(
+            "App-Bug: Endpoint get_trend_data konstruiert TrendResponse(data=...), "
+            "aber TrendResponse besitzt kein Feld 'data' (Pflichtfelder: metric, "
+            "backend, data_points, trend_direction, change_percent). Der Aufruf "
+            "loest pydantic.ValidationError aus. Fix gehoert in app/api/v1/training.py "
+            "bzw. app/db/schemas.py, nicht in den Test."
+        ),
+        strict=False,
+        raises=Exception,
+    )
     @pytest.mark.asyncio
     async def test_get_trend_data(self, mock_feedback_service, mock_db, mock_user):
-        """Sollte Trend-Daten zurueckgeben."""
+        """Sollte Trend-Daten zurueckgeben (derzeit durch App-Bug blockiert)."""
         from app.api.v1.training import get_trend_data
 
         mock_feedback_service.get_trend_data = AsyncMock(return_value=[
@@ -790,107 +928,105 @@ class TestMigrationEndpoints:
         user.role = "admin"
         return user
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_get_migration_status(self, mock_db, mock_admin_user):
         """Sollte Migration-Status zurueckgeben."""
         from app.api.v1.training import get_migration_status
 
-        with patch('app.api.v1.training.get_training_migration_service') as mock_getter:
-            mock_service = MagicMock()
-            mock_service.check_migration_sources = AsyncMock(return_value={
-                "sqlite": True,
-                "files": True,
-            })
-            mock_service.get_migration_stats.return_value = {
-                "migrated": 500,
-            }
-            mock_getter.return_value = mock_service
+        # Endpoint importiert get_training_migration_service lokal aus dem Service-Modul
+        # und ruft es mit await auf -> Getter muss AsyncMock sein.
+        mock_service = MagicMock()
+        mock_service.check_migration_sources = AsyncMock(return_value={
+            "sqlite": True,
+            "files": True,
+        })
+        mock_service.get_migration_stats.return_value = {
+            "migrated": 500,
+        }
+        with patch(
+            'app.services.training_migration_service.get_training_migration_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
+            result = await get_migration_status(
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                result = await get_migration_status(
-                    current_user=mock_admin_user,
-                    db=mock_db,
-                )
+            assert result["sources"]["sqlite"] is True
 
-                assert result["sources"]["sqlite"] is True
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_migrate_from_sqlite_dry_run(self, mock_db, mock_admin_user):
         """Sollte SQLite-Migration simulieren."""
         from app.api.v1.training import migrate_from_sqlite
 
-        with patch('app.api.v1.training.get_training_migration_service') as mock_getter:
-            mock_service = MagicMock()
-            mock_service.migrate_from_sqlite = AsyncMock(return_value={
-                "dry_run": True,
-                "would_migrate": 100,
-            })
-            mock_getter.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.migrate_from_sqlite = AsyncMock(return_value={
+            "dry_run": True,
+            "would_migrate": 100,
+        })
+        with patch(
+            'app.services.training_migration_service.get_training_migration_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
+            result = await migrate_from_sqlite(
+                dry_run=True,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                result = await migrate_from_sqlite(
-                    dry_run=True,
-                    current_user=mock_admin_user,
-                    db=mock_db,
-                )
+            assert result["dry_run"] is True
 
-                assert result["dry_run"] is True
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_import_training_files(self, mock_db, mock_admin_user):
         """Sollte Training-Dateien importieren."""
         from app.api.v1.training import import_training_files
 
-        with patch('app.api.v1.training.get_training_migration_service') as mock_getter:
-            mock_service = MagicMock()
-            mock_service.import_training_files = AsyncMock(return_value={
-                "imported": 50,
-                "skipped": 10,
-            })
-            mock_getter.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.import_training_files = AsyncMock(return_value={
+            "imported": 50,
+            "skipped": 10,
+        })
+        with patch(
+            'app.services.training_migration_service.get_training_migration_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
+            result = await import_training_files(
+                language="de",
+                dry_run=False,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                result = await import_training_files(
-                    language="de",
-                    dry_run=False,
-                    current_user=mock_admin_user,
-                    db=mock_db,
-                )
+            assert result["imported"] == 50
 
-                assert result["imported"] == 50
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_discover_training_files(self, mock_db, mock_admin_user):
         """Sollte Training-Dateien entdecken."""
         from app.api.v1.training import discover_training_files
 
-        with patch('app.api.v1.training.get_training_migration_service') as mock_getter:
-            mock_service = MagicMock()
-            mock_service.discover_training_files = AsyncMock(return_value=[
-                {"path": "/data/doc1.pdf"},
-                {"path": "/data/doc2.tiff"},
-            ])
-            mock_getter.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.discover_training_files = AsyncMock(return_value=[
+            {"path": "/data/doc1.pdf"},
+            {"path": "/data/doc2.tiff"},
+        ])
+        with patch(
+            'app.services.training_migration_service.get_training_migration_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
+            result = await discover_training_files(
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                result = await discover_training_files(
-                    current_user=mock_admin_user,
-                    db=mock_db,
-                )
-
-                assert result["total"] == 2
+            assert result["total"] == 2
 
 
 # ==================== Bulk Processing Tests ====================
@@ -909,207 +1045,212 @@ class TestBulkProcessingEndpoints:
         user.role = "admin"
         return user
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_list_bulk_processing_jobs(self, mock_db, mock_admin_user):
         """Sollte Bulk Processing Jobs auflisten."""
         from app.api.v1.training import list_bulk_processing_jobs
 
-        with patch('app.api.v1.training.get_bulk_ocr_processing_service') as mock_getter:
-            mock_service = MagicMock()
-            mock_service.list_jobs = AsyncMock(return_value=(
-                [MagicMock(id=uuid4(), name="Job 1")],
-                5,
-            ))
-            mock_getter.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.list_jobs = AsyncMock(return_value=(
+            [_build_bulk_job(name="Job 1")],
+            5,
+        ))
+        # Getter wird lokal aus dem Service-Modul importiert und awaited.
+        with patch(
+            'app.services.bulk_ocr_processing_service.get_bulk_ocr_processing_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
+            result = await list_bulk_processing_jobs(
+                page=1,
+                per_page=50,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                result = await list_bulk_processing_jobs(
-                    current_user=mock_admin_user,
-                    db=mock_db,
-                )
+            assert result.total == 5
+            assert len(result.jobs) == 1
 
-                assert result.total == 5
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_create_bulk_processing_job_gpu(self, mock_db, mock_admin_user):
         """Sollte Bulk Processing Job mit GPU-Backend erstellen."""
         from app.api.v1.training import create_bulk_processing_job
         from app.db import schemas
 
-        with patch('app.api.v1.training.get_bulk_ocr_processing_service') as mock_getter:
-            job_id = uuid4()
-            mock_service = MagicMock()
-            mock_service.create_job = AsyncMock(return_value=MagicMock(
-                id=job_id,
-                total_documents=100,
-            ))
-            mock_getter.return_value = mock_service
+        job_id = uuid4()
+        # total_documents muss int sein (Endpoint rechnet estimated_seconds).
+        job = SimpleNamespace(id=job_id, total_documents=100)
+        mock_service = MagicMock()
+        mock_service.create_job = AsyncMock(return_value=job)
 
-            with patch('app.api.v1.training.run_bulk_processing_job') as mock_task:
-                mock_task.delay = MagicMock()
+        request = MagicMock(spec=schemas.BulkProcessingJobCreate)
+        request.name = "Test Job"
+        request.description = "Test Description"
+        request.backends = ["deepseek"]  # GPU backend
+        request.configuration = {}
 
-                request = MagicMock(spec=schemas.BulkProcessingJobCreate)
-                request.name = "Test Job"
-                request.description = "Test Description"
-                request.backends = ["deepseek"]  # GPU backend
-                request.configuration = {}
+        # GPU-Pfad importiert run_bulk_processing_job lokal aus dem Worker-Modul.
+        with patch(
+            'app.services.bulk_ocr_processing_service.get_bulk_ocr_processing_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.workers.tasks.training_tasks.run_bulk_processing_job') as mock_task, \
+                patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_task.delay = MagicMock()
+            mock_role.return_value = lambda: mock_admin_user
 
-                with patch('app.api.v1.training.require_any_role') as mock_role:
-                    mock_role.return_value = lambda: mock_admin_user
+            result = await create_bulk_processing_job(
+                request=request,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                    result = await create_bulk_processing_job(
-                        request=request,
-                        current_user=mock_admin_user,
-                        db=mock_db,
-                    )
+            assert result.success is True
+            assert result.job_id == job_id
+            mock_task.delay.assert_called_once()
 
-                    assert result.success is True
-                    assert result.job_id == job_id
-                    mock_task.delay.assert_called_once()
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_create_bulk_processing_job_cpu(self, mock_db, mock_admin_user):
         """Sollte Bulk Processing Job mit CPU-Backend erstellen."""
         from app.api.v1.training import create_bulk_processing_job
         from app.db import schemas
 
-        with patch('app.api.v1.training.get_bulk_ocr_processing_service') as mock_getter:
-            job_id = uuid4()
-            mock_service = MagicMock()
-            mock_service.create_job = AsyncMock(return_value=MagicMock(
-                id=job_id,
-                total_documents=100,
-            ))
-            mock_getter.return_value = mock_service
+        job_id = uuid4()
+        job = SimpleNamespace(id=job_id, total_documents=100)
+        mock_service = MagicMock()
+        mock_service.create_job = AsyncMock(return_value=job)
 
-            with patch('app.api.v1.training.run_bulk_processing_job_cpu') as mock_task:
-                mock_task.delay = MagicMock()
+        request = MagicMock(spec=schemas.BulkProcessingJobCreate)
+        request.name = "CPU Job"
+        request.description = "CPU-only job"
+        request.backends = ["surya"]  # CPU backend
+        request.configuration = {}
 
-                request = MagicMock(spec=schemas.BulkProcessingJobCreate)
-                request.name = "CPU Job"
-                request.description = "CPU-only job"
-                request.backends = ["surya"]  # CPU backend
-                request.configuration = {}
+        # CPU-Pfad importiert run_bulk_processing_job_cpu lokal aus dem Worker-Modul.
+        with patch(
+            'app.services.bulk_ocr_processing_service.get_bulk_ocr_processing_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.workers.tasks.training_tasks.run_bulk_processing_job_cpu') as mock_task, \
+                patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_task.delay = MagicMock()
+            mock_role.return_value = lambda: mock_admin_user
 
-                with patch('app.api.v1.training.require_any_role') as mock_role:
-                    mock_role.return_value = lambda: mock_admin_user
+            result = await create_bulk_processing_job(
+                request=request,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                    result = await create_bulk_processing_job(
-                        request=request,
-                        current_user=mock_admin_user,
-                        db=mock_db,
-                    )
+            assert result.success is True
+            mock_task.delay.assert_called_once()
 
-                    assert result.success is True
-                    mock_task.delay.assert_called_once()
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_get_bulk_processing_job(self, mock_db, mock_admin_user):
         """Sollte einzelnen Bulk Processing Job zurueckgeben."""
         from app.api.v1.training import get_bulk_processing_job
 
-        with patch('app.api.v1.training.get_bulk_ocr_processing_service') as mock_getter:
-            job_id = uuid4()
-            mock_service = MagicMock()
-            mock_service.get_job = AsyncMock(return_value=MagicMock(
-                id=job_id,
-                status="running",
-            ))
-            mock_getter.return_value = mock_service
+        job_id = uuid4()
+        mock_service = MagicMock()
+        mock_service.get_job = AsyncMock(
+            return_value=_build_bulk_job(job_id=job_id, status="running")
+        )
+        with patch(
+            'app.services.bulk_ocr_processing_service.get_bulk_ocr_processing_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
+            result = await get_bulk_processing_job(
+                job_id=job_id,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                result = await get_bulk_processing_job(
-                    job_id=job_id,
-                    current_user=mock_admin_user,
-                    db=mock_db,
-                )
+            assert result.id == job_id
 
-                assert result.id == job_id
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
     @pytest.mark.asyncio
     async def test_get_bulk_processing_job_not_found(self, mock_db, mock_admin_user):
         """Sollte 404 bei nicht gefundenem Job werfen."""
         from app.api.v1.training import get_bulk_processing_job
 
-        with patch('app.api.v1.training.get_bulk_ocr_processing_service') as mock_getter:
-            mock_service = MagicMock()
-            mock_service.get_job = AsyncMock(return_value=None)
-            mock_getter.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.get_job = AsyncMock(return_value=None)
+        with patch(
+            'app.services.bulk_ocr_processing_service.get_bulk_ocr_processing_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
-
-                with pytest.raises(HTTPException) as exc:
-                    await get_bulk_processing_job(
-                        job_id=uuid4(),
-                        current_user=mock_admin_user,
-                        db=mock_db,
-                    )
-
-                assert exc.value.status_code == 404
-
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
-    @pytest.mark.asyncio
-    async def test_get_bulk_processing_progress(self, mock_db, mock_admin_user):
-        """Sollte Bulk Processing Fortschritt zurueckgeben."""
-        from app.api.v1.training import get_bulk_processing_progress
-
-        with patch('app.api.v1.training.get_bulk_ocr_processing_service') as mock_getter:
-            mock_service = MagicMock()
-            mock_service.get_progress = AsyncMock(return_value=MagicMock(
-                processed=50,
-                total=100,
-                percentage=50.0,
-            ))
-            mock_getter.return_value = mock_service
-
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
-
-                result = await get_bulk_processing_progress(
+            with pytest.raises(HTTPException) as exc:
+                await get_bulk_processing_job(
                     job_id=uuid4(),
                     current_user=mock_admin_user,
                     db=mock_db,
                 )
 
-                assert result.percentage == 50.0
+            assert exc.value.status_code == 404
 
-    @pytest.mark.skip(reason="MagicMock objects don't validate with Pydantic - needs proper mock data setup")
+    @pytest.mark.asyncio
+    async def test_get_bulk_processing_progress(self, mock_db, mock_admin_user):
+        """Sollte Bulk Processing Fortschritt zurueckgeben."""
+        from app.api.v1.training import get_bulk_processing_progress
+        from app.db import schemas
+
+        job_id = uuid4()
+        # Endpoint gibt das Progress-Objekt direkt zurueck (response_model
+        # BulkProcessingProgress). Wir liefern ein gueltiges Schema-Objekt.
+        progress = schemas.BulkProcessingProgress(
+            job_id=job_id,
+            status="running",
+            total_documents=100,
+            processed_documents=50,
+            failed_documents=0,
+            progress_percent=50.0,
+            current_backend="deepseek-janus-pro",
+            current_backend_index=0,
+            total_backends=1,
+        )
+        mock_service = MagicMock()
+        mock_service.get_progress = AsyncMock(return_value=progress)
+        with patch(
+            'app.services.bulk_ocr_processing_service.get_bulk_ocr_processing_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
+
+            result = await get_bulk_processing_progress(
+                job_id=job_id,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
+
+            assert result.progress_percent == 50.0
+
     @pytest.mark.asyncio
     async def test_pause_bulk_processing_job(self, mock_db, mock_admin_user):
         """Sollte Bulk Processing Job pausieren."""
         from app.api.v1.training import pause_bulk_processing_job
 
-        with patch('app.api.v1.training.get_bulk_ocr_processing_service') as mock_getter:
-            job_id = uuid4()
-            mock_service = MagicMock()
-            mock_service.pause_job = AsyncMock(return_value=MagicMock(
-                id=job_id,
-                processed_documents=50,
-                total_documents=100,
-            ))
-            mock_getter.return_value = mock_service
+        job_id = uuid4()
+        # Endpoint rechnet remaining = total_documents - processed_documents.
+        job = SimpleNamespace(id=job_id, processed_documents=50, total_documents=100)
+        mock_service = MagicMock()
+        mock_service.pause_job = AsyncMock(return_value=job)
+        with patch(
+            'app.services.bulk_ocr_processing_service.get_bulk_ocr_processing_service',
+            new=AsyncMock(return_value=mock_service),
+        ), patch('app.api.v1.training.require_any_role') as mock_role:
+            mock_role.return_value = lambda: mock_admin_user
 
-            with patch('app.api.v1.training.require_any_role') as mock_role:
-                mock_role.return_value = lambda: mock_admin_user
+            result = await pause_bulk_processing_job(
+                job_id=job_id,
+                current_user=mock_admin_user,
+                db=mock_db,
+            )
 
-                result = await pause_bulk_processing_job(
-                    job_id=job_id,
-                    current_user=mock_admin_user,
-                    db=mock_db,
-                )
-
-                assert result.success is True
-                assert result.processed_documents == 50
+            assert result.success is True
+            assert result.processed_documents == 50
+            assert result.remaining_documents == 50
 
 
 # ==================== Sample Preview Tests ====================
