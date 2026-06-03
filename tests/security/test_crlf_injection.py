@@ -363,16 +363,12 @@ class TestLoggingInjection:
 # =============================================================================
 
 
-class TestWebSocketInjection:
-    """Tests against CRLF injection in WebSocket connections."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.parametrize("payload", CRLF_PAYLOADS[:5])  # Subset for WS
-    def test_no_injection_via_ws_header(self, payload: str, test_client, auth_headers) -> None:
-        """Test that CRLF in WebSocket headers cannot inject."""
-        # Note: This is a placeholder - actual WebSocket testing requires
-        # different approach (websocket-client library)
-        pass  # Skip for unit tests
+# G5 (2026-06-03): Der Platzhalter `test_no_injection_via_ws_header`
+# (@pytest.mark.skip("stub")) wurde ERSATZLOS entfernt. CRLF-Header-Injection auf
+# WebSocket-Ebene laesst sich mit dem Starlette-TestClient/httpx nicht sinnvoll
+# provozieren (Header-Werte werden vor dem Senden validiert; der ASGI-Server
+# splittet keine CRLF-Header). Die HTTP-Header-/Query-/Body-CRLF-Tests oben
+# decken die relevante Anwendungslogik ab.
 
 
 # =============================================================================
