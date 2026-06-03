@@ -147,5 +147,7 @@ exclude: |
       htmlcov/|
       \.coverage|
       \.env|
-      migrations/versions/
+      migrations/versions/|
+      \.claude-flow/metrics/|
+      browser-diagnostics/
   )
