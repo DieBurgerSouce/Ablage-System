@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
@@ -37,21 +37,9 @@ router = APIRouter(prefix="/zero-touch", tags=["Zero-Touch OCR"])
 # =============================================================================
 
 
-async def get_company_id(
-    current_user: User = Depends(get_current_active_user)
-) -> UUID:
-    """
-    Dependency: Extrahiere Company-ID vom aktuellen User.
-
-    Raises:
-        HTTPException: Falls User keine Company zugewiesen hat
-    """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma zugewiesen"
-        )
-    return current_user.company_id
+# B1: get_company_id ist ein Alias fuer den zentralen get_user_company_id_dep
+# (aus app.api.dependencies). Verwendet HTTPException 403 bei fehlender Company.
+get_company_id = get_user_company_id_dep
 
 
 async def require_admin(

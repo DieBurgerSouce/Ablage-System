@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 import re
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_current_active_user, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail
 from app.db.models import User
@@ -3448,6 +3448,7 @@ async def get_entity_health_actions(
     request: Request,
     entity_id: UUID = Path(..., description="Entity-ID"),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> HealthAssessmentResponse:
     """Gibt Gesundheits-Massnahmen für eine Entity zurück."""
     from app.api.dependencies import get_db
@@ -3460,7 +3461,7 @@ async def get_entity_health_actions(
         assessment = await handler.assess_entity_health(
             db=db,
             entity_id=entity_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         if not assessment:
@@ -3598,6 +3599,7 @@ async def get_investigation_report(
     request: Request,
     investigation_id: UUID = Path(..., description="Untersuchungs-ID"),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvestigationReportResponse:
     """Gibt einen Untersuchungsbericht zurück."""
     from app.services.orchestration import get_anomaly_investigation_service
@@ -3606,7 +3608,7 @@ async def get_investigation_report(
 
     investigation = await service.get_investigation(
         investigation_id=investigation_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not investigation or not investigation.report:
@@ -3659,6 +3661,7 @@ async def start_investigation(
     fastapi_request: Request,
     request: StartInvestigationRequest,
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> StartInvestigationResponse:
     """Startet eine neue Untersuchung."""
     from app.api.dependencies import get_db
@@ -3673,7 +3676,7 @@ async def start_investigation(
         # Untersuchung starten
         investigation = await service.start_investigation(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             anomaly_type=anomaly_type,
             entity_id=UUID(request.entity_id) if request.entity_id else None,
             document_id=UUID(request.document_id) if request.document_id else None,
@@ -3715,6 +3718,7 @@ async def get_seasonal_analysis(
         description="Anzahl Monate für historische Analyse"
     ),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SeasonalAnalysisResponse:
     """Führt eine saisonale Analyse durch."""
     from app.api.dependencies import get_db
@@ -3725,7 +3729,7 @@ async def get_seasonal_analysis(
 
         analysis = await service.analyze_company_seasonality(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             months_history=months_history,
         )
 

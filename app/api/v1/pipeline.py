@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_log
 from app.db.models import Document, User
@@ -76,17 +76,11 @@ async def trigger_document_pipeline(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PipelineTriggerResponse:
     """Pipeline fuer ein Dokument manuell ausloesen."""
     from app.workers.pipeline_tasks import process_document_pipeline
 
-    company_id = current_user.company_id
-
-    if company_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet",
-        )
 
     # Dokument pruefen und Multi-Tenant-Isolation sicherstellen
     result = await db.execute(
@@ -154,16 +148,9 @@ async def get_pipeline_status(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PipelineStatusResponse:
     """Pipeline-Status fuer ein Dokument aus den Metadaten auslesen."""
-    company_id = current_user.company_id
-
-    if company_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet",
-        )
-
     try:
         result = await db.execute(
             select(Document).where(

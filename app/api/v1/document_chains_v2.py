@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.models import User, Document
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.document_chain_service_v2 import (
     ExtendedDocumentChainServiceV2,
@@ -164,6 +164,7 @@ async def create_extended_chain(
     request: CreateChainRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Erstellt eine erweiterte Auftragskette.
@@ -179,12 +180,6 @@ async def create_extended_chain(
     - chain_type: Typ der Kette
     - document_count: Anzahl der verknüpften Dokumente
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # SECURITY: Alle Dokumente prüfen
     for doc_id in request.document_ids:
@@ -248,6 +243,7 @@ async def create_contract_chain(
     request: CreateContractChainRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Erstellt eine Vertragserfuellungskette.
@@ -255,12 +251,6 @@ async def create_contract_chain(
     Diese Kette ermöglicht das Tracking von:
     - Vertrag -> Lieferungen -> Rechnung -> Mahnungen
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Dokument prüfen
     result = await db.execute(
@@ -306,6 +296,7 @@ async def create_procurement_chain(
     request: CreateProcurementChainRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Erstellt eine Beschaffungskette.
@@ -313,12 +304,6 @@ async def create_procurement_chain(
     Diese Kette ermöglicht das Tracking von:
     - Bestellung -> Auftragsbestätigung -> Lieferschein -> Wareneingang -> QC -> Rechnung
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Dokument prüfen
     result = await db.execute(
@@ -403,6 +388,7 @@ class ChainIntelligenceReportResponse(BaseModel):
 async def get_chain_gaps(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ChainIntelligenceReportResponse:
     """
     Analysiert alle Auftragsketten auf Lücken.
@@ -420,13 +406,6 @@ async def get_chain_gaps(
     from app.services.document_chain_intelligence_service import (
         get_chain_intelligence_service,
     )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_chain_intelligence_service()
 
@@ -476,6 +455,7 @@ async def get_chain_gaps(
 async def get_orphan_documents(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Erkennt Dokumente ohne Kettenverknüpfung.
@@ -486,13 +466,6 @@ async def get_orphan_documents(
     from app.services.document_chain_intelligence_service import (
         get_chain_intelligence_service,
     )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_chain_intelligence_service()
 
@@ -537,6 +510,7 @@ async def get_chain_suggestions(
     chain_id: str,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Generiert Vorschläge für eine spezifische Kette.
@@ -547,13 +521,6 @@ async def get_chain_suggestions(
     from app.services.document_chain_intelligence_service import (
         get_chain_intelligence_service,
     )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_chain_intelligence_service()
 
@@ -608,6 +575,7 @@ async def get_extended_chain(
     include_visualization: bool = Query(False, description="Visualisierungsdaten einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ExtendedChainResponse:
     """
     Ruft eine erweiterte Auftragskette ab.
@@ -615,12 +583,6 @@ async def get_extended_chain(
     Liefert alle Dokumente mit erweiterten Metadaten und optional
     Visualisierungsdaten für das Frontend.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_extended_chain_service()
     chain = await service.get_extended_chain(
@@ -680,16 +642,11 @@ async def get_chains_by_project(
     project_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Ruft alle Auftragsketten eines Projekts ab.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_extended_chain_service()
     chains = await service.get_chains_by_project(
@@ -730,6 +687,7 @@ async def ml_auto_match(
     chain_types: Optional[str] = Query(None, description="Komma-getrennte Chain-Typen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     ML-basierte Suche nach verwandten Dokumenten.
@@ -741,12 +699,6 @@ async def ml_auto_match(
     - Entity-Match
     - Dokumenttyp-Sequenz
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Dokument prüfen
     result = await db.execute(
@@ -811,18 +763,13 @@ async def ml_auto_link(
     request: MLAutoLinkRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Automatisches Linking basierend auf ML-Matching.
 
     Führt Auto-Linking nur durch wenn Konfidenz über Schwellenwert.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Dokument prüfen
     result = await db.execute(
@@ -879,6 +826,7 @@ async def add_dunning(
     request: AddDunningRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Fuegt eine Mahnung zur Vertragserfuellungskette hinzu.
@@ -889,12 +837,6 @@ async def add_dunning(
     - 2: 2. Mahnung
     - 3: 3. Mahnung (Inkasso-Androhung)
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Mahnungsdokument prüfen
     result = await db.execute(
@@ -959,18 +901,13 @@ async def add_quality_control(
     request: AddQualityControlRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Fuegt ein QC-Protokoll zur Beschaffungskette hinzu.
 
     Bei fehlgeschlagener QC wird automatisch eine Abweichung erstellt.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # QC-Dokument prüfen
     result = await db.execute(
@@ -1031,6 +968,7 @@ async def get_visualization(
     layout: str = Query("horizontal", regex="^(horizontal|vertical|radial)$"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> VisualizationResponse:
     """
     Ruft Visualisierungsdaten für eine Kette ab.
@@ -1040,12 +978,6 @@ async def get_visualization(
     - vertical: Oben-nach-unten Fluss
     - radial: Kreisfoermige Anordnung
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_extended_chain_service()
     viz = await service.get_chain_visualization(

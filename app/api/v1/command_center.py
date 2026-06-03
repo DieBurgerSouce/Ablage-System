@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import Document, User
 from app.core.safe_errors import safe_error_log
 
@@ -458,6 +458,7 @@ async def _build_alerts(
 async def get_command_center(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CommandCenterResponse:
     """
     Vollstaendige Command Center Daten.
@@ -472,7 +473,6 @@ async def get_command_center(
         CommandCenterResponse mit allen Startseiten-Daten
     """
     start = time.perf_counter()
-    company_id = current_user.company_id
 
     # Parallele Datenabfrage fuer minimale Latenz
     kpis_task = _build_kpis(db, company_id)
@@ -532,9 +532,10 @@ async def get_command_center(
 async def get_kpis(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[KPIWidget]:
     """Liefert nur die KPI-Widgets fuer schnelles Polling."""
-    return await _build_kpis(db, current_user.company_id)
+    return await _build_kpis(db, company_id)
 
 
 @router.get(
@@ -546,9 +547,10 @@ async def get_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(20, ge=1, le=100),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[TaskItem]:
     """Liefert nur die priorisierte Aufgabenliste."""
-    tasks, _ = await _build_tasks(db, current_user.company_id, current_user.id)
+    tasks, _ = await _build_tasks(db, company_id, current_user.id)
     return tasks[:limit]
 
 
@@ -560,9 +562,10 @@ async def get_tasks(
 async def get_insights(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ProactiveInsight]:
     """Liefert nur proaktive Insights/Warnungen."""
-    return await _build_insights(db, current_user.company_id)
+    return await _build_insights(db, company_id)
 
 
 @router.get(
@@ -573,6 +576,7 @@ async def get_insights(
 async def get_alerts(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AlertItem]:
     """Liefert nur aktive Alerts/Anomalien."""
-    return await _build_alerts(db, current_user.company_id)
+    return await _build_alerts(db, company_id)

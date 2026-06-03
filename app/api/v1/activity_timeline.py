@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.activity_timeline_service import (
     ActivityTimelineService,
@@ -179,6 +179,7 @@ async def get_my_activities(
     search: Optional[str] = Query(None, max_length=200, description="Suche"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TimelineResponse:
     """Holt eigene Aktivitaeten.
 
@@ -200,7 +201,7 @@ async def get_my_activities(
 
     activities = await service.get_my_activities(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         filters=filters,
         limit=per_page + 1,  # +1 für has_more Check
         offset=(page - 1) * per_page,
@@ -234,6 +235,7 @@ async def get_team_timeline(
     date_until: Optional[datetime] = Query(None, description="Bis Datum"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TimelineResponse:
     """Holt Timeline für ein Team.
 
@@ -254,7 +256,7 @@ async def get_team_timeline(
     activities = await service.get_team_timeline(
         team_id=team_id,
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         filters=filters,
         limit=per_page + 1,
         offset=(page - 1) * per_page,
@@ -294,6 +296,7 @@ async def get_document_timeline(
     activity_type: Optional[str] = Query(None, description="Typ filtern"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TimelineResponse:
     """Holt Timeline für ein einzelnes Dokument.
 
@@ -312,7 +315,7 @@ async def get_document_timeline(
 
     activities = await service.get_document_timeline(
         document_id=document_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         filters=filters,
         limit=per_page + 1,
         offset=(page - 1) * per_page,
@@ -343,6 +346,7 @@ async def get_chain_timeline(
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TimelineResponse:
     """Holt Timeline für eine Document Chain (Vorgang).
 
@@ -356,7 +360,7 @@ async def get_chain_timeline(
 
     activities = await service.get_chain_timeline(
         chain_id=chain_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         limit=per_page + 1,
         offset=(page - 1) * per_page,
     )
@@ -391,6 +395,7 @@ async def get_company_timeline(
     search: Optional[str] = Query(None, max_length=200, description="Suche"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TimelineResponse:
     """Holt Company-weite Timeline.
 
@@ -411,7 +416,7 @@ async def get_company_timeline(
     )
 
     activities = await service.get_company_timeline(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         is_admin=is_admin,
         filters=filters,
@@ -445,6 +450,7 @@ async def get_activity_statistics(
     date_until: Optional[datetime] = Query(None, description="Bis Datum"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> StatisticsResponse:
     """Holt Activity-Statistiken.
 
@@ -461,7 +467,7 @@ async def get_activity_statistics(
         user_id = current_user.id
 
     stats = await service.get_activity_statistics(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=user_id,
         team_id=team_id,
         date_from=date_from,
@@ -489,6 +495,7 @@ async def filter_timeline(
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TimelineResponse:
     """Holt gefilterte Timeline mit komplexen Filtern.
 
@@ -501,7 +508,7 @@ async def filter_timeline(
     # Verwende my_activities als Basis (respektiert Berechtigungen)
     activities = await service.get_my_activities(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         filters=filters,
         limit=per_page + 1,
         offset=(page - 1) * per_page,

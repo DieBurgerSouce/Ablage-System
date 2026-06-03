@@ -34,7 +34,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db, get_current_admin_user
+from app.api.dependencies import get_current_active_user, get_db, get_current_admin_user, get_user_company_id_dep
 from app.core.rate_limiting import limiter
 from app.core.security import build_content_disposition
 from app.db.models import User
@@ -221,6 +221,7 @@ async def list_packages(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     status_filter: Optional[str] = Query(None, description="Filter nach Status"),
     page: int = Query(1, ge=1, description="Seite"),
     page_size: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
@@ -234,13 +235,6 @@ async def list_packages(
     - approved: Genehmigt
     - exported: Exportiert
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
 
     status_enum = None
@@ -287,6 +281,7 @@ async def create_package(
     data: PackageCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PackageCreateResponse:
     """
     Erstellt ein neues Steuerberater-Paket.
@@ -294,13 +289,6 @@ async def create_package(
     Bei `auto_populate=true` werden automatisch alle
     buchungsrelevanten Dokumente der Periode hinzugefügt.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     if data.period_from > data.period_to:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -350,15 +338,9 @@ async def get_package(
     package_id: UUID = Path(..., description="Paket-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PackageResponse:
     """Ruft Details eines Steuerberater-Pakets ab."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -383,19 +365,13 @@ async def delete_package(
     package_id: UUID = Path(..., description="Paket-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """
     Löscht ein Steuerberater-Paket.
 
     **Nur Entwürfe können gelöscht werden.**
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -440,6 +416,7 @@ async def submit_for_review(
     data: SubmitReviewRequest = SubmitReviewRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PackageResponse:
     """
     Reicht ein Paket zur Prüfung ein.
@@ -447,13 +424,6 @@ async def submit_for_review(
     Das Paket wird validiert und bei Erfolg in den Status
     'pending_review' versetzt.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -496,19 +466,13 @@ async def approve_package(
     data: ApproveRejectRequest = ApproveRejectRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PackageResponse:
     """
     Genehmigt ein Steuerberater-Paket.
 
     **Nur für Administratoren/Steuerberater.**
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -552,6 +516,7 @@ async def reject_package(
     package_id: UUID = Path(..., description="Paket-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PackageResponse:
     """
     Lehnt ein Steuerberater-Paket ab.
@@ -559,13 +524,6 @@ async def reject_package(
     **Nur für Administratoren/Steuerberater.**
     Das Paket wird zurück in den Entwurf-Status versetzt.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     if not data.comment:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -616,6 +574,7 @@ async def export_package(
     package_id: UUID = Path(..., description="Paket-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> StreamingResponse:
     """
     Exportiert ein Steuerberater-Paket als ZIP.
@@ -628,13 +587,6 @@ async def export_package(
 
     **Nur genehmigte Pakete können exportiert werden.**
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -691,15 +643,9 @@ async def list_package_documents(
     package_id: UUID = Path(..., description="Paket-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[PackageDocumentResponse]:
     """Listet alle Dokumente in einem Steuerberater-Paket auf."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -727,19 +673,13 @@ async def add_document_to_package(
     package_id: UUID = Path(..., description="Paket-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PackageDocumentResponse:
     """
     Fügt ein Dokument zum Steuerberater-Paket hinzu.
 
     **Nur Entwürfe können bearbeitet werden.**
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -788,19 +728,13 @@ async def remove_document_from_package(
     document_id: UUID = Path(..., description="Dokument-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """
     Entfernt ein Dokument aus dem Steuerberater-Paket.
 
     **Nur Entwürfe können bearbeitet werden.**
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 
@@ -844,6 +778,7 @@ async def validate_package(
     package_id: UUID = Path(..., description="Paket-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ValidationResultResponse:
     """
     Führt eine DATEV-Validierung des Pakets durch.
@@ -854,13 +789,6 @@ async def validate_package(
     - Belegdaten
     - DATEV-Regeln
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_steuerberater_package_service()
     package = await service.get_package(db, package_id, company_id)
 

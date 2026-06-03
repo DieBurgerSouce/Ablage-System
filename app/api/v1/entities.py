@@ -38,7 +38,7 @@ from app.db.schemas import (
     MessageResponse,
     SortOrder,
 )
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.services.entity_extraction_service import (
     EntityExtractionService,
     EntityExtractionResult,
@@ -1325,6 +1325,7 @@ async def update_entity(
     data: BusinessEntityUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessEntityResponse:
     """
     Aktualisiert einen Geschäftspartner.
@@ -1389,7 +1390,7 @@ async def update_entity(
     )
 
     # Domain Event: entity_modified
-    if update_data and current_user.company_id:
+    if update_data:
         from app.services.event_sourcing.event_emitter import emit_domain_event
         await emit_domain_event(
             db=db,
@@ -1397,7 +1398,7 @@ async def update_entity(
             aggregate_id=entity_id,
             event_type="entity_modified",
             event_data={"modified_fields": list(update_data.keys())},
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
         )
 

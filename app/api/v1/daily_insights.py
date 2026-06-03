@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db, get_current_admin_user
+from app.api.dependencies import get_current_active_user, get_db, get_current_admin_user, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
 from app.services.insights.daily_insights_engine import (
@@ -213,6 +213,7 @@ async def get_all_daily_insights(
     current_user: User = Depends(get_current_active_user),
     severity: Optional[str] = Query(None, description="Filter nach Schweregrad"),
     max_insights: int = Query(50, ge=1, le=100, description="Maximale Anzahl"),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DailyInsightListResponse:
     """
     Ruft alle täglich generierten Insights ab.
@@ -224,12 +225,6 @@ async def get_all_daily_insights(
     - Skonto-Fristen
     - Compliance-Erinnerungen
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     logger.info(
         "fetching_daily_insights",
@@ -276,6 +271,7 @@ async def get_cashflow_insights(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     days_ahead: int = Query(30, ge=7, le=90, description="Prognosezeitraum"),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DailyInsightListResponse:
     """
     Ruft Cashflow-Warnungen ab.
@@ -286,12 +282,6 @@ async def get_cashflow_insights(
     - Fälligen Eingangsrechnungen
     - Geplanten Zahlungen
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     engine = get_daily_insights_engine()
     insights = await generate_insights_by_type_from_db(
@@ -318,6 +308,7 @@ async def get_contract_insights(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     days_ahead: int = Query(60, ge=7, le=180, description="Vorlauf in Tagen"),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DailyInsightListResponse:
     """
     Ruft Vertragsablauf-Warnungen ab.
@@ -327,12 +318,6 @@ async def get_contract_insights(
     - Kündigungsfristen
     - Verlängerungsoptionen
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     engine = get_daily_insights_engine()
     insights = await generate_insights_by_type_from_db(
@@ -358,6 +343,7 @@ async def get_payment_risk_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DailyInsightListResponse:
     """
     Ruft Zahlungsrisiko-Warnungen ab.
@@ -367,12 +353,6 @@ async def get_payment_risk_insights(
     - High-Risk Entities
     - Ungewöhnliche Zahlungsverzögerungen
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     engine = get_daily_insights_engine()
     insights = await generate_insights_by_type_from_db(
@@ -399,6 +379,7 @@ async def get_skonto_insights(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     days_ahead: int = Query(7, ge=1, le=30, description="Tage Vorlauf"),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DailyInsightListResponse:
     """
     Ruft Skonto-Fristen-Warnungen ab.
@@ -408,12 +389,6 @@ async def get_skonto_insights(
     - Einsparpotenzial
     - Empfohlene Aktion
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     engine = get_daily_insights_engine()
     insights = await generate_insights_by_type_from_db(
@@ -439,6 +414,7 @@ async def get_compliance_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DailyInsightListResponse:
     """
     Ruft Compliance-Erinnerungen ab.
@@ -448,12 +424,6 @@ async def get_compliance_insights(
     - GoBD-Compliance-Problemen
     - GDPR-Fristen
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     engine = get_daily_insights_engine()
     insights = await generate_insights_by_type_from_db(
@@ -479,6 +449,7 @@ async def get_overdue_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DailyInsightListResponse:
     """
     Ruft Warnungen zu überfälligen Rechnungen ab.
@@ -488,12 +459,6 @@ async def get_overdue_insights(
     - Mahnstufe
     - Risiko-Score
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     engine = get_daily_insights_engine()
     insights = await generate_insights_by_type_from_db(
@@ -520,6 +485,7 @@ async def generate_insights(
     data: InsightGenerationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InsightGenerationResponse:
     """
     Generiert Insights manuell.
@@ -532,13 +498,6 @@ async def generate_insights(
     - Nach wichtigen Datenänderungen
     """
     import time
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     start_time = time.time()
 

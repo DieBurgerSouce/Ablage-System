@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
@@ -318,6 +318,7 @@ async def get_cash_flow_forecast(
     days_ahead: int = Query(30, ge=1, le=90, description="Prognosezeitraum in Tagen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CashFlowSummaryResponse:
     """
     Cash-Flow-Prognose mit ML-basierten Zahlungsvorhersagen.
@@ -330,13 +331,6 @@ async def get_cash_flow_forecast(
     from app.services.ai.predictive_payment_service import (
         get_predictive_payment_service,
     )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung",
-        )
 
     try:
         service = get_predictive_payment_service()
@@ -411,6 +405,7 @@ async def get_skonto_impact(
     days_ahead: int = Query(30, ge=1, le=90, description="Analysezeitraum"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SkontoImpactResponse:
     """
     Skonto-Impact-Analyse für Cash-Flow-Optimierung.
@@ -423,13 +418,6 @@ async def get_skonto_impact(
     from app.services.ai.skonto_optimizer_service import (
         get_skonto_optimizer_service,
     )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung",
-        )
 
     try:
         optimizer = get_skonto_optimizer_service()
@@ -591,6 +579,7 @@ async def submit_prediction_feedback(
     feedback: PredictionFeedbackRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PredictionFeedbackResponse:
     """
     Feedback für Vorhersagen einreichen.
@@ -610,13 +599,6 @@ async def submit_prediction_feedback(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"prediction_type muss einer von {valid_types} sein",
-        )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung",
         )
 
     try:
@@ -667,6 +649,7 @@ async def list_high_risk_entities(
     limit: int = Query(50, ge=1, le=200),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Listet Geschäftspartner mit hohem Ausfallrisiko.
@@ -681,10 +664,6 @@ async def list_high_risk_entities(
     from app.services.ai.predictive_payment_service import (
         get_predictive_payment_service,
     )
-
-    company_id = current_user.company_id
-    if not company_id:
-        return {"entities": [], "total": 0}
 
     try:
         service = get_predictive_payment_service()
@@ -761,6 +740,7 @@ async def list_high_risk_entities(
 async def get_prediction_summary(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Zusammenfassung der Vorhersage-Metriken.
@@ -770,14 +750,8 @@ async def get_prediction_summary(
     - Verteilung nach Risiko-Tiers
     - Modell-Performance
     """
-    from sqlalchemy import select, func
+    from sqlalchemy import select, func, and_
     from app.db.models import BusinessEntity
-
-    company_id = current_user.company_id
-    if not company_id:
-        return {
-            "error": "Keine Firmenzuordnung",
-        }
 
     try:
         # Zaehle Entities

@@ -519,7 +519,7 @@ async def create_transaction(
     logger.info(
         "transaction_created",
         transaction_id=str(group.id),
-        user_id=str(current_user.company_id),
+        user_id=str(current_user.id),
         document_count=len(request.document_ids),
     )
 
@@ -590,7 +590,7 @@ async def update_transaction(
     logger.info(
         "transaction_updated",
         transaction_id=str(transaction_id),
-        user_id=str(current_user.company_id),
+        user_id=str(current_user.id),
     )
 
     # Für Response transformieren
@@ -689,7 +689,7 @@ async def update_transaction_step(
         "transaction_step_updated",
         transaction_id=str(transaction_id),
         step_type=step_type,
-        user_id=str(current_user.company_id),
+        user_id=str(current_user.id),
     )
 
     return await get_transaction(transaction_id, current_user, db, company)
@@ -733,5 +733,5 @@ async def delete_transaction(
     logger.info(
         "transaction_deleted",
         transaction_id=str(transaction_id),
-        user_id=str(current_user.company_id),
+        user_id=str(current_user.id),
     )

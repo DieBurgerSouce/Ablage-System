@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.rbac import require_permission
 from app.db.models import User
 from app.core.safe_errors import safe_error_log, safe_error_detail
@@ -179,6 +179,7 @@ async def predict_routing(
     request: RoutingPredictionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RoutingPredictionResponse:
     """
     Generiert Routing-Vorhersagen für ein Dokument.
@@ -198,7 +199,7 @@ async def predict_routing(
     # Hole Dokument
     stmt = select(Document).where(
         Document.id == request.document_id,
-        Document.company_id == current_user.company_id,
+        Document.company_id == company_id,
         Document.deleted_at.is_(None),
     )
     result = await db.execute(stmt)
@@ -340,6 +341,7 @@ async def train_routing_model(
     request: TrainingRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TrainingResultResponse:
     """
     Trainiert das Routing-Modell.
@@ -370,7 +372,7 @@ async def train_routing_model(
 
         stmt = (
             select(Document)
-            .where(Document.company_id == current_user.company_id)
+            .where(Document.company_id == company_id)
             .where(Document.created_at >= cutoff_date)
             .where(Document.deleted_at.is_(None))
             .where(Document.assigned_to_id.isnot(None))  # Nur zugewiesene Dokumente
@@ -488,6 +490,7 @@ async def get_quick_suggestions(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Gibt schnelle regelbasierte Routing-Vorschläge zurück.
@@ -508,7 +511,7 @@ async def get_quick_suggestions(
     # Hole Dokument
     stmt = select(Document).where(
         Document.id == document_id,
-        Document.company_id == current_user.company_id,
+        Document.company_id == company_id,
         Document.deleted_at.is_(None),
     )
     result = await db.execute(stmt)
@@ -613,6 +616,7 @@ async def auto_route_document(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Wendet Routing-Vorhersagen automatisch auf ein Dokument an.
@@ -636,7 +640,7 @@ async def auto_route_document(
     # Hole Dokument
     stmt = select(Document).where(
         Document.id == document_id,
-        Document.company_id == current_user.company_id,
+        Document.company_id == company_id,
         Document.deleted_at.is_(None),
     )
     result = await db.execute(stmt)

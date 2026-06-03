@@ -25,7 +25,9 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from uuid import UUID
+
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log
 from app.db import models
@@ -233,6 +235,7 @@ async def create_connection(
     data: DATEVConnectionCreate,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DATEVConnectionResponse:
     """
     Erstellt eine neue DATEV-Verbindung.
@@ -245,7 +248,7 @@ async def create_connection(
     existing = await db.execute(
         select(models.DATEVConnection).where(
             and_(
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
                 models.DATEVConnection.beraternummer == data.beraternummer,
                 models.DATEVConnection.mandantennummer == data.mandantennummer,
             )
@@ -260,7 +263,7 @@ async def create_connection(
     # Verbindung erstellen
     connection = models.DATEVConnection(
         id=uuid.uuid4(),
-        company_id=current_user.company_id,
+        company_id=company_id,
         name=data.name,
         beraternummer=data.beraternummer,
         mandantennummer=data.mandantennummer,
@@ -322,11 +325,12 @@ async def create_connection(
 async def list_connections(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[DATEVConnectionResponse]:
     """Listet alle DATEV-Verbindungen der Company."""
     result = await db.execute(
         select(models.DATEVConnection).where(
-            models.DATEVConnection.company_id == current_user.company_id,
+            models.DATEVConnection.company_id == company_id,
         )
     )
     connections = result.scalars().all()
@@ -363,13 +367,14 @@ async def get_connection(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DATEVConnectionResponse:
     """Holt eine spezifische DATEV-Verbindung."""
     result = await db.execute(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -411,6 +416,7 @@ async def update_connection(
     data: DATEVConnectionUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DATEVConnectionResponse:
     """Aktualisiert eine DATEV-Verbindung."""
     from app.core.encryption import encrypt_value
@@ -419,7 +425,7 @@ async def update_connection(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -473,13 +479,14 @@ async def delete_connection(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine DATEV-Verbindung (Soft-Delete)."""
     result = await db.execute(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -508,6 +515,7 @@ async def start_oauth_flow(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> OAuthStartResponse:
     """
     Startet OAuth2-Flow für DATEV-Verbindung.
@@ -520,7 +528,7 @@ async def start_oauth_flow(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -561,6 +569,7 @@ async def oauth_callback(
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Verarbeitet OAuth2-Callback nach User-Consent.
@@ -574,7 +583,7 @@ async def oauth_callback(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -625,6 +634,7 @@ async def test_connection(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Testet die DATEV-Verbindung."""
     from app.services.datev.connect import DATEVConnector, DATEVConnectionConfig
@@ -634,7 +644,7 @@ async def test_connection(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -690,6 +700,7 @@ async def suggest_kontierung(
     data: KontierungInput,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> KontierungResponse:
     """
     Generiert Kontierungsvorschlag für ein Dokument.
@@ -704,7 +715,7 @@ async def suggest_kontierung(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -727,7 +738,7 @@ async def suggest_kontierung(
         richtung=data.richtung,
         stichwort=data.stichwort,
         document_id=uuid.UUID(data.document_id) if data.document_id else None,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     suggestion = await service.suggest_kontierung(
@@ -762,6 +773,7 @@ async def create_buchung(
     data: BuchungCreate,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BuchungResponse:
     """Erstellt eine neue Buchung."""
     # Connection validieren
@@ -769,7 +781,7 @@ async def create_buchung(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -785,7 +797,7 @@ async def create_buchung(
     buchung = models.DATEVBuchung(
         id=uuid.uuid4(),
         connection_id=connection.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         document_id=uuid.UUID(data.document_id) if data.document_id else None,
         umsatz=data.umsatz,
         soll_haben=data.soll_haben,
@@ -836,6 +848,7 @@ async def list_buchungen(
     per_page: int = Query(default=100, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BuchungResponse]:
     """Listet Buchungen einer Verbindung."""
     # Connection validieren
@@ -843,7 +856,7 @@ async def list_buchungen(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -906,6 +919,7 @@ async def trigger_stammdaten_sync(
     entity_type: str = Query(default="all"),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SyncTriggerResponse:
     """Triggert Stammdaten-Synchronisation."""
     from app.workers.tasks.datev_connect_tasks import sync_datev_stammdaten
@@ -915,7 +929,7 @@ async def trigger_stammdaten_sync(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -942,6 +956,7 @@ async def trigger_buchungen_push(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SyncTriggerResponse:
     """Triggert Buchungsstapel-Push zu DATEV."""
     from app.workers.tasks.datev_connect_tasks import push_datev_buchungsstapel
@@ -951,7 +966,7 @@ async def trigger_buchungen_push(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -983,6 +998,7 @@ async def festschreiben_buchungen(
     data: FestschreibungRequest,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> FestschreibungResponse:
     """
     Schreibt Buchungen bis zum angegebenen Datum fest.
@@ -996,7 +1012,7 @@ async def festschreiben_buchungen(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -1020,7 +1036,7 @@ async def festschreiben_buchungen(
         db=db,
         connection_id=connection.id,
         bis_datum=data.bis_datum,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     return FestschreibungResponse(
@@ -1041,6 +1057,7 @@ async def check_gobd_compliance(
     bis: Optional[date] = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> GoBDValidationResponse:
     """
     Prüft GoBD-Compliance für eine Verbindung.
@@ -1054,7 +1071,7 @@ async def check_gobd_compliance(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )
@@ -1090,6 +1107,7 @@ async def export_verfahrensdokumentation(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Exportiert Verfahrensdokumentation gemaess GoBD.
@@ -1104,7 +1122,7 @@ async def export_verfahrensdokumentation(
         select(models.DATEVConnection).where(
             and_(
                 models.DATEVConnection.id == uuid.UUID(connection_id),
-                models.DATEVConnection.company_id == current_user.company_id,
+                models.DATEVConnection.company_id == company_id,
             )
         )
     )

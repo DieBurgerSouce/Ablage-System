@@ -29,7 +29,7 @@ from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.ai.financial_orchestrator import (
     FinancialOrchestrator,
@@ -247,6 +247,7 @@ async def agent_query(
     request: AgentQueryRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AgentQueryResponse:
     """
     Verarbeitet eine natuerlichsprachige Anfrage.
@@ -268,7 +269,7 @@ async def agent_query(
     logger.info(
         "agent_query_start",
         user_id=str(current_user.id),
-        company_id=str(current_user.company_id),
+        company_id=str(company_id),
         query_length=len(request.query),
         has_context=bool(request.context),
         has_conversation=bool(request.conversation_id),
@@ -279,7 +280,7 @@ async def agent_query(
         result = await orchestrator.process(
             query=request.query,
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             context=request.context,
             conversation_id=request.conversation_id,
@@ -288,11 +289,11 @@ async def agent_query(
         # Metriken
         duration = time.perf_counter() - start
         _QUERY_TOTAL.labels(
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             status="success",
         ).inc()
         _QUERY_DURATION.labels(
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
         ).observe(duration)
 
         for step in result.thinking_steps:
@@ -303,13 +304,13 @@ async def agent_query(
 
     except Exception as exc:
         _QUERY_TOTAL.labels(
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             status="error",
         ).inc()
         logger.error(
             "agent_query_failed",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             error=str(exc),
         )
         raise HTTPException(
@@ -331,6 +332,7 @@ async def quick_ask(
     request: QuickAskRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AgentQueryResponse:
     """
     Schnellanfrage mit minimalem Kontext.
@@ -348,7 +350,7 @@ async def quick_ask(
         result = await orchestrator.process(
             query=request.query,
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             context=context,
         )

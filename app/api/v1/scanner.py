@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.db.models import User
 from app.services.scanner.scanner_service import (
     ScannerService, ScannerType, ScanResolution, ScanColorMode, ScanJobStatus
@@ -118,11 +118,11 @@ async def unregister_scanner(scanner_id: str, current_user: User = Depends(get_c
     return {"status": "ok", "message": "Scanner wurde entfernt"}
 
 @router.post("/jobs", response_model=ScanJobResponse, status_code=201)
-async def create_scan_job(body: ScanJobRequest, current_user: User = Depends(get_current_active_user)):
+async def create_scan_job(body: ScanJobRequest, current_user: User = Depends(get_current_active_user), company_id: UUID = Depends(get_user_company_id_dep)):
     """Erstellt einen neuen Scan-Auftrag."""
     try:
         job = _scanner_service.create_scan_job(
-            scanner_id=body.scanner_id, company_id=current_user.company_id,
+            scanner_id=body.scanner_id, company_id=company_id,
             user_id=current_user.id, resolution=ScanResolution(body.resolution),
             color_mode=ScanColorMode(body.color_mode), use_adf=body.use_adf,
             duplex=body.duplex,
@@ -135,9 +135,10 @@ async def create_scan_job(body: ScanJobRequest, current_user: User = Depends(get
 async def list_scan_jobs(
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Listet Scan-Aufträge."""
-    jobs = _scanner_service.list_jobs(str(current_user.company_id), limit=limit)
+    jobs = _scanner_service.list_jobs(str(company_id), limit=limit)
     return [_job_to_response(j) for j in jobs]
 
 @router.get("/jobs/{job_id}", response_model=ScanJobResponse)

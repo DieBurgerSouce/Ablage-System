@@ -28,7 +28,7 @@ from app.db.models_po_matching import (
     DiscrepancyCategory,
     DiscrepancySeverity,
 )
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.services.finance.po_matching_service import (
     get_po_matching_service,
@@ -274,6 +274,7 @@ async def list_matches(
     page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MatchListResponse:
     """Listet alle PO-Matches."""
     service = get_po_matching_service()
@@ -281,7 +282,7 @@ async def list_matches(
     matches, total = await service.list_matches(
         db,
         MatchFilter(
-            company_id=current_user.company_id,
+            company_id=company_id,
             status=status,
             vendor_entity_id=vendor_entity_id,
             date_from=date_from,
@@ -311,13 +312,14 @@ async def get_unmatched_documents(
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[UnmatchedDocumentResponse]:
     """Listet ungematchte Dokumente."""
     service = get_po_matching_service()
 
     documents = await service.get_unmatched_documents(
         db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         document_type=document_type,
     )
 
@@ -346,6 +348,7 @@ async def get_matching_statistics(
     period_end: date = Query(..., description="Zeitraum-Ende"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MatchStatisticsResponse:
     """Gibt Matching-Statistiken zurück."""
     service = get_po_matching_service()
@@ -353,7 +356,7 @@ async def get_matching_statistics(
     try:
         stats = await service.get_matching_statistics(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             period_start=period_start,
             period_end=period_end,
         )
@@ -392,6 +395,7 @@ async def get_match_detail(
     match_id: UUID = Path(..., description="Match-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MatchDetailResponse:
     """Ruft einen Match mit Abweichungen ab."""
     service = get_po_matching_service()
@@ -401,7 +405,7 @@ async def get_match_detail(
     if not match:
         raise HTTPException(status_code=404, detail="Match nicht gefunden")
 
-    if match.company_id != current_user.company_id:
+    if match.company_id != company_id:
         raise HTTPException(status_code=403, detail="Kein Zugriff auf diesen Match")
 
     return _match_to_detail_response(match)
@@ -420,6 +424,7 @@ async def create_match(
     data: MatchCreateSchema,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MatchResponse:
     """Erstellt einen neuen Match."""
     service = get_po_matching_service()
@@ -428,7 +433,7 @@ async def create_match(
         match = await service.create_match(
             db,
             MatchCreateRequest(
-                company_id=current_user.company_id,
+                company_id=company_id,
                 purchase_order_id=data.purchase_order_id,
                 delivery_note_id=data.delivery_note_id,
                 invoice_id=data.invoice_id,
@@ -465,6 +470,7 @@ async def auto_detect_matches(
     request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoMatchResponse:
     """Führt Auto-Matching aus."""
     service = get_po_matching_service()
@@ -472,7 +478,7 @@ async def auto_detect_matches(
     try:
         updated_matches = await service.auto_match_by_reference(
             db,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return AutoMatchResponse(

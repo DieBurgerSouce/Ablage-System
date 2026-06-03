@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
 from app.core.safe_errors import safe_error_log
@@ -228,6 +228,7 @@ async def get_all_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     days_ahead: int = Query(14, ge=1, le=90, description="Tage in die Zukunft"),
     max_insights: int = Query(50, ge=1, le=100, description="Maximale Anzahl"),
     priority: Optional[str] = Query(None, description="Filter nach Prioritaet"),
@@ -241,12 +242,6 @@ async def get_all_insights(
     - Workflow (Genehmigungen, Bottlenecks)
     - Datenqualitaet (Fehlende Daten, Duplikate)
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     logger.info(
         "fetching_all_insights",
@@ -322,6 +317,7 @@ async def get_deadline_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     days_ahead: int = Query(14, ge=1, le=90, description="Tage in die Zukunft"),
 ) -> InsightListResponse:
     """
@@ -333,13 +329,6 @@ async def get_deadline_insights(
     - Zahlungsfristen
     - Aufbewahrungsfristen
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_deadline_insights_service()
     insights = await service.check_all_deadlines(db, company_id, days_ahead)
 
@@ -362,6 +351,7 @@ async def get_anomaly_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InsightListResponse:
     """
     Ruft Anomalie-Alerts ab.
@@ -372,13 +362,6 @@ async def get_anomaly_insights(
     - Rechnungsmuster-Anomalien
     - Duplikat-Muster
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_anomaly_insights_service()
     insights = await service.check_all_anomalies(db, company_id)
 
@@ -401,6 +384,7 @@ async def get_workflow_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InsightListResponse:
     """
     Ruft Workflow-Optimierungen ab.
@@ -411,13 +395,6 @@ async def get_workflow_insights(
     - Automatisierungsvorschläge
     - Veraltete Elemente
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_workflow_insights_service()
     insights = await service.check_all_workflow_insights(
         db, company_id, current_user.id
@@ -442,6 +419,7 @@ async def get_data_quality_insights(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InsightListResponse:
     """
     Ruft Datenqualitaets-Insights ab.
@@ -453,13 +431,6 @@ async def get_data_quality_insights(
     - Veraltete Daten
     - Nicht verknüpfte Dokumente
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_data_enrichment_insights_service()
     insights = await service.check_all_data_issues(db, company_id)
 
@@ -482,6 +453,7 @@ async def get_data_quality_summary(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DataQualitySummaryResponse:
     """
     Ruft die Zusammenfassung der Datenqualitaet ab.
@@ -491,13 +463,6 @@ async def get_data_quality_summary(
     - Note (A-F)
     - Anzahl Issues nach Typ und Schweregrad
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_data_enrichment_insights_service()
     summary = await service.get_data_quality_summary(db, company_id)
 
@@ -521,6 +486,7 @@ async def get_insights_summary(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InsightSummaryResponse:
     """
     Ruft eine Zusammenfassung aller Insights ab.
@@ -531,13 +497,6 @@ async def get_insights_summary(
     - Gesamtes Einsparpotenzial
     - Datenqualitaets-Score
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     # Insights sammeln
     all_insights: List[ProactiveInsight] = []
 

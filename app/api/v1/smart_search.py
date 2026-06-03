@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail
 from app.db.models import User
@@ -134,6 +134,7 @@ async def smart_search(
     search_request: SmartSearchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SmartSearchResponse:
     """
     Intelligente Suche mit automatischer Erkennung.
@@ -179,7 +180,7 @@ async def smart_search(
             db=db,
             query=search_request.query,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             filters=search_request.filters,
             limit=search_request.limit,
             include_suggestions=search_request.include_suggestions,

@@ -29,7 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_log
 from app.db.models import User
@@ -288,6 +288,7 @@ async def predict_cashflow(
     include_scenarios: bool = Query(False, description="Szenarien einbeziehen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CashflowPredictionResponse:
     """
     Erstellt eine ML-basierte Cashflow-Prognose.
@@ -306,7 +307,7 @@ async def predict_cashflow(
     try:
         prediction = await predictor.predict(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             horizon_days=horizon_days,
             include_scenarios=include_scenarios,
         )
@@ -364,6 +365,7 @@ async def analyze_scenario(
     horizon_days: int = Query(30, ge=7, le=90),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CashflowPredictionResponse:
     """
     Analysiert ein What-If Szenario.
@@ -389,7 +391,7 @@ async def analyze_scenario(
     try:
         prediction = await predictor.predict(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             horizon_days=horizon_days,
             include_scenarios=True,
             scenario_adjustments=scenario_adjustments,
@@ -436,6 +438,7 @@ async def scan_for_fraud(
     scan_days: int = Query(30, ge=1, le=365, description="Tage zurück zu scannen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> FraudScanResultResponse:
     """
     Führt einen proaktiven Betrugs-Scan durch.
@@ -456,7 +459,7 @@ async def scan_for_fraud(
     try:
         result = await fraud_service.scan(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             scan_days=scan_days,
         )
 
@@ -513,6 +516,7 @@ async def get_fraud_alerts(
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[FraudAlertResponse]:
     """
     Ruft aktive Betrugs-Warnungen ab.
@@ -525,7 +529,7 @@ async def get_fraud_alerts(
     try:
         alerts = await fraud_service.get_alerts(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             severity=severity,
             alert_type=alert_type,
             include_dismissed=include_dismissed,
@@ -572,6 +576,7 @@ async def dismiss_fraud_alert(
     reason: str = Query(..., min_length=5, max_length=500, description="Begründung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Verwirft eine Betrugs-Warnung mit Begründung.
@@ -585,7 +590,7 @@ async def dismiss_fraud_alert(
         success = await fraud_service.dismiss_alert(
             db=db,
             alert_id=alert_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             dismissed_by=current_user.id,
             reason=reason,
         )
@@ -628,6 +633,7 @@ async def optimize_skonto(
     min_savings: float = Query(10.0, ge=0, description="Mindest-Ersparnis in EUR"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SkontoOptimizationResponse:
     """
     Berechnet optimale Skonto-Nutzung unter Berücksichtigung der Liquidität.
@@ -640,7 +646,7 @@ async def optimize_skonto(
     try:
         result = await optimizer.optimize(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             days_ahead=days_ahead,
             min_savings=min_savings,
         )
@@ -696,6 +702,7 @@ async def get_payment_recommendations(
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[PaymentRecommendationResponse]:
     """
     Ruft priorisierte Zahlungsempfehlungen ab.
@@ -708,7 +715,7 @@ async def get_payment_recommendations(
     try:
         recommendations = await optimizer.get_recommendations(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             days_ahead=days_ahead,
             only_urgent=only_urgent,
             limit=limit,
@@ -754,6 +761,7 @@ async def get_financial_insights_summary(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Gibt eine Zusammenfassung aller Financial Insights zurück.
@@ -768,14 +776,14 @@ async def get_financial_insights_summary(
 
     summary = {
         "timestamp": datetime.utcnow().isoformat(),
-        "company_id": str(current_user.company_id),
+        "company_id": str(company_id),
     }
 
     # Cashflow Summary
     try:
         cashflow = await cashflow_predictor.predict(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             horizon_days=30,
         )
         summary["cashflow"] = {
@@ -792,7 +800,7 @@ async def get_financial_insights_summary(
     try:
         fraud_result = await fraud_service.scan(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             scan_days=30,
         )
         summary["fraud"] = {
@@ -806,7 +814,7 @@ async def get_financial_insights_summary(
     try:
         skonto = await skonto_optimizer.optimize(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             days_ahead=14,
         )
         summary["skonto"] = {

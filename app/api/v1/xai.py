@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_log
 from app.db.models import User
@@ -440,6 +440,7 @@ async def get_xai_stats(
     days: int = Query(30, ge=1, le=365, description="Tage für Statistik"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Gibt XAI-Nutzungsstatistiken zurück.
@@ -452,7 +453,7 @@ async def get_xai_stats(
     try:
         stats = await explainer.get_stats(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             days=days,
         )
 
@@ -611,6 +612,7 @@ async def get_document_explanations(
     document_id: UUID = Path(..., description="Dokument-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DocumentExplanationsResponse:
     """
     Sammelt und aggregiert alle KI-Erklärungen für ein Dokument.
@@ -628,7 +630,7 @@ async def get_document_explanations(
         collector = ExplanationCollector(db)
         explanations = await collector.collect_for_document(
             document_id=document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return DocumentExplanationsResponse(
@@ -679,6 +681,7 @@ async def get_entity_explanations(
     entity_id: UUID = Path(..., description="Entity-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> EntityExplanationsResponse:
     """
     Sammelt und aggregiert alle KI-Erklärungen für eine Entity.
@@ -694,7 +697,7 @@ async def get_entity_explanations(
         collector = ExplanationCollector(db)
         explanations = await collector.collect_for_entity(
             entity_id=entity_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return EntityExplanationsResponse(

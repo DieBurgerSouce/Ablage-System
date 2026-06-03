@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user, get_user_company_id_dep
 from app.db.models import User
 from app.services.trust_dashboard_service import get_trust_dashboard_service
 
@@ -122,6 +122,7 @@ async def get_trust_dashboard(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TrustDashboardSnapshot:
     """
     Liefert Trust Dashboard Snapshot.
@@ -138,15 +139,8 @@ async def get_trust_dashboard(
     - Meist-zugriffene Dokumente
     - Benutzer-Aktivität
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_trust_dashboard_service(db)
-    snapshot = await service.get_dashboard_snapshot(current_user.company_id, days)
+    snapshot = await service.get_dashboard_snapshot(company_id, days)
 
     return TrustDashboardSnapshot(**snapshot)
 
@@ -163,6 +157,7 @@ async def get_access_log(
     per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AccessEventResponse]:
     """
     Liefert Zugriffsprotokolle.
@@ -172,16 +167,9 @@ async def get_access_log(
     - Zeitpunkt
     - IP-Adresse
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_trust_dashboard_service(db)
     access_log = await service.get_access_log(
-        current_user.company_id,
+        company_id,
         days=days,
         limit=per_page,
         offset=(page - 1) * per_page,
@@ -202,6 +190,7 @@ async def get_export_log(
     per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ExportEventResponse]:
     """
     Liefert Export-Logs.
@@ -212,16 +201,9 @@ async def get_export_log(
     - In welchem Format
     - GDPR Art. 15 compliant
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_trust_dashboard_service(db)
     export_log = await service.get_export_log(
-        current_user.company_id,
+        company_id,
         days=days,
         limit=per_page,
         offset=(page - 1) * per_page,
@@ -241,6 +223,7 @@ async def get_anomalies(
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[AnomalyResponse]:
     """
     Erkennt Anomalien.
@@ -251,16 +234,9 @@ async def get_anomalies(
     - Ungewöhnliche Muster
     - Severity-Level: low, medium, high, critical
     """
-    if not current_user.company_id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Company-Zuordnung gefunden"
-        )
-
     service = get_trust_dashboard_service(db)
     anomalies = await service.get_anomalies(
-        current_user.company_id,
+        company_id,
         days=days,
         limit=limit,
     )

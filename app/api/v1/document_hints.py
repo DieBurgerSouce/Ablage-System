@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.document_hints_service import (
     DocumentHintsService,
@@ -79,6 +79,7 @@ async def get_document_hints(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DocumentHintsResponse:
     """
     Holt alle Hints für ein einzelnes Dokument.
@@ -94,14 +95,11 @@ async def get_document_hints(
     Raises:
         HTTPException: Bei Fehler
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Benutzer hat keine Firma zugeordnet")
-
     try:
         service = get_document_hints_service(db)
         hints = await service.get_hints_for_document(
             document_id=document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         hint_schemas = [
@@ -141,6 +139,7 @@ async def get_batch_document_hints(
     request: BatchHintsRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BatchHintsResponse:
     """
     Holt Hints für mehrere Dokumente (Batch).
@@ -156,14 +155,11 @@ async def get_batch_document_hints(
     Raises:
         HTTPException: Bei Fehler
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Benutzer hat keine Firma zugeordnet")
-
     try:
         service = get_document_hints_service(db)
         hints_dict = await service.get_hints_batch(
             document_ids=request.document_ids,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         # Konvertiere zu Schemas
@@ -209,6 +205,7 @@ async def get_batch_document_hints(
 async def get_hints_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> HintSummarySchema:
     """
     Holt Zusammenfassung aller Hints für Dashboard.
@@ -223,12 +220,9 @@ async def get_hints_summary(
     Raises:
         HTTPException: Bei Fehler
     """
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="Benutzer hat keine Firma zugeordnet")
-
     try:
         service = get_document_hints_service(db)
-        summary = await service.get_hint_summary(company_id=current_user.company_id)
+        summary = await service.get_hint_summary(company_id=company_id)
 
         return HintSummarySchema(
             by_category=summary.by_category,

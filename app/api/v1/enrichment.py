@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.external.enrichment_orchestrator import (
@@ -78,6 +78,7 @@ async def enrich_entity(
     request: EnrichEntityRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> EnrichmentResultResponse:
     """
     Reichert Geschäftspartner mit externen Daten an.
@@ -106,7 +107,7 @@ async def enrich_entity(
         orchestrator = EnrichmentOrchestrator()
         result = await orchestrator.enrich_entity(
             entity_id=entity_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             sources=request.sources,
             db=db,
         )
@@ -183,6 +184,7 @@ async def get_cached_enrichment(
     entity_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> EnrichmentResultResponse:
     """
     Gibt gecachte Enrichment-Ergebnisse zurück.
@@ -211,7 +213,7 @@ async def get_cached_enrichment(
         # Entity abrufen
         stmt = select(BusinessEntity).where(
             BusinessEntity.id == entity_id,
-            BusinessEntity.company_id == current_user.company_id,
+            BusinessEntity.company_id == company_id,
         )
         result = await db.execute(stmt)
         entity = result.scalar_one_or_none()

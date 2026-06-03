@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.rbac import require_admin
 from app.api.schemas.duplicate_detection import (
@@ -69,6 +69,7 @@ async def check_document_for_duplicates(
     check_request: DuplicateCheckRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DuplicateCheckResponse:
     """Ein Dokument auf Duplikate pruefen."""
     try:
@@ -77,7 +78,7 @@ async def check_document_for_duplicates(
         result = await service.check_document(
             db=db,
             document_id=check_request.document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             include_near=check_request.include_near,
         )
 
@@ -122,6 +123,7 @@ async def get_document_duplicates(
     include_near: bool = True,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DuplicateCheckResponse:
     """Duplikat-Matches fuer ein Dokument abrufen."""
     try:
@@ -130,7 +132,7 @@ async def get_document_duplicates(
         result = await service.check_document(
             db=db,
             document_id=document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             include_near=include_near,
         )
 
@@ -169,17 +171,18 @@ async def trigger_batch_scan(
     scan_request: BatchScanRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BatchScanResponse:
     """Batch-Duplikat-Scan asynchron starten."""
     try:
         from app.workers.tasks.duplicate_detection_tasks import batch_scan_duplicates_task
 
         # SECURITY: company_id aus Auth ableiten, nicht dem Client vertrauen
-        result = batch_scan_duplicates_task.delay(str(current_user.company_id))
+        result = batch_scan_duplicates_task.delay(str(company_id))
 
         logger.info(
             "duplicate_batch_scan_triggered",
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             task_id=result.id,
         )
 
@@ -191,7 +194,7 @@ async def trigger_batch_scan(
     except Exception as e:
         logger.error(
             "duplicate_batch_scan_error",
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             **safe_error_log(e),
         )
         raise HTTPException(
@@ -209,11 +212,10 @@ async def trigger_batch_scan(
 async def get_duplicate_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DuplicateStatsResponse:
     """Duplikat-Statistiken abrufen."""
     try:
-        # SECURITY: company_id aus Auth ableiten (Multi-Tenant Enforcement)
-        company_id = current_user.company_id
 
         # Gesamtanzahl der Dokumente
         total_query = select(func.count(Document.id)).where(

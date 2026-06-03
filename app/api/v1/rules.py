@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field, model_validator, ConfigDict
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail
 from app.core.jsonb_validators import validate_jsonb_payload
 from app.db.models import User
@@ -372,11 +372,12 @@ async def list_rules(
     search: Optional[str] = Query(None, max_length=100, description="Suche in Name"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RuleListResponse:
     """Listet alle Regeln der Company."""
     # Basis-Query
     query = select(BusinessRuleModel).where(
-        BusinessRuleModel.company_id == current_user.company_id
+        BusinessRuleModel.company_id == company_id
     )
 
     # Filter
@@ -413,6 +414,7 @@ async def create_rule(
     request: RuleCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RuleResponse:
     """Erstellt eine neue Regel."""
     # Code-Eindeutigkeit prüfen
@@ -420,7 +422,7 @@ async def create_rule(
         existing = await db.execute(
             select(BusinessRuleModel).where(
                 and_(
-                    BusinessRuleModel.company_id == current_user.company_id,
+                    BusinessRuleModel.company_id == company_id,
                     BusinessRuleModel.code == request.code,
                 )
             )
@@ -441,7 +443,7 @@ async def create_rule(
         name=request.name,
         description=request.description,
         code=request.code,
-        company_id=current_user.company_id,
+        company_id=company_id,
         condition=request.condition,
         actions=actions_json,
         else_actions=else_actions_json,
@@ -468,13 +470,14 @@ async def get_rule(
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RuleResponse:
     """Holt eine einzelne Regel."""
     result = await db.execute(
         select(BusinessRuleModel).where(
             and_(
                 BusinessRuleModel.id == rule_id,
-                BusinessRuleModel.company_id == current_user.company_id,
+                BusinessRuleModel.company_id == company_id,
             )
         )
     )
@@ -495,13 +498,14 @@ async def update_rule(
     request: RuleUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RuleResponse:
     """Aktualisiert eine Regel."""
     result = await db.execute(
         select(BusinessRuleModel).where(
             and_(
                 BusinessRuleModel.id == rule_id,
-                BusinessRuleModel.company_id == current_user.company_id,
+                BusinessRuleModel.company_id == company_id,
             )
         )
     )
@@ -518,7 +522,7 @@ async def update_rule(
         existing = await db.execute(
             select(BusinessRuleModel).where(
                 and_(
-                    BusinessRuleModel.company_id == current_user.company_id,
+                    BusinessRuleModel.company_id == company_id,
                     BusinessRuleModel.code == request.code,
                     BusinessRuleModel.id != rule_id,
                 )
@@ -561,13 +565,14 @@ async def delete_rule(
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Regel."""
     result = await db.execute(
         select(BusinessRuleModel).where(
             and_(
                 BusinessRuleModel.id == rule_id,
-                BusinessRuleModel.company_id == current_user.company_id,
+                BusinessRuleModel.company_id == company_id,
             )
         )
     )
@@ -634,6 +639,7 @@ async def evaluate_document(
     dry_run: bool = Body(default=True),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DocumentEvaluationResponse:
     """Wertet Regeln für ein Dokument aus.
 
@@ -645,7 +651,7 @@ async def evaluate_document(
     # Regeln laden
     query = select(BusinessRuleModel).where(
         and_(
-            BusinessRuleModel.company_id == current_user.company_id,
+            BusinessRuleModel.company_id == company_id,
             BusinessRuleModel.is_active == True,
         )
     )
@@ -739,6 +745,7 @@ async def preview_document_evaluation(
     document_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DocumentEvaluationResponse:
     """Preview: Zeigt welche Regeln für ein Dokument greifen wuerden.
 
@@ -751,6 +758,7 @@ async def preview_document_evaluation(
         dry_run=True,
         current_user=current_user,
         db=db,
+        company_id=company_id,
     )
 
 
@@ -764,10 +772,11 @@ async def list_rule_sets(
     is_active: Optional[bool] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[RuleSetResponse]:
     """Listet alle RuleSets."""
     query = select(RuleSet).where(
-        RuleSet.company_id == current_user.company_id
+        RuleSet.company_id == company_id
     )
 
     if is_active is not None:
@@ -800,6 +809,7 @@ async def create_rule_set(
     request: RuleSetCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RuleSetResponse:
     """Erstellt ein neues RuleSet."""
     # Wenn default, andere defaults deaktivieren
@@ -807,7 +817,7 @@ async def create_rule_set(
         await db.execute(
             select(RuleSet).where(
                 and_(
-                    RuleSet.company_id == current_user.company_id,
+                    RuleSet.company_id == company_id,
                     RuleSet.is_default == True,
                 )
             )
@@ -817,7 +827,7 @@ async def create_rule_set(
         await db.execute(
             update(RuleSet).where(
                 and_(
-                    RuleSet.company_id == current_user.company_id,
+                    RuleSet.company_id == company_id,
                     RuleSet.is_default == True,
                 )
             ).values(is_default=False)
@@ -826,7 +836,7 @@ async def create_rule_set(
     rule_set = RuleSet(
         name=request.name,
         description=request.description,
-        company_id=current_user.company_id,
+        company_id=company_id,
         rule_ids=[str(r) for r in request.rule_ids],
         is_active=request.is_active,
         is_default=request.is_default,
@@ -856,13 +866,14 @@ async def delete_rule_set(
     set_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht ein RuleSet."""
     result = await db.execute(
         select(RuleSet).where(
             and_(
                 RuleSet.id == set_id,
-                RuleSet.company_id == current_user.company_id,
+                RuleSet.company_id == company_id,
             )
         )
     )
@@ -892,11 +903,12 @@ async def list_execution_logs(
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ExecutionLogResponse]:
     """Listet Ausführungs-Logs."""
     # Subquery für Company-Filter
     company_rules = select(BusinessRuleModel.id).where(
-        BusinessRuleModel.company_id == current_user.company_id
+        BusinessRuleModel.company_id == company_id
     )
 
     query = select(RuleExecutionLog).where(

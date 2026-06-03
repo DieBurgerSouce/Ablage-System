@@ -23,7 +23,7 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_current_active_user, get_user_company_id_dep
 from app.core.security import build_content_disposition
 from app.db.models import User, Document, EInvoiceDocument
 from app.services.storage_service import get_storage_service
@@ -1268,6 +1268,7 @@ async def receive_einvoice(
     source: str = Query("upload", description="Quelle: peppol, email, portal, upload"),
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Empfängt und verarbeitet eingehende E-Rechnung."""
     from app.services.einvoice import get_receiver_service
@@ -1314,9 +1315,6 @@ async def receive_einvoice(
             status_code=400,
             detail="Entweder 'file' oder 'peppol_payload' erforderlich"
         )
-
-    # Company ID ermitteln (aus User)
-    company_id = current_user.company_id if hasattr(current_user, 'company_id') else current_user.id
 
     try:
         result = await receiver.process_incoming_invoice(
@@ -1376,12 +1374,10 @@ async def list_incoming_einvoices(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Listet eingehende E-Rechnungen."""
     from app.db.models_einvoice import IncomingEInvoice
-
-    # Company ID
-    company_id = current_user.company_id if hasattr(current_user, 'company_id') else current_user.id
 
     query = select(IncomingEInvoice).where(
         IncomingEInvoice.company_id == company_id

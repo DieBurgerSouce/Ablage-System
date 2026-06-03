@@ -50,7 +50,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.core.safe_errors import safe_error_log
 from app.db.models_ai_conversation import (
@@ -383,6 +383,7 @@ async def create_conversation(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConversationDetail:
     """Erstelle eine neue Konversation."""
     try:
@@ -392,7 +393,7 @@ async def create_conversation(
             id=uuid.uuid4(),
             session_id=session_id,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             context_page=body.context_page,
             context_data=body.context_data,
             language=body.language,

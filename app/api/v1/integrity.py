@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_integrity import DocumentHash, IntegrityReport
@@ -58,6 +58,7 @@ async def get_document_hash_status(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> IntegrityStatusResponse:
     """Integritaetsstatus eines Dokuments abrufen."""
     try:
@@ -72,7 +73,7 @@ async def get_document_hash_status(
             )
 
         # Multi-Tenant-Prüfung
-        if doc_hash.company_id != current_user.company_id:
+        if doc_hash.company_id != company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Kein Zugriff auf dieses Dokument",
@@ -117,6 +118,7 @@ async def verify_document(
     file: UploadFile,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> IntegrityVerifyResponse:
     """Dokument gegen gespeicherten Hash verifizieren."""
     try:
@@ -133,7 +135,7 @@ async def verify_document(
             )
 
         # Multi-Tenant-Prüfung
-        if doc_hash.company_id != current_user.company_id:
+        if doc_hash.company_id != company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Kein Zugriff auf dieses Dokument",
@@ -184,16 +186,10 @@ async def build_merkle_tree(
     request: MerkleBuildRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MerkleBuildResponse:
     """Täglichen Merkle-Baum erstellen."""
     try:
-        company_id = current_user.company_id
-        if not company_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Benutzer hat keine Firmenzuordnung",
-            )
-
         merkle_root = await _integrity_service.build_daily_merkle_tree(
             db, company_id, request.tree_date
         )
@@ -243,6 +239,7 @@ async def get_merkle_proof(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MerkleProofResponse:
     """Merkle-Beweis für ein Dokument abrufen."""
     try:
@@ -257,7 +254,7 @@ async def get_merkle_proof(
             )
 
         # Multi-Tenant-Prüfung
-        if doc_hash.company_id != current_user.company_id:
+        if doc_hash.company_id != company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Kein Zugriff auf dieses Dokument",
@@ -340,16 +337,10 @@ async def generate_report(
     request: IntegrityReportRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> IntegrityReportResponse:
     """Integritaetsbericht generieren."""
     try:
-        company_id = current_user.company_id
-        if not company_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Benutzer hat keine Firmenzuordnung",
-            )
-
         report = await _integrity_service.generate_integrity_report(
             db,
             company_id=company_id,
@@ -394,13 +385,14 @@ async def get_report(
     report_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> IntegrityReportResponse:
     """Integritaetsbericht abrufen."""
     try:
         stmt = select(IntegrityReport).where(
             and_(
                 IntegrityReport.id == report_id,
-                IntegrityReport.company_id == current_user.company_id,
+                IntegrityReport.company_id == company_id,
             )
         )
         result = await db.execute(stmt)
@@ -448,6 +440,7 @@ async def list_reports(
     per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[IntegrityReportResponse]:
     """Integritaetsberichte auflisten."""
     try:
@@ -455,7 +448,7 @@ async def list_reports(
 
         stmt = (
             select(IntegrityReport)
-            .where(IntegrityReport.company_id == current_user.company_id)
+            .where(IntegrityReport.company_id == company_id)
             .order_by(IntegrityReport.report_date.desc())
             .offset(offset)
             .limit(per_page)

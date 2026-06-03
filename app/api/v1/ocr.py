@@ -19,7 +19,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, Up
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.ocr import quick_ocr_preview
 from app.core.file_validation import sanitize_filename, PathTraversalError
@@ -2061,6 +2061,7 @@ async def extract_document_tables(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Extrahiert Tabellen aus einem Dokument.
@@ -2087,7 +2088,7 @@ async def extract_document_tables(
         )
 
     # Berechtigung prüfen
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument.",
@@ -2146,6 +2147,7 @@ async def get_document_tables(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Ruft bereits extrahierte Tabellen aus einem Dokument ab.
@@ -2161,7 +2163,7 @@ async def get_document_tables(
             detail="Dokument nicht gefunden.",
         )
 
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument.",
@@ -2195,6 +2197,7 @@ async def export_document_table(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """
     Exportiert eine Tabelle in das gewünschte Format.
@@ -2233,7 +2236,7 @@ async def export_document_table(
             detail="Dokument nicht gefunden.",
         )
 
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument.",
@@ -2445,6 +2448,7 @@ async def export_all_document_tables(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """
     Exportiert alle Tabellen eines Dokuments.
@@ -2479,7 +2483,7 @@ async def export_all_document_tables(
             detail="Dokument nicht gefunden.",
         )
 
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument.",
@@ -2639,6 +2643,7 @@ async def check_document_consistency(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Prüft die Konsistenz zwischen OCR-Backend-Ergebnissen.
@@ -2664,7 +2669,7 @@ async def check_document_consistency(
             detail="Dokument nicht gefunden.",
         )
 
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument.",
@@ -2743,6 +2748,7 @@ async def get_consistency_report(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Ruft bereits erstellten Konsistenz-Report ab."""
     # Dokument laden
@@ -2756,7 +2762,7 @@ async def get_consistency_report(
             detail="Dokument nicht gefunden.",
         )
 
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument.",
@@ -2788,6 +2794,7 @@ async def get_inconsistent_regions(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Ruft inkonsistente Regionen für Review ab.
@@ -2817,7 +2824,7 @@ async def get_inconsistent_regions(
             detail="Dokument nicht gefunden.",
         )
 
-    if document.company_id != current_user.company_id:
+    if document.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung für dieses Dokument.",
@@ -2948,6 +2955,7 @@ async def get_consistency_statistics(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """
     Ruft Konsistenz-Statistiken für den Mandanten ab.
@@ -2964,7 +2972,7 @@ async def get_consistency_statistics(
 
     # Dokumente mit Konsistenz-Reports laden
     doc_query = select(Document).where(
-        Document.company_id == current_user.company_id,
+        Document.company_id == company_id,
         Document.created_at >= start_date,
     )
     result = await db.execute(doc_query)

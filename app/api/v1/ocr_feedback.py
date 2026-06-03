@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.models import User, Document
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.ocr.feedback_service import (
     EnhancedOCRFeedbackService,
@@ -157,6 +157,7 @@ async def submit_correction(
     request: CorrectionRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> CorrectionResultResponse:
     """
     Reicht eine einzelne OCR-Korrektur ein.
@@ -178,12 +179,6 @@ async def submit_correction(
     - vat_id: Steuernummern (25 Punkte)
     - reference: Referenznummern (15 Punkte)
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Dokument prüfen
     result = await db.execute(
@@ -263,6 +258,7 @@ async def submit_batch_corrections(
     request: BatchCorrectionRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BatchCorrectionResponse:
     """
     Reicht mehrere Korrekturen als Batch ein.
@@ -270,12 +266,6 @@ async def submit_batch_corrections(
     Effizientere Verarbeitung für größere Korrektur-Sessions.
     Punkte werden für jede Korrektur einzeln berechnet.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Alle Dokumente prüfen
     doc_ids = {c.document_id for c in request.corrections}
@@ -354,6 +344,7 @@ async def get_correction_queue(
     per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Ruft die Korrektur-Queue ab.
@@ -366,12 +357,6 @@ async def get_correction_queue(
 
     Items werden nach Konfidenz aufsteigend sortiert (niedrigste zuerst).
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     priority_enum = QueuePriority(priority) if priority else None
 
@@ -419,18 +404,13 @@ async def claim_queue_item(
     item_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Reserviert ein Queue-Item.
 
     Verhindert dass mehrere Benutzer gleichzeitig am selben Item arbeiten.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_feedback_service(db)
     success = await service.claim_queue_item(
@@ -470,6 +450,7 @@ async def get_leaderboard(
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Ruft das Leaderboard ab.
@@ -481,12 +462,6 @@ async def get_leaderboard(
 
     Mindestens 5 Korrekturen erforderlich für Ranking.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     period_enum = LeaderboardPeriod(period)
 
@@ -528,6 +503,7 @@ async def get_leaderboard(
 async def get_user_stats(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> UserStatsResponse:
     """
     Ruft die Statistiken des aktuellen Benutzers ab.
@@ -540,12 +516,6 @@ async def get_user_stats(
     - Letzte Korrekturen
     - Punkte-Aufschluesselung
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_feedback_service(db)
     stats = await service.get_user_stats(
@@ -582,18 +552,13 @@ async def get_user_stats_by_id(
     user_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> UserStatsResponse:
     """
     Ruft die Statistiken eines bestimmten Benutzers ab.
 
     Nur für Admins oder den Benutzer selbst.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Nur eigene Stats oder Admin
     if user_id != current_user.id and not current_user.is_superuser:
@@ -640,18 +605,13 @@ async def get_user_stats_by_id(
 async def get_achievements(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Ruft alle Achievements ab.
 
     Zeigt sowohl erreichte als auch noch nicht erreichte Achievements.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     service = get_feedback_service(db)
     stats = await service.get_user_stats(

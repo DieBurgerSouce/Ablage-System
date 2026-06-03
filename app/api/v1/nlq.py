@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db, engine
+from app.api.dependencies import get_current_active_user, get_db, engine, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail
 from app.core.redis_state import get_redis
 from app.db.models import User
@@ -87,6 +87,7 @@ async def execute_nlq_query(
     body: NLQQueryRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> NLQQueryResponse:
     """
     Führt eine natürlichsprachige Query aus.
@@ -113,7 +114,7 @@ async def execute_nlq_query(
         result = await orchestrator.query(
             natural_query=body.query,
             user_id=current_user.id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 
@@ -160,6 +161,7 @@ async def execute_nlq_query_stream(
     body: NLQQueryRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> StreamingResponse:
     """
     Führt eine natürlichsprachige Query mit SSE-Streaming aus.
@@ -189,7 +191,7 @@ async def execute_nlq_query_stream(
             result = await orchestrator.query(
                 natural_query=body.query,
                 user_id=current_user.id,
-                company_id=current_user.company_id,
+                company_id=company_id,
                 db=db,
             )
 
@@ -213,6 +215,7 @@ async def get_query_suggestions(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> NLQSuggestionsResponse:
     """
     Gibt Query-Vorschläge basierend auf dem Datenbankschema.
@@ -236,7 +239,7 @@ async def get_query_suggestions(
         orchestrator = NLQOrchestrator(engine=engine, redis=redis_client)
 
         suggestions = await orchestrator.get_suggestions(
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
         )
 

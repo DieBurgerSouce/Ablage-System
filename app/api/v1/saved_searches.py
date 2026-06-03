@@ -24,7 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from app.db.models import User
 from app.db.models_saved_search import SavedSearch
 from app.db.session import get_async_session
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_user_company_id
 from app.core.safe_errors import safe_error_log
 from app.db.schemas import SearchType
 from app.services.unified_search_service import (
@@ -171,13 +171,14 @@ async def list_saved_searches(
     dann nach Erstellungsdatum absteigend.
     """
     try:
-        # Eigene Suchen + geteilte Suchen aus derselben Firma
+        # Eigene Suchen + geteilte Suchen aus derselben Firma (optionale Firmenzuordnung)
+        company_id = await get_user_company_id(db, current_user)
         conditions = [SavedSearch.user_id == current_user.id]
-        if hasattr(current_user, 'company_id') and current_user.company_id is not None:
+        if company_id is not None:
             conditions.append(
                 and_(
                     SavedSearch.is_shared == True,
-                    SavedSearch.company_id == current_user.company_id,
+                    SavedSearch.company_id == company_id,
                 )
             )
         result = await db.execute(
@@ -222,10 +223,10 @@ async def create_saved_search(
         if data.is_default:
             await _unset_other_defaults(current_user.id, db)
 
-        # Neue Suche erstellen
+        # Neue Suche erstellen (geteilte Suchen werden der Firma zugeordnet, sofern vorhanden)
         company_id = None
-        if data.is_shared and hasattr(current_user, 'company_id'):
-            company_id = current_user.company_id
+        if data.is_shared:
+            company_id = await get_user_company_id(db, current_user)
 
         saved_search = SavedSearch(
             user_id=current_user.id,
@@ -530,8 +531,8 @@ async def toggle_share_saved_search(
 
     try:
         saved_search.is_shared = data.is_shared
-        if data.is_shared and hasattr(current_user, 'company_id'):
-            saved_search.company_id = current_user.company_id
+        if data.is_shared:
+            saved_search.company_id = await get_user_company_id(db, current_user)
         elif not data.is_shared:
             saved_search.company_id = None
 

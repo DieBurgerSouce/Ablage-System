@@ -23,7 +23,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.api.schemas.lifecycle import (
     LifecycleDashboardResponse,
     LifecycleDashboardCounts,
@@ -67,6 +67,7 @@ async def get_lifecycle_dashboard(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> LifecycleDashboardResponse:
     """
     Gibt die Lifecycle-Uebersicht fuer die aktuelle Firma zurueck.
@@ -76,7 +77,7 @@ async def get_lifecycle_dashboard(
     """
     try:
         dashboard = await document_lifecycle_engine.get_lifecycle_dashboard(
-            db, current_user.company_id
+            db, company_id
         )
 
         counts_data = dashboard.get("counts", {})
@@ -119,6 +120,7 @@ async def get_expiring_documents(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ExpiringDocumentResponse]:
     """
     Listet Dokumente auf, deren Aufbewahrungsfrist bald ablaeuft.
@@ -130,7 +132,7 @@ async def get_expiring_documents(
         archives = await document_lifecycle_engine.scan_expiring_documents(
             db,
             days_ahead=days,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         today = date.today()
@@ -183,6 +185,7 @@ async def extend_document_retention(
     document_id: UUID = Path(..., description="Dokument-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RetentionExtensionResponse:
     """
     Verlaengert die Aufbewahrungsfrist eines archivierten Dokuments.
@@ -200,7 +203,7 @@ async def extend_document_retention(
             select(Document.id).where(
                 and_(
                     Document.id == document_id,
-                    Document.company_id == current_user.company_id,
+                    Document.company_id == company_id,
                 )
             )
         )
@@ -272,6 +275,7 @@ async def list_destruction_protocols(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, str]:
     """
     Gibt eine Info-Nachricht zurueck.
@@ -300,6 +304,7 @@ async def create_destruction_protocol(
     body: DestructionProtocolRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DestructionProtocolResponse:
     """
     Erstellt ein GoBD-konformes Vernichtungsprotokoll.
@@ -319,7 +324,7 @@ async def create_destruction_protocol(
         owned_result = await db.execute(
             select(Document.id).where(
                 Document.id.in_(body.document_ids),
-                Document.company_id == current_user.company_id,
+                Document.company_id == company_id,
             )
         )
         owned_ids = {row[0] for row in owned_result.all()}
@@ -383,6 +388,7 @@ async def get_retention_summary(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> RetentionSummaryResponse:
     """
     Gibt eine Zusammenfassung der Aufbewahrungsfristen zurueck.
@@ -392,7 +398,7 @@ async def get_retention_summary(
     """
     try:
         summary = await document_lifecycle_engine.get_retention_summary(
-            db, company_id=current_user.company_id
+            db, company_id=company_id
         )
 
         categories = [

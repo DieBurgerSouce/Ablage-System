@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.sync import (
@@ -125,6 +125,7 @@ async def get_changes(
     per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SyncDeltaResponse:
     """Holt Änderungen seit einem Zeitpunkt."""
     try:
@@ -133,7 +134,7 @@ async def get_changes(
         delta = await sync_service.get_changes_since(
             entity_type=entity_type,
             since=since,
-            company_id=current_user.company_id,
+            company_id=company_id,
             db=db,
             limit=per_page,
             offset=(page - 1) * per_page,
@@ -176,6 +177,7 @@ async def push_changes(
     request: SyncPushRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SyncPushResponse:
     """Pusht Änderungen vom Client."""
     try:
@@ -197,7 +199,7 @@ async def push_changes(
         # Push durchführen
         result = await sync_service.push_changes(
             changes=change_records,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             conflict_resolution=request.conflict_resolution,
             db=db,

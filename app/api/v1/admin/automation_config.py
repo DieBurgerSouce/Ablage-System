@@ -15,7 +15,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.dependencies import get_current_active_user, get_current_superuser, get_db
+from app.api.dependencies import get_current_active_user, get_current_superuser, get_db, get_user_company_id_dep
 from app.db.models import User
 
 import structlog
@@ -303,6 +303,7 @@ async def get_action_queue(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ActionQueueListResponse:
     """Warteschlange der ausstehenden autonomen Aktionen."""
     try:
@@ -310,17 +311,9 @@ async def get_action_queue(
 
         service = get_predictive_action_service()
 
-        # Get pending actions for the user's company
-        if not current_user.company_id:
-            logger.warning(
-                "action_queue_no_company",
-                user_id=str(current_user.id),
-            )
-            return ActionQueueListResponse()
-
         pending = await service.get_pending_actions(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             limit=limit,
         )
@@ -353,6 +346,7 @@ async def approve_action(
     action_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, str]:
     """Autonome Aktion genehmigen."""
     try:
@@ -360,13 +354,9 @@ async def approve_action(
 
         service = get_predictive_action_service()
 
-        # Get pending actions to find the one to approve
-        if not current_user.company_id:
-            raise HTTPException(status_code=400, detail="Benutzer hat keine zugewiesene Firma")
-
         pending = await service.get_pending_actions(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             limit=100,
         )
@@ -415,6 +405,7 @@ async def reject_action(
     reason: str = "",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, str]:
     """Autonome Aktion ablehnen."""
     try:
@@ -422,13 +413,9 @@ async def reject_action(
 
         service = get_predictive_action_service()
 
-        # Get pending actions to find the one to reject
-        if not current_user.company_id:
-            raise HTTPException(status_code=400, detail="Benutzer hat keine zugewiesene Firma")
-
         pending = await service.get_pending_actions(
             db=db,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             limit=100,
         )

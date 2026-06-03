@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.supplier_ranking_service import (
     get_supplier_ranking_service,
@@ -201,6 +201,7 @@ async def get_supplier_ranking(
     period_days: int = Query(365, ge=30, le=730, description="Auswertungszeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Ruft Ranking für einen Lieferanten ab.
@@ -220,7 +221,7 @@ async def get_supplier_ranking(
     ranking = await service.calculate_supplier_ranking(
         db=db,
         entity_id=entity_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
     )
 
@@ -244,6 +245,7 @@ async def get_supplier_ranking_report(
     top_n: int = Query(10, ge=1, le=50, description="Anzahl Top/Bottom Lieferanten"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Erstellt Gesamt-Report über alle Lieferanten.
@@ -261,7 +263,7 @@ async def get_supplier_ranking_report(
 
     report = await service.get_supplier_ranking_report(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
         top_n=top_n,
     )
@@ -303,6 +305,7 @@ async def compare_suppliers(
     request: SupplierComparisonRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Vergleicht mehrere Lieferanten anhand ihrer Bewertungen.
@@ -328,7 +331,7 @@ async def compare_suppliers(
 
     rankings = await service.get_supplier_comparison(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         entity_ids=entity_ids,
         period_days=request.period_days,
     )
@@ -352,6 +355,7 @@ async def get_tier_distribution(
     period_days: int = Query(365, ge=30, le=730, description="Auswertungszeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Schnelle Übersicht über Tier-Verteilung.
@@ -367,7 +371,7 @@ async def get_tier_distribution(
 
     report = await service.get_supplier_ranking_report(
         db=db,
-        company_id=current_user.company_id,
+        company_id=company_id,
         period_days=period_days,
         top_n=1,  # Minimale Daten
     )

@@ -34,7 +34,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter
 from app.db.models import User
 from app.services.banking.enhanced_fints_service import (
@@ -253,15 +253,9 @@ async def list_connections(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BankConnectionResponse]:
     """Listet alle Bankverbindungen auf."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
     connections = await service.list_connections(db, company_id, current_user.id)
 
@@ -281,15 +275,9 @@ async def create_connection(
     data: ConnectionCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankConnectionResponse:
     """Legt eine neue Bankverbindung an."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
 
     connection, error = await service.create_connection(
@@ -331,15 +319,9 @@ async def get_connection(
     connection_id: UUID = Path(..., description="Verbindungs-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankConnectionResponse:
     """Ruft Details einer Bankverbindung ab."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
 
     try:
@@ -383,15 +365,9 @@ async def update_connection(
     data: ConnectionUpdateRequest = ...,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankConnectionResponse:
     """Aktualisiert eine Bankverbindung."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
 
     # SECURITY: Übergebe company_id für Ownership-Validierung
@@ -438,15 +414,9 @@ async def delete_connection(
     connection_id: UUID = Path(..., description="Verbindungs-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Entfernt eine Bankverbindung."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
 
     try:
@@ -501,19 +471,13 @@ async def sync_connection(
     date_to: Optional[date] = Query(None, description="Bis Datum"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SyncResultResponse:
     """
     Synchronisiert Transaktionen manuell.
 
     Ruft neue Transaktionen vom Bankkonto ab.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
 
     # SECURITY: Übergebe company_id für Ownership-Validierung
@@ -562,15 +526,9 @@ async def get_connections_health(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ConnectionHealthResponse:
     """Zeigt den Gesundheitsstatus aller Bankverbindungen."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
     health_data = await service.get_connections_health(db, company_id, current_user.id)
 
@@ -599,18 +557,12 @@ async def get_pending_reconciliations(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     connection_id: Optional[UUID] = Query(None, description="Nur für diese Verbindung"),
     page: int = Query(1, ge=1, description="Seite"),
     page_size: int = Query(50, ge=1, le=100, description="Pro Seite"),
 ) -> PendingReconciliationResponse:
     """Zeigt Transaktionen ohne Rechnungszuordnung."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
     result = await service.get_pending_reconciliations(
         db=db,
@@ -641,6 +593,7 @@ async def get_reconciliation_suggestions(
     transaction_id: UUID = Query(..., description="Transaktion-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     min_confidence: float = Query(0.7, ge=0.5, le=1.0, description="Min. Konfidenz"),
 ) -> List[ReconciliationSuggestionResponse]:
     """
@@ -653,13 +606,6 @@ async def get_reconciliation_suggestions(
     - Betrag-Toleranz (75%)
     - Teilzahlung (70%)
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
     suggestions = await service.get_reconciliation_suggestions(
         db=db,
@@ -695,6 +641,7 @@ async def auto_reconcile(
     data: AutoReconciliationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoReconciliationResponse:
     """
     Führt automatische Zuordnung durch.
@@ -709,13 +656,6 @@ async def auto_reconcile(
     5. PARTIAL_MATCH: Teilzahlung (70%)
     """
     import time
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
 
     start_time = time.time()
 
@@ -772,6 +712,7 @@ async def manual_reconcile(
     data: ManualReconciliationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ReconciliationResultResponse:
     """
     Ordnet eine Transaktion manuell einer Rechnung zu.
@@ -780,13 +721,6 @@ async def manual_reconcile(
     - is_skonto: Als Skonto-Zahlung markieren
     - is_partial: Als Teilzahlung markieren
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
 
     result = await service.manual_reconcile(
@@ -834,15 +768,9 @@ async def get_aggregated_balance(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AggregatedBalanceResponse:
     """Zeigt den aggregierten Kontostand aller Bankverbindungen."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
     result = await service.get_aggregated_balance(db, company_id, current_user.id)
 
@@ -867,19 +795,13 @@ async def get_aggregated_transactions(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     date_from: Optional[date] = Query(None, description="Von Datum"),
     date_to: Optional[date] = Query(None, description="Bis Datum"),
     page: int = Query(1, ge=1, description="Seite"),
     page_size: int = Query(50, ge=1, le=100, description="Pro Seite"),
 ) -> AggregatedTransactionsResponse:
     """Zeigt aggregierte Transaktionen aller Bankverbindungen."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer ist keiner Firma zugeordnet.",
-        )
-
     service = get_enhanced_fints_service()
     result = await service.get_aggregated_transactions(
         db=db,

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from app.db.models import User, Document
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.document_chain_service import (
     DocumentChainService,
@@ -50,6 +50,7 @@ async def create_chain(
     chain_id: Optional[str] = Query(None, description="Optionale Chain-ID (sonst auto-generiert)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Erstellt eine neue Auftragskette.
@@ -66,13 +67,6 @@ async def create_chain(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Mindestens ein Dokument erforderlich"
-        )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
         )
 
     # SECURITY: Prüfen ob alle Dokumente dem User gehoeren
@@ -130,6 +124,7 @@ async def get_chain(
     chain_id: str,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Ruft eine Auftragskette ab.
@@ -141,12 +136,6 @@ async def get_chain(
     - open_discrepancies: Anzahl offener Abweichungen
     - is_complete: Ob alle erwarteten Dokumente vorhanden sind
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     chain_service = DocumentChainService()
     chain = await chain_service.get_chain(db=db, chain_id=chain_id, company_id=company_id)
@@ -194,18 +183,13 @@ async def get_chain_by_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Findet die Auftragskette eines Dokuments.
 
     Falls das Dokument keiner Kette zugeordnet ist, wird ein leeres Ergebnis zurückgegeben.
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # SECURITY: Prüfen ob Dokument dem User gehoert
     result = await db.execute(
@@ -269,6 +253,7 @@ async def link_documents(
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Verknüpft zwei Dokumente in einer Auftragskette.
@@ -281,12 +266,6 @@ async def link_documents(
     - order_to_invoice: Auftrag → Rechnung (ohne Lieferschein)
     - related: Allgemeine Verwandtschaft
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # Beziehungstyp validieren
     try:
@@ -363,6 +342,7 @@ async def auto_match_documents(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Sucht automatisch nach verwandten Dokumenten.
@@ -375,12 +355,6 @@ async def auto_match_documents(
     **Response:**
     - matches: Liste möglicher Matches mit Konfidenz
     """
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
-        )
 
     # SECURITY: Prüfen ob Dokument dem User gehoert
     result = await db.execute(
@@ -434,6 +408,7 @@ async def get_chain_discrepancies(
     include_resolved: bool = Query(False, description="Auch geloeste Abweichungen anzeigen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Listet Abweichungen in einer Auftragskette.
@@ -451,9 +426,6 @@ async def get_chain_discrepancies(
     - error: Muss geprüft werden
     - critical: Blockiert Workflow
     """
-    company_id = current_user.company_id
-    if not company_id:
-        return {"chain_id": chain_id, "discrepancies": [], "message": "Keine Firmenzuordnung"}
 
     chain_service = DocumentChainService()
 
@@ -505,6 +477,7 @@ async def resolve_discrepancy(
     resolution_notes: Optional[str] = Query(None, description="Begruendung/Notizen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Markiert eine Abweichung als geloest.
@@ -514,13 +487,6 @@ async def resolve_discrepancy(
 
     SECURITY: Multi-Tenant Isolation - nur Abweichungen der eigenen Firma können geloest werden.
     """
-    # SECURITY: Multi-Tenant Isolation
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firmenzuordnung vorhanden"
-        )
 
     chain_service = DocumentChainService()
 
@@ -571,6 +537,7 @@ async def list_chains(
     is_complete: Optional[bool] = Query(None, description="Nur vollständige/unvollständige Ketten"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Listet alle Auftragsketten auf.
@@ -579,9 +546,6 @@ async def list_chains(
     - has_discrepancies: true = nur mit offenen Abweichungen
     - is_complete: true = nur Ketten mit Rechnung
     """
-    company_id = current_user.company_id
-    if not company_id:
-        return {"chains": [], "total": 0, "page": page, "per_page": per_page}
 
     # Query über die View v_document_chains
     query = """

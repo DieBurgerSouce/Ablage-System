@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.document_comparison_service import (
@@ -146,6 +146,7 @@ async def compare_documents(
     request: CompareDocumentsRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ComparisonResultResponse:
     """
     Vergleicht zwei Dokumente und gibt Unterschiede zurück.
@@ -164,7 +165,7 @@ async def compare_documents(
             doc_id_1=request.document_id_1,
             doc_id_2=request.document_id_2,
             comparison_type=request.comparison_type,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         # Convert to response model
@@ -235,6 +236,7 @@ async def get_diff_report(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DiffReportResponse:
     """
     Generiert einen vollständigen Diff-Report.
@@ -253,7 +255,7 @@ async def get_diff_report(
             doc_id_1=doc_id_1,
             doc_id_2=doc_id_2,
             comparison_type=comparison_type,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         # Convert comparison result
@@ -346,6 +348,7 @@ async def find_similar_documents(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[SimilarDocumentResponse]:
     """
     Findet ähnliche Dokumente basierend auf Inhalt und Struktur.
@@ -366,7 +369,7 @@ async def find_similar_documents(
             threshold=threshold,
             limit=limit,
             include_same_entity=include_same_entity,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return [
@@ -414,6 +417,7 @@ async def batch_compare_documents(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[ComparisonResultResponse]:
     """
     Führt einen Batch-Vergleich durch.
@@ -440,7 +444,7 @@ async def batch_compare_documents(
                 doc_id_1=reference_doc_id,
                 doc_id_2=compare_id,
                 comparison_type=comparison_type,
-                company_id=current_user.company_id,
+                company_id=company_id,
             )
 
             results.append(
@@ -515,6 +519,7 @@ async def find_potential_duplicates(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[JSONDict]:
     """
     Identifiziert potenzielle Duplikate basierend auf hoher Ähnlichkeit.
@@ -539,7 +544,7 @@ async def find_potential_duplicates(
 
     stmt = (
         select(Document)
-        .where(Document.company_id == current_user.company_id)
+        .where(Document.company_id == company_id)
         .where(Document.created_at >= cutoff_date)
         .where(Document.deleted_at.is_(None))
         .order_by(Document.created_at.desc())
@@ -564,7 +569,7 @@ async def find_potential_duplicates(
                     doc_id_1=doc1.id,
                     doc_id_2=doc2.id,
                     comparison_type=ComparisonType.HYBRID,
-                    company_id=current_user.company_id,
+                    company_id=company_id,
                 )
 
                 if comparison.similarity_score >= threshold:

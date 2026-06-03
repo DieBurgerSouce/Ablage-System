@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.ai.finance_assistant_service import (
     FinanceAssistantService,
@@ -165,6 +165,7 @@ async def chat_with_assistant(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ChatResponse:
     """Chat mit dem intelligenten Finanz-Assistenten.
 
@@ -182,7 +183,7 @@ async def chat_with_assistant(
 
     context = AssistantContext(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_role=current_user.role or "viewer",
         current_page=request.current_page,
         selected_documents=request.selected_documents,
@@ -248,6 +249,7 @@ async def execute_action(
     request: ExecuteActionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ExecuteActionResponse:
     """Führt eine vom Assistenten vorgeschlagene Aktion aus.
 
@@ -258,7 +260,7 @@ async def execute_action(
 
     context = ActionContext(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_role=current_user.role or "viewer",
         session_id="",
     )
@@ -287,6 +289,7 @@ async def rollback_action(
     request: RollbackRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ExecuteActionResponse:
     """Macht eine ausgeführte Aktion rückgängig.
 
@@ -296,7 +299,7 @@ async def rollback_action(
 
     context = ActionContext(
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_role=current_user.role or "viewer",
         session_id="",
     )
@@ -324,6 +327,7 @@ async def get_insights(
     include_predictions: bool = True,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InsightsListResponse:
     """Ruft proaktive Insights ab.
 
@@ -340,7 +344,7 @@ async def get_insights(
     service = await get_insight_generator_service(db)
 
     context = InsightContext(
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         include_predictions=include_predictions,
     )

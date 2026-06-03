@@ -16,7 +16,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.digital_twin_service import (
@@ -38,6 +38,7 @@ router = APIRouter(prefix="/digital-twin", tags=["Digital Twin"])
 async def get_digital_twin_snapshot(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, Any]:
     """
     Ruft vollständigen Digital Twin Snapshot ab.
@@ -45,20 +46,14 @@ async def get_digital_twin_snapshot(
     Returns:
         Digital Twin Snapshot mit allen Sektionen
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen",
-        )
-
     try:
         service = get_digital_twin_service(db)
-        snapshot = await service.get_snapshot(current_user.company_id)
+        snapshot = await service.get_snapshot(company_id)
 
         logger.info(
             "digital_twin_snapshot_retrieved",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
         )
 
         return snapshot.to_dict()
@@ -85,6 +80,7 @@ async def get_digital_twin_section(
     section: str,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, Any]:
     """
     Ruft einzelne Digital Twin Sektion ab.
@@ -95,12 +91,6 @@ async def get_digital_twin_section(
     Returns:
         Section data
     """
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firma zugewiesen",
-        )
-
     valid_sections = [
         "financial_health",
         "risk_overview",
@@ -118,12 +108,12 @@ async def get_digital_twin_section(
 
     try:
         service = get_digital_twin_service(db)
-        section_data = await service.get_section(current_user.company_id, section)
+        section_data = await service.get_section(company_id, section)
 
         logger.info(
             "digital_twin_section_retrieved",
             user_id=str(current_user.id),
-            company_id=str(current_user.company_id),
+            company_id=str(company_id),
             section=section,
         )
 

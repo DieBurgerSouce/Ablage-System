@@ -20,7 +20,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from uuid import UUID
+
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_ocr_template import (
@@ -211,6 +213,7 @@ async def list_templates(
     active_only: bool = Query(True, description="Nur aktive Templates"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[TemplateResponse]:
     """Listet alle OCR-Templates auf."""
     service = SupplierTemplateService(db)
@@ -218,7 +221,7 @@ async def list_templates(
     if entity_id:
         templates = await service.get_templates_for_entity(
             entity_id=entity_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             active_only=active_only,
         )
     else:
@@ -227,7 +230,7 @@ async def list_templates(
         from app.db.models_ocr_template import SupplierOCRTemplate
 
         query = select(SupplierOCRTemplate).where(
-            SupplierOCRTemplate.company_id == current_user.company_id,
+            SupplierOCRTemplate.company_id == company_id,
         )
         if active_only:
             query = query.where(SupplierOCRTemplate.is_active == True)
@@ -249,6 +252,7 @@ async def create_template(
     data: TemplateCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateResponse:
     """Erstellt ein neues OCR-Template."""
     # Validiere Matching-Strategie
@@ -271,7 +275,7 @@ async def create_template(
     service = SupplierTemplateService(db)
     template = await service.create_template(
         entity_id=data.entity_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
         name=data.name,
         description=data.description,
@@ -294,12 +298,13 @@ async def get_template(
     template_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateResponse:
     """Holt ein spezifisches Template."""
     service = SupplierTemplateService(db)
     template = await service.get_template(
         template_id=template_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not template:
@@ -322,6 +327,7 @@ async def update_template(
     data: TemplateUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateResponse:
     """Aktualisiert ein Template."""
     # Validierungen
@@ -352,7 +358,7 @@ async def update_template(
     service = SupplierTemplateService(db)
     template = await service.update_template(
         template_id=template_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         **update_data,
     )
 
@@ -376,12 +382,13 @@ async def delete_template(
     template_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Löscht ein Template (Soft-Delete)."""
     service = SupplierTemplateService(db)
     deleted = await service.delete_template(
         template_id=template_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not deleted:
@@ -401,6 +408,7 @@ async def train_from_document(
     data: TrainFromDocumentRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateResponse:
     """Trainiert ein Template aus einem korrigierten Dokument."""
     service = SupplierTemplateService(db)
@@ -408,7 +416,7 @@ async def train_from_document(
     try:
         template = await service.train_from_document(
             document_id=data.document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
             corrected_values=data.corrected_values,
             entity_id=data.entity_id,
@@ -433,13 +441,14 @@ async def match_template(
     data: TemplateMatchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateMatchResponse:
     """Führt Template-Matching für ein Dokument durch."""
     service = SupplierTemplateService(db)
 
     result = await service.find_matching_template(
         document_id=data.document_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         entity_id=data.entity_id,
         ocr_text=data.ocr_text,
     )
@@ -463,10 +472,11 @@ async def match_template(
 async def get_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateStatisticsResponse:
     """Holt Template-Statistiken."""
     service = SupplierTemplateService(db)
-    stats = await service.get_template_statistics(current_user.company_id)
+    stats = await service.get_template_statistics(company_id)
 
     return TemplateStatisticsResponse(**stats)
 
@@ -482,12 +492,13 @@ async def get_entity_templates(
     active_only: bool = Query(True),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[TemplateResponse]:
     """Holt alle Templates eines Lieferanten."""
     service = SupplierTemplateService(db)
     templates = await service.get_templates_for_entity(
         entity_id=entity_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         active_only=active_only,
     )
 
@@ -555,15 +566,9 @@ async def list_template_candidates(
     min_documents: int = Query(3, ge=2, le=50, description="Mindestanzahl Dokumente"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[TemplateCandidateResponse]:
     """Listet Template-Kandidaten auf."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung",
-        )
-
     service = get_auto_template_service()
 
     try:
@@ -604,15 +609,9 @@ async def generate_template_from_candidate(
     data: GenerateFromCandidateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateResponse:
     """Generiert ein Template aus einem Kandidaten."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung",
-        )
-
     service = get_auto_template_service()
 
     try:
@@ -655,15 +654,9 @@ async def test_template(
     data: TemplateTestRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TemplateTestResponse:
     """Testet ein Template gegen ein Dokument."""
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung",
-        )
-
     service = SupplierTemplateService(db)
 
     # Template laden

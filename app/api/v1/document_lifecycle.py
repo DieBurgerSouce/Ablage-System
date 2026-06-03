@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.rate_limiting import limiter
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
@@ -154,6 +154,7 @@ async def get_lifecycle_overview(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, int]:
     """
     Gibt die Kanban-Übersicht zurück: Anzahl Dokumente pro Stufe.
@@ -166,7 +167,7 @@ async def get_lifecycle_overview(
     """
     try:
         service = get_document_lifecycle_service(db)
-        return await service.get_lifecycle_overview(current_user.company_id)
+        return await service.get_lifecycle_overview(company_id)
     except Exception as e:
         logger.error("lifecycle_overview_failed", **safe_error_log(e))
         raise HTTPException(
@@ -185,6 +186,7 @@ async def get_sla_violations(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[SLAViolationResponse]:
     """
     Listet alle aktuellen SLA-Verletzungen auf.
@@ -198,7 +200,7 @@ async def get_sla_violations(
     try:
         service = get_document_lifecycle_service(db)
         violations = await service.check_sla_violations(
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return [
@@ -234,6 +236,7 @@ async def get_stage_metrics(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[StageMetricResponse]:
     """
     Berechnet Metriken pro Lebenszyklus-Stufe.
@@ -247,7 +250,7 @@ async def get_stage_metrics(
     try:
         service = get_document_lifecycle_service(db)
         metrics = await service.get_stage_metrics(
-            company_id=current_user.company_id,
+            company_id=company_id,
             days=days,
         )
 
@@ -282,6 +285,7 @@ async def get_document_lifecycle_history(
     document_id: UUID = Path(..., description="Dokument-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[LifecycleEventResponse]:
     """
     Gibt die vollständige Lebenszyklus-Historie eines Dokuments zurück.
@@ -296,7 +300,7 @@ async def get_document_lifecycle_history(
         service = get_document_lifecycle_service(db)
         events = await service.get_document_history(
             document_id=document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
 
         return [
@@ -346,6 +350,7 @@ async def transition_document_stage(
     document_id: UUID = Path(..., description="Dokument-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> LifecycleEventResponse:
     """
     Führt einen Stufen-Übergang für ein Dokument durch.
@@ -360,7 +365,7 @@ async def transition_document_stage(
         service = get_document_lifecycle_service(db)
         event = await service.transition_stage(
             document_id=document_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
             to_stage=body.to_stage,
             user_id=current_user.id,
             note=body.note,
