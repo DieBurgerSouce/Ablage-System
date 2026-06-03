@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 
-from app.db.models import User, InvoiceTracking, Document, InvoiceStatus, UserCompany, Company
+from app.db.models import User, InvoiceTracking, Document, InvoiceStatus
 from app.db.schemas import (
     InvoiceTrackingCreate,
     InvoiceTrackingUpdate,
@@ -28,7 +28,12 @@ from app.db.schemas import (
     InvoiceStatusEnum,
     InvoiceStatisticsResponse,
 )
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import (
+    get_db,
+    get_current_active_user,
+    get_user_company_id,  # noqa: F401 - Re-Export (B1: zentralisiert in dependencies.py)
+    get_user_company_id_dep,
+)
 from app.workers.tasks.risk_scoring_tasks import on_invoice_updated_recalculate
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.core.security_auth import build_content_disposition
@@ -41,66 +46,9 @@ router = APIRouter(prefix="/invoices", tags=["Invoice Tracking"])
 # =============================================================================
 # Helper Functions - Multi-Tenant Security
 # =============================================================================
-
-async def get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
-    """Ermittelt die Company-ID des Users via UserCompany-Tabelle.
-
-    SECURITY FIX (F3): User-Model hat kein company_id Feld - muss ueber
-    UserCompany geholt werden. Ersetzt das vorher genutzte (latent broken)
-    ``current_user.company_id``-Pattern, das auf einer nicht existierenden
-    Spalte basiert.
-
-    Returns:
-        Company-ID oder None wenn keine Zuordnung existiert.
-    """
-    # 1. Hole aktuelle Firma (is_current=True)
-    result = await db.execute(
-        select(UserCompany.company_id)
-        .join(Company, Company.id == UserCompany.company_id)
-        .where(UserCompany.user_id == user.id)
-        .where(UserCompany.is_current == True)  # noqa: E712
-        .where(Company.is_active == True)  # noqa: E712
-        .where(Company.deleted_at.is_(None))
-    )
-    current_company_id = result.scalar_one_or_none()
-
-    if current_company_id:
-        return current_company_id
-
-    # 2. Fallback: Erste verfuegbare Firma
-    result = await db.execute(
-        select(UserCompany.company_id)
-        .join(Company, Company.id == UserCompany.company_id)
-        .where(UserCompany.user_id == user.id)
-        .where(Company.is_active == True)  # noqa: E712
-        .where(Company.deleted_at.is_(None))
-        .order_by(UserCompany.created_at)
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
-
-
-async def _require_user_company_id(db: AsyncSession, user: User) -> UUID:
-    """Wie ``get_user_company_id``, aber wirft 403 wenn keine Firma zugeordnet."""
-    company_id = await get_user_company_id(db, user)
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Kein Unternehmen zugeordnet",
-        )
-    return company_id
-
-
-async def get_user_company_id_dep(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-) -> UUID:
-    """FastAPI-Dependency: liefert die aktive Firmen-ID des Users.
-
-    Wirft 403 wenn keine Firmenzuordnung existiert. Nutzung als Endpoint-
-    Parameter: ``company_id: UUID = Depends(get_user_company_id_dep)``.
-    """
-    return await _require_user_company_id(db, current_user)
+# B1: Die Multi-Tenant-Helfer (get_user_company_id, _require_user_company_id,
+# get_user_company_id_dep) wurden zentral nach app/api/dependencies.py verschoben
+# und oben re-importiert. Endpoints nutzen get_user_company_id_dep als Dependency.
 
 
 # =============================================================================
