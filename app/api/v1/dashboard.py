@@ -20,12 +20,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
 from app.db.models import User, Document, InvoiceTracking, Alert
+from app.db.models_privat_enterprise import ApprovalRequest, ApprovalStatus
 from app.services.dashboard_service import DashboardService
+from app.services.banking.cash_flow_service import cash_flow_service
+from app.services.approval.approval_service import ApprovalService
 
 logger = structlog.get_logger(__name__)
 
@@ -219,9 +222,15 @@ class OCRQualityKPIs(BaseModel):
     """OCR-Qualitaets-KPIs."""
 
     documents_today: int = Field(description="Dokumente heute verarbeitet")
-    success_rate: float = Field(description="Erfolgsquote in Prozent")
-    avg_confidence: float = Field(description="Durchschnittliche Confidence")
-    manual_corrections: int = Field(description="Manuelle Korrekturen heute")
+    success_rate: Optional[float] = Field(
+        default=None, description="Erfolgsquote in Prozent (None = nicht verfügbar)"
+    )
+    avg_confidence: Optional[float] = Field(
+        default=None, description="Durchschnittliche Confidence (None = nicht verfügbar)"
+    )
+    manual_corrections: Optional[int] = Field(
+        default=None, description="Manuelle Korrekturen heute (None = nicht verfügbar)"
+    )
 
 
 class DocumentKPIs(BaseModel):
@@ -725,8 +734,32 @@ async def _get_invoice_kpis(
         paid_result = await db.execute(paid_query)
         paid_this_month = paid_result.scalar() or 0
 
-        # Average payment days (simplified)
-        avg_payment_days = 14.5  # Placeholder - would calculate from actual data
+        # Durchschnittliche Zahlungsdauer in Tagen: echte Aggregation über bezahlte
+        # Rechnungen (paid_at - invoice_date), company-gefiltert. 0 Rows -> 0.0.
+        # Eigenes try/except, damit ein DB-Dialekt ohne EXTRACT('epoch', ...) (z.B.
+        # SQLite im Test) die übrigen KPIs nicht mit herunterzieht.
+        avg_payment_days = 0.0
+        try:
+            avg_days_query = select(
+                func.avg(
+                    func.extract(
+                        "epoch",
+                        InvoiceTracking.paid_at - InvoiceTracking.invoice_date,
+                    )
+                    / 86400.0
+                )
+            ).where(
+                InvoiceTracking.status == "paid",
+                InvoiceTracking.paid_at.isnot(None),
+                InvoiceTracking.invoice_date.isnot(None),
+                *conditions,
+            )
+            avg_days_result = await db.execute(avg_days_query)
+            avg_days_value = avg_days_result.scalar()
+            if avg_days_value is not None:
+                avg_payment_days = round(float(avg_days_value), 1)
+        except Exception as e:  # noqa: BLE001 - KPI degradiert auf 0.0
+            logger.warning("avg_payment_days_error", error=str(e))
 
         return InvoiceKPIs(
             total_open=total_open,
@@ -749,16 +782,49 @@ async def _get_invoice_kpis(
 
 
 async def _get_cash_flow_kpis(db: AsyncSession, company_id: Optional[UUID]) -> CashFlowKPIs:
-    """Berechnet Cashflow-KPIs (vereinfacht)."""
-    # This would integrate with the banking service
-    # For now, return placeholder values
-    return CashFlowKPIs(
-        current_balance=0.0,
-        expected_income_30d=0.0,
-        expected_expenses_30d=0.0,
-        net_cash_flow_30d=0.0,
-        trend="stable",
-    )
+    """Berechnet Cashflow-KPIs über den CashFlowService (30-Tage-Horizont)."""
+    # Ohne Firmenzuordnung keine mandantengetrennten Zahlen -> neutrale 0-Werte.
+    if not company_id:
+        return CashFlowKPIs(
+            current_balance=0.0,
+            expected_income_30d=0.0,
+            expected_expenses_30d=0.0,
+            net_cash_flow_30d=0.0,
+            trend="stable",
+        )
+    try:
+        summary = await cash_flow_service.get_cash_flow_summary(db, company_id)
+        mid_term = summary.get("mid_term", {})
+        income = float(mid_term.get("inflow", 0.0))
+        expenses = float(mid_term.get("outflow", 0.0))
+        net = float(mid_term.get("net", income - expenses))
+
+        # Trend aus Netto-Cashflow ableiten
+        if net > 0:
+            trend = "positive"
+        elif net < 0:
+            trend = "negative"
+        else:
+            trend = "stable"
+
+        return CashFlowKPIs(
+            # current_balance ist NICHT Teil der Cash-Flow-Summary (Interface-Kontrakt M1).
+            # Eine dedizierte Kontostand-Lesemethode liefert G4 spaeter nach.
+            current_balance=0.0,  # TODO(G4): Kontostand-Lesemethode anbinden
+            expected_income_30d=income,
+            expected_expenses_30d=expenses,
+            net_cash_flow_30d=net,
+            trend=trend,
+        )
+    except Exception as e:  # noqa: BLE001 - KPI degradiert sauber, kein HTTP-500
+        logger.warning("cash_flow_kpis_error", error=str(e))
+        return CashFlowKPIs(
+            current_balance=0.0,
+            expected_income_30d=0.0,
+            expected_expenses_30d=0.0,
+            net_cash_flow_30d=0.0,
+            trend="stable",
+        )
 
 
 async def _get_alert_kpis(
@@ -824,15 +890,41 @@ async def _get_alert_kpis(
 async def _get_approval_kpis(
     db: AsyncSession, user_id: UUID, company_id: Optional[UUID], week_start: datetime
 ) -> ApprovalKPIs:
-    """Berechnet Genehmigungs-KPIs (vereinfacht)."""
-    # This would integrate with the approval service
-    # For now, return placeholder values
-    return ApprovalKPIs(
-        pending_total=0,
-        my_pending=0,
-        overdue=0,
-        approved_this_week=0,
-    )
+    """Berechnet Genehmigungs-KPIs über den ApprovalService (+ wochengenaue Zählung)."""
+    if not company_id:
+        return ApprovalKPIs(
+            pending_total=0, my_pending=0, overdue=0, approved_this_week=0
+        )
+    try:
+        service = ApprovalService(db)
+        summary = await service.get_approval_summary(
+            company_id=company_id, user_id=user_id
+        )
+
+        # "Diese Woche genehmigt": eigene fenstergenaue Zählung, da der Service nur
+        # all-time-Counts liefert (Interface-Kontrakt M2: total_approved ist all-time).
+        approved_week_result = await db.execute(
+            select(func.count(ApprovalRequest.id)).where(
+                and_(
+                    ApprovalRequest.company_id == company_id,
+                    ApprovalRequest.status == ApprovalStatus.APPROVED,
+                    ApprovalRequest.resolved_at >= week_start,
+                )
+            )
+        )
+        approved_this_week = approved_week_result.scalar() or 0
+
+        return ApprovalKPIs(
+            pending_total=summary.total_pending,
+            my_pending=summary.my_pending,
+            overdue=summary.overdue_count,
+            approved_this_week=approved_this_week,
+        )
+    except Exception as e:  # noqa: BLE001 - KPI degradiert, kein HTTP-500
+        logger.warning("approval_kpis_error", error=str(e))
+        return ApprovalKPIs(
+            pending_total=0, my_pending=0, overdue=0, approved_this_week=0
+        )
 
 
 async def _get_ocr_quality_kpis(
@@ -852,20 +944,24 @@ async def _get_ocr_quality_kpis(
         docs_today_result = await db.execute(docs_today_query)
         documents_today = docs_today_result.scalar() or 0
 
-        # Success rate and confidence would come from OCR service
+        # TODO(G4): success_rate / avg_confidence / manual_corrections erfordern eine
+        # company-gefilterte, DB-gestützte Lese-Methode (z.B.
+        # OCRQualityMetricsService.get_ocr_quality_summary(db, company_id, since)).
+        # Diese existiert noch nicht (heutiger Service ist prozess-lokal/in-memory und
+        # nicht mandantengetrennt). Bis dahin ehrliche None-Werte statt Platzhalterzahlen.
         return OCRQualityKPIs(
             documents_today=documents_today,
-            success_rate=95.5,  # Placeholder
-            avg_confidence=0.87,  # Placeholder
-            manual_corrections=0,  # Placeholder
+            success_rate=None,
+            avg_confidence=None,
+            manual_corrections=None,
         )
     except Exception as e:
         logger.warning("ocr_kpis_error", error=str(e))
         return OCRQualityKPIs(
             documents_today=0,
-            success_rate=0.0,
-            avg_confidence=0.0,
-            manual_corrections=0,
+            success_rate=None,
+            avg_confidence=None,
+            manual_corrections=None,
         )
 
 
