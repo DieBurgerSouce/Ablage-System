@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+### Added — Mocks→echt Phase 1 (`feature/mocks-to-real-p1`, 2026-06-04)
+- **M16** Autonome Folder-Ablage aktiviert: `autonomous_actions_service.propose_filing_location`/`execute_filing` (vorher 'Folder-Model nicht implementiert' deaktiviert) nutzen jetzt das echte Folder-System (`models_folder.py`): mandanten-gefilterter Vorschlag (historische Ablage + Standard-Ordner nach Dokumenttyp) und Ausfuehrung als primaere `FolderDocument`-Verknuepfung. 6 Unit-Tests.
+- Register-Befund: nach G1/G4 + M16 zeigt **kein** Produktions-Mock mehr erfundene Daten als echt. Verbleibend nur ehrlich gekennzeichnete Feature-Tiefe: M13 (echter Cashflow-Backtest), M17 (BPMN Subprocess/Signal/Repeating-Timer).
+
 ### Fixed — Stream G5-Followup (App-Findings, `fix/g5-followup-app`, 2026-06-03)
 - **F1** `validation_queue_service.assign_to_editor`: Editor-Company-Pruefung ueber `UserCompany`-Join statt nicht existentem `User.company_id` (behebt latenten AttributeError; 2 Tests von xfail → gruen).
 - **F2** `app/api/v1/training.py get_trend_data`: lieferte ungueltiges `TrendResponse(data=...)` → gueltige `TrendResponse` (avg_cer-Serie als `data_points`, `trend_direction`/`change_percent` berechnet; `data_points` als dict, umgeht die doppelte `TrendDataPoint`-Klasse in `schemas.py`).

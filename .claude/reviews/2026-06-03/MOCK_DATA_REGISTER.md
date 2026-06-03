@@ -5,6 +5,8 @@
 **Basis**: Fan-Out-Status-Scan (12 Subagents) + Stichproben-Verifikation gegen den Code am 2026-06-03.
 **Status dieser Phase**: NUR Dokumentation. Kein Code wurde geändert. Dieses Register ist die Grundlage der späteren „Mocks → echt"-Kampagne (siehe Anschluss-Roadmap unten).
 
+> **STATUS-UPDATE 2026-06-04 (Mocks→echt Phase 1):** Die meisten Backend-Mocks sind behoben: **M1/M2/M4/M5** (Dashboard-KPIs/Fraud-Alerts echt, G1), **M3/M6** ehrlich (None bzw. 501 statt Fake; echte Daten/Restart als Kontrakt), **M7/M8** OUTSCOPED (PSD2/BaFin), **M9** geguarded (G4), **M10–M13** echt bzw. ehrlich `is_estimated` (G4), **M14** RFC-3161 via asn1crypto (G4), **M15** company-scoped + ehrlich (G4), **M16** autonome Folder-Ablage AKTIVIERT (2026-06-04, `feature/mocks-to-real-p1`). **Kein Mock zeigt mehr erfundene Daten als echt.** OFFEN als ehrlich gekennzeichnete Feature-Tiefe (keine Luege): **M13** echter Backtest (Prediction-Snapshots, braucht Migration), **M17** BPMN Subprocess/Signal/Repeating-Timer (Engine-Feature).
+
 > ⚠️ **Kernaussage**: Mehrere als „Production-Ready" dokumentierte Features zeigen dem Nutzer **erfundene Daten als echt** oder lösen Aktionen aus, die keine Wirkung haben. Das ist der Hauptgrund, warum der reale Reifegrad unter dem dokumentierten liegt.
 
 Legende Aufwand: **S** ≤0,5 Tag · **M** ~1-2 Tage · **L** ~3-5 Tage · **XL** >1 Woche / externe Abhängigkeit.
