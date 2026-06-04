@@ -352,7 +352,9 @@ class FraudDetectionService:
                 LEFT JOIN documents d ON d.business_entity_id = be.id AND d.company_id = :company_id
                 LEFT JOIN invoice_tracking it ON it.entity_id = be.id AND it.company_id = :company_id
                 WHERE be.entity_type = 'supplier'
-                AND be.company_id = :company_id
+                -- be hat keine company_id (BusinessEntity ist global, Scope via
+                -- company_presence); Mandanten-Isolation erfolgt ueber die
+                -- company-gefilterten documents-/invoice_tracking-JOINs + HAVING.
                 GROUP BY be.id, be.name, d.document_type
             )
             SELECT
