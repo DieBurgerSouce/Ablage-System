@@ -410,7 +410,7 @@ class FraudDetectionService:
             .where(
                 and_(
                     Document.company_id == company_id,
-                    Document.doc_type == "expense",
+                    Document.document_type == "expense",
                     Document.created_at >= start_date,
                     Document.created_at <= end_date,
                 )
