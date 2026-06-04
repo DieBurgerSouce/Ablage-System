@@ -8,6 +8,7 @@ import httpx
 import structlog
 
 from app.core.safe_errors import safe_error_log, safe_error_detail
+import re
 
 logger = structlog.get_logger(__name__)
 
