@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Unit Tests fuer ESGReportGeneratorService.
+Unit Tests fuer ESGReportGenerator.
 
-Testet:
+Testet die ECHTE API von app.services.compliance.esg.report_generator:
+- get_report_templates() (staticmethod)
 - generate_report()
-- get_reports()
-- get_report_detail()
-- update_report_status()
-- publish_report()
-- export_report()
-- GRI/CSRD Compliance
+- get_reports()  -> tuple[list[dict], int]
+- get_report_detail()  -> dict | None
+- update_report_status()  -> bool
 
 Feinpoliert und durchdacht - ESG Report Generator Tests.
 """
 
-from datetime import date, datetime, timezone, timedelta
-from typing import List
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import date, datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -24,7 +21,9 @@ import pytest
 from app.services.compliance.esg.report_generator import (
     ESGReportGenerator as ESGReportGeneratorService,
     get_esg_report_generator as get_report_generator_service,
+    REPORT_TEMPLATES,
 )
+from app.db.models_esg import ReportStatus
 from .conftest import create_mock_result
 
 
@@ -33,49 +32,53 @@ from .conftest import create_mock_result
 
 @pytest.fixture
 def report_service(mock_db: AsyncMock) -> ESGReportGeneratorService:
-    """Create ESGReportGeneratorService instance with mocked db."""
+    """Erzeuge ESGReportGenerator-Instanz mit gemockter DB."""
     return ESGReportGeneratorService(mock_db)
-
-
-@pytest.fixture
-def sample_report_data(company_id: UUID):
-    """Sample data for report generation."""
-    return {
-        "emissions": {
-            "scope_1": 15360.0,
-            "scope_2": 4200.0,
-            "scope_3": 8550.0,
-            "total": 28110.0,
-        },
-        "suppliers": {
-            "total_assessed": 25,
-            "avg_score": 75.5,
-            "high_risk_count": 2,
-        },
-        "certifications": {
-            "active": 12,
-            "expiring_soon": 3,
-        },
-        "goals": {
-            "total": 8,
-            "on_track": 6,
-            "progress_avg": 65.5,
-        },
-    }
 
 
 # ========================= Factory Function Tests =========================
 
 
 class TestFactoryFunction:
-    """Tests fuer get_report_generator_service Factory."""
+    """Tests fuer get_esg_report_generator Factory."""
 
     def test_get_report_generator_service_returns_instance(self, mock_db: AsyncMock):
-        """Factory sollte ESGReportGeneratorService-Instanz zurueckgeben."""
+        """Factory sollte ESGReportGenerator-Instanz zurueckgeben."""
         service = get_report_generator_service(mock_db)
 
         assert isinstance(service, ESGReportGeneratorService)
         assert service.db is mock_db
+
+
+# ========================= Template Tests =========================
+
+
+class TestReportTemplates:
+    """Tests fuer get_report_templates() (statischer Vertrag der Vorlagen)."""
+
+    def test_get_report_templates_returns_known_templates(self):
+        """Sollte die definierten Berichtsvorlagen zurueckgeben."""
+        templates = ESGReportGeneratorService.get_report_templates()
+
+        assert templates is REPORT_TEMPLATES
+        # Die vier dokumentierten Typen muessen existieren
+        for report_type in ("annual", "quarterly", "csrd", "dnk"):
+            assert report_type in templates, f"Vorlage '{report_type}' fehlt"
+
+    def test_template_structure_has_name_and_sections(self):
+        """Jede Vorlage muss 'name' und nicht-leere 'sections' haben."""
+        templates = ESGReportGeneratorService.get_report_templates()
+
+        for report_type, template in templates.items():
+            assert "name" in template, f"Vorlage '{report_type}' ohne 'name'"
+            assert "sections" in template, f"Vorlage '{report_type}' ohne 'sections'"
+            assert len(template["sections"]) > 0, f"Vorlage '{report_type}' ohne Sektionen"
+
+    def test_annual_template_contains_carbon_section(self):
+        """Die Jahresvorlage muss den CO2-Fussabdruck enthalten."""
+        annual = ESGReportGeneratorService.get_report_templates()["annual"]
+
+        assert "carbon_footprint" in annual["sections"]
 
 
 # ========================= Generate Report Tests =========================
@@ -92,18 +95,17 @@ class TestGenerateReport:
         company_id: UUID,
         user_id: UUID,
     ):
-        """Sollte neuen Bericht generieren."""
+        """Sollte neuen Bericht generieren und persistieren."""
         mock_db.add = MagicMock()
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
-
-        # Mock data gathering
+        # Leere Aggregations-Resultate fuer _collect_metrics
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
         report = await report_service.generate_report(
             company_id=company_id,
             created_by_id=user_id,
-            report_type="annual_sustainability",
+            report_type="annual",
             title="Nachhaltigkeitsbericht 2025",
             period_start=date(2025, 1, 1),
             period_end=date(2025, 12, 31),
@@ -112,6 +114,14 @@ class TestGenerateReport:
 
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
+        # Der zurueckgegebene Report traegt die uebergebenen Stammdaten
+        assert report.company_id == company_id
+        assert report.report_type == "annual"
+        assert report.title == "Nachhaltigkeitsbericht 2025"
+        assert report.reporting_standard == "GRI"
+        assert report.created_by_id == user_id
+        assert report.fiscal_year == 2025
+        assert report.status == ReportStatus.DRAFT
 
     @pytest.mark.asyncio
     async def test_generate_report_with_csrd_standard(
@@ -127,10 +137,10 @@ class TestGenerateReport:
         mock_db.refresh = AsyncMock()
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
-        await report_service.generate_report(
+        report = await report_service.generate_report(
             company_id=company_id,
             created_by_id=user_id,
-            report_type="csrd_compliance",
+            report_type="csrd",
             title="CSRD Nachhaltigkeitsbericht 2025",
             period_start=date(2025, 1, 1),
             period_end=date(2025, 12, 31),
@@ -138,6 +148,54 @@ class TestGenerateReport:
         )
 
         mock_db.add.assert_called_once()
+        assert report.report_type == "csrd"
+        assert report.reporting_standard == "CSRD"
+
+    @pytest.mark.asyncio
+    async def test_generate_report_default_title(
+        self,
+        report_service: ESGReportGeneratorService,
+        mock_db: AsyncMock,
+        company_id: UUID,
+        user_id: UUID,
+    ):
+        """Sollte ohne Titel einen Default-Titel aus Vorlage + Jahr bilden."""
+        mock_db.add = MagicMock()
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+        mock_db.execute.return_value = create_mock_result(scalar_value=None)
+
+        report = await report_service.generate_report(
+            company_id=company_id,
+            created_by_id=user_id,
+            report_type="annual",
+            period_start=date(2025, 1, 1),
+            period_end=date(2025, 12, 31),
+        )
+
+        expected = f"{REPORT_TEMPLATES['annual']['name']} 2025"
+        assert report.title == expected
+
+    @pytest.mark.asyncio
+    async def test_generate_report_unknown_type_raises(
+        self,
+        report_service: ESGReportGeneratorService,
+        mock_db: AsyncMock,
+        company_id: UUID,
+        user_id: UUID,
+    ):
+        """Sollte bei unbekanntem Berichtstyp ValueError werfen."""
+        with pytest.raises(ValueError, match="Unbekannter Berichtstyp"):
+            await report_service.generate_report(
+                company_id=company_id,
+                created_by_id=user_id,
+                report_type="does_not_exist",
+                period_start=date(2025, 1, 1),
+                period_end=date(2025, 12, 31),
+            )
+
+        # Bei ungueltigem Typ darf nichts persistiert werden
+        mock_db.add.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_generate_report_aggregates_data(
@@ -146,37 +204,32 @@ class TestGenerateReport:
         mock_db: AsyncMock,
         company_id: UUID,
         user_id: UUID,
-        sample_report_data,
     ):
-        """Sollte Daten aus verschiedenen Quellen aggregieren."""
+        """Sollte Daten aus verschiedenen Quellen abfragen (mehrere Queries)."""
         mock_db.add = MagicMock()
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
-
-        # Mock multiple data sources
-        emissions_mock = MagicMock()
-        emissions_mock.total_co2_kg = sample_report_data["emissions"]["total"]
-
-        mock_db.execute.return_value = create_mock_result(scalar_value=emissions_mock)
+        mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
         await report_service.generate_report(
             company_id=company_id,
             created_by_id=user_id,
-            report_type="annual_sustainability",
+            report_type="annual",
             title="Jahresbericht",
             period_start=date(2025, 1, 1),
             period_end=date(2025, 12, 31),
         )
 
-        # Should have queried multiple data sources
+        # _collect_metrics fragt Emissionen, Lieferanten, Zertifikate und Ziele ab
         assert mock_db.execute.called
+        assert mock_db.execute.await_count >= 4
 
 
 # ========================= Get Reports Tests =========================
 
 
 class TestGetReports:
-    """Tests fuer get_reports() Methode."""
+    """Tests fuer get_reports() Methode (Rueckgabe: tuple[list[dict], int])."""
 
     @pytest.mark.asyncio
     async def test_get_reports_success(
@@ -186,13 +239,20 @@ class TestGetReports:
         sample_report,
         company_id: UUID,
     ):
-        """Sollte Berichte zurueckgeben."""
-        reports = [sample_report]
-        mock_db.execute.return_value = create_mock_result(scalars_list=reports)
+        """Sollte Berichte als Dict-Liste plus Gesamtanzahl zurueckgeben."""
+        # Erster execute() -> count, zweiter -> scalars().all()
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=1),
+            create_mock_result(scalars_list=[sample_report]),
+        ]
 
-        result = await report_service.get_reports(company_id=company_id)
+        reports, total = await report_service.get_reports(company_id=company_id)
 
-        assert len(result) == 1
+        assert total == 1
+        assert len(reports) == 1
+        assert isinstance(reports[0], dict)
+        assert reports[0]["id"] == str(sample_report.id)
+        assert reports[0]["report_type"] == sample_report.report_type
 
     @pytest.mark.asyncio
     async def test_get_reports_filter_by_type(
@@ -202,17 +262,21 @@ class TestGetReports:
         sample_report,
         company_id: UUID,
     ):
-        """Sollte nach Berichtstyp filtern."""
-        sample_report.report_type = "annual_sustainability"
-        mock_db.execute.return_value = create_mock_result(scalars_list=[sample_report])
+        """Sollte den report_type-Filter durchreichen (im Ergebnis sichtbar)."""
+        sample_report.report_type = "annual"
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=1),
+            create_mock_result(scalars_list=[sample_report]),
+        ]
 
-        result = await report_service.get_reports(
+        reports, total = await report_service.get_reports(
             company_id=company_id,
-            report_type="annual_sustainability",
+            report_type="annual",
         )
 
-        for r in result:
-            assert r.report_type == "annual_sustainability"
+        assert total == 1
+        for r in reports:
+            assert r["report_type"] == "annual"
 
     @pytest.mark.asyncio
     async def test_get_reports_filter_by_status(
@@ -222,24 +286,46 @@ class TestGetReports:
         sample_report,
         company_id: UUID,
     ):
-        """Sollte nach Status filtern."""
+        """Sollte den status-Filter durchreichen (im Ergebnis sichtbar)."""
         sample_report.status = "published"
-        mock_db.execute.return_value = create_mock_result(scalars_list=[sample_report])
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=1),
+            create_mock_result(scalars_list=[sample_report]),
+        ]
 
-        result = await report_service.get_reports(
+        reports, total = await report_service.get_reports(
             company_id=company_id,
             status="published",
         )
 
-        for r in result:
-            assert r.status == "published"
+        assert total == 1
+        for r in reports:
+            assert r["status"] == "published"
+
+    @pytest.mark.asyncio
+    async def test_get_reports_empty(
+        self,
+        report_service: ESGReportGeneratorService,
+        mock_db: AsyncMock,
+        company_id: UUID,
+    ):
+        """Sollte leere Liste und Total 0 zurueckgeben wenn keine Berichte existieren."""
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=0),
+            create_mock_result(scalars_list=[]),
+        ]
+
+        reports, total = await report_service.get_reports(company_id=company_id)
+
+        assert total == 0
+        assert reports == []
 
 
 # ========================= Get Report Detail Tests =========================
 
 
 class TestGetReportDetail:
-    """Tests fuer get_report_detail() Methode."""
+    """Tests fuer get_report_detail() Methode (Rueckgabe: dict | None)."""
 
     @pytest.mark.asyncio
     async def test_get_report_detail_success(
@@ -249,7 +335,9 @@ class TestGetReportDetail:
         sample_report,
         company_id: UUID,
     ):
-        """Sollte Berichtsdetails zurueckgeben."""
+        """Sollte Berichtsdetails als Dict zurueckgeben."""
+        # get_report_detail nutzt content_json, daher Attribut setzen
+        sample_report.content_json = {"sections": {}}
         mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
 
         result = await report_service.get_report_detail(
@@ -258,7 +346,10 @@ class TestGetReportDetail:
         )
 
         assert result is not None
-        assert result.id == sample_report.id
+        assert isinstance(result, dict)
+        assert result["id"] == str(sample_report.id)
+        assert result["title"] == sample_report.title
+        assert result["content"] == {"sections": {}}
 
     @pytest.mark.asyncio
     async def test_get_report_detail_not_found(
@@ -282,7 +373,7 @@ class TestGetReportDetail:
 
 
 class TestUpdateReportStatus:
-    """Tests fuer update_report_status() Methode."""
+    """Tests fuer update_report_status() Methode (Rueckgabe: bool)."""
 
     @pytest.mark.asyncio
     async def test_update_report_status_success(
@@ -292,7 +383,7 @@ class TestUpdateReportStatus:
         sample_report,
         company_id: UUID,
     ):
-        """Sollte Berichtsstatus aktualisieren."""
+        """Sollte Berichtsstatus auf einen gueltigen Wert aktualisieren."""
         sample_report.status = "draft"
         mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
         mock_db.commit = AsyncMock()
@@ -300,13 +391,15 @@ class TestUpdateReportStatus:
         result = await report_service.update_report_status(
             report_id=sample_report.id,
             company_id=company_id,
-            new_status="review",
+            new_status=ReportStatus.IN_REVIEW.value,
         )
 
+        assert result is True
+        assert sample_report.status == ReportStatus.IN_REVIEW.value
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_update_report_status_with_approval(
+    async def test_update_report_status_approved_sets_approver(
         self,
         report_service: ESGReportGeneratorService,
         mock_db: AsyncMock,
@@ -314,282 +407,85 @@ class TestUpdateReportStatus:
         company_id: UUID,
         user_id: UUID,
     ):
-        """Sollte Status mit Genehmigung aktualisieren."""
-        sample_report.status = "review"
+        """Status 'approved' sollte Genehmiger und Zeitstempel setzen."""
+        sample_report.status = "in_review"
+        sample_report.approved_at = None
+        sample_report.approved_by_id = None
         mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
         mock_db.commit = AsyncMock()
 
-        await report_service.update_report_status(
+        result = await report_service.update_report_status(
             report_id=sample_report.id,
             company_id=company_id,
-            new_status="approved",
-            approved_by_id=user_id,
+            new_status=ReportStatus.APPROVED,
+            user_id=user_id,
         )
 
+        assert result is True
+        assert sample_report.status == ReportStatus.APPROVED
+        assert sample_report.approved_by_id == user_id
+        assert sample_report.approved_at is not None
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_update_report_status_not_found(
-        self,
-        report_service: ESGReportGeneratorService,
-        mock_db: AsyncMock,
-        company_id: UUID,
-    ):
-        """Sollte Fehler werfen wenn nicht gefunden."""
-        mock_db.execute.return_value = create_mock_result(scalar_value=None)
-
-        with pytest.raises(ValueError, match="nicht gefunden"):
-            await report_service.update_report_status(
-                report_id=uuid4(),
-                company_id=company_id,
-                new_status="review",
-            )
-
-
-# ========================= Publish Report Tests =========================
-
-
-class TestPublishReport:
-    """Tests fuer publish_report() Methode."""
-
-    @pytest.mark.asyncio
-    async def test_publish_report_success(
+    async def test_update_report_status_published_sets_timestamp(
         self,
         report_service: ESGReportGeneratorService,
         mock_db: AsyncMock,
         sample_report,
         company_id: UUID,
     ):
-        """Sollte Bericht veroeffentlichen."""
+        """Status 'published' sollte published_at setzen."""
         sample_report.status = "approved"
+        sample_report.published_at = None
         mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
         mock_db.commit = AsyncMock()
 
-        result = await report_service.publish_report(
+        result = await report_service.update_report_status(
             report_id=sample_report.id,
             company_id=company_id,
+            new_status=ReportStatus.PUBLISHED,
         )
 
-        mock_db.commit.assert_called_once()
+        assert result is True
+        assert sample_report.status == ReportStatus.PUBLISHED
+        assert sample_report.published_at is not None
 
     @pytest.mark.asyncio
-    async def test_publish_report_not_approved(
+    async def test_update_report_status_invalid_status_raises(
         self,
         report_service: ESGReportGeneratorService,
         mock_db: AsyncMock,
         sample_report,
         company_id: UUID,
     ):
-        """Sollte Fehler werfen wenn nicht genehmigt."""
+        """Sollte bei ungueltigem Status ValueError werfen."""
         sample_report.status = "draft"
         mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
 
-        with pytest.raises(ValueError, match="nicht genehmigt"):
-            await report_service.publish_report(
+        with pytest.raises(ValueError, match="Ungültiger Status"):
+            await report_service.update_report_status(
                 report_id=sample_report.id,
                 company_id=company_id,
+                new_status="review",  # kein gueltiger ReportStatus-Wert
             )
 
-
-# ========================= Export Report Tests =========================
-
-
-class TestExportReport:
-    """Tests fuer export_report() Methode."""
-
     @pytest.mark.asyncio
-    async def test_export_report_pdf(
-        self,
-        report_service: ESGReportGeneratorService,
-        mock_db: AsyncMock,
-        sample_report,
-        company_id: UUID,
-    ):
-        """Sollte Bericht als PDF exportieren."""
-        mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
-
-        with patch.object(
-            report_service, "_generate_pdf", return_value=b"%PDF-1.4 content"
-        ):
-            content, filename = await report_service.export_report(
-                report_id=sample_report.id,
-                company_id=company_id,
-                export_format="pdf",
-            )
-
-        assert content is not None
-        assert filename.endswith(".pdf")
-
-    @pytest.mark.asyncio
-    async def test_export_report_json(
-        self,
-        report_service: ESGReportGeneratorService,
-        mock_db: AsyncMock,
-        sample_report,
-        company_id: UUID,
-    ):
-        """Sollte Bericht als JSON exportieren."""
-        sample_report.content = {"test": "data"}
-        mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
-
-        content, filename = await report_service.export_report(
-            report_id=sample_report.id,
-            company_id=company_id,
-            export_format="json",
-        )
-
-        assert filename.endswith(".json")
-
-    @pytest.mark.asyncio
-    async def test_export_report_csv(
-        self,
-        report_service: ESGReportGeneratorService,
-        mock_db: AsyncMock,
-        sample_report,
-        company_id: UUID,
-    ):
-        """Sollte Bericht als CSV exportieren."""
-        sample_report.content = {"emissions": [{"month": "2025-01", "value": 1000}]}
-        mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
-
-        content, filename = await report_service.export_report(
-            report_id=sample_report.id,
-            company_id=company_id,
-            export_format="csv",
-        )
-
-        assert filename.endswith(".csv")
-
-    @pytest.mark.asyncio
-    async def test_export_report_not_found(
+    async def test_update_report_status_not_found_returns_false(
         self,
         report_service: ESGReportGeneratorService,
         mock_db: AsyncMock,
         company_id: UUID,
     ):
-        """Sollte Fehler werfen wenn nicht gefunden."""
+        """Sollte False zurueckgeben (nicht werfen), wenn der Bericht fehlt."""
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
+        mock_db.commit = AsyncMock()
 
-        with pytest.raises(ValueError, match="nicht gefunden"):
-            await report_service.export_report(
-                report_id=uuid4(),
-                company_id=company_id,
-                export_format="pdf",
-            )
-
-
-# ========================= GRI Compliance Tests =========================
-
-
-class TestGRICompliance:
-    """Tests fuer GRI-Konformitaet."""
-
-    @pytest.mark.asyncio
-    async def test_generate_gri_index(
-        self,
-        report_service: ESGReportGeneratorService,
-        mock_db: AsyncMock,
-        sample_report,
-        company_id: UUID,
-    ):
-        """Sollte GRI-Index generieren."""
-        sample_report.reporting_standard = "GRI"
-        mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
-
-        gri_index = await report_service.generate_gri_index(
-            report_id=sample_report.id,
+        result = await report_service.update_report_status(
+            report_id=uuid4(),
             company_id=company_id,
+            new_status=ReportStatus.IN_REVIEW.value,
         )
 
-        # Starke Assertion: GRI-Index MUSS disclosures enthalten
-        assert gri_index is not None, "generate_gri_index sollte ein Ergebnis zurueckgeben"
-        assert "disclosures" in gri_index, \
-            f"GRI-Index muss 'disclosures' enthalten, erhielt: {gri_index.keys() if isinstance(gri_index, dict) else type(gri_index)}"
-        mock_db.execute.assert_called()  # Verifiziere, dass DB aufgerufen wurde
-
-    @pytest.mark.asyncio
-    async def test_validate_gri_compliance(
-        self,
-        report_service: ESGReportGeneratorService,
-        mock_db: AsyncMock,
-        sample_report,
-        company_id: UUID,
-    ):
-        """Sollte GRI-Konformitaet validieren."""
-        sample_report.reporting_standard = "GRI"
-        sample_report.content = {
-            "general_disclosures": {"GRI_2_1": True},
-            "material_topics": ["emissions"],
-        }
-        mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
-
-        result = await report_service.validate_gri_compliance(
-            report_id=sample_report.id,
-            company_id=company_id,
-        )
-
-        # Starke Assertion: Result MUSS entweder is_compliant oder missing_disclosures enthalten
-        assert result is not None, "validate_gri_compliance sollte ein Ergebnis zurueckgeben"
-        assert "is_compliant" in result or "missing_disclosures" in result, \
-            f"Ergebnis muss 'is_compliant' oder 'missing_disclosures' enthalten, erhielt: {result.keys()}"
-        mock_db.execute.assert_called()  # Verifiziere, dass DB aufgerufen wurde
-
-
-# ========================= CSRD Compliance Tests =========================
-
-
-class TestCSRDCompliance:
-    """Tests fuer CSRD-Konformitaet."""
-
-    @pytest.mark.asyncio
-    async def test_validate_csrd_requirements(
-        self,
-        report_service: ESGReportGeneratorService,
-        mock_db: AsyncMock,
-        sample_report,
-        company_id: UUID,
-    ):
-        """Sollte CSRD-Anforderungen validieren."""
-        sample_report.reporting_standard = "CSRD"
-        sample_report.content = {
-            "double_materiality": True,
-            "climate_targets": True,
-            "value_chain": True,
-        }
-        mock_db.execute.return_value = create_mock_result(scalar_value=sample_report)
-
-        result = await report_service.validate_csrd_requirements(
-            report_id=sample_report.id,
-            company_id=company_id,
-        )
-
-        assert mock_db.execute.called
-
-
-# ========================= Template Tests =========================
-
-
-class TestReportTemplates:
-    """Tests fuer Berichtsvorlagen."""
-
-    @pytest.mark.asyncio
-    async def test_get_available_templates(
-        self,
-        report_service: ESGReportGeneratorService,
-    ):
-        """Sollte verfuegbare Vorlagen zurueckgeben."""
-        templates = report_service.get_available_templates()
-
-        assert len(templates) > 0
-        assert any(t["type"] == "annual_sustainability" for t in templates)
-
-    @pytest.mark.asyncio
-    async def test_get_template_structure(
-        self,
-        report_service: ESGReportGeneratorService,
-    ):
-        """Sollte Vorlagenstruktur zurueckgeben."""
-        structure = report_service.get_template_structure("annual_sustainability")
-
-        assert "sections" in structure
-        assert len(structure["sections"]) > 0
+        assert result is False
+        mock_db.commit.assert_not_called()
