@@ -238,9 +238,8 @@ class Document(SoftDeleteMixin, Base):
     chain_id = Column(
         String(100),
         nullable=True,
-        index=True,
         comment="Auftragsketten-ID (z.B. CHAIN-2026-00001)"
-    )
+    )  # Index via __table_args__ Index("ix_documents_chain_id") - kein doppeltes index=True
     chain_position = Column(
         Integer,
         nullable=True,

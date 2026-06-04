@@ -19,6 +19,7 @@ from sqlalchemy import (
     Column,
     String,
     Boolean,
+    Integer,
     Text,
     DateTime,
     ForeignKey,
@@ -30,6 +31,34 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
+
+
+class UserDashboard(Base):
+    """Benutzer-Dashboard (Tabelle ``user_dashboards``).
+
+    Modell fuer die zuvor verwaiste Tabelle ``user_dashboards`` (FK-Ziel von
+    ``DashboardShare.dashboard_id``). Ohne dieses Modell scheiterte
+    ``Base.metadata.create_all`` (NoReferencedTableError). Spalten reverse-engineered
+    aus dem realen Schema.
+    """
+
+    __tablename__ = "user_dashboards"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    description = Column(String(500), nullable=True)
+    is_default = Column(Boolean, nullable=False, default=False)
+    columns = Column(Integer, nullable=False, default=12)
+    row_height = Column(Integer, nullable=False, default=80)
+    compact_type = Column(String(20), nullable=True)
+    default_date_range = Column(String(50), nullable=True)
+    default_company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"), nullable=True)
+    is_shared = Column(Boolean, nullable=False, default=False)
+    shared_with_roles = Column(CrossDBJSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    is_favorite = Column(Boolean, nullable=False, default=False)
 
 
 class DashboardShare(Base):
