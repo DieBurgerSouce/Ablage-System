@@ -348,7 +348,6 @@ class TestDATEVAuthService:
 class TestKontierungsvorschlagService:
     """Tests fuer ML-basierte Kontierungsvorschlaege."""
 
-    @_xfail_kontierung_model_mismatch
     @pytest.mark.asyncio
     async def test_suggest_kontierung_returns_suggestion(
         self, mock_db_session, sample_connection_id, sample_kontierung_input
@@ -380,7 +379,6 @@ class TestKontierungsvorschlagService:
         # Quelle ist eine der definierten Strategien
         assert suggestion.source in ("rule", "ml", "history", "manual")
 
-    @_xfail_kontierung_model_mismatch
     @pytest.mark.asyncio
     async def test_suggest_kontierung_keyword_match_buero(
         self, mock_db_session, sample_connection_id
@@ -420,7 +418,6 @@ class TestKontierungsvorschlagService:
         # Keyword-Vorschlag hat hoehere Konfidenz als der reine Default (0.3)
         assert suggestion.confidence > 0.3
 
-    @_xfail_kontierung_model_mismatch
     @pytest.mark.asyncio
     async def test_suggest_kontierung_default_fallback(
         self, mock_db_session, sample_connection_id
@@ -458,7 +455,6 @@ class TestKontierungsvorschlagService:
         assert suggestion.source == "manual"
         assert suggestion.confidence < 0.8
 
-    @_xfail_kontierung_model_mismatch
     @pytest.mark.asyncio
     async def test_suggest_kontierung_uses_history_pattern(
         self, mock_db_session, sample_connection_id, sample_kontierung_input
@@ -517,13 +513,10 @@ class TestKontierungsvorschlagService:
         )
 
         assert success is True
-        # Korrektur wird auf der Buchung persistiert
-        assert mock_buchung.konto == "4400"
-        assert mock_buchung.gegenkonto == "70001"
-        assert mock_buchung.bu_schluessel == "9"
-        assert mock_buchung.user_korrektur is True
-        # Original-Vorschlag wird gesichert
-        assert mock_buchung.original_suggestion_konto == "4400"
+        # Korrektur wird auf den echten DATEVBuchung-Spalten persistiert
+        assert mock_buchung.konto_soll == "4400"
+        assert mock_buchung.konto_haben == "70001"
+        assert mock_buchung.steuerschluessel == "9"
         mock_db_session.commit.assert_awaited()
 
     @pytest.mark.asyncio
@@ -1026,7 +1019,6 @@ class TestDATEVEdgeCases:
 
         assert len(hash_value) == 64
 
-    @_xfail_kontierung_model_mismatch
     @pytest.mark.asyncio
     async def test_kontierung_zero_betrag(self, mock_db_session, sample_connection_id):
         """Kontierung mit Betrag 0 (z.B. Gutschrift) liefert trotzdem einen Vorschlag."""

@@ -271,16 +271,14 @@ class KontierungsvorschlagService:
             buchung = buchung_result.scalar_one_or_none()
 
             if buchung:
-                # Original-Vorschlag speichern
-                buchung.original_suggestion_konto = buchung.konto
-                buchung.original_suggestion_gegenkonto = buchung.gegenkonto
-                buchung.user_korrektur = True
-
-                # Korrigierte Werte setzen
-                buchung.konto = corrected_konto
-                buchung.gegenkonto = corrected_gegenkonto
+                # Korrigierte Werte auf den echten DATEVBuchung-Spalten persistieren
+                buchung.konto_soll = corrected_konto
+                buchung.konto_haben = corrected_gegenkonto
                 if corrected_bu_schluessel:
-                    buchung.bu_schluessel = corrected_bu_schluessel
+                    buchung.steuerschluessel = corrected_bu_schluessel
+                # NB: Korrektur-Audit-Spur (original_suggestion_*, user_korrektur)
+                # nicht persistierbar - DATEVBuchung hat dafuer keine Spalten
+                # (eigene Migration noetig, falls gewuenscht)
 
             # 2. Pattern aktualisieren oder erstellen
             if input_data and input_data.entity_name:
@@ -344,7 +342,7 @@ class KontierungsvorschlagService:
         if amount:
             tolerance = amount * Decimal("0.2")
             query = query.where(
-                models.DATEVBuchung.umsatz.between(
+                models.DATEVBuchung.betrag_soll.between(
                     amount - tolerance,
                     amount + tolerance,
                 )
@@ -360,10 +358,10 @@ class KontierungsvorschlagService:
             {
                 "id": str(b.id),
                 "belegdatum": b.belegdatum.isoformat() if b.belegdatum else None,
-                "umsatz": float(b.umsatz),
-                "konto": b.konto,
-                "gegenkonto": b.gegenkonto,
-                "bu_schluessel": b.bu_schluessel,
+                "umsatz": float(b.betrag_soll or 0),
+                "konto": b.konto_soll,
+                "gegenkonto": b.konto_haben,
+                "bu_schluessel": b.steuerschluessel,
                 "buchungstext": b.buchungstext,
             }
             for b in buchungen
@@ -398,14 +396,14 @@ class KontierungsvorschlagService:
         # Top-Konten
         top_konten_result = await db.execute(
             select(
-                models.DATEVKontierungPattern.konto,
+                models.DATEVKontierungPattern.konto_soll,
                 func.sum(models.DATEVKontierungPattern.usage_count).label("total_usage"),
             )
             .where(
                 models.DATEVKontierungPattern.connection_id == connection_id,
                 models.DATEVKontierungPattern.is_active == True,
             )
-            .group_by(models.DATEVKontierungPattern.konto)
+            .group_by(models.DATEVKontierungPattern.konto_soll)
             .order_by(desc("total_usage"))
             .limit(10)
         )
@@ -456,9 +454,9 @@ class KontierungsvorschlagService:
 
         result = await db.execute(
             select(
-                models.DATEVBuchung.konto,
-                models.DATEVBuchung.gegenkonto,
-                models.DATEVBuchung.bu_schluessel,
+                models.DATEVBuchung.konto_soll,
+                models.DATEVBuchung.konto_haben,
+                models.DATEVBuchung.steuerschluessel,
                 func.count(models.DATEVBuchung.id).label("count"),
             )
             .where(
@@ -467,9 +465,9 @@ class KontierungsvorschlagService:
                 func.lower(models.DATEVBuchung.buchungstext).like(name_pattern),
             )
             .group_by(
-                models.DATEVBuchung.konto,
-                models.DATEVBuchung.gegenkonto,
-                models.DATEVBuchung.bu_schluessel,
+                models.DATEVBuchung.konto_soll,
+                models.DATEVBuchung.konto_haben,
+                models.DATEVBuchung.steuerschluessel,
             )
             .order_by(desc("count"))
             .limit(1)
@@ -521,10 +519,10 @@ class KontierungsvorschlagService:
             conditions.append(
                 or_(
                     and_(
-                        models.DATEVKontierungPattern.amount_range_min <= input_data.betrag_brutto,
-                        models.DATEVKontierungPattern.amount_range_max >= input_data.betrag_brutto,
+                        models.DATEVKontierungPattern.amount_min <= input_data.betrag_brutto,
+                        models.DATEVKontierungPattern.amount_max >= input_data.betrag_brutto,
                     ),
-                    models.DATEVKontierungPattern.amount_range_min.is_(None),
+                    models.DATEVKontierungPattern.amount_min.is_(None),
                 )
             )
 
@@ -532,7 +530,6 @@ class KontierungsvorschlagService:
             select(models.DATEVKontierungPattern)
             .where(and_(*conditions))
             .order_by(
-                desc(models.DATEVKontierungPattern.priority),
                 desc(models.DATEVKontierungPattern.usage_count),
             )
             .limit(1)
@@ -548,13 +545,13 @@ class KontierungsvorschlagService:
             confidence = min(0.9, 0.4 + (success_rate * 0.4) + (min(pattern.usage_count, 10) * 0.02))
 
             return KontierungsSuggestion(
-                konto=pattern.konto,
-                gegenkonto=pattern.gegenkonto,
-                bu_schluessel=pattern.bu_schluessel or "",
+                konto=pattern.konto_soll,
+                gegenkonto=pattern.konto_haben,
+                bu_schluessel=pattern.steuerschluessel or "",
                 kostenstelle=pattern.kostenstelle,
                 confidence=confidence,
                 source="rule",
-                explanation=f"Regel-Match: {pattern.entity_name_pattern or 'Allgemein'} (Erfolgsquote: {success_rate:.0%})",
+                explanation=f"Regel-Match: {pattern.keyword_pattern or 'Allgemein'} (Erfolgsquote: {success_rate:.0%})",
             )
 
         return None
@@ -636,7 +633,7 @@ class KontierungsvorschlagService:
         pattern_result = await db.execute(
             select(models.DATEVKontierungPattern).where(
                 models.DATEVKontierungPattern.connection_id == connection_id,
-                models.DATEVKontierungPattern.entity_name_pattern == input_data.entity_name[:200],
+                models.DATEVKontierungPattern.keyword_pattern == input_data.entity_name[:200],
                 models.DATEVKontierungPattern.document_type == input_data.dokument_typ,
             )
         )
@@ -649,28 +646,26 @@ class KontierungsvorschlagService:
             pattern.last_used_at = utc_now()
 
             # Konten nur aktualisieren wenn sie sich geändert haben
-            if pattern.konto != konto or pattern.gegenkonto != gegenkonto:
-                pattern.konto = konto
-                pattern.gegenkonto = gegenkonto
-                pattern.bu_schluessel = bu_schluessel
-                pattern.pattern_source = "learned"
+            if pattern.konto_soll != konto or pattern.konto_haben != gegenkonto:
+                pattern.konto_soll = konto
+                pattern.konto_haben = gegenkonto
+                pattern.steuerschluessel = bu_schluessel
+                pattern.pattern_type = "learned"
         else:
             # Neues Pattern erstellen
             new_pattern = models.DATEVKontierungPattern(
                 id=uuid.uuid4(),
                 connection_id=connection_id,
-                company_id=input_data.company_id,
-                entity_name_pattern=input_data.entity_name[:200],
+                keyword_pattern=input_data.entity_name[:200],
                 document_type=input_data.dokument_typ,
-                konto=konto,
-                gegenkonto=gegenkonto,
-                bu_schluessel=bu_schluessel,
+                konto_soll=konto,
+                konto_haben=gegenkonto,
+                steuerschluessel=bu_schluessel,
                 usage_count=1,
                 success_count=1,
                 last_used_at=utc_now(),
-                pattern_source="learned",
+                pattern_type="learned",
                 is_active=True,
-                priority=0,
             )
             db.add(new_pattern)
 
