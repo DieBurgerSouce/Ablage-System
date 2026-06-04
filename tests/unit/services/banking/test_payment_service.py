@@ -251,6 +251,10 @@ class TestPaymentServiceWithMockedDB:
         db.commit = AsyncMock()
         db.refresh = AsyncMock()
         db.add = MagicMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
         return db
 
     @pytest.mark.asyncio
@@ -498,6 +502,10 @@ class TestBatchPayments:
         db.commit = AsyncMock()
         db.refresh = AsyncMock()
         db.add = MagicMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
         return db
 
     @pytest.fixture
