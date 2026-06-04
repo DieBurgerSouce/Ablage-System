@@ -15,6 +15,10 @@
 
 **Nächster Schritt** (priorisiert nach „Mocks → echt", separate Folge-Phase): siehe Roadmap in `MOCK_DATA_REGISTER.md`. Zusätzliche Medium/Low-Punkte (~~6 falsche Beat-Task-Namen~~ ✅ G4, ~~5 unsichtbare Task-Module~~ ✅ G4, ~~verwaiste ORM-Modelle~~ ✅ G4 (`all_models.py`), Endpoint-Dubletten, ~~leere `.secrets.baseline`~~ ✅ G2 behoben, ~~`safety || true`~~ ✅ G2 → `pip-audit`-Gate) in `TECHNICAL_DEBT.md`.
 
+### 🔴 Test-Wahrheit: Unit-Suite weit von grün (2026-06-04)
+
+**`tests/unit/services/` (ohne banking) hat 300+ Failures in 15+ Dateien** (permission_service 31, document_comparison_service 31, datev_connect 29, gobd_service 29, notification_escalation 27, orchestration-insights 27/27, twilio 25, financial_goals 24, document_service 22, saved_searches 21, esg/report_generator 21, comment_service 21, …). Banking war nur EIN Slice (34, jetzt 0). Muster (aus Banking-Remediation): B1-Residual (user_id→company_id), Umlaut-Drift (ASCII↔ä/ö/ü), async-CM-Mocks, Duplikat-Typo-Bugs, rich-Crash bei logger.exception. **Widerlegt „Tests grün"-Behauptungen** — `pytest tests/unit/` wäre tiefrot. Dedizierte Remediation pro Cluster nötig (Methodik an Banking demonstriert). NB: Errors (DB-Integration) zusätzlich, brauchen echte Postgres-Test-DB.
+
 ### 🆕 Verbesserungs-Offensive (2026-06-04) — neu gefundene Bugs
 
 > Branch `improve/foundation-truth` (8 Commits, lokal verifiziert, **NICHT gemergt/gepusht**). Detail-Memory: `improve-foundation-truth.md`.
