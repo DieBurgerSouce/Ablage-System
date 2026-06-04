@@ -272,13 +272,13 @@ class TestPermissionCache:
         # First call - should hit database
         await permission_service.get_user_permissions(sample_user)
 
-        assert str(sample_user.id) in permission_service._permission_cache
+        assert permission_service._build_cache_key(str(sample_user.id)) in permission_service._permission_cache
 
     @pytest.mark.asyncio
     async def test_cache_used_on_subsequent_queries(self, permission_service, sample_user, mock_db):
         """Cache sollte bei wiederholten Abfragen verwendet werden."""
-        # Pre-populate cache
-        permission_service._permission_cache[str(sample_user.id)] = {"documents:read"}
+        # Pre-populate cache (P1.1: tenant-isolierter Key permission_cache:global:{id})
+        permission_service._permission_cache[permission_service._build_cache_key(str(sample_user.id))] = {"documents:read"}
 
         # This should NOT hit the database
         permissions = await permission_service.get_user_permissions(sample_user)
@@ -288,11 +288,12 @@ class TestPermissionCache:
 
     def test_clear_user_cache(self, permission_service, sample_user):
         """Cache für einzelnen User sollte löschbar sein."""
-        permission_service._permission_cache[str(sample_user.id)] = {"documents:read"}
+        cache_key = permission_service._build_cache_key(str(sample_user.id))
+        permission_service._permission_cache[cache_key] = {"documents:read"}
 
         permission_service._clear_user_cache(sample_user)
 
-        assert str(sample_user.id) not in permission_service._permission_cache
+        assert cache_key not in permission_service._permission_cache
 
     def test_clear_all_cache(self, permission_service, sample_user, superuser):
         """Gesamter Cache sollte löschbar sein."""
