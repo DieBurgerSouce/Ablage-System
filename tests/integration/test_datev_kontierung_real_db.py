@@ -73,29 +73,17 @@ def _company():
 
 
 async def _connection_id(session, company_id):
-    """Legt eine datev_connections-Zeile via Roh-SQL an und liefert ihre id.
-
-    NB: Das DATEVConnection-MODELL ist ebenfalls vom Doppik-Schisma betroffen
-    (Modell: berater_nr/mandant_nr/environment; Tabelle: beraternummer/
-    mandantennummer/api_environment) und noch NICHT reconciliert. kontierung_service
-    fragt datev_connections aber nicht ab (nur FK-Ziel fuer datev_buchungen),
-    daher hier bewusst Roh-Insert gegen die echten Tabellen-Spalten.
-    """
-    from sqlalchemy import text
-    cid = uuid4()
-    await session.execute(text(
-        """
-        INSERT INTO datev_connections
-          (id, company_id, name, beraternummer, mandantennummer, wirtschaftsjahr_beginn,
-           api_environment, api_version, enabled_features, kontenrahmen, sachkontenlange,
-           personenkontenlange, buchungsmodus, gobd_enabled, festschreibung_automatisch,
-           connection_status, is_active)
-        VALUES
-          (:id, :cmp, 'DATEV Test', '1234567', '12345', 1, 'sandbox', 'v1', '[]'::jsonb,
-           'SKR03', 4, 5, 'automatisch', true, false, 'connected', true)
-        """), {"id": cid, "cmp": company_id})
+    """Legt eine DATEVConnection via Modell an (nach Migration 264 reconciliert)."""
+    from app.db.models import DATEVConnection
+    conn = DATEVConnection(
+        id=uuid4(), company_id=company_id, name="DATEV Test",
+        berater_nr="1234567", mandant_nr="12345", environment="sandbox",
+        api_version="v1", kontenrahmen="SKR03", wirtschaftsjahr_beginn=1,
+        connection_status="connected", is_active=True,
+    )
+    session.add(conn)
     await session.flush()
-    return cid
+    return conn.id
 
 
 def _buchung(company_id, connection_id, *, buchungstext, konto_soll, konto_haben,
