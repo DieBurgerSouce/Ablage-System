@@ -269,6 +269,17 @@ def decrypt_data(ciphertext: str, associated_data: Optional[str] = None) -> str:
         raise DecryptionError(str(e))
 
 
+# ---------------------------------------------------------------------------
+# Aufrufer-kompatible Aliase: Der DATEV-Connect-Pfad (datev_auth_service,
+# api/v1/datev_connect, workers/datev_connect_tasks) importiert encrypt_value/
+# decrypt_value. Signatur identisch zu encrypt_data/decrypt_data (str -> str).
+# Ohne diese Aliase schlug der Import fehl -> gesamtes connect-Paket nicht
+# importierbar (ImportError zur Laufzeit in jedem DATEV-Connect-Endpoint).
+# ---------------------------------------------------------------------------
+encrypt_value = encrypt_data
+decrypt_value = decrypt_data
+
+
 def is_encrypted(data: str) -> bool:
     """
     Prüft ob Daten verschlüsselt zu sein scheinen.

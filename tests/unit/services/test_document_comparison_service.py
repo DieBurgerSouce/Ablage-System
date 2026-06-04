@@ -4,19 +4,26 @@ Tests fuer DocumentComparisonService.
 
 Phase 9.1: Dream Features - Document Comparison
 
-Testet:
-- Textvergleich mit difflib
-- Strukturvergleich extrahierter Daten
-- Aehnlichkeitssuche
-- Diff-Report-Generierung
+Testet (gegen die ECHTE Service-API):
+- Vergleichstypen / Differenz-Enums / Feldkategorien
+- Dataclasses (TextDifference, FieldChange, SimilarDocument, ComparisonResult, DiffReport)
+- Textvergleich mit difflib (_compare_text -> (differences, similarity))
+- Strukturvergleich (_compare_structure -> (changes, similarity))
+- Feldkategorie-Erkennung (_get_field_category)
+- Wertgleichheit mit Toleranz (_values_equal)
+- Fehlerpfade (compare_documents / find_similar_documents -> ValueError bei not-found)
+- Zusammenfassungs-Generierung (_generate_summary(ComparisonResult))
+
+NB (2026-06-04, Test-Wahrheits-Offensive): Diese Datei wurde gegen eine
+nicht-existente Wunsch-API geschrieben (gleicher Commit wie der Service, nie
+gruen gelaufen) und an die tatsaechliche Service-API angepasst.
 """
 
 import pytest
 from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock
 
 from app.services.document_comparison_service import (
     DocumentComparisonService,
@@ -31,8 +38,36 @@ from app.services.document_comparison_service import (
 )
 
 
+def _make_comparison_result(
+    *,
+    overall_similarity: float = 1.0,
+    total_changes: int = 0,
+    critical_changes: int = 0,
+    additions: int = 0,
+    removals: int = 0,
+    modifications: int = 0,
+) -> ComparisonResult:
+    """Baut eine ComparisonResult mit der echten Feldsignatur."""
+    return ComparisonResult(
+        document_1_id=uuid4(),
+        document_2_id=uuid4(),
+        comparison_type=ComparisonType.HYBRID,
+        overall_similarity=overall_similarity,
+        text_similarity=overall_similarity,
+        structure_similarity=overall_similarity,
+        text_differences=[],
+        field_changes=[],
+        total_changes=total_changes,
+        critical_changes=critical_changes,
+        additions=additions,
+        removals=removals,
+        modifications=modifications,
+        comparison_time_ms=12,
+    )
+
+
 class TestComparisonTypes:
-    """Tests fuer Vergleichstypen."""
+    """Tests fuer Vergleichstypen / Enums."""
 
     def test_comparison_type_values(self) -> None:
         """Test: Vergleichstypen haben korrekte Werte."""
@@ -46,15 +81,17 @@ class TestComparisonTypes:
         assert DifferenceType.ADDED.value == "added"
         assert DifferenceType.REMOVED.value == "removed"
         assert DifferenceType.CHANGED.value == "changed"
-        assert DifferenceType.MOVED.value == "moved"
+        assert DifferenceType.UNCHANGED.value == "unchanged"
 
     def test_field_category_values(self) -> None:
         """Test: Feldkategorien haben korrekte Werte."""
-        assert FieldCategory.FINANCIAL.value == "financial"
-        assert FieldCategory.IDENTIFICATION.value == "identification"
+        assert FieldCategory.IDENTIFIER.value == "identifier"
+        assert FieldCategory.AMOUNT.value == "amount"
         assert FieldCategory.DATE.value == "date"
-        assert FieldCategory.CONTACT.value == "contact"
-        assert FieldCategory.OTHER.value == "other"
+        assert FieldCategory.ENTITY.value == "entity"
+        assert FieldCategory.ADDRESS.value == "address"
+        assert FieldCategory.TEXT.value == "text"
+        assert FieldCategory.METADATA.value == "metadata"
 
 
 class TestTextDifference:
@@ -63,22 +100,31 @@ class TestTextDifference:
     def test_create_text_difference(self) -> None:
         """Test: TextDifference erstellen."""
         diff = TextDifference(
-            type=DifferenceType.CHANGED,
-            position_start=10,
-            position_end=20,
-            original_text="Mueller",
+            diff_type=DifferenceType.CHANGED,
+            line_number=10,
+            old_text="Mueller",
             new_text="Müller",
             context_before="Firma ",
             context_after=" GmbH",
         )
 
-        assert diff.type == DifferenceType.CHANGED
-        assert diff.position_start == 10
-        assert diff.position_end == 20
-        assert diff.original_text == "Mueller"
+        assert diff.diff_type == DifferenceType.CHANGED
+        assert diff.line_number == 10
+        assert diff.old_text == "Mueller"
         assert diff.new_text == "Müller"
         assert diff.context_before == "Firma "
         assert diff.context_after == " GmbH"
+
+    def test_text_difference_optional_context(self) -> None:
+        """Test: Kontext-Felder sind optional (default None)."""
+        diff = TextDifference(
+            diff_type=DifferenceType.ADDED,
+            line_number=None,
+            old_text=None,
+            new_text="Neue Zeile",
+        )
+        assert diff.context_before is None
+        assert diff.context_after is None
 
 
 class TestFieldChange:
@@ -88,19 +134,33 @@ class TestFieldChange:
         """Test: FieldChange erstellen."""
         change = FieldChange(
             field_name="total_amount",
-            category=FieldCategory.FINANCIAL,
+            field_category=FieldCategory.AMOUNT,
             old_value=100.00,
             new_value=150.00,
-            change_type="modified",
-            significance="high",
+            diff_type=DifferenceType.CHANGED,
+            confidence=0.95,
+            is_critical=True,
         )
 
         assert change.field_name == "total_amount"
-        assert change.category == FieldCategory.FINANCIAL
+        assert change.field_category == FieldCategory.AMOUNT
         assert change.old_value == 100.00
         assert change.new_value == 150.00
-        assert change.change_type == "modified"
-        assert change.significance == "high"
+        assert change.diff_type == DifferenceType.CHANGED
+        assert change.confidence == 0.95
+        assert change.is_critical is True
+
+    def test_field_change_defaults(self) -> None:
+        """Test: confidence/is_critical haben Defaults."""
+        change = FieldChange(
+            field_name="note",
+            field_category=FieldCategory.TEXT,
+            old_value="a",
+            new_value="b",
+            diff_type=DifferenceType.CHANGED,
+        )
+        assert change.confidence == 1.0
+        assert change.is_critical is False
 
 
 class TestSimilarDocument:
@@ -115,7 +175,8 @@ class TestSimilarDocument:
             document_type="invoice",
             similarity_score=0.92,
             matching_fields=["invoice_number", "supplier_name"],
-            upload_date=datetime.now(timezone.utc),
+            entity_name="Firma Mueller GmbH",
+            created_at=datetime.now(timezone.utc),
         )
 
         assert similar.document_id == doc_id
@@ -124,6 +185,7 @@ class TestSimilarDocument:
         assert similar.similarity_score == 0.92
         assert "invoice_number" in similar.matching_fields
         assert "supplier_name" in similar.matching_fields
+        assert similar.entity_name == "Firma Mueller GmbH"
 
 
 class TestComparisonResult:
@@ -135,22 +197,27 @@ class TestComparisonResult:
         doc_id_2 = uuid4()
 
         result = ComparisonResult(
-            document_id_1=doc_id_1,
-            document_id_2=doc_id_2,
+            document_1_id=doc_id_1,
+            document_2_id=doc_id_2,
             comparison_type=ComparisonType.HYBRID,
-            similarity_score=0.85,
+            overall_similarity=0.85,
             text_similarity=0.80,
             structure_similarity=0.90,
-            differences=[],
-            changed_fields=[],
-            summary="Dokumente sind weitgehend identisch",
-            compared_at=datetime.now(timezone.utc),
+            text_differences=[],
+            field_changes=[],
+            total_changes=0,
+            critical_changes=0,
+            additions=0,
+            removals=0,
+            modifications=0,
+            comparison_time_ms=42,
         )
 
-        assert result.document_id_1 == doc_id_1
-        assert result.document_id_2 == doc_id_2
+        assert result.document_1_id == doc_id_1
+        assert result.document_2_id == doc_id_2
         assert result.comparison_type == ComparisonType.HYBRID
-        assert result.similarity_score == 0.85
+        assert result.overall_similarity == 0.85
+        assert result.warnings == []  # default_factory
 
 
 class TestDocumentComparisonServiceInit:
@@ -164,7 +231,7 @@ class TestDocumentComparisonServiceInit:
 
 
 class TestTextComparison:
-    """Tests fuer Textvergleich."""
+    """Tests fuer Textvergleich (_compare_text -> (differences, similarity))."""
 
     @pytest.fixture
     def service(self) -> DocumentComparisonService:
@@ -174,51 +241,50 @@ class TestTextComparison:
 
     def test_compare_identical_text(self, service: DocumentComparisonService) -> None:
         """Test: Identische Texte haben Similarity 1.0."""
-        text1 = "Dies ist ein Testtext."
-        text2 = "Dies ist ein Testtext."
+        text = "Dies ist ein Testtext."
 
-        similarity, differences = service._compare_text(text1, text2)
+        differences, similarity = service._compare_text(text, text)
 
         assert similarity == 1.0
         assert len(differences) == 0
 
     def test_compare_similar_text(self, service: DocumentComparisonService) -> None:
-        """Test: Aehnliche Texte werden korrekt verglichen."""
+        """Test: Aehnliche Texte -> hohe Similarity, aber Differenzen vorhanden."""
         text1 = "Rechnung Nr. 12345 vom 01.01.2026"
         text2 = "Rechnung Nr. 12346 vom 01.01.2026"
 
-        similarity, differences = service._compare_text(text1, text2)
+        differences, similarity = service._compare_text(text1, text2)
 
         assert 0.8 < similarity < 1.0
         assert len(differences) > 0
 
     def test_compare_different_text(self, service: DocumentComparisonService) -> None:
-        """Test: Unterschiedliche Texte haben niedrige Similarity."""
+        """Test: Unterschiedliche Texte haben niedrigere Similarity + Differenzen."""
         text1 = "Rechnung vom 01.01.2026"
         text2 = "Lieferschein vom 15.02.2026"
 
-        similarity, differences = service._compare_text(text1, text2)
+        differences, similarity = service._compare_text(text1, text2)
 
         assert similarity < 0.8
         assert len(differences) > 0
 
     def test_compare_empty_text(self, service: DocumentComparisonService) -> None:
-        """Test: Leere Texte werden behandelt."""
-        similarity, differences = service._compare_text("", "")
+        """Test: Zwei leere Texte sind identisch."""
+        differences, similarity = service._compare_text("", "")
 
         assert similarity == 1.0
         assert len(differences) == 0
 
     def test_compare_one_empty_text(self, service: DocumentComparisonService) -> None:
         """Test: Ein leerer Text ergibt 0.0 Similarity."""
-        similarity, differences = service._compare_text("Text vorhanden", "")
+        differences, similarity = service._compare_text("Text vorhanden", "")
 
         assert similarity == 0.0
         assert len(differences) > 0
 
 
 class TestStructureComparison:
-    """Tests fuer Strukturvergleich."""
+    """Tests fuer Strukturvergleich (_compare_structure -> (changes, similarity))."""
 
     @pytest.fixture
     def service(self) -> DocumentComparisonService:
@@ -230,18 +296,13 @@ class TestStructureComparison:
         self, service: DocumentComparisonService
     ) -> None:
         """Test: Identische Strukturen."""
-        data1 = {
-            "invoice_number": "R-2026-001",
-            "total_amount": 1500.00,
-            "invoice_date": "2026-01-15",
-        }
-        data2 = {
+        data = {
             "invoice_number": "R-2026-001",
             "total_amount": 1500.00,
             "invoice_date": "2026-01-15",
         }
 
-        similarity, changes = service._compare_structure(data1, data2)
+        changes, similarity = service._compare_structure(dict(data), dict(data))
 
         assert similarity == 1.0
         assert len(changes) == 0
@@ -253,13 +314,14 @@ class TestStructureComparison:
         data1 = {"total_amount": 1500.00}
         data2 = {"total_amount": 1600.00}
 
-        similarity, changes = service._compare_structure(data1, data2)
+        changes, similarity = service._compare_structure(data1, data2)
 
         assert similarity < 1.0
         assert len(changes) == 1
         assert changes[0].field_name == "total_amount"
         assert changes[0].old_value == 1500.00
         assert changes[0].new_value == 1600.00
+        assert changes[0].diff_type == DifferenceType.CHANGED
 
     def test_compare_added_field(
         self, service: DocumentComparisonService
@@ -268,12 +330,12 @@ class TestStructureComparison:
         data1 = {"invoice_number": "R-001"}
         data2 = {"invoice_number": "R-001", "customer_name": "Firma Mueller"}
 
-        similarity, changes = service._compare_structure(data1, data2)
+        changes, similarity = service._compare_structure(data1, data2)
 
         assert similarity < 1.0
         assert len(changes) == 1
         assert changes[0].field_name == "customer_name"
-        assert changes[0].change_type == "added"
+        assert changes[0].diff_type == DifferenceType.ADDED
 
     def test_compare_removed_field(
         self, service: DocumentComparisonService
@@ -282,25 +344,25 @@ class TestStructureComparison:
         data1 = {"invoice_number": "R-001", "customer_name": "Firma Mueller"}
         data2 = {"invoice_number": "R-001"}
 
-        similarity, changes = service._compare_structure(data1, data2)
+        changes, similarity = service._compare_structure(data1, data2)
 
         assert similarity < 1.0
         assert len(changes) == 1
         assert changes[0].field_name == "customer_name"
-        assert changes[0].change_type == "removed"
+        assert changes[0].diff_type == DifferenceType.REMOVED
 
     def test_compare_empty_structures(
         self, service: DocumentComparisonService
     ) -> None:
         """Test: Leere Strukturen."""
-        similarity, changes = service._compare_structure({}, {})
+        changes, similarity = service._compare_structure({}, {})
 
         assert similarity == 1.0
         assert len(changes) == 0
 
 
 class TestFieldCategoryDetection:
-    """Tests fuer Feldkategorie-Erkennung."""
+    """Tests fuer Feldkategorie-Erkennung (_get_field_category)."""
 
     @pytest.fixture
     def service(self) -> DocumentComparisonService:
@@ -308,49 +370,83 @@ class TestFieldCategoryDetection:
         mock_db = AsyncMock()
         return DocumentComparisonService(mock_db)
 
-    def test_detect_financial_field(
+    def test_detect_amount_field(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Finanzielle Felder werden erkannt."""
-        assert service._get_field_category("total_amount") == FieldCategory.FINANCIAL
-        assert service._get_field_category("net_amount") == FieldCategory.FINANCIAL
-        assert service._get_field_category("tax_amount") == FieldCategory.FINANCIAL
-        assert service._get_field_category("vat") == FieldCategory.FINANCIAL
+        """Test: Betragsfelder werden erkannt (AMOUNT)."""
+        assert service._get_field_category("total_amount") == FieldCategory.AMOUNT
+        assert service._get_field_category("net_betrag") == FieldCategory.AMOUNT
+        assert service._get_field_category("vat") == FieldCategory.AMOUNT
+        assert service._get_field_category("total_gross") == FieldCategory.AMOUNT
 
-    def test_detect_identification_field(
+    def test_detect_identifier_field(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Identifikationsfelder werden erkannt."""
-        assert service._get_field_category("invoice_number") == FieldCategory.IDENTIFICATION
-        assert service._get_field_category("customer_number") == FieldCategory.IDENTIFICATION
-        assert service._get_field_category("order_id") == FieldCategory.IDENTIFICATION
+        """Test: Identifikationsfelder werden erkannt (IDENTIFIER)."""
+        assert service._get_field_category("invoice_number") == FieldCategory.IDENTIFIER
+        assert service._get_field_category("customer_nummer") == FieldCategory.IDENTIFIER
+        assert service._get_field_category("order_id") == FieldCategory.IDENTIFIER
 
     def test_detect_date_field(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Datumsfelder werden erkannt."""
+        """Test: Datumsfelder werden erkannt (DATE)."""
         assert service._get_field_category("invoice_date") == FieldCategory.DATE
         assert service._get_field_category("due_date") == FieldCategory.DATE
-        assert service._get_field_category("created_at") == FieldCategory.DATE
+        assert service._get_field_category("liefer_datum") == FieldCategory.DATE
 
-    def test_detect_contact_field(
+    def test_detect_entity_field(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Kontaktfelder werden erkannt."""
-        assert service._get_field_category("email") == FieldCategory.CONTACT
-        assert service._get_field_category("phone") == FieldCategory.CONTACT
-        assert service._get_field_category("address") == FieldCategory.CONTACT
+        """Test: Entity-Felder (Firmen/Personen) werden erkannt (ENTITY)."""
+        assert service._get_field_category("customer_name") == FieldCategory.ENTITY
+        assert service._get_field_category("vendor") == FieldCategory.ENTITY
+        assert service._get_field_category("firma") == FieldCategory.ENTITY
 
-    def test_detect_other_field(
+    def test_detect_address_field(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Unbekannte Felder sind 'other'."""
-        assert service._get_field_category("custom_field") == FieldCategory.OTHER
-        assert service._get_field_category("description") == FieldCategory.OTHER
+        """Test: Adressfelder werden erkannt (ADDRESS)."""
+        assert service._get_field_category("address") == FieldCategory.ADDRESS
+        assert service._get_field_category("street") == FieldCategory.ADDRESS
+        assert service._get_field_category("plz") == FieldCategory.ADDRESS
+
+    def test_detect_text_field_as_fallback(
+        self, service: DocumentComparisonService
+    ) -> None:
+        """Test: Unbekannte Felder fallen auf TEXT zurueck."""
+        assert service._get_field_category("custom_field") == FieldCategory.TEXT
+        assert service._get_field_category("description") == FieldCategory.TEXT
+
+
+class TestValuesEqual:
+    """Tests fuer Wertgleichheit mit Toleranz (_values_equal)."""
+
+    @pytest.fixture
+    def service(self) -> DocumentComparisonService:
+        """Erstellt Service-Instanz."""
+        mock_db = AsyncMock()
+        return DocumentComparisonService(mock_db)
+
+    def test_numeric_tolerance(self, service: DocumentComparisonService) -> None:
+        """Test: Zahlen werden mit Toleranz (<0.01) verglichen."""
+        assert service._values_equal(100.001, 100.002) is True
+        assert service._values_equal(100.00, 100.50) is False
+        assert service._values_equal(Decimal("10.0"), 10.0) is True
+
+    def test_string_normalization(self, service: DocumentComparisonService) -> None:
+        """Test: Strings werden normalisiert (trim + lower) verglichen."""
+        assert service._values_equal("  Firma GmbH ", "firma gmbh") is True
+        assert service._values_equal("Mueller", "Müller") is False
+
+    def test_none_handling(self, service: DocumentComparisonService) -> None:
+        """Test: None-Werte werden korrekt behandelt."""
+        assert service._values_equal(None, None) is True
+        assert service._values_equal(None, "x") is False
 
 
 class TestCompareDocuments:
-    """Tests fuer compare_documents Methode."""
+    """Tests fuer compare_documents (echte Signatur ohne company_id)."""
 
     @pytest.fixture
     def service(self) -> DocumentComparisonService:
@@ -358,44 +454,11 @@ class TestCompareDocuments:
         mock_db = AsyncMock()
         return DocumentComparisonService(mock_db)
 
-    @pytest.fixture
-    def mock_document(self) -> MagicMock:
-        """Erstellt Mock-Dokument."""
-        doc = MagicMock()
-        doc.id = uuid4()
-        doc.filename = "test.pdf"
-        doc.document_type = "invoice"
-        doc.company_id = uuid4()
-        doc.extracted_text = "Rechnung Nr. 12345"
-        doc.extracted_data = {
-            "invoice_number": "12345",
-            "total_amount": 1500.00,
-        }
-        doc.created_at = datetime.now(timezone.utc)
-        return doc
-
     @pytest.mark.asyncio
-    async def test_compare_same_document_raises_error(
+    async def test_compare_nonexistent_document_raises(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Vergleich eines Dokuments mit sich selbst schlaegt fehl."""
-        doc_id = uuid4()
-        company_id = uuid4()
-
-        with pytest.raises(ValueError, match="Dokument kann nicht mit sich selbst"):
-            await service.compare_documents(
-                doc_id_1=doc_id,
-                doc_id_2=doc_id,
-                comparison_type=ComparisonType.TEXT,
-                company_id=company_id,
-            )
-
-    @pytest.mark.asyncio
-    async def test_compare_nonexistent_document(
-        self, service: DocumentComparisonService
-    ) -> None:
-        """Test: Nicht existierendes Dokument wirft Fehler."""
-        # Mock execute to return None
+        """Test: Nicht existierendes Dokument wirft ValueError 'nicht gefunden'."""
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         service.db.execute.return_value = mock_result
@@ -405,54 +468,33 @@ class TestCompareDocuments:
                 doc_id_1=uuid4(),
                 doc_id_2=uuid4(),
                 comparison_type=ComparisonType.TEXT,
-                company_id=uuid4(),
             )
 
 
 class TestGenerateDiffReport:
-    """Tests fuer generate_diff_report Methode."""
-
-    @pytest.fixture
-    def service(self) -> DocumentComparisonService:
-        """Erstellt Service-Instanz."""
-        mock_db = AsyncMock()
-        return DocumentComparisonService(mock_db)
+    """Tests fuer DiffReport-Struktur."""
 
     def test_diff_report_structure(self) -> None:
-        """Test: DiffReport hat korrekte Struktur."""
-        doc_id_1 = uuid4()
-        doc_id_2 = uuid4()
-
-        comparison_result = ComparisonResult(
-            document_id_1=doc_id_1,
-            document_id_2=doc_id_2,
-            comparison_type=ComparisonType.HYBRID,
-            similarity_score=0.85,
-            text_similarity=0.80,
-            structure_similarity=0.90,
-            differences=[],
-            changed_fields=[],
-            summary="Test",
-            compared_at=datetime.now(timezone.utc),
-        )
+        """Test: DiffReport haelt das ComparisonResult + Metadaten."""
+        comparison = _make_comparison_result(overall_similarity=0.85)
 
         report = DiffReport(
-            document_1_info={"id": str(doc_id_1), "filename": "doc1.pdf"},
-            document_2_info={"id": str(doc_id_2), "filename": "doc2.pdf"},
-            comparison_result=comparison_result,
-            detailed_changes=[],
-            visual_diff_available=False,
-            recommendations=[],
-            generated_at=datetime.now(timezone.utc),
+            comparison=comparison,
+            document_1_info={"id": str(comparison.document_1_id), "filename": "doc1.pdf"},
+            document_2_info={"id": str(comparison.document_2_id), "filename": "doc2.pdf"},
+            summary="Test-Zusammenfassung",
+            recommendations=["Pruefen Sie das Duplikat"],
         )
 
-        assert report.document_1_info["id"] == str(doc_id_1)
-        assert report.comparison_result.similarity_score == 0.85
-        assert report.visual_diff_available is False
+        assert report.comparison.overall_similarity == 0.85
+        assert report.document_1_info["filename"] == "doc1.pdf"
+        assert report.summary == "Test-Zusammenfassung"
+        assert report.recommendations == ["Pruefen Sie das Duplikat"]
+        assert isinstance(report.generated_at, datetime)  # default_factory
 
 
 class TestFindSimilarDocuments:
-    """Tests fuer find_similar_documents Methode."""
+    """Tests fuer find_similar_documents (echte Signatur)."""
 
     @pytest.fixture
     def service(self) -> DocumentComparisonService:
@@ -461,74 +503,24 @@ class TestFindSimilarDocuments:
         return DocumentComparisonService(mock_db)
 
     @pytest.mark.asyncio
-    async def test_find_similar_with_invalid_threshold(
+    async def test_find_similar_nonexistent_document_raises(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Ungueltiger Schwellenwert wirft Fehler."""
-        with pytest.raises(ValueError, match="Schwellenwert"):
+        """Test: Referenz-Dokument nicht gefunden -> ValueError 'nicht gefunden'."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        service.db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="nicht gefunden"):
             await service.find_similar_documents(
                 doc_id=uuid4(),
-                threshold=1.5,  # Ungueltig
+                threshold=0.8,
                 limit=10,
-                include_same_entity=True,
-                company_id=uuid4(),
             )
-
-    @pytest.mark.asyncio
-    async def test_find_similar_with_negative_threshold(
-        self, service: DocumentComparisonService
-    ) -> None:
-        """Test: Negativer Schwellenwert wirft Fehler."""
-        with pytest.raises(ValueError, match="Schwellenwert"):
-            await service.find_similar_documents(
-                doc_id=uuid4(),
-                threshold=-0.5,  # Ungueltig
-                limit=10,
-                include_same_entity=True,
-                company_id=uuid4(),
-            )
-
-
-class TestSimilarityCalculation:
-    """Tests fuer Aehnlichkeitsberechnung."""
-
-    @pytest.fixture
-    def service(self) -> DocumentComparisonService:
-        """Erstellt Service-Instanz."""
-        mock_db = AsyncMock()
-        return DocumentComparisonService(mock_db)
-
-    def test_calculate_overall_similarity_equal_weights(
-        self, service: DocumentComparisonService
-    ) -> None:
-        """Test: Gesamtaehnlichkeit mit gleichen Gewichten."""
-        text_similarity = 0.80
-        structure_similarity = 0.90
-
-        overall = service._calculate_overall_similarity(
-            text_similarity, structure_similarity
-        )
-
-        # Standard: 50% Text, 50% Struktur
-        expected = (0.80 * 0.5) + (0.90 * 0.5)
-        assert overall == pytest.approx(expected, 0.01)
-
-    def test_calculate_overall_similarity_text_only(
-        self, service: DocumentComparisonService
-    ) -> None:
-        """Test: Nur Textaehnlichkeit vorhanden."""
-        overall = service._calculate_overall_similarity(
-            text_similarity=0.80,
-            structure_similarity=0.0,
-        )
-
-        # Wenn Struktur 0, nur Text zaehlt
-        assert overall >= 0.0
-        assert overall <= 1.0
 
 
 class TestGenerateSummary:
-    """Tests fuer Zusammenfassungs-Generierung."""
+    """Tests fuer _generate_summary(comparison: ComparisonResult) -> str."""
 
     @pytest.fixture
     def service(self) -> DocumentComparisonService:
@@ -540,36 +532,43 @@ class TestGenerateSummary:
         self, service: DocumentComparisonService
     ) -> None:
         """Test: Zusammenfassung fuer identische Dokumente."""
-        summary = service._generate_summary(
-            similarity_score=1.0,
-            num_differences=0,
-            num_field_changes=0,
+        comparison = _make_comparison_result(
+            overall_similarity=1.0, total_changes=0
         )
+        summary = service._generate_summary(comparison)
 
         assert "identisch" in summary.lower()
+        assert "100%" in summary
 
     def test_summary_for_similar_documents(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Zusammenfassung fuer aehnliche Dokumente."""
-        summary = service._generate_summary(
-            similarity_score=0.85,
-            num_differences=3,
-            num_field_changes=2,
+        """Test: Zusammenfassung fuer aehnliche Dokumente listet Aenderungen."""
+        comparison = _make_comparison_result(
+            overall_similarity=0.85,
+            total_changes=5,
+            additions=3,
+            modifications=2,
         )
+        summary = service._generate_summary(comparison)
 
-        assert len(summary) > 0
-        assert "unterschied" in summary.lower() or "aehnlich" in summary.lower()
+        assert "85%" in summary
+        assert "änderungen" in summary.lower()
+        assert "3 Hinzufuegungen" in summary
+        assert "2 Modifikationen" in summary
 
-    def test_summary_for_different_documents(
+    def test_summary_flags_critical_changes(
         self, service: DocumentComparisonService
     ) -> None:
-        """Test: Zusammenfassung fuer verschiedene Dokumente."""
-        summary = service._generate_summary(
-            similarity_score=0.30,
-            num_differences=20,
-            num_field_changes=10,
+        """Test: Kritische Aenderungen werden in der Zusammenfassung markiert."""
+        comparison = _make_comparison_result(
+            overall_similarity=0.30,
+            total_changes=20,
+            modifications=20,
+            critical_changes=3,
         )
+        summary = service._generate_summary(comparison)
 
-        assert len(summary) > 0
-        assert "unterschied" in summary.lower() or "verschieden" in summary.lower()
+        assert "30%" in summary
+        assert "kritische" in summary.lower()
+        assert "3" in summary

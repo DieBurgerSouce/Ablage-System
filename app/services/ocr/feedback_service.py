@@ -27,6 +27,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
+from typing import Set
+from sqlalchemy import Integer
 
 logger = structlog.get_logger(__name__)
 

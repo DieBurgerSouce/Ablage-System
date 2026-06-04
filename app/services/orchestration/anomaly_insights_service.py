@@ -36,6 +36,7 @@ from app.services.orchestration.proactive_insights_service import (
     InsightType,
     ProactiveInsight,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

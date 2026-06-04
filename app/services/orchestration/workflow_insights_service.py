@@ -35,6 +35,7 @@ from app.services.orchestration.proactive_insights_service import (
     InsightType,
     ProactiveInsight,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -209,9 +210,10 @@ class WorkflowInsightsService:
 
         for result in results:
             if isinstance(result, Exception):
-                logger.warning(
+                logger.error(
                     "workflow_check_failed",
                     error=str(result),
+                    error_type=type(result).__name__,
                 )
             elif isinstance(result, list):
                 all_insights.extend(result)
@@ -261,9 +263,9 @@ class WorkflowInsightsService:
                 Document,
                 BusinessEntity.name.label("supplier_name"),
             ).join(
-                Document, ApprovalRequest.document_id == Document.id
+                Document, and_(ApprovalRequest.entity_type == "document", ApprovalRequest.entity_id == Document.id)
             ).outerjoin(
-                BusinessEntity, Document.linked_entity_id == BusinessEntity.id
+                BusinessEntity, Document.business_entity_id == BusinessEntity.id
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
@@ -272,10 +274,15 @@ class WorkflowInsightsService:
             )
 
             if user_id:
+                from app.db.models import ApprovalStep
                 query = query.where(
-                    or_(
-                        ApprovalRequest.assignee_id == user_id,
-                        ApprovalRequest.assignee_id.is_(None),
+                    ApprovalRequest.id.in_(
+                        select(ApprovalStep.approval_request_id).where(
+                            and_(
+                                ApprovalStep.assigned_user_id == user_id,
+                                ApprovalStep.status == "pending",
+                            )
+                        )
                     )
                 )
 
@@ -297,8 +304,8 @@ class WorkflowInsightsService:
             for supplier_name, items in supplier_groups.items():
                 if len(items) >= self._batch_threshold:
                     total_amount = sum(
-                        float(doc.total_amount or 0)
-                        for _, doc in items
+                        float(approval.amount or 0)
+                        for approval, _ in items
                     )
 
                     insight = WorkflowInsight(
@@ -352,6 +359,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "batch_approval_suggestion_failed",
                 company_id=str(company_id),
@@ -377,26 +386,29 @@ class WorkflowInsightsService:
         Returns:
             Liste von ProactiveInsights für Bottlenecks
         """
-        from app.db.models import ApprovalRequest, User
+        from app.db.models import ApprovalRequest, ApprovalStep, User
 
         try:
             now = datetime.now(timezone.utc)
 
             # Zaehle wartende Genehmigungen pro Benutzer
             query = select(
-                ApprovalRequest.assignee_id,
+                ApprovalStep.assigned_user_id,
                 func.count().label("pending_count"),
                 func.min(ApprovalRequest.created_at).label("oldest"),
                 func.avg(
                     func.extract('epoch', now - ApprovalRequest.created_at) / 3600
                 ).label("avg_wait_hours"),
+            ).join(
+                ApprovalStep, ApprovalStep.approval_request_id == ApprovalRequest.id
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
                     ApprovalRequest.status == "pending",
-                    ApprovalRequest.assignee_id.isnot(None),
+                    ApprovalStep.status == "pending",
+                    ApprovalStep.assigned_user_id.isnot(None),
                 )
-            ).group_by(ApprovalRequest.assignee_id)
+            ).group_by(ApprovalStep.assigned_user_id)
 
             result = await db.execute(query)
             user_stats = result.fetchall()
@@ -452,6 +464,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "bottleneck_detection_failed",
                 company_id=str(company_id),
@@ -485,12 +499,12 @@ class WorkflowInsightsService:
                 BusinessEntity.id.label("entity_id"),
                 BusinessEntity.name.label("entity_name"),
                 func.count().label("approved_count"),
-                func.avg(Document.total_amount).label("avg_amount"),
-                func.max(Document.total_amount).label("max_amount"),
+                func.avg(ApprovalRequest.amount).label("avg_amount"),
+                func.max(ApprovalRequest.amount).label("max_amount"),
             ).select_from(ApprovalRequest).join(
-                Document, ApprovalRequest.document_id == Document.id
+                Document, and_(ApprovalRequest.entity_type == "document", ApprovalRequest.entity_id == Document.id)
             ).join(
-                BusinessEntity, Document.linked_entity_id == BusinessEntity.id
+                BusinessEntity, Document.business_entity_id == BusinessEntity.id
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
@@ -513,13 +527,13 @@ class WorkflowInsightsService:
                 pending_query = select(func.count()).select_from(
                     ApprovalRequest
                 ).join(
-                    Document, ApprovalRequest.document_id == Document.id
+                    Document, and_(ApprovalRequest.entity_type == "document", ApprovalRequest.entity_id == Document.id)
                 ).where(
                     and_(
                         ApprovalRequest.company_id == company_id,
                         ApprovalRequest.status == "pending",
-                        Document.linked_entity_id == entity_id,
-                        Document.total_amount <= max_amount,
+                        Document.business_entity_id == entity_id,
+                        ApprovalRequest.amount <= max_amount,
                     )
                 )
                 pending_result = await db.execute(pending_query)
@@ -555,6 +569,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "automation_suggestion_failed",
                 company_id=str(company_id),
@@ -590,7 +606,7 @@ class WorkflowInsightsService:
                 ApprovalRequest,
                 Document.original_filename,
             ).join(
-                Document, ApprovalRequest.document_id == Document.id
+                Document, and_(ApprovalRequest.entity_type == "document", ApprovalRequest.entity_id == Document.id)
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
@@ -626,7 +642,7 @@ class WorkflowInsightsService:
                     insight_type=WorkflowInsightType.STALE_ITEMS,
                     title=f"{len(very_old)} Dokumente seit über 7 Tagen unbearbeitet",
                     description="Diese Dokumente warten dringend auf Bearbeitung.",
-                    affected_documents=[a.document_id for a, _, _ in very_old],
+                    affected_documents=[a.entity_id for a, _, _ in very_old],
                     pending_count=len(very_old),
                     avg_wait_time_hours=sum(h for _, _, h in very_old) / len(very_old),
                     action_url="/approvals?filter=very_old",
@@ -643,7 +659,7 @@ class WorkflowInsightsService:
                     insight_type=WorkflowInsightType.STALE_ITEMS,
                     title=f"{len(old)} Dokumente seit über 3 Tagen unbearbeitet",
                     description="Diese Dokumente sollten bald bearbeitet werden.",
-                    affected_documents=[a.document_id for a, _, _ in old],
+                    affected_documents=[a.entity_id for a, _, _ in old],
                     pending_count=len(old),
                     avg_wait_time_hours=sum(h for _, _, h in old) / len(old),
                     action_url="/approvals?filter=old",
@@ -668,6 +684,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "stale_items_detection_failed",
                 company_id=str(company_id),
@@ -692,21 +710,24 @@ class WorkflowInsightsService:
         Returns:
             Liste von ProactiveInsights für Arbeitslast-Ungleichgewichte
         """
-        from app.db.models import ApprovalRequest, User
+        from app.db.models import ApprovalRequest, ApprovalStep, User
 
 
         try:
             # Lade Arbeitslast pro Benutzer
             query = select(
-                ApprovalRequest.assignee_id,
+                ApprovalStep.assigned_user_id,
                 func.count().label("pending_count"),
+            ).join(
+                ApprovalStep, ApprovalStep.approval_request_id == ApprovalRequest.id
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
                     ApprovalRequest.status == "pending",
-                    ApprovalRequest.assignee_id.isnot(None),
+                    ApprovalStep.status == "pending",
+                    ApprovalStep.assigned_user_id.isnot(None),
                 )
-            ).group_by(ApprovalRequest.assignee_id)
+            ).group_by(ApprovalStep.assigned_user_id)
 
             result = await db.execute(query)
             workloads = result.fetchall()
@@ -772,6 +793,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "workload_analysis_failed",
                 company_id=str(company_id),

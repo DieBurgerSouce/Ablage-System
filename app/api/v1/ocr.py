@@ -18,6 +18,9 @@ import structlog
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, UploadFile, File, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from datetime import datetime, timezone
+from app.db.models import Document
 
 from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.db.models import User

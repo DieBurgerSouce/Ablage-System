@@ -13,7 +13,6 @@ Stellt Saga-Status, Step-Details und Statistiken bereit.
 - DELETE /sagas/{saga_id}/dlq - Saga aus DLQ entfernen
 """
 
-from __future__ import annotations
 
 from typing import List, Optional
 from uuid import UUID

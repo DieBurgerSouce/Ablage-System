@@ -9,6 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

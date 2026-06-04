@@ -54,6 +54,7 @@ from app.services.accounting.fx_gain_loss_service import (
     FXGainLossResult,
 )
 from app.core.security_auth import build_content_disposition
+from sqlalchemy import and_
 
 logger = structlog.get_logger(__name__)
 

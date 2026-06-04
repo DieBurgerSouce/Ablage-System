@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import structlog
 
+from app.core.safe_errors import safe_error_log
 from app.db.models import (
     User,
     Role,

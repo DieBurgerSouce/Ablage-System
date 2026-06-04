@@ -26,6 +26,7 @@ import structlog
 
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 if TYPE_CHECKING:
     from qdrant_client import QdrantClient, AsyncQdrantClient

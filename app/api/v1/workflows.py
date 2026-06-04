@@ -10,7 +10,6 @@
 - Statistics (3)
 """
 
-from __future__ import annotations
 
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -33,6 +32,7 @@ from app.services.workflow import (
     WorkflowStepExecutor,
     WorkflowTriggerService,
 )
+from sqlalchemy import Integer, select
 
 logger = structlog.get_logger(__name__)
 

@@ -32,6 +32,7 @@ from app.services.ensemble_voting import (
     calculate_agreement,
     needleman_wunsch_align,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

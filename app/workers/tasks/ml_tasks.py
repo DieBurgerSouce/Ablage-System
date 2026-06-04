@@ -776,6 +776,8 @@ CELERY_BEAT_ML_SCHEDULE = {
 # PHASE 0.6 CRITICAL FIX: Enterprise Concept Drift Detection
 
 from app.core.celery_idempotency import idempotent_task
+from app.core.safe_errors import safe_error_detail
+from sqlalchemy import and_, func, select
 
 
 @celery_app.task(

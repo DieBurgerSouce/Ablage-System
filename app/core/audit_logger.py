@@ -40,6 +40,7 @@ from app.core.encryption import (
     is_encrypted,
 )
 from app.core.types import JSONDict
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

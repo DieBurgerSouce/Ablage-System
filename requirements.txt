@@ -2,7 +2,8 @@
 # Python 3.11+ required
 
 # Core Framework
-fastapi==0.110.0
+fastapi==0.121.3  # G-OpenAPI: an verifizierte Realität angeglichen; 0.110.0 inkompatibel mit pydantic 2.11
+starlette==0.50.0  # G-OpenAPI: explizit gepinnt (fastapi 0.121 braucht <0.51); verhindert Drift
 uvicorn[standard]==0.27.0
 python-multipart==0.0.9
 

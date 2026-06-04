@@ -20,6 +20,7 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

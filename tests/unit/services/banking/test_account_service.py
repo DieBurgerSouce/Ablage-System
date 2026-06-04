@@ -281,16 +281,16 @@ class TestAccountServiceWithMockedDB:
     @pytest.mark.asyncio
     async def test_delete_account_soft_delete(self, service: AccountService, mock_db):
         """Sollte Soft-Delete durchfuehren."""
-        user_id = uuid4()
+        company_id = uuid4()
         account_id = uuid4()
 
         mock_account = MagicMock()
-        mock_account.user_id = user_id
+        mock_account.company_id = company_id
         mock_account.deleted_at = None
         mock_account.is_active = True
         mock_db.get.return_value = mock_account
 
-        result = await service.delete_account(mock_db, user_id, account_id)
+        result = await service.delete_account(mock_db, company_id, account_id)
 
         assert result is True
         assert mock_account.deleted_at is not None

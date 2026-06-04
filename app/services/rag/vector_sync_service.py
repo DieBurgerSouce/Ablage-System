@@ -38,6 +38,7 @@ from app.services.embedding_service import (
     EmbeddingProvider,
     EmbeddingModelType
 )
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

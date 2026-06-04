@@ -493,6 +493,7 @@ class AccountService:
         """Konvertiere DB-Model zu Response."""
         return BankAccountResponse(
             id=account.id,
+            user_id=account.user_id,
             company_id=account.company_id,
             account_name=account.account_name,
             iban=account.iban,

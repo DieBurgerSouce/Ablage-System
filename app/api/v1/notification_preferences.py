@@ -3,7 +3,6 @@
 Verwaltung von Benutzer-Benachrichtigungspraeferenzen.
 """
 
-from __future__ import annotations
 
 from typing import Dict, List
 from uuid import UUID

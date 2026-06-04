@@ -18,6 +18,7 @@ import gzip
 import os
 import shutil
 import tarfile
+import subprocess
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

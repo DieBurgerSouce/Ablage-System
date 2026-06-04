@@ -104,7 +104,7 @@ async def get_booking_suggestions(
     chart: str = Query(
         default="SKR03",
         description="Kontenrahmen (SKR03 oder SKR04)",
-        regex="^(SKR03|SKR04)$",
+        pattern="^(SKR03|SKR04)$",
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

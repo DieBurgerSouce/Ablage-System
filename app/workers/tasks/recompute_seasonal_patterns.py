@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 import structlog
 
 from app.workers.celery_app import celery_app
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 

@@ -38,6 +38,8 @@ from app.services.erp.base_connector import (
 )
 from app.services.erp.odoo_connector import OdooConnector
 from app.services.erp.sync_engine import SyncEngine, SyncType, SyncStrategy, create_sync_engine
+from app.core.safe_errors import safe_error_detail
+from sqlalchemy import or_
 
 logger = structlog.get_logger(__name__)
 

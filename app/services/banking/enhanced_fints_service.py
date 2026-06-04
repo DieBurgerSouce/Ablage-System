@@ -28,6 +28,7 @@ from prometheus_client import Counter, Histogram, Gauge
 from app.core.config import settings
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 
@@ -672,7 +673,15 @@ class EnhancedFinTSService:
             # (FINTS_ALLOW_MOCK_SYNC=True, z. B. in Test-/Demo-Umgebungen)
             # werden deterministische Test-Transaktionen erzeugt. Andernfalls
             # bleibt die Liste leer, damit kein Fake-Eingang gebucht wird.
-            if getattr(settings, "FINTS_ALLOW_MOCK_SYNC", False):
+            if settings.is_production:
+                # Harter Produktions-Block (M9): niemals Mock-Transaktionen in
+                # Produktion erzeugen/reconcilen, auch nicht bei FINTS_ALLOW_MOCK_SYNC.
+                transactions = []
+                logger.error(
+                    "fints_mock_sync_blocked_in_production",
+                    connection_id=str(connection.id),
+                )
+            elif getattr(settings, "FINTS_ALLOW_MOCK_SYNC", False):
                 transactions = self._generate_mock_transactions(
                     connection, date_from, date_to
                 )

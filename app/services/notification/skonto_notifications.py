@@ -14,6 +14,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

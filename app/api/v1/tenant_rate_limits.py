@@ -274,7 +274,7 @@ async def reset_company_limits(
 )
 async def get_usage_metrics(
     company_id: UUID,
-    period_type: str = Query("daily", regex="^(hourly|daily|monthly)$"),
+    period_type: str = Query("daily", pattern="^(hourly|daily|monthly)$"),
     days_back: int = Query(30, ge=1, le=365),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

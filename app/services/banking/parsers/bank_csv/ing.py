@@ -37,7 +37,7 @@ class INGCSVParser(GenericCSVParser):
         ]
 
         # ING verwendet charakteristische Spaltenbezeichnung
-        if "auftraggeber/empfänger" in header or "auftraggeber/empfänger" in header:
+        if "auftraggeber/empfänger" in header or "auftraggeber/empfaenger" in header:
             return 0.95
 
         matches = sum(1 for m in ing_markers if m in header)

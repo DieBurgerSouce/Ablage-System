@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "Ablage-System OCR"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "0.1.0"
     API_V1_PREFIX: str = "/api/v1"
     DEBUG: bool = False
     # Q.2 SECURITY FIX: Explizite Environment-Erkennung
@@ -55,6 +55,16 @@ class Settings(BaseSettings):
         default="development",
         description="Umgebung: development, staging, production"
     )
+
+    @property
+    def is_production(self) -> bool:
+        """Zentrale, fail-safe Produktions-Erkennung.
+
+        Deckt production/prod sowie Varianten wie prod-eu/production-eu
+        (startswith), damit Sicherheits-Guards bei nicht-kanonischen
+        Umgebungs-Labels nicht still durchrutschen.
+        """
+        return self.ENVIRONMENT.lower().startswith("prod")
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent  # Project root
     
     # Server

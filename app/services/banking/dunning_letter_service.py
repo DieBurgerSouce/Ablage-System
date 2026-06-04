@@ -31,6 +31,7 @@ from app.db.models import (
 )
 from app.services.banking.models import DunningLevel
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

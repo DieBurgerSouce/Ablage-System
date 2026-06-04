@@ -461,7 +461,7 @@ class TestAsyncGetOverdueInvoices:
 
         candidates = await service.get_overdue_invoices(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
             min_days_overdue=1,
         )
 
@@ -479,7 +479,7 @@ class TestAsyncGetOverdueInvoices:
 
         candidates = await service.get_overdue_invoices(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
         )
 
         assert candidates == []
@@ -498,7 +498,7 @@ class TestAsyncGetOverdueInvoices:
 
         candidates = await service.get_overdue_invoices(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
             min_days_overdue=1,
             max_days_overdue=30,  # Nur bis 30 Tage
         )
@@ -555,7 +555,7 @@ class TestAsyncCreateDunning:
         with pytest.raises(ValueError, match="Dokument nicht gefunden"):
             await service.create_dunning(
                 db=mock_db,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 document_id=uuid4(),
                 level=DunningLevel.FIRST_REMINDER,
             )
@@ -580,7 +580,7 @@ class TestAsyncCreateDunning:
         with pytest.raises(ValueError, match="existiert bereits"):
             await service.create_dunning(
                 db=mock_db,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 document_id=sample_document.id,
                 level=DunningLevel.FIRST_REMINDER,
             )
@@ -616,7 +616,7 @@ class TestAsyncEscalateDunning:
         with pytest.raises(ValueError, match="nicht gefunden"):
             await service.escalate_dunning(
                 db=mock_db,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 dunning_id=uuid4(),
             )
 
@@ -639,7 +639,7 @@ class TestAsyncEscalateDunning:
         with pytest.raises(ValueError, match="kann nicht eskaliert werden"):
             await service.escalate_dunning(
                 db=mock_db,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 dunning_id=dunning.id,
             )
 
@@ -670,7 +670,7 @@ class TestAsyncCloseDunning:
         with pytest.raises(ValueError, match="kann nicht auf"):
             await service.close_dunning(
                 db=mock_db,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 dunning_id=uuid4(),
                 status=DunningStatus.PENDING,  # Ungueltig
             )
@@ -687,7 +687,7 @@ class TestAsyncCloseDunning:
         with pytest.raises(ValueError, match="nicht gefunden"):
             await service.close_dunning(
                 db=mock_db,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 dunning_id=uuid4(),
                 status=DunningStatus.PAID,
             )
@@ -726,7 +726,7 @@ class TestAsyncListDunnings:
 
         dunnings, total = await service.list_dunnings(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
         )
 
         assert dunnings == []
@@ -765,7 +765,7 @@ class TestAsyncDunningStats:
 
         stats = await service.get_dunning_stats(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
         )
 
         # Service gibt Frontend-kompatibles Format zurueck (siehe get_dunning_stats docstring)
@@ -802,7 +802,7 @@ class TestAsyncAutomaticDunning:
 
         actions = await service.process_automatic_dunning(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
             dry_run=True,
         )
 

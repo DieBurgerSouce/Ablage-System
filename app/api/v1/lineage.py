@@ -392,7 +392,7 @@ async def get_document_lineage_summary(
 @router.get("/{document_id}/lineage/export")
 async def export_document_lineage(
     document_id: UUID,
-    format: str = Query("json", regex="^(json|pdf)$", description="Export-Format"),
+    format: str = Query("json", pattern="^(json|pdf)$", description="Export-Format"),
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(get_company_id),
     session: AsyncSession = Depends(get_db),

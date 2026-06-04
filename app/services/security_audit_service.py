@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Callable, Dict, List, Optional, Union
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

@@ -18,6 +18,7 @@ import re
 import structlog
 from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 from functools import lru_cache
+from app.core.safe_errors import safe_error_log
 
 if TYPE_CHECKING:
     from app.services.ocr.industry_vocabulary_service import (

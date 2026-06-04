@@ -27,6 +27,7 @@ from prometheus_client import (
     generate_latest,
     CONTENT_TYPE_LATEST,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

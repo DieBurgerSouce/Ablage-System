@@ -21,6 +21,7 @@ from typing import Any, Callable, Deque, Dict, List, Optional, Tuple, Union
 
 import psutil
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

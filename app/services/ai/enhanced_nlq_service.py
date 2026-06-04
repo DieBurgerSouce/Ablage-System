@@ -43,6 +43,7 @@ from app.services.ai.nlq_service import (
     ExtractedEntity,
     get_nlq_service,
 )
+from typing import Any
 
 logger = structlog.get_logger(__name__)
 

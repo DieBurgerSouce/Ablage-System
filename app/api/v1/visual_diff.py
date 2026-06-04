@@ -18,6 +18,7 @@ from uuid import UUID
 from app.api.dependencies import get_current_user, get_user_company_id_dep
 from app.db.session import get_async_session
 from app.services.diff.visual_diff_service import VisualDiffService
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

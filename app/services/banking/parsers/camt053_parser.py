@@ -172,13 +172,13 @@ class CAMT053Parser(BaseParser):
             result.success = True
 
         except ET.ParseError as e:
-            logger.exception(f"XML Parse-Fehler: {e}")
+            logger.error("xml_parse_fehler", error=str(e))
             result.errors.append({
                 "type": "xml_error",
                 "message": f"Ungültiges XML: {e}",
             })
         except Exception as e:
-            logger.exception(f"Fehler beim Parsen des CAMT.053: {e}")
+            logger.error("camt053_parse_fehler", error=str(e))
             result.errors.append({
                 "type": "parse_error",
                 "message": safe_error_detail(e, "CAMT053"),

@@ -1,6 +1,6 @@
 """Pydantic schemas for API request/response validation."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import date as date_type  # Avoid Pydantic field name collision
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, Tuple

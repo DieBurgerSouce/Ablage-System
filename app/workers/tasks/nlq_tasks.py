@@ -28,6 +28,7 @@ from app.workers.celery_metrics import (
 from app.db.session import get_async_session_context
 from app.db.models import NLQQueryLog, AppConfig
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

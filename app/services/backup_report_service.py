@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 from pydantic import BaseModel
+from app.core.safe_errors import safe_error_log
 
 try:
     from app.core.german_messages import BackupMessages

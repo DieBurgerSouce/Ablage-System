@@ -9,6 +9,7 @@ from enum import Enum
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

@@ -15,6 +15,8 @@ from typing import Dict, List, Optional, Union, TYPE_CHECKING
 FieldValue = Union[str, int, float, bool, list, dict, None]
 
 import structlog
+from app.core.safe_errors import safe_error_log
+from typing import Any
 
 if TYPE_CHECKING:
     from app.services.workflow.workflow_execution_service import ExecutionContext

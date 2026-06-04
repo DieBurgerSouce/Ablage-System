@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.core.cache import invalidate_user_cache, invalidate_all_caches
 from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app, CPUTask
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

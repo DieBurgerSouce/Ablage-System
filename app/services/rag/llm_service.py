@@ -22,6 +22,7 @@ import structlog
 from app.core.config import settings
 from app.db.models import RAGLLMModel, RAGLLMModelType
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

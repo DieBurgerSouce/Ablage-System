@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 from redis.asyncio import Redis
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

@@ -1209,7 +1209,7 @@ async def get_monthly_skonto_summary(
     description="Exportiert verpasste Skonto-Daten als Excel oder CSV"
 )
 async def export_missed_skonto(
-    format: str = Query("xlsx", regex="^(xlsx|csv)$", description="Export-Format"),
+    format: str = Query("xlsx", pattern="^(xlsx|csv)$", description="Export-Format"),
     start_date: Optional[datetime] = Query(None, description="Startdatum"),
     end_date: Optional[datetime] = Query(None, description="Enddatum"),
     current_user: User = Depends(get_current_active_user),

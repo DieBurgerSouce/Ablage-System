@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from torch.utils.data import Dataset
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

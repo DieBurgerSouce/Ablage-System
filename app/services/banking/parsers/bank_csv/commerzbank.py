@@ -40,7 +40,7 @@ class CommerzbankCSVParser(GenericCSVParser):
             "auftraggeber / begünstigter",
         ]
 
-        if "auftraggeber / begünstigter" in header or "auftraggeber / begünstigter" in header:
+        if "auftraggeber / begünstigter" in header or "auftraggeber / beguenstigter" in header:
             return 0.95
 
         matches = sum(1 for m in coba_markers if m in header)

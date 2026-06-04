@@ -35,6 +35,10 @@ from app.db.schemas import (
 from app.services.admin.user_admin_service import UserAdminService
 
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 router = APIRouter(prefix="/users", tags=["Admin - Benutzerverwaltung"])
 
 

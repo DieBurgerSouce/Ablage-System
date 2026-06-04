@@ -965,7 +965,7 @@ async def add_quality_control(
 )
 async def get_visualization(
     chain_id: str,
-    layout: str = Query("horizontal", regex="^(horizontal|vertical|radial)$"),
+    layout: str = Query("horizontal", pattern="^(horizontal|vertical|radial)$"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     company_id: UUID = Depends(get_user_company_id_dep),

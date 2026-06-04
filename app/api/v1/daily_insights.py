@@ -17,7 +17,6 @@ Batch-generierte Insights die BEVOR Probleme entstehen warnen:
 - PATCH /daily-insights/config     - Generator-Konfiguration ändern
 """
 
-from __future__ import annotations
 
 from datetime import datetime
 from typing import Dict, List, Optional

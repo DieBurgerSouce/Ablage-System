@@ -14,6 +14,7 @@ from typing import Optional, Tuple
 
 import structlog
 from PIL import Image
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

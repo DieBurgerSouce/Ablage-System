@@ -10,6 +10,7 @@ from app.core.safe_errors import safe_error_log
 from .deepseek_agent import DeepSeekAgent
 from .got_ocr_agent import GOTOCRAgent
 from .surya_docling_agent import SuryaDoclingAgent
+from app.core.safe_errors import safe_error_detail
 
 
 class HybridOCRAgent(OCRAgent):
@@ -530,7 +531,7 @@ class HybridOCRAgent(OCRAgent):
         # Limit entity count to prevent OOM with very large documents
         max_entities = 1000
         if len(deduplicated) > max_entities:
-            logger.warning(
+            self.logger.warning(
                 "entity_limit_exceeded",
                 total=len(deduplicated),
                 limit=max_entities,

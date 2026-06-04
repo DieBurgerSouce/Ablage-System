@@ -18,6 +18,7 @@ import structlog
 from app.db.models import WorkflowStep
 from app.services.workflow.condition_evaluator import ConditionEvaluator
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

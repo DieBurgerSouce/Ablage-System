@@ -35,6 +35,7 @@ from app.services.extraction.patterns.amount_patterns import (
     extract_all_amounts,
     extract_vat_rate,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

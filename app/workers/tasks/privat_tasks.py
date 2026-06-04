@@ -2201,6 +2201,7 @@ def recalculate_entity_kpi(
     """
     async def _recalculate():
         from app.db.session import get_async_session
+        from app.db.session import get_async_session
         from app.services.privat.kpi_orchestrator import get_kpi_orchestration_service
 
         async with get_async_session() as db:
@@ -2409,6 +2410,7 @@ def create_monthly_portfolio_snapshot(
     )
 
     async def _create_snapshots():
+        from app.db.session import get_async_session
         async with get_async_session() as session:
             service = PortfolioService(session)
 
@@ -2484,6 +2486,7 @@ def recalculate_financial_goals(
     )
 
     async def _recalculate():
+        from app.db.session import get_async_session
         async with get_async_session() as session:
             service = FinancialGoalsService(session)
 
@@ -2545,6 +2548,7 @@ def check_goals_at_risk(self) -> dict:
     )
 
     async def _check_and_notify():
+        from app.db.session import get_async_session
         async with get_async_session() as session:
             service = FinancialGoalsService(session)
             at_risk_goals = await service.get_goals_at_risk()

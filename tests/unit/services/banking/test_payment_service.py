@@ -137,7 +137,7 @@ class TestPaymentValidation:
         result = service._validate_payment(data)
 
         assert not result.valid
-        assert any("Pruefziffer" in e for e in result.errors)
+        assert any("Prüfziffer" in e for e in result.errors)
 
     def test_validate_payment_large_amount_warning(self, service: PaymentService):
         """Sollte Warnung bei grossem Betrag ausgeben."""
@@ -251,6 +251,10 @@ class TestPaymentServiceWithMockedDB:
         db.commit = AsyncMock()
         db.refresh = AsyncMock()
         db.add = MagicMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
         return db
 
     @pytest.mark.asyncio
@@ -436,7 +440,7 @@ class TestTANWorkflow:
         mock_result.scalar_one_or_none.return_value = mock_payment
         mock_db.execute.return_value = mock_result
 
-        with pytest.raises(ValueError, match="Ungueltige TAN"):
+        with pytest.raises(ValueError, match="Ungültige TAN"):
             await service.confirm_with_tan(
                 mock_db, sample_user_id, sample_payment_id, "12345"  # Zu kurz
             )
@@ -498,6 +502,10 @@ class TestBatchPayments:
         db.commit = AsyncMock()
         db.refresh = AsyncMock()
         db.add = MagicMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
         return db
 
     @pytest.fixture
@@ -609,7 +617,7 @@ class TestBatchPayments:
             for i in range(3)
         ]
 
-        with pytest.raises(ValueError, match="ueberschreitet Maximum"):
+        with pytest.raises(ValueError, match="überschreitet Maximum"):
             await service.create_batch(
                 mock_db,
                 sample_user_id,

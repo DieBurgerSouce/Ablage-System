@@ -26,6 +26,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

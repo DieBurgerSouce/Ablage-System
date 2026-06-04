@@ -35,6 +35,7 @@ from app.db.models_proactive_assistant import (
     HintRule,
     HintStatistics,
 )
+from sqlalchemy import Float
 
 logger = structlog.get_logger(__name__)
 

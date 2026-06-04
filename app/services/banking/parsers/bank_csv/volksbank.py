@@ -36,7 +36,7 @@ class VolksbankCSVParser(GenericCSVParser):
         ]
 
         # VR verwendet oft "Empfänger/Zahlungspflichtiger" statt "Begünstigter"
-        if "empfänger/zahlungspflichtiger" in header or "empfänger/zahlungspflichtiger" in header:
+        if "empfänger/zahlungspflichtiger" in header or "empfaenger/zahlungspflichtiger" in header:
             return 0.9
 
         matches = sum(1 for m in vr_markers if m in header)

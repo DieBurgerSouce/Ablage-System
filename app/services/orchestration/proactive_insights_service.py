@@ -27,6 +27,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from uuid import UUID, uuid4
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -46,6 +47,7 @@ class InsightType(str, Enum):
     ANOMALY = "anomaly"                     # Anomalie
     REMINDER = "reminder"                   # Erinnerung
     RECOMMENDATION = "recommendation"        # Empfehlung
+    SUGGESTION = "suggestion"               # Sanfter Vorschlag (niedrige Severity)
 
 
 class EntityType(str, Enum):

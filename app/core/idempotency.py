@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from fastapi import Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
