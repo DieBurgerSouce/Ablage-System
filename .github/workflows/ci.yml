@@ -282,6 +282,16 @@ jobs:
           pytest tests/unit/ -v --tb=short --cov=app --cov-report=xml --cov-report=term
           echo "::endgroup::"
 
+      - name: Contract Tests (OpenAPI-Schema)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_test
+          REDIS_URL: redis://localhost:6379/0
+          TESTING: true
+        run: |
+          echo "::group::Contract Tests"
+          pytest tests/contract/ -v --tb=short
+          echo "::endgroup::"
+
       - name: Upload Coverage Report
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v4.7.1
         with:
