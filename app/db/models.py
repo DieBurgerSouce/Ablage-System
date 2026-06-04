@@ -219,14 +219,12 @@ class Document(SoftDeleteMixin, Base):
     business_entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True
+        nullable=True
     )
     group_id = Column(
         UUID(as_uuid=True),
         ForeignKey("document_groups.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True
+        nullable=True
     )
     page_number_in_group = Column(Integer, nullable=True)  # Seitennummer innerhalb der Gruppe
     is_group_primary = Column(Boolean, default=False)  # Ist das primäre Dokument der Gruppe

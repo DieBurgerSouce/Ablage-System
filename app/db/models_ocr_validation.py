@@ -54,12 +54,11 @@ class OCRTrainingSample(SoftDeleteMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="RESTRICT"),
         nullable=True,  # nullable for backfill of existing data
-        index=True,
     )
 
     # Dokumentreferenz
     file_path = Column(String(500), nullable=False)
-    file_hash = Column(String(64), nullable=False, index=True)  # SHA-256
+    file_hash = Column(String(64), nullable=False)  # SHA-256
     thumbnail_path = Column(String(500), nullable=True)
 
     # Ground Truth (manuell verifizierter Text)
@@ -319,7 +318,6 @@ class OCRTrainingBatch(Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="RESTRICT"),
         nullable=True,  # nullable for backfill of existing data
-        index=True,
     )
 
     # Batch Identifikation
@@ -399,7 +397,6 @@ class OCRTrainingBatchItem(Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="RESTRICT"),
         nullable=True,  # nullable for backfill of existing data
-        index=True,
     )
 
     # Referenzen
@@ -726,7 +723,6 @@ class OCRModelDeployment(Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="RESTRICT"),
         nullable=True,  # nullable for backfill of existing data
-        index=True,
     )
 
     # Model Identifikation

@@ -166,7 +166,7 @@ class Alert(Base):
     # Auto-dismiss settings
     auto_dismiss_at = Column(DateTime(timezone=True), nullable=True)
     is_recurring = Column(Boolean, default=False)
-    recurrence_key = Column(String(255), nullable=True, index=True)
+    recurrence_key = Column(String(255), nullable=True)
 
     # Email notification tracking
     email_sent = Column(Boolean, default=False)

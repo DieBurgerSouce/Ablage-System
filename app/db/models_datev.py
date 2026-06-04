@@ -372,7 +372,6 @@ class DATEVConnection(Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
         comment="Multi-Tenant Isolation"
     )
     created_by_id = Column(
@@ -472,8 +471,7 @@ class DATEVKontenplan(Base):
     connection_id = Column(
         UUID(as_uuid=True),
         ForeignKey("datev_connections.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
 
     # Konto
@@ -530,8 +528,7 @@ class DATEVBuchung(Base):
     connection_id = Column(
         UUID(as_uuid=True),
         ForeignKey("datev_connections.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
     company_id = Column(
         UUID(as_uuid=True),
@@ -643,8 +640,7 @@ class DATEVBeleglink(Base):
     connection_id = Column(
         UUID(as_uuid=True),
         ForeignKey("datev_connections.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
     buchung_id = Column(
         UUID(as_uuid=True),
@@ -713,8 +709,7 @@ class DATEVKontierungPattern(Base):
     connection_id = Column(
         UUID(as_uuid=True),
         ForeignKey("datev_connections.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
     company_id = Column(
         UUID(as_uuid=True),
@@ -783,8 +778,7 @@ class DATEVSyncHistory(Base):
     connection_id = Column(
         UUID(as_uuid=True),
         ForeignKey("datev_connections.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
     triggered_by = Column(
         UUID(as_uuid=True),

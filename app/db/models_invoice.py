@@ -60,12 +60,11 @@ class Invoice(Base):
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="RESTRICT"),
-        nullable=True,
-        index=True,
+        nullable=True
     )
 
     # Invoice details
-    invoice_number = Column(String(100), unique=True, nullable=False, index=True)
+    invoice_number = Column(String(100), unique=True, nullable=False)
     invoice_date = Column(Date, nullable=False)
     due_date = Column(Date, nullable=False)
 
@@ -76,7 +75,7 @@ class Invoice(Base):
     currency = Column(String(3), default="EUR", nullable=False)
 
     # Payment status
-    status = Column(String(20), default=InvoiceStatus.PENDING, nullable=False, index=True)
+    status = Column(String(20), default=InvoiceStatus.PENDING, nullable=False)
     payment_date = Column(Date, nullable=True)
 
     # Metadata

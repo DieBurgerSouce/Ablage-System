@@ -259,24 +259,24 @@ class BusinessEntity(SoftDeleteMixin, Base):
 
     # Entity identification
     entity_type = Column(String(20), nullable=False, default=EntityType.SUPPLIER.value)
-    name = Column(String(255), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
     display_name = Column(String(255))
     short_name = Column(String(50))  # Kurzname für Anzeige
 
     # German business identifiers (für 99%+ Präzision)
-    vat_id = Column(String(20), unique=True, index=True, nullable=True)  # USt-IdNr (DE123456789)
+    vat_id = Column(String(20), unique=True, nullable=True)  # USt-IdNr (DE123456789)
     tax_number = Column(String(30), nullable=True)  # Steuernummer
     trade_register = Column(String(50), nullable=True)  # HRB 12345
 
     # Banking information
-    iban = Column(String(34), index=True, nullable=True)
+    iban = Column(String(34), nullable=True)
     bic = Column(String(11), nullable=True)
     bank_name = Column(String(100), nullable=True)
 
     # Contact information
     street = Column(String(255), nullable=True)
     street_number = Column(String(20), nullable=True)
-    postal_code = Column(String(10), index=True, nullable=True)
+    postal_code = Column(String(10), nullable=True)
     city = Column(String(100), nullable=True)
     country = Column(String(2), default="DE")
     phone = Column(String(30), nullable=True)
@@ -439,14 +439,13 @@ class InvoiceTracking(SoftDeleteMixin, Base):
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
 
     # Invoice identification
-    invoice_number = Column(String(100), index=True, nullable=True)
+    invoice_number = Column(String(100), nullable=True)
     invoice_date = Column(DateTime(timezone=True), nullable=True)
-    due_date = Column(DateTime(timezone=True), nullable=True, index=True)
+    due_date = Column(DateTime(timezone=True), nullable=True)
 
     # Amount information
     amount = Column(Float, default=0.0)
@@ -456,7 +455,6 @@ class InvoiceTracking(SoftDeleteMixin, Base):
     status = Column(
         String(20),
         default=InvoiceStatus.OPEN.value,
-        index=True,
         nullable=False
     )
 
@@ -480,7 +478,6 @@ class InvoiceTracking(SoftDeleteMixin, Base):
     skonto_deadline = Column(
         DateTime(timezone=True),
         nullable=True,
-        index=True,
         comment="Berechnete Skonto-Frist (invoice_date + skonto_days)"
     )
     skonto_amount = Column(
@@ -527,7 +524,6 @@ class InvoiceTracking(SoftDeleteMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=True,
-        index=True,
         comment="Mandanten-Zuordnung"
     )
 
@@ -539,7 +535,6 @@ class InvoiceTracking(SoftDeleteMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="SET NULL"),
         nullable=True,
-        index=True,
         comment="Verknuepfung mit BusinessEntity (Kunde/Lieferant), Migration 094"
     )
 
@@ -858,7 +853,6 @@ class DocumentGroup(SoftDeleteMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
         comment="Mandanten-Zuordnung fuer Multi-Company Isolation"
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -1831,7 +1825,7 @@ class BusinessContact(Base):
 
     # Basic identification
     name = Column(String(255), nullable=False, index=True)
-    name_normalized = Column(String(255), nullable=True, index=True)  # Für Fuzzy-Matching
+    name_normalized = Column(String(255), nullable=True)  # Für Fuzzy-Matching
     contact_type = Column(String(20), nullable=False, default=ContactType.CUSTOMER.value)
     company_form = Column(String(50), nullable=True)  # GmbH, AG, etc.
 

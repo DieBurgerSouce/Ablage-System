@@ -51,7 +51,6 @@ class SavedSearch(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
         comment="Besitzer der gespeicherten Suche"
     )
     name = Column(

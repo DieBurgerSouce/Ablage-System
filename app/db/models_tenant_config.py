@@ -48,8 +48,7 @@ class TenantConfig(Base):
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
-        index=True,
+        unique=True
     )
 
     features = Column(
@@ -77,8 +76,7 @@ class TenantConfig(Base):
         Boolean,
         nullable=False,
         default=True,
-        index=True,
-        comment="Mandant aktiv (false = deaktiviert, keine Zugriffe)",
+        comment="Mandant aktiv (false = deaktiviert, keine Zugriffe)"
     )
 
     created_at = Column(

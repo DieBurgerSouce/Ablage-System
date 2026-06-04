@@ -596,8 +596,7 @@ class NotificationRule(Base):
     enabled = Column(Boolean, nullable=False, default=True)
 
     # Event matching
-    event_type = Column(String(100), nullable=False, index=True,
-                        comment="Event-Typ z.B. document.ocr_completed, insurance.deadline_approaching")
+    event_type = Column(String(100), nullable=False, comment="Event-Typ z.B. document.ocr_completed, insurance.deadline_approaching")
     event_source = Column(String(50), nullable=True,
                           comment="Optional: Quelle filtern (z.B. privat, business)")
 

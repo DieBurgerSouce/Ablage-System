@@ -960,7 +960,7 @@ class ApprovalRequest(Base):
     currency = Column(String(3), default="EUR", nullable=False)
 
     # Status
-    status = Column(SQLAlchemyEnum(ApprovalStatus), default=ApprovalStatus.PENDING, nullable=False, index=True)
+    status = Column(SQLAlchemyEnum(ApprovalStatus), default=ApprovalStatus.PENDING, nullable=False)
     priority = Column(SQLAlchemyEnum(ApprovalPriority), default=ApprovalPriority.NORMAL, nullable=False, index=True)
 
     # Approval Chain Fortschritt

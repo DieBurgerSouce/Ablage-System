@@ -266,20 +266,17 @@ class DocumentAccessLog(Base):
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True
+        nullable=True
     )
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        nullable=False
     )
 
     # Zugriffsdetails

@@ -164,8 +164,7 @@ class RAGCustomerCard(Base):
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+        nullable=False
     )
 
     # Kunden-Identifikation (unique pro Company, nicht global)
