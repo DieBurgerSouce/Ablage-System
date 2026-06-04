@@ -47,6 +47,7 @@ class InsightType(str, Enum):
     ANOMALY = "anomaly"                     # Anomalie
     REMINDER = "reminder"                   # Erinnerung
     RECOMMENDATION = "recommendation"        # Empfehlung
+    SUGGESTION = "suggestion"               # Sanfter Vorschlag (niedrige Severity)
 
 
 class EntityType(str, Enum):
