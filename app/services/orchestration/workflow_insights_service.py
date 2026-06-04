@@ -210,9 +210,10 @@ class WorkflowInsightsService:
 
         for result in results:
             if isinstance(result, Exception):
-                logger.warning(
+                logger.error(
                     "workflow_check_failed",
                     error=str(result),
+                    error_type=type(result).__name__,
                 )
             elif isinstance(result, list):
                 all_insights.extend(result)
@@ -358,6 +359,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "batch_approval_suggestion_failed",
                 company_id=str(company_id),
@@ -461,6 +464,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "bottleneck_detection_failed",
                 company_id=str(company_id),
@@ -564,6 +569,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "automation_suggestion_failed",
                 company_id=str(company_id),
@@ -677,6 +684,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "stale_items_detection_failed",
                 company_id=str(company_id),
@@ -784,6 +793,8 @@ class WorkflowInsightsService:
             return proactive_insights
 
         except Exception as e:
+            if isinstance(e, (AttributeError, TypeError, NameError, KeyError)):
+                raise  # Programmierfehler (z.B. Schema-Drift) nicht stillschweigend maskieren
             logger.warning(
                 "workload_analysis_failed",
                 company_id=str(company_id),
