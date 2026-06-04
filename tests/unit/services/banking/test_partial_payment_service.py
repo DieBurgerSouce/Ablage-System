@@ -29,7 +29,12 @@ class TestRecordPayment:
     @pytest.fixture
     def mock_db(self) -> AsyncMock:
         """Mock fuer Datenbank-Session."""
-        return AsyncMock()
+        db = AsyncMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
+        return db
 
     @pytest.mark.asyncio
     async def test_record_first_partial_payment(
@@ -208,7 +213,12 @@ class TestPaymentSummary:
     @pytest.fixture
     def mock_db(self) -> AsyncMock:
         """Mock fuer Datenbank-Session."""
-        return AsyncMock()
+        db = AsyncMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
+        return db
 
     @pytest.mark.asyncio
     async def test_get_payment_summary_no_payments(
@@ -357,7 +367,12 @@ class TestDeletePayment:
     @pytest.fixture
     def mock_db(self) -> AsyncMock:
         """Mock fuer Datenbank-Session."""
-        return AsyncMock()
+        db = AsyncMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
+        return db
 
     @pytest.mark.asyncio
     async def test_delete_pending_payment(
@@ -434,7 +449,12 @@ class TestReconciliation:
     @pytest.fixture
     def mock_db(self) -> AsyncMock:
         """Mock fuer Datenbank-Session."""
-        return AsyncMock()
+        db = AsyncMock()
+        _cm = AsyncMock()
+        _cm.__aenter__ = AsyncMock(return_value=_cm)
+        _cm.__aexit__ = AsyncMock(return_value=False)
+        db.begin_nested = MagicMock(return_value=_cm)
+        return db
 
     @pytest.mark.asyncio
     async def test_reconcile_payment(
