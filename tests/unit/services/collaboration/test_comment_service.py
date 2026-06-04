@@ -351,7 +351,7 @@ class TestCommentServiceUpdate:
                 content="Versuch zu bearbeiten",
             )
 
-        assert "Geloeschter Kommentar" in str(exc.value)
+        assert "Gelöschter Kommentar" in str(exc.value)
 
 
 class TestCommentServiceDelete:
