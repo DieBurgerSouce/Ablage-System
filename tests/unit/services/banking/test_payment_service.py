@@ -137,7 +137,7 @@ class TestPaymentValidation:
         result = service._validate_payment(data)
 
         assert not result.valid
-        assert any("Pruefziffer" in e for e in result.errors)
+        assert any("Prüfziffer" in e for e in result.errors)
 
     def test_validate_payment_large_amount_warning(self, service: PaymentService):
         """Sollte Warnung bei grossem Betrag ausgeben."""
