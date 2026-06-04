@@ -345,15 +345,15 @@ class FraudDetectionService:
                 SELECT
                     be.id as entity_id,
                     be.name as entity_name,
-                    d.doc_type,
+                    d.document_type AS doc_type,
                     COUNT(*) as doc_count,
-                    SUM(CASE WHEN it.total_amount IS NOT NULL THEN it.total_amount ELSE 0 END) as total_paid
+                    SUM(CASE WHEN it.amount IS NOT NULL THEN it.amount ELSE 0 END) as total_paid
                 FROM business_entities be
-                LEFT JOIN documents d ON d.entity_id = be.id AND d.company_id = :company_id
+                LEFT JOIN documents d ON d.business_entity_id = be.id AND d.company_id = :company_id
                 LEFT JOIN invoice_tracking it ON it.entity_id = be.id AND it.company_id = :company_id
                 WHERE be.entity_type = 'supplier'
                 AND be.company_id = :company_id
-                GROUP BY be.id, be.name, d.doc_type
+                GROUP BY be.id, be.name, d.document_type
             )
             SELECT
                 entity_id,
@@ -492,9 +492,9 @@ class FraudDetectionService:
                 SELECT
                     it.entity_id,
                     be.name as entity_name,
-                    it.total_amount,
+                    it.amount AS total_amount,
                     it.created_at,
-                    LAG(it.total_amount) OVER (
+                    LAG(it.amount) OVER (
                         PARTITION BY it.entity_id
                         ORDER BY it.created_at
                     ) as prev_amount
@@ -502,7 +502,7 @@ class FraudDetectionService:
                 JOIN business_entities be ON be.id = it.entity_id
                 WHERE it.company_id = :company_id
                 AND it.created_at BETWEEN :start_date AND :end_date
-                AND it.total_amount IS NOT NULL
+                AND it.amount IS NOT NULL
             )
             SELECT
                 entity_id,
@@ -712,9 +712,9 @@ class FraudDetectionService:
                     be.name as entity_name,
                     it.id as invoice_id,
                     it.invoice_number,
-                    it.total_amount,
+                    it.amount AS total_amount,
                     it.created_at,
-                    SUM(it.total_amount) OVER (
+                    SUM(it.amount) OVER (
                         PARTITION BY it.entity_id
                         ORDER BY it.created_at
                         RANGE BETWEEN INTERVAL :window_days DAY PRECEDING AND CURRENT ROW
@@ -728,8 +728,8 @@ class FraudDetectionService:
                 JOIN business_entities be ON be.id = it.entity_id
                 WHERE it.company_id = :company_id
                 AND it.created_at BETWEEN :start_date AND :end_date
-                AND it.total_amount IS NOT NULL
-                AND it.total_amount < :threshold
+                AND it.amount IS NOT NULL
+                AND it.amount < :threshold
             )
             SELECT DISTINCT
                 entity_id,
