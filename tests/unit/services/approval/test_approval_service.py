@@ -287,34 +287,37 @@ class TestApprovalEscalation:
         self, service: ApprovalService, mock_db: AsyncMock
     ) -> None:
         """Ueberfaellige Anfragen werden gefunden."""
-        overdue_request = MagicMock()
-        overdue_request.id = uuid4()
-        overdue_request.status = ApprovalStatus.PENDING
-        overdue_request.due_date = datetime.now(timezone.utc) - timedelta(days=1)
-        overdue_request.is_escalated = False
+        request_id = uuid4()
+        due_date = datetime.now(timezone.utc) - timedelta(days=1)
 
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [overdue_request]
-        mock_db.execute.return_value = mock_result
+        # 1. Aufruf: ID-Query liefert (id, due_date)-Tupel;
+        # 2. Aufruf: Bulk-UPDATE liefert rowcount
+        id_result = MagicMock()
+        id_result.all.return_value = [(request_id, due_date)]
+        update_result = MagicMock()
+        update_result.rowcount = 1
+        mock_db.execute.side_effect = [id_result, update_result]
 
-        # escalate_overdue gibt int zurueck
+        # escalate_overdue gibt die Anzahl eskalierter Anfragen (int) zurueck
         result = await service.escalate_overdue()
 
         assert result == 1
-        assert overdue_request.status == ApprovalStatus.ESCALATED
+        mock_db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_already_escalated_not_escalated_again(
         self, service: ApprovalService, mock_db: AsyncMock
     ) -> None:
         """Bereits eskalierte Anfragen werden nicht erneut eskaliert."""
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute.return_value = mock_result
+        # Keine ueberfaelligen Anfragen -> ID-Query leer -> Early Return 0 (kein UPDATE)
+        id_result = MagicMock()
+        id_result.all.return_value = []
+        mock_db.execute.return_value = id_result
 
         result = await service.escalate_overdue()
 
         assert result == 0
+        mock_db.commit.assert_not_awaited()
 
 
 class TestApprovalStatistics:
@@ -588,7 +591,9 @@ class TestProcessApprovalDecision:
                 notes="Alles korrekt",
             )
 
-            mock_approve.assert_awaited_once_with(request_id, user_id, "Alles korrekt")
+            mock_approve.assert_awaited_once_with(
+                request_id, user_id, company_id=None, notes="Alles korrekt"
+            )
 
     @pytest.mark.asyncio
     async def test_process_decision_rejected_with_notes(
@@ -609,7 +614,7 @@ class TestProcessApprovalDecision:
             )
 
             mock_reject.assert_awaited_once_with(
-                request_id, user_id, "Budget ueberschritten"
+                request_id, user_id, "Budget ueberschritten", company_id=None
             )
 
     @pytest.mark.asyncio
@@ -645,7 +650,7 @@ class TestProcessApprovalDecision:
         )
 
         assert result.success is False
-        assert "ungueltig" in result.message.lower()
+        assert "ungültig" in result.message.lower()
 
 
 class TestEscalateRequest:

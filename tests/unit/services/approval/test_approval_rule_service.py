@@ -174,7 +174,7 @@ class TestRuleRetrieval:
         mock_result.scalar_one_or_none.return_value = sample_rule
         mock_db.execute.return_value = mock_result
 
-        result = await service.get_rule(sample_rule.id)
+        result = await service.get_rule(sample_rule.id, uuid4())
 
         assert result == sample_rule
         mock_db.execute.assert_awaited_once()
@@ -188,7 +188,7 @@ class TestRuleRetrieval:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
 
-        result = await service.get_rule(uuid4())
+        result = await service.get_rule(uuid4(), uuid4())
 
         assert result is None
 
@@ -242,6 +242,7 @@ class TestRuleUpdate:
         with patch.object(service, "get_rule", return_value=sample_rule):
             result = await service.update_rule(
                 sample_rule.id,
+                uuid4(),
                 name="Neuer Name"
             )
 
@@ -258,6 +259,7 @@ class TestRuleUpdate:
         with patch.object(service, "get_rule", return_value=sample_rule):
             result = await service.update_rule(
                 sample_rule.id,
+                uuid4(),
                 conditions=new_conditions
             )
 
@@ -269,7 +271,7 @@ class TestRuleUpdate:
     ) -> None:
         """Update bei nicht existierender Regel gibt None zurueck."""
         with patch.object(service, "get_rule", return_value=None):
-            result = await service.update_rule(uuid4(), name="Test")
+            result = await service.update_rule(uuid4(), uuid4(), name="Test")
 
             assert result is None
 
@@ -281,6 +283,7 @@ class TestRuleUpdate:
         with patch.object(service, "get_rule", return_value=sample_rule):
             result = await service.update_rule(
                 sample_rule.id,
+                uuid4(),
                 name="Valid Name",
                 invalid_field="Should be ignored"
             )
@@ -302,7 +305,7 @@ class TestRuleDeletion:
     ) -> None:
         """Regel wird erfolgreich geloescht."""
         with patch.object(service, "get_rule", return_value=sample_rule):
-            result = await service.delete_rule(sample_rule.id)
+            result = await service.delete_rule(sample_rule.id, uuid4())
 
             assert result is True
             mock_db.delete.assert_awaited_once()
@@ -314,7 +317,7 @@ class TestRuleDeletion:
     ) -> None:
         """Loeschen nicht existierender Regel gibt False zurueck."""
         with patch.object(service, "get_rule", return_value=None):
-            result = await service.delete_rule(uuid4())
+            result = await service.delete_rule(uuid4(), uuid4())
 
             assert result is False
             mock_db.delete.assert_not_awaited()
