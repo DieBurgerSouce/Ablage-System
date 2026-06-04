@@ -257,6 +257,10 @@ async def get_document_audit_trail(
     company_id: UUID = Depends(require_company),
 ) -> AuditTrailResponse:
     """Gibt Audit Trail für ein Dokument zurück."""
+
+    # Paginierung: page/per_page -> offset/limit (Response-Contract erwartet limit/offset)
+    offset = (page - 1) * per_page
+    limit = per_page
     # Prüfe ob Dokument existiert und Berechtigung
     doc_result = await db.execute(
         select(Document).where(
@@ -456,6 +460,10 @@ async def get_entity_audit_trail(
     company_id: UUID = Depends(require_company),
 ) -> AuditTrailResponse:
     """Gibt Audit Trail für einen Geschäftspartner zurück."""
+
+    # Paginierung: page/per_page -> offset/limit (Response-Contract erwartet limit/offset)
+    offset = (page - 1) * per_page
+    limit = per_page
     # Prüfe ob Entity existiert und Berechtigung
     entity_result = await db.execute(
         select(BusinessEntity).where(
