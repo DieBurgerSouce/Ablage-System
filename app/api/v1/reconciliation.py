@@ -244,7 +244,7 @@ async def list_unmatched_transactions(
     max_amount: Optional[Decimal] = Query(None, description="Hoechstbetrag"),
     days_old: Optional[int] = Query(None, ge=0, le=365, description="Mindestens N Tage alt"),
     sort_by: str = Query("booking_date", description="Sortierung: booking_date, amount, counterparty"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sortierrichtung"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),

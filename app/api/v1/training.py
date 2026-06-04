@@ -87,10 +87,10 @@ async def list_training_samples(
     search: Optional[str] = Query(None, max_length=200, description="Volltextsuche"),
     sort_by: str = Query(
         "created_at",
-        regex="^(created_at|updated_at|document_type|status|difficulty|business_priority|language)$",
+        pattern="^(created_at|updated_at|document_type|status|difficulty|business_priority|language)$",
         description="Sortierfeld"
     ),
-    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sortierreihenfolge"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierreihenfolge"),
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(require_any_role("admin", "editor")),
