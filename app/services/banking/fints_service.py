@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -494,12 +495,35 @@ class FinTSService:
             date_to = date.today()
 
         try:
-            # In Produktion: python-fints Statement-Abruf
-            # Hier: Mock-Daten für Entwicklung
+            # Echte FinTS-Anbindung ist noch nicht implementiert. Mock-Transaktionen
+            # dürfen NIEMALS in Produktion gespeichert/gebucht werden (B2/M9-Schutz)
+            # und nur erzeugt werden, wenn explizit per Settings freigeschaltet ist.
+            is_production = settings.ENVIRONMENT.lower() in ("production", "prod")
+            allow_mock = getattr(settings, "FINTS_ALLOW_MOCK_SYNC", False)
 
-            mock_transactions = self._generate_mock_transactions(
-                account.iban, date_from, date_to
-            )
+            if is_production:
+                # Harter Guard: kein Fake-Eingang in Produktion, auch nicht bei gesetztem Flag.
+                logger.error(
+                    "fints_mock_sync_blocked_in_production",
+                    account_id=str(account_id),
+                )
+                return FinTSSyncResult(
+                    success=False,
+                    sync_type=FinTSSyncType.STATEMENT,
+                    account_iban=account.iban,
+                    error_message=(
+                        "FinTS-Sync in Produktion nicht verfügbar: echte FinTS-Anbindung "
+                        "fehlt; Mock-Transaktionen sind in Produktion verboten (B2/M9)."
+                    ),
+                )
+
+            if allow_mock:
+                mock_transactions = self._generate_mock_transactions(
+                    account.iban, date_from, date_to
+                )
+            else:
+                # Kein Fake-Eingang, wenn Mock nicht ausdrücklich freigeschaltet ist.
+                mock_transactions = []
 
             # Speichere Transaktionen in DB
             saved_count = await self._save_transactions(
