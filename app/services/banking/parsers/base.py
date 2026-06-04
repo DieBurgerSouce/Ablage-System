@@ -308,7 +308,7 @@ class BaseParser(ABC):
             return TransactionType.DIRECT_DEBIT
 
         # Überweisung
-        if any(kw in text_lower for kw in ["überweisung", "überweisung", "transfer", "gutschr"]):
+        if any(kw in text_lower for kw in ["überweisung", "ueberweisung", "transfer", "gutschr"]):
             return TransactionType.TRANSFER
 
         # Kartenzahlung
