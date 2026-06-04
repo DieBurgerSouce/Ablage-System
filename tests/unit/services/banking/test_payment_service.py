@@ -440,7 +440,7 @@ class TestTANWorkflow:
         mock_result.scalar_one_or_none.return_value = mock_payment
         mock_db.execute.return_value = mock_result
 
-        with pytest.raises(ValueError, match="Ungueltige TAN"):
+        with pytest.raises(ValueError, match="Ungültige TAN"):
             await service.confirm_with_tan(
                 mock_db, sample_user_id, sample_payment_id, "12345"  # Zu kurz
             )
@@ -617,7 +617,7 @@ class TestBatchPayments:
             for i in range(3)
         ]
 
-        with pytest.raises(ValueError, match="ueberschreitet Maximum"):
+        with pytest.raises(ValueError, match="überschreitet Maximum"):
             await service.create_batch(
                 mock_db,
                 sample_user_id,
