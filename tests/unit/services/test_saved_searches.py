@@ -82,7 +82,14 @@ class TestSavedSearchModel:
     """Tests fuer SavedSearch SQLAlchemy Model."""
 
     def test_create_saved_search_with_required_fields(self, mock_user_a):
-        """SavedSearch kann mit Minimal-Feldern erstellt werden."""
+        """SavedSearch kann mit Minimal-Feldern erstellt werden.
+
+        Hinweis: SQLAlchemy Column-Defaults (use_count=0, is_default=False)
+        sind Insert-Defaults und greifen erst beim DB-INSERT, nicht beim
+        Konstruieren der In-Memory-Instanz. Daher pruefen wir hier die
+        explizit gesetzten Felder am Objekt und die deklarierten Defaults
+        am Model (echter Vertrag).
+        """
         search = SavedSearch(
             user_id=mock_user_a.id,
             name="Meine Rechnungen",
@@ -90,13 +97,20 @@ class TestSavedSearchModel:
             search_type="hybrid"
         )
 
+        # Explizit gesetzte Felder sind sofort am Objekt verfuegbar
         assert search.user_id == mock_user_a.id
         assert search.name == "Meine Rechnungen"
         assert search.query == "rechnung"
         assert search.search_type == "hybrid"
-        assert search.use_count == 0
-        assert search.is_default is False
+        # Nullable-Feld ohne Insert-Default bleibt None
         assert search.last_used_at is None
+
+        # Insert-Defaults sind am Model deklariert (greifen beim DB-INSERT)
+        assert SavedSearch.__table__.c.use_count.default.arg == 0
+        assert SavedSearch.__table__.c.is_default.default.arg is False
+        # Spalten-Nullability spiegelt den DB-Vertrag wider
+        assert SavedSearch.__table__.c.use_count.nullable is False
+        assert SavedSearch.__table__.c.is_default.nullable is False
 
     def test_create_saved_search_with_filters(self, mock_user_a, sample_search_filters):
         """SavedSearch speichert Filter im JSONB-Feld."""
@@ -356,26 +370,27 @@ class TestSavedSearchUniqueConstraint:
             search_type="fts"
         )
 
-        # Simulate IntegrityError on commit
-        mock_db_session.commit.side_effect = IntegrityError(
-            "duplicate key",
-            None,
-            None
-        )
-
+        # Erster Commit (search1) muss erfolgreich sein
         mock_db_session.add(search1)
         await mock_db_session.commit()
-        mock_db_session.commit.side_effect = None  # Reset for next add
+        mock_db_session.commit.assert_awaited_once()
 
+        # Zweiter Commit (search2, gleicher Name) verletzt den
+        # UniqueConstraint (user_id, name) -> IntegrityError
         mock_db_session.add(search2)
         mock_db_session.commit.side_effect = IntegrityError(
-            "duplicate key",
+            "duplicate key value violates unique constraint "
+            "\"uq_saved_searches_user_name\"",
             None,
             None
         )
 
         with pytest.raises(IntegrityError):
             await mock_db_session.commit()
+
+        # Beide Suchen teilen sich Benutzer und Name (Constraint-Bedingung)
+        assert search1.user_id == search2.user_id
+        assert search1.name == search2.name
 
     @pytest.mark.asyncio
     async def test_unique_constraint_different_users_same_name(self, mock_db_session, mock_user_a, mock_user_b):
