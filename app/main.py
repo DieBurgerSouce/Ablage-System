@@ -245,7 +245,7 @@ async def lifespan(app: FastAPI):
             otlp_endpoint=otlp_endpoint
         )
         set_system_info(
-            version=getattr(settings, "APP_VERSION", "1.0.0"),
+            version=getattr(settings, "APP_VERSION", "0.1.0"),
             environment=os.getenv("ENVIRONMENT", "development")
         )
         logger.info(
@@ -999,7 +999,7 @@ _ERROR_RESPONSES = {
 app = FastAPI(
     title="Ablage-System OCR",
     description=OPENAPI_DESCRIPTION,
-    version="0.3.0",
+    version=getattr(settings, "APP_VERSION", "0.1.0"),
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -1698,7 +1698,7 @@ async def root():
     """Root endpoint with API information"""
     return {
         "name": "Ablage-System OCR",
-        "version": "0.2.0-poc",
+        "version": getattr(settings, "APP_VERSION", "0.1.0"),
         "status": "operational",
         "documentation": "/docs",
         "endpoints": {
