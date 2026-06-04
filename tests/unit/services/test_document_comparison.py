@@ -15,7 +15,7 @@ Testet:
 """
 
 from typing import Dict, List, Optional, Tuple
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -179,9 +179,9 @@ class TestDocumentTextComparison:
         service = DocumentComparisonService(mock_db_session)
 
         # Mock DB queries
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -201,9 +201,9 @@ class TestDocumentTextComparison:
         doc1, doc2 = completely_different_documents
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -222,9 +222,9 @@ class TestDocumentTextComparison:
         doc1, doc2 = documents_with_small_changes
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -252,9 +252,9 @@ class TestDocumentDiffBlocks:
         doc1, doc2 = documents_with_small_changes
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -275,9 +275,9 @@ class TestDocumentDiffBlocks:
         doc1, doc2 = documents_with_small_changes
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -308,9 +308,9 @@ class TestDocumentDiffBlocks:
 
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -342,9 +342,9 @@ class TestDocumentDiffBlocks:
 
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -373,9 +373,9 @@ class TestDocumentSimilarityRatio:
         doc1, doc2 = identical_documents
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -393,9 +393,9 @@ class TestDocumentSimilarityRatio:
         doc1, doc2 = completely_different_documents
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -413,9 +413,9 @@ class TestDocumentSimilarityRatio:
         doc1, doc2 = documents_with_small_changes
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -443,9 +443,9 @@ class TestDocumentStructuredComparison:
         doc1, doc2 = identical_documents
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -464,9 +464,9 @@ class TestDocumentStructuredComparison:
         doc1, doc2 = documents_with_small_changes
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -499,9 +499,9 @@ class TestDocumentStructuredComparison:
 
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -532,9 +532,9 @@ class TestDocumentStructuredComparison:
 
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -562,9 +562,9 @@ class TestDocumentCriticalFields:
         doc1, doc2 = documents_with_critical_changes
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -585,9 +585,9 @@ class TestDocumentCriticalFields:
         doc1, doc2 = documents_with_critical_changes
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -625,9 +625,9 @@ class TestDocumentFieldCategories:
 
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -657,9 +657,9 @@ class TestDocumentFieldCategories:
 
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = doc2
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
@@ -685,7 +685,7 @@ class TestDocumentComparisonErrors:
         """Nicht existierendes Dokument wirft ValueError."""
         service = DocumentComparisonService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db_session.execute.return_value = mock_result
 
@@ -704,9 +704,9 @@ class TestDocumentComparisonErrors:
         doc1.extracted_text = "test"
         doc1.extracted_data = {}
 
-        mock_result1 = AsyncMock()
+        mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = doc1
-        mock_result2 = AsyncMock()
+        mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = None
         mock_db_session.execute.side_effect = [mock_result1, mock_result2]
 
