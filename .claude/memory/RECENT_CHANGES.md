@@ -1,6 +1,7 @@
 # Recent Changes
 
 ## 2026-06-04
+- **feat(m13,m17)**: Echter Cashflow-Backtest + BPMN-Signal-Resume. M13: `cashflow_prediction_service.get_prediction_metrics` liefert echte Backtest-Metriken aus `PredictionFeedbackRecord` (Fallback auf Schaetzung nur ohne Daten) - keine Migration. M17: `process_execution_service.signal` setzt wartende Nicht-Timer-Catch-Events fort (statt nur zu protokollieren). 5 Unit-Tests. Branch `feature/mocks-to-real-p1`.
 - **feat(m16)**: Autonome Folder-Ablage aktiviert (`autonomous_actions_service`) — `propose_filing_location`/`execute_filing` waren als 'Folder-Model nicht implementiert' deaktiviert; das Folder-System existiert (models_folder.py) -> echte, mandanten-gefilterte Ablage (Verlauf + Standard-Ordner nach Typ, FolderDocument-Primaer-Link). 6 Unit-Tests gruen. Branch `feature/mocks-to-real-p1`.
 - **docs(mocks)**: MOCK_DATA_REGISTER Status-Update — M1-M16 behoben/ehrlich; kein Mock zeigt mehr erfundene Daten als echt. Offen (ehrliche Feature-Tiefe): M13-Backtest, M17-BPMN.
 
