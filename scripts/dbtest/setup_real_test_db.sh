@@ -55,4 +55,13 @@ docker exec "$PG_CONTAINER" psql -U "$DB_USER" -d "$TEST_DB" -c \
   "ALTER TABLE approval_steps ALTER COLUMN status DROP DEFAULT;
    ALTER TABLE approval_steps ALTER COLUMN status TYPE approvalstatus USING status::approvalstatus;"
 
+echo ">> 5/5 DATEV-Doppik-Migration 263 anwenden (alembic stamp 262 && upgrade head)"
+# Der Klon ist faktisch ~261, alembic_version aber leer (schema-only). Stamp auf
+# 262 + upgrade head laeuft NUR Migration 263 (Doppik-Reconcile) -> umgeht die
+# kaputten Migrationen von Null (siehe KNOWN_ISSUES "Pervasives Drift", Stufe 2).
+DB_PW="$(docker exec "$BACKEND_CONTAINER" printenv DATABASE_URL | sed -E 's#.*://[^:]+:([^@]+)@.*##')"
+TEST_URL="postgresql+asyncpg://${DB_USER}:${DB_PW}@postgres:5432/${TEST_DB}"
+docker exec -e DATABASE_URL="$TEST_URL" -w /app "$BACKEND_CONTAINER" alembic stamp 262
+docker exec -e DATABASE_URL="$TEST_URL" -w /app "$BACKEND_CONTAINER" alembic upgrade head
+
 echo ">> FERTIG: ${TEST_DB} ist bereit fuer die Integrationstests."

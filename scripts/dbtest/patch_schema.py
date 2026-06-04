@@ -11,10 +11,11 @@ configure_mappers()
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
-from app.db.models import (Document, ApprovalRequest, ApprovalStep, BusinessEntity, User,
-                            Company, DATEVBuchung, DATEVKontierungPattern, DATEVConnection)
-TARGETS = [Document, ApprovalRequest, ApprovalStep, BusinessEntity, User,
-           Company, DATEVBuchung, DATEVKontierungPattern, DATEVConnection]
+from app.db.models import Document, ApprovalRequest, ApprovalStep, BusinessEntity, User, Company
+# NB: DATEV-Tabellen werden NICHT mehr gepatcht -> Migration 263 (Doppik-Reconcile)
+# baut sie korrekt auf (alembic stamp 262 && upgrade head). Hier nur die noch nicht
+# migrationsseitig aufgeloesten Drifts (documents/users/...) bis Stufe-2-Infra-Fix.
+TARGETS = [Document, ApprovalRequest, ApprovalStep, BusinessEntity, User, Company]
 
 
 async def main():
