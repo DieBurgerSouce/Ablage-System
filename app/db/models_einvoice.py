@@ -184,7 +184,7 @@ class PeppolParticipant(Base):
     endpoint_url = Column(String(500), nullable=True)  # SMP Endpoint
 
     # Entity Reference (optional - wenn lokaler Geschäftskontakt)
-    entity_id = Column(UUID(as_uuid=True), ForeignKey("entities.id"), nullable=True)
+    entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
 
     # Metadata from SMP
     participant_name = Column(String(500), nullable=True)
@@ -265,7 +265,7 @@ class IncomingEInvoice(Base):
 
     # Linking
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)  # Verknüpftes Dokument
-    entity_id = Column(UUID(as_uuid=True), ForeignKey("entities.id"), nullable=True)  # Erkannter Absender
+    entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)  # Erkannter Absender
 
     # Audit
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False)
