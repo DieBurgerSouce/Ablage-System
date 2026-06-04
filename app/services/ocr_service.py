@@ -20,6 +20,7 @@ from app.services.backend_manager import get_backend_manager
 from app.agents.postprocessing.german_correction_agent import GermanCorrectionAgent
 from app.utils.german_text import normalize_german_text
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 
 class OCRService:

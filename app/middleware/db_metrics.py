@@ -20,6 +20,7 @@ import structlog
 from sqlalchemy import event
 from sqlalchemy.engine import Engine, Connection, ExceptionContext
 from sqlalchemy.orm import Session
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

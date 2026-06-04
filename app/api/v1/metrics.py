@@ -32,6 +32,7 @@ from app.services.backup_metrics_service import get_backup_metrics
 from app.services.gpu_metrics_service import get_gpu_metrics_service
 from app.services.datev.metrics import get_datev_metrics_service
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 

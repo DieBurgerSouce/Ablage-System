@@ -23,6 +23,7 @@ from app.db.bpmn_models.bpmn import (
     ProcessInstance,
     ProcessStatus,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

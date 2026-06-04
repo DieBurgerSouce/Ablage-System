@@ -33,6 +33,7 @@ from app.db.models import (
     ApprovalRequest,
     InvoiceTracking,
 )
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

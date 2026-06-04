@@ -21,6 +21,7 @@ from sqlalchemy import select, and_, delete, func
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

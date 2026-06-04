@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 from pydantic import BaseModel, Field, field_validator
+from app.core.safe_errors import safe_error_log
 
 
 # =============================================================================

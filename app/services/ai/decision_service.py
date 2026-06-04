@@ -40,6 +40,7 @@ from app.db.models import (
     Document,
     User,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

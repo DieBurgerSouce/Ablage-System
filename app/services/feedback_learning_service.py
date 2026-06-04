@@ -33,6 +33,7 @@ from app.db.models import (
 from app.core.config import settings
 from app.ml.metrics import get_ml_metrics
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

@@ -19,6 +19,7 @@ from app.core.safe_errors import safe_error_log
 from app.db.models import Document
 from app.services.thumbnail_service import get_thumbnail_service
 from app.services.storage_service import get_storage_service
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

@@ -48,6 +48,7 @@ from app.services.benchmark_runner_service import (
 from app.core.config import settings
 from app.db.schemas import BulkProcessingProgress as BulkProgressSchema
 from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

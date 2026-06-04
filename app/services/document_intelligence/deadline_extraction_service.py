@@ -29,6 +29,7 @@ from app.services.document_intelligence.llm_ner_service import (
     LLMNERService,
     get_llm_ner_service,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

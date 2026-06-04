@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import structlog
 from slowapi.errors import RateLimitExceeded
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 

@@ -22,6 +22,7 @@ from sqlalchemy import and_, delete, select
 
 from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 

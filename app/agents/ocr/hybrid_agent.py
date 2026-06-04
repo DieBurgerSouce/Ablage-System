@@ -10,6 +10,7 @@ from app.core.safe_errors import safe_error_log
 from .deepseek_agent import DeepSeekAgent
 from .got_ocr_agent import GOTOCRAgent
 from .surya_docling_agent import SuryaDoclingAgent
+from app.core.safe_errors import safe_error_detail
 
 
 class HybridOCRAgent(OCRAgent):

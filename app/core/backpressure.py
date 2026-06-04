@@ -21,6 +21,7 @@ from typing import Any, Dict, Optional, Tuple
 import structlog
 from fastapi import HTTPException, Request
 from starlette.responses import JSONResponse
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
