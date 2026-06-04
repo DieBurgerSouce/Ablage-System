@@ -51,7 +51,7 @@ class CorrectionRequest(BaseModel):
     original_value: str
     corrected_value: str
     confidence_before: float = Field(..., ge=0.0, le=1.0)
-    correction_type: str = Field("text", regex="^(text|amount|date|entity|iban|vat_id|reference)$")
+    correction_type: str = Field("text", pattern="^(text|amount|date|entity|iban|vat_id|reference)$")
     ocr_backend: Optional[str] = Field(None, max_length=50)
     page_number: Optional[int] = Field(None, ge=1)
     bounding_box: Optional[dict] = None
@@ -338,7 +338,7 @@ async def submit_batch_corrections(
     description="Liefert niedrig-konfidente OCR-Extraktionen zur Korrektur"
 )
 async def get_correction_queue(
-    priority: Optional[str] = Query(None, regex="^(critical|high|medium|low)$"),
+    priority: Optional[str] = Query(None, pattern="^(critical|high|medium|low)$"),
     document_type: Optional[str] = Query(None, max_length=50),
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
@@ -446,7 +446,7 @@ async def claim_queue_item(
     description="Liefert das Korrektur-Leaderboard"
 )
 async def get_leaderboard(
-    period: str = Query("weekly", regex="^(weekly|monthly|all_time)$"),
+    period: str = Query("weekly", pattern="^(weekly|monthly|all_time)$"),
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),

@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
 from app.api.dependencies import get_current_user, get_db
-from app.services.rag import get_chat_service
+from app.services.rag.chat_service import get_chat_service
 from app.services.rag.action_dispatcher import get_action_dispatcher
 from app.core.safe_errors import safe_error_detail, safe_error_log
 

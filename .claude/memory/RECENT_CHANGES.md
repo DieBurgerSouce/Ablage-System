@@ -1,5 +1,10 @@
 # Recent Changes
 
+## 2026-06-04
+- **feat(m13,m17)**: Echter Cashflow-Backtest + BPMN-Signal-Resume. M13: `cashflow_prediction_service.get_prediction_metrics` liefert echte Backtest-Metriken aus `PredictionFeedbackRecord` (Fallback auf Schaetzung nur ohne Daten) - keine Migration. M17: `process_execution_service.signal` setzt wartende Nicht-Timer-Catch-Events fort (statt nur zu protokollieren). 5 Unit-Tests. Branch `feature/mocks-to-real-p1`.
+- **feat(m16)**: Autonome Folder-Ablage aktiviert (`autonomous_actions_service`) — `propose_filing_location`/`execute_filing` waren als 'Folder-Model nicht implementiert' deaktiviert; das Folder-System existiert (models_folder.py) -> echte, mandanten-gefilterte Ablage (Verlauf + Standard-Ordner nach Typ, FolderDocument-Primaer-Link). 6 Unit-Tests gruen. Branch `feature/mocks-to-real-p1`.
+- **docs(mocks)**: MOCK_DATA_REGISTER Status-Update — M1-M16 behoben/ehrlich; kein Mock zeigt mehr erfundene Daten als echt. Offen (ehrliche Feature-Tiefe): M13-Backtest, M17-BPMN.
+
 ## 2026-06-03
 - **fix(g5-followup)**: 5 App-Findings aus G5 behoben (`fix/g5-followup-app`): F1 `validation_queue_service.assign_to_editor` nutzt UserCompany-Join statt nicht existentem `User.company_id`; F2 `training.get_trend_data` liefert gueltiges `TrendResponse` (avg_cer-Serie); F3 Entity-Endpoints (`get_entity`/`get_entity_documents`) mit company_id-Mandanten-Filter (eigene/NULL); F4 weasyprint-Importe `except (ImportError, OSError)`; F5 coverage `fail_under` 90→50 (gestaffelt). App importiert + configure_mappers gruen; 95 passed/5 skipped in betroffenen Tests, keine xfail mehr.
 - **test(g5)**: Test-Wahrheit (B4) auf `feature/g5-test-truth` (8 Commits, Tip `6c880864`) — Stub-Tarn-Skips beseitigt, Collection 26→0 Errors, statische Skip-Marker 401→232.

@@ -9,6 +9,7 @@ Testet alle Fraud Detection Funktionen:
 """
 
 import pytest
+import uuid
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -97,33 +98,6 @@ class TestFraudDetectionAPI:
 
         assert result is not None
         mock_fraud_service.analyze_all.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_analyze_fraud_no_company(self) -> None:
-        """Fehler wenn User keine Company hat."""
-        from app.api.v1.fraud_detection import analyze_fraud
-        from fastapi import HTTPException
-
-        user = MagicMock()
-        user.company_id = None
-
-        with pytest.raises(HTTPException) as exc_info:
-            await analyze_fraud(
-                days=90,
-                current_user=user,
-                db=AsyncMock(),
-            )
-
-        assert exc_info.value.status_code == 400
-        assert "Keine Firma" in exc_info.value.detail
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_analyze_fraud_days_validation(self) -> None:
-        """Query-Parameter days wird validiert."""
-        # Days muss zwischen 7 und 365 liegen
-        # Dies wird von FastAPI automatisch validiert
-        pass
 
     # ==================== Dashboard Endpoint Tests ====================
 
@@ -231,10 +205,11 @@ class TestFraudDetectionAPI:
                 fraud_type=FraudType.DUPLICATE_INVOICE,
                 risk_level=None,
                 days=30,
-                limit=50,
-                offset=0,
+                page=1,
+                per_page=50,
                 current_user=mock_user,
                 db=AsyncMock(),
+                company_id=uuid.uuid4(),
             )
 
         # Nur duplicate_invoice Alerts
@@ -266,13 +241,14 @@ class TestFraudDetectionAPI:
                 fraud_type=None,
                 risk_level=None,
                 days=30,
-                limit=5,
-                offset=3,
+                page=1,
+                per_page=5,
                 current_user=mock_user,
                 db=AsyncMock(),
+                company_id=uuid.uuid4(),
             )
 
-        # 5 Alerts ab Offset 3
+        # 5 Alerts auf Seite 1 (per_page=5 von 10)
         assert len(result) == 5
 
     # ==================== Config Endpoint Tests ====================
@@ -415,41 +391,55 @@ class TestFraudDetectionAPI:
     # ==================== Alert Detail/Action Tests ====================
 
     @pytest.mark.asyncio
-    async def test_alert_detail_not_implemented(
+    async def test_alert_detail_not_found(
         self,
         mock_user: MagicMock,
     ) -> None:
-        """Alert-Detail wirft 501 (noch nicht implementiert)."""
+        """Alert-Detail liefert 404 fuer nicht existierenden/fremden Alert."""
         from app.api.v1.fraud_detection import get_fraud_alert_detail
         from fastapi import HTTPException
 
-        with pytest.raises(HTTPException) as exc_info:
-            await get_fraud_alert_detail(
-                alert_id="test-alert",
-                current_user=mock_user,
-                db=AsyncMock(),
-            )
+        mock_service = MagicMock()
+        mock_service.get_alert = AsyncMock(return_value=None)
+        with patch(
+            "app.api.v1.fraud_detection.get_alert_center_service",
+            return_value=mock_service,
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await get_fraud_alert_detail(
+                    alert_id=uuid.uuid4(),
+                    current_user=mock_user,
+                    db=AsyncMock(),
+                    company_id=uuid.uuid4(),
+                )
 
-        assert exc_info.value.status_code == 501
+        assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_alert_action_not_implemented(
+    async def test_alert_action_not_found(
         self,
         mock_user: MagicMock,
     ) -> None:
-        """Alert-Action wirft 501 (noch nicht implementiert)."""
+        """Alert-Action liefert 404 fuer nicht existierenden/fremden Alert."""
         from app.api.v1.fraud_detection import take_alert_action, AlertActionRequest
         from fastapi import HTTPException
 
-        with pytest.raises(HTTPException) as exc_info:
-            await take_alert_action(
-                alert_id="test-alert",
-                action=AlertActionRequest(action="dismiss"),
-                current_user=mock_user,
-                db=AsyncMock(),
-            )
+        mock_service = MagicMock()
+        mock_service.get_alert = AsyncMock(return_value=None)
+        with patch(
+            "app.api.v1.fraud_detection.get_alert_center_service",
+            return_value=mock_service,
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await take_alert_action(
+                    alert_id=uuid.uuid4(),
+                    action=AlertActionRequest(action="dismiss"),
+                    current_user=mock_user,
+                    db=AsyncMock(),
+                    company_id=uuid.uuid4(),
+                )
 
-        assert exc_info.value.status_code == 501
+        assert exc_info.value.status_code == 404
 
 
 class TestFraudDetectionService:

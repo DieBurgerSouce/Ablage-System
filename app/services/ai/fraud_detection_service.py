@@ -309,9 +309,9 @@ class EnhancedFraudDetectionService:
             ))
 
         # Find fuzzy duplicates (similar amount, similar date)
-        if invoice.total_amount and invoice.created_at:
+        if invoice.amount and invoice.created_at:
             fuzzy_duplicates = await self._find_fuzzy_duplicates(
-                invoice.total_amount,
+                invoice.amount,
                 invoice.created_at,
                 invoice.entity_id,
                 invoice_id,
@@ -872,11 +872,11 @@ class EnhancedFraudDetectionService:
         """Check if amount is unusual for this company."""
         # Get median amount for last 90 days
         stmt = (
-            select(func.percentile_cont(0.5).within_group(InvoiceTracking.total_amount))
+            select(func.percentile_cont(0.5).within_group(InvoiceTracking.amount))
             .where(
                 and_(
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.total_amount.isnot(None),
+                    InvoiceTracking.amount.isnot(None),
                     InvoiceTracking.created_at >= datetime.now(timezone.utc) - timedelta(days=90),
                 )
             )
@@ -915,7 +915,7 @@ class EnhancedFraudDetectionService:
         """Create a hash for duplicate detection."""
         components = [
             str(invoice.invoice_number or "").lower().strip(),
-            f"{float(invoice.total_amount or 0):.2f}",
+            f"{float(invoice.amount or 0):.2f}",
             str(invoice.entity_id or ""),
         ]
         combined = "|".join(components)
@@ -954,8 +954,8 @@ class EnhancedFraudDetectionService:
                 and_(
                     InvoiceTracking.company_id == company_id,
                     InvoiceTracking.id != exclude_id,
-                    InvoiceTracking.total_amount >= min_amount,
-                    InvoiceTracking.total_amount <= max_amount,
+                    InvoiceTracking.amount >= min_amount,
+                    InvoiceTracking.amount <= max_amount,
                     InvoiceTracking.created_at >= min_date,
                     InvoiceTracking.created_at <= max_date,
                 )

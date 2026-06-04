@@ -1262,7 +1262,7 @@ async def get_auto_approval_stats(
     auto_approved_stmt = select(func.count(ApprovalRequest.id)).where(
         and_(
             ApprovalRequest.company_id == company_id,
-            ApprovalRequest.metadata["auto_approved"].astext == "true",
+            ApprovalRequest.request_metadata["auto_approved"].as_string() == "true",
             ApprovalRequest.created_at >= cutoff,
         )
     )
@@ -1274,8 +1274,8 @@ async def get_auto_approval_stats(
         and_(
             ApprovalRequest.company_id == company_id,
             or_(
-                ApprovalRequest.metadata["auto_approved"].is_(None),
-                ApprovalRequest.metadata["auto_approved"].astext != "true",
+                ApprovalRequest.request_metadata["auto_approved"].is_(None),
+                ApprovalRequest.request_metadata["auto_approved"].as_string() != "true",
             ),
             ApprovalRequest.created_at >= cutoff,
         )

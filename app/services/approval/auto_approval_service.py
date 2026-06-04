@@ -429,7 +429,7 @@ class AutoApprovalService:
             amount=amount,
             status=ApprovalStatus.APPROVED,
             priority=ApprovalPriority.LOW,
-            metadata={
+            request_metadata={
                 "auto_approved": True,
                 "auto_approval_reasons": [r.value for r in result.reasons],
                 "matched_rules": result.matched_rules,
@@ -437,7 +437,7 @@ class AutoApprovalService:
                 **(metadata or {}),
             },
             created_at=utc_now(),
-            completed_at=utc_now(),
+            resolved_at=utc_now(),
         )
 
         self.db.add(approval_request)
@@ -798,7 +798,7 @@ class AutoApprovalService:
         hourly_stmt = select(func.count(ApprovalRequest.id)).where(
             and_(
                 ApprovalRequest.company_id == company_id,
-                ApprovalRequest.metadata["auto_approved"].astext == "true",
+                ApprovalRequest.request_metadata["auto_approved"].as_string() == "true",
                 ApprovalRequest.created_at >= hour_ago,
             )
         )
@@ -818,7 +818,7 @@ class AutoApprovalService:
         daily_stmt = select(func.count(ApprovalRequest.id)).where(
             and_(
                 ApprovalRequest.company_id == company_id,
-                ApprovalRequest.metadata["auto_approved"].astext == "true",
+                ApprovalRequest.request_metadata["auto_approved"].as_string() == "true",
                 ApprovalRequest.created_at >= day_ago,
             )
         )

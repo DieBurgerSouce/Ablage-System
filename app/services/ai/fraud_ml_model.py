@@ -461,18 +461,34 @@ class FraudFeatureExtractor:
         ]
         return sum(1 for kw in keywords if kw in text)
 
+    @staticmethod
+    def _normalize_umlauts(text: str) -> str:
+        """Normalisiert Umlaute (ä->ae, ö->oe, ü->ue, ß->ss) fuer robustes Matching.
+
+        Betrugstexte (OCR, E-Mail) nutzen Umlaute und ihre ASCII-Transliteration
+        uneinheitlich; beide Formen muessen dieselben Signale ausloesen.
+        """
+        return (
+            text.replace("ä", "ae")
+            .replace("ö", "oe")
+            .replace("ü", "ue")
+            .replace("ß", "ss")
+        )
+
     def _has_confidentiality_request(self, text: str) -> bool:
-        """Check for confidentiality requests."""
-        keywords = ["vertraulich", "geheim", "nur für sie", "persoenlich", "diskret"]
-        return any(kw in text for kw in keywords)
+        """Check for confidentiality requests (umlaut-robust)."""
+        normalized = self._normalize_umlauts(text)
+        keywords = ["vertraulich", "geheim", "nur fuer sie", "persoenlich", "diskret"]
+        return any(kw in normalized for kw in keywords)
 
     def _mentions_bank_change(self, text: str) -> bool:
-        """Check if text mentions bank change."""
+        """Check if text mentions bank change (umlaut-robust)."""
+        normalized = self._normalize_umlauts(text)
         patterns = [
-            "neue iban", "neues konto", "bankverbindung geändert",
-            "iban geändert", "konto geändert", "neue bankdaten",
+            "neue iban", "neues konto", "bankverbindung geaendert",
+            "iban geaendert", "konto geaendert", "neue bankdaten",
         ]
-        return any(p in text for p in patterns)
+        return any(p in normalized for p in patterns)
 
     async def _get_historical_stats(self, company_id: UUID) -> Dict[str, float]:
         """Get historical statistics for amounts."""

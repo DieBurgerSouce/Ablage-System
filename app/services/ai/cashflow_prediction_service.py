@@ -39,6 +39,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.db.models_prediction_feedback import PredictionFeedbackRecord
 from app.db.models import (
     BankAccount,
     BankTransaction,
@@ -550,6 +551,47 @@ class CashflowPredictionService:
 
         return result
 
+    async def _get_recorded_prediction_metrics(
+        self, company_id: UUID
+    ) -> Optional[PredictionMetrics]:
+        """Echter Backtest aus gespeicherten Vorhersagen vs. Ist-Werten.
+
+        Quelle: PredictionFeedbackRecord (predicted_value/actual_value/was_accurate),
+        company-scoped, letzte 90 Tage. Liefert None, wenn (noch) keine
+        ausgewerteten Vorhersagen vorliegen (-> Aufrufer faellt auf Schaetzung zurueck).
+        """
+        cutoff = utc_now() - timedelta(days=90)
+        result = await self.db.execute(
+            select(PredictionFeedbackRecord).where(
+                and_(
+                    PredictionFeedbackRecord.company_id == company_id,
+                    PredictionFeedbackRecord.created_at >= cutoff,
+                )
+            )
+        )
+        records = result.scalars().all()
+        if not records:
+            return None
+        total = len(records)
+        correct = sum(1 for r in records if r.was_accurate)
+        errors = [abs(r.predicted_value - r.actual_value) for r in records]
+        mae = sum(errors) / len(errors) if errors else 0.0
+        accuracy = correct / total if total > 0 else 0.0
+        logger.info(
+            "prediction_metrics_real_backtest",
+            company_id=str(company_id),
+            total_predictions=total,
+            accuracy_rate=round(accuracy * 100, 1),
+        )
+        return PredictionMetrics(
+            total_predictions=total,
+            correct_predictions=correct,
+            mean_absolute_error_days=round(mae, 2),
+            accuracy_rate=round(accuracy * 100, 1),
+            last_evaluated=utc_now(),
+            is_estimated=False,
+        )
+
     async def get_prediction_metrics(
         self,
         company_id: UUID,
@@ -563,12 +605,16 @@ class CashflowPredictionService:
         Returns:
             Metriken basierend auf historischen Vorhersagen vs. Ist-Werten
         """
-        # M13-TRANSPARENZ: Diese Metrik basiert NICHT auf gespeicherten
-        # historischen Vorhersagen, sondern auf einer Schaetzung — als Proxy
-        # fuer "die damalige Vorhersage" dient die Entity-Zahlungshistorie.
-        # Das Ergebnis wird daher unten transparent als geschaetzt
-        # gekennzeichnet (is_estimated=True), statt eine echte Backtest-
-        # Genauigkeit vorzutaeuschen.
+        # M13: Zuerst ECHTER Backtest aus gespeicherten Vorhersagen
+        # (PredictionFeedbackRecord). Nur wenn dort (noch) nichts vorliegt,
+        # faellt die Methode auf die folgende Schaetzung zurueck.
+        real = await self._get_recorded_prediction_metrics(company_id)
+        if real is not None:
+            return real
+
+        # FALLBACK (keine gespeicherten Vorhersagen): Schaetzung als Proxy aus der
+        # Entity-Zahlungshistorie, transparent als is_estimated=True gekennzeichnet
+        # (statt eine echte Backtest-Genauigkeit vorzutaeuschen).
 
         now = utc_now()
         cutoff = now - timedelta(days=90)
