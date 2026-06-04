@@ -16,7 +16,6 @@ Endpoints:
 - POST   /handelsregister/search                  - Firmensuche
 """
 
-from __future__ import annotations
 
 from datetime import date, datetime
 from typing import List, Optional

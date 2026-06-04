@@ -8,7 +8,6 @@ Endpoints:
 - GET  /documents/{document_id}/similar - Ähnliche Dokumente finden
 """
 
-from __future__ import annotations
 
 from datetime import datetime
 from typing import List, Optional

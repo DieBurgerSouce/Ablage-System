@@ -20,7 +20,6 @@ Endpoints:
 - GET    /banking/enhanced/aggregated/transactions  - Transaktionen aller Konten
 """
 
-from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal

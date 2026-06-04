@@ -13,7 +13,6 @@ GoBD-konforme Dokumenten-Lebenszyklus-Verwaltung:
 Gesetzliche Grundlagen: §147 AO, §257 HGB, §14b UStG
 """
 
-from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Dict, List

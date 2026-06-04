@@ -10,7 +10,6 @@ Endpoints:
 - GET /entities/verification-needed - Entities die verifiziert werden sollten
 """
 
-from __future__ import annotations
 
 from typing import Dict, List, Optional
 from uuid import UUID

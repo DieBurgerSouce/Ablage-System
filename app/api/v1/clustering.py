@@ -16,7 +16,6 @@ Endpoints:
 - POST /clusters/auto-generate              - Automatisches Clustering starten
 """
 
-from __future__ import annotations
 
 from datetime import datetime
 from typing import Dict, List, Optional

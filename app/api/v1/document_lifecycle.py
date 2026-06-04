@@ -12,7 +12,6 @@ Endpoints:
 - GET  /document-lifecycle/metrics            - Stufen-Metriken (Durchschnittszeiten)
 """
 
-from __future__ import annotations
 
 from typing import Dict, List, Optional
 from uuid import UUID
