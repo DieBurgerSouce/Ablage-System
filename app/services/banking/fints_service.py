@@ -864,7 +864,7 @@ class FinTSService:
         einen fiktiven Saldo zu persistieren. Ausserhalb der Produktion bleibt der
         Mock fuer Entwicklung/Tests erlaubt.
         """
-        if settings.ENVIRONMENT.lower() in ("production", "prod"):
+        if settings.is_production:
             logger.error("fints_mock_blocked_in_production", method=method)
             return True
         return False

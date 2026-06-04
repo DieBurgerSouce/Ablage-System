@@ -26,7 +26,11 @@ from app.services.banking.fints_service import (
 
 
 def _settings(env: str, allow_mock: bool = False) -> SimpleNamespace:
-    return SimpleNamespace(ENVIRONMENT=env, FINTS_ALLOW_MOCK_SYNC=allow_mock)
+    return SimpleNamespace(
+        ENVIRONMENT=env,
+        FINTS_ALLOW_MOCK_SYNC=allow_mock,
+        is_production=env.lower().startswith("prod"),
+    )
 
 
 @pytest.mark.parametrize(
@@ -135,3 +139,75 @@ async def test_get_balance_allowed_outside_production() -> None:
         result = await svc.get_balance(db, uuid4(), company_id, pin="x")
 
     assert result is not None  # Mock-Saldo im Dev-Modus
+
+
+# === Review-Erweiterungen (B2/M9-Haertung) ===
+
+@pytest.mark.asyncio
+async def test_sync_transactions_blocked_even_with_flag_in_production() -> None:
+    """Selbst FINTS_ALLOW_MOCK_SYNC=True darf in Produktion keinen Mock buchen (Guard vor Flag)."""
+    company_id = uuid4()
+    account = MagicMock()
+    account.company_id = company_id
+    account.iban = "DE00123456780000000000"
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=account)
+
+    svc = FinTSService()
+    svc._save_transactions = AsyncMock()
+    with patch.object(fints_mod, "settings", _settings("production", allow_mock=True)):
+        result = await svc.sync_transactions(db, uuid4(), company_id, pin="x")
+
+    assert result.success is False
+    svc._save_transactions.assert_not_awaited()
+    db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_initiate_sepa_transfer_production_blocked() -> None:
+    """initiate_sepa_transfer erzeugt in Produktion keine Fake-TAN-Challenge."""
+    from decimal import Decimal
+    company_id = uuid4()
+    account = MagicMock()
+    account.company_id = company_id
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=account)
+
+    svc = FinTSService()
+    before = len(svc._pending_tans)
+    with patch.object(fints_mod, "settings", _settings("production")):
+        success, challenge, error = await svc.initiate_sepa_transfer(
+            db, uuid4(), company_id, pin="x",
+            beneficiary_name="ACME", beneficiary_iban="DE00123456780000000000",
+            beneficiary_bic=None, amount=Decimal("100.00"), reference="Test",
+        )
+
+    assert success is False
+    assert challenge is None
+    assert "Produktion" in (error or "")
+    assert len(svc._pending_tans) == before  # keine Challenge angelegt
+    db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_enhanced_fints_no_mock_in_production_even_with_flag() -> None:
+    """enhanced_fints._sync_connection darf in Produktion keine Mock-Transaktionen
+    erzeugen/reconcilen — auch nicht bei FINTS_ALLOW_MOCK_SYNC=True (materiellste M9-Lücke)."""
+    import app.services.banking.enhanced_fints_service as enh_mod
+    from app.services.banking.enhanced_fints_service import get_enhanced_fints_service
+
+    service = get_enhanced_fints_service()
+    service._generate_mock_transactions = MagicMock(return_value=[{"id": "x", "amount": 99.0}])
+
+    connection = MagicMock()
+    connection.id = uuid4()
+    connection.company_id = uuid4()
+    connection.bank_name = "TestBank"
+    connection.last_sync_at = None
+    connection.accounts = []
+
+    with patch.object(enh_mod, "settings", _settings("production", allow_mock=True)):
+        result = await service._sync_connection(connection)
+
+    service._generate_mock_transactions.assert_not_called()  # kein Mock in Prod
+    assert result.transaction_count == 0
