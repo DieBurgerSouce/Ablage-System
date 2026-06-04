@@ -258,8 +258,6 @@ class ProcessExecutionService:
         if variables:
             await self._update_variables(instance, variables, user_id)
 
-        # Signal-Events finden und aktivieren
-        # (Vereinfacht - vollständige Implementierung wuerde Event-Subscriptions benötigen)
         await self._add_history(
             instance=instance,
             event_type="SIGNAL_RECEIVED",
@@ -268,7 +266,60 @@ class ProcessExecutionService:
             new_value=variables
         )
 
+        # M17: Wartende (geparkte) Catch-Events der Instanz fortsetzen, statt das
+        # Signal nur zu protokollieren. Hinweis: Das Element-Schema speichert (noch)
+        # keinen Signal-Namen pro Catch-Event; daher werden die geparkten Nicht-Timer-
+        # Catch-/Boundary-Events der Instanz fortgesetzt (per-Signal-Namen-Matching
+        # erfordert eine Schema-Erweiterung). Strikt besser als das fruehere Verhalten,
+        # bei dem ein Signal komplett ignoriert wurde.
+        resumed = await self._resume_waiting_catch_events(instance, user_id)
+        if resumed:
+            logger.info(
+                "signal_resumed_catch_events",
+                instance_id=str(instance.id),
+                signal_name=signal_name,
+                resumed_elements=resumed,
+            )
+            await self.db.commit()
+            await self.db.refresh(instance)
+
         return instance
+
+    async def _resume_waiting_catch_events(
+        self,
+        instance: ProcessInstance,
+        user_id: Optional[UUID],
+    ) -> List[str]:
+        """Setzt geparkte (wartende) Nicht-Timer-Catch-/Boundary-Events fort.
+
+        Konsumiert das Token am wartenden Catch-Event und setzt den Flow ueber die
+        bestehende Engine-Logik (``_continue_flow``) fort. Liefert die IDs der
+        fortgesetzten Elemente. Timer-Catch-Events bleiben unberuehrt (sie feuern
+        ueber den Timer-Job).
+        """
+        definition = await self._get_definition_by_id(instance.definition_id)
+        if definition is None:
+            return []
+        process = BPMNProcess.from_dict(definition.process_data)
+        resumed: List[str] = []
+        for element_id in list(instance.current_elements):
+            element = process.get_element(element_id)
+            if element is None:
+                continue
+            if element.type not in (
+                ElementType.INTERMEDIATE_CATCH_EVENT.value,
+                ElementType.BOUNDARY_EVENT.value,
+            ):
+                continue
+            if getattr(element, "timer_type", None):
+                continue
+            current = list(instance.current_elements)
+            if element_id in current:
+                current.remove(element_id)
+                instance.current_elements = current
+            await self._continue_flow(instance, process, element, user_id)
+            resumed.append(element_id)
+        return resumed
 
     async def get_instance(
         self,
@@ -858,8 +909,10 @@ class ProcessExecutionService:
         user_id: Optional[UUID]
     ) -> None:
         """Führt einen Subprocess aus (embedded oder Call Activity)."""
-        # Vereinfachte Implementierung - vollständig wuerde
-        # eigene Sub-Instanz benötigen
+        # M17: Embedded Subprocess wird inline ausgefuehrt (siehe unten).
+        # Call Activity (Aufruf einer SEPARATEN Prozess-Definition) wuerde eine
+        # eigene Sub-Instanz erfordern - offen (eigenes Feature, braucht
+        # Sub-Instance-Verknuepfung + Rueckkopplung).
 
         await self._add_history(
             instance=instance,
