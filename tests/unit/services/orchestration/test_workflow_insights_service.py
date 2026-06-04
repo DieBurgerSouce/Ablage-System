@@ -280,7 +280,6 @@ class TestWorkflowInsight:
 class TestBatchApprovalSuggestions:
     """Tests fuer Batch-Genehmigungs-Vorschlaege (suggest_batch_approvals)."""
 
-    @pytest.mark.xfail(strict=True, reason="echter Prod-Bug: workflow_insights_service referenziert nicht-existente ORM-Attribute (ApprovalRequest.document_id/assignee_id, Document.total_amount) -> AttributeError beim Query-Build wird vom breiten except verschluckt -> Methode liefert still [] (Feature non-funktional). Test prueft korrektes Verhalten.")
     @pytest.mark.asyncio
     async def test_suggest_batch_approvals_by_supplier(
         self, service, mock_db, sample_company_id
@@ -327,7 +326,6 @@ class TestBatchApprovalSuggestions:
         # Nur 2 Items (< Schwellwert 3) -> keine Batch-Empfehlung
         assert insights == []
 
-    @pytest.mark.xfail(strict=True, reason="echter Prod-Bug: workflow_insights_service referenziert nicht-existente ORM-Attribute (ApprovalRequest.document_id/assignee_id, Document.total_amount) -> AttributeError beim Query-Build wird vom breiten except verschluckt -> Methode liefert still [] (Feature non-funktional). Test prueft korrektes Verhalten.")
     @pytest.mark.asyncio
     async def test_user_specific_batch(
         self, service, mock_db, sample_company_id, sample_user_id
@@ -371,7 +369,6 @@ class TestBatchApprovalSuggestions:
 class TestBottleneckDetection:
     """Tests fuer Bottleneck-Erkennung (detect_bottlenecks)."""
 
-    @pytest.mark.xfail(strict=True, reason="echter Prod-Bug: workflow_insights_service referenziert nicht-existente ORM-Attribute (ApprovalRequest.document_id/assignee_id, Document.total_amount) -> AttributeError beim Query-Build wird vom breiten except verschluckt -> Methode liefert still [] (Feature non-funktional). Test prueft korrektes Verhalten.")
     @pytest.mark.asyncio
     async def test_detect_bottlenecks(self, service, mock_db, sample_company_id):
         """Erkennt Engpaesse bei Benutzern oberhalb des Schwellwerts.
@@ -439,7 +436,6 @@ class TestBottleneckDetection:
 class TestAutomationSuggestions:
     """Tests fuer Automatisierungs-Vorschlaege (suggest_automation)."""
 
-    @pytest.mark.xfail(strict=True, reason="echter Prod-Bug: workflow_insights_service referenziert nicht-existente ORM-Attribute (ApprovalRequest.document_id/assignee_id, Document.total_amount) -> AttributeError beim Query-Build wird vom breiten except verschluckt -> Methode liefert still [] (Feature non-funktional). Test prueft korrektes Verhalten.")
     @pytest.mark.asyncio
     async def test_suggest_automation_for_recurring(
         self, service, mock_db, sample_company_id
@@ -522,7 +518,6 @@ class TestAutomationSuggestions:
 class TestStaleItemsDetection:
     """Tests fuer veraltete Items (detect_stale_items)."""
 
-    @pytest.mark.xfail(strict=True, reason="echter Prod-Bug: workflow_insights_service referenziert nicht-existente ORM-Attribute (ApprovalRequest.document_id/assignee_id, Document.total_amount) -> AttributeError beim Query-Build wird vom breiten except verschluckt -> Methode liefert still [] (Feature non-funktional). Test prueft korrektes Verhalten.")
     @pytest.mark.asyncio
     async def test_detect_stale_items(self, service, mock_db, sample_company_id):
         """Erkennt veraltete, wartende Items und gruppiert nach Alter.
@@ -568,7 +563,6 @@ class TestStaleItemsDetection:
 class TestWorkloadDistribution:
     """Tests fuer Workload-Verteilung (analyze_workload_distribution)."""
 
-    @pytest.mark.xfail(strict=True, reason="echter Prod-Bug: workflow_insights_service referenziert nicht-existente ORM-Attribute (ApprovalRequest.document_id/assignee_id, Document.total_amount) -> AttributeError beim Query-Build wird vom breiten except verschluckt -> Methode liefert still [] (Feature non-funktional). Test prueft korrektes Verhalten.")
     @pytest.mark.asyncio
     async def test_analyze_workload_distribution_detects_imbalance(
         self, service, mock_db, sample_company_id
@@ -669,7 +663,6 @@ class TestCombinedWorkflowAnalysis:
         assert isinstance(insights, list)
         assert insights == []
 
-    @pytest.mark.xfail(strict=True, reason="echter Prod-Bug: workflow_insights_service referenziert nicht-existente ORM-Attribute (ApprovalRequest.document_id/assignee_id, Document.total_amount) -> AttributeError beim Query-Build wird vom breiten except verschluckt -> Methode liefert still [] (Feature non-funktional). Test prueft korrektes Verhalten.")
     @pytest.mark.asyncio
     async def test_check_all_aggregates_and_sorts(
         self, service, mock_db, sample_company_id
