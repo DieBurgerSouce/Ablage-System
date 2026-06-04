@@ -339,8 +339,10 @@ class FinTSService:
             return False, None, "Login-ID nicht konfiguriert"
 
         try:
-            # In Produktion: Echte FinTS-Verbindung
-            # Hier: Mock für Entwicklung
+            if self._mock_blocked_in_production("connect"):
+                return False, None, (
+                    "FinTS in Produktion nicht verfügbar (B2/M9): echte FinTS-Anbindung fehlt."
+                )
 
             session_id = f"fints_{account_id}_{uuid4().hex[:8]}"
 
@@ -422,9 +424,12 @@ class FinTSService:
             return False, "Session nicht gefunden oder keine Berechtigung"
 
         try:
-            # In Produktion: TAN an FinTS-Server senden
-            # Hier: Mock - TAN "123456" ist immer gültig
+            if self._mock_blocked_in_production("confirm_tan"):
+                return False, (
+                    "FinTS in Produktion nicht verfügbar (B2/M9): echte FinTS-Anbindung fehlt."
+                )
 
+            # Hinweis: ausserhalb der Produktion akzeptiert der Mock jede 6+-stellige TAN.
             if tan == "123456" or len(tan) >= 6:
                 # Erfolg
                 session_data["status"] = FinTSConnectionStatus.CONNECTED
@@ -498,15 +503,7 @@ class FinTSService:
             # Echte FinTS-Anbindung ist noch nicht implementiert. Mock-Transaktionen
             # dürfen NIEMALS in Produktion gespeichert/gebucht werden (B2/M9-Schutz)
             # und nur erzeugt werden, wenn explizit per Settings freigeschaltet ist.
-            is_production = settings.ENVIRONMENT.lower() in ("production", "prod")
-            allow_mock = getattr(settings, "FINTS_ALLOW_MOCK_SYNC", False)
-
-            if is_production:
-                # Harter Guard: kein Fake-Eingang in Produktion, auch nicht bei gesetztem Flag.
-                logger.error(
-                    "fints_mock_sync_blocked_in_production",
-                    account_id=str(account_id),
-                )
+            if self._mock_blocked_in_production("sync_transactions"):
                 return FinTSSyncResult(
                     success=False,
                     sync_type=FinTSSyncType.STATEMENT,
@@ -517,6 +514,7 @@ class FinTSService:
                     ),
                 )
 
+            allow_mock = getattr(settings, "FINTS_ALLOW_MOCK_SYNC", False)
             if allow_mock:
                 mock_transactions = self._generate_mock_transactions(
                     account.iban, date_from, date_to
@@ -591,8 +589,8 @@ class FinTSService:
             return None
 
         try:
-            # In Produktion: python-fints Saldo-Abruf
-            # Hier: Mock
+            if self._mock_blocked_in_production("get_balance"):
+                return None
 
             balance = FinTSBalance(
                 balance=account.current_balance or Decimal("1234.56"),
@@ -667,8 +665,10 @@ class FinTSService:
                     amount=str(amount),
                 )
 
-            # In Produktion: SEPA-Auftrag via python-fints
-            # Hier: Mock TAN-Anforderung
+            if self._mock_blocked_in_production("initiate_sepa_transfer"):
+                return False, None, (
+                    "FinTS in Produktion nicht verfügbar (B2/M9): echte FinTS-Anbindung fehlt."
+                )
 
             tan_challenge = TANChallenge(
                 challenge_id=uuid4().hex,
@@ -854,6 +854,20 @@ class FinTSService:
             "76030080": "COBADEFFXXX",
         }
         return bics.get(blz)
+
+    def _mock_blocked_in_production(self, method: str) -> bool:
+        """True, wenn in Produktion keine Mock-/Fake-FinTS-Daten erzeugt werden duerfen (B2/M9).
+
+        Die Legacy-FinTS-Methoden liefern ausschliesslich Mock-Daten (es gibt noch
+        keine echte python-fints-Anbindung). In Produktion muessen sie hart
+        fehlschlagen, statt Fake-Daten zu liefern, eine TAN zu akzeptieren oder
+        einen fiktiven Saldo zu persistieren. Ausserhalb der Produktion bleibt der
+        Mock fuer Entwicklung/Tests erlaubt.
+        """
+        if settings.ENVIRONMENT.lower() in ("production", "prod"):
+            logger.error("fints_mock_blocked_in_production", method=method)
+            return True
+        return False
 
     def _generate_mock_transactions(
         self,
