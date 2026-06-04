@@ -466,7 +466,7 @@ class TestAsyncCashFlowForecast:
 
         projection = await service.get_cash_flow_forecast(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
             days_ahead=30,
         )
 
@@ -485,7 +485,7 @@ class TestAsyncCashFlowForecast:
 
         projection = await service.get_cash_flow_forecast(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
             days_ahead=7,
             starting_balance=Decimal("10000.00"),
         )
@@ -506,7 +506,7 @@ class TestAsyncCashFlowForecast:
         for scenario in [ForecastScenario.OPTIMISTIC, ForecastScenario.REALISTIC, ForecastScenario.PESSIMISTIC]:
             projection = await service.get_cash_flow_forecast(
                 db=mock_db,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 days_ahead=30,
                 scenario=scenario,
             )
@@ -541,7 +541,7 @@ class TestAsyncCashFlowSummary:
 
         summary = await service.get_cash_flow_summary(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
         )
 
         assert "short_term" in summary
@@ -583,7 +583,7 @@ class TestAsyncDailyForecast:
 
         daily = await service.get_daily_forecast(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
             days=7,
         )
 
@@ -626,7 +626,7 @@ class TestAsyncCompareScenarios:
 
         comparison = await service.compare_scenarios(
             db=mock_db,
-            user_id=sample_user_id,
+            company_id=sample_user_id,
             days_ahead=30,
         )
 

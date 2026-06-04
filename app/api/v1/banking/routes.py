@@ -1563,6 +1563,7 @@ async def get_cash_flow_forecast(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Erstelle Cash-Flow-Prognose.
@@ -1576,7 +1577,7 @@ async def get_cash_flow_forecast(
 
     projection = await cash_flow_service.get_cash_flow_forecast(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         days_ahead=days_ahead,
         scenario=scenario_enum,
@@ -1612,11 +1613,12 @@ async def get_cash_flow_summary(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Hole Cash-Flow-Zusammenfassung mit Warnungen."""
     return await cash_flow_service.get_cash_flow_summary(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
     )
 
@@ -1632,11 +1634,12 @@ async def get_daily_forecast(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """Hole tägliche Cash-Flow-Werte."""
     return await cash_flow_service.get_daily_forecast(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         days=days,
     )
@@ -1653,11 +1656,12 @@ async def compare_scenarios(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Vergleiche verschiedene Szenarien."""
     return await cash_flow_service.compare_scenarios(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         days_ahead=days_ahead,
     )
