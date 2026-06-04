@@ -15,6 +15,17 @@
 
 **Nächster Schritt** (priorisiert nach „Mocks → echt", separate Folge-Phase): siehe Roadmap in `MOCK_DATA_REGISTER.md`. Zusätzliche Medium/Low-Punkte (~~6 falsche Beat-Task-Namen~~ ✅ G4, ~~5 unsichtbare Task-Module~~ ✅ G4, ~~verwaiste ORM-Modelle~~ ✅ G4 (`all_models.py`), Endpoint-Dubletten, ~~leere `.secrets.baseline`~~ ✅ G2 behoben, ~~`safety || true`~~ ✅ G2 → `pip-audit`-Gate) in `TECHNICAL_DEBT.md`.
 
+### 🆕 Verbesserungs-Offensive (2026-06-04) — neu gefundene Bugs
+
+> Branch `improve/foundation-truth` (8 Commits, lokal verifiziert, **NICHT gemergt/gepusht**). Detail-Memory: `improve-foundation-truth.md`.
+
+| Bug | Schwere | Status |
+|-----|---------|--------|
+| **OpenAPI-Generierung crasht** unter pydantic 2.11 (69 Routes, v.a. simple `UUID`-Pfadparameter) → `/docs` + `/openapi.json` lieferten HTTP 500; Contract-Tests blockiert | HIGH | ✅ BEHOBEN (`8a749e77`): `from __future__ import annotations` aus 15 Routern entfernt + `fastapi==0.110.0`→`0.121.3` (war inkompat. mit pydantic 2.11) + `starlette==0.50.0` gepinnt + Contract-Tests im CI verdrahtet + Regressions-Test (`e2cb906b`). **CI-Voll-Suite-Gegenprobe offen.** |
+| **9 Doppel-Definitionen** (gleicher Name + Modul → zweite shadowed erste; alle VERSCHIEDEN, keine identischen) | MEDIUM | 🟡 GEGUARDED (`68cd7001` Ratchet-Test verhindert neue). Einzelfixes brauchen Review (welche Def kanonisch?). Orte: `orchestration.py` SeasonalPatternResponse(2649/3360); `schemas.py` DocumentTypeStats, EntityRiskResponse, EntityType, RiskFactorsResponse, TrendDataPoint, ValidationQueueListResponse; `training.py` create_quality_snapshot; `banking/models.py` TransactionFilter |
+| **API-Contract-Mismatch SeasonalPatternResponse**: Routes nahe `orchestration.py:2649` konstruieren das 2649-Shape, openapi dokumentiert aber 3360-Shape | MEDIUM | 🔴 OFFEN — braucht Review (kanonisches Shape) + Integrationstest; Blind-Fix (tote Def löschen) bricht die Laufzeit, openapi-Check fängt das NICHT |
+| **B2/M9 FinTS-Mock in Produktion** (Legacy 5 Methoden inkl. ehem. TAN-Auth-Bypass + Fake-Saldo-Persist; enhanced_fints löste echte Reconciliation+Notifications aus) | CRITICAL | ✅ BEHOBEN (`b7029018`+`5baabd75`): Prod-Hard-Block in allen Pfaden + zentrale `Settings.is_production`; 13 Tests |
+
 ### 🟡 G1-Abschluss (2026-06-03) — Follow-ups
 
 > G1 vollständig auf `feature/g1-api-companyid` (isolierter Worktree). DoD #1/#4/#5/#6/#7 erfüllt. Offene Punkte:
