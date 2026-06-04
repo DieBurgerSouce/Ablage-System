@@ -32,6 +32,7 @@ from app.services.workflow import (
     WorkflowStepExecutor,
     WorkflowTriggerService,
 )
+from sqlalchemy import Integer, select
 
 logger = structlog.get_logger(__name__)
 

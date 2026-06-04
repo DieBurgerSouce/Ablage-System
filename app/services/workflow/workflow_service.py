@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import Workflow, WorkflowStep, WorkflowExecution
+from sqlalchemy import Integer
 
 if TYPE_CHECKING:
     from app.db.models import User

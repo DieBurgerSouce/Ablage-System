@@ -28,6 +28,7 @@ from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.schemas import PrivatAccessLevel
+from sqlalchemy import and_
 
 logger = structlog.get_logger(__name__)
 

@@ -23,6 +23,7 @@ from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 from app.db.models import Company
 from app.core.safe_errors import safe_error_log, safe_error_detail
+from sqlalchemy import and_, func
 
 logger = structlog.get_logger(__name__)
 

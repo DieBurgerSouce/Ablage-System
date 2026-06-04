@@ -31,6 +31,7 @@ import structlog
 from prometheus_client import Counter, Histogram, Gauge
 
 from app.core.safe_errors import safe_error_log
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 

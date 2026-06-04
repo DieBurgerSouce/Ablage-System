@@ -17,6 +17,9 @@ from celery import shared_task
 
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log
+from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 logger = structlog.get_logger(__name__)
 

@@ -28,6 +28,7 @@ from prometheus_client import Counter, Histogram, Gauge
 from app.core.config import settings
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 

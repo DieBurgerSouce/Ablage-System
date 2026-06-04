@@ -47,6 +47,7 @@ from app.core.encryption import (
     DecryptionError,
     KeyNotConfiguredError,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 
