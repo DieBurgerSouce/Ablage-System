@@ -1680,11 +1680,12 @@ async def get_overdue_invoices(
     max_days: Optional[int] = Query(None, description="Max. Tage überfällig"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """Hole überfällige Rechnungen."""
     candidates = await dunning_service.get_overdue_invoices(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         min_days_overdue=min_days,
         max_days_overdue=max_days,
     )
@@ -1723,12 +1724,13 @@ async def create_dunning(
     notes: Optional[str] = Query(None, description="Notizen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningRecordResponse:
     """Erstelle neuen Mahnvorgang."""
     try:
         return await dunning_service.create_dunning(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             document_id=document_id,
             level=level,
             notes=notes,
@@ -1764,6 +1766,7 @@ async def list_dunnings(
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Liste Mahnvorgänge."""
     # Verwende dunning_level falls level_filter nicht gesetzt
@@ -1791,7 +1794,7 @@ async def list_dunnings(
 
     dunnings, total = await dunning_service.list_dunnings(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         status=effective_status,
         level=effective_level,
         mahnstopp=mahnstopp,
@@ -1819,11 +1822,12 @@ async def list_dunnings(
 async def get_dunning_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Hole Mahnstatistiken."""
     return await dunning_service.get_dunning_stats(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
     )
 
 
@@ -1841,12 +1845,13 @@ async def escalate_dunning(
     notes: Optional[str] = Query(None, description="Notizen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningRecordResponse:
     """Eskaliere Mahnvorgang."""
     try:
         return await dunning_service.escalate_dunning(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             dunning_id=dunning_id,
             notes=notes,
         )
@@ -1879,12 +1884,13 @@ async def close_dunning(
     notes: Optional[str] = Query(None, description="Notizen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningRecordResponse:
     """Schließe Mahnvorgang."""
     try:
         return await dunning_service.close_dunning(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             dunning_id=dunning_id,
             status=close_status,
             notes=notes,
@@ -1917,11 +1923,12 @@ async def process_automatic_dunning(
     dry_run: bool = Query(True, description="Nur simulieren, nicht ausführen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """Führe automatisches Mahnverfahren durch."""
     return await dunning_service.process_automatic_dunning(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         dry_run=dry_run,
     )
 
