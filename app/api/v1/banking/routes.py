@@ -1947,11 +1947,12 @@ async def get_dunning_history(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MahnungHistoryListResponse:
     """Hole Mahnung-Historie (immutables Audit-Log)."""
     items, total = await dunning_service.get_history(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         dunning_record_id=dunning_id,
         limit=per_page,
         offset=(page - 1) * per_page,
@@ -1973,12 +1974,13 @@ async def set_mahnstopp(
     body: MahnstoppSetRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningRecordResponse:
     """Setze Mahnstopp für einen Mahnvorgang."""
     try:
         return await dunning_service.set_mahnstopp(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             dunning_id=dunning_id,
             reason=body.reason,
             until_date=body.until_date,
@@ -2010,12 +2012,13 @@ async def lift_mahnstopp(
     notes: Optional[str] = Query(None, description="Notizen zur Aufhebung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningRecordResponse:
     """Hebe Mahnstopp auf."""
     try:
         return await dunning_service.lift_mahnstopp(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             dunning_id=dunning_id,
             notes=notes,
         )
@@ -2045,12 +2048,13 @@ async def claim_b2b_pauschale(
     dunning_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> B2BPauschaleClaimResponse:
     """Beanspruche B2B-Pauschale (EUR 40 nach BGB)."""
     try:
         return await dunning_service.claim_b2b_pauschale(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             dunning_id=dunning_id,
         )
     except ValueError as e:
@@ -2080,12 +2084,13 @@ async def set_b2b_status(
     is_b2b: bool = Query(..., description="True = B2B (11.27%), False = B2C (7.27%)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningRecordResponse:
     """Setze B2B/B2C-Status."""
     try:
         return await dunning_service.set_b2b_status(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             dunning_id=dunning_id,
             is_b2b=is_b2b,
         )
@@ -2113,6 +2118,7 @@ async def calculate_verzugszinsen(
     as_of_date: Optional[date] = Query(None, description="Berechnungsdatum (Standard: heute)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> VerzugszinsenCalculation:
     """Berechne Verzugszinsen für Mahnvorgang."""
     from datetime import date as date_type
@@ -2121,7 +2127,7 @@ async def calculate_verzugszinsen(
     # Hole Dunning Record
     dunnings, _ = await dunning_service.list_dunnings(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         offset=0,
         limit=1,
     )
@@ -2129,7 +2135,7 @@ async def calculate_verzugszinsen(
     # Filter für dunning_id (vereinfacht)
     dunning = None
     dunnings_list, _ = await dunning_service.list_dunnings(
-        db=db, user_id=current_user.id, offset=0, limit=1000
+        db=db, company_id=company_id, offset=0, limit=1000
     )
     for d in dunnings_list:
         if str(d.id) == str(dunning_id):
@@ -2246,11 +2252,12 @@ async def bulk_escalate_dunnings(
     body: BulkEscalateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BulkEscalateResponse:
     """Eskaliere mehrere Mahnvorgänge."""
     return await dunning_service.bulk_escalate(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         dunning_ids=body.dunning_ids,
         notes=body.notes,
     )
@@ -2265,11 +2272,12 @@ async def bulk_escalate_dunnings(
 async def get_dunnings_with_mahnstopp(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[DunningRecordResponse]:
     """Hole Mahnvorgänge mit Mahnstopp."""
     return await dunning_service.get_dunnings_with_mahnstopp(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
     )
 
 
