@@ -254,7 +254,7 @@ class WorkflowInsightsService:
         Returns:
             Liste von ProactiveInsights für Batch-Genehmigungen
         """
-        from app.db.models import ApprovalRequest, Document, BusinessEntity
+        from app.db.models import ApprovalRequest, ApprovalStatus, Document, BusinessEntity
 
         try:
             # Offene Genehmigungsanfragen finden
@@ -269,18 +269,18 @@ class WorkflowInsightsService:
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
-                    ApprovalRequest.status == "pending",
+                    ApprovalRequest.status == ApprovalStatus.PENDING,
                 )
             )
 
             if user_id:
-                from app.db.models import ApprovalStep
+                from app.db.models import ApprovalStep, ApprovalStatus
                 query = query.where(
                     ApprovalRequest.id.in_(
                         select(ApprovalStep.approval_request_id).where(
                             and_(
                                 ApprovalStep.assigned_user_id == user_id,
-                                ApprovalStep.status == "pending",
+                                ApprovalStep.status == ApprovalStatus.PENDING,
                             )
                         )
                     )
@@ -386,7 +386,7 @@ class WorkflowInsightsService:
         Returns:
             Liste von ProactiveInsights für Bottlenecks
         """
-        from app.db.models import ApprovalRequest, ApprovalStep, User
+        from app.db.models import ApprovalRequest, ApprovalStatus, ApprovalStep, User
 
         try:
             now = datetime.now(timezone.utc)
@@ -404,8 +404,8 @@ class WorkflowInsightsService:
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
-                    ApprovalRequest.status == "pending",
-                    ApprovalStep.status == "pending",
+                    ApprovalRequest.status == ApprovalStatus.PENDING,
+                    ApprovalStep.status == ApprovalStatus.PENDING,
                     ApprovalStep.assigned_user_id.isnot(None),
                 )
             ).group_by(ApprovalStep.assigned_user_id)
@@ -490,7 +490,7 @@ class WorkflowInsightsService:
         Returns:
             Liste von ProactiveInsights für Automatisierung
         """
-        from app.db.models import ApprovalRequest, Document, BusinessEntity
+        from app.db.models import ApprovalRequest, ApprovalStatus, Document, BusinessEntity
 
         try:
             # Analysiere historisch genehmigte Dokumente
@@ -508,7 +508,7 @@ class WorkflowInsightsService:
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
-                    ApprovalRequest.status == "approved",
+                    ApprovalRequest.status == ApprovalStatus.APPROVED,
                     ApprovalRequest.created_at >= datetime.now(timezone.utc) - timedelta(days=180),
                 )
             ).group_by(
@@ -531,7 +531,7 @@ class WorkflowInsightsService:
                 ).where(
                     and_(
                         ApprovalRequest.company_id == company_id,
-                        ApprovalRequest.status == "pending",
+                        ApprovalRequest.status == ApprovalStatus.PENDING,
                         Document.business_entity_id == entity_id,
                         ApprovalRequest.amount <= max_amount,
                     )
@@ -595,7 +595,7 @@ class WorkflowInsightsService:
         Returns:
             Liste von ProactiveInsights für veraltete Elemente
         """
-        from app.db.models import ApprovalRequest, Document
+        from app.db.models import ApprovalRequest, ApprovalStatus, Document
 
         try:
             now = datetime.now(timezone.utc)
@@ -610,7 +610,7 @@ class WorkflowInsightsService:
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
-                    ApprovalRequest.status == "pending",
+                    ApprovalRequest.status == ApprovalStatus.PENDING,
                     ApprovalRequest.created_at < stale_cutoff,
                 )
             ).order_by(ApprovalRequest.created_at.asc())
@@ -710,7 +710,7 @@ class WorkflowInsightsService:
         Returns:
             Liste von ProactiveInsights für Arbeitslast-Ungleichgewichte
         """
-        from app.db.models import ApprovalRequest, ApprovalStep, User
+        from app.db.models import ApprovalRequest, ApprovalStatus, ApprovalStep, User
 
 
         try:
@@ -723,8 +723,8 @@ class WorkflowInsightsService:
             ).where(
                 and_(
                     ApprovalRequest.company_id == company_id,
-                    ApprovalRequest.status == "pending",
-                    ApprovalStep.status == "pending",
+                    ApprovalRequest.status == ApprovalStatus.PENDING,
+                    ApprovalStep.status == ApprovalStatus.PENDING,
                     ApprovalStep.assigned_user_id.isnot(None),
                 )
             ).group_by(ApprovalStep.assigned_user_id)
