@@ -533,6 +533,13 @@ class DATEVBuchung(Base):
         nullable=False,
         index=True
     )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Multi-Tenant Isolation (in der Doppik-Refactor faelschlich entfernt)"
+    )
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -708,6 +715,13 @@ class DATEVKontierungPattern(Base):
         ForeignKey("datev_connections.id", ondelete="CASCADE"),
         nullable=False,
         index=True
+    )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Multi-Tenant Isolation (in der Doppik-Refactor faelschlich entfernt)"
     )
 
     # Matching-Kriterien
