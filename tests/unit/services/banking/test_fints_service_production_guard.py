@@ -197,7 +197,6 @@ async def test_enhanced_fints_no_mock_in_production_even_with_flag() -> None:
     from app.services.banking.enhanced_fints_service import get_enhanced_fints_service
 
     service = get_enhanced_fints_service()
-    service._generate_mock_transactions = MagicMock(return_value=[{"id": "x", "amount": 99.0}])
 
     connection = MagicMock()
     connection.id = uuid4()
@@ -206,8 +205,15 @@ async def test_enhanced_fints_no_mock_in_production_even_with_flag() -> None:
     connection.last_sync_at = None
     connection.accounts = []
 
-    with patch.object(enh_mod, "settings", _settings("production", allow_mock=True)):
-        result = await service._sync_connection(connection)
+    # Singleton-Methode sichern und garantiert wiederherstellen (keine Test-Pollution)
+    original = service._generate_mock_transactions
+    spy = MagicMock(return_value=[{"id": "x", "amount": 99.0}])
+    service._generate_mock_transactions = spy
+    try:
+        with patch.object(enh_mod, "settings", _settings("production", allow_mock=True)):
+            result = await service._sync_connection(connection)
+    finally:
+        service._generate_mock_transactions = original
 
-    service._generate_mock_transactions.assert_not_called()  # kein Mock in Prod
+    spy.assert_not_called()  # kein Mock in Prod
     assert result.transaction_count == 0
