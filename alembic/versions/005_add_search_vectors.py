@@ -28,6 +28,18 @@ def upgrade() -> None:
     # ========== Enable pgvector extension ==========
     op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
+    # ========== german_text Text-Search-Config sicherstellen ==========
+    # In der echten DB out-of-band angelegt; fuer alembic-from-scratch (frische DB)
+    # hier idempotent erzeugen, da diese Migration sie unten via to_tsvector nutzt.
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'german_text') THEN
+                CREATE TEXT SEARCH CONFIGURATION german_text (COPY = german);
+            END IF;
+        END $$;
+    """)
+
     # ========== Add search columns to documents table ==========
 
     # Full-text search vector (using existing german_text configuration)

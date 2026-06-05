@@ -51,11 +51,21 @@ def upgrade() -> None:
                   comment='Zusaetzliche Kontextdaten'),
     )
 
-    # Unique constraint: Ein KPI pro Space pro Tag
-    op.create_unique_constraint(
-        'uq_kpi_history_space_kpi_date',
-        'privat_kpi_history',
-        ['space_id', 'kpi_name', sa.text("(recorded_at::date)")]
+    # Unique constraint: Ein KPI pro Space pro Tag.
+    # Funktionaler Ausdruck (recorded_at::date) -> UNIQUE INDEX statt CONSTRAINT
+    # (SQL-Constraints erlauben keine Ausdruecke; alembic create_unique_constraint
+    # mit sa.text() wirft ArgumentError).
+    # timestamptz->date ist nicht immutable (TimeZone-abhaengig); auch extract(epoch)
+    # gilt als STABLE. Mit fixem UTC ist die Tagesableitung aber deterministisch ->
+    # eigene IMMUTABLE-Funktion, damit der funktionale Unique-Index zulaessig ist
+    # ("ein KPI pro Space pro UTC-Tag").
+    op.execute(
+        "CREATE OR REPLACE FUNCTION kpi_history_utc_day(ts timestamptz) RETURNS date "
+        "LANGUAGE sql IMMUTABLE AS $func$ SELECT (ts AT TIME ZONE 'UTC')::date $func$"
+    )
+    op.execute(
+        "CREATE UNIQUE INDEX uq_kpi_history_space_kpi_date "
+        "ON privat_kpi_history (space_id, kpi_name, kpi_history_utc_day(recorded_at))"
     )
 
     # Foreign key zu privat_spaces
@@ -72,9 +82,11 @@ def upgrade() -> None:
     op.create_index('ix_kpi_history_recorded_at', 'privat_kpi_history', ['recorded_at'])
     op.create_index('ix_kpi_history_space_kpi', 'privat_kpi_history',
                     ['space_id', 'kpi_name', 'recorded_at'])
-    # Index fuer Trend-Abfragen (letzte N Monate)
-    op.create_index('ix_kpi_history_trend_lookup', 'privat_kpi_history',
-                    ['space_id', 'kpi_name', sa.text('recorded_at DESC')])
+    # Index fuer Trend-Abfragen (letzte N Monate) - DESC-Ausdruck via Roh-SQL
+    op.execute(
+        "CREATE INDEX ix_kpi_history_trend_lookup "
+        "ON privat_kpi_history (space_id, kpi_name, recorded_at DESC)"
+    )
 
     # ==================================================
     # KPI Projections Cache - Vorausberechnete Prognosen
@@ -344,5 +356,7 @@ def downgrade() -> None:
     op.drop_index('ix_kpi_history_kpi_name', table_name='privat_kpi_history')
     op.drop_index('ix_kpi_history_space_id', table_name='privat_kpi_history')
     op.drop_constraint('fk_kpi_history_space', 'privat_kpi_history', type_='foreignkey')
-    op.drop_constraint('uq_kpi_history_space_kpi_date', 'privat_kpi_history', type_='unique')
+    # War frueher ein Unique-Constraint, ist jetzt ein funktionaler Unique-Index
+    op.drop_index('uq_kpi_history_space_kpi_date', table_name='privat_kpi_history')
     op.drop_table('privat_kpi_history')
+    op.execute("DROP FUNCTION IF EXISTS kpi_history_utc_day(timestamptz)")
