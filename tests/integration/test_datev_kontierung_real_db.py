@@ -43,15 +43,18 @@ async def db_engine():
     import app.main  # noqa: F401
     from sqlalchemy.orm import configure_mappers
     configure_mappers()
+    from app.db.models import Base
     engine = create_async_engine(_test_db_url(), echo=False, pool_pre_ping=True)
     try:
-        async with engine.connect() as conn:
-            # konto_soll existiert nur nach Migration 263 -> sonst skippen
-            await conn.execute(text("SELECT konto_soll FROM datev_buchungen LIMIT 0"))
+        # Selbst-enthaltend: modell-treues Schema via create_all (Doppik-Spalten
+        # konto_soll/betrag_soll kommen direkt aus dem Modell - kein Klon/Patch/Migration).
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            await conn.run_sync(Base.metadata.create_all)
     except Exception as exc:  # pragma: no cover - Infra-Skip
         await engine.dispose()
-        pytest.skip(f"Test-DB ohne Migration 263 ({type(exc).__name__}); siehe "
-                    f"scripts/dbtest/setup_real_test_db.sh: {str(exc)[:120]}")
+        pytest.skip(f"Test-DB nicht erreichbar/baubar ({type(exc).__name__}): {str(exc)[:140]}")
     yield engine
     await engine.dispose()
 

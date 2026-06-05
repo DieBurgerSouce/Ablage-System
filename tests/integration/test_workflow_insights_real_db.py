@@ -51,14 +51,18 @@ async def db_engine():
     from sqlalchemy.orm import configure_mappers
     configure_mappers()
 
+    from app.db.models import Base
     engine = create_async_engine(_test_db_url(), echo=False, pool_pre_ping=True)
     try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1 FROM approval_requests LIMIT 0"))
-    except Exception as exc:  # pragma: no cover - Infra-Skip
+        # Selbst-enthaltend: Schema modell-treu via create_all bauen (kein Klon/Patch,
+        # CI-faehig - nur ein leeres Postgres unter TEST_DATABASE_URL noetig).
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:  # pragma: no cover - Infra-Skip (kein Postgres erreichbar)
         await engine.dispose()
-        pytest.skip(f"Test-DB nicht bereit ({type(exc).__name__}); siehe "
-                    f"scripts/dbtest/setup_real_test_db.sh: {str(exc)[:120]}")
+        pytest.skip(f"Test-DB nicht erreichbar/baubar ({type(exc).__name__}): {str(exc)[:140]}")
     yield engine
     await engine.dispose()
 
