@@ -43,7 +43,7 @@ def _test_db_url() -> str:
 async def db_engine():
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy import text
-    import app.main  # noqa: F401
+    import app.db.all_models  # noqa: F401 - registriert alle Mapped-Klassen (kein app.main-Kruecke)
     from sqlalchemy.orm import configure_mappers
     configure_mappers()
     from app.db.models import Base

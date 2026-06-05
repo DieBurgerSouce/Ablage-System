@@ -264,7 +264,7 @@ class ScheduledReport(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
-    report = relationship("AdHocReport", back_populates="schedules")
+    report = relationship("app.db.models_adhoc_reporting.AdHocReport", back_populates="schedules")
     company = relationship("Company", backref="scheduled_reports")
     created_by = relationship("User", backref="scheduled_reports", foreign_keys=[created_by_user_id])
 
@@ -319,7 +319,7 @@ class ReportExecutionLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
-    report = relationship("AdHocReport", back_populates="execution_logs")
+    report = relationship("app.db.models_adhoc_reporting.AdHocReport", back_populates="execution_logs")
     executed_by = relationship("User", backref="adhoc_report_executions", foreign_keys=[executed_by_user_id])
 
     __table_args__ = (

@@ -50,7 +50,7 @@ async def db_engine():
     # gecached (kein Mehraufwand).
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy import text
-    import app.main  # noqa: F401 - erprobter App-Import-Graph (volle, konsistente Mapper)
+    import app.db.all_models  # noqa: F401 - registriert alle Mapped-Klassen (kein app.main-Kruecke mehr)
     from sqlalchemy.orm import configure_mappers
     configure_mappers()
 

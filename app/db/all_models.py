@@ -128,3 +128,6 @@ import app.db.models_workflow  # noqa: F401
 import app.db.models_workflow_stage  # noqa: F401
 import app.db.models_workflow_versioning  # noqa: F401
 import app.db.models_year_end  # noqa: F401
+# Subpackages mit Mapped-Klassen (keine models_*-Module -> sonst von configure_mappers vermisst)
+import app.db.bpmn_models.bpmn  # noqa: F401 - ProcessDefinition/ProcessInstance
+import app.db.bpmn_models.gobd  # noqa: F401

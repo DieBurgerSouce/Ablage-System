@@ -410,7 +410,7 @@ class DocumentSummary(Base):
     model_used = Column(String(100), nullable=False, default="template")
 
     # Relationships
-    document = relationship("Document", backref="summary")
+    document = relationship("Document", backref="ki_document_summary")
     company = relationship("Company", backref="document_summaries")
 
     __table_args__ = (

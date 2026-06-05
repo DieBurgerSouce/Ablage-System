@@ -261,7 +261,7 @@ class AdHocReportExecution(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    report = relationship("AdHocReport", back_populates="executions")
+    report = relationship("app.db.models_adhoc_report.AdHocReport", back_populates="executions")
     executor = relationship(
         "User",
         foreign_keys=[executed_by],
@@ -304,7 +304,7 @@ class AdHocReportShare(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    report = relationship("AdHocReport", back_populates="shares")
+    report = relationship("app.db.models_adhoc_report.AdHocReport", back_populates="shares")
     shared_user = relationship(
         "User",
         foreign_keys=[shared_with_user_id],
@@ -394,7 +394,7 @@ class ReportSchedule(Base):
     )
 
     # Relationships
-    report = relationship("AdHocReport", back_populates="schedules")
+    report = relationship("app.db.models_adhoc_report.AdHocReport", back_populates="schedules")
     company = relationship("Company")
 
     __table_args__ = (
