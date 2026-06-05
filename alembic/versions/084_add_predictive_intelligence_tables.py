@@ -295,14 +295,17 @@ def upgrade() -> None:
     # ==================================================
     # Fuer Decision Explainability (Phase 3)
 
-    op.add_column('ai_decisions',
-        sa.Column('explanation', JSONB, nullable=True,
-                  comment='Strukturierte Erklaerung: {factors: [...], main_reason: ..., confidence_source: ...}')
+    # Idempotent: explanation/what_if_data koennen von einer frueheren Migration
+    # bereits existieren (from-scratch-Inkonsistenz -> DuplicateColumnError).
+    op.execute("ALTER TABLE ai_decisions ADD COLUMN IF NOT EXISTS explanation JSONB")
+    op.execute(
+        "COMMENT ON COLUMN ai_decisions.explanation IS "
+        "'Strukturierte Erklaerung: {factors: [...], main_reason: ..., confidence_source: ...}'"
     )
-
-    op.add_column('ai_decisions',
-        sa.Column('what_if_data', JSONB, nullable=True,
-                  comment='What-If Simulationsdaten fuer die Entscheidung')
+    op.execute("ALTER TABLE ai_decisions ADD COLUMN IF NOT EXISTS what_if_data JSONB")
+    op.execute(
+        "COMMENT ON COLUMN ai_decisions.what_if_data IS "
+        "'What-If Simulationsdaten fuer die Entscheidung'"
     )
 
 
