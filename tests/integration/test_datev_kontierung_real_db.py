@@ -33,7 +33,10 @@ def _test_db_url() -> str:
     base = os.getenv("DATABASE_URL")
     if not base:
         pytest.skip("Kein TEST_DATABASE_URL / DATABASE_URL gesetzt")
-    return re.sub(r"/[^/?]+(\?|$)", r"/ablage_test\1", base)
+    base = re.sub(r"/[^/?]+(\?|$)", r"/ablage_test\1", base)
+    # Async-Treiber erzwingen (CI setzt oft postgresql:// = sync)
+    base = re.sub(r"^postgresql(\+\w+)?://", "postgresql+asyncpg://", base)
+    return base
 
 
 @pytest_asyncio.fixture
