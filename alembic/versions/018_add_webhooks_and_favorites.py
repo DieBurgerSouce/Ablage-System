@@ -58,9 +58,15 @@ def upgrade() -> None:
         ['is_active']
     )
 
-    # ==================== WEBHOOK DELIVERIES ====================
+    # ==================== WEBHOOK SUBSCRIPTION DELIVERIES ====================
+    # HINWEIS (Reconcile 2026-06): Tabelle hiess frueher `webhook_deliveries`,
+    # heisst im ORM-Modell aber `webhook_subscription_deliveries`
+    # (models_auth_access.py) - die NEUE Event-Platform (Migration 249) belegt den
+    # Namen `webhook_deliveries` endpoint-basiert. Ohne diese Umbenennung kollidiert
+    # 249 from-scratch ("relation webhook_deliveries already exists"). Hier an das
+    # Modell angeglichen (subscription-basiertes Zustellprotokoll).
     op.create_table(
-        'webhook_deliveries',
+        'webhook_subscription_deliveries',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column('subscription_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('webhook_subscriptions.id', ondelete='CASCADE'), nullable=False),
         sa.Column('event_type', sa.String(50), nullable=False),
@@ -79,24 +85,24 @@ def upgrade() -> None:
 
     # Indexes für webhook_deliveries
     op.create_index(
-        'ix_webhook_deliveries_subscription_id',
-        'webhook_deliveries',
+        'ix_webhook_sub_deliveries_subscription_id',
+        'webhook_subscription_deliveries',
         ['subscription_id']
     )
     op.create_index(
-        'ix_webhook_deliveries_status',
-        'webhook_deliveries',
+        'ix_webhook_sub_deliveries_status',
+        'webhook_subscription_deliveries',
         ['status']
     )
     op.create_index(
-        'ix_webhook_deliveries_event_id',
-        'webhook_deliveries',
+        'ix_webhook_sub_deliveries_event_id',
+        'webhook_subscription_deliveries',
         ['event_id'],
         unique=True
     )
     op.create_index(
-        'ix_webhook_deliveries_next_retry_at',
-        'webhook_deliveries',
+        'ix_webhook_sub_deliveries_next_retry_at',
+        'webhook_subscription_deliveries',
         ['next_retry_at'],
         postgresql_where=sa.text("status = 'pending' AND next_retry_at IS NOT NULL")
     )
@@ -149,11 +155,11 @@ def downgrade() -> None:
     op.drop_table('document_favorites')
 
     # Webhook Deliveries
-    op.drop_index('ix_webhook_deliveries_next_retry_at', table_name='webhook_deliveries')
-    op.drop_index('ix_webhook_deliveries_event_id', table_name='webhook_deliveries')
-    op.drop_index('ix_webhook_deliveries_status', table_name='webhook_deliveries')
-    op.drop_index('ix_webhook_deliveries_subscription_id', table_name='webhook_deliveries')
-    op.drop_table('webhook_deliveries')
+    op.drop_index('ix_webhook_sub_deliveries_next_retry_at', table_name='webhook_subscription_deliveries')
+    op.drop_index('ix_webhook_sub_deliveries_event_id', table_name='webhook_subscription_deliveries')
+    op.drop_index('ix_webhook_sub_deliveries_status', table_name='webhook_subscription_deliveries')
+    op.drop_index('ix_webhook_sub_deliveries_subscription_id', table_name='webhook_subscription_deliveries')
+    op.drop_table('webhook_subscription_deliveries')
 
     # Webhook Subscriptions
     op.drop_index('ix_webhook_subscriptions_is_active', table_name='webhook_subscriptions')

@@ -155,56 +155,15 @@ def upgrade() -> None:
     # ==================================================
     # User Thresholds - Personalisierte Schwellenwerte
     # ==================================================
-    # Ermoeglicht individuelle Anpassung statt harter Defaults
-
-    op.create_table(
-        'privat_user_thresholds',
-        sa.Column('id', UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text('gen_random_uuid()')),
-        sa.Column('user_id', UUID(as_uuid=True), nullable=False,
-                  comment='Referenz auf users'),
-        sa.Column('threshold_name', sa.String(100), nullable=False,
-                  comment='Name des Schwellenwerts (z.B. dti_warning, dti_critical, emergency_fund_months)'),
-        sa.Column('default_value', sa.Numeric(15, 4), nullable=False,
-                  comment='Standard-Wert (zur Anzeige)'),
-        sa.Column('custom_value', sa.Numeric(15, 4), nullable=True,
-                  comment='Benutzerdefinierter Wert (NULL = Default verwenden)'),
-        sa.Column('reason', sa.Text(), nullable=True,
-                  comment='Begruendung fuer die Anpassung'),
-        sa.Column('profession_based', sa.Boolean(), nullable=False, server_default='false',
-                  comment='Wurde basierend auf Beruf angepasst?'),
-        sa.Column('profession_type', sa.String(50), nullable=True,
-                  comment='Berufstyp fuer die Anpassung: freelancer, civil_servant, employee, entrepreneur'),
-        sa.Column('risk_profile', sa.String(20), nullable=True,
-                  comment='Risikoprofil: conservative, moderate, aggressive'),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text('NOW()')),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text('NOW()')),
-        sa.Column('extra_data', JSONB, nullable=True,
-                  comment='Zusaetzliche Metadaten'),
-    )
-
-    # Foreign key zu users
-    op.create_foreign_key(
-        'fk_user_thresholds_user',
-        'privat_user_thresholds', 'users',
-        ['user_id'], ['id'],
-        ondelete='CASCADE'
-    )
-
-    # Unique constraint: Ein Schwellenwert pro User
-    op.create_unique_constraint(
-        'uq_user_thresholds_user_name',
-        'privat_user_thresholds',
-        ['user_id', 'threshold_name']
-    )
-
-    # Indexes
-    op.create_index('ix_user_thresholds_user_id', 'privat_user_thresholds', ['user_id'])
-    op.create_index('ix_user_thresholds_name', 'privat_user_thresholds', ['threshold_name'])
-    op.create_index('ix_user_thresholds_profession', 'privat_user_thresholds', ['profession_type'],
-                    postgresql_where=sa.text('profession_type IS NOT NULL'))
+    # HINWEIS (Reconcile 2026-06): `privat_user_thresholds` wird KANONISCH in
+    # Migration 087_add_personalized_thresholds angelegt (Schema
+    # threshold_type/default_value/current_value/...; Constraint
+    # uq_user_threshold_type) - exakt so wie das ORM-Modell PrivatUserThreshold
+    # und die reale DB es fuehren (verifiziert). Die hier zuvor (084) erzeugte
+    # abweichende Variante (threshold_name/profession_type/
+    # uq_user_thresholds_user_name) war ein Squash-Duplikat, das nie der
+    # Realitaet entsprach und `alembic upgrade head` from-scratch mit
+    # "relation already exists" brach. Daher hier ENTFERNT.
 
     # ==================================================
     # Early Warnings - Proaktive Warnungen
@@ -332,12 +291,8 @@ def downgrade() -> None:
     # ==================================================
     # Drop User Thresholds
     # ==================================================
-    op.drop_index('ix_user_thresholds_profession', table_name='privat_user_thresholds')
-    op.drop_index('ix_user_thresholds_name', table_name='privat_user_thresholds')
-    op.drop_index('ix_user_thresholds_user_id', table_name='privat_user_thresholds')
-    op.drop_constraint('uq_user_thresholds_user_name', 'privat_user_thresholds', type_='unique')
-    op.drop_constraint('fk_user_thresholds_user', 'privat_user_thresholds', type_='foreignkey')
-    op.drop_table('privat_user_thresholds')
+    # `privat_user_thresholds` gehoert kanonisch zu Migration 087 (siehe upgrade);
+    # hier nichts zu droppen.
 
     # ==================================================
     # Drop Projections

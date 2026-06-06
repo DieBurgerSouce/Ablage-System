@@ -332,42 +332,15 @@ def upgrade() -> None:
     # ==========================================================================
     # AUTONOMY DECISION LOGS
     # ==========================================================================
-    op.create_table(
-        "autonomy_decision_logs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("company_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("action_type", sa.String(100), nullable=False),
-        sa.Column("action_category", sa.String(30), nullable=False),
-        sa.Column("action_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("routing_decision", sa.String(30), nullable=False),
-        sa.Column("was_auto_executed", sa.Boolean(), nullable=False, server_default="false"),
-        sa.Column("confidence_score", sa.Float(), nullable=False),
-        sa.Column("autonomy_level", sa.String(30), nullable=False),
-        sa.Column("category_override_applied", sa.Boolean(), nullable=False, server_default="false"),
-        sa.Column("low_threshold_used", sa.Float(), nullable=False),
-        sa.Column("high_threshold_used", sa.Float(), nullable=False),
-        sa.Column("decision_reason", sa.Text(), nullable=True),
-        sa.Column("decision_factors", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("outcome", sa.String(30), nullable=True),
-        sa.Column("outcome_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("user_feedback", sa.String(30), nullable=True),
-        sa.Column("decision_time_ms", sa.Integer(), nullable=True),
-        sa.Column("execution_time_ms", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
-        sa.ForeignKeyConstraint(["company_id"], ["companies.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.CheckConstraint(
-            "routing_decision IN ('auto_execute', 'suggest_and_confirm', 'manual_review')",
-            name="ck_decision_routing"
-        ),
-        comment="Protokoll der Autonomie-Entscheidungen"
-    )
-    op.create_index("ix_decision_log_company_id", "autonomy_decision_logs", ["company_id"])
-    op.create_index("ix_decision_log_company_date", "autonomy_decision_logs", ["company_id", "created_at"])
-    op.create_index("ix_decision_log_action_type", "autonomy_decision_logs", ["action_type", "created_at"])
-    op.create_index("ix_decision_log_routing", "autonomy_decision_logs", ["routing_decision", "created_at"])
-    op.create_index("ix_decision_log_outcome", "autonomy_decision_logs", ["outcome"])
-    op.create_index("ix_decision_log_action_id", "autonomy_decision_logs", ["action_id"])
+    # HINWEIS (Reconcile 2026-06): `autonomy_decision_logs` wird KANONISCH in
+    # Migration 223 angelegt (Schema user_id/document_id/context_data/
+    # suggested_value/user_action/suggestion_at/decision_at...; Indizes
+    # ix_autonomy_decision_*) - exakt wie ORM-Modell models_autonomy.py und die
+    # reale DB (verifiziert: 14 Spalten, 5 ix_autonomy_decision_*-Indizes). Die
+    # hier zuvor (144) erzeugte voellig abweichende Variante (action_category/
+    # routing_decision/outcome/ix_decision_log_*) war ein Duplikat, das nie der
+    # Realitaet entsprach und from-scratch "relation already exists" ausloeste.
+    # Daher ENTFERNT (kein Migrationsschritt 144..222 referenziert die Tabelle).
 
     # ==========================================================================
     # AUTONOMY METRICS
@@ -409,7 +382,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Drop tables in reverse order
     op.drop_table("autonomy_metrics")
-    op.drop_table("autonomy_decision_logs")
+    # autonomy_decision_logs gehoert kanonisch zu Migration 223 (siehe upgrade).
     op.drop_table("pending_actions")
     op.drop_table("autonomy_settings")
     op.drop_table("proactive_insights")

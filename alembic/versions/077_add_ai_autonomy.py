@@ -185,7 +185,12 @@ def upgrade() -> None:
 
     op.create_index("ix_ai_feedback_decision_id", "ai_learning_feedback", ["ai_decision_id"])
     op.create_index("ix_ai_feedback_processed", "ai_learning_feedback", ["processed_for_learning"])
-    op.create_index("ix_ai_feedback_type", "ai_learning_feedback", ["feedback_type"])
+    # HINWEIS (Reconcile 2026-06): Index-NAME `ix_ai_feedback_type` gehoert
+    # kanonisch zu ai_conversation_feedbacks (Migration 120 + ORM-Modell
+    # models_ai_conversation.py; Index-Namen sind global eindeutig). Das Modell
+    # ai_learning_feedback definiert KEINEN feedback_type-Index und die reale DB
+    # hat keinen -> das hier war ein Namens-Kollisions-Bug, der from-scratch
+    # "relation ix_ai_feedback_type already exists" ausloeste. Daher ENTFERNT.
 
     # =========================================================================
     # 4. DOCUMENT_MATCHES - Smart Matching

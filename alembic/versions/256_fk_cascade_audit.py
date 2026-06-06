@@ -5,6 +5,7 @@ Revises: 255
 Create Date: 2026-02-26
 """
 from alembic import op
+import sqlalchemy as sa
 
 revision = "256"
 down_revision = "255"
@@ -74,21 +75,60 @@ FK_CHANGES = [
 ]
 
 
+# HINWEIS (Reconcile 2026-06): Frueher ein nacktes op.drop_constraint auf
+# "{table}_{column}_fkey". From-scratch existiert nicht jeder dieser FKs unter genau
+# diesem Namen (oder die Spalte fehlt) -> UndefinedObject/abgebrochene Transaktion.
+# Stattdessen: Spalte pruefen, vorhandenen FK (egal welcher Name) finden + idempotent
+# droppen, dann mit gewuenschtem ondelete neu anlegen.
+def _column_exists(bind, table: str, column: str) -> bool:
+    return bind.execute(
+        sa.text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = :t AND column_name = :c"
+        ),
+        {"t": table, "c": column},
+    ).scalar() is not None
+
+
+def _existing_fk_name(bind, table: str, column: str):
+    return bind.execute(
+        sa.text(
+            "SELECT con.conname FROM pg_constraint con "
+            "JOIN pg_class rel ON rel.oid = con.conrelid "
+            "JOIN pg_attribute att ON att.attrelid = con.conrelid "
+            "  AND att.attnum = ANY(con.conkey) "
+            "WHERE rel.relname = :t AND con.contype = 'f' AND att.attname = :c "
+            "LIMIT 1"
+        ),
+        {"t": table, "c": column},
+    ).scalar()
+
+
+def _apply_fk(table: str, column: str, ref_table: str, ondelete):
+    bind = op.get_bind()
+    # Spalte UND Ziel-Tabelle muessen existieren. Einige Modell-Tabellen (z.B.
+    # batch_jobs) werden von KEINER Migration angelegt und fehlen from-scratch ->
+    # FK ueberspringen statt "relation does not exist" zu werfen.
+    if not _column_exists(bind, table, column):
+        return
+    if bind.execute(
+        sa.text("SELECT to_regclass(:t)"), {"t": ref_table}
+    ).scalar() is None:
+        return
+    existing = _existing_fk_name(bind, table, column)
+    if existing:
+        op.execute(f'ALTER TABLE {table} DROP CONSTRAINT IF EXISTS "{existing}"')
+    kwargs = {"ondelete": ondelete} if ondelete else {}
+    op.create_foreign_key(
+        f"{table}_{column}_fkey", table, ref_table, [column], ["id"], **kwargs
+    )
+
+
 def upgrade() -> None:
     for table, column, ref_table, ondelete in FK_CHANGES:
-        constraint_name = f"{table}_{column}_fkey"
-        op.drop_constraint(constraint_name, table, type_="foreignkey")
-        op.create_foreign_key(
-            constraint_name, table, ref_table,
-            [column], ["id"], ondelete=ondelete,
-        )
+        _apply_fk(table, column, ref_table, ondelete)
 
 
 def downgrade() -> None:
     for table, column, ref_table, _ in FK_CHANGES:
-        constraint_name = f"{table}_{column}_fkey"
-        op.drop_constraint(constraint_name, table, type_="foreignkey")
-        op.create_foreign_key(
-            constraint_name, table, ref_table,
-            [column], ["id"],
-        )
+        _apply_fk(table, column, ref_table, None)

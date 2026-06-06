@@ -255,9 +255,29 @@ def do_run_migrations(connection: Connection) -> None:
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
+        # Opt-in (Default = aus = bisheriges Verhalten: eine Transaktion fuer den
+        # gesamten Lauf). Mit ALEMBIC_TX_PER_MIGRATION=1 committet jede Migration
+        # einzeln -> ein fehlschlagender Schritt rollt nicht die ganze Kette zurueck
+        # und `upgrade head` kann nach einem Fix fortsetzen.
+        transaction_per_migration=(os.getenv("ALEMBIC_TX_PER_MIGRATION") == "1"),
     )
 
     with context.begin_transaction():
+        # Reconcile (2026-06): Mehrere Revision-IDs sind > 32 Zeichen
+        # (z.B. 136_add_document_versioning_signatures = 38,
+        #  223_add_knowledge_graph_autonomy_comments = 41). Alembics Default-
+        # alembic_version.version_num ist VARCHAR(32) -> from-scratch bricht mit
+        # StringDataRightTruncationError. Die reale DB nutzt VARCHAR(128); hier
+        # idempotent dieselbe Breite sicherstellen, BEVOR alembic stempelt.
+        connection.execute(text(
+            "CREATE TABLE IF NOT EXISTS alembic_version ("
+            "version_num VARCHAR(128) NOT NULL, "
+            "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+        ))
+        connection.execute(text(
+            "ALTER TABLE alembic_version "
+            "ALTER COLUMN version_num TYPE VARCHAR(128)"
+        ))
         context.run_migrations()
 
 

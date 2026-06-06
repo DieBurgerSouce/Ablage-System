@@ -67,8 +67,15 @@ def upgrade() -> None:
         sa.Column('processed_date', sa.DateTime(timezone=True), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+        # Soft-Delete-Felder (Reconcile 2026-06): in der realen DB out-of-band ergaenzt,
+        # NIE per Migration angelegt -> hier im Initial-Schema nachgezogen, damit
+        # Migrationen ab 095 (Views/Queries auf documents.deleted_at) from-scratch laufen.
+        # FK -> users wie in der realen DB (documents_deleted_by_id_fkey, ON DELETE NO ACTION).
+        sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('deleted_by_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('owner_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['deleted_by_id'], ['users.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_documents_checksum', 'documents', ['checksum'], unique=False)
@@ -159,6 +166,12 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('action', sa.String(length=100), nullable=False),
+        # success: Reconcile 2026-06 - das ORM-Modell (models.py AuditLog) deklariert
+        # diese Spalte (Boolean, default True, NOT NULL), sie wurde aber NIE per
+        # Migration angelegt. Die View in Migration 253 (gobd_gdpr_compliance_views)
+        # referenziert al.success -> from-scratch sonst "column al.success does not
+        # exist". Hier modell-treu nachgezogen.
+        sa.Column('success', sa.Boolean(), nullable=False, server_default=sa.text('true')),
         sa.Column('resource_type', sa.String(length=50), nullable=True),
         sa.Column('resource_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('ip_address', sa.String(length=45), nullable=True),

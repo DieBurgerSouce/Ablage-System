@@ -311,36 +311,39 @@ def _seed_default_integration_configs() -> None:
         # Keine Mandanten vorhanden (Erstinstallation ohne Seed-Daten)
         return
 
-    # Seed-Datensätze aufbauen
+    # Seed-Datensaetze aufbauen.
+    # HINWEIS (Reconcile 2026-06): Frueher ein raw INSERT mit :name::uuid/::jsonb-
+    # Casts -> asyncpg kann SQLAlchemy-Named-Params + Casts im executemany-Pfad nicht
+    # parsen ("syntax error at or near :"). Stattdessen op.bulk_insert mit typisierter
+    # Ad-hoc-Tabelle: SQLAlchemy kompiliert die Typen (UUID/JSONB) korrekt fuer asyncpg.
+    # integration_configs wird in DIESER Migration frisch angelegt -> leer, daher ist
+    # ON CONFLICT nicht noetig (keine Kollision moeglich).
+    integration_configs_tbl = sa.table(
+        "integration_configs",
+        sa.column("id", postgresql.UUID(as_uuid=True)),
+        sa.column("company_id", postgresql.UUID(as_uuid=True)),
+        sa.column("integration_type", sa.String()),
+        sa.column("display_name", sa.String()),
+        sa.column("config", postgresql.JSONB()),
+        sa.column("is_active", sa.Boolean()),
+        sa.column("sync_interval_minutes", sa.Integer()),
+    )
     rows = []
     for company_row in company_rows:
-        company_id = str(company_row[0])
+        company_id = company_row[0]  # asyncpg liefert bereits uuid.UUID
         for integration in _DEFAULT_INTEGRATIONS:
             rows.append({
-                "id": str(uuid.uuid4()),
+                "id": uuid.uuid4(),
                 "company_id": company_id,
                 "integration_type": integration["integration_type"],
                 "display_name": integration["display_name"],
-                "config": "{}",
-                "is_active": False,  # Standardmäßig deaktiviert bis konfiguriert
+                "config": {},
+                "is_active": False,  # Standardmaessig deaktiviert bis konfiguriert
                 "sync_interval_minutes": integration["sync_interval_minutes"],
             })
 
     if rows:
-        bind.execute(
-            sa.text(
-                """
-                INSERT INTO integration_configs
-                    (id, company_id, integration_type, display_name, config,
-                     is_active, sync_interval_minutes)
-                VALUES
-                    (:id, :company_id::uuid, :integration_type, :display_name,
-                     :config::jsonb, :is_active, :sync_interval_minutes)
-                ON CONFLICT DO NOTHING
-                """
-            ),
-            rows,
-        )
+        op.bulk_insert(integration_configs_tbl, rows)
 
 
 def downgrade() -> None:
