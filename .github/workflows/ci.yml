@@ -301,20 +301,23 @@ jobs:
           fail_ci_if_error: true
 
   # Job 4: Integration Tests (Schema via `alembic upgrade head`)
-  # HINWEIS: Dieser Job ist derzeit WAHRHEITSGEMAESS ROT, weil die alembic-Kette
-  # von Null NICHT durchlaeuft (>=5 distinkte Inkonsistenzen in den ersten 84/262
-  # Migrationen, nie from-scratch gefahren; Tracking in
-  # .claude/memory/KNOWN_ISSUES.md, Item "alembic-from-scratch"). Zudem nutzt der
-  # Job postgres:16-alpine OHNE pgvector. Echte Integrationsabdeckung liefert
-  # bis zur Migrations-Remediation der Job `test-integration-realdb` (create_all,
-  # pgvector). Dieser Job wird NICHT kaschiert - das rote Signal bleibt sichtbar.
+  # HINWEIS (2026-06): Die alembic-Kette laeuft jetzt from-scratch sauber durch
+  # (Commit "fix(alembic): upgrade head von Null ... 264->265"; verifiziert gegen
+  # leeres pgvector-Postgres bis Head 265, Single-Transaction, alle 480 Modell-
+  # Tabellen). Voraussetzung: pgvector-Image (005 legt `vector` an, 033 `pg_trgm`)
+  # und ein asyncpg-DATABASE_URL fuer den Migrationsschritt (env.py nutzt eine
+  # Async-Engine). Dieser Job faehrt die BREITE Integrationssuite gegen das echte
+  # migrationsgebaute Schema; sein Pass/Fail der Tests selbst ist in dieser Session
+  # NICHT end-to-end validiert und bleibt wahrheitsgemaess sichtbar. Die schmale,
+  # validierte Semantik-Abdeckung liefert weiterhin `test-integration-realdb`.
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:16-alpine
+        # pgvector-Image: `alembic upgrade head` legt via 005 die vector-Extension an.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -368,7 +371,9 @@ jobs:
 
       - name: Run Database Migrations
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_test
+          # asyncpg-Treiber: env.py baut die Migrations-Engine via
+          # async_engine_from_config -> URL MUSS +asyncpg sein (sonst Sync-Treiber).
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ablage_test
         run: |
           echo "::group::Database Migrations"
           alembic upgrade head
