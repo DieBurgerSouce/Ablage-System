@@ -739,6 +739,10 @@ class AutoReconciliationService:
             invoice.outstanding_amount = float(Decimal(str(invoice.outstanding_amount)) - payment_amount)
 
             if invoice.outstanding_amount <= 0:
+                # M13: Vorhersage-Feedback VOR dem paid-Uebergang erfassen. Leak-frei,
+                # weil die Rechnung hier noch nicht 'paid' ist und damit nicht in die
+                # Historie der Verzugs-Vorhersage einfliesst.
+                await self._record_delay_feedback(db, invoice, tx, match.entity_id)
                 invoice.status = "paid"
                 invoice.outstanding_amount = 0
 
@@ -747,6 +751,83 @@ class AutoReconciliationService:
                 invoice.skonto_used = True
 
         await db.flush()
+
+    async def _record_delay_feedback(
+        self,
+        db: AsyncSession,
+        invoice: InvoiceTracking,
+        tx: ImportedTransaction,
+        entity_id: Optional[UUID],
+    ) -> None:
+        """Persistiert Vorhersage-Feedback (predicted vs. actual Zahlungsverzug).
+
+        M13: Macht den Cashflow-Backtest real, indem beim Uebergang einer Rechnung
+        auf 'paid' die Verzugs-Vorhersage der Entity gegen den tatsaechlichen Verzug
+        gespeichert wird (``PredictionFeedbackRecord``).
+
+        Garantien:
+        - **Leak-frei**: Aufruf erfolgt VOR dem paid-Uebergang; die aktuelle Rechnung
+          ist damit noch nicht Teil der Vorhersage-Historie.
+        - **Failure-isoliert**: Ein Fehler hier darf den Bank-Abgleich NIE abbrechen
+          (try/except + SAVEPOINT via ``begin_nested``).
+        - **Idempotent**: pro Rechnung genau ein Feedback (``prediction_id`` ist unique).
+
+        Nur der automatische Abgleich (``_apply_match``) ist abgedeckt; manueller
+        Match/Split bleiben bewusst aussen vor.
+        """
+        if entity_id is None or invoice.due_date is None:
+            return
+        payment_date = getattr(tx, "value_date", None) or getattr(tx, "booking_date", None)
+        if payment_date is None:
+            return
+
+        try:
+            from app.db.models_prediction_feedback import PredictionFeedbackRecord
+            from app.services.ai.predictive_payment_service import (
+                get_predictive_payment_service,
+                PredictionFeedback,
+            )
+
+            prediction_id = f"recon-delay:{invoice.id}"
+
+            # Idempotenz: pro Rechnung nur einmal Feedback erfassen.
+            existing = await db.execute(
+                select(PredictionFeedbackRecord.id).where(
+                    PredictionFeedbackRecord.prediction_id == prediction_id
+                )
+            )
+            if existing.scalar_one_or_none() is not None:
+                return
+
+            actual_delay_days = (payment_date - invoice.due_date).days
+
+            predictive = get_predictive_payment_service()
+            prediction = await predictive.predict_payment_delay(db, entity_id)
+
+            feedback = PredictionFeedback(
+                prediction_id=prediction_id,
+                entity_id=entity_id,
+                prediction_type="delay",
+                predicted_value=float(prediction.predicted_delay_days),
+                actual_value=float(actual_delay_days),
+            )
+
+            # SAVEPOINT: ein fehlgeschlagener Insert (z.B. Race auf den unique
+            # prediction_id) wird isoliert zurueckgerollt, ohne die aeussere
+            # Reconciliation-Transaktion zu vergiften.
+            async with db.begin_nested():
+                await predictive.record_prediction_feedback(
+                    db, feedback, invoice.company_id
+                )
+
+            logger.info(
+                "delay_feedback_recorded",
+                entity_id=str(entity_id),
+                predicted_delay_days=float(prediction.predicted_delay_days),
+                actual_delay_days=float(actual_delay_days),
+            )
+        except Exception as e:  # noqa: BLE001 - Feedback darf Abgleich nie brechen
+            logger.warning("delay_feedback_skipped", **safe_error_log(e))
 
     # =========================================================================
     # Batch Reconciliation

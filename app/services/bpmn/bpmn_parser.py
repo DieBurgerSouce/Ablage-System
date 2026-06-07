@@ -99,6 +99,10 @@ class BPMNElement:
     timer_type: Optional[str] = None  # date, duration, cycle
     timer_value: Optional[str] = None
 
+    # Signal Event spezifisch (M17)
+    signal_ref: Optional[str] = None   # signalRef-ID aus <signalEventDefinition>
+    signal_name: Optional[str] = None  # aufgeloester Name aus globaler <signal>-Definition
+
     # Boundary Event spezifisch
     attached_to_ref: Optional[str] = None
     cancel_activity: bool = True
@@ -266,8 +270,16 @@ class BPMNParser:
             is_executable=process_elem.get("isExecutable", "true").lower() == "true",
         )
 
+        # Globale Signal-Definitionen liegen auf definitions-Ebene (ausserhalb
+        # <process>); fuer per-Signal-Namen-Matching aufloesen (signalRef -> name).
+        signal_defs = {
+            sig.get("id"): sig.get("name")
+            for sig in root.findall(f"{BPMN_NS}signal")
+            if sig.get("id")
+        }
+
         # Alle Elemente parsen
-        elements = self._parse_process_elements(process_elem)
+        elements = self._parse_process_elements(process_elem, signal_defs)
         process.elements = elements
         process._build_index()
 
@@ -281,9 +293,11 @@ class BPMNParser:
 
     def _parse_process_elements(
         self,
-        process_elem: ET.Element
+        process_elem: ET.Element,
+        signal_defs: Optional[Dict[str, str]] = None,
     ) -> List[BPMNElement]:
         """Parst alle Elemente innerhalb eines Process."""
+        signal_defs = signal_defs or {}
         elements = []
 
         for child in process_elem:
@@ -291,7 +305,7 @@ class BPMNParser:
 
             # Events
             if tag in self.EVENT_TYPES:
-                elements.append(self._parse_event(child, self.EVENT_TYPES[tag]))
+                elements.append(self._parse_event(child, self.EVENT_TYPES[tag], signal_defs))
 
             # Tasks
             elif tag in self.TASK_TYPES:
@@ -307,7 +321,7 @@ class BPMNParser:
 
             # Subprocess
             elif tag == f"{BPMN_NS}subProcess":
-                elements.append(self._parse_subprocess(child))
+                elements.append(self._parse_subprocess(child, signal_defs))
 
             # Call Activity
             elif tag == f"{BPMN_NS}callActivity":
@@ -362,10 +376,22 @@ class BPMNParser:
     def _parse_event(
         self,
         elem: ET.Element,
-        element_type: ElementType
+        element_type: ElementType,
+        signal_defs: Optional[Dict[str, str]] = None
     ) -> BPMNElement:
         """Parst ein Event-Element."""
         element = self._parse_base_element(elem, element_type)
+        signal_defs = signal_defs or {}
+
+        # Signal Event Definition (M17): signalRef speichern und - falls vorhanden -
+        # den menschenlesbaren Namen aus der globalen <signal>-Definition aufloesen.
+        # Ermoeglicht per-Signal-Namen-Matching beim Resume (siehe signal()).
+        signal_def = elem.find(f"{BPMN_NS}signalEventDefinition")
+        if signal_def is not None:
+            ref = signal_def.get("signalRef")
+            element.signal_ref = ref
+            if ref and ref in signal_defs:
+                element.signal_name = signal_defs[ref]
 
         # Timer Event Definition
         timer_def = elem.find(f"{BPMN_NS}timerEventDefinition")
@@ -477,12 +503,12 @@ class BPMNParser:
 
         return element
 
-    def _parse_subprocess(self, elem: ET.Element) -> BPMNElement:
+    def _parse_subprocess(self, elem: ET.Element, signal_defs: Optional[Dict[str, str]] = None) -> BPMNElement:
         """Parst einen Subprocess (embedded)."""
         element = self._parse_base_element(elem, ElementType.SUB_PROCESS)
 
         # Rekursiv innere Elemente parsen
-        inner_elements = self._parse_process_elements(elem)
+        inner_elements = self._parse_process_elements(elem, signal_defs)
         element.elements = inner_elements
 
         return element

@@ -614,6 +614,11 @@ services:
       # Ganzes Verzeichnis mounten, damit __init__.py-Hierarchie greift (sentry, vault, etc).
       - ./infrastructure:/app/infrastructure:ro
       - ./Trainings_Data:/app/Trainings_Data:ro
+      # 2026-06-07: tests/ + pytest.ini gemountet, damit der dokumentierte
+      # `docker-compose exec backend pytest tests/...`-Gesundheitscheck out-of-the-box
+      # laeuft (Image enthaelt tests/ nicht). Read-only, beeinflusst den Prod-Pfad nicht.
+      - ./tests:/app/tests:ro
+      - ./pytest.ini:/app/pytest.ini:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage

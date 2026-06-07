@@ -267,12 +267,11 @@ class ProcessExecutionService:
         )
 
         # M17: Wartende (geparkte) Catch-Events der Instanz fortsetzen, statt das
-        # Signal nur zu protokollieren. Hinweis: Das Element-Schema speichert (noch)
-        # keinen Signal-Namen pro Catch-Event; daher werden die geparkten Nicht-Timer-
-        # Catch-/Boundary-Events der Instanz fortgesetzt (per-Signal-Namen-Matching
-        # erfordert eine Schema-Erweiterung). Strikt besser als das fruehere Verhalten,
-        # bei dem ein Signal komplett ignoriert wurde.
-        resumed = await self._resume_waiting_catch_events(instance, user_id)
+        # Signal nur zu protokollieren. Per-Signal-Namen-Matching: nur Catch-Events,
+        # deren aufgeloester Signal-Name oder signalRef-ID zum empfangenen Signal
+        # passt, werden fortgesetzt. Alt-Definitionen ohne hinterlegten Signal-Namen
+        # feuern weiterhin (Rueckwaertskompatibilitaet).
+        resumed = await self._resume_waiting_catch_events(instance, user_id, signal_name)
         if resumed:
             logger.info(
                 "signal_resumed_catch_events",
@@ -289,6 +288,7 @@ class ProcessExecutionService:
         self,
         instance: ProcessInstance,
         user_id: Optional[UUID],
+        signal_name: Optional[str] = None,
     ) -> List[str]:
         """Setzt geparkte (wartende) Nicht-Timer-Catch-/Boundary-Events fort.
 
@@ -296,6 +296,11 @@ class ProcessExecutionService:
         bestehende Engine-Logik (``_continue_flow``) fort. Liefert die IDs der
         fortgesetzten Elemente. Timer-Catch-Events bleiben unberuehrt (sie feuern
         ueber den Timer-Job).
+
+        Per-Signal-Namen-Matching (M17): Ist ``signal_name`` gesetzt, werden nur
+        Catch-Events fortgesetzt, deren aufgeloester Signal-Name oder signalRef-ID
+        passt (siehe ``_signal_matches_element``). Ohne ``signal_name`` bzw. fuer
+        Alt-Events ohne hinterlegten Signal-Namen bleibt das bisherige Verhalten.
         """
         definition = await self._get_definition_by_id(instance.definition_id)
         if definition is None:
@@ -313,6 +318,8 @@ class ProcessExecutionService:
                 continue
             if getattr(element, "timer_type", None):
                 continue
+            if not self._signal_matches_element(element, signal_name):
+                continue
             current = list(instance.current_elements)
             if element_id in current:
                 current.remove(element_id)
@@ -320,6 +327,26 @@ class ProcessExecutionService:
             await self._continue_flow(instance, process, element, user_id)
             resumed.append(element_id)
         return resumed
+
+    @staticmethod
+    def _signal_matches_element(element: BPMNElement, signal_name: Optional[str]) -> bool:
+        """Prueft, ob ein wartendes Catch-Event zum empfangenen Signal passt.
+
+        Name-+-ID-Matching mit Rueckwaertskompatibilitaet:
+        - ``signal_name is None`` (z.B. interner Aufruf ohne Namen): alle Nicht-
+          Timer-Catch-Events feuern (bisheriges Verhalten).
+        - Element ohne hinterlegten Signal-Namen UND ohne signalRef-ID (Definitionen
+          aus der Zeit vor dieser Erweiterung): feuert weiterhin -> BC.
+        - Sonst muss ``signal_name`` dem aufgeloesten Namen ODER der signalRef-ID
+          entsprechen.
+        """
+        if signal_name is None:
+            return True
+        elem_name = getattr(element, "signal_name", None)
+        elem_ref = getattr(element, "signal_ref", None)
+        if elem_name is None and elem_ref is None:
+            return True
+        return signal_name == elem_name or signal_name == elem_ref
 
     async def get_instance(
         self,
