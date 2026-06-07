@@ -144,7 +144,7 @@ class TestSLADefinition:
         company_id: UUID,
     ) -> None:
         """Test SLA definition with zero duration fails."""
-        with pytest.raises(ValueError, match="groesser als 0"):
+        with pytest.raises(ValueError, match="größer als 0"):
             await sla_service.define_sla(
                 workflow_type="invoice-approval",
                 max_duration_hours=0,
@@ -158,7 +158,7 @@ class TestSLADefinition:
         company_id: UUID,
     ) -> None:
         """Test SLA definition with negative duration fails."""
-        with pytest.raises(ValueError, match="groesser als 0"):
+        with pytest.raises(ValueError, match="größer als 0"):
             await sla_service.define_sla(
                 workflow_type="invoice-approval",
                 max_duration_hours=-5,

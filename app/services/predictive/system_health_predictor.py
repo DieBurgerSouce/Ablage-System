@@ -213,7 +213,9 @@ class SystemHealthPredictor:
             metadata: Zusätzliche Informationen
         """
         history = self._histories.get(metric.value)
-        if history:
+        # Fix: Eine leere MetricHistory ist falsy (definiert __len__, kein __bool__),
+        # daher 'is not None' statt Truthiness - sonst werden Metriken nie erfasst.
+        if history is not None:
             history.add(value, metadata)
 
     def record_queue_metric(

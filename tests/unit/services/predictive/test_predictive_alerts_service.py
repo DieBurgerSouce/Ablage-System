@@ -9,7 +9,7 @@ Testet:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -388,7 +388,7 @@ class TestAlertCleanup:
             eta_minutes=None,
             confidence=0.80,
             source="test",
-            created_at=datetime.utcnow() - timedelta(hours=48)
+            created_at=datetime.now(timezone.utc) - timedelta(hours=48)
         )
         service._active_alerts[old_alert.id] = old_alert
 
@@ -403,7 +403,7 @@ class TestAlertCleanup:
             eta_minutes=5.0,
             confidence=0.85,
             source="test",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         service._active_alerts[new_alert.id] = new_alert
 
