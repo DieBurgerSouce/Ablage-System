@@ -17,7 +17,7 @@ import structlog
 # Type alias for BPMN process variable values
 ProcessVariableValue = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.bpmn_models.bpmn import (
@@ -250,6 +250,9 @@ class ProcessExecutionService:
         Returns:
             Aktualisierte Instanz
         """
+        # Concurrency guard: serialize signal/timer/task-complete on this instance.
+        await acquire_instance_lock(self.db, instance_id)
+
         instance = await self.get_instance(instance_id, company_id)
         if not instance:
             raise ValueError("Prozess-Instanz nicht gefunden")
@@ -1245,6 +1248,9 @@ class ProcessExecutionService:
 
         Wird von TaskService.complete() aufgerufen.
         """
+        # Concurrency guard: serialize signal/timer/task-complete on this instance.
+        await acquire_instance_lock(self.db, instance_id)
+
         instance = await self.get_instance(instance_id, company_id)
         if not instance:
             raise ValueError("Prozess-Instanz nicht gefunden")
@@ -1388,6 +1394,24 @@ class ProcessExecutionService:
         )
         result = await self.db.execute(query)
         return result.scalar_one()
+
+
+async def acquire_instance_lock(db: AsyncSession, instance_id: UUID) -> None:
+    """Serialize concurrent engine operations on a single process instance.
+
+    The engine runs ``signal``, timer firing and ``continue_after_task`` as
+    recursive read-modify-write of ``instance.current_elements`` / ``variables``
+    with no row lock, so concurrent operations on the SAME instance could lose
+    or duplicate tokens. This takes a transaction-scoped PostgreSQL advisory
+    lock keyed on the instance id, serializing those operations per instance.
+    The lock auto-releases on COMMIT/ROLLBACK and only ever locks one key per
+    operation, so it cannot deadlock. No-op against non-Postgres mock sessions
+    in unit tests (``db.execute`` is mocked).
+    """
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:iid, 0))"),
+        {"iid": str(instance_id)},
+    )
 
 
 def get_process_execution_service(db: AsyncSession) -> ProcessExecutionService:

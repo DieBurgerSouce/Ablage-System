@@ -97,6 +97,10 @@ class TimerService:
             logger.info("timer_already_inactive", timer_id=str(timer_id))
             return False
 
+        # Concurrency guard: serialize signal/timer/task-complete on this instance.
+        from app.services.bpmn.process_execution_service import acquire_instance_lock
+        await acquire_instance_lock(self.db, timer.instance_id)
+
         # Instanz prüfen
         instance = await self._get_instance(timer.instance_id, company_id)
         if not instance or instance.status != ProcessStatus.RUNNING:
