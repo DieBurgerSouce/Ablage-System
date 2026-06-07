@@ -347,7 +347,10 @@ class SelfLearningOCRService:
             )
             return True
         except Exception as exc:
-            safe_error_log(logger, "Fehler bei sofortiger Korrektur", exc)
+            logger.error(
+                "ocr_realtime_correction_failed",
+                **safe_error_log(exc, context="Sofortige Korrektur"),
+            )
             return False
 
     # =========================================================================

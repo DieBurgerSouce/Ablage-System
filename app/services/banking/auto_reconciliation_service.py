@@ -516,10 +516,14 @@ class AutoReconciliationService:
 
         candidates = []
         for invoice in invoices:
-            # Calculate expected skonto amount
+            # Calculate expected skonto amount.
+            # Base MUST be the gross invoice amount (mirrors
+            # skonto_service.apply_skonto), NOT the outstanding amount -- using
+            # outstanding misfires the match on partially-paid invoices.
             skonto_pct = Decimal(str(invoice.skonto_percentage or 0))
-            invoice_amount = Decimal(str(invoice.outstanding_amount))
-            expected_skonto_amount = invoice_amount * (1 - skonto_pct / 100)
+            invoice_amount = Decimal(str(invoice.amount))
+            skonto_amount = (invoice_amount * skonto_pct / 100).quantize(Decimal("0.01"))
+            expected_skonto_amount = invoice_amount - skonto_amount
 
             # Check if transaction matches skonto amount
             tolerance = expected_skonto_amount * Decimal(str(self.config.amount_tolerance_percent))
