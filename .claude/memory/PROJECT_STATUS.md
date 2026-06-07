@@ -15,6 +15,8 @@
 >
 > **Update 2026-06-04 (gegen master `833d24d7` verifiziert):** Die „4 Blocker"-Schlagzeile oben ist überholt — **B1** ✅ behoben (`current_user.company_id` 821→1, G1), **B3** ✅ (G2 CI), **B4** ✅ (G5 Stub-Tests echt; Voll-Grün der DB-Tests braucht noch Test-DB im CI). **B2**: alle Mock-Guards komplett — auch Legacy-`fints_service.py` (alle 5 Methoden) jetzt produktions-hart (`improve/foundation-truth`, Commits `2c52915c`/`b7029018`, 10 Tests). Realer Rest: **1 bewusst outscopter Punkt** (echter PSD2-OAuth2-Token, BaFin). → faktisch „🟡 GELB, 1 outscoped Rest-Blocker" statt 4.
 
+> **Update 2026-06-08 (Verbesserungs-Offensive, Branch `feature/offensive-2026-06`):** Tieferer 360°-Scan (12+3 Subagents) + erste Slices umgesetzt. Neu-verifizierte Ground-Truth: **(a)** Multi-Tenant-**Default**-Isolation ist das #1-Sicherheitsrisiko — RLS wird nur in `require_company` gesetzt, nicht im Standard-`get_db`; zudem existieren zwei `get_db` mit getrennten Engines (Slice 1a, offen). **(b)** Test-Vertrauen: **149× `expect(...||true)`** in 16 Playwright-Specs (können nie fehlschlagen), 4 neue Specs im falschen Verzeichnis (Slice 0c, offen). **(c)** DB-Drift: alembic head **266**, laufende dev-DB auf **261** + Spalten-Drift (Slice 1b, offen). **Erledigt** (committed): claude-flow Edit-revert-Hook entfernt + Churn gitignored (0a); deterministisches E2E-Seed/Reset-Setup + Test-Compose (0b); OCR-`safe_error_log`- + Skonto-Basis-Bug inkl. Regression-Tests (1c-A/B). Plan: `~/.claude/plans/fancy-riding-fiddle.md`.
+
 ## Service Health
 
 > _Stand der folgenden Tabelle: Selbsteinschätzung, **nicht** End-to-End verifiziert (siehe Reality-Check oben)._
@@ -24,7 +26,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5434, 261 Migrationen (261: Query Performance Indexes; 260: Domain Constraints; 259: Seed Default Roles; 258: Missing Indexes; 257: Missing Constraints; 255: EntitySeasonalPattern; 254: DomainEvent SHA-256 Hash-Chain; 253: GoBD/DSGVO Compliance Views; 252: GoBD Audit-Felder; 251: DocumentGroup company_id; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
+| PostgreSQL | 🟡 | :5434, **alembic head 266** (262 merge, 263-264 DATEV Doppik, 265 create_all-Reconcile, 266 BPMN Call-Activity); **laufende dev-DB auf 261 + Spalten-Drift** (z.B. `users.totp_failed_attempts` fehlt) → Live-Reconcile offen (KNOWN_ISSUES model↔DB). Historisch: (261: Query Performance Indexes; 260: Domain Constraints; 259: Seed Default Roles; 258: Missing Indexes; 257: Missing Constraints; 255: EntitySeasonalPattern; 254: DomainEvent SHA-256 Hash-Chain; 253: GoBD/DSGVO Compliance Views; 252: GoBD Audit-Felder; 251: DocumentGroup company_id; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
