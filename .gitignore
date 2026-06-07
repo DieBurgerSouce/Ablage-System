@@ -175,3 +175,9 @@ scripts/watchdog/logs/
 
 # Python scripts in root
 /reset_password.py
+
+# Claude-Flow / swarm runtime churn (override: NOT an audit baseline, pure runtime cruft - 2026-06)
+.claude-flow/metrics/
+.claude-flow/swarm/
+.swarm/state.json
+.claude/worktrees/

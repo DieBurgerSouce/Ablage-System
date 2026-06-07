@@ -37,17 +37,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "^(Write|Edit|MultiEdit)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"$TOOL_INPUT_file_path\" ] && npx @claude-flow/cli@latest hooks post-edit --file \"$TOOL_INPUT_file_path\" --success \"${TOOL_SUCCESS:-true}\" 2>/dev/null || true",
-            "timeout": 5000,
-            "continueOnError": true
-          }
-        ]
-      },
-      {
         "matcher": "^Bash$",
         "hooks": [
           {
