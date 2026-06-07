@@ -670,6 +670,36 @@ class TestEdgeCases:
         assert service._backend_adjustments == {}
 
     @pytest.mark.asyncio
+    async def test_apply_immediate_correction_swallows_and_logs_errors(
+        self,
+        service: SelfLearningOCRService,
+        mock_db: AsyncMock,
+        sample_feedback: CorrectionFeedback,
+    ) -> None:
+        """Regression (Bug A): realtime-correction errors must be logged and
+        return False, never raise.
+
+        The old code called ``safe_error_log(logger, msg, exc)`` with the wrong
+        argument order and discarded the return value, so the except handler
+        itself raised (extra=exc is not a dict) and nothing was ever logged.
+        """
+        with patch(
+            "app.services.ocr.self_learning_service.RedisStateManager"
+        ) as mock_redis_class, patch(
+            "app.services.ocr.self_learning_service.logger"
+        ) as mock_logger:
+            mock_redis = MagicMock()
+            mock_redis.connect = AsyncMock(side_effect=RuntimeError("Redis down"))
+            mock_redis_class.get_instance.return_value = mock_redis
+
+            result = await service.apply_immediate_correction(mock_db, sample_feedback)
+
+        assert result is False
+        assert mock_logger.error.called
+        _, kwargs = mock_logger.error.call_args
+        assert "error_type" in kwargs and "error_id" in kwargs
+
+    @pytest.mark.asyncio
     async def test_db_error_during_persist_handled(
         self,
         service: SelfLearningOCRService,

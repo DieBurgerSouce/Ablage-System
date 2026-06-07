@@ -255,6 +255,61 @@ class TestReconcileTransaction:
         assert result.error_message is not None
 
 
+class TestMatchBySkonto:
+    """Regression tests for skonto-deduction matching (Bug B: gross base)."""
+
+    @pytest.fixture
+    def service(self) -> AutoReconciliationService:
+        return AutoReconciliationService()
+
+    @pytest.fixture
+    def mock_db(self) -> AsyncMock:
+        return AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_skonto_expected_amount_uses_gross_not_outstanding(
+        self, service: AutoReconciliationService, mock_db: AsyncMock
+    ) -> None:
+        """A 2% skonto on a EUR 1000 gross invoice expects EUR 980, even when the
+        invoice is partially paid (outstanding 400). The old code used
+        outstanding_amount as the base (-> 392) and would NOT have matched the
+        980 payment; the fix mirrors skonto_service (gross invoice.amount).
+        """
+        company_id = uuid4()
+
+        invoice = Mock()
+        invoice.id = uuid4()
+        invoice.document_id = uuid4()
+        invoice.invoice_number = "INV-1"
+        invoice.invoice_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        invoice.due_date = datetime(2026, 1, 14, tzinfo=timezone.utc)
+        invoice.amount = Decimal("1000.00")
+        invoice.outstanding_amount = Decimal("400.00")  # partially paid
+        invoice.currency = "EUR"
+        invoice.skonto_percentage = Decimal("2")
+
+        query_result = Mock()
+        query_result.scalars.return_value.all.return_value = [invoice]
+        mock_db.execute = AsyncMock(return_value=query_result)
+        mock_db.get = AsyncMock(
+            return_value=Mock(
+                business_entity_id=uuid4(),
+                id=uuid4(),
+                name="E2E Kunde",
+                iban="DE89370400440532013000",
+            )
+        )
+
+        tx = Mock()
+        tx.counterparty_iban = "DE89370400440532013000"
+        tx.amount = Decimal("980.00")  # gross 1000 - 2% = 980
+
+        candidates = await service._match_by_skonto(mock_db, tx, company_id)
+
+        assert len(candidates) == 1
+        assert candidates[0].match_details["expected_amount"] == 980.0
+
+
 class TestManualMatch:
     """Tests fuer manuelle Zuordnung."""
 
