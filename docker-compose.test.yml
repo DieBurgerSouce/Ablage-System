@@ -1,0 +1,22 @@
+# Docker Compose override for E2E / agent-harness test runs.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+#
+# Enables deterministic, agent-testable behaviour:
+#   - TESTING=true            -> mounts the gated /api/v1/test/reset-state endpoint
+#   - RATE_LIMIT_ENABLED=false-> avoids 429s during fast agent loops
+#   - MALWARE_SCAN_ENABLED=false -> skips the ClamAV signature download that
+#                                   otherwise blocks upload flows in a fresh env
+#
+# NEVER use this override in production.
+services:
+  backend:
+    environment:
+      TESTING: "true"
+      RATE_LIMIT_ENABLED: "false"
+      MALWARE_SCAN_ENABLED: "false"
+
+  worker:
+    environment:
+      TESTING: "true"
+      MALWARE_SCAN_ENABLED: "false"

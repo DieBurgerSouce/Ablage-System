@@ -1408,6 +1408,14 @@ from app.api.v1.agent_orchestrator import router as agent_orchestrator_router  #
 from app.api.v1.command_center import router as command_center_router  # Command Center Startseite
 
 app.include_router(auth.router, prefix="/api/v1")
+
+# E2E test-harness endpoint (state reset) - HARD-GATED, never mounted in production.
+# Local import keeps the module out of the import graph unless explicitly enabled.
+if settings.TESTING and not settings.is_production:
+    from app.api.v1.test_harness import router as test_harness_router
+
+    app.include_router(test_harness_router, prefix="/api/v1")
+
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(ml.router, prefix="/api/v1")
