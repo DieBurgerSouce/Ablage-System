@@ -157,6 +157,18 @@ class ProcessInstance(Base):
                          nullable=True, index=True,
                          comment="Verknüpftes Dokument (z.B. die Rechnung)")
 
+    # Call Activity: Verknüpfung zur Eltern-Instanz (Sub-Prozess via callActivity)
+    parent_instance_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("bpmn_process_instances.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+        comment="Eltern-Instanz bei Call-Activity-Sub-Prozessen",
+    )
+    parent_element_id = Column(
+        String(255), nullable=True,
+        comment="Call-Activity-Element-ID in der Eltern-Instanz (Rückkopplung)",
+    )
+
     # Timestamps
     started_at = Column(DateTime(timezone=True), nullable=True)
     ended_at = Column(DateTime(timezone=True), nullable=True)

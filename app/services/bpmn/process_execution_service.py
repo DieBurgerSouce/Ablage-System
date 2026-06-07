@@ -145,6 +145,9 @@ class ProcessExecutionService:
     - Timer-Scheduling
     """
 
+    # Maximale Verschachtelungstiefe fuer Call Activities (Rekursions-Schutz).
+    MAX_CALL_ACTIVITY_DEPTH = 20
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.evaluator = ExpressionEvaluator()
@@ -575,6 +578,10 @@ class ProcessExecutionService:
         elif element_type == ElementType.SUB_PROCESS.value:
             await self._execute_subprocess(instance, process, element, user_id)
 
+        # Call Activity (Aufruf einer separaten Prozess-Definition als Sub-Instanz)
+        elif element_type == ElementType.CALL_ACTIVITY.value:
+            await self._execute_call_activity(instance, process, element, user_id)
+
         else:
             # Unbekannter Typ - einfach weiter
             await self._continue_flow(instance, process, element, user_id)
@@ -625,6 +632,10 @@ class ProcessExecutionService:
                 "process_instance_completed",
                 instance_id=str(instance.id)
             )
+
+            # Call Activity: Ist dies eine Sub-Instanz, die Eltern-Instanz fortsetzen.
+            if instance.parent_instance_id is not None:
+                await self._resume_parent_after_call_activity(instance, user_id)
 
     async def _execute_catch_event(
         self,
@@ -935,11 +946,12 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Führt einen Subprocess aus (embedded oder Call Activity)."""
-        # M17: Embedded Subprocess wird inline ausgefuehrt (siehe unten).
-        # Call Activity (Aufruf einer SEPARATEN Prozess-Definition) wuerde eine
-        # eigene Sub-Instanz erfordern - offen (eigenes Feature, braucht
-        # Sub-Instance-Verknuepfung + Rueckkopplung).
+        """Führt einen embedded Subprocess inline aus.
+
+        Call Activities (Aufruf einer SEPARATEN Prozess-Definition) laufen NICHT
+        hier, sondern in ``_execute_call_activity`` (eigene Sub-Instanz mit
+        Rueckkopplung an die Eltern-Instanz).
+        """
 
         await self._add_history(
             instance=instance,
@@ -969,6 +981,164 @@ class ProcessExecutionService:
 
         # Weiter nach Subprocess
         await self._continue_flow(instance, process, element, user_id)
+
+    async def _execute_call_activity(
+        self,
+        instance: ProcessInstance,
+        process: BPMNProcess,
+        element: BPMNElement,
+        user_id: Optional[UUID]
+    ) -> None:
+        """Fuehrt eine Call Activity aus: startet eine eigene Sub-Instanz der
+        aufgerufenen Prozess-Definition.
+
+        Die Eltern-Instanz parkt am Call-Activity-Element (Token), bis die
+        Sub-Instanz abgeschlossen ist; danach setzt ``_execute_end_event`` der
+        Sub-Instanz die Eltern-Instanz fort (``_resume_parent_after_call_activity``).
+
+        Variablen-Semantik: Die Sub-Instanz erhaelt eine Kopie der Eltern-Variablen;
+        nach Abschluss werden die Sub-Variablen in die Eltern-Instanz gemerged.
+
+        Fehlt ``calledElement`` oder die Ziel-Definition, wird der Flow regulaer
+        fortgesetzt (kein Crash) - strikt besser als das fruehere stille Ueberspringen.
+        """
+        called_key = (element.extension_properties or {}).get("calledElement")
+        if not called_key:
+            logger.warning(
+                "call_activity_without_called_element",
+                instance_id=str(instance.id),
+                element_id=element.id,
+            )
+            await self._continue_flow(instance, process, element, user_id)
+            return
+
+        # Rekursions-/Tiefenschutz gegen Endlos-Verschachtelung.
+        if await self._call_activity_depth(instance) >= self.MAX_CALL_ACTIVITY_DEPTH:
+            logger.warning(
+                "call_activity_max_depth_reached",
+                instance_id=str(instance.id),
+                element_id=element.id,
+                called_element=called_key,
+            )
+            await self._continue_flow(instance, process, element, user_id)
+            return
+
+        called_def = await self._get_active_definition(called_key, instance.company_id)
+        if called_def is None:
+            logger.warning(
+                "call_activity_definition_not_found",
+                instance_id=str(instance.id),
+                element_id=element.id,
+                called_element=called_key,
+            )
+            await self._continue_flow(instance, process, element, user_id)
+            return
+
+        # Eltern-Token am Call-Activity-Element parken.
+        current = list(instance.current_elements)
+        if element.id not in current:
+            current.append(element.id)
+            instance.current_elements = current
+
+        await self._add_history(
+            instance=instance,
+            event_type="CALL_ACTIVITY_STARTED",
+            element_id=element.id,
+            element_type=element.type,
+            message=f"Call Activity '{called_key}' gestartet",
+        )
+
+        # Sub-Instanz starten (Variablen aus der Eltern-Instanz kopieren).
+        sub_process = BPMNProcess.from_dict(called_def.process_data)
+        sub_instance = ProcessInstance(
+            definition_id=called_def.id,
+            business_key=instance.business_key,
+            status=ProcessStatus.RUNNING,
+            variables=dict(instance.variables or {}),
+            current_elements=[],
+            started_by_id=user_id,
+            document_id=instance.document_id,
+            company_id=instance.company_id,
+            parent_instance_id=instance.id,
+            parent_element_id=element.id,
+            started_at=datetime.now(timezone.utc),
+        )
+        self.db.add(sub_instance)
+        await self.db.flush()
+
+        await self._add_history(
+            instance=sub_instance,
+            event_type="PROCESS_STARTED",
+            message=f"Sub-Prozess '{called_def.name}' via Call Activity gestartet",
+            actor_id=user_id,
+        )
+
+        for start_event in sub_process.get_start_events():
+            await self._execute_element(sub_instance, sub_process, start_event, user_id)
+
+        await self.db.flush()
+
+    async def _resume_parent_after_call_activity(
+        self,
+        sub_instance: ProcessInstance,
+        user_id: Optional[UUID]
+    ) -> None:
+        """Setzt die Eltern-Instanz fort, nachdem eine Call-Activity-Sub-Instanz endete.
+
+        Merged die Sub-Variablen in die Eltern-Instanz, konsumiert das geparkte Token
+        am Call-Activity-Element und setzt den Eltern-Flow ueber ``_continue_flow`` fort.
+        """
+        parent = await self.get_instance(
+            sub_instance.parent_instance_id, sub_instance.company_id
+        )
+        if parent is None or parent.status != ProcessStatus.RUNNING:
+            return
+
+        # Out-Mapping: Sub-Variablen in die Eltern-Instanz uebernehmen.
+        merged = dict(parent.variables or {})
+        merged.update(sub_instance.variables or {})
+        parent.variables = merged
+
+        parent_def = await self._get_definition_by_id(parent.definition_id)
+        parent_process = BPMNProcess.from_dict(parent_def.process_data)
+
+        call_element_id = sub_instance.parent_element_id
+        current = list(parent.current_elements)
+        if call_element_id in current:
+            current.remove(call_element_id)
+            parent.current_elements = current
+
+        await self._add_history(
+            instance=parent,
+            event_type="CALL_ACTIVITY_COMPLETED",
+            element_id=call_element_id,
+            message="Sub-Prozess abgeschlossen, Eltern-Prozess fortgesetzt",
+        )
+
+        call_element = parent_process.get_element(call_element_id)
+        if call_element is not None:
+            await self._continue_flow(parent, parent_process, call_element, user_id)
+        await self.db.flush()
+
+    async def _call_activity_depth(self, instance: ProcessInstance) -> int:
+        """Zaehlt die Call-Activity-Verschachtelungstiefe ueber die Eltern-Kette.
+
+        Dient als Rekursions-/Zyklus-Schutz: bei Erreichen der Maximaltiefe startet
+        die Call Activity keine weitere Sub-Instanz mehr.
+        """
+        depth = 0
+        seen: Set[UUID] = set()
+        parent_id = instance.parent_instance_id
+        while parent_id is not None and depth <= self.MAX_CALL_ACTIVITY_DEPTH:
+            if parent_id in seen:
+                break
+            seen.add(parent_id)
+            parent = await self.get_instance(parent_id, instance.company_id)
+            if parent is None:
+                break
+            depth += 1
+            parent_id = parent.parent_instance_id
+        return depth
 
     async def _continue_flow(
         self,
