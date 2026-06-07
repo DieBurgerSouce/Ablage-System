@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -141,3 +142,75 @@ async def test_skips_without_entity_or_due_date(service):
     await service._record_delay_feedback(db, invoice_no_due, _tx(), uuid.uuid4())
 
     db.execute.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# ②: Feedback-Hook auch im manuellen Match und im Split (nicht nur Auto-Pfad)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_manual_match_records_feedback_before_paid(service):
+    """manual_match ruft den Feedback-Hook beim paid-Uebergang mit invoice.entity_id."""
+    cid = uuid.uuid4()
+    invoice = SimpleNamespace(
+        id=uuid.uuid4(), company_id=cid, outstanding_amount=100.0,
+        entity_id=uuid.uuid4(), due_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        status="open",
+    )
+    tx = SimpleNamespace(
+        amount=Decimal("100.00"), currency="EUR",
+        value_date=datetime(2026, 1, 9, tzinfo=timezone.utc), booking_date=None,
+    )
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=invoice)
+    db.commit = AsyncMock()
+    service._get_transaction_with_account = AsyncMock(return_value=tx)
+
+    captured = {}
+
+    async def _capture(db_, inv, tx_, entity_id):
+        captured["status_at_call"] = inv.status  # vor dem paid-Uebergang?
+        captured["entity_id"] = entity_id
+
+    service._record_delay_feedback = AsyncMock(side_effect=_capture)
+
+    result = await service.manual_match(
+        db, transaction_id=uuid.uuid4(), invoice_id=invoice.id,
+        company_id=cid, user_id=uuid.uuid4(),
+    )
+
+    assert result.success is True
+    service._record_delay_feedback.assert_awaited_once_with(db, invoice, tx, invoice.entity_id)
+    # Leak-frei: Hook lief, BEVOR die Rechnung auf 'paid' gesetzt wurde.
+    assert captured["status_at_call"] != "paid"
+    assert captured["entity_id"] == invoice.entity_id
+
+
+@pytest.mark.asyncio
+async def test_split_records_feedback_per_paid_invoice(service):
+    """split_transaction ruft den Feedback-Hook fuer eine voll bezahlte Rechnung."""
+    cid = uuid.uuid4()
+    invoice = SimpleNamespace(
+        id=uuid.uuid4(), company_id=cid, outstanding_amount=50.0,
+        entity_id=uuid.uuid4(), due_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        status="open",
+    )
+    tx = SimpleNamespace(
+        amount=Decimal("50.00"), currency="EUR",
+        value_date=datetime(2026, 1, 5, tzinfo=timezone.utc), booking_date=None,
+    )
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=invoice)
+    db.add = MagicMock()
+    db.commit = AsyncMock()
+    service._get_transaction_with_account = AsyncMock(return_value=tx)
+    service._record_delay_feedback = AsyncMock()
+
+    result = await service.split_transaction(
+        db, transaction_id=uuid.uuid4(), company_id=cid, user_id=uuid.uuid4(),
+        allocations=[{"invoice_id": str(invoice.id), "amount": 50}],
+    )
+
+    assert result is not None
+    service._record_delay_feedback.assert_awaited_once_with(db, invoice, tx, invoice.entity_id)

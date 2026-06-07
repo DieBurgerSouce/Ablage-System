@@ -954,6 +954,8 @@ class AutoReconciliationService:
         # Update invoice
         invoice.outstanding_amount = float(max(Decimal("0"), outstanding - tx.amount))
         if invoice.outstanding_amount <= 0:
+            # M13: Vorhersage-Feedback VOR dem paid-Uebergang erfassen (leak-frei).
+            await self._record_delay_feedback(db, invoice, tx, invoice.entity_id)
             invoice.status = "paid"
 
         await db.commit()
@@ -1030,6 +1032,8 @@ class AutoReconciliationService:
                 max(Decimal("0"), Decimal(str(invoice.outstanding_amount)) - Decimal(str(alloc["amount"])))
             )
             if invoice.outstanding_amount <= 0:
+                # M13: Vorhersage-Feedback VOR dem paid-Uebergang erfassen (leak-frei).
+                await self._record_delay_feedback(db, invoice, tx, invoice.entity_id)
                 invoice.status = "paid"
 
         # Update transaction
