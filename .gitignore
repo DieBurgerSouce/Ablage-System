@@ -144,6 +144,11 @@ run-*.js
 .playwright-mcp/
 .mcp.json
 
+# Playwright test output (must never be tracked - churns on every run)
+frontend/test-results/
+frontend/playwright-report/
+frontend/e2e/.auth/
+
 # Alerting secrets (Sprint 0 / G01, Task D)
 infrastructure/alerting/slack-webhook.url
 infrastructure/alerting/teams-webhook.url
