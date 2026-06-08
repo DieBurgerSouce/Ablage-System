@@ -40,4 +40,25 @@ export default defineConfig([
       'no-console': 'off',
     },
   },
+  // E2E (Playwright) Tests: Konsolen-Diagnose in Setup/Fixtures erlaubt;
+  // dafuer das `expect(... || true)`-Tautologie-Anti-Muster hart verbieten.
+  // Eine Assertion mit `|| true` kann NIE fehlschlagen (Test-Vertrauen-Luecke,
+  // Offensive-Befund 0c). Stattdessen echte Assertion ODER test.skip/test.fixme
+  // mit Begruendung verwenden.
+  {
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.name='expect'] LogicalExpression[operator='||'][right.value=true]",
+          message:
+            'Verbotenes Anti-Muster: expect(... || true) kann nie fehlschlagen. ' +
+            'Echte Assertion verwenden oder test.skip/test.fixme mit Begruendung.',
+        },
+      ],
+    },
+  },
 ])

@@ -15,6 +15,17 @@
 
 **Nächster Schritt** (priorisiert nach „Mocks → echt", separate Folge-Phase): siehe Roadmap in `MOCK_DATA_REGISTER.md`. Zusätzliche Medium/Low-Punkte (~~6 falsche Beat-Task-Namen~~ ✅ G4, ~~5 unsichtbare Task-Module~~ ✅ G4, ~~verwaiste ORM-Modelle~~ ✅ G4 (`all_models.py`), Endpoint-Dubletten, ~~leere `.secrets.baseline`~~ ✅ G2 behoben, ~~`safety || true`~~ ✅ G2 → `pip-audit`-Gate) in `TECHNICAL_DEBT.md`.
 
+### 🟠 E2E-Wahrheits-Offensive (0c, 2026-06-08) — echte Bugs via ehrliche Tests
+
+> Branch `feature/offensive-2026-06`. Gefunden beim Ehrlich-Machen der 4 quarantänten Playwright-Specs (Phase 0c) gegen den laufenden Stack — Validierung mit echtem Admin- + Viewer-Token (`scripts/seed_e2e.py`). **NICHT in 0c gefixt** (Multi-Tenant-sensibel → gehört in den review-gated 1a-Workstream, kein Blind-Fix).
+
+| Bug | Schwere | Evidenz | Status |
+|-----|---------|---------|--------|
+| **`GET /api/v1/companies` + `/companies/current` → HTTP 500** | HIGH | `get_current_company()` (`app/middleware/company_context.py:294`, Signatur `(request, db)` = FastAPI-Dependency) wird in `app/api/v1/companies.py:104` (`list_companies`) und `:222` als gewöhnliche Funktion mit 3 Args `(request, db, current_user)` aufgerufen → `TypeError: takes from 1 to 2 positional arguments but 3 were given`. Reproduziert (admin-Token → 500). **Firmen-Liste/-Wechsler (X-Company-ID-Quelle) damit kaputt.** | 🔴 OFFEN (dokumentiert, nicht blind gefixt) |
+| **`require_company` → HTTP 500 (`MultipleResultsFound`) für Multi-Company-User ohne `X-Company-ID`** | MEDIUM | `POST /api/v1/documents/` (Upload) mit Admin-Token (2 `UserCompany`-Memberships) ohne `X-Company-ID` → 500 statt sauberem 4xx. Mit Header → korrekt (400 für .exe). Single-Company-User (viewer) unbetroffen. Robustheits-Lücke: Multi-Company-User können Endpoints mit `require_company` nicht ohne Header nutzen. | 🔴 OFFEN (1a-Workstream) |
+
+**Positiv-Befund (KEIN Bug, via ehrliche Tests bestätigt):** Upload-Validierung solide — verbotene Endungen → 400 „Dateityp nicht erlaubt" (deutsch), Magic-Byte-Spoof (PE-Bytes als `.pdf`) → 400 „Dateiinhalt stimmt nicht … überein" (deutsch); RBAC `/admin/*` viewer→403 / admin→200; 403-Envelope strukturiert deutsch (`fehler`/`status_code`); Dok-Liste company-scoped; CSRF aktiv (Bearer-Bypass); unmaskierte-IBAN-Prüfung grün. 4 Specs nach `frontend/e2e/` portiert & ehrlich gemacht (25 passed; 5 Upload-Tests skippen ehrlich bei 429 — Live-Stack-Ratelimit, intendierter Lauf gegen `docker-compose.test.yml`).
+
 ### 🔴 Integrationstest-Funde (echtes Postgres, 2026-06-05) — SQL-Semantik #3/#4
 
 > Aufbau: realer Schema-Klon nach `ablage_test` + Modell-Spalten-Patch + Status-Enum-Konvertierung (`scripts/dbtest/setup_real_test_db.sh`); Tests `tests/integration/test_workflow_insights_real_db.py`. Mapper-Config via `import app.main` (umgeht Duplikat-`AdHocReport`-Ambiguität von `all_models`).

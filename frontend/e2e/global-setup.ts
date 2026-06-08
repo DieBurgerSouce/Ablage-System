@@ -1,7 +1,17 @@
 /**
  * Global Setup for Playwright Tests
  *
- * Logs in once and caches auth tokens so tests don't hit rate limits.
+ * Logs in once per role and caches auth tokens so tests don't hit the
+ * login rate limit (5/15min). Two roles are cached:
+ *   - admin  -> .auth/auth-state.json    (admin@localhost.com,  is_superuser=true)
+ *   - viewer -> .auth/viewer-state.json  (viewer@localhost.com, is_superuser=false)
+ *
+ * The viewer role is required so RBAC tests can catch real authorization
+ * failures (a non-admin must be denied). Both users are provisioned by
+ * scripts/seed_e2e.py.
+ *
+ * Resilience: if a login is rate-limited (429) but a cache file already
+ * exists, the cached token is reused instead of failing the whole run.
  */
 
 import { request } from '@playwright/test';
@@ -12,68 +22,77 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL || 'admin@localhost.com';
-const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
-const AUTH_CACHE_FILE = path.join(__dirname, '.auth', 'auth-state.json');
+const AUTH_DIR = path.join(__dirname, '.auth');
 
-async function globalSetup() {
-  // Ensure auth directory exists
-  const authDir = path.dirname(AUTH_CACHE_FILE);
-  if (!fs.existsSync(authDir)) {
-    fs.mkdirSync(authDir, { recursive: true });
+interface Role {
+  email: string;
+  password: string;
+  cacheFile: string;
+  fallbackRole: string;
+}
+
+const ROLES: Role[] = [
+  {
+    email: process.env.TEST_USER_EMAIL || 'admin@localhost.com',
+    password: process.env.TEST_USER_PASSWORD || 'admin123',
+    cacheFile: path.join(AUTH_DIR, 'auth-state.json'),
+    fallbackRole: 'admin',
+  },
+  {
+    email: process.env.TEST_VIEWER_EMAIL || 'viewer@localhost.com',
+    password: process.env.TEST_VIEWER_PASSWORD || 'viewer123',
+    cacheFile: path.join(AUTH_DIR, 'viewer-state.json'),
+    fallbackRole: 'viewer',
+  },
+];
+
+function cacheIsFresh(cacheFile: string): boolean {
+  if (!fs.existsSync(cacheFile)) return false;
+  const ageMinutes = (Date.now() - fs.statSync(cacheFile).mtimeMs) / (1000 * 60);
+  return ageMinutes < 10;
+}
+
+async function cacheAuth(role: Role): Promise<void> {
+  if (cacheIsFresh(role.cacheFile)) {
+    console.log(`[Global Setup] Using cached auth for ${role.email}`);
+    return;
   }
-
-  // Check if cached auth is still valid (less than 10 minutes old)
-  if (fs.existsSync(AUTH_CACHE_FILE)) {
-    const stats = fs.statSync(AUTH_CACHE_FILE);
-    const ageMs = Date.now() - stats.mtimeMs;
-    const ageMinutes = ageMs / (1000 * 60);
-
-    if (ageMinutes < 10) {
-      console.log('[Global Setup] Using cached auth (' + ageMinutes.toFixed(1) + ' min old)');
-      return;
-    }
-  }
-
-  console.log('[Global Setup] Logging in to cache auth tokens...');
 
   const baseURL = process.env.BASE_URL || 'http://localhost:80';
   const apiBaseURL = baseURL.includes('5173') ? 'http://localhost:8000' : baseURL;
-
   const context = await request.newContext();
 
   try {
-    // Login via API
     const loginResponse = await context.post(apiBaseURL + '/api/v1/auth/login', {
-      data: {
-        email: TEST_USER_EMAIL,
-        password: TEST_USER_PASSWORD,
-      },
+      data: { email: role.email, password: role.password },
     });
 
     if (!loginResponse.ok()) {
+      // Rate-limited or transient: fall back to an existing (possibly stale) cache.
+      if (fs.existsSync(role.cacheFile)) {
+        console.warn(
+          `[Global Setup] Login for ${role.email} returned ${loginResponse.status()}; ` +
+          `reusing existing cache file.`
+        );
+        return;
+      }
       const body = await loginResponse.text();
-      throw new Error('Login failed: ' + loginResponse.status() + ' - ' + body);
+      throw new Error(`Login failed for ${role.email}: ${loginResponse.status()} - ${body}`);
     }
 
     const tokens = await loginResponse.json();
-
     if (tokens.requires_2fa) {
-      throw new Error('2FA is enabled for test user - please disable for tests');
+      throw new Error(`2FA is enabled for ${role.email} - please disable for tests`);
     }
 
-    // Fetch user info
     const userResponse = await context.get(apiBaseURL + '/api/v1/auth/me', {
       headers: { Authorization: 'Bearer ' + tokens.access_token },
     });
-
     if (!userResponse.ok()) {
-      throw new Error('Failed to fetch user info: ' + userResponse.status());
+      throw new Error(`Failed to fetch user info for ${role.email}: ${userResponse.status()}`);
     }
-
     const userData = await userResponse.json();
 
-    // Cache auth data
     const authData = {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token || '',
@@ -84,16 +103,24 @@ async function globalSetup() {
         full_name: userData.full_name,
         is_superuser: userData.is_superuser,
         is_active: userData.is_active,
-        role: userData.role || (userData.is_superuser ? 'admin' : 'viewer'),
+        role: userData.role || (userData.is_superuser ? 'admin' : role.fallbackRole),
       },
       cached_at: new Date().toISOString(),
     };
 
-    fs.writeFileSync(AUTH_CACHE_FILE, JSON.stringify(authData, null, 2));
-    console.log('[Global Setup] Auth tokens cached successfully');
-
+    fs.writeFileSync(role.cacheFile, JSON.stringify(authData, null, 2));
+    console.log(`[Global Setup] Auth tokens cached for ${role.email}`);
   } finally {
     await context.dispose();
+  }
+}
+
+async function globalSetup() {
+  if (!fs.existsSync(AUTH_DIR)) {
+    fs.mkdirSync(AUTH_DIR, { recursive: true });
+  }
+  for (const role of ROLES) {
+    await cacheAuth(role);
   }
 }
 
