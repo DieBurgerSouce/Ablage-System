@@ -27,6 +27,16 @@
 
 **Positiv-Befund (KEIN Bug, via ehrliche Tests bestätigt):** Upload-Validierung solide — verbotene Endungen → 400 „Dateityp nicht erlaubt" (deutsch), Magic-Byte-Spoof (PE-Bytes als `.pdf`) → 400 „Dateiinhalt stimmt nicht … überein" (deutsch); RBAC `/admin/*` viewer→403 / admin→200; 403-Envelope strukturiert deutsch (`fehler`/`status_code`); Dok-Liste company-scoped; CSRF aktiv (Bearer-Bypass); unmaskierte-IBAN-Prüfung grün. 4 Specs nach `frontend/e2e/` portiert & ehrlich gemacht (25 passed; 5 Upload-Tests skippen ehrlich bei 429 — Live-Stack-Ratelimit, intendierter Lauf gegen `docker-compose.test.yml`).
 
+### 📋 Offene Offensive-To-Dos (`feature/offensive-2026-06`, Stand 2026-06-08)
+
+> Plan/Reihenfolge: `C:\Users\benfi\.claude\plans\fancy-riding-fiddle.md`. **Fertig:** 0a, 0b, 1b, 1c, 2a, **0c** (`8fb2946b`), **Fix companies-500 ①** (`5fdd7c00`), **2b-Output-Hygiene** (`ede2de02`). **Offen:**
+
+- [ ] **1a — Multi-Tenant Default-Isolation** — höchstes Einzelrisiko, **review-gated, KEIN Blind-Fix**. Kern = die 3 Multi-Company-500er oben (① ✅ TypeError gefixt; **② `get_user_current_company` + ③ `require_company` → `MultipleResultsFound`** noch offen). Braucht eine **bewusste Isolations-Entscheidung** (wie wird „aktuelle Company" für Multi-Company-User aufgelöst: X-Company-ID-Pflicht / fail-closed / is_current-Auflösung?) **+ DB-RLS-Regressionstest** (Cross-Tenant-Leak rot→grün). Bereits gefüttert mit verifizierten Funden + ①-Fix-Muster. Plan-Detail §1a: `get_tenant_db`-Dependency, GUC-Konsolidierung auf `app.current_company_id`, `RLS_ENFORCE_DEFAULT`-Flag (warn→fail-closed), Cross-Engine-`get_db`-Fix (`company_context.py:41`), defensive is_current-Auflösung **ODER** DB-Unique-Constraint auf `(user_id) WHERE is_current` + seed `is_current` bereinigen.
+- [ ] **0d — API-Contract + Last-Layer** — Schemathesis (property-based) gegen `/openapi.json` als CI-Job + k6-Thresholds (p95<2s, fail<1%) auf `tests/performance/load-test.js`. **Voraussetzung:** sauberer Lauf nur gegen `docker-compose.test.yml` (`RATE_LIMIT_ENABLED=false`, isoliert) — gegen den Live-Stack nur 429-Rauschen. Schemathesis 4.21 ist auf dem Host vorhanden, aber NICHT in `requirements-dev.txt`.
+- [ ] **0e — KI-Agent-Harness PoC** — Lexware-Flow, Playwright-MCP + **lokales Ollama** (0 PII-Egress, Rule #6/#8). **Voraussetzung:** laufendes Ollama; DoD = grüner agent-getriebener Lauf — derzeit nicht verifizierbar.
+- [ ] **2b — Rest: stale Branches prunen** — G0–G5/mocks-to-real/datev sind `ahead=0` (absorbiert); Entscheidung zu `feature/ocr-performance` (526 ahead/144 behind: rebasen ODER archivieren); `develop`/`staging` (142 behind) mit „master=Trunk" dokumentieren. _(Output-Hygiene test-results untracked = ✅ erledigt `ede2de02`.)_
+- [ ] **(optional) 2c — Architektur-Stretch** — DB-Engine/Session vereinheitlichen (3 Factories → eine), `core→api`-Layering-Verstoß (`app/core/rbac.py:34`), `main.py`-Router-Autodiscovery.
+
 ### 🔴 Integrationstest-Funde (echtes Postgres, 2026-06-05) — SQL-Semantik #3/#4
 
 > Aufbau: realer Schema-Klon nach `ablage_test` + Modell-Spalten-Patch + Status-Enum-Konvertierung (`scripts/dbtest/setup_real_test_db.sh`); Tests `tests/integration/test_workflow_insights_real_db.py`. Mapper-Config via `import app.main` (umgeht Duplikat-`AdHocReport`-Ambiguität von `all_models`).
