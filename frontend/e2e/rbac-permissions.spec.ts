@@ -115,6 +115,18 @@ test.describe('RBAC - Company Data Isolation (G1)', () => {
       expect([200, 307, 401, 403]).toContain(resp.status());
     }
   });
+
+  test('Firmen-Liste laedt fuer Single-Company-User (Regression: war HTTP 500)', async ({ request }) => {
+    // /api/v1/companies (ohne Slash) trifft list_companies direkt. Frueher HTTP 500,
+    // weil get_current_company (eine Dependency) mit einem dritten Positional-Arg
+    // aufgerufen wurde (TypeError). Jetzt 200 mit items[].
+    const resp = await request.get(`${API_BASE}/api/v1/companies`, {
+      headers: { Authorization: `Bearer ${viewerToken}` },
+    });
+    expect(resp.status()).toBe(200);
+    const data = await resp.json();
+    expect(Array.isArray(data.items)).toBeTruthy();
+  });
 });
 
 test.describe('RBAC - Unauthentifiziert', () => {

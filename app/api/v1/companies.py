@@ -101,7 +101,10 @@ async def list_companies(
     companies = result.scalars().all()
 
     # Get current company ID
-    current_company = await get_current_company(request, db, current_user)
+    # get_current_company ist eine Dependency (request, db); den User ermittelt
+    # sie selbst aus dem Request. Ein dritter Positional-Arg (current_user) warf
+    # frueher TypeError -> HTTP 500 (Firmen-Liste kaputt).
+    current_company = await get_current_company(request, db)
     current_id = current_company.id if current_company else None
 
     return CompanyListResponse(
@@ -219,7 +222,9 @@ async def get_current_company_endpoint(
 ) -> CompanyResponse:
     """Gibt die aktuelle Firma zurück."""
 
-    company = await get_current_company(request, db, current_user)
+    # get_current_company ermittelt den User selbst aus dem Request; ein dritter
+    # Positional-Arg warf frueher TypeError -> HTTP 500.
+    company = await get_current_company(request, db)
 
     if not company:
         raise HTTPException(
