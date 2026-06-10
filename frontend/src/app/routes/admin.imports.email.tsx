@@ -7,7 +7,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Mail } from 'lucide-react'
-import { EmailConfigList, EmailConfigForm } from '@/features/imports'
+import { EmailConfigList, EmailConfigForm, ImportRunsPanel } from '@/features/imports'
 
 export const Route = createFileRoute('/admin/imports/email')({
   component: AdminEmailImportsPage,
@@ -57,6 +57,8 @@ function AdminEmailImportsPage() {
       </div>
 
       <EmailConfigList onCreateNew={handleCreateNew} onEdit={handleEdit} />
+
+      <ImportRunsPanel sourceType="email" />
     </div>
   )
 }

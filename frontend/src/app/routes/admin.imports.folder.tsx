@@ -7,7 +7,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { FolderOpen } from 'lucide-react'
-import { FolderConfigList, FolderConfigForm } from '@/features/imports'
+import { FolderConfigList, FolderConfigForm, ImportRunsPanel } from '@/features/imports'
 
 export const Route = createFileRoute('/admin/imports/folder')({
   component: AdminFolderImportsPage,
@@ -57,6 +57,8 @@ function AdminFolderImportsPage() {
       </div>
 
       <FolderConfigList onCreateNew={handleCreateNew} onEdit={handleEdit} />
+
+      <ImportRunsPanel sourceType="folder" />
     </div>
   )
 }

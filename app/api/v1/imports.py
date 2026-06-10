@@ -345,6 +345,26 @@ class ImportStatsResponse(BaseModel):
     imports_by_day: List[dict]
 
 
+class ImportRunResponse(BaseModel):
+    """Ein Import-Lauf (alle ImportLogs eines batch_id zusammengefasst).
+
+    Liefert die Daten für die Live-Status-Anzeige im Frontend: pro Lauf
+    Anzahl Einträge, davon OK/Fehler, Status und Zeitfenster.
+    """
+    batch_id: UUID
+    source_type: str
+    config_id: Optional[UUID]
+    total: int
+    completed: int
+    failed: int
+    skipped: int
+    pending: int
+    documents_created: int
+    is_running: bool
+    started_at: datetime
+    last_update: Optional[datetime]
+
+
 # =============================================================================
 # Email Config Endpoints
 # =============================================================================
@@ -886,6 +906,90 @@ async def list_import_logs(
     logs = result.scalars().all()
 
     return logs
+
+
+@router.get("/runs", response_model=List[ImportRunResponse])
+async def list_import_runs(
+    source_type: Optional[str] = Query(None, pattern="^(email|folder)$"),
+    config_id: Optional[UUID] = None,
+    limit: int = Query(default=20, ge=1, le=100, description="Anzahl der letzten Läufe"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[ImportRunResponse]:
+    """Listet die letzten Import-Läufe (gruppiert nach batch_id).
+
+    Grundlage für die Live-Status-Anzeige: Statt Einzel-Logs liefert dieser
+    Endpoint pro Lauf eine Zusammenfassung (N E-Mails, k OK, m Fehler). Das
+    Frontend pollt ihn, solange ``is_running`` für einen Lauf true ist.
+    """
+    from sqlalchemy import select, func, case, String
+    from app.db.models import ImportLog
+
+    completed_expr = func.count(case((ImportLog.status == "completed", 1)))
+    failed_expr = func.count(case((ImportLog.status == "failed", 1)))
+    skipped_expr = func.count(case((ImportLog.status == "skipped", 1)))
+    pending_expr = func.count(
+        case((ImportLog.status.in_(("pending", "processing")), 1))
+    )
+    docs_expr = func.count(case((ImportLog.document_id.isnot(None), 1)))
+    # PostgreSQL kennt kein min(uuid); source_type/config_id sind pro batch_id
+    # konstant -> als String aggregieren und in der Response zurueckcasten.
+    config_id_text = func.min(
+        func.cast(
+            func.coalesce(ImportLog.email_config_id, ImportLog.folder_config_id),
+            String,
+        )
+    )
+
+    query = (
+        select(
+            ImportLog.batch_id.label("batch_id"),
+            func.min(ImportLog.source_type).label("source_type"),
+            config_id_text.label("config_id"),
+            func.count().label("total"),
+            completed_expr.label("completed"),
+            failed_expr.label("failed"),
+            skipped_expr.label("skipped"),
+            pending_expr.label("pending"),
+            docs_expr.label("documents_created"),
+            func.min(ImportLog.started_at).label("started_at"),
+            func.max(
+                func.coalesce(ImportLog.completed_at, ImportLog.started_at)
+            ).label("last_update"),
+        )
+        .where(ImportLog.user_id == current_user.id)
+        .group_by(ImportLog.batch_id)
+    )
+
+    if source_type:
+        query = query.where(ImportLog.source_type == source_type)
+    if config_id:
+        query = query.where(
+            (ImportLog.email_config_id == config_id)
+            | (ImportLog.folder_config_id == config_id)
+        )
+
+    query = query.order_by(func.min(ImportLog.started_at).desc()).limit(limit)
+
+    rows = (await db.execute(query)).all()
+
+    return [
+        ImportRunResponse(
+            batch_id=row.batch_id,
+            source_type=row.source_type,
+            config_id=UUID(row.config_id) if row.config_id else None,
+            total=row.total,
+            completed=row.completed,
+            failed=row.failed,
+            skipped=row.skipped,
+            pending=row.pending,
+            documents_created=row.documents_created,
+            is_running=row.pending > 0,
+            started_at=row.started_at,
+            last_update=row.last_update,
+        )
+        for row in rows
+    ]
 
 
 @router.get("/logs/{log_id}", response_model=ImportLogResponse)

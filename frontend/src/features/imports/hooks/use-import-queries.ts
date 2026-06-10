@@ -78,6 +78,10 @@ export const importQueryKeys = {
   log: (id: string) => [...importQueryKeys.logs(), id] as const,
   stats: (dateFrom?: string, dateTo?: string) =>
     [...importQueryKeys.all, 'stats', dateFrom, dateTo] as const,
+
+  // Runs (F2 Live-Status)
+  runs: (sourceType?: 'email' | 'folder') =>
+    [...importQueryKeys.all, 'runs', sourceType ?? 'all'] as const,
 };
 
 // ==================== Email Config Hooks ====================
@@ -545,6 +549,33 @@ export function useRetryImport() {
       });
       queryClient.invalidateQueries({ queryKey: importQueryKeys.logs() });
     },
+  });
+}
+
+/**
+ * Import-Läufe (F2 Live-Status), gruppiert nach batch_id.
+ *
+ * Pollt automatisch alle 5s, solange ein Lauf noch läuft (is_running),
+ * und stoppt das Polling, sobald alle Läufe abgeschlossen sind.
+ */
+export function useImportRuns(
+  sourceType?: 'email' | 'folder',
+  options?: { enabled?: boolean; limit?: number }
+) {
+  return useQuery({
+    queryKey: importQueryKeys.runs(sourceType),
+    queryFn: () => importLogsService.listRuns(sourceType, options?.limit ?? 20),
+    staleTime: STALE_TIMES.logs,
+    gcTime: GC_TIMES.logs,
+    enabled: options?.enabled !== false,
+    placeholderData: (previousData) => previousData,
+    // Live-Polling: nur solange mindestens ein Lauf aktiv ist.
+    refetchInterval: (query) => {
+      const runs = query.state.data;
+      const anyRunning = Array.isArray(runs) && runs.some((r) => r.isRunning);
+      return anyRunning ? 5000 : false;
+    },
+    ...RETRY_CONFIG,
   });
 }
 

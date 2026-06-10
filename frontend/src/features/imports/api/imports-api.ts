@@ -35,6 +35,9 @@ import type {
   ImportLogBackend,
   ImportLogResponse,
   ImportLogFilter,
+  // Runs (F2 Live-Status)
+  ImportRunBackend,
+  ImportRun,
   // Stats
   ImportStatsBackend,
   ImportStatsResponse,
@@ -244,6 +247,23 @@ function transformImportStats(stats: ImportStatsBackend): ImportStatsResponse {
     avgProcessingTimeMs: stats.avg_processing_time_ms,
     importsBySource: stats.imports_by_source,
     importsByDay: stats.imports_by_day,
+  };
+}
+
+function transformImportRun(run: ImportRunBackend): ImportRun {
+  return {
+    batchId: run.batch_id,
+    sourceType: run.source_type,
+    configId: run.config_id,
+    total: run.total,
+    completed: run.completed,
+    failed: run.failed,
+    skipped: run.skipped,
+    pending: run.pending,
+    documentsCreated: run.documents_created,
+    isRunning: run.is_running,
+    startedAt: run.started_at,
+    lastUpdate: run.last_update,
   };
 }
 
@@ -895,6 +915,32 @@ export const importLogsService = {
       return { task_id: response.data.task_id };
     } catch (error) {
       handleApiError(error, 'Import wiederholen');
+    }
+  },
+
+  /**
+   * Listet die letzten Import-Läufe (gruppiert nach batch_id).
+   * Grundlage für die Live-Status-Anzeige (F2).
+   */
+  listRuns: async (
+    sourceType?: 'email' | 'folder',
+    limit = 20
+  ): Promise<ImportRun[]> => {
+    try {
+      const params: Record<string, string | number> = { limit };
+      if (sourceType) params.source_type = sourceType;
+
+      const response = await apiClient.get<ImportRunBackend[]>(
+        '/imports/runs',
+        { params }
+      );
+
+      return response.data.map(transformImportRun);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return [];
+      }
+      handleApiError(error, 'Import-Läufe laden');
     }
   },
 

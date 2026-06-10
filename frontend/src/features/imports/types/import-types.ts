@@ -389,6 +389,40 @@ export interface ImportLogResponse {
   processingDurationMs: number | null;
 }
 
+// ==================== Import Run Types (F2 Live-Status) ====================
+
+/** Ein Import-Lauf (alle Logs eines batch_id), wie vom Backend geliefert. */
+export interface ImportRunBackend {
+  batch_id: string;
+  source_type: SourceType;
+  config_id: string | null;
+  total: number;
+  completed: number;
+  failed: number;
+  skipped: number;
+  pending: number;
+  documents_created: number;
+  is_running: boolean;
+  started_at: string;
+  last_update: string | null;
+}
+
+/** Ein Import-Lauf (camelCase fuer das Frontend). */
+export interface ImportRun {
+  batchId: string;
+  sourceType: SourceType;
+  configId: string | null;
+  total: number;
+  completed: number;
+  failed: number;
+  skipped: number;
+  pending: number;
+  documentsCreated: number;
+  isRunning: boolean;
+  startedAt: string;
+  lastUpdate: string | null;
+}
+
 // ==================== Statistics Types ====================
 
 export interface ImportStatsBackend {

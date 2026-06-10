@@ -20,6 +20,7 @@ export { EmailConfigForm } from './components/EmailConfigForm';
 export { FolderConfigList } from './components/FolderConfigList';
 export { FolderConfigForm } from './components/FolderConfigForm';
 export { ImportLogTable } from './components/ImportLogTable';
+export { ImportRunsPanel } from './components/ImportRunsPanel';
 export { ImportRuleBuilder } from './components/ImportRuleBuilder';
 export { EmailConnectionStatus } from './components/EmailConnectionStatus';
 export { FolderWatcherStatus } from './components/FolderWatcherStatus';
