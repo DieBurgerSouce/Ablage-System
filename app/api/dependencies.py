@@ -5,13 +5,13 @@ Handles authentication, database sessions, and authorization.
 All error messages in German.
 """
 
-from typing import Optional, Generator
+from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -31,48 +31,22 @@ get_company_id = get_current_company_id
 
 # ==================== Database Dependencies ====================
 
-# Create async engine with centralized pool settings
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
-    pool_pre_ping=settings.DB_POOL_PRE_PING,
-    pool_recycle=settings.DB_POOL_RECYCLE,
-    pool_timeout=settings.DB_POOL_TIMEOUT,
-)
+# W1/1a Engine-Konsolidierung: Dieses Modul baute frueher eine EIGENE Engine
+# samt get_db. Folgen: (a) der RLS-Kontext (SET LOCAL in require_company,
+# Session aus app.db.database) erreichte die Endpoint-Sessions nie, (b) zwei
+# Connection-Pools gegen dieselbe DB, (c) Test-/Dependency-Overrides deckten
+# nur eine der beiden get_db-Varianten ab. Jetzt ist app.db.database die
+# einzige Quelle: get_db IST get_db_session (identisches Callable ->
+# FastAPI-Dependency-Cache liefert pro Request dieselbe Session, SET LOCAL
+# aus require_company greift, Overrides wirken ueberall).
+# Commit-Semantik unveraendert: commit bei Erfolg, rollback bei Exception
+# (DatabaseManager.get_session verhaelt sich identisch zur alten get_db).
+from app.db.database import DatabaseManager, get_db_session
 
-# Create async session maker
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
-
-
-async def get_db() -> Generator[AsyncSession, None, None]:
-    """
-    Dependency for getting database session.
-
-    Yields:
-        AsyncSession: Database session
-
-    Usage:
-        @app.get("/endpoint")
-        async def endpoint(db: AsyncSession = Depends(get_db)):
-            ...
-    """
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+_db_manager = DatabaseManager()
+engine = _db_manager.engine
+AsyncSessionLocal = _db_manager.session_maker
+get_db = get_db_session
 
 
 async def set_rls_context(

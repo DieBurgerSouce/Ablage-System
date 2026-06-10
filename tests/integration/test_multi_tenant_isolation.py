@@ -119,10 +119,14 @@ async def _client_authenticated_as(
 ) -> AsyncIterator[AsyncClient]:
     """Async-HTTP-Client gegen die echte App, authentifiziert als ``user``.
 
-    Ueberschreibt die Auth-Dependencies (kein echtes JWT noetig) sowie ``get_db``,
-    sodass die Endpoints dieselbe Test-Session mit den geseedeten Daten nutzen.
+    Ueberschreibt die Auth-Dependencies sowie ``get_db``, sodass die Endpoints
+    dieselbe Test-Session mit den geseedeten Daten nutzen. Zusaetzlich wird ein
+    ECHTES Access-Token mitgesendet: Pfade wie ``require_company`` extrahieren
+    den User direkt aus dem Authorization-Header (kein Depends) - ohne Token
+    antworten sie 401, egal welche Dependencies ueberschrieben sind.
     Alles laeuft im selben Event-Loop wie die Session (httpx ASGITransport).
     """
+    from app.core.security_auth import create_access_token
 
     async def _override_user() -> User:
         return user
@@ -130,12 +134,18 @@ async def _client_authenticated_as(
     async def _override_db() -> AsyncIterator[AsyncSession]:
         yield session
 
+    token = create_access_token({"sub": str(user.id)})
+
     app.dependency_overrides[get_current_user] = _override_user
     app.dependency_overrides[get_current_active_user] = _override_user
     app.dependency_overrides[get_db] = _override_db
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            headers={"Authorization": f"Bearer {token}"},
+        ) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_current_user, None)
