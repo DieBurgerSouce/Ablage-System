@@ -14,10 +14,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
-from app.db.models import User
+from app.db.models import Document, User
 from app.services.automation.auto_filing_service import AutoFilingService
 from app.services.automation.auto_matching_service import AutoMatchingService
 
@@ -119,6 +120,24 @@ class FilingSuggestionResponse(BaseModel):
     confidence: float
     model_type: str
     auto_file: bool
+
+
+class FilingAcceptRequest(BaseModel):
+    """Bestätigung eines Ablage-Vorschlags (F1).
+
+    target_category ist die vom Nutzer akzeptierte oder korrigierte Kategorie.
+    """
+
+    target_category: str = Field(..., min_length=1, max_length=100)
+
+
+class FilingAcceptResponse(BaseModel):
+    """Ergebnis der Ablage-Bestätigung (F1)."""
+
+    document_id: UUID
+    filed: bool
+    target_category: str
+    message: str
 
 
 class AccuracyStatsResponse(BaseModel):
@@ -324,6 +343,77 @@ async def get_filing_suggestions(
         )
         for s in suggestions
     ]
+
+
+@router.post(
+    "/filing-suggestions/{document_id}/accept",
+    response_model=FilingAcceptResponse,
+    summary="Ablage-Vorschlag bestätigen",
+)
+async def accept_filing_suggestion(
+    document_id: UUID,
+    payload: FilingAcceptRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
+) -> FilingAcceptResponse:
+    """Legt ein Dokument in die bestätigte Kategorie ab (F1 Vertrauens-Loop).
+
+    Akzeptiert sowohl den vorgeschlagenen als auch einen vom Nutzer
+    korrigierten Zielordner. Nutzt die bestehende, real persistierende
+    Ablage-Operation (bulk_move_category) statt des Confidence-gegateten
+    Auto-Filings.
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+
+    # Mandanten-Check: Dokument muss zur aktuellen Firma gehören.
+    doc_stmt = select(Document).where(
+        Document.id == document_id,
+        Document.company_id == company_id,
+        Document.deleted_at.is_(None),
+    )
+    document = (await db.execute(doc_stmt)).scalar_one_or_none()
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden",
+        )
+
+    ablage_service = get_ablage_service()
+    try:
+        result = await ablage_service.bulk_move_category(
+            db=db,
+            user_id=current_user.id,
+            document_ids=[document_id],
+            target_category=payload.target_category,
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unbekannte Kategorie. Bitte gültigen Ordner wählen.",
+        )
+
+    await db.commit()
+
+    filed = result.success_count > 0
+    logger.info(
+        "filing_suggestion_accepted",
+        document_id=str(document_id),
+        company_id=str(company_id),
+        target_category=payload.target_category,
+        filed=filed,
+    )
+
+    return FilingAcceptResponse(
+        document_id=document_id,
+        filed=filed,
+        target_category=payload.target_category,
+        message=(
+            f"Abgelegt in '{payload.target_category}'"
+            if filed
+            else "Ablage fehlgeschlagen"
+        ),
+    )
 
 
 @router.post(

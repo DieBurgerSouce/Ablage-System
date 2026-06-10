@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { OcrConfidenceBadge } from '@/features/ocr-batch'
 import { cn } from '@/lib/utils'
+import { FilingSuggestionCard } from './FilingSuggestionCard'
 
 interface SmartUploadResultTag {
     name: string
@@ -32,9 +33,20 @@ interface SmartUploadResultsProps {
     results: Array<SmartUploadResultItem>
     onClose: () => void
     onConfirmAll: () => void
+    /**
+     * F1 Vertrauens-Loop: zeigt pro erfolgreichem Dokument einen
+     * Ablage-Vorschlag zum Bestätigen/Korrigieren. Default aus, damit
+     * bestehende Aufrufer unverändert bleiben.
+     */
+    showFilingSuggestions?: boolean
 }
 
-export function SmartUploadResults({ results, onClose, onConfirmAll }: SmartUploadResultsProps) {
+export function SmartUploadResults({
+    results,
+    onClose,
+    onConfirmAll,
+    showFilingSuggestions = false,
+}: SmartUploadResultsProps) {
     const successCount = results.filter((r) => !r.error).length
     const errorCount = results.filter((r) => r.error).length
 
@@ -136,6 +148,21 @@ export function SmartUploadResults({ results, onClose, onConfirmAll }: SmartUplo
                         </div>
                     ))}
                 </div>
+
+                {/* F1: Ablage-Vorschläge zum Bestätigen/Korrigieren */}
+                {showFilingSuggestions && successCount > 0 && (
+                    <div className="space-y-2 border-t border-border/50 pt-3">
+                        {results
+                            .filter((r) => !r.error && r.documentId)
+                            .map((r) => (
+                                <FilingSuggestionCard
+                                    key={`filing-${r.documentId}`}
+                                    documentId={r.documentId}
+                                    filename={r.filename}
+                                />
+                            ))}
+                    </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/50">
