@@ -17,7 +17,9 @@ pytest-timeout==2.2.0
 faker==22.2.0
 factory-boy==3.3.0
 httpx==0.26.0
-hypothesis==6.92.2  # Property-based testing
+# W2 (0d): hypothesis-Floor angehoben - schemathesis 4.x braucht neuere hypothesis.
+hypothesis>=6.103.0  # Property-based testing
+schemathesis~=4.21  # API-Contract-Fuzzing gegen OpenAPI (scripts/run_schemathesis.sh)
 
 # Security Testing
 bandit[toml]==1.7.6

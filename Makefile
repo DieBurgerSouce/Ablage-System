@@ -86,6 +86,10 @@ coverage: test-cov ## Alias for test-cov (generate coverage report)
 test-gpu: ## Run GPU-specific tests
 	pytest -v -m gpu
 
+api-fuzz: ## API-Contract-Fuzzing (Schemathesis) gegen den lokalen Test-Stack (W2/0d)
+	$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.test.yml up -d backend postgres redis
+	bash scripts/run_schemathesis.sh
+
 # Code Quality
 lint: ## Run linting checks
 	ruff check .

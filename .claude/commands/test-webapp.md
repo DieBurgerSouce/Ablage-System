@@ -17,6 +17,21 @@ Du bist jetzt ein erfahrener QA-Engineer der das Ablage-System systematisch test
 
 @.claude/skills/webapp-tester-mcp.md
 
+## PFLICHT-Preconditions (W2-Playbook — VOR allem anderen ausführen!)
+
+Reproduzierbarkeit + 0 PII-Egress: Es wird AUSSCHLIESSLICH gegen die geseedete
+Test-Instanz getestet (synthetische Daten). Details: `.claude/Docs/Testing/QA_AGENT_PLAYBOOK.md`
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.test.yml exec -T backend python - < scripts/seed_e2e.py
+curl -X POST http://localhost:8000/api/v1/test/reset-state
+```
+
+Login: `admin@localhost.com` / `admin123` (Seed-Standard).
+Abschlussbericht zusätzlich nach `docs/qa-reports/<YYYY-MM-DD>-qa-agent.md` schreiben
+(Bug-Report-Format aus dem Playbook, inkl. Journey-IDs J1-J6).
+
 ## Kontext
 
 - **Frontend**: http://localhost:80 (React + TypeScript via Nginx)
