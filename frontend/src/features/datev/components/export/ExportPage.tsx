@@ -248,7 +248,10 @@ export function ExportPage() {
                                 !effectiveConfigId ||
                                 executeExportMutation.isPending ||
                                 exportPreviewMutation.isPending || // Cross-disable
-                                (preview !== null && preview.document_count === 0)
+                                // F4: Export erst nach erfolgreicher Vorprüfung freigeben
+                                // (kein blinder Export); leere Vorschau bleibt gesperrt.
+                                preview === null ||
+                                preview.document_count === 0
                             }
                         >
                             {executeExportMutation.isPending ? (
@@ -264,6 +267,11 @@ export function ExportPage() {
                             )}
                         </Button>
                     </div>
+                    {preview === null && (
+                        <p className="text-xs text-muted-foreground">
+                            Bitte zuerst eine Vorschau erstellen, um den Export zu prüfen.
+                        </p>
+                    )}
                 </CardContent>
             </Card>
 

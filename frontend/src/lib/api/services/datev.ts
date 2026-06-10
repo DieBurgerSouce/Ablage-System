@@ -147,6 +147,13 @@ export interface DATEVBuchungsstapelEntry {
     kostentraeger: string | null;
 }
 
+export interface DATEVValidationItem {
+    document_id: string;
+    filename: string | null;
+    status: 'ok' | 'error';
+    reason: string | null;
+}
+
 export interface DATEVExportPreview {
     document_count: number;
     period_from: string | null;
@@ -156,6 +163,8 @@ export interface DATEVExportPreview {
     warnings: string[];
     skipped_count: number;
     skipped_reasons: Record<string, number>;
+    /** F4: Pro-Dokument-Validierung (exportierbar vs. übersprungen mit Grund). */
+    validation_results: DATEVValidationItem[];
 }
 
 export interface DATEVExportResponse {

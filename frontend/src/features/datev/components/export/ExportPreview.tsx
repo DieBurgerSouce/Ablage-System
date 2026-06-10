@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Calculator, Calendar } from 'lucide-react';
 import { formatCurrency, formatDate, formatPeriod } from '@/features/datev/utils';
 import { ExportWarnings } from './ExportWarnings';
+import { ExportValidationSummary } from './ExportValidationSummary';
 import type { DATEVExportPreview as ExportPreviewData } from '@/lib/api/services/datev';
 
 interface ExportPreviewProps {
@@ -67,6 +68,9 @@ export function ExportPreview({ preview }: ExportPreviewProps) {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Pro-Dokument-Validierung (F4): exportierbar vs. übersprungen */}
+            <ExportValidationSummary results={preview.validation_results ?? []} />
 
             {/* Warnungen */}
             <ExportWarnings

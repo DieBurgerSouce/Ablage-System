@@ -512,6 +512,14 @@ class DATEVBuchungsstapelEntry(BaseModel):
     festschreibung: Optional[str] = Field(None, description="Festschreibungskennzeichen")
 
 
+class DATEVValidationItem(BaseModel):
+    """Pro-Dokument-Validierungsergebnis für die DATEV-Export-Vorprüfung (F4)."""
+    document_id: UUID
+    filename: Optional[str] = None
+    status: str = Field(..., description="'ok' (exportierbar) oder 'error' (übersprungen)")
+    reason: Optional[str] = Field(None, description="Grund bei status='error'")
+
+
 class DATEVExportPreview(BaseModel):
     """Vorschau eines DATEV-Exports."""
     document_count: int = Field(..., description="Anzahl exportierbarer Dokumente")
@@ -530,6 +538,10 @@ class DATEVExportPreview(BaseModel):
     skipped_reasons: Dict[str, int] = Field(
         default_factory=dict,
         description="Gründe für Übersprungene ({grund: anzahl})"
+    )
+    validation_results: List[DATEVValidationItem] = Field(
+        default_factory=list,
+        description="Pro-Dokument-Status (F4): exportierbar vs. übersprungen mit Grund"
     )
 
 

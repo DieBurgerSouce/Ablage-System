@@ -341,7 +341,7 @@ class DATEVExportService:
             )
 
         # Buchungen mappen (async um Event Loop nicht zu blockieren)
-        buchungen, _, _, warnings = await self._map_documents_async(
+        buchungen, included_docs, skipped_docs, warnings = await self._map_documents_async(
             documents=documents,
             kontenrahmen=kontenrahmen,
             config=config,
@@ -383,6 +383,43 @@ class DATEVExportService:
                 "buchungstext": buchung.buchungstext,
             })
 
+        # F4: Pro-Dokument-Validierung fuer die Export-Vorpruefung im Frontend.
+        # filename-Lookup + Grund je uebersprungenem Dokument (aus den
+        # "Dokument <id>: <grund>"-Warnungen, die _process_mapping_result baut).
+        from app.api.schemas.datev import DATEVValidationItem
+
+        filename_by_id = {
+            doc.id: getattr(doc, "original_filename", None) or getattr(doc, "filename", None)
+            for doc in documents
+        }
+        reason_by_id: Dict[uuid.UUID, str] = {}
+        for warning in warnings:
+            if warning.startswith("Dokument ") and ": " in warning:
+                id_part, reason_part = warning[len("Dokument "):].split(": ", 1)
+                try:
+                    reason_by_id[uuid.UUID(id_part.strip())] = reason_part
+                except ValueError:
+                    continue
+
+        validation_results: List[DATEVValidationItem] = []
+        for doc_id in included_docs:
+            validation_results.append(
+                DATEVValidationItem(
+                    document_id=doc_id,
+                    filename=filename_by_id.get(doc_id),
+                    status="ok",
+                )
+            )
+        for doc_id in skipped_docs:
+            validation_results.append(
+                DATEVValidationItem(
+                    document_id=doc_id,
+                    filename=filename_by_id.get(doc_id),
+                    status="error",
+                    reason=reason_by_id.get(doc_id, "Keine gültige Kontierung"),
+                )
+            )
+
         return DATEVExportPreview(
             document_count=len(buchungen),
             period_from=actual_from,
@@ -390,8 +427,9 @@ class DATEVExportService:
             total_amount=total_amount,
             sample_entries=sample_entries,
             warnings=warnings,
-            skipped_count=sum(skipped_reasons.values()),
+            skipped_count=len(skipped_docs),
             skipped_reasons=skipped_reasons,
+            validation_results=validation_results,
         )
 
     async def _get_config(
