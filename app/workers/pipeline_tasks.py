@@ -46,6 +46,124 @@ class PipelineRetryResult(TypedDict, total=False):
     error: str
 
 
+# W1 Idempotenz: hoechstens ein aktiver Pipeline-Lauf pro Dokument.
+PIPELINE_JOB_TYPE = "pipeline_chain"
+# Claim gilt als verwaist, wenn aelter als ~3x time_limit (Worker-Crash o.ae.)
+STALE_CLAIM_SECONDS = 600
+
+
+async def _claim_pipeline_job(session, document_id: str, task_id: str):
+    """Idempotenz-Claim via INSERT .. ON CONFLICT DO NOTHING.
+
+    Nutzt den Partial-Unique-Index ``uq_processing_jobs_active_per_doc_type``
+    (Migration 268): hoechstens ein ProcessingJob mit status queued/processing
+    pro (document_id, job_type). Celery-Retries desselben Tasks (gleiche
+    task_id) duerfen fortsetzen; verwaiste Claims werden uebernommen.
+
+    Returns:
+        (proceed, job_id): proceed=False -> Duplikat-Lauf, Task soll skippen.
+    """
+    from datetime import datetime, timedelta, timezone
+    from uuid import UUID, uuid4
+
+    from sqlalchemy import select, text, update
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from app.db.models import ProcessingJob
+
+    now = datetime.now(timezone.utc)
+    stmt = (
+        pg_insert(ProcessingJob)
+        .values(
+            id=uuid4(),
+            document_id=UUID(document_id),
+            job_type=PIPELINE_JOB_TYPE,
+            status="processing",
+            worker_id=task_id,
+            started_at=now,
+        )
+        .on_conflict_do_nothing(
+            index_elements=["document_id", "job_type"],
+            index_where=text("status IN ('queued', 'processing')"),
+        )
+        .returning(ProcessingJob.id)
+    )
+    claimed_id = (await session.execute(stmt)).scalar_one_or_none()
+    if claimed_id is not None:
+        await session.commit()
+        return True, claimed_id
+
+    existing = (
+        (
+            await session.execute(
+                select(ProcessingJob)
+                .where(
+                    ProcessingJob.document_id == UUID(document_id),
+                    ProcessingJob.job_type == PIPELINE_JOB_TYPE,
+                    ProcessingJob.status.in_(("queued", "processing")),
+                )
+                .limit(1)
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    if existing is None:
+        # Race: aktiver Job wurde zwischen INSERT und SELECT abgeschlossen.
+        return True, None
+
+    if existing.worker_id == task_id:
+        # Celery-Retry desselben Tasks -> eigener Claim, fortsetzen.
+        return True, existing.id
+
+    started = existing.started_at
+    if started is not None and started.tzinfo is None:
+        started = started.replace(tzinfo=timezone.utc)
+    if started is None or (now - started) > timedelta(seconds=STALE_CLAIM_SECONDS):
+        takeover = await session.execute(
+            update(ProcessingJob)
+            .where(
+                ProcessingJob.id == existing.id,
+                ProcessingJob.status.in_(("queued", "processing")),
+            )
+            .values(worker_id=task_id, started_at=now)
+        )
+        await session.commit()
+        if takeover.rowcount:
+            logger.warning(
+                "pipeline_stale_claim_taken_over",
+                document_id=document_id,
+                previous_worker=existing.worker_id,
+            )
+            return True, existing.id
+
+    return False, None
+
+
+async def _finish_pipeline_job(session, job_id, *, success: bool, error: Optional[str] = None) -> None:
+    """Markiert den Idempotenz-Claim als abgeschlossen/fehlgeschlagen."""
+    if job_id is None:
+        return
+
+    from datetime import datetime, timezone
+
+    from sqlalchemy import update
+
+    from app.db.models import ProcessingJob
+
+    await session.execute(
+        update(ProcessingJob)
+        .where(ProcessingJob.id == job_id)
+        .values(
+            status="completed" if success else "failed",
+            completed_at=datetime.now(timezone.utc),
+            error_message=None if success else (error or "Pipeline fehlgeschlagen")[:2000],
+        )
+    )
+    await session.commit()
+
+
 @celery_app.task(
     name="pipeline.process_document",
     bind=True,
@@ -96,6 +214,13 @@ def process_document_pipeline(
         skip_matching=skip_matching,
     )
 
+    # Celery-Retries behalten dieselbe task_id -> Claim bleibt unser eigener.
+    # Bei Direktaufruf (Tests/eager) gibt es keine request.id.
+    from uuid import uuid4 as _uuid4
+
+    task_id = self.request.id or f"local-{_uuid4()}"
+    claim_state: Dict[str, Any] = {"job_id": None}
+
     async def _run_pipeline() -> PipelineProcessResult:
         from uuid import UUID
 
@@ -112,6 +237,22 @@ def process_document_pipeline(
         )
 
         try:
+            # W1 Idempotenz: doppelte Zustellung/parallele Laeufe skippen
+            # (Celery acks_late kann denselben Task mehrfach zustellen).
+            async with session_factory() as session:
+                proceed, job_id = await _claim_pipeline_job(session, document_id, task_id)
+            claim_state["job_id"] = job_id
+            if not proceed:
+                logger.info(
+                    "pipeline_task_skipped_duplicate",
+                    document_id=document_id,
+                    company_id=company_id,
+                )
+                return PipelineProcessResult(
+                    auto_processed=False,
+                    error="Pipeline-Lauf uebersprungen: bereits in Verarbeitung",
+                )
+
             async with session_factory() as session:
                 service = PipelineChainService(session)
                 chain_result = await service.process_document(
@@ -121,7 +262,30 @@ def process_document_pipeline(
                     skip_kontierung=skip_kontierung,
                     skip_matching=skip_matching,
                 )
-                return chain_result.to_dict()
+                result = chain_result.to_dict()
+
+            async with session_factory() as session:
+                await _finish_pipeline_job(session, job_id, success=True)
+            return result
+        finally:
+            await engine.dispose()
+
+    async def _persist_final_failure(error_text: str) -> None:
+        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+        from app.core.config import settings
+
+        engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
+        session_factory = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        try:
+            async with session_factory() as session:
+                await _finish_pipeline_job(
+                    session, claim_state["job_id"], success=False, error=error_text
+                )
         finally:
             await engine.dispose()
 
@@ -138,12 +302,29 @@ def process_document_pipeline(
         )
         return result
     except Exception as exc:
+        max_retries = self.max_retries if self.max_retries is not None else 0
+        final_attempt = self.request.retries >= max_retries
+        # W1: exc_info=True - asyncio.run() schluckte vorher den Stacktrace
+        # des eigentlichen Pipeline-Fehlers aus dem Log.
         logger.error(
             "pipeline_task_failed",
             document_id=document_id,
             company_id=company_id,
+            retries=self.request.retries,
+            final_attempt=final_attempt,
             **safe_error_log(exc),
+            exc_info=True,
         )
+        if final_attempt:
+            # Claim freigeben (failed), damit ein spaeterer manueller Lauf
+            # nicht am Partial-Unique-Index haengen bleibt.
+            try:
+                asyncio.run(_persist_final_failure(str(exc)))
+            except Exception:
+                logger.warning(
+                    "pipeline_job_failure_persist_failed",
+                    document_id=document_id,
+                )
         raise self.retry(exc=exc)
 
 

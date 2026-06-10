@@ -75,19 +75,14 @@ def get_worker_gpu_recovery_manager() -> GPURecoveryManager:
 
 
 def _is_oom_error(exception: Exception) -> bool:
-    """Prüfe ob Exception ein GPU OOM Error ist."""
-    if torch.cuda.is_available() and isinstance(exception, torch.cuda.OutOfMemoryError):
-        return True
+    """Prüfe ob Exception ein GPU OOM Error ist.
 
-    error_msg = str(exception).lower()
-    oom_indicators = [
-        "out of memory",
-        "cuda out of memory",
-        "oom",
-        "memory allocation",
-        "cannot allocate",
-    ]
-    return any(indicator in error_msg for indicator in oom_indicators)
+    W1: Logik nach app.core.gpu_errors extrahiert (backend_manager nutzt
+    dieselbe Erkennung); Alias bleibt fuer bestehende Aufrufer erhalten.
+    """
+    from app.core.gpu_errors import is_oom_error
+
+    return is_oom_error(exception)
 
 
 def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
@@ -988,7 +983,15 @@ def process_document_task(
                         )
                         raise self.retry(exc=e, countdown=countdown)
                     else:
-                        # Max retries erreicht - als GPU OOM Error melden
+                        # Max retries erreicht - W1: Status FAILED persistieren,
+                        # sonst bleibt das Dokument fuer immer auf "processing"
+                        # haengen (der Timeout-Pfad oben macht das bereits).
+                        await update_document_status(
+                            session,
+                            doc_uuid,
+                            ProcessingStatus.FAILED,
+                            error_message="GPU-Speicher erschöpft - Verarbeitung fehlgeschlagen",
+                        )
                         raise GPUOutOfMemoryError(
                             message=f"GPU OOM nach {max_retries} Versuchen für Dokument {document_id}",
                             required_gb=memory_stats.allocated_gb + 2.0,  # Geschätzt

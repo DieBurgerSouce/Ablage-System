@@ -1053,7 +1053,13 @@ class BackendManager:
         last_error = None
         start_time = time.monotonic()
 
-        for current_backend in fallback_chain:
+        # W1: Index-Schleife statt for-in, damit bei CUDA-OOM die verbleibende
+        # Kette umsortiert werden kann (CPU-Backend vorziehen).
+        chain_index = 0
+        while chain_index < len(fallback_chain):
+            current_backend = fallback_chain[chain_index]
+            chain_index += 1
+
             # Health check before processing
             health = await self.check_backend_health(current_backend)
             if not health["healthy"]:
@@ -1132,11 +1138,37 @@ class BackendManager:
 
                 # P2: Invalidiere Cache bei Verarbeitungsfehler
                 self._health_cache.invalidate(current_backend)
+
+                # W1: CUDA-OOM gezielt behandeln statt generischem Catch-all -
+                # GPU-Speicher freigeben und das CPU-Backend (surya) in der
+                # Restkette vorziehen, statt weitere GPU-Backends in dieselbe
+                # volle GPU laufen zu lassen.
+                from app.core.gpu_errors import is_oom_error
+
+                if is_oom_error(e):
+                    try:
+                        import torch
+
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                    except ImportError:
+                        pass
+
+                    remaining = fallback_chain[chain_index:]
+                    if "surya" in remaining:
+                        remaining.remove("surya")
+                        fallback_chain[chain_index:] = ["surya", *remaining]
+                    logger.warning(
+                        "backend_oom_promoting_cpu_fallback",
+                        backend=current_backend,
+                        next_backends=fallback_chain[chain_index:],
+                    )
+
                 logger.warning(
                     "backend_processing_failed_trying_fallback",
                     backend=current_backend,
                     **safe_error_log(e),
-                    remaining_fallbacks=len(fallback_chain) - fallback_chain.index(current_backend) - 1
+                    remaining_fallbacks=len(fallback_chain) - chain_index
                 )
                 continue
 

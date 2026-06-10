@@ -488,7 +488,11 @@ async def upload_document(
                 document_id=str(doc_id),
                 **safe_error_log(e)
             )
-            # Dokument bleibt gespeichert, OCR kann später gestartet werden
+            # Dokument bleibt gespeichert, OCR kann später gestartet werden.
+            # W1: Status zurück auf "uploaded" - sonst hängt das Dokument
+            # dauerhaft auf "pending", obwohl kein Task eingeplant wurde.
+            new_document.status = "uploaded"
+            await db.commit()
 
     logger.info(
         "document_uploaded_api",
