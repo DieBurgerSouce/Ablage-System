@@ -152,13 +152,18 @@ async def get_user_current_company(
     Returns:
         Company oder None
     """
-    # Finde is_current=True für User
+    # Finde is_current=True für User.
+    # W1/1a: Defensiv gegen Bestandsdaten mit MEHREREN is_current=True (vor
+    # Migration 268 verhinderte das kein Constraint): deterministisch die
+    # neueste Mitgliedschaft statt MultipleResultsFound (-> HTTP 500).
     result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == user_id)
         .where(UserCompany.is_current == True)
+        .order_by(UserCompany.created_at.desc(), UserCompany.id.desc())
+        .limit(1)
     )
-    user_company = result.scalar_one_or_none()
+    user_company = result.scalars().first()
 
     if not user_company:
         # Fallback: Erste Company des Users

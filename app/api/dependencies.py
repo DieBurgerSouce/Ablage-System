@@ -12,7 +12,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import sessionmaker
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -400,7 +399,10 @@ async def get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
     Returns:
         Aktive Company-ID oder None, wenn keine Zuordnung existiert.
     """
-    # 1. Aktuelle Firma (is_current=True)
+    # 1. Aktuelle Firma (is_current=True).
+    # W1/1a: Defensiv gegen Bestandsdaten mit MEHREREN is_current=True (vor
+    # Migration 268 verhinderte das kein Constraint): deterministisch die
+    # neueste Mitgliedschaft statt MultipleResultsFound (-> HTTP 500).
     result = await db.execute(
         select(UserCompany.company_id)
         .join(Company, Company.id == UserCompany.company_id)
@@ -408,8 +410,10 @@ async def get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
         .where(UserCompany.is_current == True)  # noqa: E712
         .where(Company.is_active == True)  # noqa: E712
         .where(Company.deleted_at.is_(None))
+        .order_by(UserCompany.created_at.desc(), UserCompany.id.desc())
+        .limit(1)
     )
-    current_company_id = result.scalar_one_or_none()
+    current_company_id = result.scalars().first()
 
     if current_company_id:
         return current_company_id

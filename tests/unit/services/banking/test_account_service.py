@@ -138,6 +138,7 @@ class TestAccountServiceResponseConversion:
         mock_account = MagicMock()
         mock_account.id = uuid4()
         mock_account.user_id = uuid4()
+        mock_account.company_id = uuid4()
         mock_account.account_name = "Girokonto"
         mock_account.iban = "DE89370400440532013000"
         mock_account.bic = "COBADEFFXXX"
@@ -171,6 +172,7 @@ class TestAccountServiceResponseConversion:
         mock_account = MagicMock()
         mock_account.id = uuid4()
         mock_account.user_id = uuid4()
+        mock_account.company_id = None
         mock_account.account_name = "Test"
         mock_account.iban = "DE89370400440532013000"
         mock_account.bic = None

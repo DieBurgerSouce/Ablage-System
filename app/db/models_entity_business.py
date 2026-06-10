@@ -257,6 +257,16 @@ class BusinessEntity(SoftDeleteMixin, Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
+    # Multi-Tenant (Migration 268): Listen/Einzel-GET filtern nach company_id;
+    # NULL = firmenuebergreifende (globale) Entity. Spalte fehlte in Modell UND
+    # DB, obwohl Endpoints/Services sie bereits referenzierten (AttributeError).
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     # Entity identification
     entity_type = Column(String(20), nullable=False, default=EntityType.SUPPLIER.value)
     name = Column(String(255), nullable=False)

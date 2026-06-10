@@ -185,7 +185,10 @@ class BankAccount(SoftDeleteMixin, Base):
     __tablename__ = "bank_accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Migration 268: nullable - Banking ist seit Migration 232 company-scoped;
+    # AccountService.create_account() legt Konten ohne user_id an (NOT NULL
+    # liess jede Konto-Anlage mit NotNullViolation scheitern).
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     # Multi-Tenant (Migration 232)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -247,7 +250,10 @@ class BankImport(Base):
     __tablename__ = "bank_imports"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Migration 268: nullable - ImportService.import_file() ist company-scoped
+    # und setzt kein user_id (NOT NULL maskierte sich als falscher
+    # "Diese Datei wurde bereits importiert"-Fehler im IntegrityError-Handler).
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     # Multi-Tenant (Migration 232)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -502,7 +508,9 @@ class DunningRecord(Base):
     __tablename__ = "dunning_records"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Migration 268: nullable - DunningService.create_dunning() ist
+    # company-scoped, user_id ist dort nur optionaler Audit-Kontext.
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     # Multi-Tenant (Migration 232)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
 

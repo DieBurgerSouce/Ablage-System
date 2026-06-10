@@ -346,6 +346,7 @@ class ImportService:
         # Response erstellen
         response = BankImportResponse(
             id=import_record.id,
+            company_id=import_record.company_id,
             filename=filename,
             format=detected_format,
             format_variant=parser_cls.FORMAT_VARIANT,
@@ -454,6 +455,7 @@ class ImportService:
         return [
             BankImportResponse(
                 id=imp.id,
+                company_id=imp.company_id,
                 filename=imp.filename,
                 format=ImportFormat(imp.format) if imp.format else ImportFormat.CSV_GENERIC,
                 format_variant=imp.format_variant,

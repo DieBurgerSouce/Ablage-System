@@ -255,7 +255,12 @@ class BankAccountResponse(BankAccountBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    user_id: UUID
+    # W1: Optional - company-scoped angelegte Konten haben kein user_id mehr
+    # (AccountService.create_account setzt nur company_id, Migration 268).
+    user_id: Optional[UUID] = None
+    # W1: Mandanten-Zuordnung - wurde von _to_response bereits uebergeben,
+    # aber vom Schema still verworfen, weil das Feld nicht deklariert war.
+    company_id: Optional[UUID] = None
     is_active: bool
     connection_status: str
     current_balance: Optional[Decimal] = None
@@ -304,6 +309,8 @@ class BankImportResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    # W1: Mandanten-Zuordnung sichtbar machen (Import ist company-scoped).
+    company_id: Optional[UUID] = None
     filename: Optional[str]
     format: ImportFormat
     format_variant: Optional[str]

@@ -79,6 +79,7 @@ async def list_entities(
     sort_order: SortOrder = Query(SortOrder.ASC, description="Sortierrichtung"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BusinessEntityListResponse:
     """
     Listet alle Geschäftspartner auf.
@@ -92,7 +93,15 @@ async def list_entities(
     **Sortierung:**
     - name, created_at, document_count, last_document_date
     """
-    query = select(BusinessEntity).where(BusinessEntity.deleted_at.is_(None))
+    # W1/1a: Mandanten-Isolation - eigene oder firmenuebergreifende (NULL)
+    # Entities; fremde company_id erscheint NICHT in der Liste (CWE-639).
+    query = select(BusinessEntity).where(
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.company_id == company_id,
+            BusinessEntity.company_id.is_(None),
+        ),
+    )
 
     # Filter
     if search:
@@ -172,6 +181,7 @@ async def list_customers_for_frontend(
     sort_order: str = Query("asc", description="Sortierrichtung: asc oder desc"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Kunden-Liste für hierarchisches Frontend (paginiert).
@@ -191,7 +201,12 @@ async def list_customers_for_frontend(
         or_(
             BusinessEntity.entity_type == "customer",
             BusinessEntity.entity_type == "both",
-        )
+        ),
+        # W1/1a: Mandanten-Isolation (eigene oder firmenuebergreifende Kunden)
+        or_(
+            BusinessEntity.company_id == company_id,
+            BusinessEntity.company_id.is_(None),
+        ),
     ]
 
     if search:
@@ -291,6 +306,7 @@ async def list_suppliers_for_frontend(
     sort_order: str = Query("asc", description="Sortierrichtung: asc oder desc"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Lieferanten-Liste für hierarchisches Frontend (paginiert).
@@ -308,7 +324,12 @@ async def list_suppliers_for_frontend(
         or_(
             BusinessEntity.entity_type == "supplier",
             BusinessEntity.entity_type == "both",
-        )
+        ),
+        # W1/1a: Mandanten-Isolation (eigene oder firmenuebergreifende Lieferanten)
+        or_(
+            BusinessEntity.company_id == company_id,
+            BusinessEntity.company_id.is_(None),
+        ),
     ]
 
     if search:

@@ -266,6 +266,15 @@ class UserCompany(Base):
         Index("ix_user_companies_company_id", "company_id"),
         Index("ix_user_companies_is_current", "is_current"),
         Index("ix_user_companies_role", "role"),
+        # Migration 268: hoechstens EINE aktuelle Firma pro User. Verhindert
+        # die is_current-Korruption, die MultipleResultsFound-500er in
+        # get_user_current_company/get_user_company_id ausloeste.
+        Index(
+            "uq_user_companies_one_current",
+            "user_id",
+            unique=True,
+            postgresql_where=is_current.is_(True),
+        ),
         # UniqueConstraint wird in Migration erstellt
     )
 

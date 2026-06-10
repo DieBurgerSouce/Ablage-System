@@ -515,6 +515,15 @@ class ProcessingJob(Base):
         Index("ix_processing_jobs_status", "status"),
         Index("ix_processing_jobs_created_at", "created_at"),
         Index("ix_processing_jobs_document_id", "document_id"),
+        # Migration 268: hoechstens ein aktiver Job pro (Dokument, Job-Typ) -
+        # Grundlage fuer Celery-Idempotenz (INSERT .. ON CONFLICT DO NOTHING).
+        Index(
+            "uq_processing_jobs_active_per_doc_type",
+            "document_id",
+            "job_type",
+            unique=True,
+            postgresql_where=status.in_(("queued", "processing")),
+        ),
         CheckConstraint("priority >= 1 AND priority <= 10", name="ck_processing_jobs_priority"),
     )
 
