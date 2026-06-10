@@ -6,7 +6,7 @@ Alias macht die 17 Tests lauffähig, ohne alle Signaturen umzubenennen.
 Ohne erreichbares PostgreSQL skippt ``test_db`` sauber.
 """
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
