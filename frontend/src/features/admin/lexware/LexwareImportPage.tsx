@@ -234,6 +234,15 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
             isDryRun={dryRun}
           />
 
+          {/* F3: Konflikt-Details auch im Erfolgs-Report sichtbar machen -
+              vorher sah der Nutzer hier nur die Konflikt-ZAHL, nicht WELCHE
+              Datensätze übersprungen wurden. */}
+          {step === 'result' &&
+            importResult &&
+            importResult.conflicts.length > 0 && (
+              <ImportConflictPreview conflicts={importResult.conflicts} />
+            )}
+
           {step === 'result' && (
             <div className="flex justify-center">
               <Button onClick={handleReset}>
