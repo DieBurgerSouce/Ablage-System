@@ -259,8 +259,15 @@ class TestPermissionCaching:
         # Erster Aufruf sollte DB abfragen
         perms1 = await service.get_user_permissions(mock_user)
 
-        # Prüfe ob gecacht
-        assert str(mock_user.id) in service._permission_cache
+        # Prüfe ob gecacht — Cache-Keys sind seit P1.1 tenant-isoliert:
+        # Format permission_cache:{company_id|global}:{user_id}
+        user_id = str(mock_user.id)
+        assert any(
+            key.endswith(f":{user_id}") for key in service._permission_cache
+        ), (
+            f"Kein tenant-isolierter Cache-Key fuer User {user_id} gefunden: "
+            f"{list(service._permission_cache)}"
+        )
         assert "documents:read" in perms1
         assert "documents:write" in perms1
 
@@ -576,12 +583,17 @@ class TestTwoFaBypassHaertung:
 class TestDebugProdGuard:
     """W1-001 Fail-Safe in config.py: DEBUG=true wird in Produktion neutralisiert."""
 
+    # Expliziter starker Key: In ENVIRONMENT=production validiert Settings
+    # die SECRET_KEY-Staerke. Ohne Override wuerde der ambient (Test-)Key
+    # aus der Umgebung den Test am FALSCHEN Validator scheitern lassen.
+    _STRONG_KEY = "kJ8vR2nXp5tYwQ7zL4mD9fH6sB1cE3gU0aZiKoNrPq"
+
     def test_debug_wird_in_produktion_neutralisiert(self):
         from app.core.config import Settings
-        s = Settings(ENVIRONMENT="production", DEBUG=True)
+        s = Settings(ENVIRONMENT="production", DEBUG=True, SECRET_KEY=self._STRONG_KEY)
         assert s.DEBUG is False
 
     def test_debug_bleibt_in_dev_erhalten(self):
         from app.core.config import Settings
-        s = Settings(ENVIRONMENT="development", DEBUG=True)
+        s = Settings(ENVIRONMENT="development", DEBUG=True, SECRET_KEY=self._STRONG_KEY)
         assert s.DEBUG is True
