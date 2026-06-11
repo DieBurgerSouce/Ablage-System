@@ -1908,10 +1908,9 @@ async def get_folder_documents(
             detail="Geschäftspartner nicht gefunden"
         )
 
-    # Normalize folder_id
-    normalized_folder = folder_id.lower()
-    if normalized_folder == "spargelmesser":
-        normalized_folder = "messer"
+    # Normalize folder_id via CompanyService (W1-029: kein Hardcode mehr;
+    # Legacy-Aliasse wie "spargelmesser" -> "messer" zentral gepflegt)
+    normalized_folder = get_company_service().normalize_company_short_name(folder_id)
 
     # Query aufbauen
     query = select(Document).where(
