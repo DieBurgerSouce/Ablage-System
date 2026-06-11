@@ -1,5 +1,10 @@
 # Claude Code Configuration - Claude Flow V3
 
+<!-- slack-ask-rule -->
+## Rückfragen & Scope (Slack)
+- Rückfragen und Scope-Entscheidungen IMMER über das `ask_human`-Tool (Slack) stellen — nie im Terminal raten und nie still annehmen.
+- Den vereinbarten Scope nie eigenmächtig verlassen; bei jeder Unklarheit zuerst `ask_human` nutzen und auf die Antwort warten.
+
 ## 🚨 AUTOMATIC SWARM ORCHESTRATION
 
 **When starting work on complex tasks, Claude Code MUST automatically:**
