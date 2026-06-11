@@ -1281,12 +1281,12 @@ services:
     container_name: ablage-jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
-      SPAN_STORAGE_TYPE: badger
-      BADGER_EPHEMERAL: "false"
-      BADGER_DIRECTORY_VALUE: /badger/data
-      BADGER_DIRECTORY_KEY: /badger/key
-    volumes:
-      - jaeger_data:/badger
+      # W1: badger auf frischem Volume crasht (mkdir /badger/key: permission denied —
+      # non-root-Image vs. root-owned Volume) -> Container kam NIE hoch. Solange das
+      # OTEL-SDK nicht integriert ist (W1-020: keine Traces vorhanden), ist In-Memory
+      # korrekt und from-scratch-robust. Bei OTEL-Integration: badger + Volume-Init.
+      SPAN_STORAGE_TYPE: memory
+      MEMORY_MAX_TRACES: "50000"
     ports:
       - "127.0.0.1:16686:16686"  # Jaeger UI
       - "127.0.0.1:4317:4317"    # OTLP gRPC
@@ -1649,7 +1649,7 @@ volumes:
   grafana_data:
   loki_data:
   alertmanager_data:
-  jaeger_data:  # Jaeger Distributed Tracing Storage
+  # jaeger_data entfernt (W1): Jaeger laeuft in-memory bis OTEL-SDK integriert ist
   vault_data:
   vault_logs:
   watchdog_state:  # Sprint 0 / G05 - Watchdog State + Logs persistent
