@@ -238,6 +238,39 @@ class AccountService:
 
         return [self._to_response(acc) for acc in accounts]
 
+    async def get_total_balance(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+    ) -> Decimal:
+        """Summiert den aktuellen Kontostand aller aktiven Konten einer Firma.
+
+        Company-scoped Lesemethode fuer Dashboard-KPIs (W1-010 / TODO G4):
+        beruecksichtigt nur aktive, nicht geloeschte Konten; Konten ohne
+        gepflegten Saldo (``current_balance IS NULL``) zaehlen als 0.
+
+        Args:
+            db: Async-DB-Session.
+            company_id: Mandanten-ID (Pflichtfilter, Multi-Tenant).
+
+        Returns:
+            Gesamtsaldo als Decimal (0.00 wenn keine Konten existieren).
+        """
+        from app.db.models import BankAccount
+
+        stmt = select(
+            func.coalesce(func.sum(BankAccount.current_balance), 0)
+        ).where(
+            and_(
+                BankAccount.company_id == company_id,
+                BankAccount.deleted_at.is_(None),
+                BankAccount.is_active == True,  # noqa: E712
+            )
+        )
+        result = await db.execute(stmt)
+        total = result.scalar()
+        return Decimal(str(total)) if total is not None else Decimal("0.00")
+
     async def get_accounts_with_stats(
         self,
         db: AsyncSession,

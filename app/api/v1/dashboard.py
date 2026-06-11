@@ -23,12 +23,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User, Document, InvoiceTracking, Alert
 from app.db.models_privat_enterprise import ApprovalRequest, ApprovalStatus
 from app.services.dashboard_service import DashboardService
+from app.services.banking import AccountService
 from app.services.banking.cash_flow_service import cash_flow_service
 from app.services.approval.approval_service import ApprovalService
+from app.services.ocr_quality_metrics_service import get_ocr_quality_metrics_service
 
 logger = structlog.get_logger(__name__)
 
@@ -634,6 +636,7 @@ async def apply_template(
 async def get_aggregated_kpis(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AggregatedKPIsResponse:
     """
     Gibt aggregierte KPIs aus allen Services zurück.
@@ -645,8 +648,13 @@ async def get_aggregated_kpis(
     - Genehmigungsworkflows
     - OCR-Qualitaet
     - Dokumenten-Statistiken
+
+    Multi-Tenant (W1-010): Die Firmen-ID kommt aus ``get_user_company_id_dep``
+    (UserCompany-Tabelle, 403 ohne Firmenzuordnung). Das fruehere
+    ``getattr(current_user, "company_id", None)`` lieferte IMMER ``None``
+    (User-Modell hat kein solches Feld) und liess die KPIs ungefiltert
+    ueber alle Mandanten laufen.
     """
-    company_id = getattr(current_user, "company_id", None)
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=today_start.weekday())
@@ -807,10 +815,12 @@ async def _get_cash_flow_kpis(db: AsyncSession, company_id: Optional[UUID]) -> C
         else:
             trend = "stable"
 
+        # Echter Kontostand: company-scoped Summe ueber alle aktiven
+        # Bankkonten (W1-010, schliesst TODO G4).
+        total_balance = await AccountService().get_total_balance(db, company_id)
+
         return CashFlowKPIs(
-            # current_balance ist NICHT Teil der Cash-Flow-Summary (Interface-Kontrakt M1).
-            # Eine dedizierte Kontostand-Lesemethode liefert G4 spaeter nach.
-            current_balance=0.0,  # TODO(G4): Kontostand-Lesemethode anbinden
+            current_balance=float(total_balance),
             expected_income_30d=income,
             expected_expenses_30d=expenses,
             net_cash_flow_30d=net,
@@ -936,23 +946,41 @@ async def _get_ocr_quality_kpis(
         if company_id:
             conditions.append(Document.company_id == company_id)
 
-        # Documents processed today
+        # Documents processed today.
+        # W1-010-Bugfix: Document hat KEIN Attribut ``ocr_result`` - der alte
+        # Ausdruck warf beim Query-Bau einen AttributeError, der im
+        # except-Zweig verschluckt wurde -> documents_today war IMMER 0.
+        # ``ocr_confidence`` ist der Marker fuer OCR-verarbeitete Dokumente
+        # (konsistent mit OCRQualityMetricsService.get_ocr_quality_summary).
         docs_today_query = select(func.count(Document.id)).where(
-            Document.ocr_result.isnot(None),
+            Document.ocr_confidence.isnot(None),
             *conditions
         )
         docs_today_result = await db.execute(docs_today_query)
         documents_today = docs_today_result.scalar() or 0
 
-        # TODO(G4): success_rate / avg_confidence / manual_corrections erfordern eine
-        # company-gefilterte, DB-gestützte Lese-Methode (z.B.
-        # OCRQualityMetricsService.get_ocr_quality_summary(db, company_id, since)).
-        # Diese existiert noch nicht (heutiger Service ist prozess-lokal/in-memory und
-        # nicht mandantengetrennt). Bis dahin ehrliche None-Werte statt Platzhalterzahlen.
+        # W1-010: success_rate / avg_confidence kommen jetzt aus der
+        # company-gefilterten, DB-gestuetzten Lese-Methode (G1-Kontrakt M3).
+        # Ohne company_id keine mandantengetrennten Qualitaetszahlen ->
+        # ehrliche None-Werte.
+        success_rate: Optional[float] = None
+        avg_confidence: Optional[float] = None
+        if company_id:
+            summary = await get_ocr_quality_metrics_service().get_ocr_quality_summary(
+                db, company_id, since=today_start
+            )
+            processed = summary.get("ocr_processed_count", 0)
+            if processed > 0:
+                low_quality = summary.get("low_quality_count", 0)
+                success_rate = round((processed - low_quality) / processed * 100.0, 1)
+                avg_confidence = round(float(summary.get("avg_confidence", 0.0)), 3)
+
+        # manual_corrections: weiterhin None - es existiert keine company-
+        # gefilterte Datenquelle fuer manuelle Korrekturen (ehrlich statt 0).
         return OCRQualityKPIs(
             documents_today=documents_today,
-            success_rate=None,
-            avg_confidence=None,
+            success_rate=success_rate,
+            avg_confidence=avg_confidence,
             manual_corrections=None,
         )
     except Exception as e:
