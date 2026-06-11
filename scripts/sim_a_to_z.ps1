@@ -39,6 +39,9 @@ $ErrorActionPreference = 'Continue'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
+# Bei `pwsh -File` kommt "-Stages a,b,c" als EIN String an -> normalisieren.
+$Stages = @($Stages | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+
 $ComposeFiles = @('-f','docker-compose.yml','-f','docker-compose.test.yml','-f','docker-compose.cpu-ocr.yml')
 $Stamp = Get-Date -Format 'yyyy-MM-dd'
 $RunStamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -142,6 +145,10 @@ Invoke-Stage 'monitor' {
 
 # --- Summary -----------------------------------------------------------------
 
+if ($Results.Count -eq 0) {
+    Write-Host "FEHLER: Keine Stufe ausgefuehrt - unbekannte Stage-Namen? ($($Stages -join ', '))" -ForegroundColor Red
+    exit 1
+}
 $failed = @($Results.Values | Where-Object { $_.ExitCode -ne 0 })
 $reportDir = Join-Path $RepoRoot 'docs/qa-reports'
 New-Item -ItemType Directory -Force -Path $reportDir | Out-Null
