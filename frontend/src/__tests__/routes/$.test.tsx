@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { createRouter, createMemoryHistory, RouterProvider } from '@tanstack/react-router'
-import { Route as NotFoundRoute } from '../$'
+import { Route as NotFoundRoute } from '@/app/routes/$'
 
 // Mock useNavigate
 const mockNavigate = vi.fn()
