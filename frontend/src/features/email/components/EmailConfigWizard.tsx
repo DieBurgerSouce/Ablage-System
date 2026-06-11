@@ -73,6 +73,7 @@ const wizardSchema = z.object({
 });
 
 type WizardFormData = z.infer<typeof wizardSchema>;
+type WizardFormInput = z.input<typeof wizardSchema>;
 
 interface EmailConfigWizardProps {
   onComplete: () => void;
@@ -125,7 +126,8 @@ export function EmailConfigWizard({ onComplete, onCancel }: EmailConfigWizardPro
   const [connectionTested, setConnectionTested] = useState(false);
   const [availableFolders, setAvailableFolders] = useState<string[]>([]);
 
-  const form = useForm<WizardFormData>({
+  // z.coerce macht Input- und Output-Typ des Schemas unterschiedlich (RHF v7.55+)
+  const form = useForm<WizardFormInput, unknown, WizardFormData>({
     resolver: zodResolver(wizardSchema),
     mode: 'onChange',
     defaultValues: {
@@ -193,7 +195,8 @@ export function EmailConfigWizard({ onComplete, onCancel }: EmailConfigWizardPro
     const values = form.getValues();
     testMutation.mutate({
       host: values.host,
-      port: values.port,
+      // getValues liefert den Schema-Input (z.coerce) -> explizit in Zahl wandeln
+      port: Number(values.port ?? 993),
       use_ssl: values.encryption === 'ssl',
       username: values.username,
       password: values.password,
@@ -202,14 +205,15 @@ export function EmailConfigWizard({ onComplete, onCancel }: EmailConfigWizardPro
 
   const goNext = useCallback(async () => {
     const step = STEPS[currentStep];
-    const result = await form.trigger(step.fields as Array<keyof WizardFormData>);
+    const result = await form.trigger(step.fields as Array<keyof WizardFormInput>);
     if (!result) return;
 
     if (currentStep < STEPS.length - 1) {
       setCurrentStep((p) => p + 1);
     } else {
-      // Submit
-      const values = form.getValues();
+      // Submit — alle Schritte wurden via trigger() validiert,
+      // daher ist das Schema-Parse hier sicher (liefert den Output-Typ inkl. Coercion)
+      const values = wizardSchema.parse(form.getValues());
       saveMutation.mutate({
         name: values.name,
         host: values.host,
@@ -321,6 +325,7 @@ export function EmailConfigWizard({ onComplete, onCancel }: EmailConfigWizardPro
                   render={({ field }) => (
                     <Input
                       {...field}
+                      value={Number(field.value ?? 993)}
                       id="port"
                       type="number"
                       onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 993)}

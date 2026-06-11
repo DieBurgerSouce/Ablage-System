@@ -37,6 +37,7 @@ const mileageSchema = z.object({
 });
 
 type MileageFormData = z.infer<typeof mileageSchema>;
+type MileageFormDataInput = z.input<typeof mileageSchema>;
 
 interface MileageCalculatorProps {
   onCalculate?: (calculation: MileageCalculation) => void;
@@ -52,7 +53,7 @@ export function MileageCalculator({
   const calculateMutation = useCalculateMileage();
   const [calculation, setCalculation] = React.useState<MileageCalculation | null>(null);
 
-  const form = useForm<MileageFormData>({
+  const form = useForm<MileageFormDataInput, unknown, MileageFormData>({
     resolver: zodResolver(mileageSchema),
     defaultValues: {
       kilometers: 0,
