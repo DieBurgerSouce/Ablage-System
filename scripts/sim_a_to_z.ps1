@@ -101,16 +101,25 @@ Invoke-Stage 'gates' {
     Write-Host 'Alle Health-Gates gruen.'
 }
 
+# --continue-on-collection-errors: tests/unit/orchestration/** importiert das
+# Host-Tooling-Paket 'orchestration' (.claude/orchestration, im Container nicht
+# gemountet) -> ohne das Flag bricht die GESAMTE Collection ab (exit 2).
 Invoke-Stage 'docker'   { python -m pytest tests/docker -q --no-header }
-Invoke-Stage 'unit'     { docker compose @ComposeFiles exec -T backend pytest tests/unit -q --no-header -p no:cacheprovider }
-Invoke-Stage 'security' { docker compose @ComposeFiles exec -T backend pytest tests/security -q --no-header -p no:cacheprovider }
-Invoke-Stage 'integ'    { docker compose @ComposeFiles exec -T backend pytest tests/integration -q --no-header -p no:cacheprovider -m 'not gpu' }
+Invoke-Stage 'unit'     { docker compose @ComposeFiles exec -T backend pytest tests/unit -q --no-header -p no:cacheprovider --continue-on-collection-errors }
+Invoke-Stage 'security' { docker compose @ComposeFiles exec -T backend pytest tests/security -q --no-header -p no:cacheprovider --continue-on-collection-errors }
+Invoke-Stage 'integ'    { docker compose @ComposeFiles exec -T backend pytest tests/integration -q --no-header -p no:cacheprovider -m 'not gpu' --continue-on-collection-errors }
 
 Invoke-Stage 'api' {
     $env:BASE_URL = $BackendUrl
     if (-not $env:MAX_EXAMPLES) { $env:MAX_EXAMPLES = '25' }
     if (-not $env:MAX_FAILURES) { $env:MAX_FAILURES = '50' }
-    bash scripts/run_schemathesis.sh
+    # Git-Bash EXPLIZIT: blankes 'bash' loest auf WSL auf (dort fehlt python/
+    # schemathesis); das Skript braucht die Host-Python-Umgebung.
+    $gitBash = 'C:\Program Files\Git\bin\bash.exe'
+    if (-not (Test-Path $gitBash)) { Write-Host "Git-Bash fehlt: $gitBash"; $global:LASTEXITCODE = 1; return }
+    # schemathesis.exe liegt im Python-Scripts-Verzeichnis (nicht auf PATH)
+    $env:PATH = "C:\Program Files\Python312\Scripts;$env:PATH"
+    & $gitBash scripts/run_schemathesis.sh
 }
 
 Invoke-Stage 'e2e' {
