@@ -326,8 +326,8 @@ function CompleteFormExample() {
         },
     });
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        console.log(values);
+    function onSubmit(_values: z.infer<typeof formSchema>) {
+        // Demo-Story: Absenden hat hier bewusst keinen Effekt.
     }
 
     return (
