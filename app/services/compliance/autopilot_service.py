@@ -96,6 +96,9 @@ class AuditPackage:
     document_count: int
     date_range: Tuple[date, date]
     included_types: List[str]
+    # W1-031 (additiv): Anzahl Dokumente, deren Originaldatei nicht aus dem
+    # Storage abrufbar war (im ZIP als *_FEHLT.txt-Platzhalter gekennzeichnet).
+    documents_missing: int = 0
 
 
 # ============================================================================
@@ -308,8 +311,24 @@ class ComplianceAutopilotService:
         result = await db.execute(stmt)
         documents = result.scalars().all()
 
+        # W1-031: Echte Dateien aus MinIO statt Mock-Content.
+        # Storage-Init darf das Audit-Paket nicht crashen - fehlende Dateien
+        # werden als *_FEHLT.txt-Platzhalter ehrlich gekennzeichnet.
+        storage = None
+        try:
+            from app.services.storage_service import get_storage_service
+
+            storage = get_storage_service()
+        except Exception as e:  # noqa: BLE001 - Audit degradiert pro Dokument
+            logger.warning(
+                "audit_storage_unavailable",
+                company_id=str(company_id),
+                error_type=type(e).__name__,
+            )
+
         # ZIP-Archiv erstellen
         zip_buffer = io.BytesIO()
+        missing_ids: List[UUID] = []
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             # Index-Datei
             index_content = self._generate_audit_index(documents)
@@ -324,13 +343,48 @@ class ComplianceAutopilotService:
                 if type_dir not in included_types:
                     included_types.append(type_dir)
 
-                # Dateiname: YYYYMMDD_DocumentID.pdf
-                filename = f"{doc.created_at.strftime('%Y%m%d')}_{doc.id}.pdf"
-                filepath = f"{type_dir}/{filename}"
+                # W1-031: Original-Datei aus MinIO laden
+                file_content: Optional[bytes] = None
+                if storage is not None and doc.file_path:
+                    try:
+                        file_content = await storage.download_document(doc.file_path)
+                    except Exception as e:  # noqa: BLE001 - pro Dokument degradieren
+                        logger.warning(
+                            "audit_document_download_failed",
+                            document_id=str(doc.id),
+                            error_type=type(e).__name__,
+                        )
 
-                # Mock-Content (in Production: echte Dateien aus MinIO)
-                mock_content = f"Dokument {doc.id}\nTyp: {doc_type.value}\n".encode()
-                zip_file.writestr(filepath, mock_content)
+                date_prefix = doc.created_at.strftime("%Y%m%d")
+                if file_content is not None:
+                    # Dateiname: YYYYMMDD_DocumentID.<Original-Endung>
+                    extension = self._audit_file_extension(doc)
+                    filepath = f"{type_dir}/{date_prefix}_{doc.id}.{extension}"
+                    zip_file.writestr(filepath, file_content)
+                else:
+                    # Ehrlicher Platzhalter statt Mock-Content
+                    missing_ids.append(doc.id)
+                    placeholder = (
+                        "FEHLER: Originaldatei nicht abrufbar.\n"
+                        f"Dokument-ID: {doc.id}\n"
+                        f"Typ: {doc_type.value}\n"
+                        f"Erstellt: {doc.created_at.isoformat()}\n"
+                        "Bitte Storage-Verfuegbarkeit pruefen und Audit-Paket "
+                        "erneut erstellen.\n"
+                    )
+                    filepath = f"{type_dir}/{date_prefix}_{doc.id}_FEHLT.txt"
+                    zip_file.writestr(filepath, placeholder.encode("utf-8"))
+
+            # Fehlende Dateien zusaetzlich zentral ausweisen
+            if missing_ids:
+                missing_list = "\n".join(str(doc_id) for doc_id in missing_ids)
+                zip_file.writestr(
+                    "FEHLENDE_DATEIEN.txt",
+                    (
+                        f"{len(missing_ids)} Dokument(e) ohne abrufbare "
+                        f"Originaldatei:\n{missing_list}\n"
+                    ).encode("utf-8"),
+                )
 
         zip_buffer.seek(0)
         zip_content = zip_buffer.read()
@@ -344,16 +398,32 @@ class ComplianceAutopilotService:
             document_count=len(documents),
             date_range=date_range,
             included_types=included_types,
+            documents_missing=len(missing_ids),
         )
 
         logger.info(
             "audit_preparation_completed",
             company_id=str(company_id),
             document_count=len(documents),
+            documents_missing=len(missing_ids),
             zip_size_bytes=len(zip_content),
         )
 
         return package
+
+    @staticmethod
+    def _audit_file_extension(doc: Document) -> str:
+        """Ermittelt die Datei-Endung fuer das Audit-ZIP (W1-031).
+
+        Bevorzugt die Original-Endung aus filename/file_path;
+        Fallback "pdf" (bisheriges Namensschema).
+        """
+        for candidate in (doc.filename, doc.file_path):
+            if candidate and "." in candidate:
+                extension = candidate.rsplit(".", 1)[1].strip().lower()
+                if extension and len(extension) <= 8 and extension.isalnum():
+                    return extension
+        return "pdf"
 
     async def run_gdpr_check(
         self, company_id: UUID, db: AsyncSession
