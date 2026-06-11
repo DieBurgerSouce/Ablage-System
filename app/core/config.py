@@ -65,6 +65,24 @@ class Settings(BaseSettings):
         Umgebungs-Labels nicht still durchrutschen.
         """
         return self.ENVIRONMENT.lower().startswith("prod")
+
+    @model_validator(mode="after")
+    def _enforce_debug_off_in_production(self) -> "Settings":
+        """W1-001 Fail-Safe: DEBUG darf in Produktion niemals aktiv bleiben.
+
+        Ein versehentliches DEBUG=true in einer Produktions-.env wuerde sonst
+        Secure-Cookies/HSTS deaktivieren und (historisch) Sicherheits-Bypässe
+        oeffnen. Wir neutralisieren statt zu crashen und loggen laut.
+        """
+        if self.is_production and self.DEBUG:
+            logger.error(
+                "debug_forced_off_in_production",
+                environment=self.ENVIRONMENT,
+                hint="DEBUG=true in Produktions-Umgebung erkannt und neutralisiert",
+            )
+            self.DEBUG = False
+        return self
+
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent  # Project root
     
     # Server

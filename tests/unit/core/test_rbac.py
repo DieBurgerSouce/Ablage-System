@@ -519,3 +519,69 @@ class TestEdgeCases:
             result = await service.has_permission(mock_user, "users:read")
 
         assert result is True
+
+
+# ==================== W1-001: 2FA-Bypass-Haertung ====================
+
+class TestTwoFaBypassHaertung:
+    """W1-001: settings.DEBUG darf die 2FA-Pflicht NICHT mehr deaktivieren.
+
+    Bypass ist nur im TESTING-Betrieb (docker-compose.test.yml) legitim
+    und greift nie in Produktion.
+    """
+
+    def test_debug_true_bypasst_2fa_nicht(self):
+        from app.core import rbac
+        with patch.object(rbac.settings, "DEBUG", True), \
+             patch.object(rbac.settings, "TESTING", False), \
+             patch.object(rbac.settings, "ENVIRONMENT", "development"):
+            assert rbac._twofa_bypass_active() is False
+
+    def test_testing_bypasst_in_dev(self):
+        from app.core import rbac
+        with patch.object(rbac.settings, "TESTING", True), \
+             patch.object(rbac.settings, "ENVIRONMENT", "development"):
+            assert rbac._twofa_bypass_active() is True
+
+    def test_testing_bypasst_nie_in_produktion(self):
+        from app.core import rbac
+        with patch.object(rbac.settings, "TESTING", True), \
+             patch.object(rbac.settings, "ENVIRONMENT", "production"):
+            assert rbac._twofa_bypass_active() is False
+
+    @pytest.mark.asyncio
+    async def test_superuser_ohne_totp_braucht_2fa_trotz_debug(self, mock_superuser):
+        """Regressionstest: vor W1-001 schaltete DEBUG=true die Pflicht ab."""
+        from app.core import rbac
+        mock_superuser.totp_enabled = False
+        checker = rbac.require_superuser()
+        with patch.object(rbac.settings, "DEBUG", True), \
+             patch.object(rbac.settings, "TESTING", False), \
+             patch.object(rbac.settings, "ENVIRONMENT", "development"):
+            with pytest.raises(rbac.TwoFactorRequiredError):
+                await checker(current_user=mock_superuser)
+
+    @pytest.mark.asyncio
+    async def test_superuser_ohne_totp_im_testing_betrieb_erlaubt(self, mock_superuser):
+        """E2E-Stack (TESTING=true, non-prod) darf ohne TOTP arbeiten."""
+        from app.core import rbac
+        mock_superuser.totp_enabled = False
+        checker = rbac.require_superuser()
+        with patch.object(rbac.settings, "TESTING", True), \
+             patch.object(rbac.settings, "ENVIRONMENT", "development"):
+            result = await checker(current_user=mock_superuser)
+        assert result is mock_superuser
+
+
+class TestDebugProdGuard:
+    """W1-001 Fail-Safe in config.py: DEBUG=true wird in Produktion neutralisiert."""
+
+    def test_debug_wird_in_produktion_neutralisiert(self):
+        from app.core.config import Settings
+        s = Settings(ENVIRONMENT="production", DEBUG=True)
+        assert s.DEBUG is False
+
+    def test_debug_bleibt_in_dev_erhalten(self):
+        from app.core.config import Settings
+        s = Settings(ENVIRONMENT="development", DEBUG=True)
+        assert s.DEBUG is True
