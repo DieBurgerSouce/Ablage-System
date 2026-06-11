@@ -378,18 +378,32 @@ class TestMigrationNamingConventions:
         """Prueft, dass Migration-Dateien dem Naming-Pattern folgen.
 
         Pattern: NNN_description.py wobei NNN eine 3-stellige Nummer ist.
+
+        Bewusste Legacy-Ausnahmen (im Repo vorhanden, nicht umbenennbar,
+        da alembic-Revisionshistorie):
+        - ``NNNb_...``-Serie (019b-031b): historische Zwischen-Revisionen
+        - ``streckengeschaeft_NNN_...``: dokumentierte Parallel-Serie
+        Neue Migrationen MUESSEN dem Hauptpattern folgen (Toleranz 0).
         """
         invalid_names = []
 
         # Pattern: digits_words.py
         pattern = re.compile(r'^\d+_[a-z0-9_]+\.py$')
+        # Grandfathered Legacy-Serien (siehe Docstring)
+        legacy_patterns = [
+            re.compile(r'^\d+b_[a-z0-9_]+\.py$'),
+            re.compile(r'^streckengeschaeft_\d+_[a-z0-9_]+\.py$'),
+        ]
 
         for migration_file in migration_files:
-            if not pattern.match(migration_file.name):
-                invalid_names.append(migration_file.name)
+            if pattern.match(migration_file.name):
+                continue
+            if any(lp.match(migration_file.name) for lp in legacy_patterns):
+                continue
+            invalid_names.append(migration_file.name)
 
-        # Allow some flexibility for legacy migrations
-        max_allowed_invalid = 5
+        # Keine neue Abweichung erlaubt (Legacy-Serien sind oben gewhitelistet)
+        max_allowed_invalid = 0
         assert len(invalid_names) <= max_allowed_invalid, (
             f"Zu viele Migrationen mit ungueltigem Namen ({len(invalid_names)}): "
             f"{invalid_names[:10]}"
