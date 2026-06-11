@@ -275,7 +275,8 @@ class OfflineSyncService {
 
       // Check if Background Sync API is available
       if ('sync' in registration) {
-        await (registration as any).sync.register('offline-mutations');
+        // Background-Sync-API fehlt in den DOM-Lib-Typen (extern erzwungener Cast)
+        await (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync.register('offline-mutations');
         logger.info('[SyncService] Background Sync registriert');
         return true;
       }

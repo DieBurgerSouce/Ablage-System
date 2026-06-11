@@ -86,7 +86,8 @@ export function usePWAFeatures(): UsePWAFeaturesResult {
 
         // Check if Background Sync API is available
         if ('sync' in registration) {
-          await (registration as any).sync.register(tag);
+          // Background-Sync-API fehlt in den DOM-Lib-Typen (extern erzwungener Cast)
+          await (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag);
           logger.info('[PWA] Background Sync registriert', { tag });
           return true;
         }

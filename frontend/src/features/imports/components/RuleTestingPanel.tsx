@@ -85,7 +85,9 @@ const folderTestSchema = z.object({
 });
 
 type EmailTestData = z.infer<typeof emailTestSchema>;
+type EmailTestDataInput = z.input<typeof emailTestSchema>;
 type FolderTestData = z.infer<typeof folderTestSchema>;
+type FolderTestDataInput = z.input<typeof folderTestSchema>;
 
 // ==================== Result Display ====================
 
@@ -241,7 +243,7 @@ interface EmailTestFormProps {
 }
 
 function EmailTestForm({ onTest, isPending, onReset }: EmailTestFormProps) {
-  const form = useForm<EmailTestData>({
+  const form = useForm<EmailTestDataInput, unknown, EmailTestData>({
     resolver: zodResolver(emailTestSchema),
     defaultValues: {
       senderEmail: '',
@@ -387,7 +389,7 @@ function EmailTestForm({ onTest, isPending, onReset }: EmailTestFormProps) {
               <FormItem>
                 <FormLabel>Dateigröße (Bytes)</FormLabel>
                 <FormControl>
-                  <Input type="number" {...field} />
+                  <Input type="number" {...field} value={Number(field.value ?? 0)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -429,7 +431,7 @@ interface FolderTestFormProps {
 }
 
 function FolderTestForm({ onTest, isPending, onReset }: FolderTestFormProps) {
-  const form = useForm<FolderTestData>({
+  const form = useForm<FolderTestDataInput, unknown, FolderTestData>({
     resolver: zodResolver(folderTestSchema),
     defaultValues: {
       filename: '',
@@ -552,10 +554,10 @@ function FolderTestForm({ onTest, isPending, onReset }: FolderTestFormProps) {
             <FormItem>
               <FormLabel>Dateigröße (Bytes)</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="number" {...field} value={Number(field.value ?? 0)} />
               </FormControl>
               <FormDescription>
-                {field.value > 0 && `${(field.value / 1024 / 1024).toFixed(2)} MB`}
+                {Number(field.value ?? 0) > 0 && `${(Number(field.value) / 1024 / 1024).toFixed(2)} MB`}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -644,7 +646,9 @@ export function RuleTestingPanel({ ruleId, className }: RuleTestingPanelProps) {
                 value: typeof value === 'string' ? value : JSON.stringify(value),
               }))
           : [],
-        stopProcessing: allConditionsMatch && (rule as any).stopOnMatch,
+        // Backend-ImportRule kennt kein stop_on_match-Feld -> Simulation
+        // verhaelt sich wie bisher (Cast lieferte immer undefined/falsy)
+        stopProcessing: false,
       };
     });
 

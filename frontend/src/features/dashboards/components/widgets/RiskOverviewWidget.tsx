@@ -8,8 +8,9 @@ import { useQuery } from '@tanstack/react-query';
 import { WidgetWrapper } from './WidgetWrapper';
 import { AlertTriangle, Shield } from 'lucide-react';
 import type { Widget } from '../../types';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 interface RiskOverviewWidgetProps {
   widget: Widget;
@@ -48,10 +49,15 @@ export function RiskOverviewWidget({
     },
   });
 
-  const getRiskLevel = (score: number) => {
-    if (score >= 75) return { label: 'Hoch', color: 'destructive' };
-    if (score >= 50) return { label: 'Mittel', color: 'warning' };
-    return { label: 'Niedrig', color: 'success' };
+  // Rueckgabetyp auf die echten Badge-Variants eingeengt; 'warning'/'success'
+  // existieren als Variant nicht (rendert sonst unstyled) -> outline + Farbe
+  const getRiskLevel = (
+    score: number
+  ): { label: string; variant: BadgeProps['variant']; className?: string } => {
+    if (score >= 75) return { label: 'Hoch', variant: 'destructive' };
+    if (score >= 50)
+      return { label: 'Mittel', variant: 'outline', className: 'border-orange-500 text-orange-600' };
+    return { label: 'Niedrig', variant: 'outline', className: 'border-green-500 text-green-600' };
   };
 
   const getRiskColor = (score: number) => {
@@ -137,8 +143,8 @@ export function RiskOverviewWidget({
                       </div>
                     </div>
                     <Badge
-                      variant={getRiskLevel(risk.risk_score).color as any}
-                      className="ml-2"
+                      variant={getRiskLevel(risk.risk_score).variant}
+                      className={cn('ml-2', getRiskLevel(risk.risk_score).className)}
                     >
                       {risk.risk_score.toFixed(0)}
                     </Badge>
