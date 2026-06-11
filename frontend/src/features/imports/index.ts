@@ -10,8 +10,7 @@ export * from './types';
 // API Client
 export * from './api';
 
-// React Query Hooks
-export * from './hooks/useImports';
+// React Query Hooks (useImports.ts ist ein totes Duplikat — Konsumenten nutzen use-import-queries)
 export * from './hooks/use-import-queries';
 
 // Components

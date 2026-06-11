@@ -11,41 +11,44 @@ import { apiClient } from '../client';
 // ENUMS - Basierend auf Backend Schemas (app/api/schemas/rag.py)
 // ============================================================================
 
-export enum AIActionType {
+export const AIActionType = {
     // Read-Only Actions (Viewer+)
-    SEARCH_DOCUMENTS = 'search_documents',
-    ANALYZE_ENTITY = 'analyze_entity',
-    GENERATE_REPORT = 'generate_report',
-    EXPLAIN_DOCUMENT = 'explain_document',
+    SEARCH_DOCUMENTS: 'search_documents',
+    ANALYZE_ENTITY: 'analyze_entity',
+    GENERATE_REPORT: 'generate_report',
+    EXPLAIN_DOCUMENT: 'explain_document',
 
     // Supervised Actions (Editor+)
-    CATEGORIZE_DOCUMENT = 'categorize_document',
-    TAG_DOCUMENT = 'tag_document',
-    LINK_ENTITY = 'link_entity',
-    CREATE_REMINDER = 'create_reminder',
+    CATEGORIZE_DOCUMENT: 'categorize_document',
+    TAG_DOCUMENT: 'tag_document',
+    LINK_ENTITY: 'link_entity',
+    CREATE_REMINDER: 'create_reminder',
 
     // Autonomous Actions (Admin only)
-    APPROVE_VALIDATION = 'approve_validation',
-    TRIGGER_OCR = 'trigger_ocr',
-    SEND_NOTIFICATION = 'send_notification',
-    BULK_CATEGORIZE = 'bulk_categorize',
-}
+    APPROVE_VALIDATION: 'approve_validation',
+    TRIGGER_OCR: 'trigger_ocr',
+    SEND_NOTIFICATION: 'send_notification',
+    BULK_CATEGORIZE: 'bulk_categorize',
+} as const;
+export type AIActionType = (typeof AIActionType)[keyof typeof AIActionType];
 
-export enum AIActionAutonomyLevel {
-    VIEWER = 'viewer',     // Read-Only
-    EDITOR = 'editor',     // Supervised (Vorschlag + Bestätigung)
-    ADMIN = 'admin',       // Autonomous (selbstständig)
-}
+export const AIActionAutonomyLevel = {
+    VIEWER: 'viewer',     // Read-Only
+    EDITOR: 'editor',     // Supervised (Vorschlag + Bestätigung)
+    ADMIN: 'admin',       // Autonomous (selbstständig)
+} as const;
+export type AIActionAutonomyLevel = (typeof AIActionAutonomyLevel)[keyof typeof AIActionAutonomyLevel];
 
-export enum AIActionStatus {
-    PENDING = 'pending',
-    SUGGESTED = 'suggested',     // Wartet auf User-Bestätigung
-    CONFIRMED = 'confirmed',     // User hat bestätigt
-    EXECUTING = 'executing',
-    COMPLETED = 'completed',
-    REJECTED = 'rejected',       // User hat abgelehnt
-    FAILED = 'failed',
-}
+export const AIActionStatus = {
+    PENDING: 'pending',
+    SUGGESTED: 'suggested',     // Wartet auf User-Bestätigung
+    CONFIRMED: 'confirmed',     // User hat bestätigt
+    EXECUTING: 'executing',
+    COMPLETED: 'completed',
+    REJECTED: 'rejected',       // User hat abgelehnt
+    FAILED: 'failed',
+} as const;
+export type AIActionStatus = (typeof AIActionStatus)[keyof typeof AIActionStatus];
 
 // ============================================================================
 // TYPES

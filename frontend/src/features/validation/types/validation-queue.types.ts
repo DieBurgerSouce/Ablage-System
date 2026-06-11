@@ -7,35 +7,39 @@
 
 // ==================== Enums ====================
 
-export enum ValidationStatus {
-  PENDING = 'pending',
-  IN_PROGRESS = 'in_progress',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-}
+export const ValidationStatus = {
+  PENDING: 'pending',
+  IN_PROGRESS: 'in_progress',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+} as const;
+export type ValidationStatus = (typeof ValidationStatus)[keyof typeof ValidationStatus];
 
-export enum SampleSource {
-  AUTOMATIC = 'automatic',
-  RULE_BASED = 'rule_based',
-  LOW_CONFIDENCE = 'low_confidence',
-  MANUAL = 'manual',
-}
+export const SampleSource = {
+  AUTOMATIC: 'automatic',
+  RULE_BASED: 'rule_based',
+  LOW_CONFIDENCE: 'low_confidence',
+  MANUAL: 'manual',
+} as const;
+export type SampleSource = (typeof SampleSource)[keyof typeof SampleSource];
 
-export enum ValidationRuleType {
-  CONFIDENCE_THRESHOLD = 'confidence_threshold',
-  FIELD_PATTERN = 'field_pattern',
-  DOCUMENT_TYPE = 'document_type',
-  ERROR_PATTERN = 'error_pattern',
-}
+export const ValidationRuleType = {
+  CONFIDENCE_THRESHOLD: 'confidence_threshold',
+  FIELD_PATTERN: 'field_pattern',
+  DOCUMENT_TYPE: 'document_type',
+  ERROR_PATTERN: 'error_pattern',
+} as const;
+export type ValidationRuleType = (typeof ValidationRuleType)[keyof typeof ValidationRuleType];
 
-export enum RejectionCategory {
-  OCR_ERROR = 'ocr_error',
-  EXTRACTION_ERROR = 'extraction_error',
-  DOCUMENT_QUALITY = 'document_quality',
-  WRONG_DOCUMENT_TYPE = 'wrong_document_type',
-  INCOMPLETE_DATA = 'incomplete_data',
-  OTHER = 'other',
-}
+export const RejectionCategory = {
+  OCR_ERROR: 'ocr_error',
+  EXTRACTION_ERROR: 'extraction_error',
+  DOCUMENT_QUALITY: 'document_quality',
+  WRONG_DOCUMENT_TYPE: 'wrong_document_type',
+  INCOMPLETE_DATA: 'incomplete_data',
+  OTHER: 'other',
+} as const;
+export type RejectionCategory = (typeof RejectionCategory)[keyof typeof RejectionCategory];
 
 // ==================== Label Maps (Deutsche UI) ====================
 

@@ -7,37 +7,41 @@
 
 // ==================== Enums ====================
 
-export enum TrainingSampleStatus {
-  PENDING = 'pending',
-  IN_PROGRESS = 'in_progress',
-  ANNOTATED = 'annotated',
-  VERIFIED = 'verified',
-  REJECTED = 'rejected',
-}
+export const TrainingSampleStatus = {
+  PENDING: 'pending',
+  IN_PROGRESS: 'in_progress',
+  ANNOTATED: 'annotated',
+  VERIFIED: 'verified',
+  REJECTED: 'rejected',
+} as const;
+export type TrainingSampleStatus = (typeof TrainingSampleStatus)[keyof typeof TrainingSampleStatus];
 
-export enum CorrectionType {
-  UMLAUT = 'umlaut',
-  DATE = 'date',
-  AMOUNT = 'amount',
-  NAME = 'name',
-  IBAN = 'iban',
-  VAT_ID = 'vat_id',
-  GENERAL = 'general',
-}
+export const CorrectionType = {
+  UMLAUT: 'umlaut',
+  DATE: 'date',
+  AMOUNT: 'amount',
+  NAME: 'name',
+  IBAN: 'iban',
+  VAT_ID: 'vat_id',
+  GENERAL: 'general',
+} as const;
+export type CorrectionType = (typeof CorrectionType)[keyof typeof CorrectionType];
 
-export enum TrainingBatchType {
-  RANDOM = 'random',
-  STRATIFIED = 'stratified',
-  TARGETED = 'targeted',
-  LOW_CONFIDENCE = 'low_confidence',
-}
+export const TrainingBatchType = {
+  RANDOM: 'random',
+  STRATIFIED: 'stratified',
+  TARGETED: 'targeted',
+  LOW_CONFIDENCE: 'low_confidence',
+} as const;
+export type TrainingBatchType = (typeof TrainingBatchType)[keyof typeof TrainingBatchType];
 
-export enum TrainingBatchStatus {
-  DRAFT = 'draft',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-}
+export const TrainingBatchStatus = {
+  DRAFT: 'draft',
+  ACTIVE: 'active',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+} as const;
+export type TrainingBatchStatus = (typeof TrainingBatchStatus)[keyof typeof TrainingBatchStatus];
 
 // ==================== Label Maps (Deutsche UI) ====================
 

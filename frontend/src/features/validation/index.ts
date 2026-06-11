@@ -15,3 +15,6 @@ export * from './hooks';
 
 // API
 export * from './api';
+
+// Explizit: kanonische Typquelle (Mehrdeutigkeit types vs. api aufgeloest)
+export type { SampleBenchmark } from './types';

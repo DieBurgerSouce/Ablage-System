@@ -17,13 +17,14 @@ import type {
 // ============================================================================
 
 export class ProactiveAssistantApiError extends Error {
-  constructor(
-    message: string,
-    public statusCode?: number,
-    public originalError?: unknown
-  ) {
+  statusCode?: number;
+  originalError?: unknown;
+
+  constructor(message: string, statusCode?: number, originalError?: unknown) {
     super(message);
     this.name = 'ProactiveAssistantApiError';
+    this.statusCode = statusCode;
+    this.originalError = originalError;
   }
 }
 

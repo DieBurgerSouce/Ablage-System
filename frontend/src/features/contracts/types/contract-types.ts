@@ -8,59 +8,64 @@
 // Enums
 // =============================================================================
 
-export enum ContractType {
-  SERVICE = 'service',
-  SUPPLY = 'supply',
-  FRAMEWORK = 'framework',
-  MAINTENANCE = 'maintenance',
-  LICENSE = 'license',
-  LEASE = 'lease',
-  CONSULTING = 'consulting',
-  COOPERATION = 'cooperation',
-  NDA = 'nda',
-  PURCHASE = 'purchase',
-  OTHER = 'other',
-}
+export const ContractType = {
+  SERVICE: 'service',
+  SUPPLY: 'supply',
+  FRAMEWORK: 'framework',
+  MAINTENANCE: 'maintenance',
+  LICENSE: 'license',
+  LEASE: 'lease',
+  CONSULTING: 'consulting',
+  COOPERATION: 'cooperation',
+  NDA: 'nda',
+  PURCHASE: 'purchase',
+  OTHER: 'other',
+} as const;
+export type ContractType = (typeof ContractType)[keyof typeof ContractType];
 
-export enum ContractStatus {
-  DRAFT = 'draft',
-  PENDING_SIGNATURE = 'pending_signature',
-  ACTIVE = 'active',
-  SUSPENDED = 'suspended',
-  EXPIRING_SOON = 'expiring_soon',
-  EXPIRED = 'expired',
-  TERMINATED = 'terminated',
-  RENEWED = 'renewed',
-}
+export const ContractStatus = {
+  DRAFT: 'draft',
+  PENDING_SIGNATURE: 'pending_signature',
+  ACTIVE: 'active',
+  SUSPENDED: 'suspended',
+  EXPIRING_SOON: 'expiring_soon',
+  EXPIRED: 'expired',
+  TERMINATED: 'terminated',
+  RENEWED: 'renewed',
+} as const;
+export type ContractStatus = (typeof ContractStatus)[keyof typeof ContractStatus];
 
-export enum RenewalOptionStatus {
-  AVAILABLE = 'available',
-  PENDING = 'pending',
-  EXERCISED = 'exercised',
-  DECLINED = 'declined',
-  EXPIRED = 'expired',
-}
+export const RenewalOptionStatus = {
+  AVAILABLE: 'available',
+  PENDING: 'pending',
+  EXERCISED: 'exercised',
+  DECLINED: 'declined',
+  EXPIRED: 'expired',
+} as const;
+export type RenewalOptionStatus = (typeof RenewalOptionStatus)[keyof typeof RenewalOptionStatus];
 
-export enum MilestoneType {
-  CONTRACT_START = 'contract_start',
-  CONTRACT_END = 'contract_end',
-  RENEWAL_OPTION = 'renewal_option',
-  NOTICE_DEADLINE = 'notice_deadline',
-  PRICE_ADJUSTMENT = 'price_adjustment',
-  SERVICE_LEVEL_REVIEW = 'service_level_review',
-  DELIVERABLE_DUE = 'deliverable_due',
-  PAYMENT_DUE = 'payment_due',
-  AUDIT = 'audit',
-  CUSTOM = 'custom',
-}
+export const MilestoneType = {
+  CONTRACT_START: 'contract_start',
+  CONTRACT_END: 'contract_end',
+  RENEWAL_OPTION: 'renewal_option',
+  NOTICE_DEADLINE: 'notice_deadline',
+  PRICE_ADJUSTMENT: 'price_adjustment',
+  SERVICE_LEVEL_REVIEW: 'service_level_review',
+  DELIVERABLE_DUE: 'deliverable_due',
+  PAYMENT_DUE: 'payment_due',
+  AUDIT: 'audit',
+  CUSTOM: 'custom',
+} as const;
+export type MilestoneType = (typeof MilestoneType)[keyof typeof MilestoneType];
 
-export enum AmendmentStatus {
-  DRAFT = 'draft',
-  PENDING_APPROVAL = 'pending_approval',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  SUPERSEDED = 'superseded',
-}
+export const AmendmentStatus = {
+  DRAFT: 'draft',
+  PENDING_APPROVAL: 'pending_approval',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  SUPERSEDED: 'superseded',
+} as const;
+export type AmendmentStatus = (typeof AmendmentStatus)[keyof typeof AmendmentStatus];
 
 // =============================================================================
 // Display Labels (German)

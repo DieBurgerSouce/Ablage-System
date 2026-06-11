@@ -8,37 +8,40 @@
 // Enums
 // =============================================================================
 
-export enum TemplateCategory {
-  INVOICE = 'invoice',
-  OFFER = 'offer',
-  CONTRACT = 'contract',
-  LETTER = 'letter',
-  REMINDER = 'reminder',
-  DUNNING = 'dunning',
-  CONFIRMATION = 'confirmation',
-  REPORT = 'report',
-  CERTIFICATE = 'certificate',
-  OTHER = 'other',
-}
+export const TemplateCategory = {
+  INVOICE: 'invoice',
+  OFFER: 'offer',
+  CONTRACT: 'contract',
+  LETTER: 'letter',
+  REMINDER: 'reminder',
+  DUNNING: 'dunning',
+  CONFIRMATION: 'confirmation',
+  REPORT: 'report',
+  CERTIFICATE: 'certificate',
+  OTHER: 'other',
+} as const;
+export type TemplateCategory = (typeof TemplateCategory)[keyof typeof TemplateCategory];
 
-export enum TemplateOutputFormat {
-  PDF = 'pdf',
-  DOCX = 'docx',
-  HTML = 'html',
-  MARKDOWN = 'markdown',
-}
+export const TemplateOutputFormat = {
+  PDF: 'pdf',
+  DOCX: 'docx',
+  HTML: 'html',
+  MARKDOWN: 'markdown',
+} as const;
+export type TemplateOutputFormat = (typeof TemplateOutputFormat)[keyof typeof TemplateOutputFormat];
 
-export enum VariableType {
-  TEXT = 'text',
-  NUMBER = 'number',
-  CURRENCY = 'currency',
-  DATE = 'date',
-  DATETIME = 'datetime',
-  BOOLEAN = 'boolean',
-  SELECT = 'select',
-  ENTITY = 'entity',
-  DOCUMENT = 'document',
-}
+export const VariableType = {
+  TEXT: 'text',
+  NUMBER: 'number',
+  CURRENCY: 'currency',
+  DATE: 'date',
+  DATETIME: 'datetime',
+  BOOLEAN: 'boolean',
+  SELECT: 'select',
+  ENTITY: 'entity',
+  DOCUMENT: 'document',
+} as const;
+export type VariableType = (typeof VariableType)[keyof typeof VariableType];
 
 // =============================================================================
 // Display Labels (German)

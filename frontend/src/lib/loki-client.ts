@@ -317,10 +317,13 @@ class LokiClient {
  * Helper-Klasse für Component-spezifisches Logging.
  */
 class LokiClientWithLabels {
-  constructor(
-    private client: LokiClient,
-    private extraLabels: Record<string, string>
-  ) {}
+  private client: LokiClient;
+  private extraLabels: Record<string, string>;
+
+  constructor(client: LokiClient, extraLabels: Record<string, string>) {
+    this.client = client;
+    this.extraLabels = extraLabels;
+  }
 
   push(level: LogLevel, message: string, context?: Record<string, unknown>): void {
     this.client.push(level, message, {

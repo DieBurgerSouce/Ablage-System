@@ -6,43 +6,47 @@
 
 // ==================== Enums ====================
 
-export enum EmploymentType {
-  FULL_TIME = 'full_time',
-  PART_TIME = 'part_time',
-  MINI_JOB = 'mini_job',
-  INTERN = 'intern',
-  STUDENT = 'student',
-  FREELANCE = 'freelance',
-  TEMPORARY = 'temporary',
-}
+export const EmploymentType = {
+  FULL_TIME: 'full_time',
+  PART_TIME: 'part_time',
+  MINI_JOB: 'mini_job',
+  INTERN: 'intern',
+  STUDENT: 'student',
+  FREELANCE: 'freelance',
+  TEMPORARY: 'temporary',
+} as const;
+export type EmploymentType = (typeof EmploymentType)[keyof typeof EmploymentType];
 
-export enum EmployeeStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  ON_LEAVE = 'on_leave',
-  TERMINATED = 'terminated',
-  PENDING = 'pending',
-}
+export const EmployeeStatus = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive',
+  ON_LEAVE: 'on_leave',
+  TERMINATED: 'terminated',
+  PENDING: 'pending',
+} as const;
+export type EmployeeStatus = (typeof EmployeeStatus)[keyof typeof EmployeeStatus];
 
-export enum LeaveType {
-  VACATION = 'vacation',
-  SICK = 'sick',
-  MATERNITY = 'maternity',
-  PATERNITY = 'paternity',
-  PARENTAL = 'parental',
-  UNPAID = 'unpaid',
-  SPECIAL = 'special',
-  TRAINING = 'training',
-  OTHER = 'other',
-}
+export const LeaveType = {
+  VACATION: 'vacation',
+  SICK: 'sick',
+  MATERNITY: 'maternity',
+  PATERNITY: 'paternity',
+  PARENTAL: 'parental',
+  UNPAID: 'unpaid',
+  SPECIAL: 'special',
+  TRAINING: 'training',
+  OTHER: 'other',
+} as const;
+export type LeaveType = (typeof LeaveType)[keyof typeof LeaveType];
 
-export enum LeaveRequestStatus {
-  DRAFT = 'draft',
-  SUBMITTED = 'submitted',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  CANCELLED = 'cancelled',
-}
+export const LeaveRequestStatus = {
+  DRAFT: 'draft',
+  SUBMITTED: 'submitted',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  CANCELLED: 'cancelled',
+} as const;
+export type LeaveRequestStatus = (typeof LeaveRequestStatus)[keyof typeof LeaveRequestStatus];
 
 // ==================== Interfaces ====================
 

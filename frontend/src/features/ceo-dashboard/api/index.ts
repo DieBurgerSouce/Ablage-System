@@ -5,5 +5,7 @@
  */
 
 export * from './ceo-dashboard-api';
+// Explizit: getTrends der Haupt-API ist kanonisch (digital-twin-api hat eigenes getTrends)
+export { getTrends } from './ceo-dashboard-api';
 export * from './digital-twin-api';
 export * from './data-quality-api';
