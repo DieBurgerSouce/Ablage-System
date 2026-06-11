@@ -84,7 +84,12 @@ services:
     image: edoburu/pgbouncer:v1.25.1-p0@sha256:85d1e38593617af1b5f7f285e97d407e56c29939683cc7cfe4c8f6dc19f1268b
     container_name: ablage-pgbouncer
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # W1: KEIN ?sslmode=-Query-Anhang — der edoburu-Config-Generator parst die
+      # Query nicht ab und erzeugt "dbname?sslmode=... = host=..." -> ini-Syntax-
+      # fehler + Crash-Loop. Server-TLS stattdessen via SERVER_TLS_SSLMODE
+      # (entrypoint.sh Z.174, offiziell unterstuetzt).
+      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      SERVER_TLS_SSLMODE: ${DB_SSL_MODE:-prefer}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 500
       DEFAULT_POOL_SIZE: 25
