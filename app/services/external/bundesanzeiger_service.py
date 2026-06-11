@@ -30,6 +30,14 @@ from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
+# W1-011: Einmaliges WARN-Log pro Prozess, wenn der Mock-Modus aktiv ist.
+_MOCK_MODE_WARNED = False
+
+# W1-011: Verfuegbarkeits-Status der Datenquelle (nutzersichtbar, deutsch)
+SOURCE_STATUS_LIVE = "live"
+SOURCE_STATUS_MOCK = "mock"
+SOURCE_STATUS_FEHLER = "fehler"
+
 
 # ============================================================================
 # DATA CLASSES
@@ -68,6 +76,10 @@ class InsolvencyResult:
     count: int = 0
     publications: List[Publication] = field(default_factory=list)
     last_checked: Optional[datetime] = None
+    # W1-011 (additiv): Herkunft des Ergebnisses - "live", "mock" oder
+    # "fehler". Das UI kann damit ehrlich anzeigen, ob die Daten simuliert
+    # sind (BUNDESANZEIGER_MOCK=True ist der Default!).
+    source_status: str = SOURCE_STATUS_LIVE
 
 
 # ============================================================================
@@ -88,8 +100,21 @@ class BundesanzeigerService:
 
     def __init__(self) -> None:
         """Initialisiert Service."""
+        global _MOCK_MODE_WARNED
+
         # Mock-Modus aus Settings (Default: True für Entwicklung)
         self.mock_enabled = getattr(settings, "BUNDESANZEIGER_MOCK", True)
+
+        # W1-011: Einmaliges WARN pro Prozess - Mock-Daten sind SIMULIERT.
+        if self.mock_enabled and not _MOCK_MODE_WARNED:
+            _MOCK_MODE_WARNED = True
+            logger.warning(
+                "bundesanzeiger_mock_modus_aktiv",
+                message=(
+                    "Bundesanzeiger laeuft im Mock-Modus - Insolvenz-Daten "
+                    "sind SIMULIERT. Fuer echte Daten BUNDESANZEIGER_MOCK=false setzen."
+                ),
+            )
 
     # ========================================================================
     # PUBLIC API
@@ -112,7 +137,10 @@ class BundesanzeigerService:
         )
 
         if self.mock_enabled:
-            return self._mock_insolvency_check(company_name)
+            # W1-011: Mock-Ergebnis explizit kennzeichnen statt stillem Default
+            result = self._mock_insolvency_check(company_name)
+            result.source_status = SOURCE_STATUS_MOCK
+            return result
 
         # Echte Implementierung
         try:
@@ -132,17 +160,21 @@ class BundesanzeigerService:
                 count=len(insolvency_pubs),
                 publications=insolvency_pubs,
                 last_checked=datetime.now(timezone.utc),
+                source_status=SOURCE_STATUS_LIVE,
             )
 
         except Exception as e:
             # SECURITY: Nur error_type loggen (CWE-532)
             logger.warning("bundesanzeiger_check_error", error_type=type(e).__name__)
+            # W1-011: Fehler-Ergebnis kennzeichnen - has_insolvency=False ist
+            # hier KEINE Entwarnung, sondern "Quelle nicht erreichbar".
             return InsolvencyResult(
                 company_name=company_name,
                 has_insolvency=False,
                 count=0,
                 publications=[],
                 last_checked=datetime.now(timezone.utc),
+                source_status=SOURCE_STATUS_FEHLER,
             )
 
     async def get_publications(
@@ -209,6 +241,8 @@ class BundesanzeigerService:
                     "company_name": p.company_name,
                     "court": p.court,
                     "case_number": p.case_number,
+                    # W1-011: Herkunft kennzeichnen (additiv)
+                    "source_status": SOURCE_STATUS_LIVE,
                 }
                 for p in publications
             ]
@@ -382,6 +416,8 @@ class BundesanzeigerService:
                 "company_name": p.company_name,
                 "court": p.court,
                 "case_number": p.case_number,
+                # W1-011: Mock-Daten ehrlich kennzeichnen (additiv)
+                "source_status": SOURCE_STATUS_MOCK,
             }
             for p in result.publications[:limit]
         ]
