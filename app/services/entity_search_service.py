@@ -35,8 +35,18 @@ logger = get_pii_safe_logger(__name__)
 # Security: JSONB Whitelist Validation (CWE-89 Prevention)
 # =============================================================================
 
-# Valid company identifiers for Lexware integration
+# Valid company identifiers for Lexware integration.
+# W1-029: Dient nur noch als LEGACY-FALLBACK (Altdaten-Keys in lexware_ids
+# JSONB). Die dynamische Whitelist kommt zur Laufzeit aus
+# CompanyService.get_company_short_names() (siehe
+# EntitySearchService._get_valid_companies); faellt die DB-Abfrage aus,
+# bleibt dieses frozenset das fail-safe Verhalten.
 VALID_COMPANIES: frozenset[str] = frozenset({"folie", "messer"})
+
+# SECURITY (CWE-89, Critical Rule 9): Regex-Schranke fuer JSONB-Key-Namen -
+# Defense-in-Depth zusaetzlich zur Whitelist, falls kuenftige Firmen-Kuerzel
+# aus der DB kommen.
+COMPANY_KEY_PATTERN = re.compile(r"^[a-z0-9_-]{1,50}$")
 
 # Valid Lexware JSONB field names that can be queried
 VALID_LEXWARE_FIELDS: frozenset[str] = frozenset({
@@ -58,12 +68,19 @@ class InvalidLexwareFieldError(ValueError):
     pass
 
 
-def _validate_company(company: Optional[str]) -> Optional[str]:
+def _validate_company(
+    company: Optional[str],
+    valid_companies: frozenset[str] = VALID_COMPANIES,
+) -> Optional[str]:
     """
     Validates company identifier against whitelist.
 
+    W1-029: ``valid_companies`` kann die dynamische Firmen-Liste aus
+    CompanyService sein; Default bleibt der Legacy-Fallback (folie/messer).
+
     Args:
         company: Company identifier to validate (or None)
+        valid_companies: Whitelist (Default: Legacy-Fallback)
 
     Returns:
         Normalized (lowercase) company name or None
@@ -75,13 +92,16 @@ def _validate_company(company: Optional[str]) -> Optional[str]:
         return None
 
     company_lower = company.lower().strip()
-    if company_lower not in VALID_COMPANIES:
+    if (
+        company_lower not in valid_companies
+        or not COMPANY_KEY_PATTERN.match(company_lower)
+    ):
         logger.warning(
             "invalid_company_rejected",
             reason="Company not in whitelist",
         )
         raise InvalidCompanyError(
-            f"Ungültige Firma: {company}. Erlaubt: {', '.join(sorted(VALID_COMPANIES))}"
+            f"Ungültige Firma: {company}. Erlaubt: {', '.join(sorted(valid_companies))}"
         )
     return company_lower
 
@@ -137,6 +157,47 @@ class EntitySearchService:
     def __init__(self, db: AsyncSession) -> None:
         """Initialisiert den Service."""
         self.db = db
+        # W1-029: Dynamische Firmen-Whitelist (lazy aus CompanyService)
+        self._valid_companies: Optional[frozenset[str]] = None
+
+    async def _get_valid_companies(self) -> frozenset[str]:
+        """Liefert die gueltigen Firmen-Kuerzel (W1-029).
+
+        Quelle: CompanyService.get_company_short_names() (aktive Firmen),
+        vereinigt mit dem Legacy-Fallback (folie/messer), damit Altdaten-Keys
+        in ``lexware_ids`` durchsuchbar bleiben. Bei DB-Fehlern oder leerer
+        Liste greift der Legacy-Fallback unveraendert (bisheriges Verhalten).
+
+        SECURITY (CWE-89): Nur Kuerzel, die COMPANY_KEY_PATTERN bestehen,
+        werden als JSONB-Keys zugelassen.
+        """
+        if self._valid_companies is None:
+            companies = VALID_COMPANIES
+            try:
+                from app.services.company_service import CompanyService
+
+                short_names = await CompanyService().get_company_short_names(self.db)
+                dynamic = {
+                    name.lower().strip()
+                    for name in short_names
+                    if name and COMPANY_KEY_PATTERN.match(name.lower().strip())
+                }
+                if dynamic:
+                    companies = frozenset(dynamic) | VALID_COMPANIES
+            except Exception as e:  # noqa: BLE001 - Fallback statt Suchausfall
+                logger.warning(
+                    "company_whitelist_fallback",
+                    reason="CompanyService nicht verfuegbar, Legacy-Whitelist aktiv",
+                    error_type=type(e).__name__,
+                )
+            self._valid_companies = companies
+        return self._valid_companies
+
+    async def _validate_company_dynamic(
+        self, company: Optional[str]
+    ) -> Optional[str]:
+        """Validiert eine Firma gegen die dynamische Whitelist (W1-029)."""
+        return _validate_company(company, await self._get_valid_companies())
 
     # ========================================================================
     # KUNDENNUMMER-SUCHE
@@ -170,7 +231,8 @@ class EntitySearchService:
             return None
 
         # Security: Validate company against whitelist (CWE-89)
-        validated_company = _validate_company(company)
+        # W1-029: dynamische Whitelist aus CompanyService (Legacy-Fallback)
+        validated_company = await self._validate_company_dynamic(company)
 
         # 1. Suche in primary_customer_number
         stmt = select(BusinessEntity).where(
@@ -196,16 +258,18 @@ class EntitySearchService:
                 )
             )
         else:
-            # Beide Firmen durchsuchen (hardcoded valid companies)
+            # W1-029: Alle bekannten Firmen durchsuchen (dynamische Whitelist
+            # aus CompanyService statt hardcoded folie/messer)
+            valid_companies = await self._get_valid_companies()
             stmt = select(BusinessEntity).where(
                 and_(
                     or_(
-                        func.json_extract_path_text(
-                            BusinessEntity.lexware_ids, "folie", "kd_nr"
-                        ) == kd_nr_clean,
-                        func.json_extract_path_text(
-                            BusinessEntity.lexware_ids, "messer", "kd_nr"
-                        ) == kd_nr_clean,
+                        *[
+                            func.json_extract_path_text(
+                                BusinessEntity.lexware_ids, company_key, "kd_nr"
+                            ) == kd_nr_clean
+                            for company_key in sorted(valid_companies)
+                        ]
                     ),
                     BusinessEntity.deleted_at.is_(None),
                 )
@@ -270,7 +334,8 @@ class EntitySearchService:
             return None
 
         # Security: Validate company against whitelist (CWE-89)
-        validated_company = _validate_company(company)
+        # W1-029: dynamische Whitelist aus CompanyService (Legacy-Fallback)
+        validated_company = await self._validate_company_dynamic(company)
 
         # Suche in primary_supplier_number
         stmt = select(BusinessEntity).where(
@@ -295,16 +360,18 @@ class EntitySearchService:
                 )
             )
         else:
-            # Beide Firmen durchsuchen (hardcoded valid companies)
+            # W1-029: Alle bekannten Firmen durchsuchen (dynamische Whitelist
+            # aus CompanyService statt hardcoded folie/messer)
+            valid_companies = await self._get_valid_companies()
             stmt = select(BusinessEntity).where(
                 and_(
                     or_(
-                        func.json_extract_path_text(
-                            BusinessEntity.lexware_ids, "folie", "lief_nr"
-                        ) == lief_nr_clean,
-                        func.json_extract_path_text(
-                            BusinessEntity.lexware_ids, "messer", "lief_nr"
-                        ) == lief_nr_clean,
+                        *[
+                            func.json_extract_path_text(
+                                BusinessEntity.lexware_ids, company_key, "lief_nr"
+                            ) == lief_nr_clean
+                            for company_key in sorted(valid_companies)
+                        ]
                     ),
                     BusinessEntity.deleted_at.is_(None),
                 )
@@ -486,7 +553,8 @@ class EntitySearchService:
             return []
 
         # Security: Validate company against whitelist (CWE-89)
-        validated_company = _validate_company(company)
+        # W1-029: dynamische Whitelist aus CompanyService (Legacy-Fallback)
+        validated_company = await self._validate_company_dynamic(company)
 
         results: list[tuple[BusinessEntity, float, str]] = []
 
@@ -560,7 +628,8 @@ class EntitySearchService:
             InvalidCompanyError: If company is not valid
         """
         # Security: Validate company against whitelist (CWE-89)
-        validated_company = _validate_company(company)
+        # W1-029: dynamische Whitelist aus CompanyService (Legacy-Fallback)
+        validated_company = await self._validate_company_dynamic(company)
         if validated_company is None:
             raise InvalidCompanyError("Firma muss angegeben werden")
 

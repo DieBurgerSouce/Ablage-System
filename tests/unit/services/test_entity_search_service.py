@@ -407,3 +407,134 @@ class TestFactoryFunction:
 
         assert isinstance(service, EntitySearchService)
         assert service.db == mock_db
+
+
+# ============================================================================
+# W1-029: Dynamische Firmen-Whitelist aus CompanyService
+# ============================================================================
+
+
+class TestDynamicCompanyWhitelist:
+    """Tests fuer die dynamische Firmen-Whitelist (W1-029)."""
+
+    @pytest.mark.asyncio
+    async def test_merges_dynamic_companies_with_legacy(self):
+        """CompanyService-Kuerzel werden mit Legacy-Fallback vereinigt."""
+        service = EntitySearchService(AsyncMock())
+
+        with patch(
+            "app.services.company_service.CompanyService"
+        ) as mock_cs_cls:
+            mock_cs = MagicMock()
+            mock_cs.get_company_short_names = AsyncMock(
+                return_value=["folie", "messer", "neufirma"]
+            )
+            mock_cs_cls.return_value = mock_cs
+
+            valid = await service._get_valid_companies()
+
+        assert valid == frozenset({"folie", "messer", "neufirma"})
+
+    @pytest.mark.asyncio
+    async def test_db_error_falls_back_to_legacy(self):
+        """DB-Fehler -> Legacy-Whitelist (bisheriges Verhalten erhalten)."""
+        service = EntitySearchService(AsyncMock())
+
+        with patch(
+            "app.services.company_service.CompanyService"
+        ) as mock_cs_cls:
+            mock_cs = MagicMock()
+            mock_cs.get_company_short_names = AsyncMock(
+                side_effect=RuntimeError("DB nicht erreichbar")
+            )
+            mock_cs_cls.return_value = mock_cs
+
+            valid = await service._get_valid_companies()
+
+        assert valid == frozenset({"folie", "messer"})
+
+    @pytest.mark.asyncio
+    async def test_invalid_key_names_filtered(self):
+        """SECURITY (CWE-89): Kuerzel ohne Pattern-Match werden verworfen."""
+        service = EntitySearchService(AsyncMock())
+
+        with patch(
+            "app.services.company_service.CompanyService"
+        ) as mock_cs_cls:
+            mock_cs = MagicMock()
+            mock_cs.get_company_short_names = AsyncMock(
+                return_value=["gut-ag", "boese'); drop table--", "auch böse"]
+            )
+            mock_cs_cls.return_value = mock_cs
+
+            valid = await service._get_valid_companies()
+
+        assert "gut-ag" in valid
+        assert "boese'); drop table--" not in valid
+        assert "auch böse" not in valid
+        # Legacy bleibt enthalten
+        assert "folie" in valid and "messer" in valid
+
+    @pytest.mark.asyncio
+    async def test_whitelist_is_cached_per_instance(self):
+        """Zweiter Zugriff fragt CompanyService nicht erneut ab."""
+        service = EntitySearchService(AsyncMock())
+
+        with patch(
+            "app.services.company_service.CompanyService"
+        ) as mock_cs_cls:
+            mock_cs = MagicMock()
+            mock_cs.get_company_short_names = AsyncMock(return_value=["folie"])
+            mock_cs_cls.return_value = mock_cs
+
+            await service._get_valid_companies()
+            await service._get_valid_companies()
+
+        assert mock_cs.get_company_short_names.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_validate_accepts_dynamic_company(self):
+        """Neue Firma aus CompanyService wird akzeptiert (kein Hardcode mehr)."""
+        service = EntitySearchService(AsyncMock())
+        service._valid_companies = frozenset({"folie", "messer", "neufirma"})
+
+        result = await service._validate_company_dynamic("NEUFIRMA")
+
+        assert result == "neufirma"
+
+    @pytest.mark.asyncio
+    async def test_validate_rejects_unknown_company(self):
+        """Unbekannte Firma wird weiterhin abgelehnt."""
+        from app.services.entity_search_service import InvalidCompanyError
+
+        service = EntitySearchService(AsyncMock())
+        service._valid_companies = frozenset({"folie", "messer"})
+
+        with pytest.raises(InvalidCompanyError):
+            await service._validate_company_dynamic("fremdfirma")
+
+    @pytest.mark.asyncio
+    async def test_find_by_customer_number_uses_dynamic_whitelist(self):
+        """Suche ohne Firmen-Filter durchsucht alle bekannten Firmen."""
+        mock_db = AsyncMock()
+        # 1. Query (primary_customer_number): kein Treffer
+        # 2. Query (lexware_ids ueber alle Firmen): Treffer
+        entity = MagicMock(spec=BusinessEntity)
+        miss = MagicMock()
+        miss.scalar_one_or_none.return_value = None
+        hit = MagicMock()
+        hit.scalar_one_or_none.return_value = entity
+        mock_db.execute.side_effect = [miss, hit]
+
+        service = EntitySearchService(mock_db)
+        service._valid_companies = frozenset({"folie", "messer", "neufirma"})
+
+        result = await service.find_by_customer_number("12345")
+
+        assert result is entity
+        assert mock_db.execute.await_count == 2
+        # Die JSONB-Query enthaelt eine OR-Bedingung pro Firma (3 Stueck)
+        jsonb_stmt = mock_db.execute.await_args_list[1].args[0]
+        and_clauses = list(jsonb_stmt.whereclause.clauses)
+        or_clauses = list(and_clauses[0].clauses)
+        assert len(or_clauses) == 3
