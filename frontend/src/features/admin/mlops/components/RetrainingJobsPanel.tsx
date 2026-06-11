@@ -5,15 +5,7 @@
  */
 
 import { useState } from 'react';
-import {
-  RefreshCw,
-  Play,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  Loader2,
-} from 'lucide-react';
+import { RefreshCw, Play, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

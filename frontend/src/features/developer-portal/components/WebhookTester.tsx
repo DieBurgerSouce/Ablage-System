@@ -5,21 +5,7 @@
  */
 
 import { useState } from 'react';
-import {
-  Webhook,
-  Plus,
-  Trash2,
-  Play,
-  RefreshCw,
-  Check,
-  X,
-  Copy,
-  Eye,
-  EyeOff,
-  Loader2,
-  Clock,
-  AlertCircle,
-} from 'lucide-react';
+import { Webhook, Plus, Trash2, Play, RefreshCw, Check, X, Copy, Loader2, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

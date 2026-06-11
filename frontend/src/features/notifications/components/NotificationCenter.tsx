@@ -30,8 +30,6 @@ import {
   useSnoozeNotification
 } from '../hooks/useNotifications';
 import { NotificationPriority } from '../types';
-import type { NotificationGroup } from '../types';
-import { cn } from '@/lib/utils';
 
 interface NotificationCenterProps {
   open: boolean;

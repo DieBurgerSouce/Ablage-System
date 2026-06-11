@@ -5,7 +5,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, RotateCcw, AlertTriangle, Clock, Euro, Loader2, CheckCircle2 } from 'lucide-react'
+import { Save, RotateCcw, AlertTriangle, Clock, Euro, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

@@ -4,7 +4,7 @@
  * Admin-Seite für Überwachung von aktiven Approval-Requests.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Activity, RefreshCw, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,12 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import {
-  listApprovals,
-  voteOnApproval,
-  type ApprovalRequest,
-  type ApprovalStep,
-} from './api/workflow-admin-api';
+import { listApprovals, voteOnApproval, type ApprovalStep } from './api/workflow-admin-api';
 
 // Status variants
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {

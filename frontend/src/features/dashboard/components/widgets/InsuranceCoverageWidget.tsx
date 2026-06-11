@@ -15,17 +15,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-    ShieldCheck,
-    ShieldAlert,
-    ShieldX,
-    ChevronRight,
-    AlertTriangle,
-    Clock,
-    Euro,
-    Calendar,
-    CheckCircle2,
-} from 'lucide-react';
+import { ShieldCheck, ShieldAlert, ShieldX, ChevronRight, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardSectionError } from '../shared';

@@ -2,7 +2,7 @@
  * OrderDataDisplay - Zeigt alle extrahierten Bestellungsdaten.
  */
 
-import { Package, Truck, CreditCard, Hash, Calendar } from "lucide-react";
+import { Truck, CreditCard, Hash, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {

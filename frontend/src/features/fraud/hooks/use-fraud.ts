@@ -3,17 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  analyzeFraud,
-  getFraudDashboard,
-  getFraudAlerts,
-  getFraudConfig,
-  updateFraudConfig,
-  getFraudTypes,
-  getRiskLevels,
-  getEntityRiskProfile,
-  FraudConfig,
-} from '../api/fraud-api';
+import { analyzeFraud, getFraudDashboard, getFraudAlerts, getFraudConfig, updateFraudConfig, getFraudTypes, getRiskLevels, getEntityRiskProfile, type FraudConfig } from '../api/fraud-api';
 
 // ==================== Query Keys ====================
 

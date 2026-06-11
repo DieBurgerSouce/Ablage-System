@@ -7,22 +7,9 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Brain,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  RefreshCw,
-  Settings2,
-  BarChart3,
-  FlaskConical,
-} from 'lucide-react';
+import { Brain, TrendingUp, CheckCircle2, Clock, Settings2, BarChart3, FlaskConical } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {

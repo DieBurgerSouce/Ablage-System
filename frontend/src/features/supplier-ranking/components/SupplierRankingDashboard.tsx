@@ -5,7 +5,6 @@
  */
 
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import {
   Award,
   RefreshCw,
@@ -31,8 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSupplierRankingDashboard, useCompareSuppliersMutation } from '../hooks/use-supplier-ranking-queries';
 import { SupplierRankingTable } from './SupplierRankingTable';
-import { SupplierScoreCard, TierBadge } from './SupplierScoreCard';
-import { CategoryComparisonChart } from './RankingFactors';
+import { SupplierScoreCard } from './SupplierScoreCard';
 import type { SupplierTier } from '../types/supplier-ranking-types';
 import { TIER_COLORS, TIER_LABELS, UI_LABELS } from '../types/supplier-ranking-types';
 

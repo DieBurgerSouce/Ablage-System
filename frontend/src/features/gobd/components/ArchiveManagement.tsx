@@ -7,18 +7,7 @@
 import { useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
-import {
-  Archive,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Search,
-  RefreshCw,
-  Shield,
-  FileText,
-  Calendar,
-  Filter,
-} from 'lucide-react'
+import { Archive, CheckCircle2, AlertTriangle, Search, RefreshCw, Shield, FileText, Calendar, Filter } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'

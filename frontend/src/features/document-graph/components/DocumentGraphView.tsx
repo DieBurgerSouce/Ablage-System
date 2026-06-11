@@ -5,7 +5,7 @@
  * Nutzt @xyflow/react mit Custom Nodes und Edges.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Background,

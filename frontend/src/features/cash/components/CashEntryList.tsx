@@ -32,16 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Plus,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  XCircle,
-  Utensils,
-} from 'lucide-react';
+import { Plus, Filter, ChevronLeft, ChevronRight, AlertCircle, XCircle, Utensils } from 'lucide-react';
 import { useEntries } from '../hooks/use-cash-queries';
 import { formatCurrency, formatDate, formatEntryType, getEntryTypeColor } from '../utils/format';
 import type { CashEntry, CashEntryType } from '@/types/models/cash';

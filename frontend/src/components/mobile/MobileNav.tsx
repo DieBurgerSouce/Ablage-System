@@ -16,21 +16,7 @@
 
 import * as React from 'react';
 import { useNavigate, useLocation } from '@tanstack/react-router';
-import {
-  Home,
-  FolderOpen,
-  Search,
-  Bell,
-  User,
-  Plus,
-  Camera,
-  FileText,
-  Settings,
-  Upload,
-  CheckCircle2,
-  AlertTriangle,
-  type LucideIcon,
-} from 'lucide-react';
+import { Home, FolderOpen, Search, Bell, User, Plus, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSafeAreaInsets } from '@/lib/mobile';

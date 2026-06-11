@@ -3,16 +3,7 @@
 
 import { apiClient } from '@/lib/api/client';
 import { logger } from '@/lib/logger';
-import {
-  BackendKPIData,
-  BackendTabData,
-  BackendWidgetData,
-  BackendDocumentProgress,
-  BackendBatchProgress,
-  BackendTrendData,
-  DashboardTabKey,
-  WidgetLayout,
-} from '../types/smart-dashboard-types';
+import type { BackendKPIData, BackendTabData, BackendWidgetData, BackendDocumentProgress, BackendBatchProgress, BackendTrendData, DashboardTabKey, WidgetLayout } from '../types/smart-dashboard-types';
 
 // ============================================================================
 // ERROR MESSAGES (German)

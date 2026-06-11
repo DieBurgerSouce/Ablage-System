@@ -6,12 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  getDigitalTwinSnapshot,
-  getDigitalTwinSection,
-  digitalTwinKeys,
-  type DigitalTwinSnapshot,
-} from '../api/digital-twin-api';
+import { getDigitalTwinSnapshot, getDigitalTwinSection, digitalTwinKeys } from '../api/digital-twin-api';
 
 /**
  * Hook für den vollständigen Digital Twin Snapshot

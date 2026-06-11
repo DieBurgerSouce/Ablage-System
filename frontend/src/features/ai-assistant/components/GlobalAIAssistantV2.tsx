@@ -18,33 +18,7 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Bot,
-  X,
-  Minimize2,
-  Maximize2,
-  Sparkles,
-  Loader2,
-  Send,
-  FileText,
-  AlertCircle,
-  Wifi,
-  WifiOff,
-  Zap,
-  Shield,
-  Eye,
-  Edit3,
-  CheckCircle,
-  XCircle,
-  Calculator,
-  Lightbulb,
-  MessageSquare,
-  ToggleLeft,
-  ToggleRight,
-  HelpCircle,
-  Trash2,
-  History,
-} from 'lucide-react';
+import { Bot, X, Minimize2, Maximize2, Sparkles, Loader2, Send, FileText, AlertCircle, Wifi, WifiOff, Shield, Eye, Edit3, Calculator, Lightbulb, MessageSquare, Trash2, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,20 +36,8 @@ import { useToast } from '@/hooks/use-toast';
 
 import { useAIAssistantStore } from '../stores/ai-assistant-store';
 import { usePageContext, getContextSuggestions, getContextPlaceholder } from '../hooks/use-page-context';
-import {
-  useContextAwareAction,
-  AIActionType,
-  AIActionAutonomyLevel,
-  AIActionStatus,
-  ACTION_METADATA,
-  type AIActionSuggestion,
-} from '../hooks/use-ai-actions';
-import {
-  useFinanceAssistant,
-  usePersistentConversation,
-  ChatMessage,
-  ConversationSummary,
-} from '../hooks/use-finance-assistant';
+import { useContextAwareAction, AIActionAutonomyLevel } from '../hooks/use-ai-actions';
+import { useFinanceAssistant, usePersistentConversation, type ChatMessage, type ConversationSummary } from '../hooks/use-finance-assistant';
 import { ConversationHistory } from './ConversationHistory';
 import { QuickFeedback, FeedbackDialog } from './FeedbackDialog';
 import { useChatWebSocket } from '@/features/rag/hooks/use-chat-websocket';
@@ -83,15 +45,8 @@ import { ChatMessage as RAGChatMessage } from '@/features/rag/components/ChatMes
 import type { ConnectionStatus } from '@/features/rag/types/chat-types';
 import { ActionProposalCard } from './ActionProposalCard';
 import { BookingSuggestionCard } from './BookingSuggestionCard';
-import { InsightCard, InsightsList } from './InsightCard';
-import {
-  INTENT_METADATA,
-  AssistantIntent,
-  ActionData,
-  BookingSuggestionData,
-  InsightResponse,
-  ExecuteActionResponse,
-} from '@/lib/api/services/finance-assistant';
+import { InsightsList } from './InsightCard';
+import { INTENT_METADATA, AssistantIntent, type ActionData, type BookingSuggestionData, type ExecuteActionResponse } from '@/lib/api/services/finance-assistant';
 import type { ChatMessage as RAGMessage, ContextDocument } from '@/features/rag/types/chat-types';
 
 // ==================== Constants ====================

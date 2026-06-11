@@ -39,7 +39,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link } from '@tanstack/react-router';
-import { TeamDocument, TeamDocumentPermission } from '../api/teams-api';
+import type { TeamDocument, TeamDocumentPermission } from '../api/teams-api';
 import { useTeamDocuments, useUnshareDocument, useUpdateDocumentShare } from '../hooks/use-teams';
 
 interface TeamDocumentListProps {

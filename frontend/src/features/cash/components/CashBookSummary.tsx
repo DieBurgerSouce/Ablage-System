@@ -7,14 +7,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
-  Receipt,
-  Scale,
-  TrendingUp,
-} from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, Receipt, TrendingUp } from 'lucide-react';
 import { useCashSummary } from '../hooks/use-cash-queries';
 import { formatCurrency } from '../utils/format';
 import { cn } from '@/lib/utils';

@@ -43,7 +43,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useEmployees, useDepartments, usePositions, useEmployee } from '../hooks/use-personal-queries';
+import { useEmployees, useDepartments, usePositions } from '../hooks/use-personal-queries';
 import { EmployeeForm, DeleteEmployeeDialog } from '../components/employee';
 import type { Employee, EmployeeDetail, EmployeeFilters, EmployeeStatus, EmploymentType } from '../types';
 import { EMPLOYEE_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS } from '../types';

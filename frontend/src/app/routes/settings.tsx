@@ -6,7 +6,7 @@
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
-import { Settings, Shield, User, Bell, Palette, KeyRound, FileCheck, Users } from 'lucide-react';
+import { Settings, Shield, FileCheck, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/settings')({

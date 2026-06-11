@@ -23,27 +23,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import {
-  FileText,
-  Users,
-  Truck,
-  Home,
-  Settings,
-  Upload,
-  Search,
-  HelpCircle,
-  Plus,
-  Edit,
-  Keyboard,
-  Wallet,
-  Building2,
-  LogOut,
-  Moon,
-  Sun,
-  RefreshCw,
-  Bell,
-  FolderOpen,
-} from 'lucide-react';
+import { Users, Truck, Home, Settings, Upload, Search, HelpCircle, Keyboard, Wallet, Building2, RefreshCw, FolderOpen } from 'lucide-react';
 
 import { ShortcutsContextProvider, useShortcutsContext } from './context/ShortcutsContext';
 import { CommandPalette } from './components/CommandPalette';

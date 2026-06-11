@@ -7,7 +7,6 @@ import {
     Tooltip,
 } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
 
 export interface TreemapDataNode {
     name: string

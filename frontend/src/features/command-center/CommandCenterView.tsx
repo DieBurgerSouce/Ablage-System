@@ -8,23 +8,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import {
-  AlertTriangle,
-  ArrowRight,
-  Bot,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Database,
-  FileText,
-  Info,
-  Loader2,
-  Send,
-  TrendingDown,
-  TrendingUp,
-  Upload,
-  Zap,
-} from 'lucide-react'
+import { AlertTriangle, ArrowRight, Bot, CheckCircle2, ChevronRight, Clock, Database, FileText, Info, Send, TrendingDown, TrendingUp, Upload, Zap } from 'lucide-react'
 
 import { apiClient } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'

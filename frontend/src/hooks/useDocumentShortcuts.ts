@@ -28,7 +28,7 @@
  * ```
  */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useShortcutScope, useRegisterShortcuts, type KeyboardShortcut } from './useKeyboardShortcuts';
 
 // ==================== Types ====================

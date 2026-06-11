@@ -10,9 +10,9 @@
  * - Integration mit BulkActionBar
  */
 
-import { useMemo, useCallback, useState } from "react"
+import { useMemo, useCallback } from "react"
 import { useDroppable } from "@dnd-kit/core"
-import { FolderInput, Tag, Download, Trash2, Archive, RotateCcw } from "lucide-react"
+import { FolderInput, Tag, Download, Trash2, Archive } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { DropTarget, DragItem, DocumentDragData } from "@/hooks/useDragAndDrop"
 import type { BulkAction } from "./BulkActionBar"

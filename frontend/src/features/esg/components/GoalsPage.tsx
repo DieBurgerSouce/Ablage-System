@@ -12,11 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Target, TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
-import {
-  useGoals,
-  getCategoryLabel,
-} from '../hooks/use-esg-queries';
-import type { ESGCategory } from '@/lib/api/services/esg';
+import { useGoals } from '../hooks/use-esg-queries';
 
 export function GoalsPage() {
   const { data: goals, isLoading: goalsLoading, error: goalsError } = useGoals({ active_only: true });

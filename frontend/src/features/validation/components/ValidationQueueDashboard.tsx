@@ -15,33 +15,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { logger } from '@/lib/logger';
 import { useValidationShortcuts, ShortcutHelpText } from '../hooks/use-validation-shortcuts';
-import {
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-  Filter,
-  RefreshCw,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  BarChart3,
-  Settings2,
-  ListChecks,
-  UserCheck,
-  XCircle,
-  ArrowUpDown,
-  MoreHorizontal,
-  Eye,
-  UserPlus,
-  Trash2,
-  WifiOff,
-  RotateCcw,
-  Keyboard,
-  Smartphone,
-  Monitor,
-  HelpCircle,
-} from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, RefreshCw, Search, ChevronLeft, ChevronRight, Users, BarChart3, Settings2, ListChecks, UserCheck, XCircle, ArrowUpDown, MoreHorizontal, Eye, UserPlus, Trash2, WifiOff, RotateCcw, Keyboard, Smartphone, Monitor, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
@@ -102,7 +76,7 @@ import {
   getConfidenceColor,
   getPriorityColor,
 } from '../types/validation-queue.types';
-import type { ValidationQueueItem, ValidationQueueFilters } from '../types/validation-queue.types';
+import type { ValidationQueueFilters } from '../types/validation-queue.types';
 import { RejectReasonDialog } from './RejectReasonDialog';
 import { BulkApproveDialog } from './BulkApproveDialog';
 import { AssignEditorDialog } from './AssignEditorDialog';
@@ -111,7 +85,7 @@ import { RulesManager } from './RulesManager';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { QuickValidationList } from './QuickValidationCard';
 import { useDocumentExplanation } from '@/features/ai-decisions/hooks/useAIDecisions';
-import { ExplainabilityPanel, WarumButton } from '@/components/ui/ExplainabilityPanel';
+import { ExplainabilityPanel } from '@/components/ui/ExplainabilityPanel';
 import type { DecisionExplanation } from '@/components/ui/ExplainabilityPanel';
 import {
   Dialog,

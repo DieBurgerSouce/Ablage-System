@@ -1,19 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Upload,
-    X,
-    FileText,
-    Image,
-    AlertCircle,
-    CheckCircle2,
-    Loader2,
-    Trash2,
-    RefreshCw,
-    Cpu,
-    Zap,
-} from 'lucide-react';
+import { Upload, FileText, Image, AlertCircle, CheckCircle2, Loader2, Trash2, RefreshCw, Cpu, Zap } from 'lucide-react';
 import {
     Dialog,
     DialogContent,

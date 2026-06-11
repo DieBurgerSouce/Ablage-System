@@ -5,7 +5,6 @@
  */
 
 import { useState } from 'react';
-import { logger } from '@/lib/logger';
 import {
   Download,
   Copy,

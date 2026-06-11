@@ -12,7 +12,7 @@
 
 import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
-import { TrendingDown, Clock, AlertTriangle, ArrowRight, Loader2 } from 'lucide-react';
+import { TrendingDown, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
 import {
   Card,
   CardContent,

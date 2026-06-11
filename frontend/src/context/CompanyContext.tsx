@@ -16,7 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/lib/api/services/companies';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { QUERY_SEMI_STATIC } from '@/lib/api/query-config';
-import type { Company, CompanyListResponse } from '@/types/models/company';
+import type { Company } from '@/types/models/company';
 
 // ==================== Types ====================
 

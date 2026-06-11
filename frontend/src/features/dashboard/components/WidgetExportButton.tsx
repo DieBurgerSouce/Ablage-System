@@ -10,7 +10,7 @@
  * Phase 3.3 Feature 13: Dashboard Widget Export
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,

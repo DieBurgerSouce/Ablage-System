@@ -36,21 +36,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
-import {
-  ArrowLeft,
-  CheckCircle2,
-  AlertTriangle,
-  Globe,
-  FileCheck,
-  Download,
-  Edit,
-  History,
-  Receipt,
-  ExternalLink,
-  Info,
-  XCircle,
-  Clock,
-} from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, Globe, FileCheck, Download, Edit, History, ExternalLink, Info, XCircle } from 'lucide-react';
 
 import type {
   DropShipmentClassification,

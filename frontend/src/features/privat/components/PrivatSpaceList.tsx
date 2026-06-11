@@ -4,11 +4,9 @@
  * Zeigt persönliche und geteilte Bereiche des Nutzers
  */
 
-import * as React from 'react';
 import { Link } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
@@ -28,7 +26,7 @@ import {
   Trash2,
   HardDrive,
 } from 'lucide-react';
-import type { PrivatSpaceWithStats, PrivatSpaceType } from '@/types/privat';
+import type { PrivatSpaceWithStats } from '@/types/privat';
 import { cn } from '@/lib/utils';
 
 interface PrivatSpaceListProps {

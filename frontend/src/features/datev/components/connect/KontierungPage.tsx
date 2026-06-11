@@ -34,16 +34,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    Brain,
-    CheckCircle,
-    XCircle,
-    Pencil,
-    Sparkles,
-    RefreshCw,
-    GraduationCap,
-    TrendingUp,
-} from 'lucide-react';
+import { Brain, CheckCircle, XCircle, Pencil, Sparkles, GraduationCap, TrendingUp } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import {
     useConnections,

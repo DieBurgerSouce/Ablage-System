@@ -10,15 +10,7 @@
  */
 
 import * as React from 'react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-  Sector,
-} from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from 'recharts';
 import {
   Card,
   CardContent,

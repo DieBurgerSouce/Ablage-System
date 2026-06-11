@@ -4,15 +4,7 @@
  * Übersicht über Queue-Statistiken mit Prioritäts-Verteilung.
  */
 
-import {
-  Clock,
-  Zap,
-  AlertTriangle,
-  CheckCircle,
-  Timer,
-  Banknote,
-  TrendingUp,
-} from 'lucide-react';
+import { Clock, AlertTriangle, Banknote, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';

@@ -30,11 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import {
-  ActionData,
-  ExecuteActionResponse,
-  getActionTypeLabel,
-} from '@/lib/api/services/finance-assistant';
+import { type ActionData, type ExecuteActionResponse, getActionTypeLabel } from '@/lib/api/services/finance-assistant';
 
 interface ActionProposalCardProps {
   action: ActionData;

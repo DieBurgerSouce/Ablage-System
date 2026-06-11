@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Layers, Search, Filter, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Layers, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {

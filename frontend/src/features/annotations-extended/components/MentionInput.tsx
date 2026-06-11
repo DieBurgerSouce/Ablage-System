@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { AtSign } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent } from "@/components/ui/popover";
 
 interface MentionInputProps {
   value: string;

@@ -11,14 +11,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { logger } from '@/lib/logger'
-import type {
-  OCRProcessResult,
-  UploadCompleteRequest,
-  UploadCompleteResponse,
-  UploadWorkflowStatus,
-  UploadWorkflowState,
-  UseDocumentUploadOptions,
-} from '../types'
+import type { UploadCompleteRequest, UploadCompleteResponse, UploadWorkflowState, UseDocumentUploadOptions } from '../types'
 import {
   processDocumentOCR,
   uploadComplete,

@@ -9,16 +9,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertCircle,
-  AlertTriangle,
-  Info,
-  FileText,
-  Receipt,
-  Workflow,
-  Bell,
-  Trash2
-} from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, FileText, Receipt, Workflow, Trash2 } from 'lucide-react';
 import {
   useMarkAsRead,
   useDeleteNotification

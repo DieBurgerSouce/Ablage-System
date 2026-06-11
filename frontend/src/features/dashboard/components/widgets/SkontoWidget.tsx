@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Percent, Clock, TrendingDown, AlertCircle } from 'lucide-react';
 import { useSkontoOpportunities } from '@/features/banking/hooks/use-banking-queries';
-import { formatCurrency } from '@/features/banking/utils/format';
 
 export function SkontoWidget() {
     const {

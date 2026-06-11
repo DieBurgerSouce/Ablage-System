@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { FileText, Download, Loader2, ExternalLink, X } from 'lucide-react';
+import { FileText, Download, Loader2, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

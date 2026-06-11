@@ -8,13 +8,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import {
-    Clock,
-    FileText,
-    Filter,
-    Loader2,
-    RefreshCw,
-} from 'lucide-react';
+import { Clock, FileText, Filter, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -8,14 +8,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { jobQueueKeys } from '../api/query-keys';
 import { jobQueueApi } from '../api/job-queue-api';
-import type {
-  Job,
-  JobActionResponse,
-  BulkActionResponse,
-  QueueClearResponse,
-  DLQActionResponse,
-  JobListResponse,
-} from '../types/job-types';
+import type { Job, JobListResponse } from '../types/job-types';
 import { toast } from 'sonner';
 
 // ==================== Optimistic Update Helpers ====================

@@ -9,43 +9,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  Play,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  FileText,
-  Mail,
-  FolderOpen,
-  Tag,
-  Folder,
-  ArrowRight,
-  RotateCcw,
-  Sparkles,
-  AlertTriangle,
-} from 'lucide-react';
+import { Play, Loader2, CheckCircle, XCircle, FileText, Mail, FolderOpen, Tag, Folder, ArrowRight, RotateCcw, Sparkles, AlertTriangle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -69,10 +39,8 @@ import {
   AlertTitle,
 } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
-import { cn } from '@/lib/utils';
 
 import { useTestImportRule, useImportRules } from '../hooks/use-import-queries';
-import type { ImportRuleResponse } from '../types/import-types';
 
 // ==================== Types ====================
 

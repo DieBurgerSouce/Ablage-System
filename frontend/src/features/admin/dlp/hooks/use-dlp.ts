@@ -6,13 +6,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  dlpApi,
-  PolicyCreateRequest,
-  PolicyUpdateRequest,
-  AccessCheckRequest,
-  ScanRequest,
-} from '../api/dlp-api';
+import { dlpApi, type PolicyCreateRequest, type PolicyUpdateRequest, type AccessCheckRequest, type ScanRequest } from '../api/dlp-api';
 
 // ==================== Query Keys ====================
 

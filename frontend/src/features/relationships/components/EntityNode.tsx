@@ -7,7 +7,7 @@
 
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Users, Truck, FileText, Building2 } from 'lucide-react';
+import { Users, Truck, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { EntityNodeData } from '../api/relationships-api';

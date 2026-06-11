@@ -33,7 +33,7 @@ import {
   Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatShortcutKeys, formatKeySequence } from '../hooks/useHotkeys';
+import { formatShortcutKeys } from '../hooks/useHotkeys';
 import type { KeyboardShortcut, KeySequence, ShortcutCategory } from '../types/shortcut-types';
 import { SHORTCUT_CATEGORY_LABELS } from '../types/shortcut-types';
 

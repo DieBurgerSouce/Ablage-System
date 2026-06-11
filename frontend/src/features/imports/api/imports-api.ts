@@ -7,41 +7,7 @@
 
 import { AxiosError } from 'axios';
 import { apiClient } from '@/lib/api/client';
-import type {
-  // Email Config
-  EmailConfigBackend,
-  EmailConfigResponse,
-  EmailConfigListItem,
-  EmailConfigCreate,
-  EmailConfigUpdate,
-  // Folder Config
-  FolderConfigBackend,
-  FolderConfigResponse,
-  FolderConfigListItem,
-  FolderConfigCreate,
-  FolderConfigUpdate,
-  // Rules
-  ImportRuleBackend,
-  ImportRuleResponse,
-  ImportRuleListItem,
-  ImportRuleCreate,
-  ImportRuleUpdate,
-  RuleConditions,
-  RuleActions,
-  RuleFieldSchema,
-  RuleOperatorSchema,
-  RuleActionSchema,
-  // Logs
-  ImportLogBackend,
-  ImportLogResponse,
-  ImportLogFilter,
-  // Runs (F2 Live-Status)
-  ImportRunBackend,
-  ImportRun,
-  // Stats
-  ImportStatsBackend,
-  ImportStatsResponse,
-} from '../types/import-types';
+import type { EmailConfigBackend, EmailConfigResponse, EmailConfigListItem, EmailConfigCreate, EmailConfigUpdate, FolderConfigBackend, FolderConfigResponse, FolderConfigListItem, FolderConfigCreate, FolderConfigUpdate, ImportRuleBackend, ImportRuleResponse, ImportRuleListItem, ImportRuleCreate, ImportRuleUpdate, RuleActions, RuleFieldSchema, RuleOperatorSchema, RuleActionSchema, ImportLogBackend, ImportLogResponse, ImportLogFilter, ImportRunBackend, ImportRun, ImportStatsBackend, ImportStatsResponse } from '../types/import-types';
 
 // ==================== Error Classes ====================
 

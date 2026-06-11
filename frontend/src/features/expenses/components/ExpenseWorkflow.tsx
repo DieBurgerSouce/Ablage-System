@@ -54,7 +54,7 @@ import {
   useRejectExpenseReport,
   usePayExpenseReport,
 } from '../hooks/use-expense-queries';
-import { formatCurrency, formatDate, formatStatus, getStatusColor } from '../utils/format';
+import { formatCurrency, formatDate } from '../utils/format';
 import type { ExpenseReport } from '@/types/models/expense';
 
 // ==================== Submit Dialog ====================

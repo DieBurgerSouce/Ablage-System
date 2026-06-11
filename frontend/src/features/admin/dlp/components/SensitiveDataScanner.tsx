@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Search, ShieldAlert, ShieldCheck, Loader2 } from 'lucide-react';
-import { SensitiveDataType, ScanResponse } from '../api/dlp-api';
+import type { SensitiveDataType, ScanResponse } from '../api/dlp-api';
 import { useScanSensitiveData, useSensitiveDataTypes } from '../hooks/use-dlp';
 
 const dataTypeLabels: Record<SensitiveDataType, { label: string; description: string }> = {

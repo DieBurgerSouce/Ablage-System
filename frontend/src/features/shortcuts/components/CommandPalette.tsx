@@ -25,36 +25,11 @@ import {
   CommandShortcut,
 } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  FileText,
-  Users,
-  Truck,
-  Home,
-  Settings,
-  Upload,
-  Search,
-  HelpCircle,
-  Plus,
-  Edit,
-  Clock,
-  Star,
-  Navigation,
-  Zap,
-  FormInput,
-  Keyboard,
-  Wallet,
-  Building2,
-  type LucideIcon,
-} from 'lucide-react';
+import { FileText, HelpCircle, Clock, Navigation, Zap, FormInput, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShortcutsContext } from '../context/ShortcutsContext';
-import { formatShortcutKeys, formatKeySequence } from '../hooks/useHotkeys';
-import type {
-  CommandItem as CommandItemType,
-  ShortcutCategory,
-  RecentCommand,
-} from '../types/shortcut-types';
+import { formatShortcutKeys } from '../hooks/useHotkeys';
+import type { CommandItem as CommandItemType, ShortcutCategory } from '../types/shortcut-types';
 import { SHORTCUT_CATEGORY_LABELS } from '../types/shortcut-types';
 
 // ==================== Types ====================

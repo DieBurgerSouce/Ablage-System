@@ -6,19 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/lib/api/services/companies';
-import type {
-  CompanyDashboardResponse,
-  CompanyComparisonResponse,
-  CompanyMetrics,
-} from '@/lib/api/services/companies';
-import type {
-  Company,
-  CompanyCreate,
-  CompanyUpdate,
-  UserCompany,
-  UserCompanyCreate,
-  UserCompanyUpdate,
-} from '@/types/models/company';
+import type { CompanyCreate, CompanyUpdate, UserCompanyCreate, UserCompanyUpdate } from '@/types/models/company';
 
 // ==================== Query Keys ====================
 

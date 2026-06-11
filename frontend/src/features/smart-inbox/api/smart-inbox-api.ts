@@ -7,24 +7,7 @@
 
 import { AxiosError } from 'axios';
 import { apiClient } from '@/lib/api/client';
-import type {
-  SmartInboxItemBackend,
-  SmartInboxItemResponse,
-  InboxListResponseBackend,
-  InboxListResponse,
-  InboxActionRequest,
-  InboxSnoozeRequest,
-  InsightsResponseBackend,
-  InsightsResponse,
-  AIInsightBackend,
-  AIInsightResponse,
-  InboxStatsBackend,
-  InboxStatsResponse,
-  AggregationResponseBackend,
-  AggregationResponse,
-  InboxFilter,
-  InboxActionType,
-} from '../types/smart-inbox-types';
+import type { SmartInboxItemBackend, SmartInboxItemResponse, InboxListResponseBackend, InboxListResponse, InboxActionRequest, InsightsResponseBackend, InsightsResponse, AIInsightBackend, AIInsightResponse, InboxStatsBackend, InboxStatsResponse, AggregationResponseBackend, AggregationResponse, InboxFilter, InboxActionType } from '../types/smart-inbox-types';
 
 // ==================== Error Classes ====================
 

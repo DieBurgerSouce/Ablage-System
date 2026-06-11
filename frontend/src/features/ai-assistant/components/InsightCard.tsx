@@ -19,13 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import {
-  InsightResponse,
-  InsightCategory,
-  InsightSeverity,
-  SEVERITY_METADATA,
-  CATEGORY_METADATA,
-} from '@/lib/api/services/finance-assistant';
+import { type InsightResponse, InsightCategory, InsightSeverity, SEVERITY_METADATA, CATEGORY_METADATA } from '@/lib/api/services/finance-assistant';
 import { useNavigate } from '@tanstack/react-router';
 
 interface InsightCardProps {

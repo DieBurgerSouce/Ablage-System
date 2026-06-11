@@ -30,7 +30,7 @@ import {
   useApproveProposal,
   useRejectProposal,
 } from '../hooks/useAutonomous';
-import type { ProposalType, PendingApprovalResponse } from '../types/autonomous-types';
+import type { ProposalType } from '../types/autonomous-types';
 
 const PROPOSAL_TYPE_LABELS: Record<ProposalType, string> = {
   file_document: 'Dokument ablegen',

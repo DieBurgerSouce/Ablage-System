@@ -5,27 +5,8 @@
  */
 
 import { useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
-import {
-  Play,
-  Pause,
-  Trash2,
-  Copy,
-  Edit,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Filter,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  FileText,
-  Webhook,
-  Calendar,
-  Hand,
-  Eye,
-} from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { Play, Pause, Trash2, Copy, Edit, MoreHorizontal, Plus, Search, Filter, Clock, AlertTriangle, FileText, Webhook, Calendar, Hand, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

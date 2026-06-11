@@ -31,7 +31,6 @@ import { Plus, FileText, ArrowLeft, BarChart3 } from 'lucide-react';
 import { BWAReportView, BWAComparisonChart } from '../components';
 import { useBWAReports, useBWAReport, useGenerateBWAReport, useBWAComparison } from '../hooks/use-german-finance-queries';
 import { UI_LABELS } from '../types/german-finance-types';
-import type { BWAReport } from '../types/german-finance-types';
 
 const formatEuro = (amount: number): string => {
   return new Intl.NumberFormat('de-DE', {

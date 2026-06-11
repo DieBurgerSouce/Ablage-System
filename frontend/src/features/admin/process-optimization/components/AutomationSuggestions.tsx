@@ -5,31 +5,12 @@
  */
 
 import { useState } from 'react';
-import {
-  Zap,
-  Play,
-  X,
-  RefreshCw,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Lightbulb,
-} from 'lucide-react';
+import { Zap, Play, X, RefreshCw, TrendingUp, Clock, CheckCircle, Loader2, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Tooltip,
   TooltipContent,

@@ -10,18 +10,7 @@ import { cn } from '@/lib/utils';
 import { formatNumberDE, formatPercentDE, formatDateTimeDE } from '@/lib/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  FileUp,
-  ScanSearch,
-  Tag,
-  Link2,
-  Edit3,
-  Download,
-  Clock,
-  Gauge,
-  ThumbsUp,
-  ThumbsDown,
-} from 'lucide-react';
+import { FileUp, ScanSearch, Tag, Link2, Edit3, Clock } from 'lucide-react';
 import type { LineageStats, LineageSummary } from '@/lib/api/services/lineage';
 
 // =============================================================================

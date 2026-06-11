@@ -19,7 +19,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Clock } from 'lucide-react';
 import type { Schedule } from '../types/adhoc-reporting-types';
-import { FREQUENCY_LABELS } from '../types/adhoc-reporting-types';
 
 interface ScheduleEditorProps {
   schedule?: Partial<Schedule>;

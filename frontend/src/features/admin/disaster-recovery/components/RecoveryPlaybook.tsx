@@ -16,19 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  BookOpen,
-  Download,
-  Clock,
-  User,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
-  Phone,
-  Mail,
-  ChevronRight,
-  Terminal,
-} from 'lucide-react';
+import { BookOpen, Download, Clock, User, CheckCircle2, FileText, Phone, Mail, ChevronRight, Terminal } from 'lucide-react';
 import { useGeneratePlaybook } from '../hooks';
 import type { RecoveryPlaybook as RecoveryPlaybookType } from '../api';
 

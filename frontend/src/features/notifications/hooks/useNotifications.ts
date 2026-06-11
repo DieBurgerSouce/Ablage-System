@@ -24,15 +24,7 @@ import {
   updateSettings,
   snoozeNotification
 } from '../api';
-import type {
-  Notification,
-  NotificationsResponse,
-  NotificationSettings,
-  NotificationSettingsUpdate,
-  NotificationFilter,
-  NotificationGroup,
-  BulkDismissPayload
-} from '../types';
+import type { Notification, NotificationsResponse, NotificationFilter, NotificationGroup } from '../types';
 
 /**
  * Query Keys

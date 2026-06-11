@@ -5,17 +5,7 @@
  */
 
 import { useState } from 'react';
-import {
-  Brain,
-  ChevronDown,
-  ChevronRight,
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-  Archive,
-  RotateCcw,
-  ArrowUp,
-} from 'lucide-react';
+import { Brain, ChevronDown, ChevronRight, CheckCircle, Clock, Archive, RotateCcw, ArrowUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,15 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import {
-  useModelVersions,
-  useActiveModel,
-  usePromoteModel,
-  useRollbackModel,
-  type ModelType,
-  type ModelStatus,
-  type ModelVersion,
-} from '../hooks/useMLOps';
+import { useModelVersions, useActiveModel, usePromoteModel, useRollbackModel, type ModelType, type ModelStatus } from '../hooks/useMLOps';
 
 // Model Types mit deutschen Labels
 const MODEL_TYPES: Array<{ type: ModelType; label: string; description: string }> = [

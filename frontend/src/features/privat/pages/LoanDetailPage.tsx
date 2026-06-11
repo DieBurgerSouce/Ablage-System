@@ -9,7 +9,6 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import { ArrowLeft, Edit, Trash2, Landmark, Euro, Calendar, TrendingDown, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -26,7 +25,6 @@ import { toast } from 'sonner';
 import * as privatApi from '../api/privat-api';
 import type { PrivatLoanWithStats, PrivatLoanUpdate } from '@/types/privat';
 import { LoanEditDialog } from '../components/finances/LoanEditDialog';
-import { DocumentUploadSection } from '../components/shared/DocumentUploadSection';
 
 const LOAN_TYPE_LABELS: Record<string, string> = {
   mortgage: 'Hypothek/Baufinanzierung',

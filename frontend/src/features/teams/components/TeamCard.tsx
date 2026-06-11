@@ -35,7 +35,7 @@ import {
   Users2,
   Globe,
 } from 'lucide-react';
-import { Team, TeamType, TeamStatus, TeamVisibility } from '../api/teams-api';
+import type { Team, TeamType, TeamStatus, TeamVisibility } from '../api/teams-api';
 
 interface TeamCardProps {
   team: Team;

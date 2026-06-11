@@ -4,7 +4,7 @@
  * Detailansicht einer Prozess-Definition.
  */
 
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   useDefinition,
   useInstances,

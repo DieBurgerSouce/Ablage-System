@@ -5,8 +5,6 @@
  */
 
 import { useRef, useCallback } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -25,7 +23,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { TeamActivity, TeamActivityType } from '../api/teams-api';
+import type { TeamActivity, TeamActivityType } from '../api/teams-api';
 import { useTeamActivityInfinite } from '../hooks/use-teams';
 
 interface TeamActivityFeedProps {

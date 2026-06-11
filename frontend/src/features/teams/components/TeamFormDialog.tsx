@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { Team, TeamType, TeamVisibility } from '../api/teams-api';
+import type { Team, TeamType, TeamVisibility } from '../api/teams-api';
 import { useCreateTeam, useUpdateTeam } from '../hooks/use-teams';
 
 const teamSchema = z.object({

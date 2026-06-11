@@ -8,10 +8,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, AlertCircle, Info, Clock, CheckCircle, XCircle, FileWarning, Shield } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, Clock, CheckCircle, XCircle, FileWarning } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 

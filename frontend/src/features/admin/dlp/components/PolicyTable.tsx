@@ -46,7 +46,7 @@ import {
   Droplets,
   Eye,
 } from 'lucide-react';
-import { DLPPolicy, DLPAction } from '../api/dlp-api';
+import type { DLPPolicy, DLPAction } from '../api/dlp-api';
 import { useDeletePolicy, useTogglePolicyEnabled } from '../hooks/use-dlp';
 
 interface PolicyTableProps {

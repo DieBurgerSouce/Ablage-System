@@ -13,18 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Search,
-  RefreshCw,
-  Gauge,
-  TrendingUp,
-  Building2,
-  Network,
-  Globe,
-  Lightbulb,
-  PieChart,
-  AlertCircle,
-} from 'lucide-react';
+import { Search, RefreshCw, Gauge, TrendingUp, Building2, PieChart, AlertCircle } from 'lucide-react';
 import {
   usePortfolioRisk,
   useEntityRiskProfile,
@@ -37,7 +26,6 @@ import { BenchmarkComparison } from './components/BenchmarkComparison';
 import { NetworkGraph } from './components/NetworkGraph';
 import { PortfolioOverview } from './components/PortfolioOverview';
 import { RecommendationsList } from './components/RecommendationsList';
-import { ExternalSourcesCard } from './components/ExternalSourcesCard';
 import type { RiskProfile } from './api/risk-intelligence-api';
 
 export function RiskIntelligenceDashboard() {

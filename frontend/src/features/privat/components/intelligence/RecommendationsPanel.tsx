@@ -24,24 +24,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Lightbulb,
-  RefreshCw,
-  TrendingDown,
-  PieChart,
-  Shield,
-  Wallet,
-  AlertTriangle,
-  Calendar,
-  ArrowRight,
-  Euro,
-  Sparkles,
-  ChevronRight,
-  Filter,
-} from 'lucide-react';
+import { Lightbulb, RefreshCw, TrendingDown, PieChart, Shield, Wallet, AlertTriangle, Calendar, Euro, Sparkles, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { privatIntelligenceService } from '@/lib/api/services/privat-intelligence';
-import type { SmartRecommendation, SmartRecommendationsList } from '@/types/privat';
+import type { SmartRecommendation } from '@/types/privat';
 
 interface RecommendationsPanelProps {
   spaceId: string;

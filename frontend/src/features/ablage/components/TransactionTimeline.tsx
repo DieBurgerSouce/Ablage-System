@@ -12,7 +12,6 @@
  */
 
 import { useMemo } from 'react';
-import { Link } from '@tanstack/react-router';
 import {
   HelpCircle,
   FileText,
@@ -25,7 +24,7 @@ import {
   SkipForward,
   ChevronRight,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,

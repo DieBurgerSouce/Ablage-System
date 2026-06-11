@@ -8,7 +8,7 @@
  * - Install prompt
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { logger } from '@/lib/logger';
 

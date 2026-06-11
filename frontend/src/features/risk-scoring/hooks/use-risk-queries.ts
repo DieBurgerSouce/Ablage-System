@@ -6,12 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { riskService } from '../api/risk-api';
-import type {
-  EntityRisk,
-  RiskStatistics,
-  RiskFilter,
-  EntityType,
-} from '../types/risk-types';
+import type { EntityRisk, RiskFilter, EntityType } from '../types/risk-types';
 
 // Query Keys
 export const riskKeys = {

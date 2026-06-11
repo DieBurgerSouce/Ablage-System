@@ -33,8 +33,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TierBadge, ScoreBadge } from './SupplierScoreCard';
-import { RankingFactors, CategoryScoreSummary } from './RankingFactors';
-import type { SupplierRanking, SupplierTier } from '../types/supplier-ranking-types';
+import { RankingFactors } from './RankingFactors';
+import type { SupplierRanking } from '../types/supplier-ranking-types';
 import { UI_LABELS, TIER_COLORS } from '../types/supplier-ranking-types';
 
 interface SupplierRankingTableProps {

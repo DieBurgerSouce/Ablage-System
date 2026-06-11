@@ -6,7 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { WidgetWrapper } from './WidgetWrapper';
-import { AlertTriangle, Shield, TrendingDown } from 'lucide-react';
+import { AlertTriangle, Shield } from 'lucide-react';
 import type { Widget } from '../../types';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';

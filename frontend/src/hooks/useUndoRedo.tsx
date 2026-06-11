@@ -27,7 +27,7 @@
  * ```
  */
 
-import { useState, useCallback, useRef, useEffect, createContext, useContext, type ReactNode } from 'react';
+import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { useRegisterShortcut, type KeyboardShortcut } from './useKeyboardShortcuts';

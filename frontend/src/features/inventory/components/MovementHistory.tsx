@@ -22,12 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, RefreshCw, Trash2, RotateCcw } from 'lucide-react';
-import {
-  useMovementHistory,
-  useWarehouses,
-  MovementType,
-  MOVEMENT_TYPE_LABELS,
-} from '../hooks/useInventory';
+import { useMovementHistory, useWarehouses, type MovementType, MOVEMENT_TYPE_LABELS } from '../hooks/useInventory';
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('de-DE', {

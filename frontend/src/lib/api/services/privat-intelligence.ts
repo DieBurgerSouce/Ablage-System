@@ -11,23 +11,7 @@
 
 import { AxiosError } from 'axios';
 import { apiClient } from '../client';
-import type {
-  InvestmentPerformance,
-  PortfolioAllocation,
-  DiversificationScore,
-  RiskProfile,
-  RebalancingSuggestion,
-  InvestmentFullAnalytics,
-  NetWorthComponents,
-  FinancialHealthScore,
-  SmartRecommendationsList,
-  ExtraPaymentScenario,
-  RefinancingScenario,
-  FullAmortizationSchedule,
-  LoanComparison,
-  PropertyIntelligence,
-  VehicleIntelligence,
-} from '@/types/privat';
+import type { InvestmentPerformance, PortfolioAllocation, DiversificationScore, RiskProfile, RebalancingSuggestion, InvestmentFullAnalytics, NetWorthComponents, FinancialHealthScore, SmartRecommendationsList, ExtraPaymentScenario, RefinancingScenario, FullAmortizationSchedule, LoanComparison } from '@/types/privat';
 
 // ==================== Error Class ====================
 

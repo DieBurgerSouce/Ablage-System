@@ -8,28 +8,7 @@
  */
 
 import { type Node } from 'reactflow';
-import {
-  Settings,
-  Zap,
-  FileText,
-  Clock,
-  Webhook,
-  Play,
-  Filter,
-  GitBranch,
-  GitFork,
-  Repeat,
-  FolderOpen,
-  Tag,
-  Bell,
-  Mail,
-  ScanLine,
-  Brain,
-  Globe,
-  Timer,
-  X,
-  Info,
-} from 'lucide-react';
+import { Settings, Zap, Filter, GitBranch, GitFork, Repeat, Timer, X, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

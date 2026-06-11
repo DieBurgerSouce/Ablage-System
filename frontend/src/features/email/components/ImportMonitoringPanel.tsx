@@ -18,10 +18,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useRealtimeEvent, useEventStream, type RealtimeEvent } from '@/lib/websocket';
+import { useRealtimeEvent, type RealtimeEvent } from '@/lib/websocket';
 import { emailImportKeys, getImportStats } from '../api/email-import-api';
 import type { ImportStats } from '../types/email-types';
 

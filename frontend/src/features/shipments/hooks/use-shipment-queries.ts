@@ -14,12 +14,7 @@ import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shipmentService, ShipmentApiError } from '../api/shipment-api';
 import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC, QUERY_STATIC } from '@/lib/api/query-config';
-import type {
-  ShipmentFilter,
-  ShipmentCreate,
-  ShipmentUpdate,
-  ShipmentResponse,
-} from '../types/shipment-types';
+import type { ShipmentFilter, ShipmentCreate, ShipmentUpdate } from '../types/shipment-types';
 
 // ==================== Konfiguration ====================
 

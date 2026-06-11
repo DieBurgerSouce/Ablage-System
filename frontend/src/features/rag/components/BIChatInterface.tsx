@@ -7,25 +7,12 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  MessageSquare,
-  Send,
-  Loader2,
-  BarChart3,
-  FileSearch,
-  Sparkles,
-  ChevronDown,
-  Settings2,
-  Trash2,
-  Bot,
-  User,
-  Clock,
-} from 'lucide-react';
+import { MessageSquare, Send, Loader2, BarChart3, FileSearch, Sparkles, Settings2, Trash2, Bot, User, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {

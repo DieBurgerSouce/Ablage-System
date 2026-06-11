@@ -6,17 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import {
-  AlertTriangle,
-  Ban,
-  CheckCircle2,
-  Loader2,
-  RotateCcw,
-  Trash2,
-  XCircle,
-  Pause,
-  Play,
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, Trash2, XCircle, Pause, Play } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

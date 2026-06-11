@@ -22,17 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Calendar,
-  CalendarDays,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Bell,
-  RefreshCw,
-} from 'lucide-react';
+import { Calendar, CalendarDays, AlertTriangle, Clock, ChevronLeft, ChevronRight, Bell, RefreshCw } from 'lucide-react';
 import type { TaxDeadline, TaxDeadlineType } from '@/lib/api/services/tax-optimization';
 
 // ==================== Deadline-Typ Metadaten ====================

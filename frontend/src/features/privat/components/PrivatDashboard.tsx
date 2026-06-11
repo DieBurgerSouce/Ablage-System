@@ -8,22 +8,8 @@ import * as React from 'react';
 import { Link } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Lock,
-  Home,
-  Car,
-  Shield,
-  CreditCard,
-  TrendingUp,
-  Calendar,
-  AlertTriangle,
-  ArrowRight,
-  FileText,
-  Clock,
-  Euro,
-} from 'lucide-react';
+import { Lock, Home, Car, Shield, TrendingUp, Calendar, AlertTriangle, ArrowRight, FileText, Clock, Euro } from 'lucide-react';
 import type {
   PrivatDashboardStats,
   PrivatFinancialSummary,

@@ -26,18 +26,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Users2,
-  Plus,
-  Search,
-  Building2,
-  FolderKanban,
-  Briefcase,
-  Globe,
-  Users,
-  FileText,
-} from 'lucide-react';
-import { Team, TeamType, TeamStatus } from './api/teams-api';
+import { Users2, Plus, Search, Building2, Users, FileText } from 'lucide-react';
+import type { Team, TeamType, TeamStatus } from './api/teams-api';
 import { useTeams, useDeleteTeam, useArchiveTeam } from './hooks/use-teams';
 import { TeamCard, TeamFormDialog, TeamDetailDialog } from './components';
 

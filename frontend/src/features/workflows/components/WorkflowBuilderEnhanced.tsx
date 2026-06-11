@@ -33,32 +33,10 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  Save,
-  Play,
-  RotateCcw,
-  Undo,
-  Redo,
-  CheckCircle,
-  AlertCircle,
-  Download,
-  Upload,
-  PanelLeftClose,
-  PanelRightClose,
-  Copy,
-  Trash2,
-  FileJson,
-  Maximize,
-} from 'lucide-react';
+import { Save, Play, RotateCcw, Undo, Redo, CheckCircle, AlertCircle, Download, Upload, PanelLeftClose, PanelRightClose, Copy, Trash2, FileJson } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,

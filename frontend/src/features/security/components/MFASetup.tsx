@@ -30,7 +30,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
-import { authService, TwoFactorSetupResponse } from '@/lib/api/services/auth';
+import { authService, type TwoFactorSetupResponse } from '@/lib/api/services/auth';
 
 interface MFASetupProps {
   onComplete: () => void;

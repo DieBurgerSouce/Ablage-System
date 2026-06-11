@@ -11,8 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { TemplateZone } from '../types';
-import { Plus, Trash2, Save, Layout } from 'lucide-react';
+import { Trash2, Save, Layout } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface OcrTemplateEditorProps {

@@ -5,14 +5,8 @@
  */
 
 import { useState } from 'react';
-import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Banknote,
-} from 'lucide-react';
+import { Calendar, Banknote } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {

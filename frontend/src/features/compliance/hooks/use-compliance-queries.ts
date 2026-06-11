@@ -4,20 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { complianceService, complianceAutopilotService } from '../api/compliance-api';
-import type {
-  ComplianceReport,
-  QuickComplianceStatus,
-  ComplianceScanResult,
-  RetentionReport,
-  RetentionAlert,
-  RetentionStats,
-  RetentionPolicy,
-  AuditChainStats,
-  AuditChainEntry,
-  GdprCheck,
-  ProcedureDocumentation,
-  RetentionDocumentType,
-} from '../types/compliance-types';
+import type { ComplianceReport, QuickComplianceStatus, ComplianceScanResult, RetentionReport, RetentionAlert, RetentionStats, RetentionPolicy, AuditChainStats, GdprCheck, ProcedureDocumentation, RetentionDocumentType } from '../types/compliance-types';
 
 // Query keys
 export const complianceKeys = {

@@ -15,23 +15,8 @@
  */
 
 import * as React from 'react';
-import {
-  Camera,
-  X,
-  RotateCcw,
-  RotateCw,
-  Check,
-  Plus,
-  Trash2,
-  Upload,
-  Image as ImageIcon,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  ScanLine,
-} from 'lucide-react';
+import { Camera, RotateCcw, RotateCw, Plus, Trash2, Upload, Loader2, ChevronLeft, ChevronRight, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,

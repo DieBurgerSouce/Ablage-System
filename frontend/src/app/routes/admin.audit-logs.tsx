@@ -6,7 +6,7 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { Shield, BarChart3, Clock, Users, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, BarChart3, Users, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AuditLogTable, useAuditStats } from '@/features/admin/audit';

@@ -5,25 +5,7 @@
  */
 
 import { useState } from 'react';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Cpu,
-  Flame,
-  Heart,
-  Loader2,
-  Lock,
-  MoreHorizontal,
-  RefreshCw,
-  RotateCcw,
-  Server,
-  Skull,
-  Trash2,
-  Unlock,
-  XCircle,
-  Zap,
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Flame, Loader2, Lock, MoreHorizontal, RefreshCw, RotateCcw, Server, Skull, Trash2, Unlock, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

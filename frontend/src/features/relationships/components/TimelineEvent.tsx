@@ -5,17 +5,7 @@
  * Zeigt Event-Typ, Titel, Beschreibung und Timestamp.
  */
 
-import {
-    FileText,
-    Receipt,
-    Truck,
-    FileCheck,
-    Banknote,
-    File,
-    PlusCircle,
-    Edit,
-    LucideIcon,
-} from 'lucide-react';
+import { FileText, Receipt, Truck, FileCheck, Banknote, File, PlusCircle, Edit, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TimelineEvent as TimelineEventType } from '../api/relationships-api';
 

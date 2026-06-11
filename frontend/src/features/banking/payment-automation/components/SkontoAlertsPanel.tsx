@@ -4,15 +4,9 @@
  * Zeigt Warnungen für bald ablaufende Skonto-Fristen.
  */
 
-import {
-  AlertTriangle,
-  Banknote,
-  Clock,
-  ChevronRight,
-} from 'lucide-react';
+import { AlertTriangle, Banknote, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSkontoAlerts, type SkontoAlert } from '../hooks/usePaymentAutomation';
 
