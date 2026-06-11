@@ -506,7 +506,7 @@ export function EmailConfigWizard({ onComplete, onCancel }: EmailConfigWizardPro
                     name="folder_error"
                     control={form.control}
                     render={({ field }) => (
-                      <Input {...field} placeholder="Error" />
+                      <Input {...field} placeholder="Fehler" />
                     )}
                   />
                 </div>

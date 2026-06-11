@@ -523,7 +523,7 @@ export function EmailConfigForm({
                         <FormItem>
                           <FormLabel>Fehler-Ordner</FormLabel>
                           <FormControl>
-                            <Input placeholder="INBOX/Error" {...field} />
+                            <Input placeholder="INBOX/Fehler" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
