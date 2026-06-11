@@ -2063,11 +2063,29 @@ class FXGainLossSchema(BaseModel):
 
 
 class FXGainLossCalculateRequest(BaseModel):
-    """Anfrage zur Berechnung von Kursgewinn/-verlust."""
-    original_amount: Decimal = Field(..., gt=0, description="Ursprungsbetrag")
-    original_currency: str = Field(..., min_length=3, max_length=3, description="Währung")
-    booking_rate: Decimal = Field(..., gt=0, description="Buchungskurs")
-    settlement_rate: Decimal = Field(..., gt=0, description="Zahlungskurs")
+    """Anfrage zur Berechnung von Kursgewinn/-verlust.
+
+    Schemathesis-Fix (W1-004 #1): Denormal-Floats (z.B. 5e-324) als Kurs
+    führten zu decimal.InvalidOperation beim Quantisieren (500).
+    max_digits/decimal_places begrenzen den Wertebereich -> 422.
+    Währung muss ein ISO-4217-Alphacode sein ("000" -> 422).
+    """
+    original_amount: Decimal = Field(
+        ..., gt=0, max_digits=18, decimal_places=6, description="Ursprungsbetrag"
+    )
+    original_currency: str = Field(
+        ...,
+        min_length=3,
+        max_length=3,
+        pattern=r"^[A-Za-z]{3}$",
+        description="Währung (ISO 4217, z.B. USD)",
+    )
+    booking_rate: Decimal = Field(
+        ..., gt=0, max_digits=20, decimal_places=10, description="Buchungskurs"
+    )
+    settlement_rate: Decimal = Field(
+        ..., gt=0, max_digits=20, decimal_places=10, description="Zahlungskurs"
+    )
 
 
 class FXGainLossCalculateResponse(BaseModel):

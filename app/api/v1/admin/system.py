@@ -98,10 +98,18 @@ async def clear_gpu_cache(
 
     **Hinweis:** Kann laufende GPU-Operationen beeinträchtigen.
     """
-    result = await SystemStatusService.clear_gpu_cache()
+    # Schemathesis-Fix (W1-004 #7): Der Service liefert bool, der Endpoint rief
+    # result.get(...) auf -> AttributeError (500) bei JEDEM Aufruf. Ohne GPU
+    # liefert der Service False -> jetzt 503 statt 500.
+    success = await SystemStatusService.clear_gpu_cache()
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GPU nicht verfügbar - Cache konnte nicht geleert werden",
+        )
     return MessageResponse(
         message="GPU-Cache wurde geleert",
-        detail=result.get("message", "Speicher freigegeben"),
+        detail="Speicher freigegeben",
     )
 
 

@@ -286,7 +286,7 @@ async def clear_queue(
         alias="status",
         description="Status der zu löschenden Aufträge"
     ),
-    admin: User = Depends(check_destructive_admin_rate_limit),
+    admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> QueueClearResponse:
     """
@@ -303,6 +303,12 @@ async def clear_queue(
 
     Laufende oder abgeschlossene Aufträge können nicht gelöscht werden.
     """
+    # Schemathesis-Fix (W1-004 #4): Rate-Limit-Gate als Funktionsaufruf statt
+    # Dependency, damit die Query-Param-Validierung (?status=AAA -> 422) VOR
+    # dem Fail-Closed-503 des Rate-Limiters greift. Fail-Closed-Semantik fuer
+    # valide destruktive Requests bleibt unveraendert erhalten.
+    await check_destructive_admin_rate_limit(request, admin)
+
     ip_address = request.client.host if request.client else None
 
     try:
