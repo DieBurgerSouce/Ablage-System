@@ -305,14 +305,6 @@ class TestTunesDeleteEndpoint:
 class TestTunesGermanLocalization:
     """Tests für korrekte deutsche Lokalisierung."""
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_error_messages_are_german(self, async_client):
-        """Alle Fehlermeldungen müssen auf Deutsch sein."""
-        # Diese Tests validieren die deutschen Fehlermeldungen indirekt
-        # Die eigentlichen Strings wurden in tunes.py geändert
-        pass
-
     def test_tune_schema_accepts_german_characters(self):
         """Schema akzeptiert deutsche Sonderzeichen (ä, ö, ü, ß)."""
         from app.api.schemas.tunes import TuneCreate

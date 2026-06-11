@@ -8,6 +8,8 @@ Tests batch processing stability and performance:
 - Optimal batch size determination
 """
 
+import os
+import sys
 import time
 import pytest
 import pytest_asyncio
@@ -205,8 +207,11 @@ class TestThroughputMeasurement:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        True,  # Skip until GOT-OCR transformers image token issue is resolved
-        reason="GOT-OCR has image token mismatch issue on Windows - run in WSL2/Docker"
+        sys.platform == "win32" and os.environ.get("RUN_GOT_OCR_GPU_TESTS") != "1",
+        reason=(
+            "GOT-OCR image-token-Mismatch unter Windows (Known Issue) - "
+            "in WSL2/Docker ausfuehren oder RUN_GOT_OCR_GPU_TESTS=1 setzen"
+        ),
     )
     async def test_got_ocr_throughput(
         self, gpu_context, requires_10gb_vram, test_images_dir, clean_gpu_memory

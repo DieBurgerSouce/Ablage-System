@@ -189,55 +189,11 @@ class TestRecordPartialPayment:
         assert overpaid == 500.00
         # Status should still be PAID, overpaid_amount tracked
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_record_payment_sets_is_partial_payment_flag(self, sample_invoice):
-        """POST /payments sollte is_partial_payment Flag setzen."""
-        # After first partial payment:
-        # invoice.is_partial_payment = True
-        pass
-
     def test_record_payment_optional_reference(self, sample_payment_transaction):
         """POST /payments sollte optionale Referenz akzeptieren."""
         # payment_reference: Optional[str] = Query(None)
         sample_payment_transaction.payment_reference = None
         # Should still work
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_record_payment_optional_notes(self, sample_payment_transaction):
-        """POST /payments sollte optionale Notizen akzeptieren."""
-        # notes: Optional[str] = Query(None)
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_record_payment_default_date_is_now(self):
-        """POST /payments sollte heute als Standard-Datum verwenden."""
-        # transaction_date: Optional[datetime] = Query(None)
-        # If None, service uses datetime.now(timezone.utc)
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_record_payment_triggers_risk_recalc(self):
-        """POST /payments sollte Risk-Neuberechnung triggern."""
-        # Verified by code:
-        # on_invoice_updated_recalculate.delay(str(invoice.document_id))
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_record_payment_not_found_raises_404(self):
-        """POST /payments sollte 404 werfen wenn Rechnung nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-        #                     detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_record_payment_no_company_raises_400(self):
-        """POST /payments sollte 400 werfen ohne company_id."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-        #                     detail="Benutzer hat keine Firmenzuordnung")
-        pass
-
 
 # ========================= Get Payments Tests =========================
 
@@ -307,15 +263,6 @@ class TestGetInvoicePayments:
         assert sample_invoice.paid_amount == 0.0
         # payments: []
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_get_payments_not_found_raises_404(self):
-        """GET /payments sollte 404 werfen wenn Rechnung nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-        #                     detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
-
 # ========================= Delete Payment Tests =========================
 
 
@@ -348,55 +295,11 @@ class TestDeletePartialPayment:
         #     raise HTTPException(status_code=400, ...)
         assert sample_reconciled_payment.reconciliation_status == "matched"
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_payment_triggers_risk_recalc(self):
-        """DELETE /payments sollte Risk-Neuberechnung triggern."""
-        # Verified by code:
-        # on_invoice_updated_recalculate.delay(str(invoice.document_id))
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_payment_not_found_raises_400(self):
-        """DELETE /payments sollte 400/404 werfen wenn Zahlung nicht gefunden."""
-        # Verified by service returning (False, message)
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_payment_invoice_not_found_raises_404(self):
-        """DELETE /payments sollte 404 werfen wenn Rechnung nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-        #                     detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
-
 # ========================= Multi-Tenant Security Tests =========================
 
 
 class TestPaymentMultiTenantSecurity:
     """Tests for Multi-Tenant Row Level Security in Payment endpoints."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_record_payment_checks_document_owner(self):
-        """POST /payments sollte Document Owner pruefen."""
-        # Verified by SQL query:
-        # Document.owner_id == current_user.id
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_get_payments_checks_document_owner(self):
-        """GET /payments sollte Document Owner pruefen."""
-        # Verified by SQL query:
-        # Document.owner_id == current_user.id
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_payment_checks_document_owner(self):
-        """DELETE /payments sollte Document Owner pruefen."""
-        # Verified by SQL query:
-        # Document.owner_id == current_user.id
-        pass
-
 
 # ========================= German Error Messages Tests =========================
 
@@ -413,13 +316,6 @@ class TestPaymentGermanErrorMessages:
         """Keine Firma Meldung sollte Deutsch sein."""
         expected_message = "Benutzer hat keine Firmenzuordnung"
         assert "Firmenzuordnung" in expected_message
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_error_message_is_german(self):
-        """Delete-Fehler Meldung sollte Deutsch sein."""
-        # Service returns German messages
-        pass
-
 
 # ========================= Edge Cases =========================
 
@@ -469,13 +365,6 @@ class TestPaymentEdgeCases:
         valid_methods = ["bank_transfer", "BANK_TRANSFER", "Bank_Transfer"]
         # Service should normalize to lowercase
         pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_delete_last_payment_resets_status(self, sample_invoice_with_payments):
-        """Loeschen der letzten Zahlung sollte Status zuruecksetzen."""
-        # If no payments left and was PARTIAL -> should reset to OPEN
-        pass
-
 
 # ========================= Reconciliation Tests =========================
 
