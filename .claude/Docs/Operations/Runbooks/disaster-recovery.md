@@ -74,16 +74,16 @@
 
 ```bash
 # Status pruefen
-docker-compose ps ablage-postgres
+docker-compose ps postgres
 
 # Container neu starten
-docker-compose restart ablage-postgres
+docker-compose restart postgres
 
 # Logs pruefen (letzte 50 Zeilen)
-docker-compose logs --tail=50 ablage-postgres
+docker-compose logs --tail=50 postgres
 
 # Warten bis bereit (max 60 Sekunden)
-timeout 60 bash -c 'until docker-compose exec ablage-postgres pg_isready; do sleep 2; done'
+timeout 60 bash -c 'until docker-compose exec postgres pg_isready; do sleep 2; done'
 ```
 
 ### Wenn Datenverlust: Restore aus Backup
@@ -103,18 +103,18 @@ bash scripts/backup/pg_verify.sh
 
 ```bash
 # 1. Aktuelle DB sichern (falls moeglich)
-docker-compose exec ablage-postgres pg_dump -U ablage_admin ablage_system > /tmp/emergency_backup.sql
+docker-compose exec postgres pg_dump -U ablage_admin ablage_system > /tmp/emergency_backup.sql
 
 # 2. Container stoppen
-docker-compose stop ablage-postgres
+docker-compose stop postgres
 
 # 3. Container mit frischem Volume starten (VORSICHT: loescht Daten)
 # docker volume rm ablage_system_postgres_data
-docker-compose up -d ablage-postgres
+docker-compose up -d postgres
 
 # 4. Backup einspielen
 gunzip -c /backup/postgres/LATEST_BACKUP.sql.gz | \
-  docker-compose exec -T ablage-postgres psql -U ablage_admin -d ablage_system
+  docker-compose exec -T postgres psql -U ablage_admin -d ablage_system
 
 # 5. Migrationen ausfuehren
 docker-compose exec backend alembic upgrade head
@@ -140,10 +140,10 @@ docker-compose exec backend alembic upgrade head
 
 ```bash
 # Status pruefen
-docker-compose ps ablage-minio
+docker-compose ps minio
 
 # Container neu starten
-docker-compose restart ablage-minio
+docker-compose restart minio
 
 # MinIO Health-Check
 curl -s http://localhost:9000/minio/health/live
@@ -169,7 +169,7 @@ du -sh /var/lib/docker/volumes/ablage_system_minio_data/_data/
 ls -lt /backup/minio/ | head -5
 
 # 2. MinIO-Client konfigurieren (falls noetig)
-docker-compose exec ablage-minio mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+docker-compose exec minio mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
 
 # 3. Einzelnen Bucket wiederherstellen
 mc mirror /backup/minio/LATEST_SNAPSHOT/documents local/documents
@@ -214,7 +214,7 @@ docker-compose up -d --no-start
 # ============================================================
 # Schritt 2: PostgreSQL starten und wiederherstellen
 # ============================================================
-docker-compose up -d ablage-postgres
+docker-compose up -d postgres
 sleep 10  # Warten auf Initialisierung
 
 bash scripts/backup/pg_restore.sh --latest
@@ -223,17 +223,17 @@ bash scripts/backup/pg_verify.sh
 # ============================================================
 # Schritt 3: Redis starten
 # ============================================================
-docker-compose up -d ablage-redis
+docker-compose up -d redis
 sleep 5
 
 # Redis RDB wiederherstellen (optional - Redis ist Cache)
 # docker cp /backup/redis/LATEST.rdb ablage-redis:/data/dump.rdb
-# docker-compose restart ablage-redis
+# docker-compose restart redis
 
 # ============================================================
 # Schritt 4: MinIO starten und wiederherstellen
 # ============================================================
-docker-compose up -d ablage-minio
+docker-compose up -d minio
 sleep 10
 
 for bucket in documents processed thumbnails; do
@@ -272,10 +272,10 @@ curl -s http://localhost:8000/health | python -m json.tool
 curl -s -o /dev/null -w "%{http_code}" http://localhost:80
 
 # PostgreSQL ok?
-docker-compose exec ablage-postgres pg_isready
+docker-compose exec postgres pg_isready
 
 # Redis ok?
-docker-compose exec ablage-redis redis-cli ping
+docker-compose exec redis redis-cli ping
 
 # MinIO ok?
 curl -s http://localhost:9000/minio/health/live
@@ -304,11 +304,11 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3002
 docker-compose stop celery-worker celery-beat
 
 # 2. Korruptions-Umfang feststellen
-docker-compose exec ablage-postgres psql -U ablage_admin -d ablage_system \
+docker-compose exec postgres psql -U ablage_admin -d ablage_system \
   -c "SELECT count(*) FROM documents WHERE metadata IS NULL OR content IS NULL;"
 
 # 3. Betroffene Datensaetze identifizieren
-docker-compose exec ablage-postgres psql -U ablage_admin -d ablage_system \
+docker-compose exec postgres psql -U ablage_admin -d ablage_system \
   -c "SELECT id, filename, created_at FROM documents WHERE updated_at > 'ZEITPUNKT_DER_KORRUPTION';"
 ```
 
@@ -318,7 +318,7 @@ Falls WAL-Archivierung aktiviert ist:
 
 ```bash
 # 1. PostgreSQL stoppen
-docker-compose stop ablage-postgres
+docker-compose stop postgres
 
 # 2. Recovery-Konfiguration setzen (in postgresql.conf):
 #   restore_command = 'cp /backup/postgres/wal/%f %p'
@@ -326,10 +326,10 @@ docker-compose stop ablage-postgres
 #   recovery_target_action = 'promote'
 
 # 3. PostgreSQL mit Recovery starten
-docker-compose up -d ablage-postgres
+docker-compose up -d postgres
 
 # 4. Recovery-Status pruefen
-docker-compose logs ablage-postgres | grep "recovery"
+docker-compose logs postgres | grep "recovery"
 ```
 
 ### Teilweise Wiederherstellung: Nur Datenbank
@@ -339,7 +339,7 @@ docker-compose logs ablage-postgres | grep "recovery"
 gunzip -c /backup/postgres/LATEST_BACKUP.sql.gz | \
   grep -A 1000000 "COPY documents" | \
   grep -m 1 -B 1000000 "^\\\." | \
-  docker-compose exec -T ablage-postgres psql -U ablage_admin -d ablage_system
+  docker-compose exec -T postgres psql -U ablage_admin -d ablage_system
 ```
 
 ---

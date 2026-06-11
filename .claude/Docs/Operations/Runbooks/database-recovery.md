@@ -76,12 +76,12 @@ docker exec ablage-postgres psql -U postgres -c "CREATE DATABASE ablage;"
 
 # 5. Backup wiederherstellen
 gunzip -c /var/lib/ablage/backups/postgres/ablage_postgres_latest.sql.gz | \
-  docker exec -i ablage-postgres psql -U postgres -d ablage
+  docker exec -i ablage-postgres psql -U postgres -d ablage_system
 
 # 6. Berechtigungen setzen
-docker exec ablage-postgres psql -U postgres -d ablage -c "
-  GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ablage_user;
-  GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ablage_user;
+docker exec ablage-postgres psql -U postgres -d ablage_system -c "
+  GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ablage_admin;
+  GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ablage_admin;
 "
 
 # 7. Migrationen prüfen
@@ -140,20 +140,20 @@ gunzip -c /var/lib/ablage/backups/postgres/ablage_postgres_latest.sql.gz | \
   grep -B 1000 "ALTER TABLE documents" > documents_restore.sql
 
 # 2. Alte Tabelle umbenennen (Backup)
-docker exec ablage-postgres psql -U postgres -d ablage -c "
+docker exec ablage-postgres psql -U postgres -d ablage_system -c "
   ALTER TABLE documents RENAME TO documents_old_$(date +%Y%m%d);
 "
 
 # 3. Tabelle wiederherstellen
-cat documents_restore.sql | docker exec -i ablage-postgres psql -U postgres -d ablage
+cat documents_restore.sql | docker exec -i ablage-postgres psql -U postgres -d ablage_system
 
 # 4. Daten verifizieren
-docker exec ablage-postgres psql -U postgres -d ablage -c "
+docker exec ablage-postgres psql -U postgres -d ablage_system -c "
   SELECT COUNT(*) FROM documents;
 "
 
 # 5. Alte Tabelle löschen (nach Verifizierung)
-docker exec ablage-postgres psql -U postgres -d ablage -c "
+docker exec ablage-postgres psql -U postgres -d ablage_system -c "
   DROP TABLE IF EXISTS documents_old_$(date +%Y%m%d);
 "
 ```
@@ -168,11 +168,11 @@ docker-compose stop postgres
 docker run --rm -it \
   -v ablage_postgres_data:/var/lib/postgresql/data \
   postgres:16-alpine \
-  postgres --single -D /var/lib/postgresql/data ablage
+  postgres --single -D /var/lib/postgresql/data ablage_system
 
 # 2. VACUUM FULL ausführen
 VACUUM FULL;
-REINDEX DATABASE ablage;
+REINDEX DATABASE ablage_system;
 \q
 
 # 3. Oder: pg_resetwal (LETZTE OPTION - Datenverlust möglich!)
@@ -193,7 +193,7 @@ docker-compose up -d postgres
 
 ```bash
 # Tabellenanzahl
-docker exec ablage-postgres psql -U postgres -d ablage -c "
+docker exec ablage-postgres psql -U postgres -d ablage_system -c "
   SELECT schemaname, COUNT(*) as table_count
   FROM pg_tables
   WHERE schemaname = 'public'
@@ -201,14 +201,14 @@ docker exec ablage-postgres psql -U postgres -d ablage -c "
 "
 
 # Dokumentenanzahl
-docker exec ablage-postgres psql -U postgres -d ablage -c "
+docker exec ablage-postgres psql -U postgres -d ablage_system -c "
   SELECT COUNT(*) as documents FROM documents;
   SELECT COUNT(*) as users FROM users;
   SELECT COUNT(*) as ocr_results FROM ocr_results;
 "
 
 # Fremdschlüssel-Integrität
-docker exec ablage-postgres psql -U postgres -d ablage -c "
+docker exec ablage-postgres psql -U postgres -d ablage_system -c "
   SELECT conname, conrelid::regclass
   FROM pg_constraint
   WHERE confrelid IS NOT NULL
@@ -254,7 +254,7 @@ gunzip -c /var/lib/ablage/backups/postgres/ablage_postgres_latest.sql.gz | \
   docker exec -i postgres-restore-test psql -U postgres
 
 # 3. Integrität prüfen
-docker exec postgres-restore-test psql -U postgres -d ablage -c "\dt"
+docker exec postgres-restore-test psql -U postgres -d ablage_system -c "\dt"
 
 # 4. Aufräumen
 docker rm -f postgres-restore-test

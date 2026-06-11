@@ -102,7 +102,7 @@ print(gm.get_detailed_status())
 "
 
 # Database-Locks
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT pid, state, query, wait_event_type, wait_event
 FROM pg_stat_activity
 WHERE state != 'idle';
@@ -246,7 +246,7 @@ def process_document(doc_id):
 
 ```bash
 # Aktive Locks
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT
     blocked_locks.pid AS blocked_pid,
     blocked_activity.usename AS blocked_user,
@@ -272,7 +272,7 @@ WHERE NOT blocked_locks.granted;
 "
 
 # Blockierende Transaktion beenden
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT pg_terminate_backend(<blocking_pid>);
 "
 ```

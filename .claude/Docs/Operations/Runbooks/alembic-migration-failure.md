@@ -57,18 +57,18 @@ docker logs ablage-postgres --since 10m 2>&1 | grep -E "ERROR|FATAL"
 
 ```bash
 # Verbindung prüfen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "SELECT 1;"
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "SELECT 1;"
 
 # Aktuelle Schema-Version aus alembic_version Tabelle
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT version_num FROM alembic_version;
 "
 
 # Aktive Locks prüfen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT pid, state, query, wait_event_type
 FROM pg_stat_activity
-WHERE datname = 'ablage' AND state != 'idle';
+WHERE datname = 'ablage_system' AND state != 'idle';
 "
 ```
 
@@ -83,7 +83,7 @@ WHERE datname = 'ablage' AND state != 'idle';
 docker exec ablage-backend alembic history --verbose | grep -B2 -A2 "revision"
 
 # Falls Revision fehlt: Manuell Version setzen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 UPDATE alembic_version SET version_num = '<letzte_bekannte_revision>';
 "
 
@@ -96,7 +96,7 @@ docker exec ablage-backend alembic stamp <bekannte_revision>
 ```bash
 # Migration bereits teilweise angewendet
 # Option 1: Manuell korrigieren
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 -- Bereits existierende Objekte prüfen
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
 SELECT column_name FROM information_schema.columns WHERE table_name = 'affected_table';
@@ -110,14 +110,14 @@ docker exec ablage-backend alembic stamp <nächste_revision>
 
 ```bash
 # Fehlende Spalte identifizieren
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT column_name, data_type
 FROM information_schema.columns
 WHERE table_name = 'table_name';
 "
 
 # Manuell hinzufügen (VORSICHT!)
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 ALTER TABLE table_name ADD COLUMN column_name data_type;
 "
 ```
@@ -126,14 +126,14 @@ ALTER TABLE table_name ADD COLUMN column_name data_type;
 
 ```bash
 # Blockierende Transaktionen finden
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT pid, usename, state, query
 FROM pg_stat_activity
 WHERE wait_event_type = 'Lock';
 "
 
 # Blockierende Session beenden
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT pg_terminate_backend(<blocking_pid>);
 "
 
@@ -180,14 +180,14 @@ docker exec ablage-backend alembic downgrade -1 --sql
 ```bash
 # NUR für Entwicklung - NICHT in Produktion!
 # Alle Tabellen löschen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 GRANT ALL ON SCHEMA public TO public;
 "
 
 # alembic_version zurücksetzen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 DROP TABLE IF EXISTS alembic_version;
 "
 
@@ -209,7 +209,7 @@ docker exec ablage-backend alembic upgrade head --sql > /tmp/migration.sql
 cat /tmp/migration.sql
 
 # Manuell ausführen
-docker exec -i ablage-postgres psql -U ablage_admin -d ablage < /tmp/migration.sql
+docker exec -i ablage-postgres psql -U ablage_admin -d ablage_system < /tmp/migration.sql
 
 # Version aktualisieren
 docker exec ablage-backend alembic stamp head
@@ -234,7 +234,7 @@ def downgrade():
 
 ```bash
 # Vollständiges Backup erstellen
-docker exec ablage-postgres pg_dump -U ablage_admin -d ablage -F c -f /tmp/backup_pre_migration.dump
+docker exec ablage-postgres pg_dump -U ablage_admin -d ablage_system -F c -f /tmp/backup_pre_migration.dump
 
 # Backup auf Host kopieren
 docker cp ablage-postgres:/tmp/backup_pre_migration.dump ./backup_$(date +%Y%m%d_%H%M%S).dump
@@ -249,7 +249,7 @@ docker cp ablage-postgres:/tmp/backup_pre_migration.dump ./backup_$(date +%Y%m%d
 docker-compose stop backend worker
 
 # Datenbank wiederherstellen
-docker exec ablage-postgres pg_restore -U ablage_admin -d ablage -c /tmp/backup_pre_migration.dump
+docker exec ablage-postgres pg_restore -U ablage_admin -d ablage_system -c /tmp/backup_pre_migration.dump
 
 # Version zurücksetzen
 docker exec ablage-backend alembic stamp <backup_version>
@@ -266,11 +266,11 @@ docker-compose up -d backend worker
 
 ```bash
 # 1. Backup erstellen
-docker exec ablage-postgres pg_dump -U ablage_admin -d ablage -F c -f /backup/pre_migration.dump
+docker exec ablage-postgres pg_dump -U ablage_admin -d ablage_system -F c -f /backup/pre_migration.dump
 
 # 2. Aktive Verbindungen prüfen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
-SELECT count(*) FROM pg_stat_activity WHERE datname = 'ablage';
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
+SELECT count(*) FROM pg_stat_activity WHERE datname = 'ablage_system';
 "
 
 # 3. Migration im Dry-Run testen
@@ -332,7 +332,7 @@ deploy:
   steps:
     - name: Backup Database
       run: |
-        docker exec ablage-postgres pg_dump -U ablage_admin -d ablage -F c -f /backup/pre_deploy.dump
+        docker exec ablage-postgres pg_dump -U ablage_admin -d ablage_system -F c -f /backup/pre_deploy.dump
 
     - name: Run Migrations
       run: |
@@ -342,7 +342,7 @@ deploy:
     - name: Rollback on Failure
       if: failure()
       run: |
-        docker exec ablage-postgres pg_restore -U ablage_admin -d ablage -c /backup/pre_deploy.dump
+        docker exec ablage-postgres pg_restore -U ablage_admin -d ablage_system -c /backup/pre_deploy.dump
 ```
 
 ### Startup-Migration

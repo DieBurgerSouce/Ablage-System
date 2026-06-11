@@ -56,7 +56,7 @@ docker network inspect ablage_data-network
 docker network inspect ablage_frontend-network
 
 # Container-Netzwerke
-docker inspect --format='{{range .NetworkSettings.Networks}}{{.NetworkID}} {{.IPAddress}}{{end}}' ablage-backend-1
+docker inspect --format='{{range .NetworkSettings.Networks}}{{.NetworkID}} {{.IPAddress}}{{end}}' ablage-backend
 ```
 
 ### 2. Verbindung zwischen Containern testen
@@ -102,11 +102,11 @@ docker compose exec backend nc -zv minio 9000
 
 ```bash
 # Container zu Netzwerk hinzufuegen
-docker network connect ablage_backend-network ablage-backend-1
-docker network connect ablage_data-network ablage-backend-1
+docker network connect ablage_backend-network ablage-backend
+docker network connect ablage_data-network ablage-backend
 
 # Verifizieren
-docker inspect --format='{{json .NetworkSettings.Networks}}' ablage-backend-1 | jq
+docker inspect --format='{{json .NetworkSettings.Networks}}' ablage-backend | jq
 ```
 
 ### Fall 2: Netzwerk korrupt
