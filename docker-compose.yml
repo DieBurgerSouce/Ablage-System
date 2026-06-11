@@ -583,7 +583,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DEBUG: ${DEBUG:-false}
       # Qdrant Vector Database
-      QDRANT_ENABLED: ${QDRANT_ENABLED:-false}
+      # W1-023: Default true wie bei worker/worker-cpu — Qdrant startet immer
+      # mit (kein profile) und das Backend wartet ohnehin auf dessen Health;
+      # false/true-Drift fuehrte zu inkonsistentem Verhalten Backend vs. Worker.
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
