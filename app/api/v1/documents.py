@@ -89,6 +89,9 @@ from app.db.schemas import (
     # Soft-Delete (GDPR Phase 2.3)
     SoftDeleteRequest, SoftDeleteResponse, RestoreDocumentResponse,
     DeletedDocumentsListResponse,
+    # Ablage / Kategorie-Ansicht (W1-019: response_model statt None)
+    CategoryDocumentListResponse, CategoryAggregations,
+    UpdatePaymentStatusResponse, BulkOperationResultAblage,
     # Common
     MessageResponse
 )
@@ -1124,7 +1127,7 @@ async def search_documents(
 # WICHTIG: Diese statischen Routen MUESSEN VOR /{document_id} definiert werden,
 # damit FastAPI sie korrekt matcht (sonst wird "/category" als document_id interpretiert)
 
-@router.get("/category", response_model=None)
+@router.get("/category", response_model=CategoryDocumentListResponse)
 async def get_category_documents(
     business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
     folder_id: str = Query(..., description="Ordner-ID (z.B. '2024')"),
@@ -1246,7 +1249,7 @@ async def get_category_documents(
         )
 
 
-@router.get("/category/aggregations", response_model=None)
+@router.get("/category/aggregations", response_model=CategoryAggregations)
 async def get_category_aggregations(
     business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
     folder_id: str = Query(..., description="Ordner-ID"),
@@ -1332,7 +1335,7 @@ async def get_document(
 
 # ==================== Document Download Endpoints ====================
 
-@router.get("/{document_id}/download")
+@router.get("/{document_id}/download", response_class=Response)
 async def download_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
@@ -1393,7 +1396,7 @@ async def download_document(
     )
 
 
-@router.get("/{document_id}/preview")
+@router.get("/{document_id}/preview", response_class=Response)
 async def preview_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
@@ -1488,7 +1491,7 @@ async def preview_document(
     )
 
 
-@router.get("/{document_id}/thumbnail")
+@router.get("/{document_id}/thumbnail", response_class=Response)
 async def get_document_thumbnail(
     document_id: UUID,
     width: int = 120,
@@ -1627,7 +1630,7 @@ async def get_document_thumbnail(
         )
 
 
-@router.get("/{document_id}/stream")
+@router.get("/{document_id}/stream", response_class=StreamingResponse)
 async def stream_document_download(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
@@ -1690,7 +1693,7 @@ async def stream_document_download(
     )
 
 
-@router.get("/{document_id}/download/pdf")
+@router.get("/{document_id}/download/pdf", response_class=Response)
 async def download_document_as_pdf(
     document_id: UUID,
     include_ocr_text: bool = Query(False, description="OCR-Text als Textlayer einbetten"),
@@ -2271,7 +2274,7 @@ async def delete_document(
 
 # ==================== Document Report ====================
 
-@router.get("/{document_id}/report")
+@router.get("/{document_id}/report", response_class=StreamingResponse)
 async def get_document_report(
     document_id: UUID,
     include_text: bool = Query(True, description="Extrahierten Text einschließen"),
@@ -2638,7 +2641,7 @@ async def batch_update_documents(
     return result
 
 
-@router.post("/batch/export")
+@router.post("/batch/export", response_class=StreamingResponse)
 async def batch_export_documents(
     request: BatchExportRequest,
     current_user: User = Depends(check_batch_rate_limit),
@@ -2815,7 +2818,15 @@ class ClassificationConfirmRequest(BaseModel):
     user_overridden: bool = False
 
 
-@router.post("/{document_id}/confirm-classification")
+class ClassificationConfirmResponse(BaseModel):
+    """Antwort der Klassifizierungs-Bestätigung (W1-019)."""
+    status: str
+    document_id: str
+    applied_tag: str
+    invoice_direction: str
+
+
+@router.post("/{document_id}/confirm-classification", response_model=ClassificationConfirmResponse)
 async def confirm_document_classification(
     document_id: UUID,
     request: ClassificationConfirmRequest,
@@ -2920,7 +2931,16 @@ class RenameConfirmRequest(BaseModel):
     )
 
 
-@router.post("/{document_id}/confirm-rename")
+class RenameConfirmResponse(BaseModel):
+    """Antwort der Umbenennungs-Bestätigung (W1-019)."""
+    success: bool
+    document_id: str
+    old_filename: str
+    new_filename: str
+    message: str
+
+
+@router.post("/{document_id}/confirm-rename", response_model=RenameConfirmResponse)
 async def confirm_document_rename(
     document_id: UUID,
     request: RenameConfirmRequest,
@@ -3004,19 +3024,21 @@ async def confirm_document_rename(
         )
 
     # Audit Logging (GDPR-konform)
-    from app.core.audit_logger import AuditLogger, AuditEventType
+    # W1-019-Beifang: AuditLogger.log_async existiert nicht (Alias auf
+    # SecurityAuditLogger ohne log_async) - der Audit-Log war hier still tot
+    # (AttributeError wurde vom except geschluckt). Jetzt echte API.
+    from app.core.audit_logger import SecurityAuditLogger, SecurityEventType
     try:
-        await AuditLogger.log_async(
-            db=db,
-            user_id=current_user.id,
-            action=AuditEventType.DOCUMENT_RENAMED,
+        await SecurityAuditLogger(db).log_event(
+            event_type=SecurityEventType.DOCUMENT_RENAMED,
+            user_id=str(current_user.id),
             resource_type="document",
             resource_id=str(document_id),
             details={
                 "old_filename": old_filename,
                 "new_filename": new_filename,
                 "source": rename_source
-            }
+            },
         )
     except Exception as audit_error:
         # Audit-Fehler loggen aber nicht die Operation abbrechen
@@ -3050,7 +3072,18 @@ async def confirm_document_rename(
 
 # ==================== Cleanup and Maintenance ====================
 
-@router.post("/{document_id}/cleanup")
+class DocumentCleanupResponse(BaseModel):
+    """Antwort der Ressourcen-Bereinigung (W1-019)."""
+    document_id: str
+    cache_cleared: bool
+    temp_files_cleared: bool
+    gpu_memory_cleared: bool
+    errors: List[str]
+    success: bool
+    gpu_memory_after: Optional[JSONDict] = None
+
+
+@router.post("/{document_id}/cleanup", response_model=DocumentCleanupResponse)
 async def cleanup_document_resources(
     document_id: UUID,
     clear_cache: bool = Query(True, description="Cache für dieses Dokument löschen"),
@@ -3715,7 +3748,7 @@ async def get_document_access_log(
         )
 
 
-@router.post("/bulk/download-zip")
+@router.post("/bulk/download-zip", response_class=StreamingResponse)
 async def bulk_download_zip(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
@@ -3788,7 +3821,7 @@ async def bulk_download_zip(
         )
 
 
-@router.post("/bulk/export-csv")
+@router.post("/bulk/export-csv", response_class=StreamingResponse)
 async def bulk_export_csv(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
@@ -3867,7 +3900,7 @@ async def bulk_export_csv(
         )
 
 
-@router.patch("/{document_id}/payment-status", response_model=None)
+@router.patch("/{document_id}/payment-status", response_model=UpdatePaymentStatusResponse)
 async def update_payment_status(
     document_id: UUID,
     request: Request,
@@ -3942,7 +3975,7 @@ async def update_payment_status(
         )
 
 
-@router.post("/bulk/mark-as-paid", response_model=None)
+@router.post("/bulk/mark-as-paid", response_model=BulkOperationResultAblage)
 async def bulk_mark_as_paid(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
@@ -4004,7 +4037,7 @@ async def bulk_mark_as_paid(
         )
 
 
-@router.post("/bulk/move-category", response_model=None)
+@router.post("/bulk/move-category", response_model=BulkOperationResultAblage)
 async def bulk_move_category(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
@@ -4069,7 +4102,7 @@ async def bulk_move_category(
         )
 
 
-@router.post("/bulk/set-tags", response_model=None)
+@router.post("/bulk/set-tags", response_model=BulkOperationResultAblage)
 async def bulk_set_tags(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
@@ -4139,7 +4172,7 @@ async def bulk_set_tags(
         )
 
 
-@router.delete("/bulk/delete", response_model=None)
+@router.delete("/bulk/delete", response_model=BulkOperationResultAblage)
 async def bulk_delete_documents(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
