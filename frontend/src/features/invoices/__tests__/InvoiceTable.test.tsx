@@ -4,6 +4,27 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+
+// happy-dom hat keine Layout-Engine -> der echte Virtualizer liefert 0 Zeilen.
+// Mock rendert alle Zeilen, damit die Tabelle testbar ist.
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: (opts: { count: number; estimateSize: () => number }) => {
+    const size = opts.estimateSize();
+    return {
+      getVirtualItems: () =>
+        Array.from({ length: opts.count }, (_, index) => ({
+          index,
+          key: index,
+          start: index * size,
+          end: (index + 1) * size,
+          size,
+        })),
+      getTotalSize: () => opts.count * size,
+      measureElement: () => undefined,
+    };
+  },
+}));
+
 import { InvoiceTable } from '../components/InvoiceTable';
 import type { InvoiceTrackingResponse } from '../types/invoice-types';
 
