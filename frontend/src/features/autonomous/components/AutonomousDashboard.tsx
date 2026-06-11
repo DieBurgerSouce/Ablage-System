@@ -3,7 +3,7 @@
  * Main dashboard with tabs for overview, queue, history, and settings
  */
 
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { Shield, Clock, Activity, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrustLevelPanel } from './TrustLevelPanel';
@@ -13,7 +13,7 @@ import { RollbackPanel } from './RollbackPanel';
 import { ConfidenceOverview } from './ConfidenceOverview';
 import { usePendingApprovals } from '../hooks/useAutonomous';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -23,7 +23,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,

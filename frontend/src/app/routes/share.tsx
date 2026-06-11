@@ -11,9 +11,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Share2, Upload, CheckCircle2, XCircle, FileText, Link as LinkIcon } from 'lucide-react'
-import { useDocumentUpload } from '@/features/ablage/hooks/use-document-upload'
+import { apiClient } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
 import { toast } from 'sonner'
+
+/**
+ * Laedt Dateien ueber den generischen Upload-Endpoint hoch.
+ * Hinweis: useDocumentUpload (Ablage-Workflow) ist hier ungeeignet,
+ * da geteilte PWA-Dateien keinen Entity-/Ordner-Kontext haben.
+ */
+async function uploadDocuments(files: File[]): Promise<void> {
+  for (const file of files) {
+    const formData = new FormData()
+    formData.append('file', file)
+    await apiClient.post('/documents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    })
+  }
+}
 
 export const Route = createFileRoute('/share')({
   component: ShareTargetPage,
@@ -33,7 +49,7 @@ function ShareTargetPage() {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const { uploadDocuments, isUploading } = useDocumentUpload()
+  const isUploading = uploadStatus === 'uploading'
 
   // Parse shared data from URL or FormData on mount
   useEffect(() => {
