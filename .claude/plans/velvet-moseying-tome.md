@@ -1,3 +1,6 @@
+> **Status (W1-048, 2026-06-11)**: UMGESETZT als `/docu` (`.claude/commands/docu.md` existiert; Name weicht vom Plan-Titel `/doco` ab).
+> Plan archivierbar; Abweichungen ggü. Plan bei Bedarf direkt am Command pflegen.
+
 # Plan: `/doco` Slash Command - Session-Dokumentation & Commit Agent
 
 ## Context

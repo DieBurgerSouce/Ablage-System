@@ -1,3 +1,6 @@
+> **Status (W1-048, 2026-06-11)**: 10 von 11 Fixes UMGESETZT (Commits `590bdca2` + `970e72d1`, Feb 2026; adversarial verifiziert, W1-056 im Welle-1-Register).
+> Offen ist ausschließlich Fix 3 — bei Wiederaufnahme nur diesen prüfen.
+
 # Remediation Plan: Team Workflow System - Critical Review
 
 ## Review Findings Summary

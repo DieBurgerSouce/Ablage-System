@@ -1,3 +1,6 @@
+> **Status (W1-048, 2026-06-11)**: NICHT umgesetzt (kein ralph-stop-patcher/Session-Fix im git-log; letzte ralph-loop-Aktivität 2026-02-20, nur Timestamp-Commits).
+> Vor Umsetzung Relevanz prüfen — der Loop wird aktuell nicht genutzt; ggf. archivieren.
+
 # Plan: Cross-Instance Ralph-Loop Isolation Fix
 
 ## Context
