@@ -10,6 +10,7 @@ Routing-Regeln:
 - 95%+: Auto-Execute (wenn Level >= SMART_HYBRID)
 """
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -401,14 +402,20 @@ class ConfidenceRouter:
         }
 
 
-class ActionExecutor:
+class ActionExecutor(ABC):
     """
     Basis-Klasse für Aktions-Executoren.
 
     Implementierungen für spezifische Aktionstypen sollten
     diese Klasse erweitern.
+
+    W1-040: Abstrakte Basisklasse - fehlende ``execute``-Implementierungen
+    fallen jetzt bei der Instanziierung auf (TypeError) statt erst zur
+    Laufzeit mit NotImplementedError. ``validate``/``rollback`` behalten
+    ihre Default-Implementierungen.
     """
 
+    @abstractmethod
     async def execute(
         self,
         db: AsyncSession,

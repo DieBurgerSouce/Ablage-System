@@ -20,6 +20,7 @@ Insight-Typen:
 from __future__ import annotations
 
 import asyncio
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -373,21 +374,27 @@ class InsightGeneratorConfig:
 # Insight Generators
 # =============================================================================
 
-class BaseInsightGenerator:
-    """Basis-Klasse für Insight-Generatoren."""
+class BaseInsightGenerator(ABC):
+    """Basis-Klasse für Insight-Generatoren.
+
+    W1-040: Abstrakte Basisklasse - fehlende ``generate``-Implementierungen
+    fallen jetzt bei der Instanziierung auf (TypeError) statt erst zur
+    Laufzeit mit NotImplementedError.
+    """
 
     insight_type: DailyInsightType
 
     def __init__(self, config: InsightGeneratorConfig):
         self.config = config
 
+    @abstractmethod
     async def generate(
         self,
         company_id: UUID,
         data: DataProvidersResult,
     ) -> List[DailyInsight]:
         """Generiert Insights. Muss überschrieben werden."""
-        raise NotImplementedError
+        raise NotImplementedError("Subklassen müssen generate() implementieren")
 
 
 class CashflowWarningGenerator(BaseInsightGenerator):
