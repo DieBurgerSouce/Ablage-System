@@ -65,7 +65,7 @@ const NOTE_DENOMINATIONS = [
 const cashCountSchema = z.object({
   counted_amount: z.number().min(0, 'Betrag muss positiv sein'),
   notes: z.string().max(500).optional(),
-  denomination_counts: z.record(z.number().min(0)).optional(),
+  denomination_counts: z.record(z.string(), z.number().min(0)).optional(),
 });
 
 type CashCountFormData = z.infer<typeof cashCountSchema>;
@@ -144,9 +144,9 @@ export function CashCountDialog({
     try {
       const createData: CashCountCreate = {
         register_id: register.id,
-        counted_amount: data.counted_amount,
+        counted_balance: data.counted_amount,
         notes: data.notes,
-        denomination_counts: showDetailedCount ? denominationCounts : undefined,
+        denomination_details: showDetailedCount ? denominationCounts : undefined,
       };
 
       const result = await performCashCount.mutateAsync(createData);

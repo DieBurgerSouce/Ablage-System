@@ -329,7 +329,7 @@ export function usePerformCashCount(options?: {
           : CASH_TOAST_MESSAGES.cashCount.success,
         description: hasAdjustment
           ? `Differenz: ${cashCount.difference?.toFixed(2) || '0.00'} EUR`
-          : `Gezaehlt: ${cashCount.counted_amount?.toFixed(2) || '0.00'} EUR`,
+          : `Gezaehlt: ${cashCount.counted_balance?.toFixed(2) || '0.00'} EUR`,
         variant: 'success',
       });
 

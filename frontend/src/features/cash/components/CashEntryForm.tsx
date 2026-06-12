@@ -196,7 +196,16 @@ export function CashEntryForm({
         category_id: data.category_id,
         tax_rate: data.tax_rate,
         receipt_number: data.receipt_number,
-        entertainment_data: data.entertainment_data,
+        // Formular (business_reason/guests) -> Backend-Schema (occasion/participants)
+        entertainment_data: data.entertainment_data
+          ? {
+              occasion: data.entertainment_data.business_reason,
+              location: data.entertainment_data.location,
+              participants: data.entertainment_data.guests.map((g) =>
+                g.company ? `${g.name} (${g.company})` : g.name
+              ),
+            }
+          : undefined,
       };
 
       const result = await createMutation.mutateAsync(createData);

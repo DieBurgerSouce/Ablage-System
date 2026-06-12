@@ -82,7 +82,7 @@ export function CancelEntryDialog({
       const result = await cancelMutation.mutateAsync({
         entryId: entry.id,
         data: {
-          cancellation_reason: data.cancellation_reason,
+          reason: data.cancellation_reason,
         },
       });
       onSuccess?.(result);
