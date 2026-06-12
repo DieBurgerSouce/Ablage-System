@@ -174,7 +174,7 @@ export async function deleteAmendment(contractId: string, amendmentId: string): 
 // =============================================================================
 
 // List Contracts
-export function useContracts(params: ContractListParams = {}, options?: UseQueryOptions<ContractListResponse>) {
+export function useContracts(params: ContractListParams = {}, options?: Omit<UseQueryOptions<ContractListResponse>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: contractKeys.list(params),
     queryFn: () => listContracts(params),
@@ -183,7 +183,7 @@ export function useContracts(params: ContractListParams = {}, options?: UseQuery
 }
 
 // Get Single Contract
-export function useContract(id: string, options?: UseQueryOptions<ContractDetail>) {
+export function useContract(id: string, options?: Omit<UseQueryOptions<ContractDetail>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: contractKeys.detail(id),
     queryFn: () => getContract(id),
@@ -193,7 +193,7 @@ export function useContract(id: string, options?: UseQueryOptions<ContractDetail
 }
 
 // Get Contract Timeline
-export function useContractTimeline(id: string, options?: UseQueryOptions<ContractTimeline>) {
+export function useContractTimeline(id: string, options?: Omit<UseQueryOptions<ContractTimeline>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: contractKeys.timeline(id),
     queryFn: () => getContractTimeline(id),
@@ -203,7 +203,7 @@ export function useContractTimeline(id: string, options?: UseQueryOptions<Contra
 }
 
 // Get Summary
-export function useContractSummary(options?: UseQueryOptions<ContractSummary>) {
+export function useContractSummary(options?: Omit<UseQueryOptions<ContractSummary>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: contractKeys.summary(),
     queryFn: getContractSummary,
@@ -212,7 +212,7 @@ export function useContractSummary(options?: UseQueryOptions<ContractSummary>) {
 }
 
 // Get Deadlines
-export function useUpcomingDeadlines(daysAhead: number = 90, options?: UseQueryOptions<DeadlineListResponse>) {
+export function useUpcomingDeadlines(daysAhead: number = 90, options?: Omit<UseQueryOptions<DeadlineListResponse>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: contractKeys.deadlines(daysAhead),
     queryFn: () => getUpcomingDeadlines(daysAhead),
@@ -221,7 +221,7 @@ export function useUpcomingDeadlines(daysAhead: number = 90, options?: UseQueryO
 }
 
 // Get Renewal Options
-export function useRenewalOptions(contractId: string, options?: UseQueryOptions<ContractRenewalOption[]>) {
+export function useRenewalOptions(contractId: string, options?: Omit<UseQueryOptions<ContractRenewalOption[]>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: contractKeys.renewalOptions(contractId),
     queryFn: () => listRenewalOptions(contractId),

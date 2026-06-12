@@ -96,7 +96,7 @@ function DocumentsPage() {
     try {
       await uploadDocument.mutateAsync({
         file,
-        description: file.name,
+        options: { description: file.name },
       });
     } finally {
       setUploading(false);

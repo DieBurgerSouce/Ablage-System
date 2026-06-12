@@ -13,6 +13,8 @@ export interface TreemapDataNode {
     value?: number
     children?: TreemapDataNode[]
     color?: string
+    // recharts TreemapDataType verlangt eine Index-Signatur
+    [key: string]: unknown
 }
 
 export interface TreemapChartProps {
