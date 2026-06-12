@@ -44,9 +44,7 @@ import {
   PieChart,
   Pie,
   Legend,
-  type TooltipProps,
 } from 'recharts';
-import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { useBudgets, useBudgetSummary, useVarianceReport, useBudgetAlerts, useAcknowledgeAlert, useActivateBudget, useCloseBudget } from '../hooks/use-budget-queries';
 import type { BudgetSummary, BudgetVarianceReport, BudgetLineStatus, AlertSeverity } from '@/lib/api/services/budgets';
 import { AlertTriangle, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, RefreshCw, Building2, Wallet, FileText, Bell, ChevronDown, Check, Info, Target } from 'lucide-react';
@@ -337,8 +335,14 @@ function CategoryChart({ summary }: { summary: BudgetSummary }) {
     status: cat.status,
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
+  // recharts v3 exportiert keine nutzbaren Tooltip-Content-Props mehr —
+  // minimale eigene Typisierung der tatsaechlich genutzten Felder.
+  interface BudgetTooltipProps {
+    active?: boolean;
+    label?: string | number;
+    payload?: Array<{ payload?: { planned: number; actual: number; utilization: number } }>;
+  }
+  const CustomTooltip = ({ active, payload, label }: BudgetTooltipProps) => {
     if (!active || !payload) return null;
 
     const data = payload[0]?.payload;
@@ -455,7 +459,7 @@ function KostenstellenChart({ summary }: { summary: BudgetSummary }) {
             outerRadius={100}
             dataKey="value"
             nameKey="name"
-            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+            label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
             labelLine={false}
           >
             {chartData.map((entry, index) => (

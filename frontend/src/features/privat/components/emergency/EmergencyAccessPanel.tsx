@@ -216,7 +216,8 @@ export function EmergencyAccessPanel({
                 <DialogContent>
                   <AddContactForm
                     onSubmit={(contact) => {
-                      onAddContact(contact);
+                      // Neue Kontakte sind aktiv (isActive gehoert nicht zum Formular)
+                      onAddContact({ ...contact, isActive: true });
                       setIsAddDialogOpen(false);
                     }}
                     onCancel={() => setIsAddDialogOpen(false)}

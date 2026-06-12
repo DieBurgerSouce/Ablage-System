@@ -361,15 +361,13 @@ export function KontierungPage() {
                             <TableBody>
                                 {vorschlaege.map((vorschlag) => (
                                     <TableRow key={vorschlag.id}>
-                                        <TableCell className="font-medium max-w-[200px] truncate">
-                                            {vorschlag.document_info?.filename ?? 'Unbekannt'}
+                                        {/* Backend-Vertrag liefert nur document_id —
+                                            Dateiname/Lieferant/Betrag sind nicht Teil der Response */}
+                                        <TableCell className="font-medium max-w-[200px] truncate font-mono text-xs">
+                                            {vorschlag.document_id}
                                         </TableCell>
-                                        <TableCell>{vorschlag.document_info?.lieferant ?? '-'}</TableCell>
-                                        <TableCell className="text-right font-mono">
-                                            {vorschlag.document_info?.betrag != null
-                                                ? formatCurrency(vorschlag.document_info.betrag)
-                                                : '-'}
-                                        </TableCell>
+                                        <TableCell>-</TableCell>
+                                        <TableCell className="text-right font-mono">-</TableCell>
                                         <TableCell>
                                             <div>
                                                 <span className="font-mono">{vorschlag.konto_soll}</span>

@@ -43,7 +43,7 @@ interface SplitViewLayoutProps {
     extractedDataReview: UseExtractedDataForReviewReturn
     corrections: UseFieldCorrectionsReturn
     isSubmitting: boolean
-    structuredPanelRef: React.RefObject<HTMLDivElement>
+    structuredPanelRef: React.RefObject<HTMLDivElement | null>
     // OCR text
     originalText: string
     currentText: string
