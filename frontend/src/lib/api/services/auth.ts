@@ -36,11 +36,13 @@ export interface TwoFactorStatus {
     has_pending_setup: boolean;
 }
 
+// Backend-Vertrag: app/api/v1/auth.py 2FA-Setup-Response (kein Klartext-secret!)
 export interface TwoFactorSetupResponse {
     message: string;
     qr_code: string;
-    secret: string;
+    provisioning_uri: string;
     backup_codes: string[];
+    warning: string;
 }
 
 interface UserResponse {

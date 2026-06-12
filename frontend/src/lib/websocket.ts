@@ -828,7 +828,22 @@ export type WidgetType =
   | 'system_status'
   | 'today'
   | 'quick_links'
-  | 'upload';
+  | 'upload'
+  // Backend validiert widget_type nur als String (app/api/v1/dashboard.py) —
+  // diese Union ist der Frontend-Katalog; neue Dashboard-Widgets ergaenzt:
+  | 'approvals'
+  | 'cash-position'
+  | 'compliance'
+  | 'customer-ltv'
+  | 'dso-tracker'
+  | 'import-sync'
+  | 'insurance'
+  | 'margin-analyzer'
+  | 'mlops'
+  | 'portfolio'
+  | 'properties'
+  | 'revenue-trend'
+  | 'supplier-performance';
 
 /**
  * Widget Update Event Payload.
