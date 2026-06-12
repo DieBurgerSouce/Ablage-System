@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
 from app.db.models import Document, BusinessEntity, InvoiceTracking, BankTransaction
+from app.services.invoice_direction import is_incoming_invoice, is_outgoing_invoice
 
 logger = structlog.get_logger(__name__)
 
@@ -171,7 +172,7 @@ class InsightGeneratorService:
         receivables_stmt = (
             select(
                 func.count(InvoiceTracking.id),
-                func.sum(InvoiceTracking.total_amount),
+                func.sum(InvoiceTracking.amount),
                 func.avg(
                     func.extract('day', utc_now() - InvoiceTracking.due_date)
                 ),
@@ -179,7 +180,7 @@ class InsightGeneratorService:
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
+                    is_outgoing_invoice(),
                     InvoiceTracking.status.in_(["pending", "open"]),
                     InvoiceTracking.due_date < date.today(),
                 )
@@ -227,12 +228,12 @@ Dies beeinträchtigt Ihre Liquidität und erhöht das Ausfallrisiko.
         payables_stmt = (
             select(
                 func.count(InvoiceTracking.id),
-                func.sum(InvoiceTracking.total_amount),
+                func.sum(InvoiceTracking.amount),
             )
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "incoming",
+                    is_incoming_invoice(),
                     InvoiceTracking.status.in_(["pending", "open"]),
                     InvoiceTracking.due_date < date.today(),
                 )
@@ -289,11 +290,11 @@ Sie haben **{payable_count} überfällige Eingangsrechnungen** offen mit einem G
 
         # Einnahmen (bezahlte Ausgangsrechnungen)
         income_stmt = (
-            select(func.sum(InvoiceTracking.total_amount))
+            select(func.sum(InvoiceTracking.amount))
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
+                    is_outgoing_invoice(),
                     InvoiceTracking.status == "paid",
                     InvoiceTracking.paid_at >= month_start,
                 )
@@ -304,11 +305,11 @@ Sie haben **{payable_count} überfällige Eingangsrechnungen** offen mit einem G
 
         # Ausgaben (bezahlte Eingangsrechnungen)
         expense_stmt = (
-            select(func.sum(InvoiceTracking.total_amount))
+            select(func.sum(InvoiceTracking.amount))
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "incoming",
+                    is_incoming_invoice(),
                     InvoiceTracking.status == "paid",
                     InvoiceTracking.paid_at >= month_start,
                 )
@@ -324,11 +325,11 @@ Sie haben **{payable_count} überfällige Eingangsrechnungen** offen mit einem G
         last_month_end = month_start - timedelta(days=1)
 
         prev_income_stmt = (
-            select(func.sum(InvoiceTracking.total_amount))
+            select(func.sum(InvoiceTracking.amount))
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
+                    is_outgoing_invoice(),
                     InvoiceTracking.status == "paid",
                     InvoiceTracking.paid_at >= last_month_start,
                     InvoiceTracking.paid_at <= last_month_end,
@@ -436,7 +437,7 @@ Veränderung zum Vormonat: {income_change:+.1f}%
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "incoming",
+                    is_incoming_invoice(),
                     InvoiceTracking.status.in_(["pending", "open"]),
                     InvoiceTracking.skonto_deadline.isnot(None),
                     InvoiceTracking.skonto_deadline <= skonto_deadline,
@@ -485,7 +486,7 @@ Skonto-Nutzung ist eine der einfachsten Möglichkeiten, Kosten zu reduzieren.
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "incoming",
+                    is_incoming_invoice(),
                     InvoiceTracking.skonto_deadline < date.today(),
                     InvoiceTracking.skonto_deadline >= month_start,
                     InvoiceTracking.skonto_used == False,
@@ -534,7 +535,7 @@ Optimieren Sie Ihre Zahlungsprozesse, um zukünftig Skonto-Fristen einzuhalten.
 
         # Durchschnittlichen Rechnungsbetrag berechnen
         avg_stmt = (
-            select(func.avg(InvoiceTracking.total_amount))
+            select(func.avg(InvoiceTracking.amount))
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
@@ -553,18 +554,18 @@ Optimieren Sie Ihre Zahlungsprozesse, um zukünftig Skonto-Fristen einzuhalten.
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.total_amount > threshold,
+                    InvoiceTracking.amount > threshold,
                     InvoiceTracking.created_at >= date.today() - timedelta(days=7),
                 )
             )
-            .order_by(InvoiceTracking.total_amount.desc())
+            .order_by(InvoiceTracking.amount.desc())
             .limit(5)
         )
         result = await self.db.execute(high_stmt)
         high_invoices = result.scalars().all()
 
         if high_invoices:
-            total_high = sum(i.total_amount for i in high_invoices)
+            total_high = sum(i.amount for i in high_invoices)
 
             insights.append(Insight(
                 id=uuid.uuid4(),
@@ -658,12 +659,12 @@ Dies könnte auf:
         stmt = (
             select(
                 func.date_trunc('month', InvoiceTracking.created_at).label('month'),
-                func.sum(InvoiceTracking.total_amount).label('total'),
+                func.sum(InvoiceTracking.amount).label('total'),
             )
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
+                    is_outgoing_invoice(),
                     InvoiceTracking.created_at >= date.today() - timedelta(days=180),
                 )
             )
@@ -776,11 +777,11 @@ _Basierend auf linearer Trendfortschreibung_
             entity_ids = [e.id for e in high_risk_entities]
 
             open_stmt = (
-                select(func.sum(InvoiceTracking.total_amount))
+                select(func.sum(InvoiceTracking.amount))
                 .where(
                     and_(
                         InvoiceTracking.company_id == context.company_id,
-                        InvoiceTracking.business_entity_id.in_(entity_ids),
+                        InvoiceTracking.entity_id.in_(entity_ids),
                         InvoiceTracking.status.in_(["pending", "open"]),
                     )
                 )
@@ -820,18 +821,18 @@ Diese Kunden haben ein erhöhtes Ausfallrisiko basierend auf:
         # Konzentrationsrisiko
         concentration_stmt = (
             select(
-                InvoiceTracking.business_entity_id,
-                func.sum(InvoiceTracking.total_amount).label('total'),
+                InvoiceTracking.entity_id,
+                func.sum(InvoiceTracking.amount).label('total'),
             )
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
+                    is_outgoing_invoice(),
                     InvoiceTracking.created_at >= date.today() - timedelta(days=365),
                 )
             )
-            .group_by(InvoiceTracking.business_entity_id)
-            .order_by(func.sum(InvoiceTracking.total_amount).desc())
+            .group_by(InvoiceTracking.entity_id)
+            .order_by(func.sum(InvoiceTracking.amount).desc())
             .limit(5)
         )
         result = await self.db.execute(concentration_stmt)
@@ -841,11 +842,11 @@ Diese Kunden haben ein erhöhtes Ausfallrisiko basierend auf:
             total_revenue = sum(c.total or Decimal("0") for c in top_customers)
 
             all_revenue_stmt = (
-                select(func.sum(InvoiceTracking.total_amount))
+                select(func.sum(InvoiceTracking.amount))
                 .where(
                     and_(
                         InvoiceTracking.company_id == context.company_id,
-                        InvoiceTracking.invoice_type == "outgoing",
+                        is_outgoing_invoice(),
                         InvoiceTracking.created_at >= date.today() - timedelta(days=365),
                     )
                 )

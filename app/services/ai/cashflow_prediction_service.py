@@ -48,6 +48,7 @@ from app.db.models import (
     InvoiceTracking,
 )
 from app.services.ai.predictive_payment_service import SEASONAL_DELAY_FACTORS
+from app.services.invoice_direction import is_incoming_invoice, is_outgoing_invoice
 
 logger = structlog.get_logger(__name__)
 
@@ -748,6 +749,10 @@ class CashflowPredictionService:
         """
         Holt offene Forderungen (Ausgangsrechnungen - wir erwarten Geld).
 
+        Richtung wird über BusinessEntity.entity_type == 'customer' abgeleitet
+        (siehe app/services/invoice_direction.py). Rechnungen ohne entity_id
+        sowie 'both'/'internal'-Entities sind bewusst ausgeschlossen.
+
         Returns:
             Liste mit {amount, due_date, entity_id, invoice_id, delay_stats}
         """
@@ -759,7 +764,7 @@ class CashflowPredictionService:
             .where(
                 and_(
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
+                    is_outgoing_invoice(),
                     InvoiceTracking.status.in_(["open", "sent", "overdue"]),
                     InvoiceTracking.deleted_at.is_(None),
                 )
@@ -798,6 +803,10 @@ class CashflowPredictionService:
         """
         Holt offene Verbindlichkeiten (Eingangsrechnungen - wir müssen zahlen).
 
+        Richtung wird über BusinessEntity.entity_type == 'supplier' abgeleitet
+        (siehe app/services/invoice_direction.py). Rechnungen ohne entity_id
+        sowie 'both'/'internal'-Entities sind bewusst ausgeschlossen.
+
         Returns:
             Liste mit {amount, due_date, skonto_deadline, skonto_amount}
         """
@@ -809,7 +818,7 @@ class CashflowPredictionService:
             .where(
                 and_(
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.invoice_type == "incoming",
+                    is_incoming_invoice(),
                     InvoiceTracking.status.in_(["open", "sent"]),
                     InvoiceTracking.deleted_at.is_(None),
                 )
