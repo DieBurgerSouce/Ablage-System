@@ -561,6 +561,8 @@ async def get_field_types() -> JSONDict:
     response_model=List[TemplateCandidateResponse],
     summary="Template-Kandidaten auflisten",
     description="Listet alle Lieferanten auf, die genug Dokumente für eine automatische Template-Generierung haben.",
+    # Eindeutige operation_id: kollidierte mit ocr_templates.py (gleicher Pfad)
+    operation_id="supplier_ocr_list_template_candidates",
 )
 async def list_template_candidates(
     min_documents: int = Query(3, ge=2, le=50, description="Mindestanzahl Dokumente"),

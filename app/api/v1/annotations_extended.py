@@ -314,6 +314,8 @@ async def get_page_annotations(
     response_model=ReplyResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Kommentar-Antwort erstellen",
+    # Eindeutige operation_id: kollidierte mit annotations_enhanced.py
+    operation_id="extended_create_reply",
 )
 async def create_reply(
     thread_id: UUID,
@@ -483,6 +485,8 @@ async def update_task_status(
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
     summary="Annotation löschen",
+    # Eindeutige operation_id: kollidierte mit annotations.py/_enhanced.py
+    operation_id="extended_delete_annotation",
 )
 async def delete_annotation(
     annotation_id: UUID,

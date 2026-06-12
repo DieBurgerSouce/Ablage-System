@@ -525,6 +525,8 @@ async def refresh_entity_profile(
     "/summary",
     summary="Cashflow-Zusammenfassung",
     description="Kurze Zusammenfassung der aktuellen Liquiditaetssituation.",
+    # Eindeutige operation_id: kollidierte mit banking_fints.py (gleicher Pfad)
+    operation_id="cashflow_get_cashflow_summary",
 )
 async def get_cashflow_summary(
     current_user: User = Depends(get_current_user),
