@@ -72,11 +72,20 @@ export function SteuerPage() {
 
   const isLoading = spaceLoading || taxLoading || deadlinesLoading || comparisonLoading;
 
-  // Gesamtsumme berechnen
-  const totalDeductible = deductions?.summaries?.reduce(
-    (sum, s) => sum + s.totalDeductible,
-    0
-  ) ?? 0;
+  // Gesamtsumme (kommt direkt aus dem Optimierungs-Ergebnis)
+  const totalDeductible = deductions?.totalDeductible ?? 0;
+
+  // Ungenutzte Hoechstbetraege aus den Kategorie-Zusammenfassungen ableiten
+  const unusedPotential = (deductions?.deductionSummaries ?? [])
+    .filter(
+      (summary) =>
+        summary.maxDeductible !== undefined &&
+        summary.maxDeductible > summary.totalDeductible
+    )
+    .map((summary) => ({
+      categoryName: summary.categoryName,
+      remainingLimit: (summary.maxDeductible ?? 0) - summary.totalDeductible,
+    }));
 
   // Nächste wichtige Frist
   const nextDeadline = deadlines?.find((d) => new Date(d.dueDate) > new Date());
@@ -129,7 +138,12 @@ export function SteuerPage() {
               </SelectContent>
             </Select>
 
-            <DATEVExportButton year={selectedYear} />
+            <DATEVExportButton
+              spaceId={spaceId}
+              taxYear={selectedYear}
+              datevExportReady={deductions?.datevExportReady}
+              datevExportNotes={deductions?.datevExportNotes}
+            />
           </div>
         </div>
 
@@ -147,7 +161,7 @@ export function SteuerPage() {
                 {formatCurrency(totalDeductible)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {deductions?.summaries?.length ?? 0} Kategorien
+                {deductions?.deductionSummaries?.length ?? 0} Kategorien
               </p>
             </CardContent>
           </Card>
@@ -161,7 +175,7 @@ export function SteuerPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                {formatCurrency(deductions?.estimatedRefund ?? 0)}
+                {formatCurrency(deductions?.estimatedTaxSavings ?? 0)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 bei 35% Grenzsteuersatz
@@ -178,20 +192,20 @@ export function SteuerPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                {comparison?.change !== undefined && (
+                {comparison?.differencePercent !== undefined && (
                   <>
                     <TrendingUp
                       className={`h-5 w-5 ${
-                        comparison.change >= 0 ? 'text-green-500' : 'text-red-500 rotate-180'
+                        comparison.differencePercent >= 0 ? 'text-green-500' : 'text-red-500 rotate-180'
                       }`}
                     />
                     <span
                       className={`text-2xl font-bold ${
-                        comparison.change >= 0 ? 'text-green-600' : 'text-red-600'
+                        comparison.differencePercent >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}
                     >
-                      {comparison.change >= 0 ? '+' : ''}
-                      {comparison.change.toFixed(1)}%
+                      {comparison.differencePercent >= 0 ? '+' : ''}
+                      {comparison.differencePercent.toFixed(1)}%
                     </span>
                   </>
                 )}
@@ -214,15 +228,15 @@ export function SteuerPage() {
             <CardContent>
               {nextDeadline ? (
                 <>
-                  <p className="text-lg font-semibold">{nextDeadline.name}</p>
+                  <p className="text-lg font-semibold">{nextDeadline.title}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
                       {new Date(nextDeadline.dueDate).toLocaleDateString('de-DE')}
                     </span>
-                    {nextDeadline.daysRemaining !== undefined && nextDeadline.daysRemaining <= 14 && (
+                    {nextDeadline.daysUntilDue <= 14 && (
                       <Badge variant="destructive" className="text-xs">
-                        {nextDeadline.daysRemaining} Tage
+                        {nextDeadline.daysUntilDue} Tage
                       </Badge>
                     )}
                   </div>
@@ -235,13 +249,13 @@ export function SteuerPage() {
         </div>
 
         {/* Warnung für kritische Fristen */}
-        {nextDeadline && nextDeadline.daysRemaining !== undefined && nextDeadline.daysRemaining <= 7 && (
+        {nextDeadline && nextDeadline.daysUntilDue <= 7 && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Frist beachten!</AlertTitle>
             <AlertDescription>
-              Die Frist für <strong>{nextDeadline.name}</strong> endet in{' '}
-              {nextDeadline.daysRemaining} Tagen (
+              Die Frist für <strong>{nextDeadline.title}</strong> endet in{' '}
+              {nextDeadline.daysUntilDue} Tagen (
               {new Date(nextDeadline.dueDate).toLocaleDateString('de-DE')}).
             </AlertDescription>
           </Alert>
@@ -269,7 +283,7 @@ export function SteuerPage() {
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2">
                 <SteuerKategorien
-                  summaries={deductions?.summaries ?? []}
+                  summaries={deductions?.deductionSummaries ?? []}
                   isLoading={taxLoading}
                 />
               </div>
@@ -283,7 +297,7 @@ export function SteuerPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {deductions?.tips?.map((tip, idx) => (
+                    {deductions?.optimizationSuggestions?.map((tip, idx) => (
                       <div
                         key={idx}
                         className="flex items-start gap-2 text-sm"
@@ -308,17 +322,19 @@ export function SteuerPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {deductions?.unusedPotential?.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between"
-                      >
-                        <span className="text-sm">{item.category}</span>
-                        <Badge variant="secondary">
-                          {formatCurrency(item.remainingLimit)}
-                        </Badge>
-                      </div>
-                    )) ?? (
+                    {unusedPotential.length > 0 ? (
+                      unusedPotential.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="text-sm">{item.categoryName}</span>
+                          <Badge variant="secondary">
+                            {formatCurrency(item.remainingLimit)}
+                          </Badge>
+                        </div>
+                      ))
+                    ) : (
                       <p className="text-sm text-muted-foreground">
                         Alle Höchstbeträge sind ausgeschöpft.
                       </p>
@@ -332,15 +348,15 @@ export function SteuerPage() {
           {/* Fristen Tab */}
           <TabsContent value="fristen">
             <FristenKalender
-              deadlines={deadlines ?? []}
-              year={selectedYear}
+              upcomingDeadlines={deadlinesData?.upcoming ?? []}
+              overdueDeadlines={deadlinesData?.overdue ?? []}
               isLoading={deadlinesLoading}
             />
           </TabsContent>
 
           {/* Checker Tab */}
           <TabsContent value="checker">
-            <AbsetzbarkeitsChecker year={selectedYear} />
+            <AbsetzbarkeitsChecker />
           </TabsContent>
         </Tabs>
     </div>

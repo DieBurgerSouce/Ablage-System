@@ -62,7 +62,7 @@ function toSnakeCase<T>(obj: T): T {
   ) as T;
 }
 
-function buildQueryParams(params: Record<string, unknown>): Record<string, string> {
+function buildQueryParams<T extends object>(params: T): Record<string, string> {
   const result: Record<string, string> = {};
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {

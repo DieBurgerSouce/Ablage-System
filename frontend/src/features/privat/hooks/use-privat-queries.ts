@@ -11,7 +11,7 @@
 
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import * as privatApi from '../api/privat-api';
-import type { PrivatSpaceCreate, PrivatSpaceUpdate, PrivatSpaceWithStats, PrivatSpaceAccessCreate, PrivatSpaceAccess, PrivatFolderCreate, PrivatFolderUpdate, PrivatFolderTree, PrivatDocumentCreate, PrivatDocumentUpdate, PrivatDocument, PrivatDocumentListResponse, PrivatPropertyCreate, PrivatPropertyUpdate, PrivatPropertyWithDetails, PrivatPropertyListResponse, PrivatTenantCreate, PrivatTenant, PrivatRentalIncomeCreate, PrivatVehicleCreate, PrivatVehicleUpdate, PrivatVehicleWithStats, PrivatVehicleListResponse, PrivatFuelLogCreate, PrivatFuelLog, PrivatFuelStatistics, PrivatInsuranceCreate, PrivatInsuranceUpdate, PrivatInsuranceWithDeadlines, PrivatInsuranceListResponse, PrivatLoanCreate, PrivatLoanUpdate, PrivatLoanListResponse, PrivatInvestmentCreate, PrivatInvestmentUpdate, PrivatInvestmentListResponse, PrivatPortfolioBreakdown, PrivatDeadlineCreate, PrivatDeadlineUpdate, PrivatDeadlineListResponse, PrivatDeadlineWidget, PrivatEmergencyContactCreate, PrivatEmergencyContactUpdate, PrivatEmergencyContact, PrivatEmergencyAccessRequestCreate, PrivatEmergencyAccessRequest, PrivatDashboardStats, PrivatFinancialSummary } from '@/types/privat';
+import type { PrivatSpaceCreate, PrivatSpaceUpdate, PrivatSpaceWithStats, PrivatSpaceAccessCreate, PrivatSpaceAccess, PrivatFolderCreate, PrivatFolderUpdate, PrivatFolderTree, PrivatDocumentCreate, PrivatDocumentUpdate, PrivatDocument, PrivatDocumentListResponse, PrivatPropertyCreate, PrivatPropertyUpdate, PrivatPropertyWithDetails, PrivatPropertyListResponse, PrivatTenantCreate, PrivatTenant, PrivatRentalIncomeCreate, PrivatVehicleCreate, PrivatVehicleUpdate, PrivatVehicleWithStats, PrivatVehicleListResponse, PrivatFuelLogCreate, PrivatFuelLog, PrivatFuelStatistics, PrivatInsuranceCreate, PrivatInsuranceUpdate, PrivatInsuranceWithDeadlines, PrivatInsuranceListResponse, PrivatLoanCreate, PrivatLoanUpdate, PrivatLoanListResponse, PrivatInvestmentCreate, PrivatInvestmentUpdate, PrivatInvestmentListResponse, PrivatPortfolioBreakdown, PrivatDeadlineCreate, PrivatDeadlineUpdate, PrivatDeadlineListResponse, PrivatDeadlineWidget, PrivatEmergencyContactCreate, PrivatEmergencyContactUpdate, PrivatEmergencyContact, PrivatEmergencyAccessRequestCreate, PrivatEmergencyAccessRequest, PrivatEmergencyAccessStatus, PrivatDashboardStats, PrivatFinancialSummary } from '@/types/privat';
 
 // ==================== Query Keys ====================
 
@@ -874,7 +874,7 @@ export function useDeleteEmergencyContact() {
 
 export function useEmergencyRequests(
   spaceId: string,
-  status?: 'pending' | 'approved' | 'denied' | 'expired' | 'revoked',
+  status?: PrivatEmergencyAccessStatus,
   options?: Omit<UseQueryOptions<PrivatEmergencyAccessRequest[]>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
