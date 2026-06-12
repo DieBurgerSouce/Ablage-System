@@ -83,7 +83,7 @@ export function DocumentFilterBar({
   // Update filter when debounced search changes
   useEffect(() => {
     if (debouncedSearch !== filter.search) {
-      onChange({ ...filter, search: debouncedSearch || undefined, page: 0 });
+      onChange({ ...filter, search: debouncedSearch || undefined, page: 1 });
     }
   }, [debouncedSearch]); // Only run when debouncedSearch changes
 
@@ -108,7 +108,7 @@ export function DocumentFilterBar({
       entityType: filter.entityType,
       sortBy: filter.sortBy,
       sortOrder: filter.sortOrder,
-      page: 0,
+      page: 1,
       pageSize: filter.pageSize,
     });
   }, [filter, onChange]);
@@ -116,7 +116,7 @@ export function DocumentFilterBar({
   // Update single filter value
   const updateFilter = useCallback(
     (key: FilterKey, value: unknown) => {
-      onChange({ ...filter, [key]: value, page: 0 });
+      onChange({ ...filter, [key]: value, page: 1 });
     },
     [filter, onChange]
   );
@@ -164,7 +164,7 @@ export function DocumentFilterBar({
               ...filter,
               dateFrom: from,
               dateTo: to,
-              page: 0,
+              page: 1,
             });
           }}
         />
@@ -178,7 +178,7 @@ export function DocumentFilterBar({
               ...filter,
               amountMin: min,
               amountMax: max,
-              page: 0,
+              page: 1,
             });
           }}
         />

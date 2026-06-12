@@ -243,7 +243,9 @@ export interface BulkActionResult {
 export const DEFAULT_CATEGORY_FILTER: Omit<CategoryDocumentFilter, 'businessEntityId' | 'folderId' | 'category' | 'entityType'> = {
   sortBy: 'document_date',
   sortOrder: 'desc',
-  page: 0,
+  // B9: GET /documents/category ist 1-BASIERT (Backend: page Query(1, ge=1)).
+  // page=0 fuehrte zu 422 auf jeder Kategorie-Dokumentliste.
+  page: 1,
   pageSize: 25,
 };
 

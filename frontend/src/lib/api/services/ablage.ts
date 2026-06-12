@@ -252,7 +252,9 @@ function buildQueryParams(filter: Partial<CategoryDocumentFilter>): CategoryDocu
     processing_status: filter.processingStatus?.length ? filter.processingStatus : undefined,
     payment_status: filter.paymentStatus?.length ? filter.paymentStatus : undefined,
     tags: filter.tags?.length ? filter.tags : undefined,
-    page: filter.page ?? 0,
+    // B9: GET /documents/category ist 1-BASIERT (page Query(1, ge=1)).
+    // page=0 lieferte 422 - defensiv auf >= 1 klemmen.
+    page: Math.max(1, filter.page ?? 1),
     page_size: filter.pageSize ?? 25,
     sort_by: filter.sortBy || 'document_date',
     sort_order: filter.sortOrder || 'desc',
@@ -285,7 +287,7 @@ export const ablageService = {
         return {
           items: [],
           total: 0,
-          page: filter.page ?? 0,
+          page: filter.page ?? 1,
           pageSize: filter.pageSize ?? 25,
           totalPages: 0,
         };

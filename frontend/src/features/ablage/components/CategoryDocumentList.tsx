@@ -138,7 +138,8 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
   const documentList = documents?.items || [];
   const totalCount = documents?.total || 0;
   const totalPages = documents?.totalPages || 0;
-  const currentPage = filter.page || 0;
+  // B9: Paginierung ist 1-basiert (Backend GET /documents/category, ge=1)
+  const currentPage = filter.page || 1;
 
   // Get selected document IDs
   const selectedIds = useMemo(() => Object.keys(rowSelection), [rowSelection]);
@@ -168,7 +169,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
 
   const handleFilterChange = useCallback(
     (newFilter: Partial<CategoryDocumentFilter>) => {
-      setFilter((prev) => ({ ...prev, ...newFilter, page: 0 })); // Reset page on filter change
+      setFilter((prev) => ({ ...prev, ...newFilter, page: 1 })); // Reset page on filter change (1-basiert, B9)
       setRowSelection({}); // Clear selection on filter change
     },
     []

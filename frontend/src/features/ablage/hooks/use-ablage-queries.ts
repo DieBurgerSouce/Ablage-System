@@ -99,13 +99,14 @@ export function useCategoryDocumentsInfinite(
 ) {
   return useInfiniteQuery({
     queryKey: [...ablageQueryKeys.categoryDocuments(), 'infinite', filter] as const,
-    queryFn: ({ pageParam = 0 }) =>
+    // B9: GET /documents/category ist 1-BASIERT (Seiten 1..totalPages)
+    queryFn: ({ pageParam = 1 }) =>
       ablageService.getCategoryDocuments({ ...filter, page: pageParam }),
     getNextPageParam: (lastPage) => {
       const nextPage = lastPage.page + 1;
-      return nextPage < lastPage.totalPages ? nextPage : undefined;
+      return nextPage <= lastPage.totalPages ? nextPage : undefined;
     },
-    initialPageParam: 0,
+    initialPageParam: 1,
     staleTime: STALE_TIMES.documents,
     gcTime: GC_TIMES.documents,
     enabled: options?.enabled !== false && !!filter.businessEntityId && !!filter.category,
@@ -524,10 +525,10 @@ export function usePrefetchCategoryPage() {
 
   const prefetch = useCallback(
     (filter: Pick<CategoryDocumentFilter, 'businessEntityId' | 'folderId' | 'category' | 'entityType'>) => {
-      // Prefetch Dokumente (erste Seite)
+      // Prefetch Dokumente (erste Seite; B9: 1-basiert)
       queryClient.prefetchQuery({
-        queryKey: ablageQueryKeys.categoryDocumentList({ ...filter, page: 0, pageSize: 25 }),
-        queryFn: () => ablageService.getCategoryDocuments({ ...filter, page: 0, pageSize: 25 }),
+        queryKey: ablageQueryKeys.categoryDocumentList({ ...filter, page: 1, pageSize: 25 }),
+        queryFn: () => ablageService.getCategoryDocuments({ ...filter, page: 1, pageSize: 25 }),
         staleTime: STALE_TIMES.documents,
       });
 

@@ -410,6 +410,17 @@ export async function fetchEntityFolders(entityId: string): Promise<EntityFolder
 
 /**
  * Dokumente in einem Ordner/Kategorie abrufen
+ *
+ * BEFUND (B9, 2026-06-12): Diese Funktion ist aktuell UNGENUTZT (kein
+ * Aufrufer). Die Kategorie-Dokumentliste laeuft real ueber
+ * GET /documents/category (lib/api/services/ablage.ts, 1-basierte
+ * Pagination). Der hiesige Backend-Endpoint
+ * GET /entities/{entity_id}/folders/{folder_id}/documents akzeptiert zwar
+ * das Ordner-KUERZEL (folder_id: str + CompanyService-Normalisierung),
+ * ist aber in sich inkonsistent: das normalisierte folder_id wird im
+ * Query NICHT als Filter verwendet (liefert Dokumente ueber alle Ordner
+ * der Entity) und paginiert mit per_page (hier wird page_size gesendet).
+ * Vor einer Wiederverwendung Backend-Vertrag klaeren.
  */
 export interface FolderDocumentFilter {
     category?: string;
