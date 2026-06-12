@@ -56,7 +56,7 @@ function usePortfolioSummary() {
     return useQuery({
         queryKey: ['portfolio', 'summary'],
         queryFn: async (): Promise<PortfolioSummary> => {
-            const response = await api.get('/api/v1/portfolio/summary');
+            const response = await api.get('/portfolio/summary');
             return response.data;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

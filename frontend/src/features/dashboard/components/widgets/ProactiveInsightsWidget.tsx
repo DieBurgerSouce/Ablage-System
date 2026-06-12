@@ -79,7 +79,7 @@ function useInsightsSummary() {
     return useQuery({
         queryKey: ['insights', 'summary'],
         queryFn: async (): Promise<InsightSummary> => {
-            const response = await api.get('/api/v1/insights/summary');
+            const response = await api.get('/insights/summary');
             return response.data;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -91,7 +91,7 @@ function useTopInsights(limit: number = 5) {
     return useQuery({
         queryKey: ['insights', 'all', { limit }],
         queryFn: async (): Promise<InsightListResponse> => {
-            const response = await api.get('/api/v1/insights/all', {
+            const response = await api.get('/insights/all', {
                 params: { limit, priority: 'high,critical' },
             });
             return response.data;

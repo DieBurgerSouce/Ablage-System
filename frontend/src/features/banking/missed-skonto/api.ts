@@ -11,7 +11,7 @@ import type {
   MonthlySkontoSummary,
 } from './types';
 
-const API_BASE = '/api/v1/invoices';
+const API_BASE = '/invoices';
 
 /**
  * Verpasste Skonto-Möglichkeiten abrufen

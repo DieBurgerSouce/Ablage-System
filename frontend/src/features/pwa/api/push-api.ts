@@ -54,7 +54,7 @@ export interface SubscriptionStats {
  * Get the VAPID public key for push subscriptions
  */
 export async function getVapidPublicKey(): Promise<string> {
-  const response = await apiClient.get<{ public_key: string }>('/api/v1/push/vapid-public-key')
+  const response = await apiClient.get<{ public_key: string }>('/push/vapid-public-key')
   return response.data.public_key
 }
 
@@ -65,7 +65,7 @@ export async function registerPushSubscription(
   subscription: PushSubscriptionCreate
 ): Promise<PushSubscriptionResponse> {
   const response = await apiClient.post<PushSubscriptionResponse>(
-    '/api/v1/push/subscriptions',
+    '/push/subscriptions',
     subscription
   )
   return response.data
@@ -75,7 +75,7 @@ export async function registerPushSubscription(
  * Unregister a push subscription
  */
 export async function unregisterPushSubscription(endpoint: string): Promise<void> {
-  await apiClient.delete('/api/v1/push/subscriptions', {
+  await apiClient.delete('/push/subscriptions', {
     params: { endpoint },
   })
 }
@@ -86,7 +86,7 @@ export async function unregisterPushSubscription(endpoint: string): Promise<void
 export async function getPushSubscriptions(
   includeInactive = false
 ): Promise<PushSubscriptionResponse[]> {
-  const response = await apiClient.get<PushSubscriptionResponse[]>('/api/v1/push/subscriptions', {
+  const response = await apiClient.get<PushSubscriptionResponse[]>('/push/subscriptions', {
     params: { include_inactive: includeInactive },
   })
   return response.data
@@ -100,7 +100,7 @@ export async function updateSubscriptionPreferences(
   preferences: Record<string, boolean>
 ): Promise<PushSubscriptionResponse> {
   const response = await apiClient.patch<PushSubscriptionResponse>(
-    `/api/v1/push/subscriptions/${subscriptionId}/preferences`,
+    `/push/subscriptions/${subscriptionId}/preferences`,
     { preferences }
   )
   return response.data
@@ -110,7 +110,7 @@ export async function updateSubscriptionPreferences(
  * Get subscription statistics
  */
 export async function getSubscriptionStats(): Promise<SubscriptionStats> {
-  const response = await apiClient.get<SubscriptionStats>('/api/v1/push/stats')
+  const response = await apiClient.get<SubscriptionStats>('/push/stats')
   return response.data
 }
 
@@ -121,7 +121,7 @@ export async function trackNotificationClick(
   subscriptionId: string,
   tag: string
 ): Promise<void> {
-  await apiClient.post('/api/v1/push/track-click', { tag }, {
+  await apiClient.post('/push/track-click', { tag }, {
     params: { subscription_id: subscriptionId },
   })
 }
@@ -130,7 +130,7 @@ export async function trackNotificationClick(
  * Send a test notification (dev only)
  */
 export async function sendTestNotification(): Promise<void> {
-  await apiClient.post('/api/v1/push/test')
+  await apiClient.post('/push/test')
 }
 
 // ==================================================

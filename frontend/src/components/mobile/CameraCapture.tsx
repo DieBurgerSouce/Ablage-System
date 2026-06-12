@@ -197,7 +197,7 @@ export function CameraCapture({
   onCapture,
   maxPages = 20,
   maxFileSize = 15 * 1024 * 1024,
-  endpoint = '/api/v1/documents/upload',
+  endpoint = '/documents/upload',
   metadata = {},
   multiPage = true,
   autoUpload = false,

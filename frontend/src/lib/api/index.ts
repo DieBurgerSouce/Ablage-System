@@ -29,13 +29,16 @@ export { showApiErrorToast } from './error-toast-handler';
  * This provides a cleaner interface for simple GET/POST requests while
  * still using the authenticated axios instance with interceptors.
  *
+ * WICHTIG: URLs sind RELATIV zur apiClient-baseURL ('/api/v1').
+ * NIEMALS '/api/v1/...' uebergeben — das ergibt '/api/v1/api/v1/...' (404).
+ *
  * @example
  * // Simple GET request
- * const data = await fetchWithAuth<User[]>('/api/v1/users');
+ * const data = await fetchWithAuth<User[]>('/users');
  *
  * @example
  * // POST request with body
- * const result = await fetchWithAuth<CreateResponse>('/api/v1/items', {
+ * const result = await fetchWithAuth<CreateResponse>('/items', {
  *   method: 'POST',
  *   body: JSON.stringify({ name: 'Item' }),
  * });

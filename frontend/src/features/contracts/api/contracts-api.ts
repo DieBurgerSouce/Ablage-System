@@ -27,7 +27,7 @@ import type {
   AmendmentUpdateRequest,
 } from '../types/contract-types';
 
-const API_BASE = '/api/v1/contracts';
+const API_BASE = '/contracts';
 
 // =============================================================================
 // Query Keys

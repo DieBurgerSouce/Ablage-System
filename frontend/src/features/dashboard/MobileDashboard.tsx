@@ -80,7 +80,7 @@ function useMobileDashboardData() {
     return useQuery({
         queryKey: ['mobile-dashboard'],
         queryFn: async () => {
-            const response = await api.get('/api/v1/dashboard/mobile-summary');
+            const response = await api.get('/dashboard/mobile-summary');
             return response.data;
         },
         staleTime: 2 * 60 * 1000, // 2 minutes
@@ -92,7 +92,7 @@ function useRecentDocuments(limit: number = 5) {
     return useQuery({
         queryKey: ['recent-documents', limit],
         queryFn: async () => {
-            const response = await api.get('/api/v1/documents', {
+            const response = await api.get('/documents', {
                 params: { limit, sort: '-created_at' },
             });
             return response.data;

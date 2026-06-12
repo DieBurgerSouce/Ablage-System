@@ -15,7 +15,7 @@ import type {
   BulkDismissPayload
 } from '../types';
 
-const BASE_PATH = '/api/v1/notifications';
+const BASE_PATH = '/notifications';
 
 /**
  * Benachrichtigungen abrufen (mit Pagination und Filter)

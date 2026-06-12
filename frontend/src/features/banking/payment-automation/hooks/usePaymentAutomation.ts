@@ -173,7 +173,7 @@ export function usePaymentSuggestions(
         include_overdue: String(includeOverdue),
       });
       const response = await api.get<PaymentSuggestion[]>(
-        `/api/v1/banking/payment-automation/suggestions?${params.toString()}`
+        `/banking/payment-automation/suggestions?${params.toString()}`
       );
       return response.data;
     },
@@ -192,7 +192,7 @@ export function usePaymentBatches(status?: PaymentBatchStatus, limit = 50) {
       const params = new URLSearchParams({ limit: String(limit) });
       if (status) params.set('status', status);
       const response = await api.get<PaymentBatch[]>(
-        `/api/v1/banking/payment-automation/batches?${params.toString()}`
+        `/banking/payment-automation/batches?${params.toString()}`
       );
       return response.data;
     },
@@ -208,7 +208,7 @@ export function usePaymentBatch(batchId: string) {
     queryKey: paymentAutomationKeys.batch(batchId),
     queryFn: async () => {
       const response = await api.get<PaymentBatch>(
-        `/api/v1/banking/payment-automation/batches/${batchId}`
+        `/banking/payment-automation/batches/${batchId}`
       );
       return response.data;
     },
@@ -228,7 +228,7 @@ export function usePaymentSchedule(periodDays: number = 30, strategy: PaymentStr
         strategy,
       });
       const response = await api.get<PaymentSchedule>(
-        `/api/v1/banking/payment-automation/schedule?${params.toString()}`
+        `/banking/payment-automation/schedule?${params.toString()}`
       );
       return response.data;
     },
@@ -244,7 +244,7 @@ export function useAutomationStatistics(days: number = 30) {
     queryKey: paymentAutomationKeys.statistics(days),
     queryFn: async () => {
       const response = await api.get<AutomationStatistics>(
-        `/api/v1/banking/payment-automation/statistics?days=${days}`
+        `/banking/payment-automation/statistics?days=${days}`
       );
       return response.data;
     },
@@ -260,7 +260,7 @@ export function useAutomationConfig() {
     queryKey: paymentAutomationKeys.config(),
     queryFn: async () => {
       const response = await api.get<AutomationConfig>(
-        '/api/v1/banking/payment-automation/config'
+        '/banking/payment-automation/config'
       );
       return response.data;
     },
@@ -276,7 +276,7 @@ export function useSkontoAlerts(days: number = 7) {
     queryKey: paymentAutomationKeys.alerts(days),
     queryFn: async () => {
       const response = await api.get<SkontoAlert[]>(
-        `/api/v1/banking/payment-automation/skonto-alerts?days=${days}`
+        `/banking/payment-automation/skonto-alerts?days=${days}`
       );
       return response.data;
     },
@@ -302,7 +302,7 @@ export function useCreateBatch() {
       debtorAccountId?: string;
     }) => {
       const response = await api.post<PaymentBatch>(
-        '/api/v1/banking/payment-automation/batches',
+        '/banking/payment-automation/batches',
         {
           invoice_ids: invoiceIds,
           name,
@@ -335,7 +335,7 @@ export function useCreateOptimizedBatch() {
       debtorAccountId?: string;
     }) => {
       const response = await api.post<PaymentBatch>(
-        '/api/v1/banking/payment-automation/batches/optimized',
+        '/banking/payment-automation/batches/optimized',
         {
           strategy,
           max_amount: maxAmount,
@@ -360,7 +360,7 @@ export function useApproveBatch() {
   return useMutation({
     mutationFn: async (batchId: string) => {
       const response = await api.post<PaymentBatch>(
-        `/api/v1/banking/payment-automation/batches/${batchId}/approve`
+        `/banking/payment-automation/batches/${batchId}/approve`
       );
       return response.data;
     },
@@ -380,7 +380,7 @@ export function useRejectBatch() {
   return useMutation({
     mutationFn: async ({ batchId, reason }: { batchId: string; reason: string }) => {
       const response = await api.post<PaymentBatch>(
-        `/api/v1/banking/payment-automation/batches/${batchId}/reject`,
+        `/banking/payment-automation/batches/${batchId}/reject`,
         { reason }
       );
       return response.data;
@@ -407,7 +407,7 @@ export function useGenerateSepaFile() {
       const params = new URLSearchParams();
       if (executionDate) params.set('execution_date', executionDate);
       const response = await api.post<{ xml_content: string; message_id: string; file_name: string }>(
-        `/api/v1/banking/payment-automation/batches/${batchId}/sepa?${params.toString()}`
+        `/banking/payment-automation/batches/${batchId}/sepa?${params.toString()}`
       );
       return response.data;
     },
@@ -423,7 +423,7 @@ export function useUpdateAutomationConfig() {
   return useMutation({
     mutationFn: async (config: Partial<AutomationConfig>) => {
       const response = await api.patch<AutomationConfig>(
-        '/api/v1/banking/payment-automation/config',
+        '/banking/payment-automation/config',
         config
       );
       return response.data;

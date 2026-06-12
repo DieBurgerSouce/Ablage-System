@@ -65,7 +65,7 @@ function useImportSyncStatus() {
     return useQuery({
         queryKey: ['imports', 'sync-status'],
         queryFn: async (): Promise<ImportSyncSummary> => {
-            const response = await api.get('/api/v1/imports/sync-status');
+            const response = await api.get('/imports/sync-status');
             return response.data;
         },
         staleTime: 30 * 1000, // 30 seconds

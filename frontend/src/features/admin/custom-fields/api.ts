@@ -42,7 +42,7 @@ export function useCustomFieldDefinitions(params?: {
     queryKey: CUSTOM_FIELD_KEYS.definitions(params),
     queryFn: async () => {
       const response = await api.get<CustomFieldDefinitionListResponse>(
-        '/api/v1/custom-fields/definitions',
+        '/custom-fields/definitions',
         { params }
       )
       return response.data
@@ -64,7 +64,7 @@ export function useCreateFieldDefinition() {
   return useMutation({
     mutationFn: async (data: CustomFieldDefinitionCreate) => {
       const response = await api.post<CustomFieldDefinitionResponse>(
-        '/api/v1/custom-fields/definitions',
+        '/custom-fields/definitions',
         data
       )
       return response.data
@@ -90,7 +90,7 @@ export function useUpdateFieldDefinition() {
       data: CustomFieldDefinitionUpdate
     }) => {
       const response = await api.put<CustomFieldDefinitionResponse>(
-        `/api/v1/custom-fields/definitions/${id}`,
+        `/custom-fields/definitions/${id}`,
         data
       )
       return response.data
@@ -109,7 +109,7 @@ export function useDeleteFieldDefinition() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/api/v1/custom-fields/definitions/${id}`)
+      await api.delete(`/custom-fields/definitions/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CUSTOM_FIELD_KEYS.all })
@@ -129,7 +129,7 @@ export function useDocumentFieldValues(documentId: string) {
     queryKey: CUSTOM_FIELD_KEYS.documentValues(documentId),
     queryFn: async () => {
       const response = await api.get<CustomFieldValueResponse>(
-        `/api/v1/custom-fields/documents/${documentId}/values`
+        `/custom-fields/documents/${documentId}/values`
       )
       return response.data
     },
@@ -153,7 +153,7 @@ export function useSetDocumentFieldValues() {
       data: CustomFieldValueSet
     }) => {
       const response = await api.put<CustomFieldValueResponse>(
-        `/api/v1/custom-fields/documents/${documentId}/values`,
+        `/custom-fields/documents/${documentId}/values`,
         data
       )
       return response.data

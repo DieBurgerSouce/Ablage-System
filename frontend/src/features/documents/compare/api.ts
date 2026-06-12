@@ -13,7 +13,7 @@ import type {
   SimilarDocument,
 } from './types';
 
-const COMPARE_BASE_URL = '/api/v1/compare';
+const COMPARE_BASE_URL = '/compare';
 
 /**
  * Vergleicht zwei Dokumente.

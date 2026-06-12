@@ -69,7 +69,7 @@ function useComplianceSummary() {
     return useQuery({
         queryKey: ['compliance', 'summary'],
         queryFn: async (): Promise<ComplianceSummary> => {
-            const response = await api.get('/api/v1/compliance/summary');
+            const response = await api.get('/compliance/summary');
             return response.data;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

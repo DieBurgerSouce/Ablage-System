@@ -116,7 +116,7 @@ function useQuickActionCounts(enabled: boolean) {
   return useQuery<QuickActionCounts>({
     queryKey: ['quick-action-counts'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/v1/dashboard/quick-counts');
+      const response = await apiClient.get('/dashboard/quick-counts');
       return response.data;
     },
     enabled,

@@ -58,7 +58,7 @@ function useInsuranceSummary() {
     return useQuery({
         queryKey: ['insurance', 'summary'],
         queryFn: async (): Promise<InsuranceSummary> => {
-            const response = await api.get('/api/v1/insurance/summary');
+            const response = await api.get('/insurance/summary');
             return response.data;
         },
         staleTime: 10 * 60 * 1000, // 10 minutes

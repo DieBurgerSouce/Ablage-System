@@ -72,7 +72,7 @@ function useMLOpsPerformance() {
     return useQuery({
         queryKey: ['mlops', 'performance'],
         queryFn: async (): Promise<MLOpsSummary> => {
-            const response = await api.get('/api/v1/mlops/performance');
+            const response = await api.get('/mlops/performance');
             return response.data;
         },
         staleTime: 60 * 1000, // 1 minute

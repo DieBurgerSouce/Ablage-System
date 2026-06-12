@@ -55,7 +55,7 @@ function useApprovalSummary() {
     return useQuery({
         queryKey: ['approvals', 'summary'],
         queryFn: async (): Promise<ApprovalSummary> => {
-            const response = await api.get('/api/v1/approvals/summary');
+            const response = await api.get('/approvals/summary');
             return response.data;
         },
         staleTime: 60 * 1000, // 1 minute
@@ -67,7 +67,7 @@ function useMyPendingApprovals(limit: number = 5) {
     return useQuery({
         queryKey: ['approvals', 'my-pending', { limit }],
         queryFn: async (): Promise<{ requests: ApprovalRequest[]; total: number }> => {
-            const response = await api.get('/api/v1/approvals/requests', {
+            const response = await api.get('/approvals/requests', {
                 params: {
                     my_pending: true,
                     status_filter: 'pending',

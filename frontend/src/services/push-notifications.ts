@@ -198,7 +198,7 @@ class PushNotificationService {
     }
 
     try {
-      const response = await apiClient.get('/api/v1/push/vapid-public-key');
+      const response = await apiClient.get('/push/vapid-public-key');
       const publicKey = response.data.public_key;
 
       // Cache the key
@@ -274,7 +274,7 @@ class PushNotificationService {
 
       // Register with backend
       const subscriptionJson = subscription.toJSON();
-      await apiClient.post('/api/v1/push/subscriptions', {
+      await apiClient.post('/push/subscriptions', {
         endpoint: subscriptionJson.endpoint,
         keys: {
           p256dh: subscriptionJson.keys?.p256dh,
@@ -321,7 +321,7 @@ class PushNotificationService {
         await subscription.unsubscribe();
 
         // Unregister from backend
-        await apiClient.delete('/api/v1/push/subscriptions', {
+        await apiClient.delete('/push/subscriptions', {
           params: { endpoint: subscription.endpoint },
         });
 
@@ -353,7 +353,7 @@ class PushNotificationService {
   ): Promise<{ success: boolean }> {
     try {
       await apiClient.patch(
-        `/api/v1/push/subscriptions/${subscriptionId}/preferences`,
+        `/push/subscriptions/${subscriptionId}/preferences`,
         { preferences }
       );
 
@@ -387,7 +387,7 @@ class PushNotificationService {
     }>
   > {
     try {
-      const response = await apiClient.get('/api/v1/push/subscriptions');
+      const response = await apiClient.get('/push/subscriptions');
       return response.data;
     } catch (error) {
       logger.error('[PushNotifications] Abruf der Subscriptions fehlgeschlagen', {
@@ -437,7 +437,7 @@ class PushNotificationService {
    */
   async trackClick(subscriptionId: string, tag: string): Promise<void> {
     try {
-      await apiClient.post('/api/v1/push/track-click', {
+      await apiClient.post('/push/track-click', {
         tag,
       }, {
         params: { subscription_id: subscriptionId },
@@ -454,7 +454,7 @@ class PushNotificationService {
    */
   async sendTestNotification(): Promise<{ success: boolean; message: string }> {
     try {
-      await apiClient.post('/api/v1/push/test');
+      await apiClient.post('/push/test');
       return {
         success: true,
         message: 'Test-Benachrichtigung gesendet',

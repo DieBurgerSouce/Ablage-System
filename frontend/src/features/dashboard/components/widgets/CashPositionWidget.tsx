@@ -83,7 +83,7 @@ function useCashPosition() {
     return useQuery({
         queryKey: ['banking', 'cash-position'],
         queryFn: async (): Promise<CashPositionSummary> => {
-            const response = await api.get('/api/v1/banking/cash-position');
+            const response = await api.get('/banking/cash-position');
             return response.data;
         },
         staleTime: 60 * 1000, // 1 minute

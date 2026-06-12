@@ -33,7 +33,7 @@ import type {
   KnowledgeTagListResponse,
 } from '../types/knowledge-types';
 
-const API_BASE = '/api/v1/knowledge';
+const API_BASE = '/knowledge';
 
 // =============================================================================
 // Query Keys

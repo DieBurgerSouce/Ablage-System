@@ -39,7 +39,7 @@ export async function archiveDocument(request: ArchiveDocumentRequest): Promise<
  * Archive-Eintrag abrufen
  */
 export async function getArchiveEntry(documentId: string): Promise<ArchiveEntry> {
-  const response = await apiClient.get<ArchiveEntry>(`/api/v1/archive/documents/${documentId}`)
+  const response = await apiClient.get<ArchiveEntry>(`/archive/documents/${documentId}`)
   return response.data
 }
 
@@ -64,7 +64,7 @@ export async function listArchivedDocuments(params?: {
  */
 export async function verifyDocumentIntegrity(documentId: string): Promise<VerificationResult> {
   const response = await apiClient.post<VerificationResult>(
-    `/api/v1/archive/documents/${documentId}/verify`
+    `/archive/documents/${documentId}/verify`
   )
   return response.data
 }
@@ -125,7 +125,7 @@ export async function updateRetentionSetting(
   update: RetentionSettingUpdate
 ): Promise<RetentionSetting> {
   const response = await apiClient.patch<RetentionSetting>(
-    `/api/v1/archive/retention-settings/${category}`,
+    `/archive/retention-settings/${category}`,
     update
   )
   return response.data
@@ -136,7 +136,7 @@ export async function updateRetentionSetting(
  */
 export async function resetRetentionSetting(category: string): Promise<RetentionSetting> {
   const response = await apiClient.post<RetentionSetting>(
-    `/api/v1/archive/retention-settings/${category}/reset`
+    `/archive/retention-settings/${category}/reset`
   )
   return response.data
 }
@@ -202,7 +202,7 @@ export async function startGDPdUExport(options: GDPdUExportOptions): Promise<GDP
  * GDPdU-Export-Status abrufen
  */
 export async function getGDPdUExportStatus(exportId: string): Promise<GDPdUExportResult> {
-  const response = await apiClient.get<GDPdUExportResult>(`/api/v1/archive/gdpdu/export/${exportId}`)
+  const response = await apiClient.get<GDPdUExportResult>(`/archive/gdpdu/export/${exportId}`)
   return response.data
 }
 
@@ -210,7 +210,7 @@ export async function getGDPdUExportStatus(exportId: string): Promise<GDPdUExpor
  * GDPdU-Export herunterladen
  */
 export async function downloadGDPdUExport(exportId: string): Promise<Blob> {
-  const response = await apiClient.get(`/api/v1/archive/gdpdu/export/${exportId}/download`, {
+  const response = await apiClient.get(`/archive/gdpdu/export/${exportId}/download`, {
     responseType: 'blob',
   })
   return response.data
@@ -250,7 +250,7 @@ export async function listTaxAdvisorInvites(): Promise<TaxAdvisorInvite[]> {
  * Steuerberater-Einladung widerrufen
  */
 export async function revokeTaxAdvisorInvite(inviteId: string): Promise<void> {
-  await apiClient.delete(`/api/v1/tax-advisor/invites/${inviteId}`)
+  await apiClient.delete(`/tax-advisor/invites/${inviteId}`)
 }
 
 /**
@@ -261,7 +261,7 @@ export async function extendTaxAdvisorAccess(
   additionalDays: number
 ): Promise<TaxAdvisorInvite> {
   const response = await apiClient.patch<TaxAdvisorInvite>(
-    `/api/v1/tax-advisor/invites/${inviteId}/extend`,
+    `/tax-advisor/invites/${inviteId}/extend`,
     { additional_days: additionalDays }
   )
   return response.data

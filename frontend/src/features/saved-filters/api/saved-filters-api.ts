@@ -58,7 +58,7 @@ export async function getSavedFilters(
     include_shared: String(includeShared),
   })
   return (
-    await apiClient.get<SavedFilterListResponse>(`/api/v1/saved-filters?${params}`)
+    await apiClient.get<SavedFilterListResponse>(`/saved-filters?${params}`)
   ).data
 }
 
@@ -66,7 +66,7 @@ export async function getSavedFilters(
  * Hole einen einzelnen Filter
  */
 export async function getSavedFilter(filterId: string): Promise<SavedFilter> {
-  return (await apiClient.get<SavedFilter>(`/api/v1/saved-filters/${filterId}`)).data
+  return (await apiClient.get<SavedFilter>(`/saved-filters/${filterId}`)).data
 }
 
 /**
@@ -75,7 +75,7 @@ export async function getSavedFilter(filterId: string): Promise<SavedFilter> {
 export async function createSavedFilter(
   data: CreateSavedFilterRequest
 ): Promise<SavedFilter> {
-  return (await apiClient.post<SavedFilter>("/api/v1/saved-filters", data)).data
+  return (await apiClient.post<SavedFilter>("/saved-filters", data)).data
 }
 
 /**
@@ -85,7 +85,7 @@ export async function updateSavedFilter(
   filterId: string,
   data: UpdateSavedFilterRequest
 ): Promise<SavedFilter> {
-  return (await apiClient.patch<SavedFilter>(`/api/v1/saved-filters/${filterId}`, data)).data
+  return (await apiClient.patch<SavedFilter>(`/saved-filters/${filterId}`, data)).data
 }
 
 /**
@@ -96,14 +96,14 @@ export async function deleteSavedFilter(
   hardDelete = false
 ): Promise<void> {
   const params = hardDelete ? "?hard_delete=true" : ""
-  await apiClient.delete(`/api/v1/saved-filters/${filterId}${params}`)
+  await apiClient.delete(`/saved-filters/${filterId}${params}`)
 }
 
 /**
  * Zeichne Nutzung eines Filters auf
  */
 export async function recordFilterUsage(filterId: string): Promise<void> {
-  await apiClient.post(`/api/v1/saved-filters/${filterId}/use`, {})
+  await apiClient.post(`/saved-filters/${filterId}/use`, {})
 }
 
 /**
@@ -115,7 +115,7 @@ export async function duplicateSavedFilter(
 ): Promise<SavedFilter> {
   return (
     await apiClient.post<SavedFilter>(
-      `/api/v1/saved-filters/${filterId}/duplicate`,
+      `/saved-filters/${filterId}/duplicate`,
       data || {}
     )
   ).data
@@ -127,7 +127,7 @@ export async function duplicateSavedFilter(
 export async function setDefaultFilter(filterId: string): Promise<SavedFilter> {
   return (
     await apiClient.post<SavedFilter>(
-      `/api/v1/saved-filters/${filterId}/set-default`,
+      `/saved-filters/${filterId}/set-default`,
       {}
     )
   ).data
@@ -137,12 +137,12 @@ export async function setDefaultFilter(filterId: string): Promise<SavedFilter> {
  * Entferne den Standard-Filter für ein Feature
  */
 export async function clearDefaultFilter(feature: string): Promise<void> {
-  await apiClient.delete(`/api/v1/saved-filters/default/${feature}`)
+  await apiClient.delete(`/saved-filters/default/${feature}`)
 }
 
 /**
  * Liste verfügbare Features
  */
 export async function getAvailableFeatures(): Promise<string[]> {
-  return (await apiClient.get<string[]>("/api/v1/saved-filters/features/list")).data
+  return (await apiClient.get<string[]>("/saved-filters/features/list")).data
 }
