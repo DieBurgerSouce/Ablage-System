@@ -8,10 +8,27 @@ Tests fuer das GoBD-konforme Archivierungssystem:
 - Unveraenderbarkeitsschutz (Immutability)
 - Aufbewahrungsfristen-Verwaltung
 - Verfahrensdokumentation
+
+W3b (2026-06-12): Komplett auf echte Vertraege modernisiert:
+- Rate-Limiter fail-open via Settings-Override (W3-Triage: TestClient-IP
+  'testclient' nicht whitelisted -> fail-closed maskierte alles als 503).
+- Auth-Override-Ziel korrigiert: der Archive-Router bindet
+  ``get_current_user`` (NICHT get_current_active_user); ueber die
+  Dependency-Kette deckt das auch get_current_active_user/
+  get_current_superuser fuer den documents-Router ab.
+- ``require_company``-Override liefert ein Objekt mit ``.id`` (Handler
+  nutzen ``company.id`` fuer IDOR-Checks), nicht die nackte UUID.
+- Dummy-Bearer-Header -> CSRF-bearer_token_bypass fuer POST/PUT/PATCH.
+- Service-Mocks an echte Response-Schemas angepasst (ArchiveResponse braucht
+  archived_at; VerificationResponse braucht last_verification_at/
+  verification_failed_reason; ProcedureDocVersionResponse hat version:str,
+  generated_at, generated_by, content_hash).
+- /archive/categories liefert {"categories": [{value, display_name, ...}]}
+  (Inhalts-Drift gegen alten flachen Dict-Vertrag).
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, Mock, MagicMock, patch
@@ -24,6 +41,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.main import app
 from app.db.models import RetentionCategory
+
+
+def _error_message(response) -> str:
+    """Fehlertext aus der einheitlichen deutschen Fehler-Response lesen.
+
+    register_exception_handlers formt HTTPException(detail=...) in
+    {"fehler", "nachricht", "status_code", ...} um.
+    """
+    body = response.json()
+    return str(body.get("nachricht") or body.get("detail") or "")
+
+
+@pytest.fixture(autouse=True)
+def _rate_limiter_fail_open(monkeypatch):
+    """Rate-Limiter lokal fail-open stellen (W3-Triage-Rezept)."""
+    from app.core.config import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "RATE_LIMIT_FAIL_CLOSED", False)
+    monkeypatch.setattr(app_settings, "RATE_LIMIT_FAIL_CLOSED_CRITICAL", False)
 
 
 @pytest.fixture
@@ -80,83 +116,81 @@ def mock_document(mock_company):
 
 @pytest.fixture
 def mock_archive(mock_document, mock_user):
-    """Create mock archive."""
+    """Create mock archive (Felder gemaess ArchiveResponse-Schema)."""
     archive = Mock()
     archive.id = uuid4()
     archive.document_id = mock_document.id
     archive.company_id = mock_document.company_id
     archive.content_hash = "a" * 64  # SHA-256 hex
     archive.hash_algorithm = "SHA-256"
-    archive.signature_timestamp = datetime.now()
+    archive.signature_timestamp = datetime.now(timezone.utc)
     archive.signature_certificate = None
     archive.retention_category = RetentionCategory.INVOICE.value
     archive.retention_years = 10
     archive.retention_expires_at = date.today() + timedelta(days=10 * 365)
+    archive.archived_at = datetime.now(timezone.utc)
     archive.archived_by_id = mock_user.id
     archive.is_verified = True
-    archive.last_verification_at = None
+    # VerificationResponse verlangt last_verification_at als datetime
+    # (Pflichtfeld) und verification_failed_reason als Optional[str].
+    archive.last_verification_at = datetime.now(timezone.utc)
+    archive.verification_failed_reason = None
     archive.retention_reminder_sent = False
     archive.archive_metadata = {}
     return archive
 
 
-@pytest.fixture
-def mock_db():
-    """Create mock database session."""
-    db = AsyncMock()
-    return db
+def _make_db_session(document):
+    """AsyncSession-Mock: direkte Document-Lookups liefern ``document``.
+
+    Der POST /archive/documents-Handler macht VOR dem Service-Aufruf einen
+    eigenen IDOR-Check via ``db.execute(select(Document)...)`` -- das Result
+    muss ein synchrones ``scalar_one_or_none()`` haben.
+    """
+    session = AsyncMock()
+    exec_result = MagicMock()
+    exec_result.scalar_one_or_none.return_value = document
+    exec_result.scalars.return_value.all.return_value = []
+    session.execute = AsyncMock(return_value=exec_result)
+    return session
 
 
-@pytest.fixture
-def client(mock_user, mock_company):
-    """Create test client with dependency overrides."""
-    # W3: Router nutzt get_current_active_user (nicht get_current_user)
-    from app.api.dependencies import get_current_active_user, get_db
+def _apply_overrides(user, company, document):
+    """Dependency-Overrides setzen (Router bindet get_current_user!)."""
+    from app.api.dependencies import get_current_user, get_db
     from app.middleware.company_context import require_company
 
-    # Mock db session
-    mock_db_session = AsyncMock()
+    mock_db_session = _make_db_session(document)
 
     async def mock_get_db():
         yield mock_db_session
 
     async def mock_require_company():
-        return mock_company.id
+        # Handler nutzen company.id -> Objekt mit .id, nicht die UUID
+        return company
 
-    app.dependency_overrides[get_current_active_user] = lambda: mock_user
+    app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_db] = mock_get_db
     app.dependency_overrides[require_company] = mock_require_company
 
-    yield TestClient(app)
 
+@pytest.fixture
+def client(mock_user, mock_company, mock_document):
+    """Test-Client (normaler User) mit Dependency-Overrides.
+
+    Dummy-Bearer-Header -> CSRF-bearer_token_bypass fuer mutierende
+    Requests; Auth kommt aus den Overrides.
+    """
+    _apply_overrides(mock_user, mock_company, mock_document)
+    yield TestClient(app, headers={"Authorization": "Bearer test-token"})
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def admin_client(mock_admin_user, mock_company):
-    """Create test client for admin user."""
-    from app.api.dependencies import (
-        get_current_active_user,
-        get_current_superuser,
-        get_db,
-    )
-    from app.middleware.company_context import require_company
-
-    mock_db_session = AsyncMock()
-
-    async def mock_get_db():
-        yield mock_db_session
-
-    async def mock_require_company():
-        return mock_company.id
-
-    app.dependency_overrides[get_current_active_user] = lambda: mock_admin_user
-    app.dependency_overrides[get_current_superuser] = lambda: mock_admin_user
-    app.dependency_overrides[get_db] = mock_get_db
-    app.dependency_overrides[require_company] = mock_require_company
-
-    yield TestClient(app)
-
+def admin_client(mock_admin_user, mock_company, mock_document):
+    """Test-Client fuer Admin-User (is_superuser=True -> Superuser-Kette)."""
+    _apply_overrides(mock_admin_user, mock_company, mock_document)
+    yield TestClient(app, headers={"Authorization": "Bearer test-token"})
     app.dependency_overrides.clear()
 
 
@@ -179,11 +213,11 @@ class TestArchiveDocumentEndpoint:
             assert response.status_code == 201
             data = response.json()
             assert data["document_id"] == str(mock_document.id)
-            assert data["content_hash"] is not None
+            assert data["content_hash"] == "a" * 64
             assert data["retention_category"] == "invoice"
             assert "retention_expires_at" in data
 
-    def test_archive_document_not_found(self, client):
+    def test_archive_document_not_found(self, client, mock_document):
         """Fehler wenn Dokument nicht existiert."""
         from app.core.exceptions import DocumentNotFoundError
 
@@ -195,7 +229,7 @@ class TestArchiveDocumentEndpoint:
             response = client.post(
                 "/api/v1/archive/documents",
                 json={
-                    "document_id": str(uuid4()),
+                    "document_id": str(mock_document.id),
                     "retention_category": "invoice",
                 }
             )
@@ -255,9 +289,11 @@ class TestGetArchiveEndpoint:
 class TestVerifyIntegrityEndpoint:
     """Tests fuer POST /api/v1/archive/documents/{document_id}/verify"""
 
-    def test_verify_integrity_success(self, client, mock_document):
+    def test_verify_integrity_success(self, client, mock_document, mock_archive):
         """Integritaetspruefung erfolgreich."""
         with patch("app.api.v1.archive.archive_service") as mock_service:
+            # Handler ruft get_archive VOR (IDOR) und NACH der Verifikation
+            mock_service.get_archive = AsyncMock(return_value=mock_archive)
             mock_service.verify_document_integrity = AsyncMock(return_value=True)
 
             response = client.post(
@@ -266,12 +302,14 @@ class TestVerifyIntegrityEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["is_valid"] is True
-            assert "verified_at" in data
+            assert data["is_verified"] is True
+            assert data["last_verification_at"] is not None
+            assert "bestätigt" in data["message"]
 
-    def test_verify_integrity_failed(self, client, mock_document):
+    def test_verify_integrity_failed(self, client, mock_document, mock_archive):
         """Integritaetspruefung fehlgeschlagen - Hash stimmt nicht."""
         with patch("app.api.v1.archive.archive_service") as mock_service:
+            mock_service.get_archive = AsyncMock(return_value=mock_archive)
             mock_service.verify_document_integrity = AsyncMock(return_value=False)
 
             response = client.post(
@@ -280,13 +318,15 @@ class TestVerifyIntegrityEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["is_valid"] is False
+            assert data["is_verified"] is False
+            assert "WARNUNG" in data["message"]
 
     def test_verify_not_archived(self, client):
         """Fehler wenn Dokument nicht archiviert."""
         from app.core.exceptions import ArchiveError
 
         with patch("app.api.v1.archive.archive_service") as mock_service:
+            mock_service.get_archive = AsyncMock(return_value=None)
             mock_service.verify_document_integrity = AsyncMock(
                 side_effect=ArchiveError("Dokument ist nicht archiviert")
             )
@@ -342,6 +382,8 @@ class TestExpiringArchivesEndpoint:
             assert response.status_code == 200
             data = response.json()
             assert len(data) == 1
+            assert data[0]["document_id"] == str(mock_archive.document_id)
+            assert data[0]["days_until_expiry"] > 0
 
 
 class TestRetentionSettingsEndpoints:
@@ -349,13 +391,19 @@ class TestRetentionSettingsEndpoints:
 
     def test_get_retention_settings(self, client):
         """Alle Aufbewahrungsfristen-Einstellungen abrufen."""
+        # Felder gemaess RetentionSettingResponse (model_validate liest
+        # ALLE Schema-Felder vom Objekt -- Mock-Auto-Attribute waeren
+        # keine gueltigen str/int/bool und ergaeben 500er)
         mock_setting = Mock()
+        mock_setting.id = uuid4()
         mock_setting.category = RetentionCategory.INVOICE.value
         mock_setting.display_name = "Rechnungen"
+        mock_setting.description = "Ein- und ausgehende Rechnungen"
         mock_setting.retention_years = 10
         mock_setting.legal_basis = "§147 AO, §14b UStG"
         mock_setting.reminder_days_before = 90
         mock_setting.auto_delete_enabled = False
+        mock_setting.requires_approval_for_delete = True
 
         with patch("app.api.v1.archive.archive_service") as mock_service:
             mock_service.get_retention_settings = AsyncMock(return_value=[mock_setting])
@@ -369,8 +417,7 @@ class TestRetentionSettingsEndpoints:
             assert data[0]["retention_years"] == 10
 
     def test_update_retention_setting_admin_only(self, client):
-        """Nur Admins duerfen Aufbewahrungsfristen aendern."""
-        # Normaler User sollte 403 erhalten
+        """Nur Admins duerfen Aufbewahrungsfristen aendern -> 403."""
         response = client.put(
             "/api/v1/archive/retention-settings/invoice",
             json={
@@ -380,49 +427,63 @@ class TestRetentionSettingsEndpoints:
             }
         )
 
-        # Entweder 403 Forbidden oder 401/422 je nach Implementation
-        assert response.status_code in [401, 403, 422]
+        # Normaler User (is_superuser=False) -> get_current_superuser blockt
+        assert response.status_code == 403
 
 
 class TestRetentionCategoriesEndpoint:
     """Tests fuer GET /api/v1/archive/categories"""
 
     def test_get_categories(self, client):
-        """Alle verfuegbaren Kategorien abrufen."""
+        """Alle verfuegbaren Kategorien abrufen (echter Vertrag).
+
+        Response-Form: {"categories": [{value, display_name, description,
+        default_years, legal_basis}, ...]} -- NICHT mehr der alte flache
+        {kategorie: beschreibung}-Dict.
+        """
         response = client.get("/api/v1/archive/categories")
 
         assert response.status_code == 200
         data = response.json()
-        assert "invoice" in data
-        assert "contract" in data
-        assert "correspondence" in data
+        categories = {c["value"]: c for c in data["categories"]}
 
-        # Deutsche Beschreibungen
-        assert "Rechnungen" in data["invoice"]
+        assert "invoice" in categories
+        assert "contract" in categories
+        assert "correspondence" in categories
+
+        # Deutsche Anzeige + Inhalte
+        assert categories["invoice"]["display_name"] == "Rechnung"
+        assert "Rechnungen" in categories["invoice"]["description"]
+        assert categories["invoice"]["default_years"] == 10
+        assert "§147 AO" in categories["invoice"]["legal_basis"]
 
 
 class TestProcedureDocumentationEndpoints:
     """Tests fuer Verfahrensdokumentation Endpoints."""
 
     def test_generate_documentation_admin_only(self, client):
-        """Nur Admins duerfen Verfahrensdokumentation generieren."""
+        """Nur Admins duerfen Verfahrensdokumentation generieren -> 403."""
         response = client.post(
             "/api/v1/archive/procedure-documentation",
             json={"change_summary": "Test-Generierung"}
         )
 
-        # Normaler User sollte 403 erhalten
-        assert response.status_code in [401, 403, 422]
+        # Normaler User (is_superuser=False) -> get_current_superuser blockt
+        assert response.status_code == 403
 
-    def test_get_current_documentation(self, client):
+    def test_get_current_documentation(self, client, mock_company):
         """Aktuelle Verfahrensdokumentation abrufen."""
+        # Felder gemaess ProcedureDocDetailResponse (version ist str!)
         mock_doc = Mock()
         mock_doc.id = uuid4()
-        mock_doc.version = 1
-        mock_doc.content = {"title": "Verfahrensdokumentation"}
+        mock_doc.version = "1.0"
+        mock_doc.generated_at = datetime.now(timezone.utc)
+        mock_doc.generated_by = "system"
         mock_doc.content_hash = "b" * 64
-        mock_doc.created_at = datetime.now()
         mock_doc.change_summary = "Initiale Version"
+        mock_doc.company_id = mock_company.id
+        mock_doc.content = {"title": "Verfahrensdokumentation"}
+        mock_doc.change_details = None
 
         with patch("app.api.v1.archive.procedure_doc_service") as mock_service:
             mock_service.get_latest_version = AsyncMock(return_value=mock_doc)
@@ -431,22 +492,24 @@ class TestProcedureDocumentationEndpoints:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["version"] == 1
-            assert "content" in data
+            assert data["version"] == "1.0"
+            assert data["content"] == {"title": "Verfahrensdokumentation"}
 
-    def test_get_documentation_history(self, client):
+    def test_get_documentation_history(self, client, mock_company):
         """Versionshistorie abrufen."""
-        mock_v1 = Mock()
-        mock_v1.id = uuid4()
-        mock_v1.version = 1
-        mock_v1.created_at = datetime.now() - timedelta(days=30)
-        mock_v1.change_summary = "Initiale Version"
+        def _version(version: str, days_ago: int, summary: str) -> Mock:
+            v = Mock()
+            v.id = uuid4()
+            v.version = version
+            v.generated_at = datetime.now(timezone.utc) - timedelta(days=days_ago)
+            v.generated_by = "system"
+            v.content_hash = "c" * 64
+            v.change_summary = summary
+            v.company_id = mock_company.id
+            return v
 
-        mock_v2 = Mock()
-        mock_v2.id = uuid4()
-        mock_v2.version = 2
-        mock_v2.created_at = datetime.now()
-        mock_v2.change_summary = "Update Sicherheitsrichtlinien"
+        mock_v1 = _version("1.0", 30, "Initiale Version")
+        mock_v2 = _version("2.0", 0, "Update Sicherheitsrichtlinien")
 
         with patch("app.api.v1.archive.procedure_doc_service") as mock_service:
             mock_service.get_version_history = AsyncMock(
@@ -458,7 +521,7 @@ class TestProcedureDocumentationEndpoints:
             assert response.status_code == 200
             data = response.json()
             assert len(data) == 2
-            assert data[0]["version"] == 2
+            assert data[0]["version"] == "2.0"
 
 
 class TestImmutabilityProtection:
@@ -478,11 +541,13 @@ class TestImmutabilityProtection:
             # Versuche Update
             response = client.patch(
                 f"/api/v1/documents/{mock_document.id}",
-                json={"status": "processed"}
+                json={"language": "de"}
             )
 
-            # Sollte 403 Forbidden sein
+            # Sollte 403 Forbidden sein (aus dem Immutability-Check,
+            # CSRF ist via Bearer-Header umgangen)
             assert response.status_code == 403
+            assert "archiviert" in _error_message(response)
 
     def test_delete_archived_document_forbidden(self, client, mock_document):
         """Loeschen eines archivierten Dokuments wird abgelehnt."""
@@ -501,6 +566,7 @@ class TestImmutabilityProtection:
 
             # Sollte 403 Forbidden sein
             assert response.status_code == 403
+            assert "archiviert" in _error_message(response)
 
 
 class TestGoBDCompliance:
@@ -523,17 +589,16 @@ class TestGoBDCompliance:
             archive_data = response.json()
 
             # 2. Integritaet pruefen
+            mock_service.get_archive = AsyncMock(return_value=mock_archive)
             mock_service.verify_document_integrity = AsyncMock(return_value=True)
 
             response = client.post(
                 f"/api/v1/archive/documents/{mock_document.id}/verify"
             )
             assert response.status_code == 200
-            assert response.json()["is_valid"] is True
+            assert response.json()["is_verified"] is True
 
             # 3. Archiv-Info abrufen
-            mock_service.get_archive = AsyncMock(return_value=mock_archive)
-
             response = client.get(
                 f"/api/v1/archive/documents/{mock_document.id}"
             )
@@ -546,7 +611,7 @@ class TestGoBDCompliance:
         response = client.get("/api/v1/archive/categories")
 
         assert response.status_code == 200
-        categories = response.json()
+        categories = {c["value"] for c in response.json()["categories"]}
 
         # GoBD-relevante Kategorien
         required_categories = [
@@ -565,7 +630,7 @@ class TestGoBDCompliance:
 class TestGermanLanguageMessages:
     """Tests fuer deutsche Fehlermeldungen."""
 
-    def test_archive_error_german(self, client):
+    def test_archive_error_german(self, client, mock_document):
         """Fehlermeldungen sind auf Deutsch."""
         from app.core.exceptions import ArchiveError
 
@@ -577,18 +642,15 @@ class TestGermanLanguageMessages:
             response = client.post(
                 "/api/v1/archive/documents",
                 json={
-                    "document_id": str(uuid4()),
+                    "document_id": str(mock_document.id),
                     "retention_category": "invoice",
                 }
             )
 
             assert response.status_code == 400
-            # Fehlermeldung sollte Deutsch sein
-            data = response.json()
-            assert "detail" in data
-            # Die Meldung sollte deutsche Woerter enthalten
-            detail = str(data.get("detail", ""))
-            # Prüfe auf typische deutsche Wörter oder Umlaute
+            # Fehlermeldung sollte Deutsch sein (einheitliche Fehler-Response)
+            detail = _error_message(response)
+            assert detail, "Fehler-Response ohne nachricht/detail"
             has_german = any(word in detail.lower() for word in
                            ["archiv", "dokument", "fehler", "bereits"])
             assert has_german or "ä" in detail or "ö" in detail or "ü" in detail
