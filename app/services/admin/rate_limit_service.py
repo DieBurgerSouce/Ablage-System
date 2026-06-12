@@ -410,10 +410,12 @@ class RateLimitService:
                 f"rate_limit:api_minute:{user_id}",
             ]
 
-            for key in keys:
-                await client.delete(key)
-
-            await client.close()
+            try:
+                for key in keys:
+                    await client.delete(key)
+            finally:
+                # Client auch bei Redis-Fehlern schliessen (kein Leak)
+                await client.close()
 
             # Log admin action
             admin_action = AdminAction(
@@ -435,6 +437,17 @@ class RateLimitService:
             return True
         except Exception as e:
             logger.error("rate_limit_reset_failed", **safe_error_log(e))
+            # Session-Vergiftung verhindern (2026-06-12): Ohne rollback bleibt
+            # die request-gebundene Session nach einem fehlgeschlagenen
+            # add()/commit() in einer kaputten Transaktion zurueck -> jede
+            # Folgenutzung wirft PendingRollbackError (500 fuer den Request).
+            try:
+                await db.rollback()
+            except Exception as rollback_error:
+                logger.warning(
+                    "rate_limit_reset_rollback_failed",
+                    **safe_error_log(rollback_error),
+                )
             return False
 
     @staticmethod
