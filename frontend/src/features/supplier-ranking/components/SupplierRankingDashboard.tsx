@@ -76,7 +76,7 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Award className="h-7 w-7" />
-            {UI_LABELS.dashboard}
+            {UI_LABELS.pageTitle}
           </h1>
           <p className="text-muted-foreground mt-1">
             Bewertung und Vergleich aller Lieferanten basierend auf 5 Kategorien.
@@ -108,13 +108,13 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
           title="Lieferanten gesamt"
-          value={isLoading ? undefined : tierDistribution?.totalSuppliers}
+          value={isLoading ? undefined : report?.totalSuppliers}
           icon={Users}
           isLoading={isLoading}
         />
         <SummaryCard
           title="Durchschnittsscore"
-          value={isLoading ? undefined : report?.averageScore.toFixed(1)}
+          value={isLoading ? undefined : report?.avgOverallScore.toFixed(1)}
           suffix="/ 100"
           icon={BarChart3}
           isLoading={isLoading}
@@ -124,7 +124,7 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
           value={
             isLoading
               ? undefined
-              : (tierDistribution?.tiers.platinum || 0) + (tierDistribution?.tiers.gold || 0)
+              : (tierDistribution?.platinum || 0) + (tierDistribution?.gold || 0)
           }
           suffix="Platinum & Gold"
           icon={Award}
@@ -133,7 +133,7 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
         />
         <SummaryCard
           title="Kritische Lieferanten"
-          value={isLoading ? undefined : tierDistribution?.tiers.critical || 0}
+          value={isLoading ? undefined : tierDistribution?.critical || 0}
           icon={AlertTriangle}
           isLoading={isLoading}
           valueClassName="text-red-600 dark:text-red-400"
@@ -154,8 +154,8 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
                   <TierDistributionItem
                     key={tier}
                     tier={tier}
-                    count={tierDistribution.tiers[tier] || 0}
-                    total={tierDistribution.totalSuppliers}
+                    count={tierDistribution[tier] || 0}
+                    total={report?.totalSuppliers ?? 0}
                   />
                 )
               )}
@@ -212,7 +212,7 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
             </div>
           ) : (
             <SupplierRankingTable
-              suppliers={report?.rankings || []}
+              suppliers={report?.topSuppliers || []}
               isLoading={isLoading}
             />
           )}
@@ -228,7 +228,7 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
           ) : (
             <div className="space-y-6">
               <SupplierRankingTable
-                suppliers={report?.rankings || []}
+                suppliers={report?.topSuppliers || []}
                 isLoading={isLoading}
                 selectable
                 selectedIds={selectedSuppliers}
