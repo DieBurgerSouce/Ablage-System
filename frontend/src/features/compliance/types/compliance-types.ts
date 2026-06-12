@@ -478,7 +478,7 @@ export function transformRetentionReport(response: RetentionReportResponse): Ret
         key,
         { total: value.total, expired: value.expired, expiringSoon: value.expiring_soon },
       ])
-    ) as RetentionStats['retentionByType'],
+    ) as RetentionReport['retentionByType'],
   };
 }
 
@@ -501,12 +501,8 @@ export function transformRetentionStats(response: RetentionStatsResponse): Reten
     documentsExpired: response.documents_expired,
     documentsExpiringSoon: response.documents_expiring_soon,
     averageRetentionDays: response.average_retention_days,
-    retentionByType: Object.fromEntries(
-      Object.entries(response.retention_by_type).map(([key, value]) => [
-        key,
-        { total: value.total, expired: value.expired, expiringSoon: value.expiring_soon },
-      ])
-    ) as RetentionStats['retentionByType'],
+    // Stats-Variante: Eintraege sind plain numbers (anders als im Report)
+    retentionByType: response.retention_by_type,
   };
 }
 

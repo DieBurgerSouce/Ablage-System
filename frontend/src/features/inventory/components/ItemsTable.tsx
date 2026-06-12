@@ -302,7 +302,9 @@ export function ItemsTable() {
                     <div className="flex items-center gap-2">
                       {item.name}
                       {lowStockIds.has(item.id) && (
-                        <AlertTriangle className="h-4 w-4 text-orange-500" title="Niedriger Bestand" />
+                        <span title="Niedriger Bestand">
+                          <AlertTriangle className="h-4 w-4 text-orange-500" />
+                        </span>
                       )}
                     </div>
                     {item.ean && (

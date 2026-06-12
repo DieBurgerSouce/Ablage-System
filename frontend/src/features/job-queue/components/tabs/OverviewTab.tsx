@@ -357,7 +357,7 @@ export function OverviewTab() {
           displayName: q.name.charAt(0).toUpperCase() + q.name.slice(1),
           length: q.length,
           processing: q.processing,
-          maxCapacity: q.maxCapacity,
+          // QueueStatus liefert keine Kapazitaet — Feld entfernt
         }))}
         isLoading={queuesLoading}
       />

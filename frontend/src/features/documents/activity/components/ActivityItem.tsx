@@ -248,13 +248,13 @@ export function ActivityItem({ activity, showTarget = true, isLast = false }: Ac
           )}
 
           {/* OCR Metadata */}
-          {activity.activityType === 'ocr_completed' && activity.metadata?.backend && (
+          {activity.activityType === 'ocr_completed' && !!activity.metadata?.backend && (
             <Badge variant="outline" className="text-xs">
               {String(activity.metadata.backend)}
             </Badge>
           )}
 
-          {activity.activityType === 'ocr_completed' && activity.metadata?.confidence && (
+          {activity.activityType === 'ocr_completed' && !!activity.metadata?.confidence && (
             <Badge
               variant="outline"
               className={cn(

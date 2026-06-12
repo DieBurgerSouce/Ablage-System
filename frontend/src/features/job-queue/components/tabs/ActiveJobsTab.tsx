@@ -195,7 +195,7 @@ export function ActiveJobsTab() {
         {
           onSuccess: (data) => {
             setSelectedJobs([]);
-            resolve({ success: data?.cancelledCount ?? selectedJobs.length, failed: 0 });
+            resolve({ success: data?.successCount ?? selectedJobs.length, failed: 0 });
           },
           onError: (error) => {
             reject(error);
