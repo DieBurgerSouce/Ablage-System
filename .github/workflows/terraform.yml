@@ -115,6 +115,13 @@ jobs:
       fail-fast: false
     env:
       TF_VAR_environment: ${{ matrix.environment }}
+      # W1-025: Backend-Credentials (MinIO, S3-kompatibel) als Env-Vars statt
+      # ~/.aws/credentials-Datei auf dem Runner (keine Klartext-Datei, kein
+      # Cleanup noetig; Terraform-S3-Backend liest AWS_*-Env nativ).
+      # aws-actions/configure-aws-credentials waere hier falsch: die Action
+      # validiert via STS gegen echtes AWS — On-Prem-MinIO hat kein STS.
+      AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
 
     steps:
       - name: Checkout code
@@ -124,15 +131,6 @@ jobs:
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure Backend Credentials
-        run: |
-          mkdir -p ~/.aws
-          cat > ~/.aws/credentials << EOF
-          [default]
-          aws_access_key_id = ${{ secrets.MINIO_ACCESS_KEY }}
-          aws_secret_access_key = ${{ secrets.MINIO_SECRET_KEY }}
-          EOF
 
       - name: Terraform Init
         run: |
@@ -192,6 +190,9 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
     env:
       TF_VAR_environment: ${{ github.event.inputs.environment }}
+      # W1-025: Env-Vars statt ~/.aws/credentials-Datei (s. Plan-Job)
+      AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
 
     steps:
       - name: Checkout code
@@ -201,15 +202,6 @@ jobs:
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure Backend Credentials
-        run: |
-          mkdir -p ~/.aws
-          cat > ~/.aws/credentials << EOF
-          [default]
-          aws_access_key_id = ${{ secrets.MINIO_ACCESS_KEY }}
-          aws_secret_access_key = ${{ secrets.MINIO_SECRET_KEY }}
-          EOF
 
       - name: Terraform Init
         run: |

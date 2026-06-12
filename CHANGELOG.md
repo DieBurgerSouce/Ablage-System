@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+### Security/Fixed — Komplett-Offensive 2026-06-11 (Branch `feature/offensive-2026-06-11`)
+
+16-Agenten-Komplett-Exploration (~316 Roh-Findings → 50 verifizierte, Register `.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md`) + erste Fix-Wellen.
+
+- **W1-001 (P0) 2FA/DEBUG**: 2FA-Bypass für Admin-Rollen hängt nicht mehr an `settings.DEBUG`, sondern ausschließlich an `TESTING` (nie in Produktion aktiv); zusätzlich Fail-Safe in `app/core/config.py` — `DEBUG=true` bei `ENVIRONMENT=production` wird erkannt und neutralisiert. Ein versehentliches `DEBUG=true` in einer Produktions-`.env` schaltete vorher die 2FA-Pflicht komplett ab. (`44db202d`; Doku-Warnung in `.env.example`)
+- **pgbouncer Crash-Loop**: `?sslmode=`-Query-Anhang aus der pgbouncer-`DATABASE_URL` entfernt — der edoburu-Config-Generator parst die Query nicht ab und erzeugte einen ini-Syntaxfehler (Crash-Loop). Server-TLS läuft stattdessen über `SERVER_TLS_SSLMODE` (gespeist aus `DB_SSL_MODE`, jetzt in `.env.example` dokumentiert). (`0fc86bae`)
+- **GoBD-Trigger-Repair (Real-DB)**: Migration 151 war durch den Stamp-Reconcile (`stamp 262`) nie ausgeführt worden → INSERT-only-Trigger auf `domain_events`/`gobd_audit_chain` fehlten. Repariert via idempotentem `scripts/db/repair_gobd_triggers_20260611.sql` (Endzustand 151+234); Backup `backups/ablage_system_pre_offensive_20260611.dump`; Real-DB verifiziert auf alembic head 268. Lesson-Learned im neuen Runbook `Database-Migrations-Deployment.md` (Stamp-Reconcile-Falle).
+- **A–Z-Simulations-Harness**: `scripts/sim_a_to_z.ps1` für den Test-Loop (Stages-Komma-Split + Leerlauf-Guard gefixt) + QA-Report `docs/qa-reports/2026-06-11-a-z-loop-0.md`. (`2f79f8b9`, `39f2e190`)
+- **CI/Deploy-Härtung (W1-006/W1-025, Stream w2-docs-infra)**: `deploy.yml`-SSH-Heredocs mit `set -euo pipefail`; expliziter Migrations-Schritt mit Abbruch vor Container-Restart; `alembic upgrade head --sql`-Dry-Run als Workflow-Artefakt; Staging-Smoke-Tests als blockierendes Gate (vorher ungültiges step-level `uses` + `continue-on-error`); SLO-Status-Assertion; `terraform.yml`-Credentials als Env-Vars statt `~/.aws/credentials`-Datei; tote `KUBECONFIG_SECRET`-Env entfernt; Qdrant-`QDRANT_ENABLED`-Default backend=worker=true (W1-023); Runbook-Sweep (DB-Name `ablage`→`ablage_system`, Compose-Service- vs. Containernamen, W1-034).
+
 ### Security/Features — Offensive Welle 0–3 (master `31a4664f`, 2026-06-10/11)
 
 Gestaffelte Offensive nach 13-Agenten-Fan-out (Plan `lively-wondering-fern.md`); alle 4 Wellen in master gemergt + gepusht, jede Welle eigener ff-Branch.

@@ -94,7 +94,7 @@ cat /etc/cron.d/certbot
 ```bash
 # Neues Zertifikat anfordern
 certbot certonly --webroot -w /var/www/html \
-  -d ablage.example.de \
+  -d ablage_system.example.de \
   -d www.ablage.example.de
 
 # Zertifikate in Container kopieren

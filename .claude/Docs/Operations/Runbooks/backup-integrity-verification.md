@@ -143,7 +143,7 @@ docker exec ablage-postgres psql -U ablage_admin -c "DROP DATABASE backup_test;"
 # Backup erneut erstellen
 docker exec ablage-postgres pg_dump \
     -U ablage_admin \
-    -d ablage \
+    -d ablage_system \
     -F c \
     -f /tmp/fresh_backup.dump
 
@@ -173,7 +173,7 @@ curl -X POST http://localhost:8000/api/v1/backup/full \
 
 ```bash
 # Erwartete Tabellen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
 "
 
@@ -183,13 +183,13 @@ pg_restore --list /backup/postgres_latest.dump | grep "TABLE"
 # Falls Tabellen fehlen: Schema-only + Data-only Backup
 docker exec ablage-postgres pg_dump \
     -U ablage_admin \
-    -d ablage \
+    -d ablage_system \
     --schema-only \
     -f /tmp/schema.sql
 
 docker exec ablage-postgres pg_dump \
     -U ablage_admin \
-    -d ablage \
+    -d ablage_system \
     --data-only \
     -f /tmp/data.sql
 ```
@@ -209,7 +209,7 @@ du -sh /backup/*
 # Backup mit Komprimierung während des Dumps
 docker exec ablage-postgres pg_dump \
     -U ablage_admin \
-    -d ablage \
+    -d ablage_system \
     -F c \
     -Z 9 \
     -f /tmp/compressed_backup.dump

@@ -83,7 +83,7 @@ docker logs ablage-backend --since 15m 2>&1 | \
   awk -F'request_time=' '{if($2 > 2.0) print $0}'
 
 # PostgreSQL Slow Queries
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT query, calls, mean_time::numeric(10,2) as avg_ms
 FROM pg_stat_statements
 WHERE mean_time > 1000
@@ -110,8 +110,8 @@ free -h && df -h / && uptime
 
 ```bash
 # Connection Pool prüfen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
-SELECT count(*) FROM pg_stat_activity WHERE datname='ablage';
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
+SELECT count(*) FROM pg_stat_activity WHERE datname='ablage_system';
 "
 
 # → Siehe: postgresql-connection-pool-exhaustion.md

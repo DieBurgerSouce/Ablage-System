@@ -26,13 +26,13 @@ AppDBPoolUtilizationHigh (WARNING) - > 80%
 
 ```bash
 # Verbindungen pro Anwendung
-docker exec -it ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec -it ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT
     application_name,
     state,
     COUNT(*) as count
 FROM pg_stat_activity
-WHERE datname = 'ablage'
+WHERE datname = 'ablage_system'
 GROUP BY application_name, state
 ORDER BY count DESC;
 "
@@ -42,7 +42,7 @@ ORDER BY count DESC;
 
 ```bash
 # Langlebige idle Verbindungen (> 5 Minuten)
-docker exec -it ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec -it ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT
     pid,
     application_name,
@@ -51,7 +51,7 @@ SELECT
     now() - query_start as duration,
     LEFT(query, 80) as query
 FROM pg_stat_activity
-WHERE datname = 'ablage'
+WHERE datname = 'ablage_system'
   AND state = 'idle'
   AND now() - query_start > interval '5 minutes'
 ORDER BY duration DESC
@@ -63,10 +63,10 @@ LIMIT 20;
 
 ```bash
 # Idle Verbindungen älter als 10 Minuten beenden
-docker exec -it ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec -it ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
-WHERE datname = 'ablage'
+WHERE datname = 'ablage_system'
   AND state = 'idle'
   AND now() - query_start > interval '10 minutes'
   AND pid <> pg_backend_pid();
@@ -103,7 +103,7 @@ docker exec -it ablage-pgbouncer psql -U ablage_admin -h 127.0.0.1 -p 6432 pgbou
 
 ```bash
 # Queries die Verbindungen blockieren
-docker exec -it ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec -it ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT
     pid,
     now() - query_start as duration,
@@ -111,7 +111,7 @@ SELECT
     wait_event_type,
     LEFT(query, 100) as query
 FROM pg_stat_activity
-WHERE datname = 'ablage'
+WHERE datname = 'ablage_system'
   AND state != 'idle'
   AND now() - query_start > interval '30 seconds'
 ORDER BY duration DESC;
@@ -172,11 +172,11 @@ docker-compose up -d backend
 
 ```bash
 # Pool-Status nach Fix
-docker exec -it ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec -it ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT COUNT(*) as connections,
        MAX(CASE WHEN state = 'idle' THEN 1 ELSE 0 END)::int as has_idle
 FROM pg_stat_activity
-WHERE datname = 'ablage';
+WHERE datname = 'ablage_system';
 "
 
 # API Health Check

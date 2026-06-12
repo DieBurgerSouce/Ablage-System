@@ -134,6 +134,11 @@ jobs:
           echo "🚀 Deploying to staging..."
 
           ssh -i ~/.ssh/staging_key $STAGING_USER@$STAGING_HOST << 'EOF'
+            # W1-006: Jeder Fehler bricht das Remote-Skript sofort ab.
+            # Vorher liefen Folgeschritte (Migration, Restart) auch nach
+            # fehlgeschlagenem Backup/Pull weiter.
+            set -euo pipefail
+
             cd /opt/ablage-system
 
             # Pull latest changes
@@ -147,8 +152,21 @@ jobs:
             # Pull new Docker images
             docker-compose pull
 
-            # Run database migrations
-            docker-compose run --rm backend alembic upgrade head
+            # W1-006: Migrations-Dry-Run (Offline-SQL) VOR dem echten Upgrade.
+            # Hinweis: ohne Startrevision rendert Alembic base:head — das
+            # validiert die gesamte Migrationskette; das SQL wird als
+            # Workflow-Artefakt gesichert (Review/Forensik).
+            docker-compose run --rm backend alembic upgrade head --sql > /tmp/alembic-dry-run-staging.sql
+            echo "Migrations-Dry-Run OK ($(wc -l < /tmp/alembic-dry-run-staging.sql) Zeilen SQL)"
+
+            # W1-006: Expliziter Migrations-Schritt — Fehler stoppt das Deploy,
+            # BEVOR Services neu gestartet werden (Backup existiert bereits).
+            # Rollback-Prozedur: Runbook Database-Migrations-Deployment.md
+            if ! docker-compose run --rm backend alembic upgrade head; then
+              echo "❌ alembic upgrade head fehlgeschlagen — Deploy abgebrochen (Services unveraendert)"
+              exit 1
+            fi
+            docker-compose run --rm backend alembic current
 
             # Restart services with zero-downtime
             docker-compose up -d --force-recreate --no-deps backend worker
@@ -160,11 +178,23 @@ jobs:
             echo "✅ Staging deployment complete"
           EOF
 
-      - name: Run Post-deployment Smoke Tests
-        uses: ./.github/workflows/smoke-tests.yml
+      - name: Fetch Migrations-Dry-Run (Staging)
+        if: always()
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+        run: |
+          scp -i ~/.ssh/staging_key $STAGING_USER@$STAGING_HOST:/tmp/alembic-dry-run-staging.sql . \
+            || echo "Kein Dry-Run-Artefakt vorhanden (Deploy vor Dry-Run abgebrochen)"
+
+      - name: Upload Migrations-Dry-Run Artefakt (Staging)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6db9a8b9c8bb8a1a6e62af5c2e0c7 # v4.6.2
         with:
-          environment: staging
-        continue-on-error: true
+          name: alembic-dry-run-staging
+          path: alembic-dry-run-staging.sql
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Verify Deployment Health
         run: |
@@ -184,12 +214,24 @@ jobs:
           echo "📢 Staging deployment ${{ job.status }}"
           # Add notification logic (Slack, Discord, etc.)
 
+  # Staging Smoke Tests als BLOCKIERENDES Gate (W1-025)
+  # Vorher: step-level `uses:` auf ein Workflow-YAML (ungueltige Syntax,
+  # Reusable Workflows sind nur auf Job-Ebene aufrufbar) + continue-on-error:true
+  # — die Smoke-Tests waren damit nie ein Gate. Jetzt haengen
+  # production-approval und deploy-production hart an diesem Job.
+  staging-smoke-tests:
+    name: Staging Smoke Tests (Gate)
+    needs: deploy-staging
+    uses: ./.github/workflows/smoke-tests.yml
+    with:
+      environment: staging
+
   # Production Approval Gate
   # This job REQUIRES manual approval via GitHub Environment protection rules
   production-approval:
     name: Production Approval Gate
     runs-on: ubuntu-latest
-    needs: [pre-deploy-checks, deploy-staging]
+    needs: [pre-deploy-checks, deploy-staging, staging-smoke-tests]
     if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
     # Environment protection rules enforce:
     # - Required reviewers (min 1, recommended 2 for production)
@@ -225,7 +267,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [pre-deploy-checks, deploy-staging, production-approval]
+    needs: [pre-deploy-checks, deploy-staging, staging-smoke-tests, production-approval]
     if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
     environment:
       name: production
@@ -258,12 +300,15 @@ jobs:
           echo "📦 Creating pre-deployment backup..."
 
           ssh -i ~/.ssh/prod_key $PRODUCTION_USER@$PRODUCTION_HOST << 'EOF'
+            # W1-006: Fehlendes/fehlgeschlagenes Backup MUSS das Deploy stoppen.
+            set -euo pipefail
+
             cd /opt/ablage-system
             ./scripts/backup.sh all
 
             # Archive backup with timestamp
             BACKUP_FILE=$(ls -t backups/backup_*.tar.gz | head -1)
-            cp $BACKUP_FILE backups/pre-deployment-$(date +%Y%m%d_%H%M%S).tar.gz
+            cp "$BACKUP_FILE" "backups/pre-deployment-$(date +%Y%m%d_%H%M%S).tar.gz"
           EOF
 
       - name: Deploy to Production
@@ -274,6 +319,11 @@ jobs:
           echo "🚀 Deploying to production..."
 
           ssh -i ~/.ssh/prod_key $PRODUCTION_USER@$PRODUCTION_HOST << 'EOF'
+            # W1-006: Jeder Fehler bricht das Remote-Skript sofort ab —
+            # insbesondere darf nach fehlgeschlagener Migration kein
+            # Container-Restart mehr passieren.
+            set -euo pipefail
+
             cd /opt/ablage-system
 
             # Pull specific version
@@ -284,8 +334,20 @@ jobs:
             export DOCKER_TAG=${{ github.event.inputs.version || github.ref_name }}
             docker-compose pull
 
-            # Run database migrations (with backup already created)
-            docker-compose run --rm backend alembic upgrade head
+            # W1-006: Migrations-Dry-Run (Offline-SQL) VOR dem echten Upgrade.
+            # Rendert base:head (validiert die gesamte Kette); SQL wird als
+            # Workflow-Artefakt gesichert (Review/Forensik).
+            docker-compose run --rm backend alembic upgrade head --sql > /tmp/alembic-dry-run-production.sql
+            echo "Migrations-Dry-Run OK ($(wc -l < /tmp/alembic-dry-run-production.sql) Zeilen SQL)"
+
+            # W1-006: Expliziter Migrations-Schritt — Fehler stoppt das Deploy,
+            # BEVOR Container neu gestartet werden (Pre-Deployment-Backup
+            # existiert bereits). Rollback: Runbook Database-Migrations-Deployment.md
+            if ! docker-compose run --rm backend alembic upgrade head; then
+              echo "❌ alembic upgrade head fehlgeschlagen — Deploy abgebrochen (Services unveraendert)"
+              exit 1
+            fi
+            docker-compose run --rm backend alembic current
 
             # Blue-Green deployment: Start new containers
             docker-compose up -d --force-recreate --no-deps --scale backend=2 backend
@@ -303,11 +365,23 @@ jobs:
             echo "✅ Production deployment complete"
           EOF
 
-      - name: Run Post-deployment Smoke Tests
-        uses: ./.github/workflows/smoke-tests.yml
+      - name: Fetch Migrations-Dry-Run (Production)
+        if: always()
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          scp -i ~/.ssh/prod_key $PRODUCTION_USER@$PRODUCTION_HOST:/tmp/alembic-dry-run-production.sql . \
+            || echo "Kein Dry-Run-Artefakt vorhanden (Deploy vor Dry-Run abgebrochen)"
+
+      - name: Upload Migrations-Dry-Run Artefakt (Production)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6db9a8b9c8bb8a1a6e62af5c2e0c7 # v4.6.2
         with:
-          environment: production
-        continue-on-error: false
+          name: alembic-dry-run-production
+          path: alembic-dry-run-production.sql
+          if-no-files-found: ignore
+          retention-days: 90
 
       - name: Verify Production Deployment
         run: |
@@ -321,9 +395,17 @@ jobs:
           VERSION=$(curl -s https://ablage-system.local/api/v1/version | jq -r '.version')
           echo "Deployed version: $VERSION"
 
-          # SLO status check
-          SLO_STATUS=$(curl -s https://ablage-system.local/api/v1/metrics/slo | jq -r '.overall_status')
-          echo "SLO Status: $SLO_STATUS"
+          # SLO status check (W1-025: vorher nur geloggt, nie geprueft)
+          SLO_STATUS=$(curl -s https://ablage-system.local/api/v1/metrics/slo | jq -r '.overall_status // empty' || true)
+          echo "SLO Status: ${SLO_STATUS:-<nicht verfuegbar>}"
+          if [ -z "$SLO_STATUS" ] || [ "$SLO_STATUS" = "null" ]; then
+            # Hinweis: /api/v1/metrics/slo existiert aktuell NICHT im Backend
+            # (kein Treffer in app/api) — solange der Endpoint fehlt, nur Warnung.
+            echo "⚠️ SLO-Endpoint nicht verfuegbar — Status kann nicht verifiziert werden"
+          elif [ "$SLO_STATUS" != "healthy" ] && [ "$SLO_STATUS" != "ok" ]; then
+            echo "❌ SLO-Status '$SLO_STATUS' ist nicht healthy — Verifikation fehlgeschlagen"
+            exit 1
+          fi
 
       - name: Monitor Post-deployment
         run: |
@@ -340,10 +422,14 @@ jobs:
           echo "❌ Deployment failed - initiating rollback..."
 
           ssh -i ~/.ssh/prod_key $PRODUCTION_USER@$PRODUCTION_HOST << 'EOF'
+            # W1-006: set -e auch im Rollback; ls-Fehlschlag (kein Backup)
+            # wird abgefangen, damit die Fehlermeldung unten erreicht wird.
+            set -euo pipefail
+
             cd /opt/ablage-system
 
             # Find latest pre-deployment backup
-            BACKUP_FILE=$(ls -t backups/pre-deployment-*.tar.gz | head -1)
+            BACKUP_FILE=$(ls -t backups/pre-deployment-*.tar.gz 2>/dev/null | head -1 || true)
 
             if [ -n "$BACKUP_FILE" ]; then
               echo "Restoring from backup: $BACKUP_FILE"
@@ -380,11 +466,23 @@ jobs:
           # Send notifications (implement with your notification service)
           # Example: Slack, Discord, Email, PagerDuty
 
+  # Production Smoke Tests (nach dem Deploy; Reusable-Workflow-Call auf
+  # Job-Ebene — step-level `uses:` auf Workflow-YAML war ungueltig, W1-025).
+  # Hinweis: Ein Fehlschlag hier triggert NICHT den automatischen Rollback in
+  # deploy-production (eigener Job) — manuelle Prozedur siehe Runbook
+  # Database-Migrations-Deployment.md.
+  production-smoke-tests:
+    name: Production Smoke Tests
+    needs: deploy-production
+    uses: ./.github/workflows/smoke-tests.yml
+    with:
+      environment: production
+
   # Deployment summary
   deploy-summary:
     name: Deployment Summary
     runs-on: ubuntu-latest
-    needs: [deploy-staging, production-approval, deploy-production]
+    needs: [deploy-staging, staging-smoke-tests, production-approval, deploy-production, production-smoke-tests]
     if: always()
 
     steps:
@@ -395,8 +493,10 @@ jobs:
           echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Staging | ${{ needs.deploy-staging.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Staging Smoke Tests (Gate) | ${{ needs.staging-smoke-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Approval Gate | ${{ needs.production-approval.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Production | ${{ needs.deploy-production.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Production Smoke Tests | ${{ needs.production-smoke-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Deployed Version:** ${{ github.event.inputs.version || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

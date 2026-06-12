@@ -1,3 +1,6 @@
+> **Status (W1-048, 2026-06-11)**: ERLEDIGT/archivierbar — Verifikations-Grep bestanden (`^import logging` nur noch in `app/core/logging_config.py`); Migration 9385e8e4 lange gemergt.
+> Task 2 (Coverage-Analyse) ist durch `tests/COVERAGE_STATUS.md` + G5-Roadmap überholt.
+
 # Phase 5 Continuation - Post-Logging Migration Cleanup
 
 ## Context

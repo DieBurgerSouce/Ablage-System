@@ -1,13 +1,13 @@
 # Ablage-System: Enterprise Document Processing Platform
 
 <!-- AUTO-MANAGED: project-header -->
-**Status**: 🟡 Substanziell, aber NICHT Full Production-Ready (Status-Scan 2026-06-03 — 4 offene Blocker). _Frühere Angabe „Production-Ready (E2E Tests 2026-01-10)" war überzeichnet._ Details: `.claude/reviews/2026-06-03/STATUS_SCAN_2026-06-03.md`, `.claude/memory/KNOWN_ISSUES.md`
-**Version**: 1.1
+**Status**: 🟡 Substanziell gehärtet, noch NICHT Full Production-Ready (Welle-1-Exploration 2026-06-11). Die historischen Blocker **B1–B4 sind behoben bzw. bewusst gescoped** (B2: PSD2-OAuth2-Token outscoped, BaFin); verbleibend 12× P1 (u. a. Secrets-Rotation, Schemathesis-5xx-Triage, `build:strict` rot). _Frühere Angaben „4 offene Blocker" (2026-06-03) und „Production-Ready (E2E Tests 2026-01-10)" sind überholt._ Details: `.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md`, `.claude/memory/KNOWN_ISSUES.md`
+**Version**: 1.2
 **Philosophy**: Feinpoliert und durchdacht
 **Deployment**: On-premises, no cloud dependencies
 <!-- /AUTO-MANAGED: project-header -->
 
-> **Schnellreferenz**: Siehe `CLAUDE.md` im Root-Verzeichnis
+> **Schnellreferenz**: Siehe `CLAUDE.md` im Root-Verzeichnis (Disambiguation: Root-`CLAUDE.md` = Claude-Flow-/Tooling-Konfiguration, DIESE Datei = fachliche Projekt-Referenz)
 > **Memory-Dateien**: `.claude/memory/` (automatisch gepflegt)
 
 ---
@@ -267,12 +267,14 @@ Ablage_System/
 ## Feature & Integration Reference
 
 > Detaillierte Dokumentation zu jedem Feature in `.claude/Docs/Features/` und `.claude/Docs/Integrations/`
+>
+> ⚠️ **Status = Selbsteinschätzung**, nicht End-to-End-verifiziert. Ehrlicher Gesamtstand inkl. Caveats: `.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md` (z. B. W1-011, W1-031).
 
 | Feature | Status | Migration | Core Service | Docs |
 |---------|--------|-----------|--------------|------|
 | DATEV Connect | Production-Ready | 145 | `datev/connect/datev_connector.py` | `.claude/Docs/Integrations/DATEV-Connect.md` |
 | Lexware Import | Production-Ready | 089, 090 | `lexware_import_service.py` | `.claude/Docs/Integrations/Lexware.md` |
-| Entity Risk Scoring | Production-Ready | 092, 093 | `risk_scoring_service.py` | `.claude/Docs/Features/Entity-Risk-Scoring.md` |
+| Entity Risk Scoring | 🟡 Scoring-Kern ready; **externe Quellen Stub/Mock** (NorthData/Schufa-B2B/Creditreform liefern None, Bundesanzeiger default Mock, Handelsregister default disabled — W1-011) | 092, 093 | `risk_scoring_service.py` | `.claude/Docs/Features/Entity-Risk-Scoring.md` |
 | Skonto-Tracking | Production-Ready | 094 | `banking/skonto_service.py` | `.claude/Docs/Features/Skonto-Tracking.md` |
 | Document Lineage | Production-Ready | 147 | `lineage/document_lineage_service.py` | `.claude/Docs/Features/Document-Lineage.md` |
 | Document Chains | Production-Ready | 095 | `document_chain_service.py` | `.claude/Docs/Features/Document-Chains.md` |
@@ -500,5 +502,5 @@ Inhalt...
 
 ---
 
-**Version**: 1.1
-**Last Updated**: 2026-03-09
+**Version**: 1.2
+**Last Updated**: 2026-06-11

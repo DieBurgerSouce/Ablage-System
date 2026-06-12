@@ -1,5 +1,8 @@
 # Claude Code Configuration - Claude Flow V3
 
+> **Disambiguation**: Diese Datei = Claude-Flow-/Tooling-Konfiguration. Die fachliche Projekt-Referenz (Architektur, Critical Rules, Feature-Status) ist `.claude/CLAUDE.md`.
+> **Projekt-Status** (2026-06-11): B1–B4 behoben/gescoped; verbindliches Findings-Register: `.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md`.
+
 <!-- slack-ask-rule -->
 ## Rückfragen & Scope (Slack)
 - Rückfragen und Scope-Entscheidungen IMMER über das `ask_human`-Tool (Slack) stellen — nie im Terminal raten und nie still annehmen.

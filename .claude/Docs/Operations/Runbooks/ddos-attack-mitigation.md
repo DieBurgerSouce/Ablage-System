@@ -229,7 +229,7 @@ docker logs ablage-backend --since 5m 2>&1 | \
 docker exec ablage-redis redis-cli -a $REDIS_PASSWORD INFO clients
 
 # PostgreSQL-Verbindungen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c \
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c \
   "SELECT count(*) as connections FROM pg_stat_activity;"
 ```
 
