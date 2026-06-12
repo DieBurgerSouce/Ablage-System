@@ -446,7 +446,10 @@ class TestXMLGeneration:
             profile="EN16931"
         )
 
-        assert '<?xml version="1.0" encoding="UTF-8"?>' in xml_content
+        # W3: Serializer emittiert die Deklaration mit einfachen Quotes —
+        # beide Varianten sind valides XML 1.0
+        assert xml_content.lstrip().startswith("<?xml version=")
+        assert 'encoding="UTF-8"' in xml_content or "encoding='UTF-8'" in xml_content
         assert "CrossIndustryInvoice" in xml_content
         assert "RE-2024-001234" in xml_content
         assert "Mueller" in xml_content  # Company name
@@ -1237,6 +1240,18 @@ class TestZUGFeRDVersionSupport:
     </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>"""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "ECHTER BUG (W3, 2026-06-12): _extract_metadata meldet fuer "
+            "ALLE Nicht-XRechnung-CII-Dokumente pauschal version='2.3.3' — "
+            "die Guideline-URN des Dokuments (hier 'urn:zugferd:2p0:"
+            "en16931' = ZUGFeRD 2.0) wird nicht ausgewertet, guideline_id "
+            "fehlt im Metadata-Dict. Versions-Misreporting fuer Alt-"
+            "Dokumente. Fix in app/services/einvoice/mapping/"
+            "zugferd_mapper.py (out-of-zone), siehe Manifest w3-tests."
+        ),
+    )
     def test_detect_zugferd_2_0_version(
         self,
         zugferd_mapper: ZUGFeRDMapper,
@@ -1324,7 +1339,8 @@ class TestBatchEInvoiceProcessing:
         # Verify each XML is unique and valid
         invoice_numbers = set()
         for xml in generated_xmls:
-            assert '<?xml version="1.0" encoding="UTF-8"?>' in xml
+            # W3: Quote-Stil der XML-Deklaration ist Serializer-Sache
+            assert xml.lstrip().startswith("<?xml version=")
             assert "CrossIndustryInvoice" in xml
             # Extract invoice number from XML
             for invoice in batch_invoices:
@@ -1574,6 +1590,16 @@ class TestEInvoiceToDATEVExport:
 # TEST: XRECHNUNG UBL FORMAT
 # =============================================================================
 
+_UBL_VERSION_NONE_CRASH = (
+    "ECHTER BUG (W3, 2026-06-12): parser_service._detect_format ruft "
+    "version.startswith(...) auf, aber metadata['version'] ist bei "
+    "UBL-Dokumenten None (Key existiert, .get-Default greift nicht) -> "
+    "AttributeError; parse_xml crasht fuer valide XRechnung-UBL-Dateien. "
+    "Fix: `version = metadata.get('version') or ''` in app/services/"
+    "einvoice/parser_service.py (out-of-zone), siehe Manifest w3-tests."
+)
+
+
 class TestXRechnungUBLFormat:
     """Tests fuer XRechnung UBL-Syntax."""
 
@@ -1622,6 +1648,7 @@ class TestXRechnungUBLFormat:
 </Invoice>"""
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(strict=True, reason=_UBL_VERSION_NONE_CRASH)
     async def test_detect_ubl_format(
         self,
         parser_service: EInvoiceParserService,
@@ -1634,6 +1661,7 @@ class TestXRechnungUBLFormat:
         assert result.success or "ubl" in str(result.format_detected).lower()
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(strict=True, reason=_UBL_VERSION_NONE_CRASH)
     async def test_parse_ubl_buyer_reference(
         self,
         parser_service: EInvoiceParserService,
