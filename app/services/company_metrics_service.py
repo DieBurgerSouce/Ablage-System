@@ -25,6 +25,7 @@ from app.db.models import (
     BusinessEntity,
     InvoiceTracking,
     DunningRecord,
+    BankAccount,
     BankTransaction,
 )
 from app.core.safe_errors import safe_error_log
@@ -642,12 +643,15 @@ class CompanyMetricsService:
         today = date.today()
         first_of_month = today.replace(day=1)
 
-        # Einnahmen diesen Monat
+        # Einnahmen diesen Monat (Company-Scope via BankAccount-JOIN —
+        # BankTransaction hat KEINE company_id-Spalte)
         incoming_query = (
             select(func.coalesce(func.sum(BankTransaction.amount), 0))
+            .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
             .where(
                 and_(
-                    BankTransaction.company_id == company_id,
+                    BankAccount.company_id == company_id,
                     BankTransaction.amount > 0,
                     BankTransaction.booking_date >= first_of_month,
                 )
@@ -659,9 +663,11 @@ class CompanyMetricsService:
         # Ausgaben diesen Monat
         outgoing_query = (
             select(func.coalesce(func.sum(func.abs(BankTransaction.amount)), 0))
+            .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
             .where(
                 and_(
-                    BankTransaction.company_id == company_id,
+                    BankAccount.company_id == company_id,
                     BankTransaction.amount < 0,
                     BankTransaction.booking_date >= first_of_month,
                 )
@@ -673,9 +679,11 @@ class CompanyMetricsService:
         # Ungematchte Transaktionen
         unmatched_query = (
             select(func.count(BankTransaction.id))
+            .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
             .where(
                 and_(
-                    BankTransaction.company_id == company_id,
+                    BankAccount.company_id == company_id,
                     BankTransaction.matched_document_id.is_(None),
                 )
             )
