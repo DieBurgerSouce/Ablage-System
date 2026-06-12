@@ -93,9 +93,7 @@ DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 
 const DropdownMenuCheckboxItem = React.forwardRef<
     React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
-    // aria-checked ausnehmen: Radix setzt es intern aus checked (CheckedState
-    // inkl. 'indeterminate' kollidiert mit React.AriaAttributes)
-    Omit<React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>, 'aria-checked'>
+    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
 >(({ className, children, checked, ...props }, ref) => (
     <DropdownMenuPrimitive.CheckboxItem
         ref={ref}
@@ -104,8 +102,6 @@ const DropdownMenuCheckboxItem = React.forwardRef<
             className
         )}
         checked={checked}
-        role="menuitemcheckbox"
-        aria-checked={checked}
         {...props}
     >
         <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center" aria-hidden="true">

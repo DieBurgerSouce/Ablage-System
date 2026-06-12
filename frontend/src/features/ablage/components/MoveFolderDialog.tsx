@@ -46,7 +46,7 @@ interface MoveFolderDialogProps {
 // ==================== Helper ====================
 
 function getCategoryIcon(iconName: string): React.ElementType {
-  const icons = LucideIcons as Record<string, React.ElementType>;
+  const icons = LucideIcons as unknown as Record<string, React.ElementType>;
   return icons[iconName] || LucideIcons.FileText;
 }
 

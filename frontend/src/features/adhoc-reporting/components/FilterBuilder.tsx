@@ -16,15 +16,8 @@ import {
 } from '@/components/ui/select';
 import { Plus, Trash2, Filter } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import type { Column, FilterOperator } from '../types/adhoc-reporting-types';
+import type { Column, FilterConfig, FilterOperator } from '../types/adhoc-reporting-types';
 import { FILTER_OPERATOR_LABELS } from '../types/adhoc-reporting-types';
-
-interface FilterConfig {
-  id: string;
-  field: string;
-  operator: FilterOperator;
-  value: string;
-}
 
 interface FilterBuilderProps {
   columns: Column[];
@@ -137,7 +130,7 @@ export function FilterBuilder({ columns, filters, onFiltersChange }: FilterBuild
                     <Label className="text-xs mb-1.5 block">Wert</Label>
                     <Input
                       placeholder="Wert eingeben"
-                      value={filter.value}
+                      value={String(filter.value)}
                       onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
                     />
                   </div>
