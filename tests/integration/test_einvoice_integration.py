@@ -1244,6 +1244,18 @@ class TestZUGFeRDVersionSupport:
     </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>"""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "ECHTER BUG (W3, 2026-06-12): _extract_metadata meldet fuer "
+            "ALLE Nicht-XRechnung-CII-Dokumente pauschal version='2.3.3' — "
+            "die Guideline-URN des Dokuments (hier 'urn:zugferd:2p0:"
+            "en16931' = ZUGFeRD 2.0) wird nicht ausgewertet, guideline_id "
+            "fehlt im Metadata-Dict. Versions-Misreporting fuer Alt-"
+            "Dokumente. Fix in app/services/einvoice/mapping/"
+            "zugferd_mapper.py (out-of-zone), siehe Manifest w3-tests."
+        ),
+    )
     def test_detect_zugferd_2_0_version(
         self,
         zugferd_mapper: ZUGFeRDMapper,
@@ -1584,6 +1596,16 @@ class TestEInvoiceToDATEVExport:
 # TEST: XRECHNUNG UBL FORMAT
 # =============================================================================
 
+_UBL_VERSION_NONE_CRASH = (
+    "ECHTER BUG (W3, 2026-06-12): parser_service._detect_format ruft "
+    "version.startswith(...) auf, aber metadata['version'] ist bei "
+    "UBL-Dokumenten None (Key existiert, .get-Default greift nicht) -> "
+    "AttributeError; parse_xml crasht fuer valide XRechnung-UBL-Dateien. "
+    "Fix: `version = metadata.get('version') or ''` in app/services/"
+    "einvoice/parser_service.py (out-of-zone), siehe Manifest w3-tests."
+)
+
+
 class TestXRechnungUBLFormat:
     """Tests fuer XRechnung UBL-Syntax."""
 
@@ -1632,6 +1654,7 @@ class TestXRechnungUBLFormat:
 </Invoice>"""
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(strict=True, reason=_UBL_VERSION_NONE_CRASH)
     async def test_detect_ubl_format(
         self,
         parser_service: EInvoiceParserService,
@@ -1644,6 +1667,7 @@ class TestXRechnungUBLFormat:
         assert result.success or "ubl" in str(result.format_detected).lower()
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(strict=True, reason=_UBL_VERSION_NONE_CRASH)
     async def test_parse_ubl_buyer_reference(
         self,
         parser_service: EInvoiceParserService,

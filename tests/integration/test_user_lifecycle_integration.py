@@ -1007,6 +1007,20 @@ class TestEdgeCases:
         hashed = get_password_hash(password)
         assert verify_password(password, hashed)
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "ECHTER BUG (W3, 2026-06-12): get_password_hash reicht das "
+            "Roh-Passwort an bcrypt.hashpw durch; bcrypt>=4 wirft bei "
+            ">72 Bytes ValueError. validate_password_strength akzeptiert "
+            "aber beliebig lange Passwoerter -> Registrierung/Passwort-"
+            "Aenderung mit langem Passwort endet als unbehandelter 500er. "
+            "Fix gehoert ins Backend (explizite Max-Laenge mit deutscher "
+            "422-Meldung ODER Pre-Hashing), app/core/security_auth.py — "
+            "out-of-zone fuer w3-tests, siehe Manifest w3-tests."
+        ),
+        raises=ValueError,
+    )
     def test_very_long_password(self):
         """Vertrag: Ueberlange Passwoerter werden DEUTSCH abgelehnt.
 

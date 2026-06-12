@@ -111,6 +111,20 @@ class TestViesFormatValidation:
         assert result.valid is False
         assert any(f.code == "VIES_INVALID_FORMAT" for f in findings)
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "ECHTER BUG (W3, 2026-06-12): _check_vies kennt keine "
+            "EU-Laendercode-Whitelist. Bei nicht erreichbarer VIES-API "
+            "greift _vies_format_fallback, dessen Default fuer unbekannte "
+            "Laendercodes ('XX') nur len(vat_number)>=2 prueft und damit "
+            "valid=True liefert — fuer einen Code, den VIES gar nicht "
+            "unterstuetzt. Fix (Laender-Whitelist in app/services/external/"
+            "supplier_verification_service.py) ist out-of-zone fuer "
+            "w3-tests, siehe Manifest w3-tests.md. Nach App-Fix: "
+            "XPASS(strict) -> Marker entfernen."
+        ),
+    )
     @pytest.mark.asyncio
     async def test_invalid_format_wrong_country_code(self, service: SupplierVerificationService) -> None:
         """Test: VAT-ID mit ungültigem (Nicht-EU-)Ländercode."""

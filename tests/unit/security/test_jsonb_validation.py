@@ -89,10 +89,13 @@ class TestValidateCompany:
         assert result is None
 
     def test_validate_company_empty_string(self) -> None:
-        """Empty string should return None or raise."""
-        # Depending on implementation, empty string might be treated as None
-        result = _validate_company("")
-        assert result is None or result == ""
+        """Empty string is rejected (fail-closed, CWE-89).
+
+        W3 (2026-06-12): Echter Vertrag — nur ``None`` bedeutet "kein
+        Firmen-Filter"; ein Leerstring ist kein gueltiger JSONB-Key.
+        """
+        with pytest.raises(InvalidCompanyError):
+            _validate_company("")
 
     def test_validate_company_invalid_raises(self) -> None:
         """Invalid company should raise InvalidCompanyError."""
@@ -219,12 +222,22 @@ class TestSecurityScenarios:
             _validate_lexware_field("kd_nr'; --")
 
     def test_case_sensitivity_not_exploitable(self) -> None:
-        """Case differences should not bypass validation."""
-        # Only lowercase versions are in whitelist
-        with pytest.raises(InvalidLexwareFieldError):
-            _validate_lexware_field("KD_NR")
+        """Case differences should not bypass validation.
 
-        # But company validation is case-insensitive (normalized)
+        W3 (2026-06-12): Beide Validatoren NORMALISIEREN auf lowercase und
+        pruefen erst danach gegen die Whitelist. Grossschreibung ist damit
+        kein Bypass: zurueckgegeben (und downstream verwendet) wird immer
+        der normalisierte, gewhitelistete Wert.
+        """
+        result_field = _validate_lexware_field("KD_NR")
+        assert result_field == "kd_nr"
+        assert result_field in VALID_LEXWARE_FIELDS
+
+        # Nicht-whitelisted Feld bleibt auch case-insensitiv verboten
+        with pytest.raises(InvalidLexwareFieldError):
+            _validate_lexware_field("EVIL_FIELD")
+
+        # Company validation is case-insensitive (normalized)
         result = _validate_company("FOLIE")
         assert result == "folie"
 
