@@ -159,7 +159,7 @@ export function ActivityStream({ documentId, className }: ActivityStreamProps) {
                       {/* Metadata */}
                       {activity.metadata && (
                         <div className="mt-1">
-                          {activity.type === 'tags_changed' && activity.metadata.addedTags && (
+                          {activity.type === 'tags_changed' && !!activity.metadata.addedTags && (
                             <div className="flex gap-1 flex-wrap">
                               {(activity.metadata.addedTags as string[]).map((tag) => (
                                 <Badge key={tag} variant="secondary" className="text-xs">
@@ -168,7 +168,7 @@ export function ActivityStream({ documentId, className }: ActivityStreamProps) {
                               ))}
                             </div>
                           )}
-                          {activity.type === 'metadata_updated' && activity.metadata.oldValue && (
+                          {activity.type === 'metadata_updated' && !!activity.metadata.oldValue && (
                             <div className="text-xs text-muted-foreground">
                               <span className="line-through">{activity.metadata.oldValue as string}</span>
                               {' → '}

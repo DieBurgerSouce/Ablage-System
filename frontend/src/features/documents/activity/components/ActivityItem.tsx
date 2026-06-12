@@ -71,7 +71,7 @@ const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   users: Users,
   settings: Settings,
   mail: Mail,
-  activity: Activity,
+  activity: ActivityIcon,
 };
 
 // Farb-Klassen für den Timeline-Punkt
@@ -234,7 +234,7 @@ export function ActivityItem({ activity, showTarget = true, isLast = false }: Ac
           )}
 
           {/* Team Badge */}
-          {activity.teamId && (
+          {!!activity.teamId && (
             <Badge variant="secondary" className="text-xs">
               Team
             </Badge>

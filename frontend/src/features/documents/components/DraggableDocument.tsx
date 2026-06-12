@@ -79,8 +79,8 @@ export const DraggableDocument = forwardRef<HTMLDivElement, DraggableDocumentPro
         data: {
           documentId: document.id,
           filename: document.name,
-          documentType: document.documentType,
-          folderId: document.folderId,
+          // documentType/folderId existieren auf dem Document-Typ nicht;
+          // Drop-Handler nutzen nur documentId(s) (DocumentGrid/DroppableFolder)
         },
         // Bei Multi-Select: Alle ausgewählten IDs
         selectedIds: isSelected && selectedIds.length > 1 ? selectedIds : undefined,

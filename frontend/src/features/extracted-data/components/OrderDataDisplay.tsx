@@ -131,9 +131,9 @@ export function OrderDataDisplay({ order, className }: OrderDataDisplayProps) {
                                         {order.delivery_address.street && (
                                             <div>{order.delivery_address.street}</div>
                                         )}
-                                        {(order.delivery_address.zip || order.delivery_address.city) && (
+                                        {(order.delivery_address.zip_code || order.delivery_address.city) && (
                                             <div>
-                                                {order.delivery_address.zip} {order.delivery_address.city}
+                                                {order.delivery_address.zip_code} {order.delivery_address.city}
                                             </div>
                                         )}
                                         {order.delivery_address.country && (
