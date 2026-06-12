@@ -227,34 +227,29 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {config.name}
-                      {config.includeSubfolders && (
-                        <Badge variant="outline" className="text-xs">
-                          Unterordner
-                        </Badge>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm max-w-[200px] truncate">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger className="truncate block">
-                          {config.folderPath}
+                          {config.watchPath}
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-md">
-                          <p className="break-all">{config.folderPath}</p>
+                          <p className="break-all">{config.watchPath}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>
                   <TableCell>
                     <WatchStatusBadge
-                      isWatching={config.isWatching}
+                      isWatching={config.watcherStatus === 'running'}
                       isActive={config.isActive}
                     />
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {config.lastScanAt
-                      ? formatDistanceToNow(new Date(config.lastScanAt), {
+                    {config.lastPollAt
+                      ? formatDistanceToNow(new Date(config.lastPollAt), {
                           addSuffix: true,
                           locale: de,
                         })

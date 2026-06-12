@@ -167,19 +167,14 @@ function ImportRulesList({ onEdit }: { onEdit: (ruleId: string) => void }) {
                 </Badge>
                 <div>
                   <p className="font-medium">{rule.name}</p>
-                  {rule.description && (
-                    <p className="text-sm text-muted-foreground truncate max-w-md">
-                      {rule.description}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant="outline">
-                  {rule.conditions.length} Bedingung{rule.conditions.length !== 1 ? 'en' : ''}
+                  Prioritaet {rule.priority}
                 </Badge>
                 <Badge variant="outline">
-                  {rule.actions.length} Aktion{rule.actions.length !== 1 ? 'en' : ''}
+                  {rule.matchCount} Treffer
                 </Badge>
               </div>
             </div>
@@ -256,7 +251,7 @@ export function ImportsPage() {
         <div className="p-8">
           <EmailConfigForm
             configId={editId ?? undefined}
-            onSave={handleBack}
+            onSuccess={handleBack}
             onCancel={handleBack}
           />
         </div>

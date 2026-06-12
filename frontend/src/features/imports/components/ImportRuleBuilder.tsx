@@ -66,7 +66,12 @@ import {
   useUpdateImportRule,
   useRuleSchema,
 } from '../hooks/use-import-queries';
-import type { ImportRuleResponse, ImportRuleCreate, ImportRuleUpdate } from '../types/import-types';
+import type {
+  ImportRuleResponse,
+  ImportRuleCreate,
+  ImportRuleUpdate,
+  RuleActions,
+} from '../types/import-types';
 
 // ==================== Schema ====================
 
@@ -84,13 +89,64 @@ const actionSchema = z.object({
 const importRuleSchema = z.object({
   name: z.string().min(2, 'Name muss mindestens 2 Zeichen haben'),
   description: z.string().optional(),
-  sourceType: z.enum(['email', 'folder', 'all']),
   isActive: z.boolean(),
   priority: z.number().int().min(0).max(100),
   conditions: z.array(conditionSchema).min(1, 'Mindestens eine Bedingung erforderlich'),
   actions: z.array(actionSchema).min(1, 'Mindestens eine Aktion erforderlich'),
-  stopOnMatch: z.boolean(),
 });
+
+/** UI-Aktionszeilen <-> RuleActions-Objekt (Backend-Schema) */
+function ruleActionsToRows(
+  actions: ImportRuleResponse['actions']
+): Array<{ type: string; value: string }> {
+  const rows: Array<{ type: string; value: string }> = [];
+  if (actions.setFolder) rows.push({ type: 'set_folder', value: actions.setFolder });
+  if (actions.setDocumentType)
+    rows.push({ type: 'set_document_type', value: actions.setDocumentType });
+  if (actions.addTags?.length)
+    rows.push({ type: 'add_tags', value: actions.addTags.join(',') });
+  if (actions.setMetadata && Object.keys(actions.setMetadata).length > 0)
+    rows.push({ type: 'set_metadata', value: JSON.stringify(actions.setMetadata) });
+  if (actions.skipProcessing) rows.push({ type: 'skip_processing', value: 'ja' });
+  if (actions.markAsUrgent) rows.push({ type: 'mark_as_urgent', value: 'ja' });
+  return rows.length > 0 ? rows : [{ type: 'set_folder', value: '' }];
+}
+
+function rowsToRuleActions(
+  rows: Array<{ type: string; value: string }>
+): RuleActions {
+  const actions: RuleActions = {};
+  for (const row of rows) {
+    switch (row.type) {
+      case 'set_folder':
+        actions.setFolder = row.value;
+        break;
+      case 'set_document_type':
+        actions.setDocumentType = row.value;
+        break;
+      case 'add_tags':
+        actions.addTags = row.value
+          .split(',')
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0);
+        break;
+      case 'set_metadata':
+        try {
+          actions.setMetadata = JSON.parse(row.value) as Record<string, string>;
+        } catch {
+          // Ungueltiges JSON wird ignoriert (Validierung erfolgt im Backend)
+        }
+        break;
+      case 'skip_processing':
+        actions.skipProcessing = true;
+        break;
+      case 'mark_as_urgent':
+        actions.markAsUrgent = true;
+        break;
+    }
+  }
+  return actions;
+}
 
 type ImportRuleFormData = z.infer<typeof importRuleSchema>;
 
@@ -225,31 +281,37 @@ function ActionRow({ index, control, remove, actionTypes }: ActionRowProps) {
                         Ordner setzen
                       </span>
                     )}
-                    {type === 'add_tag' && (
+                    {type === 'add_tags' && (
                       <span className="flex items-center gap-2">
                         <Tag className="h-4 w-4" />
-                        Tag hinzufügen
+                        Tags hinzufügen
                       </span>
                     )}
-                    {type === 'set_category' && (
+                    {type === 'set_document_type' && (
                       <span className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        Kategorie setzen
+                        Dokumenttyp setzen
                       </span>
                     )}
-                    {type === 'set_priority' && (
+                    {type === 'set_metadata' && (
+                      <span className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Metadaten setzen
+                      </span>
+                    )}
+                    {type === 'skip_processing' && (
                       <span className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
-                        Priorität setzen
+                        Verarbeitung überspringen
                       </span>
                     )}
-                    {type === 'notify' && (
+                    {type === 'mark_as_urgent' && (
                       <span className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />
-                        Benachrichtigen
+                        Als dringend markieren
                       </span>
                     )}
-                    {!['set_folder', 'add_tag', 'set_category', 'set_priority', 'notify'].includes(type) && type}
+                    {!['set_folder', 'add_tags', 'set_document_type', 'set_metadata', 'skip_processing', 'mark_as_urgent'].includes(type) && type}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -292,7 +354,7 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   // Queries
-  const { data: schema } = useRuleSchema();
+  const ruleSchemaData = useRuleSchema();
 
   // Mutations
   const createRule = useCreateImportRule();
@@ -305,22 +367,22 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
       ? {
           name: rule.name,
           description: rule.description ?? '',
-          sourceType: rule.sourceType,
           isActive: rule.isActive,
           priority: rule.priority,
-          conditions: rule.conditions,
-          actions: rule.actions,
-          stopOnMatch: rule.stopOnMatch,
+          conditions: rule.conditions.rules.map((r) => ({
+            field: r.field,
+            operator: r.operator,
+            value: r.value ?? '',
+          })),
+          actions: ruleActionsToRows(rule.actions),
         }
       : {
           name: '',
           description: '',
-          sourceType: 'all',
           isActive: true,
           priority: 50,
           conditions: [{ field: '', operator: 'contains', value: '' }],
           actions: [{ type: 'set_folder', value: '' }],
-          stopOnMatch: false,
         },
   });
 
@@ -343,28 +405,35 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
   });
 
   // Schema defaults
-  const availableFields = schema?.conditionFields ?? [
-    'sender_email',
-    'sender_name',
-    'subject',
-    'filename',
-    'file_extension',
-    'file_size',
-    'folder_path',
-  ];
+  const availableFields = ruleSchemaData.fields.length
+    ? ruleSchemaData.fields.map((field) => field.name)
+    : [
+        'sender_email',
+        'sender_name',
+        'subject',
+        'filename',
+        'file_extension',
+        'file_size',
+        'folder_path',
+      ];
 
-  const availableOperators = schema?.operators ?? {
-    default: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 'matches_regex'],
+  const availableOperators: Record<string, string[]> = {
+    default: ruleSchemaData.operators.length
+      ? ruleSchemaData.operators.map((op) => op.name)
+      : ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 'matches_regex'],
     file_size: ['equals', 'greater_than', 'less_than'],
   };
 
-  const availableActionTypes = schema?.actionTypes ?? [
-    'set_folder',
-    'add_tag',
-    'set_category',
-    'set_priority',
-    'notify',
-  ];
+  const availableActionTypes = ruleSchemaData.actions.length
+    ? ruleSchemaData.actions.map((action) => action.name)
+    : [
+        'set_folder',
+        'set_document_type',
+        'add_tags',
+        'set_metadata',
+        'skip_processing',
+        'mark_as_urgent',
+      ];
 
   // Handlers
   const onSubmit = async (data: ImportRuleFormData) => {
@@ -373,12 +442,10 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
         const updateData: ImportRuleUpdate = {
           name: data.name,
           description: data.description || undefined,
-          sourceType: data.sourceType,
           isActive: data.isActive,
           priority: data.priority,
-          conditions: data.conditions,
-          actions: data.actions,
-          stopOnMatch: data.stopOnMatch,
+          conditions: { operator: 'AND', rules: data.conditions },
+          actions: rowsToRuleActions(data.actions),
         };
         await updateRule.mutateAsync({ ruleId: rule.id, data: updateData });
         toast({
@@ -389,12 +456,10 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
         const createData: ImportRuleCreate = {
           name: data.name,
           description: data.description || undefined,
-          sourceType: data.sourceType,
           isActive: data.isActive,
           priority: data.priority,
-          conditions: data.conditions,
-          actions: data.actions,
-          stopOnMatch: data.stopOnMatch,
+          conditions: { operator: 'AND', rules: data.conditions },
+          actions: rowsToRuleActions(data.actions),
         };
         await createRule.mutateAsync(createData);
         toast({
@@ -445,28 +510,6 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="sourceType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quelle</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">Alle Quellen</SelectItem>
-                        <SelectItem value="email">Nur Email</SelectItem>
-                        <SelectItem value="folder">Nur Ordner</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
 
             <FormField
@@ -633,26 +676,6 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="stopOnMatch"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Bei Treffer stoppen</FormLabel>
-                        <FormDescription>
-                          Keine weiteren Regeln anwenden, wenn diese Regel zutrifft
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
