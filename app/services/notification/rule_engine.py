@@ -207,6 +207,17 @@ class RuleConditionMatcher:
             # Einzelne Bedingung ohne Container
             if "field" in conditions:
                 return self._evaluate_single(conditions, data)
+            # Fail-safe statt fail-open (2026-06-12): Unbekannte Struktur
+            # (z.B. {"AND": [...]} statt {"operator": "AND", "conditions":
+            # [...]}) matchte vorher JEDES Event -> Benachrichtigungen
+            # feuerten faelschlich fuer alles. Jetzt: Warnung + False.
+            unknown_keys = set(conditions.keys()) - {"operator", "conditions"}
+            if unknown_keys:
+                logger.warning(
+                    "invalid_condition_structure",
+                    unknown_keys=sorted(unknown_keys),
+                )
+                return False
             return True
 
         results = [self._evaluate_condition(c, data) for c in condition_list]
