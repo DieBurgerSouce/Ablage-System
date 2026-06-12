@@ -32,8 +32,11 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from uuid import uuid4, UUID
 
 import httpx
-# Sprint 0 / G02: PyJWT statt python-jose. jwt-Module wird in Tests nicht direkt verwendet
-# (Mocks via patch.object()), jwk wurde nirgends benutzt - entfernt.
+# Sprint 0 / G02: PyJWT statt python-jose; jwk wurde nirgends benutzt - entfernt.
+# KORREKTUR (2026-06-12): jwt WIRD direkt benutzt (create_test_id_token ->
+# jwt.encode fuer die CWE-347-Tests) - Import war bei der Migration faelschlich
+# mit entfernt worden (NameError: name 'jwt' is not defined).
+import jwt
 from pydantic import SecretStr
 
 from app.services.auth.sso.oidc_service import (
@@ -55,43 +58,38 @@ from app.services.auth.sso.sso_config_service import (
 
 # RSA key pair for testing JWT signatures (2048-bit test key)
 # NEVER use in production - test only!
-TEST_RSA_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA0m59l2u9iDnMbrXHfqkOrn2dVQ3vfBJqcDuFUK03d+1PZGbV
-yGMHlJHXWxGT5y1T/5T5qh6y2nCRYEL0Zfd7YEVxbGBXQKhNLbDZCpXBmXJB5xHM
-gQk7eDMJjjSYVqVfUkXI/hgOFkdBPG5RKBQLMq4zMN+7KYxOY0C7gTNNXhGRJwFN
-GXjW9qzXqR5EJPN+9pWSQV3cNGQyLMT5RtzI3/n5lLt8xAY0hFCJC5kDZhN5xhp3
-ORVQxfLdLEQQcQ0aQW4T9RGMCY3zU1qH2V3xwQKyuTaT3NOEJl5vPsC7nYCEmS0a
-S8s95cCLMKqCSLtQEAXQ9v1D7FJN7sW7n7nRvwIDAQABAoIBABxp60jQa3FGv3sx
-W5pAc/V3NOr0ACYl3qHDmZPHWhz7HQ0h5YOvlHTbSg9wYH0Kt9TPTBbFMHuN7xPj
-CdGHQxWxwSnl0yFBGXPoBYMH0E0OJz0KKr3rJsNU5EK6PlzI+vnPRJd/hzQKj7s+
-KHWB8kM7fHxYXQq6QKPP2j3UKR6IW/oAL0FjhvDpYHNMOsNIh7dD5NvhqQqQ3tP/
-5K0M0B9kn2xVRSv0kZvN6YcVdPQD0C8W+1j7qQ5xaR3XCjnjFPVaKl0vLpfA8N9L
-xDfH0KNBwTlB1eOaZCxFPIzNI0kLHFG6VgYr9wX3gT0mBNVGJn8dW3P6cMwLPdGR
-k5w3cAECgYEA7vn5qDDJxu3UWDpJX8qkZwLLRqK0lC4qDWrLVjF7uQwPU3a5wdLn
-LfGRtF6MKKx0NF9jXCU0wmL6pLHMqKqMKzFLDOvLyME3J/xHvDvJz0yD+qB1EhP3
-UoXqLN3MuhGpGK7sJE8e0TWWEZ5dR4VFvP0gAD9jXN/HBCLJ3XqvqYECgYEA4RVv
-H7BsL7rBNHLfR+WxgZ0PIhCkjePPk+2sYPR3pHQXkC4mJqJ0EaMkJhF0k3Nq1LjE
-gQVRx7KSKZPB0aW4QV1pxS+mH8n8hh4D4vK0p1s5N1jZqHIL0h7nBXCy8JnzBg0h
-OY5wP0QMJK8hhT0RSPK8J5nQn/3Z5fZJh8n5M/8CgYEAhU7SL5dF4Pq7Q3DRHP0H
-OXL0BxyF8qpBX5zGRfY+R8nHCaQPL4p6TD6r7r0rDh3/SLMxzKL5k+7k7RtPvbIq
-mM/4j3j7R6s0rJU7V4F5l6r8AeQLhL3kpRfvjHv3q3YxB9fDAkkz5OJKPj0Nm0QH
-7qAEgJT1sN+H7+LM5fTJgAECgYBOe4Fxi0NEY0GhN+D5EfXS0RQSj3pl4A5HmKpn
-qFjP4MvAy9jbMFh3nFM0vZCKlL0xFt0c3k4nHJD0S5bZ+kZqMq5k6DQHBM4D3Y+V
-h6D8x0i/c4mj5lCvoB3l3xFUvw7lKqJU2cX3VXJBKB0xpSHpF0nFdB1PLv3BvQQi
-HQIH6wKBgFdNqJl0n3xJ0vLsP3A5dH0K3F5OvP9RX+dCEVvhRzVN+iD4F2xWaLNj
-EqYR3nKp5m6t0LJHUy5vH8mPCKzLPj0LLqD0jHGnNJR5Sy5Z0mzJzYJpE3XQKB0x
-pSHpF0nFdB1PLv3BvQQiHQIH6wJfB0UJ3qpRq7fBJDhYL5c5
------END RSA PRIVATE KEY-----"""
+# KORREKTUR (2026-06-12): Der frueher hier eingebettete PEM-Block war KEIN
+# gueltiger RSA-Schluessel (fabrizierte Base64-Bloecke) - PyJWT/cryptography
+# lehnen ihn mit InvalidKeyError ab (python-jose hatte das nie signiert,
+# weil jwt.encode vorher nie real lief). Stattdessen wird zur Modul-Ladezeit
+# ein ECHTES Schluesselpaar generiert und die JWKS-Parameter (n, e) daraus
+# abgeleitet, damit Token-Erzeugung und Key-Matching konsistent sind.
+from cryptography.hazmat.primitives import serialization as _serialization
+from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
 
-TEST_RSA_PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0m59l2u9iDnMbrXHfqkO
-rn2dVQ3vfBJqcDuFUK03d+1PZGbVyGMHlJHXWxGT5y1T/5T5qh6y2nCRYEL0Zfd7
-YEVxbGBXQKhNLbDZCpXBmXJB5xHMgQk7eDMJjjSYVqVfUkXI/hgOFkdBPG5RKBQL
-Mq4zMN+7KYxOY0C7gTNNXhGRJwFNGXjW9qzXqR5EJPN+9pWSQV3cNGQyLMT5RtzI
-3/n5lLt8xAY0hFCJC5kDZhN5xhp3ORVQxfLdLEQQcQ0aQW4T9RGMCY3zU1qH2V3x
-wQKyuTaT3NOEJl5vPsC7nYCEmS0aS8s95cCLMKqCSLtQEAXQ9v1D7FJN7sW7n7nR
-vwIDAQAB
------END PUBLIC KEY-----"""
+_TEST_RSA_KEY = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+TEST_RSA_PRIVATE_KEY = _TEST_RSA_KEY.private_bytes(
+    encoding=_serialization.Encoding.PEM,
+    format=_serialization.PrivateFormat.TraditionalOpenSSL,
+    encryption_algorithm=_serialization.NoEncryption(),
+).decode()
+
+TEST_RSA_PUBLIC_KEY = _TEST_RSA_KEY.public_key().public_bytes(
+    encoding=_serialization.Encoding.PEM,
+    format=_serialization.PublicFormat.SubjectPublicKeyInfo,
+).decode()
+
+
+def _b64url_uint(value: int) -> str:
+    """Base64url-Encoding (ohne Padding) fuer JWK-Integer-Parameter."""
+    raw = value.to_bytes((value.bit_length() + 7) // 8, "big")
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
+_TEST_RSA_PUBLIC_NUMBERS = _TEST_RSA_KEY.public_key().public_numbers()
+TEST_JWK_N = _b64url_uint(_TEST_RSA_PUBLIC_NUMBERS.n)
+TEST_JWK_E = _b64url_uint(_TEST_RSA_PUBLIC_NUMBERS.e)
 
 TEST_KID = "test-key-id-001"
 TEST_ISSUER = "https://idp.example.com"
@@ -208,8 +206,8 @@ def sample_jwks() -> Dict[str, Any]:
                 "kid": TEST_KID,
                 "use": "sig",
                 "alg": "RS256",
-                "n": "0m59l2u9iDnMbrXHfqkOrn2dVQ3vfBJqcDuFUK03d-1PZGbVyGMHlJHXWxGT5y1T_5T5qh6y2nCRYEL0Zfd7YEVxbGBXQKhNLbDZCpXBmXJB5xHMgQk7eDMJjjSYVqVfUkXI_hgOFkdBPG5RKBQLMq4zMN-7KYxOY0C7gTNNXhGRJwFNGXjW9qzXqR5EJPN-9pWSQV3cNGQyLMT5RtzI3_n5lLt8xAY0hFCJC5kDZhN5xhp3ORVQxfLdLEQQcQ0aQW4T9RGMCY3zU1qH2V3xwQKyuTaT3NOEJl5vPsC7nYCEmS0aS8s95cCLMKqCSLtQEAXQ9v1D7FJN7sW7n7nRvw",
-                "e": "AQAB",
+                "n": TEST_JWK_N,
+                "e": TEST_JWK_E,
             }
         ]
     }
@@ -225,8 +223,8 @@ def sample_jwks_no_matching_key() -> Dict[str, Any]:
                 "kid": "different-key-id",
                 "use": "sig",
                 "alg": "RS256",
-                "n": "0m59l2u9iDnMbrXHfqkOrn2dVQ3vfBJqcDuFUK03d-1PZGbVyGMHlJHXWxGT5y1T_5T5qh6y2nCRYEL0Zfd7YEVxbGBXQKhNLbDZCpXBmXJB5xHMgQk7eDMJjjSYVqVfUkXI_hgOFkdBPG5RKBQLMq4zMN-7KYxOY0C7gTNNXhGRJwFNGXjW9qzXqR5EJPN-9pWSQV3cNGQyLMT5RtzI3_n5lLt8xAY0hFCJC5kDZhN5xhp3ORVQxfLdLEQQcQ0aQW4T9RGMCY3zU1qH2V3xwQKyuTaT3NOEJl5vPsC7nYCEmS0aS8s95cCLMKqCSLtQEAXQ9v1D7FJN7sW7n7nRvw",
-                "e": "AQAB",
+                "n": TEST_JWK_N,
+                "e": TEST_JWK_E,
             }
         ]
     }
@@ -263,12 +261,15 @@ def sample_userinfo_response() -> Dict[str, Any]:
 
 def create_test_id_token(
     nonce: str,
-    kid: str = TEST_KID,
+    kid: "str | None" = TEST_KID,
     issuer: str = TEST_ISSUER,
     aud: str = TEST_CLIENT_ID,
     exp_delta: int = 3600,
 ) -> str:
-    """Create a test ID token with specified parameters."""
+    """Create a test ID token with specified parameters.
+
+    kid=None erzeugt ein Token OHNE kid-Header (Single-Key-IdP-Szenario).
+    """
     now = datetime.utcnow()
     claims = {
         "iss": issuer,
@@ -281,7 +282,9 @@ def create_test_id_token(
         "name": "Test Benutzer",
     }
 
-    headers = {"kid": kid, "alg": "RS256"}
+    headers: Dict[str, Any] = {"alg": "RS256"}
+    if kid is not None:
+        headers["kid"] = kid
 
     # For testing, we create a properly signed token
     # In real tests, we mock the validation
@@ -615,6 +618,15 @@ class TestStateManagement:
                 redirect_uri="https://app.example.com/callback",
             )
 
+        # One-Time-Use simulieren: erster Abruf liefert den gespeicherten
+        # State (wie Redis mit delete=True), jeder weitere Abruf None.
+        # Der Fixture-Default (immer None) liess schon den ERSTEN legitimen
+        # Callback fehlschlagen - der Replay-Schutz wurde nie wirklich getestet.
+        stored_oidc_state = oidc_service.state_manager.store_oidc_state.call_args[0][1]
+        oidc_service.state_manager.get_oidc_state = AsyncMock(
+            side_effect=[stored_oidc_state, None]
+        )
+
         # Consume the state
         with patch.object(
             oidc_service.config_service, "get_provider", new_callable=AsyncMock
@@ -638,7 +650,7 @@ class TestStateManagement:
             )
 
         # Try to reuse the same state
-        with pytest.raises(ValueError, match="Ungueltiger oder abgelaufener State"):
+        with pytest.raises(ValueError, match="Ungültiger oder abgelaufener State"):
             await oidc_service.handle_callback(
                 code="test_code",
                 state=state,
@@ -648,7 +660,7 @@ class TestStateManagement:
     @pytest.mark.asyncio
     async def test_invalid_state_rejected(self, oidc_service, sample_company_id):
         """Test: Unbekannter State wird abgelehnt."""
-        with pytest.raises(ValueError, match="Ungueltiger oder abgelaufener State"):
+        with pytest.raises(ValueError, match="Ungültiger oder abgelaufener State"):
             await oidc_service.handle_callback(
                 code="test_code",
                 state="invalid_state_that_was_never_created",
@@ -1149,7 +1161,13 @@ class TestIDTokenValidation:
         sample_oidc_config,
         sample_jwks,
     ):
-        """Test: Fallback auf ersten Key wenn kid nicht passt aber Keys vorhanden."""
+        """Test: Fallback auf ersten Key, wenn das Token KEINEN kid-Header hat.
+
+        ANGEPASST (2026-06-12): Frueher testete dieser Test den Fallback bei
+        UNBEKANNTEM kid - das widersprach direkt dem CWE-347-Test
+        (test_validate_id_token_no_matching_key_cwe347_fix). App-Verhalten ist
+        jetzt: Fallback nur ohne kid-Header; unbekannter kid => harter Fehler.
+        """
         nonce = "test_nonce_123"
 
         with patch.object(
@@ -1157,17 +1175,16 @@ class TestIDTokenValidation:
         ) as mock_get_jwks, patch(
             "app.services.auth.sso.oidc_service.jwt.decode"
         ) as mock_decode:
-            mock_get_jwks.return_value = sample_jwks  # Has keys, but different kid
+            mock_get_jwks.return_value = sample_jwks
             mock_decode.return_value = {
                 "sub": "user-12345",
                 "nonce": nonce,
             }
 
-            # Token with different kid, but JWKS has at least one key
-            # The code falls back to first key if no kid match
-            id_token = create_test_id_token(nonce=nonce, kid="unknown-kid-but-keys-exist")
+            # Token ohne kid-Header (Single-Key-IdP), JWKS hat mindestens
+            # einen Key -> Code faellt auf den ersten Key zurueck
+            id_token = create_test_id_token(nonce=nonce, kid=None)
 
-            # This should work because code falls back to first key
             claims = await oidc_service._validate_id_token(
                 config=sample_oidc_config,
                 id_token=id_token,
