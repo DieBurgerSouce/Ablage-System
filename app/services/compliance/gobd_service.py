@@ -338,11 +338,17 @@ class GoBDComplianceService:
         company_id: UUID,
     ) -> CheckResult:
         """
-        Unveränderbarkeit - Hash-Verifikation.
+        Unveränderbarkeit - Archivierungs- und Verifikationsstand.
 
-        Prüft:
-        - Sind alle archivierten Dokumente mit Hash gesichert?
-        - Stimmen die Hashes noch?
+        Prüft (teilgeprueft):
+        - Sind alle Dokumente archiviert?
+        - Welcher Anteil der Archive ist als verifiziert markiert?
+
+        GoBD-Ehrlichkeit (M15-Muster, analog _check_nachvollziehbarkeit):
+        Eine ECHTE Hash-Verifikation (Datei-Inhalt gegen gespeicherten Hash)
+        ist NICHT implementiert. Dieser Check darf deshalb niemals
+        faelschlich PASSED melden - Bestcase ist WARNING mit
+        'teilgeprueft'-Markierung in den Details.
         """
         issues = []
         affected_docs: List[str] = []
@@ -356,25 +362,9 @@ class GoBDComplianceService:
         archive_list = list(archives.scalars().all())
 
         total_archived = len(archive_list)
-        verified_count = 0
-        hash_mismatches = 0
-
-        for archive in archive_list:
-            if archive.is_verified:
-                verified_count += 1
-            # In production, would actually verify hash against file
-            # if not self._verify_document_hash(archive):
-            #     hash_mismatches += 1
-            #     affected_docs.append(str(archive.document_id))
+        verified_count = sum(1 for archive in archive_list if archive.is_verified)
 
         verification_rate = (verified_count / total_archived * 100) if total_archived > 0 else 100
-
-        if hash_mismatches > 0:
-            issues.append({
-                "type": "hash_mismatch",
-                "message": f"{hash_mismatches} Dokument(e) mit ungültigem Hash",
-                "severity": "critical",
-            })
 
         # Check documents without archive
         docs_without_archive = await db.execute(
@@ -395,27 +385,35 @@ class GoBDComplianceService:
                 "severity": "warning",
             })
 
+        # Ehrlichkeit: Hash-Verifikation nicht implementiert -> als Issue
+        # ausweisen, damit der Teilpruef-Status sichtbar bleibt.
+        issues.append({
+            "type": "hash_verification_not_implemented",
+            "message": "Hash-Verifikation nicht implementiert - teilgeprueft",
+            "severity": "warning",
+        })
+
         # Calculate score
-        score = 100
-        if hash_mismatches > 0:
-            score = 0  # Critical failure
-        elif verification_rate < 100:
+        score = 100.0
+        if verification_rate < 100:
             score -= (100 - verification_rate) * 0.3
         if unarchived > 10:
             score -= min(20, unarchived * 0.5)
         score = max(0, int(score))
 
-        status = ComplianceStatus.PASSED.value
+        # M15-Muster: ohne echte Hash-Pruefung niemals PASSED.
+        partial_check = True
         if score < 70:
             status = ComplianceStatus.FAILED.value
-        elif score < 90:
+        else:
             status = ComplianceStatus.WARNING.value
 
         remediation = []
-        if hash_mismatches > 0:
-            remediation.append("KRITISCH: Dokumente mit ungültigem Hash aus Backup wiederherstellen")
         if unarchived > 0:
             remediation.append(f"{unarchived} Dokument(e) archivieren")
+        remediation.append(
+            "Echte Hash-Verifikation der Archive implementieren/separat durchfuehren (teilgeprueft)"
+        )
 
         return CheckResult(
             check_type=GoBDCheckType.UNVERAENDERBARKEIT.value,
@@ -425,8 +423,9 @@ class GoBDComplianceService:
             details={
                 "total_archived": total_archived,
                 "verification_rate": verification_rate,
-                "hash_mismatches": hash_mismatches,
+                "hash_verification": "Hash-Verifikation nicht implementiert - teilgeprueft",
                 "unarchived_documents": unarchived,
+                "teilgeprueft": partial_check,
                 "issues": issues,
             },
             affected_documents=affected_docs,
