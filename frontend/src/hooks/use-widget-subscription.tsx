@@ -58,6 +58,6 @@ export const WIDGET_QUERY_KEYS: Record<string, string[][]> = {
  * }
  */
 export function useDashboardWidgetSubscriptions() {
-  const { useMultiWidgetSubscription: subscribe } = require("@/lib/websocket")
-  subscribe(WIDGET_QUERY_KEYS)
+  // ESM statt require: Hook direkt importieren
+  useMultiWidgetSubscription(WIDGET_QUERY_KEYS)
 }

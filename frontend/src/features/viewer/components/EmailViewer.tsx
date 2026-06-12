@@ -400,13 +400,14 @@ export function EmailViewer({ fileData, className }: EmailViewerProps) {
             // Clear existing content
             htmlContentRef.current.textContent = '';
 
-            // Use DOMPurify to sanitize and get a DocumentFragment directly
-            const cleanFragment = DOMPurify.sanitize(email.htmlBody, PURIFY_CONFIG);
+            // DOMPurify mit RETURN_DOM_FRAGMENT liefert ein DocumentFragment
+            const cleanFragment = DOMPurify.sanitize(email.htmlBody, {
+                ...PURIFY_CONFIG,
+                RETURN_DOM_FRAGMENT: true,
+            });
 
             // Append the sanitized fragment
-            if (cleanFragment instanceof DocumentFragment) {
-                htmlContentRef.current.appendChild(cleanFragment.cloneNode(true));
-            }
+            htmlContentRef.current.appendChild(cleanFragment.cloneNode(true));
         }
     }, [email?.htmlBody, showHtml]);
 
@@ -620,7 +621,7 @@ if (import.meta.hot) {
  * Sie ist NUR in Test-Umgebung verfügbar und sollte NICHT in Produktion verwendet werden.
  */
 export function __resetDOMPurifyHooks(): void {
-    if (process.env.NODE_ENV === 'test' || import.meta.env?.MODE === 'test') {
+    if (import.meta.env?.MODE === 'test') {
         domPurifyHooksRegistered = false;
         DOMPurify.removeAllHooks();
     } else {

@@ -506,7 +506,14 @@ export function NetWorthDashboard() {
           totalAssets={totalAssets}
           onCategoryClick={handleCategoryClick}
         />
-        <NetWorthChart history={history} />
+        <NetWorthChart
+          history={history.map((s) => ({
+            date: s.snapshotDate,
+            totalAssets: s.totalAssets,
+            totalLiabilities: s.totalLiabilities,
+            netWorth: s.netWorth,
+          }))}
+        />
       </div>
 
       {/* Breakdown Cards */}

@@ -177,12 +177,12 @@ export function formatByLocale(language: SupportedLanguage) {
       return fallback;
     }
 
-    const formatOptions: Intl.DateTimeFormatOptions = {
+    const formatOptions: Intl.DateTimeFormatOptions = ({
       short: { day: '2-digit', month: '2-digit', year: 'numeric' },
       medium: { day: '2-digit', month: 'short', year: 'numeric' },
       long: { day: 'numeric', month: 'long', year: 'numeric' },
       full: { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' },
-    }[format];
+    } as const)[format];
 
     return new Intl.DateTimeFormat(locale, formatOptions).format(dateObj);
   }

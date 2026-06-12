@@ -725,7 +725,7 @@ export function EmployeeForm({
                       <FormItem>
                         <FormLabel>Wochenstunden</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} max={168} step={0.5} {...field} value={field.value ?? ''} />
+                          <Input type="number" min={0} max={168} step={0.5} {...field} value={(field.value as number | string | undefined) ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -738,7 +738,7 @@ export function EmployeeForm({
                       <FormItem>
                         <FormLabel>Urlaubstage/Jahr</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} max={365} {...field} value={field.value ?? ''} />
+                          <Input type="number" min={0} max={365} {...field} value={(field.value as number | string | undefined) ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

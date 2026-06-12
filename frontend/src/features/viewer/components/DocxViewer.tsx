@@ -27,8 +27,9 @@ interface DocxViewerProps {
     className?: string;
 }
 
+// Entspricht mammoth.convertToHtml-Result: value = HTML-String
 interface ConversionResult {
-    html: string;
+    value: string;
     messages: MammothMessage[];
 }
 

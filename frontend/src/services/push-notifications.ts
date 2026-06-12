@@ -71,14 +71,15 @@ const SUBSCRIPTION_STORAGE_KEY = 'push_subscription_endpoint';
 /**
  * Convert URL-safe base64 to Uint8Array for VAPID key
  */
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/');
 
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+  // Expliziter ArrayBuffer: BufferSource verlangt Uint8Array<ArrayBuffer>
+  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
 
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
@@ -410,6 +411,8 @@ class PushNotificationService {
     try {
       const registration = await this.getServiceWorkerRegistration();
 
+      // image/actions sind Service-Worker-Erweiterungen ausserhalb des
+      // DOM-NotificationOptions-Typs — daher erweitert typisiert.
       await registration.showNotification(options.title, {
         body: options.body,
         icon: options.icon || '/icons/icon-192x192.png',
@@ -421,7 +424,7 @@ class PushNotificationService {
         requireInteraction: options.requireInteraction,
         silent: options.silent,
         vibrate: [200, 100, 200],
-      });
+      } as NotificationOptions);
 
       return true;
     } catch (error) {
