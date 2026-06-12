@@ -38,6 +38,23 @@ export async function waitForAppSettled(page: Page): Promise<void> {
     .catch(() => {
       /* Skeletons bleiben sichtbar -> trotzdem scannen, dann ist es ein echter Befund */
     });
+  // Einblende-Animationen (framer-motion Seiten-Fade) abwarten: axe misst
+  // sonst color-contrast gegen halbtransparente Zwischenzustaende.
+  await page
+    .waitForFunction(
+      () => {
+        const main = document.querySelector('main');
+        if (!main) return true;
+        return Array.from(main.querySelectorAll<HTMLElement>('[style*="opacity"]')).every(
+          (el) => !el.style.opacity || parseFloat(el.style.opacity) >= 1
+        );
+      },
+      undefined,
+      { timeout: 5000 }
+    )
+    .catch(() => {
+      /* Animation haengt -> trotzdem scannen */
+    });
   await page.waitForTimeout(500);
 }
 

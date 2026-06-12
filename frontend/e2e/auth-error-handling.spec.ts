@@ -62,10 +62,21 @@ test.describe('Auth Error Handling - API', () => {
       // WICHTIG: keine .local-Domain verwenden — der Backend-E-Mail-Validator
       // (pydantic/email-validator) lehnt Special-Use-Domains wie .local mit
       // 422 ab, BEVOR die Credential-Pruefung greift (verifiziert 2026-06-12).
-      const resp = await request.post(`${API_BASE}/api/v1/auth/login`, {
-        data: { email: 'falsche-creds@example.com', password: 'WrongPassword!' },
-      });
-      statuses.push(resp.status());
+      // Retry bei Verbindungsfehlern: 6 sequentielle bcrypt-Pruefungen unter
+      // parallelem Suite-Load fuehren gelegentlich zu "socket hang up".
+      let resp;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          resp = await request.post(`${API_BASE}/api/v1/auth/login`, {
+            data: { email: 'falsche-creds@example.com', password: 'WrongPassword!' },
+          });
+          break;
+        } catch (err) {
+          if (attempt === 2) throw err;
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+      statuses.push(resp!.status());
     }
     const last = statuses[statuses.length - 1];
     // Jede Fehlanmeldung muss abgewiesen werden; nach mehreren ggf. 429.

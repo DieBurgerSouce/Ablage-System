@@ -18,20 +18,23 @@ export default defineConfig({
     },
     projects: [
         // Tests use authenticatedPage fixture for auth (no setup project needed)
+        // a11y-Specs laufen NUR im dedizierten a11y-Projekt (unten):
+        // Unter paralleler Last messen axe-Scans transiente Renderzustaende
+        // (Einblende-Animationen, Avatar-Lade-Fallbacks) und werden flaky.
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
-            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts|[\\/]a11y[\\/]/,
         },
         {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
-            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts|[\\/]a11y[\\/]/,
         },
         {
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
-            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts|[\\/]a11y[\\/]/,
         },
         {
             name: 'a11y',

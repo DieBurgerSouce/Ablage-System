@@ -57,12 +57,21 @@ test.describe('Suche - UI', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.locator('#main-content').waitFor({ state: 'attached', timeout: 15000 });
     await page.keyboard.press('Control+k');
-    // GlobalCommandDialog: cmdk-Dialog mit Eingabefeld
+    // Befehlspalette mit Eingabefeld oeffnet
     const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible({ timeout: 10000 });
-    await expect(dialog.getByRole('combobox').or(dialog.locator('input')).first()).toBeVisible();
+    await expect(dialog.first()).toBeVisible({ timeout: 10000 });
+    await expect(
+      dialog.first().getByRole('combobox').or(dialog.first().locator('input')).first()
+    ).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(dialog).toBeHidden({ timeout: 5000 });
+    // HINWEIS: Schlaegt aktuell KORREKT fehl — App-Bug (Kategorie B,
+    // 2026-06-12): ZWEI konkurrierende globale Strg+K-Paletten sind gemountet
+    // (GlobalCommandDialog via __root.tsx:92 mit eigenem Listener
+    // GlobalCommandDialog.tsx:126 UND SpotlightDialog via AppLayout.tsx:121
+    // mit Listener features/spotlight/hooks/use-spotlight.ts:114). Strg+K
+    // oeffnet BEIDE uebereinander, Escape schliesst nur die oberste — eine
+    // bleibt offen.
+    await expect(dialog).toHaveCount(0, { timeout: 5000 });
   });
 });
 

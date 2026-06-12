@@ -586,8 +586,12 @@ test.describe('Ablage - Error Handling', () => {
     await page.goto('/kunden/non-existent-uuid-12345');
     await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
-    // Should show error or redirect
-    const errorMessage = page.getByText(/Fehler|Error|nicht gefunden/i);
+    // Should show error or redirect.
+    // .first(): Die Seite zeigt MEHRERE Fehler-Texte (h1 "Fehler",
+    // "Fehler beim Laden der Ordner", Toast "Nicht gefunden") — ohne .first()
+    // wirft isVisible() eine Strict-Mode-Exception, die das catch faelschlich
+    // zu false machte.
+    const errorMessage = page.getByText(/Fehler|Error|nicht gefunden/i).first();
     const redirected = !page.url().includes('non-existent');
 
     const hasErrorHandling = await errorMessage.isVisible().catch(() => false) || redirected;
@@ -616,9 +620,13 @@ test.describe('Ablage - Error Handling', () => {
         await archivCard.click();
         await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
-        // Look for empty state or document list
-        const emptyState = page.getByText(/Keine Dokumente|Noch keine Dokumente/i);
-        const documentTable = page.locator('table');
+        // Look for empty state or document list.
+        // HINWEIS: Schlaegt aktuell KORREKT fehl — App-Bug (Kategorie B,
+        // 2026-06-12): Die Kategorie-Dokumentliste zeigt "Fehler beim Laden
+        // der Dokumente: Request failed with status code 422" (Backend
+        // validiert folderId als UUID, Frontend schickt Ordner-Kuerzel).
+        const emptyState = page.getByText(/Keine Dokumente|Noch keine Dokumente/i).first();
+        const documentTable = page.locator('table').first();
 
         const hasContent = await emptyState.isVisible().catch(() => false) ||
           await documentTable.isVisible().catch(() => false);
@@ -881,16 +889,22 @@ test.describe('Ablage - Performance Tests', () => {
 
       const categoryCard = page.locator('[data-testid="category-card"]').first();
       if (await categoryCard.isVisible().catch(() => false)) {
+        // Messbasis: Zeit bis Tabelle ODER Leer-Zustand (kein networkidle in
+        // der Messstrecke). HINWEIS: Schlaegt aktuell KORREKT fehl — App-Bug
+        // (Kategorie B, 2026-06-12): Die Kategorie-Dokumentliste laedt nicht
+        // ("Fehler beim Laden der Dokumente: Request failed with status code
+        // 422" — GET /entities/{id}/folders/{folderKuerzel}/documents, das
+        // Backend validiert die folderId als UUID, das Frontend schickt das
+        // Ordner-Kuerzel wie "e2e"/"folie").
         const startTime = Date.now();
 
         await categoryCard.click();
-        await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
-
-        // Wait for documents table or empty state
-        await Promise.race([
-          page.locator('[data-testid="documents-table"]').waitFor({ timeout: PERFORMANCE_THRESHOLDS.PAGE_LOAD }),
-          page.getByText(/Keine Dokumente/i).waitFor({ timeout: PERFORMANCE_THRESHOLDS.PAGE_LOAD }),
-        ]).catch(() => {/* one will timeout */});
+        await page
+          .locator('[data-testid="documents-table"]')
+          .or(page.getByText(/Keine Dokumente/i))
+          .first()
+          .waitFor({ timeout: 10000 })
+          .catch(() => {/* weder Tabelle noch Leerzustand -> App-Bug oben */});
 
         const loadTime = Date.now() - startTime;
         console.log(`Document list load time: ${loadTime}ms`);
@@ -1045,6 +1059,15 @@ test.describe('Ablage - Performance Benchmark Report', () => {
         threshold: 1500,
         passed: loadTime < 1500,
       });
+
+      // Suche zuruecksetzen, sonst ist die Kundenliste fuer Test 3 leer
+      // gefiltert und die Kundenkarte verschwindet (Timeout beim Klick).
+      await searchInput.clear();
+      await page
+        .locator('[data-testid="customer-card"]')
+        .first()
+        .waitFor({ timeout: 10000 })
+        .catch(() => { /* keine Kunden -> Test 3 wird uebersprungen */ });
     }
 
     // Test 3: Navigation to folder
