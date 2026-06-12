@@ -35,6 +35,7 @@ import { FolderConfigList } from '../components/FolderConfigList';
 import { FolderConfigForm } from '../components/FolderConfigForm';
 import { ImportLogTable } from '../components/ImportLogTable';
 import { ImportRuleBuilder } from '../components/ImportRuleBuilder';
+import { ImportRunsPanel } from '../components/ImportRunsPanel';
 import { RuleTestingPanel } from '../components/RuleTestingPanel';
 import { useImportStats, useImportRules } from '../hooks/use-import-queries';
 
@@ -330,22 +331,29 @@ export function ImportsPage() {
               onEdit={handleEditFolder}
             />
           </div>
+          {/* B13 (W3-F2 Vertrauens-Loop): Live-Status der Import-Laeufe.
+              Das Panel war nach der Konsolidierung auf diese Seite nur noch
+              in den verwaisten Routen /admin/imports/email + /folder
+              eingebaut (nirgends verlinkt) und damit unerreichbar. */}
+          <ImportRunsPanel limit={5} />
           <ImportRulesList onEdit={handleEditRule} />
           <ImportLogTable maxItems={10} />
         </TabsContent>
 
-        <TabsContent value="email" className="pt-4">
+        <TabsContent value="email" className="space-y-6 pt-4">
           <EmailConfigList
             onCreateNew={handleCreateEmail}
             onEdit={handleEditEmail}
           />
+          <ImportRunsPanel sourceType="email" />
         </TabsContent>
 
-        <TabsContent value="folder" className="pt-4">
+        <TabsContent value="folder" className="space-y-6 pt-4">
           <FolderConfigList
             onCreateNew={handleCreateFolder}
             onEdit={handleEditFolder}
           />
+          <ImportRunsPanel sourceType="folder" />
         </TabsContent>
 
         <TabsContent value="rules" className="pt-4">
