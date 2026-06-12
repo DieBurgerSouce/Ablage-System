@@ -64,10 +64,11 @@ export function MileageCalculator({
 
   const onSubmit = async (data: MileageFormData) => {
     try {
+      // Backend kennt kein is_round_trip — Hin- und Rueckfahrt wird als
+      // doppelte Kilometerzahl uebergeben; vehicle_type in Backend-Konvention.
       const request: MileageCalculateRequest = {
-        kilometers: data.kilometers,
-        is_round_trip: data.is_round_trip,
-        vehicle_type: data.vehicle_type,
+        kilometers: data.is_round_trip ? data.kilometers * 2 : data.kilometers,
+        vehicle_type: data.vehicle_type === 'motorcycle' ? 'motorrad' : 'pkw',
       };
       const result = await calculateMutation.mutateAsync(request);
       setCalculation(result);
@@ -164,7 +165,7 @@ export function MileageCalculator({
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Gesamtkilometer</span>
-                <span className="font-mono">{formatKilometers(calculation.total_kilometers)}</span>
+                <span className="font-mono">{formatKilometers(calculation.kilometers)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Satz pro km</span>

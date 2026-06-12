@@ -267,19 +267,19 @@ function getProgressColor(progress?: number): string {
   return 'text-red-600';
 }
 
-function getStatusColor(onTrack?: boolean, progress?: number): string {
+function getStatusColor(onTrack?: boolean | null, progress?: number | null): string {
   if (onTrack === true) return 'text-green-600';
   if ((progress ?? 0) >= 25) return 'text-amber-600';
   return 'text-red-600';
 }
 
-function getStatusLabel(onTrack?: boolean, progress?: number): string {
+function getStatusLabel(onTrack?: boolean | null, progress?: number | null): string {
   if (onTrack === true) return 'Auf Kurs';
   if ((progress ?? 0) >= 25) return 'Gefährdet';
   return 'Verfehlt';
 }
 
-function getStatusBadgeClass(onTrack?: boolean, progress?: number): string {
+function getStatusBadgeClass(onTrack?: boolean | null, progress?: number | null): string {
   if (onTrack === true) return 'bg-green-600 hover:bg-green-700';
   if ((progress ?? 0) >= 25) return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
   return 'bg-red-600 hover:bg-red-700';

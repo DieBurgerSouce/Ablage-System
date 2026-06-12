@@ -17,7 +17,8 @@ export function formatCurrency(amount: number): string {
 /**
  * Formatiert ein Datum im deutschen Format
  */
-export function formatDate(date: string | Date): string {
+export function formatDate(date: string | Date | null): string {
+  if (!date) return '-';
   const d = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('de-DE', {
     year: 'numeric',

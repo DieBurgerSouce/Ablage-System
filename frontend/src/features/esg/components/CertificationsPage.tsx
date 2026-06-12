@@ -146,9 +146,9 @@ export function CertificationsPage() {
                         <Award className={`h-5 w-5 ${statusStyle.iconClass}`} />
                       </div>
                       <div>
-                        <p className="font-medium">{cert.name}</p>
+                        <p className="font-medium">{cert.certification_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {cert.description || getCategoryLabel(cert.category)}
+                          {cert.scope_description || getCategoryLabel(cert.category)}
                         </p>
                       </div>
                     </div>
@@ -181,7 +181,7 @@ export function CertificationsPage() {
 }
 
 // Helper functions
-function formatDate(dateString?: string): string {
+function formatDate(dateString?: string | null): string {
   if (!dateString) return '-';
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',

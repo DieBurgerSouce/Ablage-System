@@ -170,7 +170,7 @@ export function ApproveDialog({ open, onOpenChange, report, onSuccess }: Approve
     try {
       const result = await approveMutation.mutateAsync({
         reportId: report.id,
-        data: { approval_notes: data.approval_notes },
+        data: { notes: data.approval_notes },
       });
       onSuccess?.(result);
       onOpenChange(false);
@@ -289,7 +289,7 @@ export function RejectDialog({ open, onOpenChange, report, onSuccess }: RejectDi
     try {
       const result = await rejectMutation.mutateAsync({
         reportId: report.id,
-        data: { rejection_reason: data.rejection_reason },
+        data: { reason: data.rejection_reason },
       });
       onSuccess?.(result);
       onOpenChange(false);
@@ -419,7 +419,6 @@ export function PayDialog({ open, onOpenChange, report, onSuccess }: PayDialogPr
         data: {
           payment_method: data.payment_method,
           payment_reference: data.payment_reference,
-          notes: data.notes,
         },
       });
       onSuccess?.(result);

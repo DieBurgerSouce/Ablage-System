@@ -62,7 +62,7 @@ export function ReportsPage() {
           ))
         ) : templates && templates.length > 0 ? (
           templates.map((template) => (
-            <Card key={template.id} className="cursor-pointer hover:border-primary transition-colors">
+            <Card key={template.type} className="cursor-pointer hover:border-primary transition-colors">
               <CardHeader>
                 <CardTitle className="text-base">{template.name}</CardTitle>
                 <CardDescription>{template.description}</CardDescription>
@@ -203,9 +203,9 @@ export function ReportsPage() {
                     <Badge variant="default" className="bg-green-600">
                       {getReportStatusLabel(report.status)}
                     </Badge>
-                    {report.file_url && (
+                    {report.pdf_path && (
                       <Button variant="ghost" size="sm" asChild>
-                        <a href={report.file_url} download aria-label={`${report.title} herunterladen`}>
+                        <a href={report.pdf_path} download aria-label={`${report.title} herunterladen`}>
                           <Download className="h-4 w-4" />
                         </a>
                       </Button>

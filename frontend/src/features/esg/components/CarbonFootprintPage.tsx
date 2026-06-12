@@ -158,7 +158,7 @@ export function CarbonFootprintPage() {
                     {emission.consumption_value?.toLocaleString('de-DE')} {emission.consumption_unit}
                   </div>
                   <div>{emission.co2_equivalent_kg?.toLocaleString('de-DE', { maximumFractionDigits: 2 })}</div>
-                  <div>{formatDate(emission.emission_date)}</div>
+                  <div>{formatDate(emission.period_start)}</div>
                 </div>
               ))}
             </div>
@@ -193,10 +193,10 @@ export function CarbonFootprintPage() {
                       <div
                         className="w-full bg-green-500 rounded-t transition-all hover:bg-green-600"
                         style={{ height: `${height}%` }}
-                        title={`${point.period}: ${formatTonnes(point.total_kg)}`}
+                        title={`${point.month}: ${formatTonnes(point.total_kg)}`}
                       />
                       <span className="text-xs text-muted-foreground mt-2 rotate-45 origin-left">
-                        {point.period?.slice(-2)}
+                        {point.month?.slice(-2)}
                       </span>
                     </div>
                   );

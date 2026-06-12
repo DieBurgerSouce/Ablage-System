@@ -223,8 +223,11 @@ export interface ExpenseReportRejectRequest {
 /**
  * Spesenabrechnung auszahlen
  */
+// Backend-Vertrag: ExpenseReportPayRequest (app/db/schemas.py)
 export interface ExpenseReportPayRequest {
-  register_id?: string;
+  payment_method: string;
+  payment_reference?: string;
+  cash_register_id?: string;
 }
 
 // ==================== Calculators ====================
@@ -260,9 +263,11 @@ export interface PerDiemCalculation {
 /**
  * Kilometergeld-Berechnung Anfrage
  */
+// Backend-Vertrag: MileageCalculationRequest (kilometers + vehicle_type)
 export interface MileageCalculateRequest {
   kilometers: number;
-  rate_per_km?: number;
+  /** 'pkw' | 'motorrad' (Backend-Konvention) */
+  vehicle_type?: string;
 }
 
 /**
