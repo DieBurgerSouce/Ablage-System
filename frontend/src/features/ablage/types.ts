@@ -567,7 +567,9 @@ export interface UseDocumentUploadOptions {
   entityType: 'customer' | 'supplier';
   folderId: string;
   category: string;
-  onSuccess?: () => void;
+  /** OCR-Backend (deepseek | got-ocr | surya | surya-gpu); Default: deepseek */
+  ocrBackend?: string;
+  onSuccess?: (response: UploadCompleteResponse) => void;
   onError?: (error: Error) => void;
 }
 
