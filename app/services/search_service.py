@@ -56,7 +56,14 @@ class SearchService:
     """
 
     def __init__(self) -> None:
-        self.embedding_service = get_embedding_service()
+        # W4b: NICHT eager get_embedding_service() — dessen Konstruktor
+        # erzwingt die volle CUDA-Context-Init (torch.cuda.get_device_
+        # properties). Schreibpfade (z.B. bulk_delete -> Such-Cache-
+        # Invalidierung) konstruieren eine SearchService nur fuer einen
+        # Redis-Pattern-Delete und blockierten dadurch sekundenlang/haengend
+        # an der GPU-Init. Lazy via Property -> nur echte Embedding-Nutzung
+        # (Semantik-/Hybrid-Suche) loest die GPU-Init aus.
+        self._embedding_service: Optional[Any] = None
         self.fts_weight = settings.HYBRID_FTS_WEIGHT
         self.semantic_weight = settings.HYBRID_SEMANTIC_WEIGHT
         self.similarity_threshold = settings.SEMANTIC_SIMILARITY_THRESHOLD
@@ -78,6 +85,13 @@ class SearchService:
 
         # Adaptive RRF-Gewichte (Query-längenabhängig)
         self._adaptive_weights_enabled = settings.ADAPTIVE_RRF_WEIGHTS_ENABLED
+
+    @property
+    def embedding_service(self):
+        """Lazy: erst bei echter Embedding-Nutzung wird die GPU initialisiert."""
+        if self._embedding_service is None:
+            self._embedding_service = get_embedding_service()
+        return self._embedding_service
 
     async def _get_redis(self) -> RedisStateManager:
         """Lazy-load Redis connection."""
