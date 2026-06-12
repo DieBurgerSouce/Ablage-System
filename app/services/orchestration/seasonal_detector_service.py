@@ -31,7 +31,7 @@ from sqlalchemy import and_, extract, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log
-from app.db.models import Document, InvoiceTracking, BankTransaction, Company
+from app.db.models import Document, InvoiceTracking, BankAccount, BankTransaction, Company
 from app.db.models_alert import Alert, AlertCategory, AlertSeverity
 
 logger = structlog.get_logger(__name__)
@@ -368,9 +368,10 @@ class SeasonalDetectorService:
             select(
                 extract('year', InvoiceTracking.paid_at).label('year'),
                 extract('month', InvoiceTracking.paid_at).label('month'),
-                func.sum(InvoiceTracking.gross_amount).label('total'),
+                # InvoiceTracking hat KEIN gross_amount — reale Spalte: amount
+                func.sum(InvoiceTracking.amount).label('total'),
                 func.count(InvoiceTracking.id).label('count'),
-                func.avg(InvoiceTracking.gross_amount).label('avg'),
+                func.avg(InvoiceTracking.amount).label('avg'),
             )
             .join(Document, InvoiceTracking.document_id == Document.id)
             .where(
@@ -389,16 +390,18 @@ class SeasonalDetectorService:
         result = await db.execute(revenue_query)
         revenue_data = {(int(r[0]), int(r[1])): r for r in result.all()}
 
-        # Ausgaben aus Transaktionen (negativ)
+        # Ausgaben aus Transaktionen (negativ) — Company-Scope via
+        # BankAccount-JOIN (BankTransaction hat KEINE company_id-Spalte)
         expense_query = (
             select(
                 extract('year', BankTransaction.booking_date).label('year'),
                 extract('month', BankTransaction.booking_date).label('month'),
                 func.sum(BankTransaction.amount).label('total'),
             )
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
             .where(
                 and_(
-                    BankTransaction.company_id == company_id,
+                    BankAccount.company_id == company_id,
                     BankTransaction.booking_date >= cutoff_date,
                     BankTransaction.amount < 0,
                 )

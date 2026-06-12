@@ -32,12 +32,16 @@ import structlog
 from prometheus_client import Counter, Histogram, Gauge
 from sqlalchemy import select, and_, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import (
+    BankAccount,
     BankTransaction,
+    EntityType,
     InvoiceTracking,
     BusinessEntity,
 )
+from app.services.invoice_direction import is_open_invoice
 
 logger = structlog.get_logger(__name__)
 
@@ -379,10 +383,13 @@ class CashflowPredictor:
     ) -> Decimal:
         """Laedt aktuellen Kontostand aus Bank-Transaktionen."""
         # Summe aller Transaktionen = aktueller Kontostand
-        query = select(
-            func.coalesce(func.sum(BankTransaction.amount), 0)
-        ).where(
-            BankTransaction.company_id == company_id
+        # (Company-Scope via BankAccount-JOIN — BankTransaction hat
+        # KEINE company_id-Spalte)
+        query = (
+            select(func.coalesce(func.sum(BankTransaction.amount), 0))
+            .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(BankAccount.company_id == company_id)
         )
 
         result = await db.execute(query)
@@ -406,11 +413,15 @@ class CashflowPredictor:
         """
         cutoff = datetime.now(timezone.utc) - timedelta(days=self.MIN_HISTORICAL_DAYS)
 
-        # Lade historische Transaktionen
-        query = select(BankTransaction).where(
-            and_(
-                BankTransaction.company_id == company_id,
-                BankTransaction.booking_date >= cutoff,
+        # Lade historische Transaktionen (Company-Scope via BankAccount-JOIN)
+        query = (
+            select(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(
+                and_(
+                    BankAccount.company_id == company_id,
+                    BankTransaction.booking_date >= cutoff,
+                )
             )
         )
 
@@ -524,11 +535,20 @@ class CashflowPredictor:
         company_id: UUID,
     ) -> List[PendingInvoice]:
         """Laedt ausstehende Rechnungen mit Zahlungswahrscheinlichkeit."""
-        # Forderungen (eingehend) und Verbindlichkeiten (ausgehend)
-        query = select(InvoiceTracking).where(
-            and_(
-                InvoiceTracking.company_id == company_id,
-                InvoiceTracking.status.in_(["pending", "partial", "overdue"]),
+        # Forderungen (eingehend) und Verbindlichkeiten (ausgehend).
+        # "pending" existiert nicht in InvoiceStatus — offene Rechnungen via
+        # Status-Allowlist (invoice_direction.py). Entity wird eager geladen,
+        # da die Richtung aus entity_type abgeleitet wird (InvoiceTracking
+        # hat KEINE invoice_type-Spalte) und Lazy-Load in Async-Sessions
+        # nicht funktioniert.
+        query = (
+            select(InvoiceTracking)
+            .options(selectinload(InvoiceTracking.entity))
+            .where(
+                and_(
+                    InvoiceTracking.company_id == company_id,
+                    is_open_invoice(),
+                )
             )
         )
 
@@ -549,8 +569,13 @@ class CashflowPredictor:
 
             pending.append(PendingInvoice(
                 id=inv.id,
-                amount=inv.outstanding_amount or inv.amount,
-                is_incoming=inv.invoice_type == "incoming",  # Forderung
+                amount=Decimal(str(inv.outstanding_amount or inv.amount or 0)),
+                # is_incoming = eingehende Zahlung = Forderung = Kunde
+                # (Richtung via Entity-Typ, siehe invoice_direction.py)
+                is_incoming=(
+                    inv.entity is not None
+                    and inv.entity.entity_type == EntityType.CUSTOMER.value
+                ),
                 due_date=inv.due_date or datetime.now(timezone.utc),
                 entity_name=inv.entity.name if inv.entity else "Unbekannt",
                 payment_probability=payment_prob,
@@ -655,23 +680,32 @@ class CashflowPredictor:
         # Mindestens 3 Monate Historie für Muster-Erkennung
         cutoff = datetime.now(timezone.utc) - timedelta(days=90)
 
-        # Gruppiere nach Verwendungszweck/Partner
-        query = select(
-            BankTransaction.purpose,
-            BankTransaction.partner_name,
-            func.array_agg(BankTransaction.amount).label("amounts"),
-            func.array_agg(BankTransaction.booking_date).label("dates"),
-            func.count().label("count"),
-        ).where(
-            and_(
-                BankTransaction.company_id == company_id,
-                BankTransaction.booking_date >= cutoff,
+        # Gruppiere nach Verwendungszweck/Partner. BankTransaction hat KEINE
+        # Spalten purpose/partner_name/company_id — reale Spalten sind
+        # reference_text/counterparty_name, Company-Scope via BankAccount-JOIN.
+        # Labels behalten die alten Namen für den Downstream-Code bei.
+        query = (
+            select(
+                BankTransaction.reference_text.label("purpose"),
+                BankTransaction.counterparty_name.label("partner_name"),
+                func.array_agg(BankTransaction.amount).label("amounts"),
+                func.array_agg(BankTransaction.booking_date).label("dates"),
+                func.count().label("count"),
             )
-        ).group_by(
-            BankTransaction.purpose,
-            BankTransaction.partner_name,
-        ).having(
-            func.count() >= 2  # Mindestens 2 Transaktionen
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(
+                and_(
+                    BankAccount.company_id == company_id,
+                    BankTransaction.booking_date >= cutoff,
+                )
+            )
+            .group_by(
+                BankTransaction.reference_text,
+                BankTransaction.counterparty_name,
+            )
+            .having(
+                func.count() >= 2  # Mindestens 2 Transaktionen
+            )
         )
 
         result = await db.execute(query)
