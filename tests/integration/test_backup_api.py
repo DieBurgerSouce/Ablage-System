@@ -3,6 +3,13 @@
 Integration tests for Backup API endpoints.
 
 Tests the backup API endpoints with mocked services.
+
+W3b (2026-06-12): Lokal lauffaehig gemacht (W3-Triage-Rezept):
+- Rate-Limiter fail-open via Settings-Override (TestClient-IP "testclient"
+  ist nicht whitelisted -> fail-closed maskierte ALLE Requests als 503).
+- Dummy-Bearer-Header am Client: aktiviert den bearer_token_bypass der
+  CSRF-Middleware fuer die POST-Endpoints (Auth laeuft ohnehin ueber
+  dependency_overrides, der Header-Inhalt ist irrelevant).
 """
 
 import pytest
@@ -18,6 +25,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from app.main import app
 from app.services.backup_service import BackupResult
 from app.api.dependencies import get_current_superuser
+
+
+@pytest.fixture(autouse=True)
+def _rate_limiter_fail_open(monkeypatch):
+    """Rate-Limiter lokal fail-open stellen (W3-Triage-Rezept).
+
+    Ohne erreichbares Redis antwortet der fail-closed Rate-Limiter sonst
+    pauschal mit 503 und maskiert die echte Endpoint-Antwort.
+    """
+    from app.core.config import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "RATE_LIMIT_FAIL_CLOSED", False)
+    monkeypatch.setattr(app_settings, "RATE_LIMIT_FAIL_CLOSED_CRITICAL", False)
 
 
 @pytest.fixture
@@ -47,11 +67,15 @@ def mock_backup_service():
 
 @pytest.fixture
 def client(mock_superuser):
-    """Create test client with dependency overrides."""
+    """Create test client with dependency overrides.
+
+    Der Dummy-Bearer-Header sorgt fuer den CSRF-bearer_token_bypass bei
+    POST-Requests; die Authentifizierung selbst kommt aus dem Override.
+    """
     # Override authentication dependency
     app.dependency_overrides[get_current_superuser] = lambda: mock_superuser
 
-    yield TestClient(app)
+    yield TestClient(app, headers={"Authorization": "Bearer test-token"})
 
     # Clean up overrides
     app.dependency_overrides.clear()
