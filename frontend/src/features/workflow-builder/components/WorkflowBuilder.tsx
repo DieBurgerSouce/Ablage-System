@@ -60,23 +60,6 @@ import {
  * um spezialisierte Konfigurationsfelder.
  */
 
-/** Konfigurationsfelder pro Node-Typ */
-interface NodeTypeConfig {
-  type: string;
-  label: string;
-  category: string;
-  icon: string;
-  description: string;
-  configFields: Array<{
-    key: string;
-    label: string;
-    type: 'text' | 'number' | 'select' | 'boolean' | 'cron';
-    options?: string[];
-    defaultValue?: string | number | boolean;
-    required?: boolean;
-  }>;
-}
-
 
 // ==================== ReactFlow Node Type Registry ====================
 
@@ -376,7 +359,7 @@ function WorkflowBuilderInner() {
       if (!template) return;
 
       const newNodes: Node<WorkflowBlockData>[] = template.blocks
-        .map((block) => {
+        .map((block): Node<WorkflowBlockData> | null => {
           const definition = blocks?.find((b) => b.type === block.type);
           if (!definition) {
             logger.warn(`Block definition not found for type: ${block.type}`);

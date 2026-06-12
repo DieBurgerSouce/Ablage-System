@@ -61,7 +61,6 @@ import type {
   ExportFormat,
   FieldDefinition,
   DataType,
-  AggregationType,
 } from '../types';
 
 interface ReportBuilderProps {

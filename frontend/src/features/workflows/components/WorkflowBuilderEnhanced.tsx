@@ -124,6 +124,18 @@ function WorkflowBuilderInner({
   const [importJson, setImportJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ==================== History ====================
+  // (vor den Consumern deklariert — useCallback-const unterliegt der TDZ)
+
+  const saveHistory = useCallback(() => {
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push({ nodes: [...nodes], edges: [...edges] });
+      return newHistory.slice(-50);
+    });
+    setHistoryIndex((prev) => Math.min(prev + 1, 49));
+  }, [nodes, edges, historyIndex]);
+
   // ==================== Connections ====================
 
   const onConnect: OnConnect = useCallback(
@@ -221,15 +233,6 @@ function WorkflowBuilderInner({
   );
 
   // ==================== History ====================
-
-  const saveHistory = useCallback(() => {
-    setHistory((prev) => {
-      const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push({ nodes: [...nodes], edges: [...edges] });
-      return newHistory.slice(-50);
-    });
-    setHistoryIndex((prev) => Math.min(prev + 1, 49));
-  }, [nodes, edges, historyIndex]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
