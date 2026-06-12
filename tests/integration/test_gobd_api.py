@@ -110,7 +110,8 @@ def mock_db():
 @pytest.fixture
 def client(mock_user, mock_company):
     """Create test client with dependency overrides."""
-    from app.api.dependencies import get_current_user, get_db
+    # W3: Router nutzt get_current_active_user (nicht get_current_user)
+    from app.api.dependencies import get_current_active_user, get_db
     from app.middleware.company_context import require_company
 
     # Mock db session
@@ -122,7 +123,7 @@ def client(mock_user, mock_company):
     async def mock_require_company():
         return mock_company.id
 
-    app.dependency_overrides[get_current_user] = lambda: mock_user
+    app.dependency_overrides[get_current_active_user] = lambda: mock_user
     app.dependency_overrides[get_db] = mock_get_db
     app.dependency_overrides[require_company] = mock_require_company
 
@@ -134,7 +135,11 @@ def client(mock_user, mock_company):
 @pytest.fixture
 def admin_client(mock_admin_user, mock_company):
     """Create test client for admin user."""
-    from app.api.dependencies import get_current_user, get_current_superuser, get_db
+    from app.api.dependencies import (
+        get_current_active_user,
+        get_current_superuser,
+        get_db,
+    )
     from app.middleware.company_context import require_company
 
     mock_db_session = AsyncMock()
@@ -145,7 +150,7 @@ def admin_client(mock_admin_user, mock_company):
     async def mock_require_company():
         return mock_company.id
 
-    app.dependency_overrides[get_current_user] = lambda: mock_admin_user
+    app.dependency_overrides[get_current_active_user] = lambda: mock_admin_user
     app.dependency_overrides[get_current_superuser] = lambda: mock_admin_user
     app.dependency_overrides[get_db] = mock_get_db
     app.dependency_overrides[require_company] = mock_require_company
