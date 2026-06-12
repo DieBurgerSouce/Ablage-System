@@ -501,7 +501,7 @@ export function EmailConfigWizard({ onComplete, onCancel }: EmailConfigWizardPro
                     name="folder_processed"
                     control={form.control}
                     render={({ field }) => (
-                      <Input {...field} placeholder="Processed" />
+                      <Input {...field} placeholder="Verarbeitet" />
                     )}
                   />
                 </div>
