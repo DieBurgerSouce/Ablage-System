@@ -122,6 +122,24 @@ INDUSTRY_RISK_SCORES: Dict[str, int] = {
 # External Data Provider Interfaces (Stubs for future integration)
 # ============================================================================
 
+# W1-011: Verfuegbarkeits-Status externer Risikodatenquellen.
+# Werte sind bewusst deutsch (nutzersichtbar via API/UI):
+#   - "nicht_konfiguriert": Provider hat keine Credentials/API-Keys
+#   - "verfuegbar":         Provider hat Daten geliefert
+#   - "keine_daten":        Provider konfiguriert, aber keine Daten zur Entity
+#   - "nicht_abgefragt":    Provider konfiguriert, aber nicht abgefragt
+#                           (First-Hit-Semantik: erster Treffer gewinnt)
+#   - "fehler":             Abfrage fehlgeschlagen
+SOURCE_STATUS_NICHT_KONFIGURIERT = "nicht_konfiguriert"
+SOURCE_STATUS_VERFUEGBAR = "verfuegbar"
+SOURCE_STATUS_KEINE_DATEN = "keine_daten"
+SOURCE_STATUS_NICHT_ABGEFRAGT = "nicht_abgefragt"
+SOURCE_STATUS_FEHLER = "fehler"
+
+# Einmaliges WARN-Log pro Prozess fuer unkonfigurierte Quellen (W1-011).
+_UNCONFIGURED_SOURCES_WARNED = False
+
+
 @dataclass
 class ExternalData:
     """External data from third-party providers."""
@@ -336,6 +354,22 @@ class RiskFactors:
         self.trend_adjustment: int = 0  # Score-Anpassung basierend auf Trend
         self.external_data: Optional[ExternalData] = None
         self.economic_indicator_score: float = 50.0
+        # W1-011: Status je externer Datenquelle (provider_name -> Status)
+        self.external_source_status: Dict[str, str] = {}
+
+    @property
+    def external_missing_sources(self) -> List[str]:
+        """Externe Quellen, die KEINE Daten geliefert haben (W1-011)."""
+        return [
+            provider
+            for provider, status in self.external_source_status.items()
+            if status != SOURCE_STATUS_VERFUEGBAR
+        ]
+
+    @property
+    def external_data_complete(self) -> bool:
+        """True, wenn alle bekannten externen Quellen Daten geliefert haben."""
+        return bool(self.external_source_status) and not self.external_missing_sources
 
     def to_dict(self) -> Dict[str, object]:
         """Konvertiert zu Dictionary für JSON-Speicherung."""
@@ -363,6 +397,12 @@ class RiskFactors:
             if self.external_data.credit_score:
                 result["external_credit_score"] = self.external_data.credit_score
 
+        # W1-011: Datenquellen-Luecken ehrlich kennzeichnen (additiv).
+        if self.external_source_status:
+            result["external_sources"] = dict(self.external_source_status)
+            result["external_data_complete"] = self.external_data_complete
+            result["external_missing_sources"] = self.external_missing_sources
+
         return result
 
 
@@ -383,6 +423,12 @@ class RiskScoreDetailedResponse:
     recommendations: List[str]  # German recommendations
     payment_behavior_score: float
     version: str = "2.0"
+    # W1-011 (additiv): Verfuegbarkeit der externen Risikodatenquellen.
+    # is_complete=False + missing_sources zeigen dem UI ehrlich an, welche
+    # Quellen (NorthData/Schufa-B2B/Creditreform) keine Daten geliefert haben.
+    external_sources: Dict[str, str] = field(default_factory=dict)
+    is_complete: bool = False
+    missing_sources: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
         """Konvertiert zu serialisierbarem Dictionary."""
@@ -407,6 +453,10 @@ class RiskScoreDetailedResponse:
             "recommendations": self.recommendations,
             "payment_behavior_score": round(self.payment_behavior_score, 1),
             "version": self.version,
+            # W1-011: Datenquellen-Transparenz (additiv)
+            "external_sources": self.external_sources,
+            "is_complete": self.is_complete,
+            "missing_sources": self.missing_sources,
         }
 
 
@@ -628,6 +678,10 @@ class RiskScoringService:
             recommendations=recommendations,
             payment_behavior_score=max(0, min(100, payment_behavior_score)),
             version=self.version,
+            # W1-011: Datenquellen-Luecken ehrlich ausweisen
+            external_sources=dict(factors.external_source_status),
+            is_complete=factors.external_data_complete,
+            missing_sources=factors.external_missing_sources,
         )
 
     async def _collect_factors(
@@ -905,26 +959,66 @@ class RiskScoringService:
 
         Aktuell: Alle Provider sind Stubs (nicht implementiert).
         Bei Konfiguration: Ersten verfügbaren Provider nutzen.
+
+        W1-011: Jede Quelle bekommt einen expliziten Verfuegbarkeits-Status
+        in ``factors.external_source_status`` statt stillem None; nicht
+        konfigurierte Quellen werden einmal pro Prozess als WARN geloggt.
         """
+        global _UNCONFIGURED_SOURCES_WARNED
+
+        unconfigured: List[str] = []
+        data_found = False
+
         for provider in self._external_providers:
+            name = provider.provider_name
             try:
-                if await provider.is_available():
-                    data = await provider.get_company_data(entity_id, vat_id)
-                    if data:
-                        factors.external_data = data
-                        # Externer Score beeinflusst economic_indicator_score
-                        if data.credit_score:
-                            # Normalisiere externen Score auf 0-100 (höher = riskanter)
-                            # Annahme: Externer Score ist 0-100, niedrig = gut
-                            factors.economic_indicator_score = float(data.credit_score)
-                        break
+                if not await provider.is_available():
+                    factors.external_source_status[name] = (
+                        SOURCE_STATUS_NICHT_KONFIGURIERT
+                    )
+                    unconfigured.append(name)
+                    continue
+
+                if data_found:
+                    # Erster Treffer gewinnt (bestehende Semantik); weitere
+                    # konfigurierte Quellen werden nicht mehr abgefragt.
+                    factors.external_source_status.setdefault(
+                        name, SOURCE_STATUS_NICHT_ABGEFRAGT
+                    )
+                    continue
+
+                data = await provider.get_company_data(entity_id, vat_id)
+                if data:
+                    factors.external_source_status[name] = SOURCE_STATUS_VERFUEGBAR
+                    factors.external_data = data
+                    # Externer Score beeinflusst economic_indicator_score
+                    if data.credit_score:
+                        # Normalisiere externen Score auf 0-100 (höher = riskanter)
+                        # Annahme: Externer Score ist 0-100, niedrig = gut
+                        factors.economic_indicator_score = float(data.credit_score)
+                    data_found = True
+                else:
+                    factors.external_source_status[name] = SOURCE_STATUS_KEINE_DATEN
             except Exception as e:
+                factors.external_source_status[name] = SOURCE_STATUS_FEHLER
                 logger.warning(
                     "external_data_fetch_failed",
-                    provider=provider.provider_name,
+                    provider=name,
                     entity_id=str(entity_id),
                     error=str(e),
                 )
+
+        # Einmaliges WARN pro Prozess: unkonfigurierte Risikodatenquellen.
+        if unconfigured and not _UNCONFIGURED_SOURCES_WARNED:
+            _UNCONFIGURED_SOURCES_WARNED = True
+            logger.warning(
+                "risk_datenquellen_nicht_konfiguriert",
+                sources=unconfigured,
+                message=(
+                    "Externe Risikodatenquellen ohne Konfiguration - "
+                    "Risiko-Scores basieren nur auf internen Daten"
+                ),
+            )
 
     def _score_payment_delay(self, delay_days: float) -> float:
         """Bewertet Zahlungsverzögerung. 0 Tage = 0 Score, 30+ Tage = 100."""
