@@ -129,7 +129,7 @@ export function ActiveJobsTab() {
 
   // Mutations
   const cancelJob = useCancelJob();
-  const retryJob = useRetryJob();
+  void useRetryJob();
   const pauseJob = usePauseJob();
   const resumeJob = useResumeJob();
   const forceKillJob = useForceKillJob();
@@ -232,7 +232,6 @@ export function ActiveJobsTab() {
   };
 
   const isAllSelected = activeJobs.length > 0 && selectedJobs.length === activeJobs.length;
-  const isSomeSelected = selectedJobs.length > 0 && selectedJobs.length < activeJobs.length;
 
   // Keyboard navigation handler for table rows
   const handleRowKeyDown = useCallback(

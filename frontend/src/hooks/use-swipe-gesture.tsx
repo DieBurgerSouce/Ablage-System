@@ -89,7 +89,7 @@ export function useSwipeGesture(options: SwipeGestureOptions): SwipeGestureHandl
   )
 
   const onTouchEnd = useCallback(
-    (e: TouchEvent) => {
+    (_e: TouchEvent) => {
       if (!touchDataRef.current) return
 
       const data = touchDataRef.current

@@ -93,7 +93,7 @@ export function useDocumentShortcuts(options: UseDocumentShortcutsOptions): UseD
     onClearSelection,
     onOpen,
     onToggleSelect,
-    onRangeSelect,
+    onRangeSelect: _onRangeSelect,
     focusedIndex: externalFocusedIndex = -1,
     onFocusChange,
     columnCount = 1,

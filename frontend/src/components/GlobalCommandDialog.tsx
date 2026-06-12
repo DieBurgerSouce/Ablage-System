@@ -107,7 +107,7 @@ export function GlobalCommandDialog() {
         results,
         entities,
         suggestions,
-        interpretation,
+        interpretation: _interpretation,
         searchTimeMs,
         searchMode,
         isSearchLoading,

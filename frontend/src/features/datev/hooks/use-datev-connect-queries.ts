@@ -402,7 +402,7 @@ export function useExportBuchung() {
     return useMutation({
         mutationFn: ({ connectionId, buchungId }: { connectionId: string; buchungId: string }) =>
             datevConnectService.exportBuchung(connectionId, buchungId),
-        onSuccess: (_, variables) => {
+        onSuccess: (_, _variables) => {
             queryClient.invalidateQueries({
                 queryKey: datevConnectQueryKeys.buchungen(),
             });
@@ -463,7 +463,7 @@ export function useAcceptKontierung() {
             vorschlagId: string;
             data?: DATEVKontierungAcceptRequest;
         }) => datevConnectService.acceptKontierung(connectionId, vorschlagId, data),
-        onSuccess: (_, variables) => {
+        onSuccess: (_, _variables) => {
             queryClient.invalidateQueries({
                 queryKey: datevConnectQueryKeys.kontierung(),
             });

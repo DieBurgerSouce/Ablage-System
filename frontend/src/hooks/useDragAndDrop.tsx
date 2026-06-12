@@ -60,7 +60,7 @@ export interface UseDragAndDropOptions<TData = unknown> {
   animationDuration?: number
 }
 
-export interface UseDragAndDropReturn<TData = unknown> {
+export interface UseDragAndDropReturn {
   /** Aktueller Drag-State */
   dragState: DragState
   /** Handler für DndContext */
@@ -84,12 +84,11 @@ export interface UseDragAndDropReturn<TData = unknown> {
 
 export function useDragAndDrop<TData = unknown>(
   options: UseDragAndDropOptions<TData> = {}
-): UseDragAndDropReturn<TData> {
+): UseDragAndDropReturn {
   const {
     onDrop,
     onCancel,
     canDrop: canDropFn,
-    enableMultiSelect = true,
   } = options
 
   // State

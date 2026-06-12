@@ -111,7 +111,7 @@ interface TestResultDisplayProps {
   testType: 'email' | 'folder';
 }
 
-function TestResultDisplay({ results, testType }: TestResultDisplayProps) {
+function TestResultDisplay({ results, testType: _testType }: TestResultDisplayProps) {
   if (results.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

@@ -105,7 +105,7 @@ export const ChatMessage = memo(function ChatMessage({
                 {isAssistant && message.sources && message.sources.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-1">
                         <TooltipProvider>
-                            {message.sources.map((source, index) => (
+                            {message.sources.map((source, _index) => (
                                 <Tooltip key={source.document_id}>
                                     <TooltipTrigger asChild>
                                         <Button

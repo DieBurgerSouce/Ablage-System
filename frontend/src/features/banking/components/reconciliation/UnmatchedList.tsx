@@ -146,7 +146,8 @@ export function UnmatchedList({
     const [showFilters, setShowFilters] = useState(false);
 
     // Data Fetching
-    const { data: accounts } = useAccounts();
+    // Hook beibehalten (vorgeladene Kontenliste im Cache), Binding ungenutzt
+    useAccounts();
     const {
         data: unmatchedTx,
         isLoading,

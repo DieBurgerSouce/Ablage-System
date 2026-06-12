@@ -75,7 +75,7 @@ function BranchNode({ data, selected }: NodeProps<BranchNodeData>) {
 
       {/* Branch Labels */}
       <div className="flex justify-between border-t border-border px-2 py-1">
-        {handlePositions.map((handle, index) => (
+        {handlePositions.map((handle, _index) => (
           <div
             key={handle.id}
             className={cn(

@@ -402,7 +402,6 @@ function RecommendationPanel({ request, customWeights }: RecommendationPanelProp
     true
   );
   // Avoid unused variable warning
-  const _query = { request, customWeights };
 
   if (isLoading) {
     return (

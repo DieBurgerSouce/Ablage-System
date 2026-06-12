@@ -121,7 +121,7 @@ interface TodayItem {
 }
 
 function buildTodayItems(
-    stats: ProcessingStats | undefined,
+    _stats: ProcessingStats | undefined,
     queue: { failed_today?: number; pending?: number } | undefined,
     financeAgg: { pendingDeadlines?: number; totalNachzahlung?: number } | undefined,
     deadlines: { overdueCount?: number; urgentCount?: number; items?: Array<{ documentName: string; daysUntil: number }> } | undefined,

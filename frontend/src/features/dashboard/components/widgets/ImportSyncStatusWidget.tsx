@@ -142,16 +142,6 @@ const getStatusColor = (status: string): string => {
     }
 };
 
-const getStatusLabel = (status: string): string => {
-    const labels: Record<string, string> = {
-        synced: 'Synchronisiert',
-        syncing: 'Sync läuft...',
-        error: 'Fehler',
-        stale: 'Veraltet',
-        disabled: 'Deaktiviert',
-    };
-    return labels[status] || status;
-};
 
 // Components
 function SourceStatusItem({ source }: { source: ImportSourceStatus }) {

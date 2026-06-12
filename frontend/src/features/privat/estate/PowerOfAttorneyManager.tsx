@@ -97,7 +97,7 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
   const existingTypes = new Set(poas?.map((p) => p.type) ?? []);
   const missingEssential = Object.entries(POA_TYPES)
     .filter(([type, info]) => info.essential && !existingTypes.has(type))
-    .map(([type, info]) => info.label);
+    .map(([_type, info]) => info.label);
 
   if (isLoading) {
     return (

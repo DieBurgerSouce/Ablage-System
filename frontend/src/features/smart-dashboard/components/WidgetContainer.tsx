@@ -28,7 +28,7 @@ interface WidgetContainerProps {
 export function WidgetContainer({
   title,
   children,
-  widgetId,
+  widgetId: _widgetId,
   className,
   onMaximize,
   onConfigure,

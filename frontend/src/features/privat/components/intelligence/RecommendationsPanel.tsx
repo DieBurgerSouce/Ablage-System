@@ -87,7 +87,7 @@ export function RecommendationsPanel({
   showFilters = true,
 }: RecommendationsPanelProps) {
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
-  const [priorityFilter, setPriorityFilter] = React.useState<string | null>(null);
+  const [priorityFilter, _setPriorityFilter] = React.useState<string | null>(null);
 
   const {
     data: recommendations,

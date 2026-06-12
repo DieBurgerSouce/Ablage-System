@@ -32,7 +32,7 @@ interface DraftBox {
 }
 
 export function BoundingBoxAnnotator({
-  documentId,
+  documentId: _documentId,
   page,
   imageUrl,
   existingBoxes,

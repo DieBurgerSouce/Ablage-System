@@ -187,7 +187,6 @@ export function TrainingDataExport() {
     }
   };
 
-  const selectedFormat = EXPORT_FORMATS.find((f) => f.value === config.format);
 
   return (
     <Card className="h-full flex flex-col">

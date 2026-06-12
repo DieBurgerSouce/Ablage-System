@@ -78,13 +78,6 @@ function useComplianceSummary() {
 }
 
 // Helper functions
-const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
-};
 
 const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -136,11 +129,6 @@ const getScoreColor = (score: number): string => {
     return 'text-red-600';
 };
 
-const getProgressColor = (score: number): string => {
-    if (score >= 90) return 'bg-green-500';
-    if (score >= 70) return 'bg-yellow-500';
-    return 'bg-red-500';
-};
 
 // Components
 function DeadlineItem({ deadline }: { deadline: ComplianceDeadline }) {

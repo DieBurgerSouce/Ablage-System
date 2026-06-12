@@ -88,17 +88,9 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 0,
   }).format(value);
 
-const getTaxClassLabel = (taxClass: 1 | 2 | 3): string => {
-  const labels: Record<1 | 2 | 3, string> = {
-    1: 'Klasse I (Ehepartner, Kinder)',
-    2: 'Klasse II (Geschwister, Neffen)',
-    3: 'Klasse III (Alle anderen)',
-  };
-  return labels[taxClass];
-};
 
 export function InheritanceTaxCalculator({
-  spaceId,
+  spaceId: _spaceId,
   taxCalculation,
 }: InheritanceTaxCalculatorProps) {
   const [showCalculator, setShowCalculator] = useState(false);

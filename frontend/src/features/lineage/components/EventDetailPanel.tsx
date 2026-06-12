@@ -341,7 +341,7 @@ interface EventDataRendererProps {
 function EventDataRenderer({
   eventType,
   eventData,
-  onNavigateToDocument,
+  onNavigateToDocument: _onNavigateToDocument,
   onNavigateToEntity,
 }: EventDataRendererProps) {
   switch (eventType) {

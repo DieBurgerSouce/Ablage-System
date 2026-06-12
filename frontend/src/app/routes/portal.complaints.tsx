@@ -101,7 +101,8 @@ function ComplaintsPage() {
   const search = useSearch({ from: '/portal/complaints' });
   const [dialogOpen, setDialogOpen] = useState(!!search.invoice_id);
   const { data: complaints, isLoading } = usePortalComplaints({});
-  const { data: complaintTypes } = usePortalComplaintTypes();
+  // Hook beibehalten (laedt/cached Beschwerde-Typen), Binding ungenutzt
+  usePortalComplaintTypes();
   const createComplaint = usePortalCreateComplaint();
 
   const {

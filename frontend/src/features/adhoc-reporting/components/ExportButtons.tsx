@@ -22,7 +22,7 @@ const EXPORT_ICONS: Record<ExportFormat, React.ComponentType<{ className?: strin
 };
 
 export function ExportButtons({
-  reportId,
+  reportId: _reportId,
   onExport,
   isExporting = false,
   disabled = false,

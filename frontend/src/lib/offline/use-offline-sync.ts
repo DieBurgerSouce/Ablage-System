@@ -56,7 +56,7 @@ export function useOfflineSync(options: UseOfflineSyncOptions = {}): UseOfflineS
   const cleanupRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
 
-  const { isOnline, isConnected } = useOnlineStatus({
+  const { isOnline, isConnected: _isConnected } = useOnlineStatus({
     pingVerification: false,
   });
 

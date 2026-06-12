@@ -122,11 +122,9 @@ interface ActiveShapeProps {
 }
 
 function renderActiveShape(props: ActiveShapeProps) {
-  const RADIAN = Math.PI / 180;
   const {
     cx,
     cy,
-    midAngle,
     innerRadius,
     outerRadius,
     startAngle,
@@ -134,10 +132,6 @@ function renderActiveShape(props: ActiveShapeProps) {
     fill,
     payload,
   } = props;
-  const sin = Math.sin(-RADIAN * midAngle);
-  const cos = Math.cos(-RADIAN * midAngle);
-  const mx = cx + (outerRadius + 20) * cos;
-  const my = cy + (outerRadius + 20) * sin;
 
   return (
     <g>

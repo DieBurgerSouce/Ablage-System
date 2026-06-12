@@ -12,7 +12,6 @@ interface DocumentProgressTrackerProps {
 
 export function DocumentProgressTracker({ progress, className }: DocumentProgressTrackerProps) {
   const steps = progress.steps;
-  const currentStepIndex = steps.findIndex(step => step.status === 'active');
 
   return (
     <div className={cn('w-full', className)}>

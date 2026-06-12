@@ -1049,7 +1049,7 @@ export function useWidgetRefreshTrigger() {
   const queryClient = useQueryClient();
 
   const triggerRefresh = useCallback(
-    (widgetType: WidgetType, queryKeys?: string[][]) => {
+    (_widgetType: WidgetType, queryKeys?: string[][]) => {
       // Immediately invalidate local queries
       if (queryKeys) {
         queryKeys.forEach((key) => {

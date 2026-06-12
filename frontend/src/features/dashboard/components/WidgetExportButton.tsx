@@ -67,7 +67,6 @@ export function WidgetExportButton({
     widgetRef,
     widgetTitle = 'widget',
     widgetData,
-    iconOnly = true,
     className,
     disabled = false,
     exportOptions = {},

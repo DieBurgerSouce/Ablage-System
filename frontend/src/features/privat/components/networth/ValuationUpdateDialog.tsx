@@ -54,7 +54,7 @@ export function ValuationUpdateDialog({
   open,
   onOpenChange,
   assets,
-  spaceId,
+  spaceId: _spaceId,
   onSuccess,
 }: ValuationUpdateDialogProps) {
   const [selectedAssetId, setSelectedAssetId] = React.useState<string>('none');

@@ -47,7 +47,7 @@ export function OfflineStatusBanner({
 }: OfflineStatusBannerProps) {
   const { progress, pendingCount, isSyncing, isOnline, sync } = useOfflineSync({
     autoSync: true,
-    onSyncComplete: (result) => {
+    onSyncComplete: (_result) => {
       // Could show toast here
     },
   });

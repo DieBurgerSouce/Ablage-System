@@ -67,24 +67,6 @@ const categoryColors: Record<ShortcutCategory, string> = {
 
 // ==================== Fuzzy Search ====================
 
-function fuzzyMatch(query: string, text: string): boolean {
-  if (!query) return true;
-
-  const queryLower = query.toLowerCase();
-  const textLower = text.toLowerCase();
-
-  // Direct substring match
-  if (textLower.includes(queryLower)) return true;
-
-  // Fuzzy match (all characters in order)
-  let queryIndex = 0;
-  for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
-    if (textLower[i] === queryLower[queryIndex]) {
-      queryIndex++;
-    }
-  }
-  return queryIndex === queryLower.length;
-}
 
 function matchScore(query: string, text: string): number {
   if (!query) return 0;

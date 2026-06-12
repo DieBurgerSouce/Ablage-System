@@ -180,11 +180,6 @@ export function ReconciliationPage() {
         refetch();
     }, [toast, refetch]);
 
-    const openManualMatch = () => {
-        if (selectedTransaction) {
-            setManualMatchOpen(true);
-        }
-    };
 
     const handleBulkMatch = async (_transactionIds: string[]) => {
         try {

@@ -144,7 +144,7 @@ function OverviewTab({
   statsLoading,
   driftStatus,
   learningStats,
-  metrics,
+  metrics: _metrics,
 }: OverviewTabProps) {
   return (
     <motion.div

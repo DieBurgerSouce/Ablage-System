@@ -138,7 +138,7 @@ const SORT_OPTIONS = [
  */
 function ValidationQueueDashboardInner() {
   const navigate = useNavigate();
-  const { isAdmin, canAccess } = usePermissions();
+  const { isAdmin: _isAdmin, canAccess } = usePermissions();
 
   // Online Status Detection
   const { isOnline, offlineSince } = useOnlineStatus({
@@ -175,7 +175,7 @@ function ValidationQueueDashboardInner() {
   // Mobile View Mode (for swipe support)
   const [useMobileView, setUseMobileView] = useState(false);
   const [approvingItemId, setApprovingItemId] = useState<string | null>(null);
-  const [rejectingItemId, setRejectingItemId] = useState<string | null>(null);
+  const [rejectingItemId, _setRejectingItemId] = useState<string | null>(null);
 
   // Parse sort option
   const [sortBy, sortOrder] = sortOption.split(':') as [string, 'asc' | 'desc'];
@@ -321,7 +321,7 @@ function ValidationQueueDashboardInner() {
     setBulkApproveDialogOpen(true);
   }, [selectedItems.length]);
 
-  const handleBatchApproveConfirm = useCallback(async (notes?: string, applyCorrections?: boolean) => {
+  const handleBatchApproveConfirm = useCallback(async (notes?: string, _applyCorrections?: boolean) => {
     try {
       const result = await batchApprove.mutateAsync({
         item_ids: selectedItems,

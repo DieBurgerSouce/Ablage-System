@@ -536,7 +536,7 @@ interface SmartFolderLinkProps {
     onClick: () => void
 }
 
-function SmartFolderLink({ name, params, pinned, onClick }: SmartFolderLinkProps) {
+function SmartFolderLink({ name, params: _params, pinned, onClick }: SmartFolderLinkProps) {
     return (
         <button
             onClick={onClick}

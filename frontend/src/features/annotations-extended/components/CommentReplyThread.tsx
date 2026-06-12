@@ -21,7 +21,7 @@ interface CommentReplyThreadProps {
 }
 
 export function CommentReplyThread({
-  commentId,
+  commentId: _commentId,
   originalComment,
   replies,
   onReply,

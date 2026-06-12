@@ -240,7 +240,7 @@ export function BulkActionBar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {moreActions.map((action, index) => (
+              {moreActions.map((action, _index) => (
                 <DropdownMenuItem
                   key={action.id}
                   onClick={() => handleAction(action.id)}

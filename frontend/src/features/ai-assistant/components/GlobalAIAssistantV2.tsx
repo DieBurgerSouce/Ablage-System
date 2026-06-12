@@ -268,7 +268,7 @@ function FinanceChatMessage({ message, onDetailedFeedback }: FinanceChatMessageP
         {message.response?.follow_up_suggestions &&
           message.response.follow_up_suggestions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {message.response.follow_up_suggestions.slice(0, 3).map((suggestion, index) => (
+              {message.response.follow_up_suggestions.slice(0, 3).map((suggestion, _index) => (
                 <Badge
                   key={suggestion}
                   variant="secondary"
@@ -320,7 +320,7 @@ export function GlobalAIAssistantV2() {
     setView,
     setSessionId,
     incrementUnread,
-    markAsRead,
+    markAsRead: _markAsRead,
   } = useAIAssistantStore();
 
   // Page context detection
@@ -334,7 +334,7 @@ export function GlobalAIAssistantV2() {
   });
 
   // AI Actions - context-aware
-  const { contextInfo, autonomyLevel } = useContextAwareAction(
+  const { contextInfo: _contextInfo, autonomyLevel } = useContextAwareAction(
     pageContext.type,
     pageContext.documentId,
     pageContext.entityId
@@ -377,7 +377,7 @@ export function GlobalAIAssistantV2() {
   // RAG Chat WebSocket
   const {
     status: ragStatus,
-    sessionId,
+    sessionId: _sessionId,
     error: ragError,
     messages: ragMessages,
     isStreaming,
@@ -868,12 +868,12 @@ function ChatArea({
   pendingBookings,
   suggestions,
   showEmpty,
-  isLoading,
+  isLoading: _isLoading,
   error,
   capabilities,
   messagesEndRef,
   statusMessage,
-  contextDocuments,
+  contextDocuments: _contextDocuments,
   onSuggestionClick,
   onExecuteAction,
   onRollbackAction,
@@ -897,7 +897,7 @@ function ChatArea({
             {/* Capability Cards (Finance mode) */}
             {mode === 'finance' && capabilities.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-4 px-4">
-                {capabilities.slice(0, 4).map((cap, index) => (
+                {capabilities.slice(0, 4).map((cap, _index) => (
                   <button
                     key={cap.name}
                     className="rounded-lg border p-2 text-left hover:bg-muted/50 transition-colors"
@@ -914,7 +914,7 @@ function ChatArea({
 
             {/* Quick Suggestions */}
             <div className="flex flex-wrap justify-center gap-2">
-              {suggestions.slice(0, 4).map((suggestion, i) => (
+              {suggestions.slice(0, 4).map((suggestion, _i) => (
                 <QuickSuggestion
                   key={suggestion}
                   suggestion={suggestion}
@@ -1026,13 +1026,13 @@ function RAGChatArea({
   ragMessages,
   suggestions,
   showEmpty,
-  isLoading,
+  isLoading: _isLoading,
   error,
   messagesEndRef,
   statusMessage,
-  contextDocuments,
+  contextDocuments: _contextDocuments,
   onSuggestionClick,
-  onDetailedFeedback,
+  onDetailedFeedback: _onDetailedFeedback,
 }: RAGChatAreaProps) {
   return (
     <ScrollArea className="flex-1">
@@ -1047,7 +1047,7 @@ function RAGChatArea({
 
             {/* Quick Suggestions */}
             <div className="flex flex-wrap justify-center gap-2">
-              {suggestions.slice(0, 4).map((suggestion, i) => (
+              {suggestions.slice(0, 4).map((suggestion, _i) => (
                 <QuickSuggestion
                   key={suggestion}
                   suggestion={suggestion}

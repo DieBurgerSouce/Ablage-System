@@ -408,7 +408,7 @@ function CategoryChart({ summary }: { summary: BudgetSummary }) {
 // ==================== Kostenstellen Distribution Chart ====================
 
 function KostenstellenChart({ summary }: { summary: BudgetSummary }) {
-  const chartColors = useChartColors();
+  void useChartColors();
 
   const chartData = summary.byKostenstelle.map((ks, index) => ({
     name: ks.kostenstelleCode,

@@ -64,7 +64,7 @@ export function WorkflowMonitor() {
   const approvals = approvalsData?.items || [];
 
   // Vote mutation
-  const voteMutation = useMutation({
+  void useMutation({
     mutationFn: ({
       id,
       decision,
@@ -95,16 +95,6 @@ export function WorkflowMonitor() {
     });
   };
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   const calculateSLAStatus = (deadline: string | null) => {
     if (!deadline) return { text: '-', color: '' };

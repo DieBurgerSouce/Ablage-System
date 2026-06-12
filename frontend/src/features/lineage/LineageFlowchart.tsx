@@ -130,7 +130,6 @@ function calculateLayout(
 
   let currentX = 0;
   let currentY = 0;
-  let maxRowHeight = 0;
   const eventsPerRow = direction === 'horizontal' ? 1 : 3;
   let eventIndex = 0;
 

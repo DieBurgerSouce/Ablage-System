@@ -62,7 +62,7 @@ interface CustomizedContentProps {
 }
 
 const CustomizedContent: React.FC<CustomizedContentProps> = ({
-    depth,
+    depth: _depth,
     x = 0,
     y = 0,
     width = 0,

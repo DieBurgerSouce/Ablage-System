@@ -213,7 +213,6 @@ export function ReportBuilderPage() {
 
   // Save
   const handleSave = () => {
-    const _schedule = scheduleOptions.find((s) => s.value === scheduleType);
 
     createMutation.mutate(
       {

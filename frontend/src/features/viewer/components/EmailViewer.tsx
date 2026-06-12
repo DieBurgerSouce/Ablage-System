@@ -226,7 +226,7 @@ function parseAddressList(addressString: string): string[] {
  * Decode RFC 2047 encoded words (=?charset?encoding?text?=)
  */
 function decodeEncodedWords(text: string): string {
-    return text.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (match, charset, encoding, encoded) => {
+    return text.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (match, _charset, encoding, encoded) => {
         try {
             if (encoding.toUpperCase() === 'B') {
                 // Base64
@@ -235,7 +235,7 @@ function decodeEncodedWords(text: string): string {
                 // Quoted-Printable
                 return encoded
                     .replace(/_/g, ' ')
-                    .replace(/=([0-9A-F]{2})/gi, (m: string, hex: string) =>
+                    .replace(/=([0-9A-F]{2})/gi, (_m: string, hex: string) =>
                         String.fromCharCode(parseInt(hex, 16))
                     );
             }
@@ -311,7 +311,7 @@ function registerDOMPurifySecurityHooks(): void {
     domPurifyHooksRegistered = true;
 
     // Zusätzliche Hooks für erweiterte Sicherheit
-    DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+    DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
         // Blockiere data: URIs in src (potenzielle Script-Injection)
         if (data.attrName === 'src' && data.attrValue.startsWith('data:')) {
             data.attrValue = '';

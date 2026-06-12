@@ -42,7 +42,7 @@ export function UploadModal({
     onUploadComplete,
 }: UploadModalProps) {
     const [selectedBackend, setSelectedBackend] = useState<string>('got-ocr');
-    const [autoClassify, setAutoClassify] = useState(true);
+    const [autoClassify, _setAutoClassify] = useState(true);
 
     const { data: gpuStatus } = useGPUStatus();
     const gpuAvailable = gpuStatus?.available ?? true;

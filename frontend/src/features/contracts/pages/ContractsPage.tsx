@@ -50,7 +50,7 @@ import { ContractLifecycleDashboard } from '../components/ContractLifecycleDashb
 const DEFAULT_PAGE_SIZE = 20;
 
 export function ContractsPage() {
-  const _navigate = useNavigate();
+  void useNavigate();
 
   // Tab state
   const [activeTab, setActiveTab] = useState('contracts');

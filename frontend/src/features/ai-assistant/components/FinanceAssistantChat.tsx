@@ -52,7 +52,7 @@ export function FinanceAssistantChat({
   className,
   sessionId,
   showInsightsTab = true,
-  onClose,
+  onClose: _onClose,
 }: FinanceAssistantChatProps) {
   const [input, setInput] = useState('');
   const [activeTab, setActiveTab] = useState<'chat' | 'insights'>('chat');

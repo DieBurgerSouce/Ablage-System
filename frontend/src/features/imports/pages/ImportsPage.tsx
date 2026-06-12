@@ -225,12 +225,6 @@ export function ImportsPage() {
     setActiveTab('folder');
   };
 
-  const handleCreateRule = () => {
-    setConfigType('rule');
-    setViewMode('create');
-    setEditId(null);
-    setActiveTab('rules');
-  };
 
   const handleEditRule = (ruleId: string) => {
     setConfigType('rule');

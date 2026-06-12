@@ -87,7 +87,7 @@ export function CalendarSyncSettings() {
   const [configForm, setConfigForm] = useState<CalendarSyncConfig | null>(null)
 
   // Existing config query (iCal export)
-  const { data: config, isLoading } = useQuery({
+  const { isLoading } = useQuery({
     queryKey: ['calendar-sync-config'],
     queryFn: getCalendarSyncConfig,
     onSuccess: (data: CalendarSyncConfig) => {

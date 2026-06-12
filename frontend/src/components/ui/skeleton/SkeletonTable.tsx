@@ -65,7 +65,6 @@ export function SkeletonTable({
     return widths[index % widths.length];
   };
 
-  const totalColumns = columns + (showCheckbox ? 1 : 0) + (showActions ? 1 : 0);
 
   return (
     <div className={cn('rounded-md border', className)}>

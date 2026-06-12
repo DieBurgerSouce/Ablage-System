@@ -84,8 +84,8 @@ export function KontierungPage() {
 
     const { toast } = useToast();
 
-    // Kontenplan für Auswahl
-    const { data: kontenplan } = useKontenplan(selectedConnectionId, undefined, !!selectedConnectionId);
+    // Kontenplan vorladen (Cache fuer Auswahl-Dialoge), Binding ungenutzt
+    useKontenplan(selectedConnectionId, undefined, !!selectedConnectionId);
 
     const acceptKontierung = useAcceptKontierung();
     const rejectKontierung = useRejectKontierung();

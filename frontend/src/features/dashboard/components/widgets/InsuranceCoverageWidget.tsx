@@ -225,7 +225,6 @@ function InsuranceCoverageWidgetContent() {
 
     const ScoreIcon = getCoverageScoreIcon(summary.coverage_score);
     const hasGaps = summary.coverage_gaps.length > 0;
-    const hasUrgentDeadlines = summary.upcoming_deadlines.some(d => d.days_remaining <= 14);
 
     return (
         <div className="space-y-4">

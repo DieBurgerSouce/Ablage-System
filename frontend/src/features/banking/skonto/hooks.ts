@@ -54,7 +54,7 @@ export function useSetSkonto() {
   return useMutation({
     mutationFn: ({ invoiceId, data }: { invoiceId: string; data: SetSkontoRequest }) =>
       setSkonto(invoiceId, data),
-    onSuccess: (updatedInvoice, { invoiceId }) => {
+    onSuccess: (_updatedInvoice, { invoiceId }) => {
       // Invalidate Skonto Info Query
       queryClient.invalidateQueries({ queryKey: skontoKeys.info(invoiceId) });
 
@@ -86,7 +86,7 @@ export function useApplySkonto() {
   return useMutation({
     mutationFn: ({ invoiceId, data }: { invoiceId: string; data: ApplySkontoRequest }) =>
       applySkonto(invoiceId, data),
-    onSuccess: (updatedInvoice, { invoiceId }) => {
+    onSuccess: (_updatedInvoice, { invoiceId }) => {
       // Invalidate Skonto Queries
       queryClient.invalidateQueries({ queryKey: skontoKeys.info(invoiceId) });
       queryClient.invalidateQueries({ queryKey: skontoKeys.upcoming(7) });

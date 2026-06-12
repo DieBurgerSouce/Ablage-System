@@ -361,7 +361,7 @@ function NewABTestDialog() {
 }
 
 export function ABTestComparison() {
-  const { data: tests, isLoading, refetch } = useABTests(undefined, undefined, 10);
+  const { data: tests, isLoading, refetch: _refetch } = useABTests(undefined, undefined, 10);
   const endMutation = useEndABTest();
   const [endingId, setEndingId] = useState<string | null>(null);
 
@@ -396,7 +396,6 @@ export function ABTestComparison() {
   }
 
   const runningTests = tests?.filter((t) => t.status === 'running') || [];
-  const completedTests = tests?.filter((t) => t.status !== 'running') || [];
 
   return (
     <Card>

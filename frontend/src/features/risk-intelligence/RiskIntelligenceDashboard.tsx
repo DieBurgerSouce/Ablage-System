@@ -53,10 +53,6 @@ export function RiskIntelligenceDashboard() {
     }
   };
 
-  const handleEntitySelect = (entityId: string) => {
-    setSelectedEntityId(entityId);
-    setActiveTab('entity');
-  };
 
   return (
     <div className="container mx-auto py-6 space-y-6">

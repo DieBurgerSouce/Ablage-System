@@ -76,15 +76,6 @@ export function ReportBuilder({
       return;
     }
 
-    const config: ReportConfig = {
-      name: name || 'Vorschau',
-      description,
-      data_source: selectedSource,
-      columns: selectedColumns,
-      filters: filters.map(({ id, ...f }) => f),
-      group_by: groupBy.length > 0 ? groupBy : undefined,
-      aggregations: aggregations.length > 0 ? aggregations.map(({ id, ...a }) => a) : undefined,
-    };
 
     // Create temporary report for preview (backend would need to support this)
     // For now, we'll just show the preview section

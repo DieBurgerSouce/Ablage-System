@@ -110,22 +110,6 @@ export function MentionInput({
   };
 
   // Highlight @mentions in the text
-  const renderValueWithMentions = () => {
-    const parts = value.split(/(@\w+)/g);
-    return parts.map((part, index) => {
-      if (part.startsWith("@")) {
-        return (
-          <span
-            key={index}
-            className="text-blue-600 font-medium bg-blue-50 px-1 rounded"
-          >
-            {part}
-          </span>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
-  };
 
   return (
     <div className="relative">

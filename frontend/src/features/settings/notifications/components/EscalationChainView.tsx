@@ -53,7 +53,7 @@ const CHANNEL_ICONS: Record<NotificationChannel, React.ElementType> = {
 export function EscalationChainView({
   escalationChain,
   steps: legacySteps,
-  preferences,
+  preferences: _preferences,
   disabled,
   enabled,
 }: EscalationChainViewProps) {

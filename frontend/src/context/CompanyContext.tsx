@@ -58,7 +58,7 @@ interface CompanyProviderProps {
 
 export function CompanyProvider({ children }: CompanyProviderProps) {
     const queryClient = useQueryClient();
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, user: _user } = useAuth();
     const [switchError, setSwitchError] = useState<Error | null>(null);
 
     // Firmen laden

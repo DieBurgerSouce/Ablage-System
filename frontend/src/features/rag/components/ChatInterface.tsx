@@ -56,7 +56,7 @@ export function ChatInterface({
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Chat status
-    const { data: chatStatus, isLoading: statusLoading } = useChatStatus();
+    const { data: chatStatus } = useChatStatus();
 
     // WebSocket connection
     const {
@@ -68,7 +68,7 @@ export function ChatInterface({
         contextDocuments,
         statusMessage,
         connect,
-        disconnect,
+        disconnect: _disconnect,
         sendMessage,
         clearHistory,
     } = useChatWebSocket({

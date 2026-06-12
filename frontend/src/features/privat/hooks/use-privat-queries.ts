@@ -243,7 +243,7 @@ export function useCreateFolder() {
 export function useUpdateFolder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ folderId, data, spaceId }: { folderId: string; data: PrivatFolderUpdate; spaceId: string }) =>
+    mutationFn: ({ folderId, data, spaceId: _spaceId }: { folderId: string; data: PrivatFolderUpdate; spaceId: string }) =>
       privatApi.updateFolder(folderId, data),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.folders(spaceId) });
@@ -254,7 +254,7 @@ export function useUpdateFolder() {
 export function useMoveFolder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ folderId, newParentId, spaceId }: { folderId: string; newParentId?: string; spaceId: string }) =>
+    mutationFn: ({ folderId, newParentId, spaceId: _spaceId }: { folderId: string; newParentId?: string; spaceId: string }) =>
       privatApi.moveFolder(folderId, newParentId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.folders(spaceId) });
@@ -265,7 +265,7 @@ export function useMoveFolder() {
 export function useDeleteFolder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ folderId, recursive, spaceId }: { folderId: string; recursive?: boolean; spaceId: string }) =>
+    mutationFn: ({ folderId, recursive, spaceId: _spaceId }: { folderId: string; recursive?: boolean; spaceId: string }) =>
       privatApi.deleteFolder(folderId, recursive),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.folders(spaceId) });
@@ -306,7 +306,7 @@ export function useCreateDocument() {
   return useMutation({
     mutationFn: ({ spaceId, data, password }: { spaceId: string; data: PrivatDocumentCreate; password?: string }) =>
       privatApi.createDocument(spaceId, data, password),
-    onSuccess: (result, { spaceId }) => {
+    onSuccess: (_result, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.documents(spaceId) });
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.space(spaceId) });
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.dashboard() });
@@ -317,7 +317,7 @@ export function useCreateDocument() {
 export function useUpdateDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ documentId, data, spaceId }: { documentId: string; data: PrivatDocumentUpdate; spaceId: string }) =>
+    mutationFn: ({ documentId, data, spaceId: _spaceId }: { documentId: string; data: PrivatDocumentUpdate; spaceId: string }) =>
       privatApi.updateDocument(documentId, data),
     onSuccess: (result, { documentId, spaceId }) => {
       queryClient.setQueryData(privatQueryKeys.document(documentId), result);
@@ -329,7 +329,7 @@ export function useUpdateDocument() {
 export function useDeleteDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ documentId, spaceId }: { documentId: string; spaceId: string }) =>
+    mutationFn: ({ documentId, spaceId: _spaceId }: { documentId: string; spaceId: string }) =>
       privatApi.deleteDocument(documentId),
     onSuccess: (_, { documentId, spaceId }) => {
       queryClient.removeQueries({ queryKey: privatQueryKeys.document(documentId) });
@@ -382,7 +382,7 @@ export function useCreateProperty() {
 export function useUpdateProperty() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ propertyId, data, spaceId }: { propertyId: string; data: PrivatPropertyUpdate; spaceId: string }) =>
+    mutationFn: ({ propertyId, data, spaceId: _spaceId }: { propertyId: string; data: PrivatPropertyUpdate; spaceId: string }) =>
       privatApi.updateProperty(propertyId, data),
     onSuccess: (result, { propertyId, spaceId }) => {
       queryClient.setQueryData(privatQueryKeys.property(propertyId), result);
@@ -394,7 +394,7 @@ export function useUpdateProperty() {
 export function useDeleteProperty() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ propertyId, spaceId }: { propertyId: string; spaceId: string }) =>
+    mutationFn: ({ propertyId, spaceId: _spaceId }: { propertyId: string; spaceId: string }) =>
       privatApi.deleteProperty(propertyId),
     onSuccess: (_, { propertyId, spaceId }) => {
       queryClient.removeQueries({ queryKey: privatQueryKeys.property(propertyId) });
@@ -434,7 +434,7 @@ export function useCreateTenant() {
 export function useRecordRentalIncome() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ tenantId, data, propertyId }: { tenantId: string; data: PrivatRentalIncomeCreate; propertyId: string }) =>
+    mutationFn: ({ tenantId, data, propertyId: _propertyId }: { tenantId: string; data: PrivatRentalIncomeCreate; propertyId: string }) =>
       privatApi.recordRentalIncome(tenantId, data),
     onSuccess: (_, { propertyId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.property(propertyId) });
@@ -483,7 +483,7 @@ export function useCreateVehicle() {
 export function useUpdateVehicle() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ vehicleId, data, spaceId }: { vehicleId: string; data: PrivatVehicleUpdate; spaceId: string }) =>
+    mutationFn: ({ vehicleId, data, spaceId: _spaceId }: { vehicleId: string; data: PrivatVehicleUpdate; spaceId: string }) =>
       privatApi.updateVehicle(vehicleId, data),
     onSuccess: (result, { vehicleId, spaceId }) => {
       queryClient.setQueryData(privatQueryKeys.vehicle(vehicleId), result);
@@ -495,7 +495,7 @@ export function useUpdateVehicle() {
 export function useDeleteVehicle() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ vehicleId, spaceId }: { vehicleId: string; spaceId: string }) =>
+    mutationFn: ({ vehicleId, spaceId: _spaceId }: { vehicleId: string; spaceId: string }) =>
       privatApi.deleteVehicle(vehicleId),
     onSuccess: (_, { vehicleId, spaceId }) => {
       queryClient.removeQueries({ queryKey: privatQueryKeys.vehicle(vehicleId) });
@@ -586,7 +586,7 @@ export function useCreateInsurance() {
 export function useUpdateInsurance() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ insuranceId, data, spaceId }: { insuranceId: string; data: PrivatInsuranceUpdate; spaceId: string }) =>
+    mutationFn: ({ insuranceId, data, spaceId: _spaceId }: { insuranceId: string; data: PrivatInsuranceUpdate; spaceId: string }) =>
       privatApi.updateInsurance(insuranceId, data),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.insurances(spaceId) });
@@ -598,7 +598,7 @@ export function useUpdateInsurance() {
 export function useDeleteInsurance() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ insuranceId, spaceId }: { insuranceId: string; spaceId: string }) =>
+    mutationFn: ({ insuranceId, spaceId: _spaceId }: { insuranceId: string; spaceId: string }) =>
       privatApi.deleteInsurance(insuranceId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.insurances(spaceId) });
@@ -637,7 +637,7 @@ export function useCreateLoan() {
 export function useUpdateLoan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ loanId, data, spaceId }: { loanId: string; data: PrivatLoanUpdate; spaceId: string }) =>
+    mutationFn: ({ loanId, data, spaceId: _spaceId }: { loanId: string; data: PrivatLoanUpdate; spaceId: string }) =>
       privatApi.updateLoan(loanId, data),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.loans(spaceId) });
@@ -649,7 +649,7 @@ export function useUpdateLoan() {
 export function useRecordLoanPayment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ loanId, amount, paymentDate, spaceId }: { loanId: string; amount: number; paymentDate?: string; spaceId: string }) =>
+    mutationFn: ({ loanId, amount, paymentDate, spaceId: _spaceId }: { loanId: string; amount: number; paymentDate?: string; spaceId: string }) =>
       privatApi.recordLoanPayment(loanId, amount, paymentDate),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.loans(spaceId) });
@@ -661,7 +661,7 @@ export function useRecordLoanPayment() {
 export function useDeleteLoan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ loanId, spaceId }: { loanId: string; spaceId: string }) =>
+    mutationFn: ({ loanId, spaceId: _spaceId }: { loanId: string; spaceId: string }) =>
       privatApi.deleteLoan(loanId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.loans(spaceId) });
@@ -714,7 +714,7 @@ export function useCreateInvestment() {
 export function useUpdateInvestment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ investmentId, data, spaceId }: { investmentId: string; data: PrivatInvestmentUpdate; spaceId: string }) =>
+    mutationFn: ({ investmentId, data, spaceId: _spaceId }: { investmentId: string; data: PrivatInvestmentUpdate; spaceId: string }) =>
       privatApi.updateInvestment(investmentId, data),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.investments(spaceId) });
@@ -727,7 +727,7 @@ export function useUpdateInvestment() {
 export function useUpdateInvestmentValue() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ investmentId, newValue, spaceId }: { investmentId: string; newValue: number; spaceId: string }) =>
+    mutationFn: ({ investmentId, newValue, spaceId: _spaceId }: { investmentId: string; newValue: number; spaceId: string }) =>
       privatApi.updateInvestmentValue(investmentId, newValue),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.investments(spaceId) });
@@ -740,7 +740,7 @@ export function useUpdateInvestmentValue() {
 export function useDeleteInvestment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ investmentId, spaceId }: { investmentId: string; spaceId: string }) =>
+    mutationFn: ({ investmentId, spaceId: _spaceId }: { investmentId: string; spaceId: string }) =>
       privatApi.deleteInvestment(investmentId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.investments(spaceId) });
@@ -793,7 +793,7 @@ export function useCreateDeadline() {
 export function useUpdateDeadline() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ deadlineId, data, spaceId }: { deadlineId: string; data: PrivatDeadlineUpdate; spaceId: string }) =>
+    mutationFn: ({ deadlineId, data, spaceId: _spaceId }: { deadlineId: string; data: PrivatDeadlineUpdate; spaceId: string }) =>
       privatApi.updateDeadline(deadlineId, data),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.deadlines(spaceId) });
@@ -804,7 +804,7 @@ export function useUpdateDeadline() {
 export function useCompleteDeadline() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ deadlineId, spaceId }: { deadlineId: string; spaceId: string }) =>
+    mutationFn: ({ deadlineId, spaceId: _spaceId }: { deadlineId: string; spaceId: string }) =>
       privatApi.completeDeadline(deadlineId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.deadlines(spaceId) });
@@ -816,7 +816,7 @@ export function useCompleteDeadline() {
 export function useDeleteDeadline() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ deadlineId, spaceId }: { deadlineId: string; spaceId: string }) =>
+    mutationFn: ({ deadlineId, spaceId: _spaceId }: { deadlineId: string; spaceId: string }) =>
       privatApi.deleteDeadline(deadlineId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.deadlines(spaceId) });
@@ -853,7 +853,7 @@ export function useCreateEmergencyContact() {
 export function useUpdateEmergencyContact() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ contactId, data, spaceId }: { contactId: string; data: PrivatEmergencyContactUpdate; spaceId: string }) =>
+    mutationFn: ({ contactId, data, spaceId: _spaceId }: { contactId: string; data: PrivatEmergencyContactUpdate; spaceId: string }) =>
       privatApi.updateEmergencyContact(contactId, data),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.emergencyContacts(spaceId) });
@@ -864,7 +864,7 @@ export function useUpdateEmergencyContact() {
 export function useDeleteEmergencyContact() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ contactId, spaceId }: { contactId: string; spaceId: string }) =>
+    mutationFn: ({ contactId, spaceId: _spaceId }: { contactId: string; spaceId: string }) =>
       privatApi.deleteEmergencyContact(contactId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.emergencyContacts(spaceId) });
@@ -900,7 +900,7 @@ export function useRequestEmergencyAccess() {
 export function useDenyEmergencyRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ requestId, reason, spaceId }: { requestId: string; reason: string; spaceId: string }) =>
+    mutationFn: ({ requestId, reason, spaceId: _spaceId }: { requestId: string; reason: string; spaceId: string }) =>
       privatApi.denyEmergencyRequest(requestId, reason),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.emergencyRequests(spaceId) });
@@ -911,7 +911,7 @@ export function useDenyEmergencyRequest() {
 export function useRevokeEmergencyAccess() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ requestId, spaceId }: { requestId: string; spaceId: string }) =>
+    mutationFn: ({ requestId, spaceId: _spaceId }: { requestId: string; spaceId: string }) =>
       privatApi.revokeEmergencyAccess(requestId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.emergencyRequests(spaceId) });

@@ -50,7 +50,7 @@ export function FilteredSmartSearchExample() {
 
 export function CustomHookExample() {
     const [query, setQuery] = useState('');
-    const [filters, setFilters] = useState<SmartSearchFilters>({});
+    const [filters, _setFilters] = useState<SmartSearchFilters>({});
 
     const { data, isLoading, error } = useSmartSearch({
         query,

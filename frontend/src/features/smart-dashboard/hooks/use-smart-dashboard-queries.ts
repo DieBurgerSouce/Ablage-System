@@ -80,7 +80,7 @@ export function useSaveLayout(): UseMutationResult<void, Error, WidgetLayout[], 
     mutationFn: async (layout: WidgetLayout[]) => {
       await smartDashboardApi.saveLayout(layout);
     },
-    onMutate: async (newLayout) => {
+    onMutate: async (_newLayout) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: smartDashboardKeys.all });
 
@@ -92,7 +92,7 @@ export function useSaveLayout(): UseMutationResult<void, Error, WidgetLayout[], 
 
       return { previousLayout };
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       // Rollback on error
       if (context?.previousLayout) {
         queryClient.setQueryData(smartDashboardKeys.all, context.previousLayout);

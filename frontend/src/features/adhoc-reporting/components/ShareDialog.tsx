@@ -49,7 +49,6 @@ export function ShareDialog({
   shares,
   onShare,
   onRemoveShare,
-  isLoading = false,
 }: ShareDialogProps) {
   const [userIdInput, setUserIdInput] = useState('');
   const [permission, setPermission] = useState<'read' | 'write'>('read');

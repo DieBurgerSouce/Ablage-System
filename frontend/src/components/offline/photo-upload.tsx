@@ -350,8 +350,6 @@ export function PhotoUpload({
       onUpload?.(results);
 
       // Show summary
-      const succeeded = results.filter((r) => r.success && !r.queued).length;
-      const queued = results.filter((r) => r.queued).length;
       const failed = results.filter((r) => !r.success).length;
 
       if (failed > 0) {

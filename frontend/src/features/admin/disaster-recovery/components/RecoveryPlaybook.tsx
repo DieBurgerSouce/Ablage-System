@@ -297,7 +297,7 @@ export function RecoveryPlaybook() {
                             <div className="text-sm">
                               <div className="font-medium mb-1">Voraussetzungen:</div>
                               <ul className="space-y-1 ml-4">
-                                {step.prerequisites.map((pre, i) => (
+                                {step.prerequisites.map((pre, _i) => (
                                   <li key={pre} className="flex items-start gap-2">
                                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                                     <span className="text-muted-foreground">{pre}</span>
@@ -311,7 +311,7 @@ export function RecoveryPlaybook() {
                             <div className="text-sm">
                               <div className="font-medium mb-1">Befehle:</div>
                               <div className="space-y-1">
-                                {step.commands.map((cmd, i) => (
+                                {step.commands.map((cmd, _i) => (
                                   <code
                                     key={cmd}
                                     className="block bg-muted px-3 py-2 rounded text-xs font-mono"
@@ -326,7 +326,7 @@ export function RecoveryPlaybook() {
                           <div className="text-sm">
                             <div className="font-medium mb-1">Validierung:</div>
                             <div className="space-y-1">
-                              {step.validation_criteria.map((criteria, i) => (
+                              {step.validation_criteria.map((criteria, _i) => (
                                 <div key={criteria} className="flex items-start gap-2">
                                   <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
                                   <span className="text-muted-foreground">{criteria}</span>
@@ -348,7 +348,7 @@ export function RecoveryPlaybook() {
               <AlertTitle>Notfallkontakte</AlertTitle>
               <AlertDescription>
                 <div className="mt-2 space-y-2">
-                  {playbook.emergency_contacts.map((contact, i) => (
+                  {playbook.emergency_contacts.map((contact, _i) => (
                     <div key={contact.role} className="flex items-center justify-between text-sm">
                       <span className="font-medium">{contact.role}</span>
                       <div className="flex items-center gap-4 text-muted-foreground">
@@ -376,7 +376,7 @@ export function RecoveryPlaybook() {
               <div className="pt-4 border-t">
                 <h4 className="font-semibold mb-2">Zusätzliche Ressourcen</h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {playbook.additional_resources.map((resource, i) => (
+                  {playbook.additional_resources.map((resource, _i) => (
                     <li key={resource} className="flex items-start gap-2">
                       <ChevronRight className="h-4 w-4 shrink-0 mt-0.5" />
                       {resource}

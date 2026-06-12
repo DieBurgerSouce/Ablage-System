@@ -87,17 +87,6 @@ export function BpmnPropertiesPanel({
     }
   };
 
-  const isTask =
-    selectedNode &&
-    [
-      'userTask',
-      'serviceTask',
-      'scriptTask',
-      'manualTask',
-      'sendTask',
-      'receiveTask',
-      'businessRuleTask',
-    ].includes(selectedNode.data.type);
 
   const isUserTask = selectedNode?.data.type === 'userTask';
   const isServiceTask = selectedNode?.data.type === 'serviceTask';

@@ -83,7 +83,7 @@ export function SystemHealthTab() {
 
   // Queries
   const { data: workers, isLoading: workersLoading, refetch: refetchWorkers } = useWorkersList();
-  const { data: workersHealth, isLoading: healthLoading } = useWorkersHealth();
+  const { data: workersHealth } = useWorkersHealth();
   const { data: dlqStats, isLoading: dlqStatsLoading, refetch: refetchDLQ } = useDLQStats();
   const { data: dlqTasks, isLoading: dlqTasksLoading } = useDLQTasks({ perPage: 10 });
 

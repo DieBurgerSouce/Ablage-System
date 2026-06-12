@@ -127,8 +127,8 @@ interface PeriodCardProps {
 
 function PeriodCard({
   title,
-  income,
-  expenses,
+  income: _income,
+  expenses: _expenses,
   netFlow,
   endingBalance,
   isActive,
@@ -247,12 +247,6 @@ export function CashFlowForecastWidget() {
     Saldo: point.balance,
   }));
 
-  const selectedForecast =
-    selectedPeriod === 30
-      ? data.forecast30
-      : selectedPeriod === 60
-      ? data.forecast60
-      : data.forecast90;
 
   return (
     <ErrorBoundary

@@ -4,7 +4,6 @@
  * Liste aller Fahrzeuge mit Verbrauchsstatistiken
  */
 
-import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,10 +79,6 @@ const getVehicleTypeLabel = (type: VehicleType): string => {
   return types[type];
 };
 
-const getVehicleTypeIcon = (type: VehicleType): React.ReactNode => {
-  // All use Car icon for now, could be expanded
-  return <Car className="h-4 w-4" />;
-};
 
 const getFuelTypeLabel = (type?: FuelType): string => {
   if (!type) return '-';

@@ -55,7 +55,7 @@ function formatDate(dateString: string | null | undefined): string {
 }
 
 function WebhookCard({ webhook }: { webhook: WebhookSubscription }) {
-  const [showSecret, setShowSecret] = useState(false);
+  const [_showSecret, _setShowSecret] = useState(false);
   const [selectedEventType, setSelectedEventType] = useState('document.created');
   const [showDeliveries, setShowDeliveries] = useState(false);
 

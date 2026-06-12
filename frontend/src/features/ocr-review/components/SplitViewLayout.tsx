@@ -4,7 +4,7 @@
  * mit verlinkter Hervorhebung.
  */
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import {
     ResizablePanelGroup,
     ResizablePanel,
@@ -77,14 +77,8 @@ export function SplitViewLayout({
     onTextChange,
     activeTab,
     onTabChange,
-    onBoundingBoxClick,
 }: SplitViewLayoutProps) {
-    const [highlightedField, setHighlightedField] = useState<string | null>(null)
 
-    const handleBoundingBoxClick = useCallback((fieldName: string) => {
-        setHighlightedField(fieldName)
-        onBoundingBoxClick?.(fieldName)
-    }, [onBoundingBoxClick])
 
     return (
         <ResizablePanelGroup

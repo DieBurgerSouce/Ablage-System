@@ -50,7 +50,7 @@ export function DocumentLineagePage({
   onNavigateToDocument,
   className,
 }: DocumentLineagePageProps) {
-  const { timeline, stats, summary, isLoading, isError, refetch } =
+  const { timeline: _timeline, stats, summary, isLoading, isError: _isError, refetch } =
     useLineageData(documentId);
 
   // Dokument-Info aus Summary

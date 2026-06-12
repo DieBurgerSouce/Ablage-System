@@ -74,18 +74,6 @@ export function ExternalSourcesCard({ externalCheck, className }: ExternalSource
     }
   };
 
-  const getSeverityIcon = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-orange-500" />;
-      case 'info':
-        return <CheckCircle className="w-4 h-4 text-blue-500" />;
-      default:
-        return null;
-    }
-  };
 
   const criticalAlerts = externalCheck.alerts.filter((a) => a.severity === 'critical');
   const warningAlerts = externalCheck.alerts.filter((a) => a.severity === 'warning');

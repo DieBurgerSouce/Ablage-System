@@ -180,7 +180,7 @@ function SummaryCard({
 // ==================== Quick Actions ====================
 
 function QuickActions({
-  spaceId,
+  spaceId: _spaceId,
   onRefresh,
   isRefreshing,
   onValuationUpdate,
@@ -337,7 +337,7 @@ export function NetWorthDashboard() {
 
   // Snapshot creation mutation
   const createSnapshotMutation = useCreatePortfolioSnapshot();
-  const refreshNetWorth = useRefreshNetWorth();
+  void useRefreshNetWorth();
 
   // Handle refresh
   const handleRefresh = React.useCallback(async () => {

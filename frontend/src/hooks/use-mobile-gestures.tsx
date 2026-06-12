@@ -169,7 +169,7 @@ export function useMobileGestures(
 
     // Touch end handler
     const handleTouchEnd = useCallback(
-        (e: TouchEvent) => {
+        (_e: TouchEvent) => {
             if (disabled || !startPoint.current || !currentPoint.current) return;
 
             const state = calculateSwipe(startPoint.current, currentPoint.current);

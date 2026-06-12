@@ -259,15 +259,6 @@ function GoalCategoryCard({ title, color, goals, isLoading }: GoalCategoryCardPr
   );
 }
 
-// Helper functions
-function formatDate(dateString?: string): string {
-  if (!dateString) return '-';
-  return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(dateString));
-}
 
 function getProgressColor(progress?: number): string {
   if (progress === undefined || progress === null) return 'text-gray-600';

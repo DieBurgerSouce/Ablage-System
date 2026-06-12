@@ -90,7 +90,7 @@ export function DashboardList() {
     }
   };
 
-  const handleToggleFavorite = async (id: string, currentValue: boolean) => {
+  const handleToggleFavorite = async (_id: string, currentValue: boolean) => {
     try {
       await setFavoriteMutation.mutateAsync(!currentValue);
     } catch (error) {
