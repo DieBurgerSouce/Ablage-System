@@ -74,6 +74,8 @@ function OpenFilePage() {
 
   // Handle files from File Handling API on mount
   useEffect(() => {
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+
     const handleLaunchQueue = async () => {
       setIsLoading(true)
       const files: File[] = []
@@ -81,7 +83,21 @@ function OpenFilePage() {
       try {
         // Check if launchQueue is available (File Handling API)
         if (window.launchQueue) {
+          // FIX Endlos-Spinner: Der setConsumer-Callback feuert NUR, wenn die
+          // Seite tatsaechlich ueber einen Datei-Launch geoeffnet wurde. Bei
+          // direkter Navigation auf /open-file blieb isLoading sonst fuer
+          // immer true ("Datei wird geladen..."). Nach 3s ohne Uebergabe auf
+          // die manuelle Auswahl umschalten.
+          fallbackTimer = setTimeout(() => {
+            logger.info('[OpenFile] Keine Datei-Übergabe innerhalb von 3s - manuelle Auswahl anzeigen')
+            setIsLoading(false)
+          }, 3000)
+
           window.launchQueue.setConsumer(async (launchParams: LaunchParams) => {
+            if (fallbackTimer) {
+              clearTimeout(fallbackTimer)
+              fallbackTimer = null
+            }
             if (!launchParams.files || launchParams.files.length === 0) {
               logger.info('[OpenFile] Keine Dateien in launchQueue')
               setIsLoading(false)
@@ -144,6 +160,12 @@ function OpenFilePage() {
     }
 
     handleLaunchQueue()
+
+    return () => {
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer)
+      }
+    }
   }, [])
 
   // Handle file upload
