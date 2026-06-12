@@ -293,8 +293,11 @@ class TestInformationDisclosure:
         """
         TEST: ValueError wird mit benutzerfreundlicher Nachricht behandelt.
 
-        ValueError sollte als 400 mit der Nachricht zurueckgegeben werden
-        (da es erwartete Validierungsfehler sind).
+        ValueError wird als 400 mit GENERISCHER deutscher Meldung beantwortet.
+        ANGEPASST (2026-06-12): Die App reicht rohe ValueError-Texte bewusst
+        NICHT an den Client durch (Information-Disclosure-Schutz, vgl.
+        SECURITY FIX in app/api/v1/datev.py) - der Original-Text wird nur
+        serverseitig geloggt.
         """
         from app.api.v1.datev import export_buchungsstapel
         from app.api.schemas.datev import DATEVExportRequest
@@ -320,9 +323,11 @@ class TestInformationDisclosure:
                     current_user=mock_user_a,
                 )
 
-            # ValueError -> 400 Bad Request
+            # ValueError -> 400 Bad Request mit generischer deutscher Meldung
             assert exc_info.value.status_code == 400
-            assert "exportierbaren Dokumente" in exc_info.value.detail
+            assert "Ungültige Eingabedaten" in exc_info.value.detail
+            # Interner Fehlertext darf NICHT zum Client durchsickern
+            assert "exportierbaren Dokumente" not in exc_info.value.detail
 
 
 # =============================================================================
@@ -367,8 +372,10 @@ class TestAuditLogging:
             # Pruefe Log-Event Name
             assert call_args[0][0] == "datev_vendor_mapping_deleted"
 
-            # Pruefe Log-Details
-            extra = call_args[1]["extra"]
+            # Pruefe Log-Details. ANGEPASST (2026-06-12): structlog-Konvention
+            # des Projekts = Kontext als Keyword-Argumente, NICHT als
+            # stdlib-"extra"-Dict.
+            extra = call_args[1]
             assert "mapping_id" in extra
             assert "config_id" in extra
             assert "user_id" in extra
@@ -409,8 +416,9 @@ class TestAuditLogging:
                 # Log-Event Name
                 assert call_args[0][0] == "datev_export_error"
 
-                # user_id sollte geloggt werden
-                extra = call_args[1]["extra"]
+                # user_id sollte geloggt werden. ANGEPASST (2026-06-12):
+                # structlog-Konvention = Keyword-Argumente statt "extra"-Dict.
+                extra = call_args[1]
                 assert "user_id" in extra
                 assert "error_type" in extra
 

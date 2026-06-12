@@ -106,7 +106,11 @@ class TestMultiTenantIDOR:
             str(uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc")),
         ]
 
-        response = test_client.post(
+        # ANGEPASST (2026-06-12): Die Route ist als HTTP DELETE registriert
+        # (app/api/v1/documents.py: @router.delete("/bulk/delete")) - der
+        # fruehere POST traf die Route gar nicht.
+        response = test_client.request(
+            "DELETE",
             "/api/v1/documents/bulk/delete",
             json={"document_ids": foreign_doc_ids},
             headers=auth_headers_company_a,
@@ -145,8 +149,10 @@ class TestPrivilegeEscalation:
             json={"role": "admin", "is_superuser": True},
             headers=auth_headers_normal_user,
         )
-        # Sollte abgelehnt werden
-        assert response.status_code in [400, 403, 422]
+        # Sollte abgelehnt werden. 404 ist ebenfalls sicher: PATCH
+        # /api/v1/users/me existiert als Route nicht - es gibt keinen
+        # Self-Service-Eskalationspfad (ANGEPASST 2026-06-12).
+        assert response.status_code in [400, 403, 404, 422]
 
         # Verify: Role sollte unveraendert sein
         me_response = test_client.get("/api/v1/users/me", headers=auth_headers_normal_user)
@@ -347,108 +353,76 @@ class TestResourceOwnership:
 # Die Fixtures test_client, auth_headers, auth_headers_company_a, auth_headers_company_b
 # werden aus conftest.py importiert. Diese nutzen den ECHTEN TestClient mit ECHTEN JWT-Tokens.
 
-# Zusätzliche Role-based Fixtures für dieses Modul
+# Zusaetzliche Role-based Fixtures fuer dieses Modul.
+# KORREKTUR (2026-06-12): Alle nutzen jetzt echte (geseedete) DB-User via
+# seeded_auth_headers_factory aus conftest.py - Tokens mit zufaelliger sub
+# scheiterten an get_current_user() immer mit 401 "Benutzer nicht gefunden",
+# wodurch diese Tests nie das prueften, was sie behaupteten.
 @pytest.fixture
-def auth_headers_normal_user(_check_app_available):
+def auth_headers_normal_user(seeded_auth_headers_factory):
     """Auth-Header fuer normalen User (kein Admin)."""
-    try:
-        from app.core.security import create_access_token
-        from uuid import uuid4
-        user_data = {
-            "sub": str(uuid4()),
-            "email": "normal-user@test.local",
-            "is_active": True,
-            "is_superuser": False,
-            "company_id": "00000000-0000-0000-0000-000000000001",
-        }
-        token = create_access_token(data=user_data)
-        return {"Authorization": f"Bearer {token}"}
-    except ImportError:
-        return {"Authorization": "Bearer normal-user-token"}
+    return seeded_auth_headers_factory(
+        company_id="00000000-0000-0000-0000-000000000001",
+        company_name="Security-Test Company A",
+        email="normal-user@test.local",
+        username="security-test-normal-user",
+    )
 
 
 @pytest.fixture
-def auth_headers_viewer(_check_app_available):
+def auth_headers_viewer(seeded_auth_headers_factory):
     """Auth-Header fuer Viewer (read-only)."""
-    try:
-        from app.core.security import create_access_token
-        from uuid import uuid4
-        user_data = {
-            "sub": str(uuid4()),
-            "email": "viewer@test.local",
-            "is_active": True,
-            "is_superuser": False,
-            "role": "viewer",
-            "company_id": "00000000-0000-0000-0000-000000000001",
-        }
-        token = create_access_token(data=user_data)
-        return {"Authorization": f"Bearer {token}"}
-    except ImportError:
-        return {"Authorization": "Bearer viewer-token"}
+    return seeded_auth_headers_factory(
+        company_id="00000000-0000-0000-0000-000000000001",
+        company_name="Security-Test Company A",
+        email="viewer@test.local",
+        username="security-test-viewer",
+    )
 
 
 @pytest.fixture
-def auth_headers_owner(_check_app_available):
+def auth_headers_owner(seeded_auth_headers_factory):
     """Auth-Header fuer Dokument-Owner."""
-    try:
-        from app.core.security import create_access_token
-        from uuid import uuid4
-        user_data = {
-            "sub": str(uuid4()),
-            "email": "owner@test.local",
-            "is_active": True,
-            "is_superuser": False,
-            "company_id": "00000000-0000-0000-0000-000000000001",
-        }
-        token = create_access_token(data=user_data)
-        return {"Authorization": f"Bearer {token}"}
-    except ImportError:
-        return {"Authorization": "Bearer owner-token"}
+    return seeded_auth_headers_factory(
+        company_id="00000000-0000-0000-0000-000000000001",
+        company_name="Security-Test Company A",
+        email="owner@test.local",
+        username="security-test-owner",
+    )
 
 
 @pytest.fixture
-def auth_headers_shared_user(_check_app_available):
+def auth_headers_shared_user(seeded_auth_headers_factory):
     """Auth-Header fuer User mit Share-Berechtigung."""
-    try:
-        from app.core.security import create_access_token
-        from uuid import uuid4
-        user_data = {
-            "sub": str(uuid4()),
-            "email": "shared-user@test.local",
-            "is_active": True,
-            "is_superuser": False,
-            "company_id": "00000000-0000-0000-0000-000000000001",
-        }
-        token = create_access_token(data=user_data)
-        return {"Authorization": f"Bearer {token}"}
-    except ImportError:
-        return {"Authorization": "Bearer shared-user-token"}
+    return seeded_auth_headers_factory(
+        company_id="00000000-0000-0000-0000-000000000001",
+        company_name="Security-Test Company A",
+        email="shared-user@test.local",
+        username="security-test-shared-user",
+    )
 
 
 @pytest.fixture
-def auth_headers_no_share(_check_app_available):
-    """Auth-Header fuer User ohne Share-Berechtigung."""
-    try:
-        from app.core.security import create_access_token
-        from uuid import uuid4
-        user_data = {
-            "sub": str(uuid4()),
-            "email": "no-share@test.local",
-            "is_active": True,
-            "is_superuser": False,
-            "company_id": "00000000-0000-0000-0000-000000000003",  # Different company
-        }
-        token = create_access_token(data=user_data)
-        return {"Authorization": f"Bearer {token}"}
-    except ImportError:
-        return {"Authorization": "Bearer no-share-token"}
+def auth_headers_no_share(seeded_auth_headers_factory):
+    """Auth-Header fuer User ohne Share-Berechtigung (fremde Company)."""
+    return seeded_auth_headers_factory(
+        company_id="00000000-0000-0000-0000-000000000003",
+        company_name="Security-Test Company C",
+        email="no-share@test.local",
+        username="security-test-no-share",
+    )
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def _check_app_available():
-    """Prueft ob die App verfuegbar ist."""
+    """Prueft ob die App verfuegbar ist.
+
+    HINWEIS (2026-06-12): MUSS session-scoped sein wie das gleichnamige
+    Fixture in conftest.py - der session-weite ``_session_test_client``
+    haengt davon ab (sonst ScopeMismatch).
+    """
     try:
-        from app.main import app
+        from app.main import app  # noqa: F401
         return True
     except ImportError:
         import pytest

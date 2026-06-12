@@ -57,13 +57,17 @@ def _check_app_available():
         pytest.skip("App not available - run with docker-compose up backend")
 
 
-@pytest.fixture
-def test_client(_check_app_available) -> Generator[TestClient, None, None]:
-    """
-    ECHTER TestClient fuer Security Tests.
+@pytest.fixture(scope="session")
+def _session_test_client(_check_app_available) -> Generator[TestClient, None, None]:
+    """Session-weiter TestClient: EIN App-Lifespan fuer die gesamte Suite.
 
-    NICHT den MagicMock aus den Test-Dateien verwenden!
-    Dieser Fixture ueberschreibt alle lokalen Mock-Fixtures.
+    WICHTIG (2026-06-12): Frueher startete JEDER Test einen eigenen
+    TestClient-Lifespan. Die globale DB-Engine der App bleibt aber an den
+    Event-Loop des ERSTEN Portals gebunden -> ab dem zweiten Lifespan
+    schlugen DB-Zugriffe fehl (frueher: Startup-RuntimeError und
+    Kaskaden-Skip "App-Startup nicht moeglich"; spaeter: 503 statt
+    fachlicher Antworten). Eine echte App startet auch nur einmal - der
+    Session-Client bildet das korrekt ab.
     """
     if not APP_AVAILABLE:
         pytest.skip("App not available")
@@ -89,6 +93,17 @@ def test_client(_check_app_available) -> Generator[TestClient, None, None]:
         yield client
     finally:
         client_cm.__exit__(None, None, None)
+
+
+@pytest.fixture
+def test_client(_session_test_client) -> TestClient:
+    """
+    ECHTER TestClient fuer Security Tests.
+
+    NICHT den MagicMock aus den Test-Dateien verwenden!
+    Dieser Fixture ueberschreibt alle lokalen Mock-Fixtures.
+    """
+    return _session_test_client
 
 
 @pytest_asyncio.fixture
@@ -120,16 +135,15 @@ def auth_headers(_check_app_available) -> Dict[str, str]:
     if not APP_AVAILABLE:
         return {"Authorization": "Bearer invalid-token"}
 
-    # Erstelle einen echten Test-Token
-    test_user_data = {
-        "sub": str(uuid4()),
-        "email": "security-test@ablage.local",
-        "is_active": True,
-        "is_superuser": False,
-        "company_id": str(uuid4()),
-    }
-    token = create_access_token(data=test_user_data)
-    return {"Authorization": f"Bearer {token}"}
+    # KORREKTUR (2026-06-12): get_current_user() loest den User aus der DB
+    # auf - Tokens mit zufaelliger sub fuehrten immer zu 401 "Benutzer nicht
+    # gefunden". Daher echten Testuser seeden (get-or-create, idempotent).
+    return _company_auth_headers(
+        company_id="00000000-0000-0000-0000-0000000000aa",
+        company_name="Security-Test Company",
+        email="security-test@ablage.local",
+        username="security-test-user",
+    )
 
 
 @pytest.fixture
@@ -138,51 +152,175 @@ def auth_headers_admin(_check_app_available) -> Dict[str, str]:
     if not APP_AVAILABLE:
         return {"Authorization": "Bearer invalid-token"}
 
-    admin_user_data = {
-        "sub": str(uuid4()),
-        "email": "admin-test@ablage.local",
+    # KORREKTUR (2026-06-12): echter geseedeter Superuser statt Random-sub
+    # (siehe auth_headers).
+    return _company_auth_headers(
+        company_id="00000000-0000-0000-0000-0000000000aa",
+        company_name="Security-Test Company",
+        email="admin-test@ablage.local",
+        username="security-test-admin",
+        is_superuser=True,
+    )
+
+
+def _run_coro_isolated(coro):
+    """Fuehrt eine Coroutine auf einem frischen, isolierten Loop aus.
+
+    Bewusst OHNE ``asyncio.set_event_loop``: Der globale Current-Loop der
+    Test-Session bleibt unberuehrt (keine Event-Loop-Pollution fuer
+    nachfolgende async Tests).
+    """
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
+async def _get_or_create_company_user(
+    company_id: str,
+    company_name: str,
+    email: str,
+    username: str,
+    is_superuser: bool = False,
+) -> str:
+    """Legt Company + User + UserCompany-Link idempotent in der echten DB an.
+
+    HINTERGRUND (2026-06-12): get_current_user() loest den User IMMER aus der
+    Datenbank auf. Tokens mit zufaelliger sub (uuid4) fuehrten daher zu
+    401 "Benutzer nicht gefunden" - die Multi-Tenant-IDOR-Tests prueften nie
+    die Mandanten-Isolation, sondern nur kaputte Authentifizierung.
+    """
+    from uuid import UUID as _UUID
+
+    from sqlalchemy import select
+
+    from app.core.config import settings
+    from app.db.models import Company, User
+    from app.db.models_cash_company import UserCompany
+
+    engine = create_async_engine(
+        str(settings.DATABASE_URL), poolclass=NullPool, echo=False
+    )
+    try:
+        session_maker = async_sessionmaker(
+            engine, class_=AsyncSession, expire_on_commit=False
+        )
+        async with session_maker() as session:
+            company_uuid = _UUID(company_id)
+
+            company = await session.get(Company, company_uuid)
+            if company is None:
+                company = Company(id=company_uuid, name=company_name)
+                session.add(company)
+
+            result = await session.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
+            if user is None:
+                user = User(
+                    email=email,
+                    username=username,
+                    hashed_password=get_password_hash("Security-Test-Pw-1!"),
+                    full_name=f"Security Testuser {company_name}",
+                    is_active=True,
+                    is_superuser=is_superuser,
+                )
+                session.add(user)
+                await session.flush()
+
+            result = await session.execute(
+                select(UserCompany).where(
+                    UserCompany.user_id == user.id,
+                    UserCompany.company_id == company_uuid,
+                )
+            )
+            link = result.scalar_one_or_none()
+            if link is None:
+                session.add(
+                    UserCompany(
+                        user_id=user.id,
+                        company_id=company_uuid,
+                        role="member",
+                        is_current=True,
+                    )
+                )
+
+            await session.commit()
+            return str(user.id)
+    finally:
+        await engine.dispose()
+
+
+def _company_auth_headers(
+    company_id: str,
+    company_name: str,
+    email: str,
+    username: str,
+    is_superuser: bool = False,
+) -> Dict[str, str]:
+    """Erzeugt Auth-Headers fuer einen ECHTEN (geseedeten) Company-User."""
+    try:
+        user_id = _run_coro_isolated(
+            _get_or_create_company_user(
+                company_id, company_name, email, username, is_superuser
+            )
+        )
+    except Exception as exc:  # DB nicht erreichbar -> sauber skippen
+        pytest.skip(
+            f"Multi-Tenant-Testuser konnte nicht angelegt werden "
+            f"(DB nicht verfuegbar?): {exc}"
+        )
+
+    user_data = {
+        "sub": user_id,
+        "email": email,
         "is_active": True,
-        "is_superuser": True,
-        "company_id": str(uuid4()),
+        "is_superuser": is_superuser,
+        "company_id": company_id,
     }
-    token = create_access_token(data=admin_user_data)
+    token = create_access_token(data=user_data)
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="session")
+def seeded_auth_headers_factory():
+    """Factory-Fixture: Auth-Headers fuer echte (geseedete) DB-User.
+
+    Fuer Test-Module, die eigene Rollen-User brauchen (z.B.
+    test_broken_access.py) - statt Tokens mit zufaelliger sub zu bauen,
+    die an get_current_user() immer mit 401 scheitern.
+    """
+    return _company_auth_headers
 
 
 @pytest.fixture
 def auth_headers_company_a(_check_app_available) -> Dict[str, str]:
-    """Auth-Headers fuer Company A (Multi-Tenant Tests)."""
+    """Auth-Headers fuer Company A (Multi-Tenant Tests, echter DB-User)."""
     if not APP_AVAILABLE:
         return {"Authorization": "Bearer invalid-token"}
 
-    company_a_id = "00000000-0000-0000-0000-000000000001"
-    user_data = {
-        "sub": str(uuid4()),
-        "email": "user-a@company-a.local",
-        "is_active": True,
-        "is_superuser": False,
-        "company_id": company_a_id,
-    }
-    token = create_access_token(data=user_data)
-    return {"Authorization": f"Bearer {token}"}
+    return _company_auth_headers(
+        company_id="00000000-0000-0000-0000-000000000001",
+        company_name="Security-Test Company A",
+        email="user-a@company-a.local",
+        username="security-test-user-a",
+    )
 
 
 @pytest.fixture
 def auth_headers_company_b(_check_app_available) -> Dict[str, str]:
-    """Auth-Headers fuer Company B (Multi-Tenant Tests)."""
+    """Auth-Headers fuer Company B (Multi-Tenant Tests, echter DB-User)."""
     if not APP_AVAILABLE:
         return {"Authorization": "Bearer invalid-token"}
 
-    company_b_id = "00000000-0000-0000-0000-000000000002"
-    user_data = {
-        "sub": str(uuid4()),
-        "email": "user-b@company-b.local",
-        "is_active": True,
-        "is_superuser": False,
-        "company_id": company_b_id,
-    }
-    token = create_access_token(data=user_data)
-    return {"Authorization": f"Bearer {token}"}
+    return _company_auth_headers(
+        company_id="00000000-0000-0000-0000-000000000002",
+        company_name="Security-Test Company B",
+        email="user-b@company-b.local",
+        username="security-test-user-b",
+    )
 
 
 # =============================================================================
