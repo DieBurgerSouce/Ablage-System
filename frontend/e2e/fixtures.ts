@@ -159,41 +159,10 @@ export const test = base.extend<{
       }, SESSION_REFRESH_INTERVAL_MS);
     };
 
-    // =========================================================================
-    // WORKAROUND fuer dokumentierten App-Bug (Kategorie B, KRITISCH, 2026-06-12):
-    // GET /api/v1/notifications/ liefert {"notifications":[...],...}, aber
-    // NotificationCenter.tsx:72 erwartet page.items ->
-    // flatMap liefert [undefined] -> .filter(n => n.snoozed_until) wirft
-    // "TypeError: Cannot read properties of undefined (reading 'snoozed_until')"
-    // -> Root-ErrorBoundary ersetzt die GESAMTE App auf JEDER Route, sobald
-    // die Query resolved (~1-3s nach Mount). Ohne diesen Shim ist kein
-    // UI-Test stabil. ENTFERNEN, sobald der API-Contract gefixt ist!
-    // =========================================================================
-    await page.route('**/api/v1/notifications*', async (route) => {
-      try {
-        const response = await route.fetch();
-        let body: unknown;
-        try {
-          body = await response.json();
-        } catch {
-          return await route.fulfill({ response });
-        }
-        if (
-          body &&
-          typeof body === 'object' &&
-          !Array.isArray(body) &&
-          'notifications' in body &&
-          !('items' in body)
-        ) {
-          (body as Record<string, unknown>).items = (body as Record<string, unknown>).notifications;
-        }
-        return await route.fulfill({ response, json: body as object });
-      } catch {
-        // Page/Context bereits im Teardown geschlossen -> Request regulaer
-        // weiterlaufen lassen statt den Test im Nachgang zu reissen.
-        return route.continue().catch(() => {});
-      }
-    });
+    // HINWEIS (B5, 2026-06-12): Der fruehere Notifications-Shim wurde
+    // entfernt - der Frontend-API-Layer normalisiert den echten Backend-
+    // Vertrag ({notifications, unreadCount, total}) jetzt selbst
+    // (frontend/src/features/notifications/api/index.ts).
 
     // Now navigate to the app - auth data will already be in sessionStorage
     // Kein 'networkidle': Das Dashboard laedt dauerhaft nach (Notifications,
@@ -225,7 +194,7 @@ export const test = base.extend<{
     if (refreshInterval) {
       clearInterval(refreshInterval);
     }
-    // Offene Route-Handler (Notifications-Shim) sauber abraeumen, damit
+    // Offene Route-Handler (aus einzelnen Specs) sauber abraeumen, damit
     // In-Flight-Requests beim Page-Close keine Teardown-Fehler ausloesen.
     await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
   },

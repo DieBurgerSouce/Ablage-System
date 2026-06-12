@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Check, Trash2, AlertCircle, Clock, ChevronDown, ChevronUp, History } from 'lucide-react';
+import { UnifiedErrorBoundary } from '@/components/errors/UnifiedErrorBoundary';
 import { NotificationItem } from './NotificationItem';
 import {
   useNotifications,
@@ -30,13 +31,32 @@ import {
   useSnoozeNotification
 } from '../hooks/useNotifications';
 import { NotificationPriority } from '../types';
+import type { Notification } from '../types';
 
 interface NotificationCenterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function NotificationCenter({
+/**
+ * NotificationCenter mit lokaler ErrorBoundary (B5):
+ * Ein Fehler in diesem Widget darf NIE wieder die gesamte App in den
+ * Root-ErrorBoundary reissen - der Schaden bleibt auf das Widget begrenzt.
+ */
+export function NotificationCenter(props: NotificationCenterProps) {
+  return (
+    <UnifiedErrorBoundary
+      variant="inline"
+      context="general"
+      errorTitle="Benachrichtigungen nicht verfügbar"
+      errorDescription="Das Benachrichtigungs-Center konnte nicht geladen werden. Die übrige Anwendung funktioniert weiterhin."
+    >
+      <NotificationCenterInner {...props} />
+    </UnifiedErrorBoundary>
+  );
+}
+
+function NotificationCenterInner({
   open,
   onOpenChange
 }: NotificationCenterProps) {
@@ -69,7 +89,11 @@ export function NotificationCenter({
   const bulkDismissMutation = useBulkDismiss();
   const snoozeMutation = useSnoozeNotification();
 
-  const allNotifications = data?.pages.flatMap((page) => page.items) ?? [];
+  // Defensiv (B5): Eine unerwartete Seiten-/Eintrags-Form darf hier nie
+  // einen TypeError ausloesen - kaputte Eintraege werden verworfen.
+  const allNotifications = (data?.pages ?? [])
+    .flatMap((page) => (Array.isArray(page?.items) ? page.items : []))
+    .filter((n): n is Notification => Boolean(n) && typeof n === 'object');
 
   // Gesnoozede Benachrichtigungen filtern
   const now = new Date();
@@ -80,11 +104,21 @@ export function NotificationCenter({
     return true;
   });
 
+  // Prioritaets-Tabs clientseitig filtern: GET /notifications/ unterstuetzt
+  // keinen priority-Parameter (nur /notifications/system tut das).
+  const priorityFiltered = filter?.priority
+    ? notifications.filter((n) => n.priority === filter.priority)
+    : notifications;
+
   // Verlaufsfilter: nur letzte 7 Tage
   const filteredNotifications = showHistory
-    ? notifications
-    : notifications.filter((n) => {
+    ? priorityFiltered
+    : priorityFiltered.filter((n) => {
         const created = new Date(n.created_at);
+        if (Number.isNaN(created.getTime())) {
+          // Unbekanntes Datum nie still verstecken
+          return true;
+        }
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         return created >= sevenDaysAgo;
       });
