@@ -39,9 +39,13 @@ from app.db.models_custom_fields import CustomFieldDefinition, FieldType
 
 def _get_service_class():
     """Lazily import CustomFieldService to avoid torch dependency chain."""
-    # Mock torch before importing service
+    # torch nur mocken, wenn es WIRKLICH fehlt - sonst wuerde ein MagicMock
+    # das echte torch fuer die restliche Session ersetzen (Test-Pollution).
     if "torch" not in sys.modules:
-        sys.modules["torch"] = MagicMock()
+        try:
+            import torch  # noqa: F401
+        except (ImportError, OSError):
+            sys.modules["torch"] = MagicMock()
     from app.services.custom_field_service import (
         CustomFieldService,
         CustomFieldValidationError,

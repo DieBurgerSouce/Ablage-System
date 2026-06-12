@@ -438,12 +438,58 @@ def sample_image_file(tmp_path):
 
 
 # Event loop configuration
+_SESSION_EVENT_LOOP: "asyncio.AbstractEventLoop | None" = None
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an event loop for async tests."""
+    global _SESSION_EVENT_LOOP
     loop = asyncio.get_event_loop_policy().new_event_loop()
+    _SESSION_EVENT_LOOP = loop
     yield loop
+    _SESSION_EVENT_LOOP = None
     loop.close()
+
+
+@pytest.fixture(autouse=True)
+def _repair_global_event_loop() -> Generator[None, None, None]:
+    """Stellt vor jedem Test einen funktionsfaehigen Current-Event-Loop sicher.
+
+    Hintergrund (Test-Pollution, Vollsuiten-Lauf 2026-06-12: ~6900 Failures):
+    pytest-asyncio 0.23 fuehrt async Tests auf dem *aktuellen* Loop aus
+    (``asyncio.get_event_loop()`` in ``wrap_in_sync``), waehrend die
+    session-scoped ``event_loop``-Fixture oben nur EINMAL als Current-Loop
+    gesetzt wird. Viele Celery-Sync-Wrapper in ``app/workers/tasks/*`` nutzen
+    das Muster ``new_event_loop() -> set_event_loop() -> close()`` OHNE den
+    vorherigen Loop zu restaurieren; ``asyncio.run()`` setzt den Current-Loop
+    am Ende auf ``None``. Ruft ein synchroner Test solchen App-Code auf
+    (z.B. ``_run_async`` in duplicate_detection_tasks), ist der globale Loop
+    danach geschlossen bzw. entfernt -> ALLE nachfolgenden async Tests der
+    Session scheitern mit "Event loop is closed" / "There is no current event
+    loop in thread 'MainThread'", obwohl jede Datei standalone gruen ist.
+
+    Dieser Guard repariert den globalen Zustand pro Test: Ist der aktuelle
+    Loop geschlossen oder nicht gesetzt, wird der Session-Loop (bevorzugt,
+    identisch zum Standalone-Verhalten) oder ersatzweise ein frischer Loop
+    als Current-Loop gesetzt.
+    """
+    import warnings as _warnings
+
+    policy = asyncio.get_event_loop_policy()
+    try:
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore", DeprecationWarning)
+            current = policy.get_event_loop()
+    except RuntimeError:
+        # set_event_loop(None) wurde aufgerufen (z.B. durch asyncio.run())
+        current = None
+    if current is None or current.is_closed():
+        if _SESSION_EVENT_LOOP is not None and not _SESSION_EVENT_LOOP.is_closed():
+            policy.set_event_loop(_SESSION_EVENT_LOOP)
+        else:
+            policy.set_event_loop(policy.new_event_loop())
+    yield
 
 
 # Cleanup fixtures

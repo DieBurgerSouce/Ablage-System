@@ -15,8 +15,18 @@ from datetime import date
 from decimal import Decimal
 from lxml import etree
 
-# Mock torch to avoid import errors in test environment
-sys.modules['torch'] = type(sys)('torch')
+# torch nur stubben, wenn es WIRKLICH fehlt. Das alte unbedingte
+# ``sys.modules['torch'] = type(sys)('torch')`` lief zur Collection-Zeit und
+# ersetzte das echte torch fuer die GESAMTE Test-Session durch ein leeres
+# Modul -> "module 'torch' has no attribute 'cuda'/'Tensor'" in voellig
+# fremden Tests (Test-Pollution, Vollsuiten-Lauf 2026-06-12).
+if "torch" not in sys.modules:
+    try:
+        import torch  # noqa: F401
+    except (ImportError, OSError):
+        import types as _types
+
+        sys.modules["torch"] = _types.ModuleType("torch")
 
 # Direct import to avoid app.services.__init__ which loads torch
 from app.services.einvoice.xrechnung_generator import (
