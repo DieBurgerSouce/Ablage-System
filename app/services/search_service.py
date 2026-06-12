@@ -724,14 +724,18 @@ class SearchService:
                     d.ocr_confidence,
                     d.owner_id,
                     d.extracted_text,
-                    -- Field-Level Boosting: Filename-Treffer ranken höher
+                    -- Field-Level Boosting: Filename-Treffer ranken höher.
+                    -- W4b: Casts sind PFLICHT — im CASE ohne Typkontext bindet
+                    -- asyncpg die Boost-Parameter als text, und Postgres kennt
+                    -- keinen Operator real * text -> jede Suche war HTTP 500
+                    -- (vorher zusaetzlich vom Rate-Limit-503 maskiert, B4).
                     ts_rank_cd(d.search_vector, sq.query) *
                     CASE
                         WHEN lower(d.filename) LIKE '%' || lower(:raw_query) || '%'
-                            THEN :filename_boost
+                            THEN CAST(:filename_boost AS real)
                         WHEN lower(d.original_filename) LIKE '%' || lower(:raw_query) || '%'
-                            THEN :orig_filename_boost
-                        ELSE :text_boost
+                            THEN CAST(:orig_filename_boost AS real)
+                        ELSE CAST(:text_boost AS real)
                     END AS fts_rank,
                     CASE
                         WHEN :enable_highlight THEN
@@ -858,13 +862,13 @@ class SearchService:
                     d.ocr_confidence,
                     d.owner_id,
                     d.extracted_text,
-                    1 - (d.embedding <=> :embedding::vector) AS similarity
+                    1 - (d.embedding <=> CAST(:embedding AS vector)) AS similarity
                 FROM documents d
                 WHERE d.id IN (SELECT document_id FROM accessible_docs)
                     AND d.embedding IS NOT NULL
-                    AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
+                    AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                     {filters}
-                ORDER BY d.embedding <=> :embedding::vector
+                ORDER BY d.embedding <=> CAST(:embedding AS vector)
             )
             SELECT * FROM semantic_results
             LIMIT :limit OFFSET :offset
@@ -882,7 +886,7 @@ class SearchService:
             SELECT COUNT(*) FROM documents d
             WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.embedding IS NOT NULL
-                AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
+                AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                 {filters}
         """.format(filters=self._build_filter_sql(filters)))
 
@@ -1126,16 +1130,16 @@ class SearchService:
                 d.id AS document_id,
                 d.filename,
                 d.document_type,
-                1 - (d.embedding <=> :embedding::vector) AS similarity,
+                1 - (d.embedding <=> CAST(:embedding AS vector)) AS similarity,
                 d.created_at,
                 LEFT(d.extracted_text, 200) AS text_preview
             FROM documents d
             WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.id != :source_id
                 AND d.embedding IS NOT NULL
-                AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
+                AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                 {type_filter}
-            ORDER BY d.embedding <=> :embedding::vector
+            ORDER BY d.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
 
