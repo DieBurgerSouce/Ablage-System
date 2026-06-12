@@ -127,8 +127,10 @@ Invoke-Stage 'api' {
     # schemathesis); das Skript braucht die Host-Python-Umgebung.
     $gitBash = 'C:\Program Files\Git\bin\bash.exe'
     if (-not (Test-Path $gitBash)) { Write-Host "Git-Bash fehlt: $gitBash"; $global:LASTEXITCODE = 1; return }
-    # schemathesis.exe liegt im Python-Scripts-Verzeichnis (nicht auf PATH)
-    $env:PATH = "C:\Program Files\Python312\Scripts;$env:PATH"
+    # schemathesis.exe liegt im Python-Scripts-Verzeichnis (nicht auf PATH);
+    # PATH-Vererbung nach Git-Bash ist unzuverlaessig -> absoluten Pfad
+    # als Env durchreichen (Skript nutzt SCHEMATHESIS_BIN-Fallback).
+    $env:SCHEMATHESIS_BIN = 'C:\Program Files\Python312\Scripts\schemathesis.exe'
     & $gitBash scripts/run_schemathesis.sh
 }
 
@@ -146,7 +148,8 @@ Invoke-Stage 'a11y' {
 
 Invoke-Stage 'vitest' {
     Push-Location (Join-Path $RepoRoot 'frontend')
-    try { npx vitest run --reporter=basic }
+    # Kein --reporter=basic: in Vitest 3 entfernt -> Startup Error
+    try { npx vitest run }
     finally { Pop-Location }
 }
 

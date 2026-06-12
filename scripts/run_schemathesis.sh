@@ -60,7 +60,9 @@ echo ">> Starte Schemathesis (max-examples=$MAX_EXAMPLES, Check: not_a_server_er
 # Ausgeschlossen: /api/v1/test/ (Reset wuerde den Seed-Zustand zerstoeren),
 # Auth-Logout (wuerde das Fuzz-Token invalidieren) sowie DELETE-Methoden
 # (erste Ausbaustufe konservativ - kein Wegfuzzen von Dev-Daten).
-schemathesis run "$BASE_URL/openapi.json" \
+# SCHEMATHESIS_BIN: absoluter Pfad fuer Windows-Hosts, auf denen das
+# Python-Scripts-Verzeichnis nicht im (Git-Bash-)PATH liegt.
+"${SCHEMATHESIS_BIN:-schemathesis}" run "$BASE_URL/openapi.json" \
     --header "Authorization: Bearer $TOKEN" \
     --checks not_a_server_error \
     --max-examples "$MAX_EXAMPLES" \
