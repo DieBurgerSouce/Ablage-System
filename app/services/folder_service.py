@@ -11,7 +11,7 @@ Bietet hierarchische Ordnerverwaltung mit:
 
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy import and_, delete, func, select, update
@@ -85,7 +85,18 @@ class FolderService:
             path = f"{parent.path}/"
             level = parent.level + 1
 
+        # WICHTIG (Bug-Fix 2026-06-13): Die ID explizit VOR dem ersten flush()
+        # erzeugen, damit der Materialized Path (Spalte ``path`` ist NOT NULL)
+        # bereits beim INSERT gesetzt ist. Frueher wurde ``folder.path`` erst NACH
+        # ``db.flush()`` gesetzt -> der erste INSERT schrieb ``path=NULL`` und lief
+        # gegen eine IntegrityError (NotNullViolation) -> 500 bei JEDER
+        # Ordner-Erstellung gegen eine echte DB (in Unit-Tests durch gemocktes
+        # ``flush`` verdeckt).
+        folder_id = uuid4()
+        materialized_path = f"{path}{folder_id}" if parent_id else str(folder_id)
+
         folder = Folder(
+            id=folder_id,
             company_id=company_id,
             parent_id=parent_id,
             name=name,
@@ -94,18 +105,13 @@ class FolderService:
             color=color,
             folder_type=folder_type,
             folder_metadata=folder_metadata or {},
+            path=materialized_path,
             level=level,
             created_by_id=created_by_id,
         )
 
         db.add(folder)
         await db.flush()
-
-        # Materialized Path mit eigener ID vervollständigen
-        if parent_id:
-            folder.path = f"{path}{folder.id}"
-        else:
-            folder.path = str(folder.id)
 
         # Subfolder-Count des Parents aktualisieren
         if parent_id:
