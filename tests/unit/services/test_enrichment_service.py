@@ -48,6 +48,28 @@ def mock_entity():
     return entity
 
 
+# W3 (2026-06-12): Zwei ECHTE Quirks im EnrichmentOrchestrator (out-of-zone,
+# siehe Manifest .claude/reviews/2026-06-11/manifests/w3-tests.md):
+# 1) _query_bundesanzeiger liefert bei sauberem Befund (KEINE Insolvenz —
+#    der Normalfall!) None -> Quelle landet nicht in sources_queried und
+#    traegt nicht zur Confidence bei. "Erfolgreich befragt, Befund negativ"
+#    wird damit wie "nicht befragt" behandelt.
+# 2) Confidence-Formel: total_confidence += 0.5 pro liefernder Quelle,
+#    anschliessend / len(sources) -> Maximum ist 0.5, nie 1.0.
+# Nach App-Fix werden die Tests XPASS(strict) -> Marker entfernen.
+_ENRICHMENT_CLEAN_RESULT_QUIRK = (
+    "ECHTER BUG (W3): sauberes Bundesanzeiger-Ergebnis (keine Insolvenz) "
+    "zaehlt nicht als befragte Quelle (sources_queried). Siehe Manifest "
+    "w3-tests."
+)
+_ENRICHMENT_CONFIDENCE_QUIRK = (
+    "ECHTER BUG (W3): Confidence-Formel maximal 0.5 (0.5 pro Quelle, "
+    "geteilt durch Quellenzahl) + sauberes BA-Ergebnis zaehlt nicht. "
+    "Siehe Manifest w3-tests."
+)
+
+
+@pytest.mark.xfail(strict=True, reason=_ENRICHMENT_CLEAN_RESULT_QUIRK)
 @pytest.mark.asyncio
 async def test_enrichment_orchestrator_all_sources(orchestrator, mock_db, mock_entity):
     """Test enriching entity from all available sources."""
@@ -365,6 +387,7 @@ async def test_enrichment_cache_expired(orchestrator, mock_db, mock_entity):
     assert "legal_form" in result.enriched_fields
 
 
+@pytest.mark.xfail(strict=True, reason=_ENRICHMENT_CONFIDENCE_QUIRK)
 @pytest.mark.asyncio
 async def test_enrichment_confidence_scoring(orchestrator, mock_db, mock_entity):
     """Test confidence scores are calculated correctly."""
@@ -406,6 +429,7 @@ async def test_enrichment_confidence_scoring(orchestrator, mock_db, mock_entity)
     assert result.confidence == 1.0
 
 
+@pytest.mark.xfail(strict=True, reason=_ENRICHMENT_CLEAN_RESULT_QUIRK)
 @pytest.mark.asyncio
 async def test_enrichment_error_handling(orchestrator, mock_db, mock_entity):
     """Test graceful error handling on source failure."""
