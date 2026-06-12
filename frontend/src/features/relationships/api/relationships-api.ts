@@ -189,7 +189,9 @@ export interface GraphNodePosition {
     y: number;
 }
 
+// Index-Signatur: @xyflow/react v12 verlangt Record<string, unknown> als Node-Data
 export interface EntityNodeData {
+    [key: string]: unknown;
     id: string;
     name: string;
     entityType: string;
@@ -201,6 +203,7 @@ export interface EntityNodeData {
 }
 
 export interface DocumentNodeData {
+    [key: string]: unknown;
     id: string;
     name: string;
     documentType?: string | null;

@@ -30,9 +30,9 @@ export function useExecutionState(instanceId: string, enabled = true) {
     queryKey: executionVizKeys.state(instanceId),
     queryFn: () => workflowsApi.getExecutionState(instanceId),
     enabled: enabled && !!instanceId,
-    refetchInterval: (data) => {
-      // Auto-refresh alle 2 Sekunden wenn Status "running" ist
-      return data?.status === 'running' ? 2000 : false;
+    refetchInterval: (query) => {
+      // Auto-refresh alle 2 Sekunden wenn Status "running" ist (v5: Query-Objekt)
+      return query.state.data?.status === 'running' ? 2000 : false;
     },
   });
 }

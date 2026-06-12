@@ -76,7 +76,7 @@ import {
   getConfidenceColor,
   getPriorityColor,
 } from '../types/validation-queue.types';
-import type { ValidationQueueFilters } from '../types/validation-queue.types';
+import type { ValidationQueueFilters, ValidationQueueSortOptions } from '../types/validation-queue.types';
 import { RejectReasonDialog } from './RejectReasonDialog';
 import { BulkApproveDialog } from './BulkApproveDialog';
 import { AssignEditorDialog } from './AssignEditorDialog';
@@ -178,10 +178,13 @@ function ValidationQueueDashboardInner() {
   const [rejectingItemId, _setRejectingItemId] = useState<string | null>(null);
 
   // Parse sort option
-  const [sortBy, sortOrder] = sortOption.split(':') as [string, 'asc' | 'desc'];
+  const [sortBy, sortOrder] = sortOption.split(':') as [
+    NonNullable<ValidationQueueSortOptions['sort_by']>,
+    'asc' | 'desc',
+  ];
 
   // Build filters
-  const filters: ValidationQueueFilters & { sort_by?: string; sort_order?: string } = {
+  const filters: ValidationQueueFilters & ValidationQueueSortOptions = {
     status: statusFilter === 'all' ? undefined : (statusFilter as ValidationStatus),
     document_type: documentTypeFilter === 'all' ? undefined : documentTypeFilter,
     sample_source: sourceFilter === 'all' ? undefined : (sourceFilter as SampleSource),
@@ -469,13 +472,13 @@ function ValidationQueueDashboardInner() {
 
   // Stats Cards Data
   const stats = useMemo(() => {
-    const s = statsData || {};
-    const a = analyticsData || {};
     return {
-      pending: s.pending || 0,
-      inProgress: s.in_progress || 0,
-      todayValidated: a.items_validated_today || 0,
-      approvalRate: a.approval_rate ? `${Math.round(a.approval_rate * 100)}%` : '-',
+      pending: statsData?.pending || 0,
+      inProgress: statsData?.in_progress || 0,
+      todayValidated: analyticsData?.items_validated_today || 0,
+      approvalRate: analyticsData?.approval_rate
+        ? `${Math.round(analyticsData.approval_rate * 100)}%`
+        : '-',
     };
   }, [statsData, analyticsData]);
 

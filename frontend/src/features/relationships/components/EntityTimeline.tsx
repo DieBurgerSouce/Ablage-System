@@ -138,7 +138,7 @@ export function EntityTimeline({
             return acc;
         },
         {} as Record<TimelineEventType, number>
-    ) ?? {};
+    ) ?? ({} as Record<TimelineEventType, number>);
 
     return (
         <Card className={compact ? 'border-0 shadow-none' : undefined}>

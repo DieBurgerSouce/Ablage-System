@@ -320,7 +320,7 @@ export function RulesManager() {
       <RuleFormDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        onSubmit={handleCreateRule}
+        onSubmit={(data) => handleCreateRule(data as ValidationRuleCreate)}
         isLoading={createRule.isPending}
       />
 

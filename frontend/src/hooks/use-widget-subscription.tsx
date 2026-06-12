@@ -23,6 +23,8 @@
  * });
  */
 
+import { useMultiWidgetSubscription } from "@/lib/websocket"
+
 export {
   useWidgetSubscription,
   useMultiWidgetSubscription,
