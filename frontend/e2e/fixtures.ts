@@ -174,12 +174,10 @@ export const test = base.extend<{
 
     // Verify we're logged in (not on login page)
     await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
-    // BEWUSST KEIN Warten auf #main-content: Das Admin-Dashboard ('/') crasht
-    // aktuell deterministisch in den Root-ErrorBoundary ("Anwendungsfehler"),
-    // weil WidgetSyncStatus <Tooltip> ohne TooltipProvider rendert
-    // (App-Bug, dokumentiert 2026-06-12: DashboardGridEnhanced.tsx:302).
-    // Die Ziel-Routen der Tests rendern nach page.goto() frisch und sind
-    // davon nicht betroffen.
+    // BEWUSST KEIN Warten auf #main-content: Die Ziel-Routen der Tests
+    // rendern nach page.goto() ohnehin frisch. (Der fruehere deterministische
+    // Dashboard-Crash - WidgetSyncStatus ohne TooltipProvider - ist seit
+    // 2026-06-12 behoben, B1.)
 
     const currentUrl = page.url();
     console.log('[Fixtures] After auth setup, current URL: ' + currentUrl);
