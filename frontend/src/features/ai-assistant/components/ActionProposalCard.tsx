@@ -36,7 +36,7 @@ interface ActionProposalCardProps {
   action: ActionData;
   onExecute: (action: ActionData) => Promise<ExecuteActionResponse>;
   onDismiss: () => void;
-  onRollback?: (actionId: string) => Promise<void>;
+  onRollback?: (actionId: string) => Promise<unknown>;
   executionResult?: ExecuteActionResponse;
   className?: string;
 }

@@ -27,13 +27,18 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useFinanceAssistant, type ChatMessage } from '../hooks/use-finance-assistant';
-import { usePageContext } from '../hooks/use-page-context';
+import {
+  getContextPlaceholder,
+  getContextSuggestions,
+  usePageContext,
+} from '../hooks/use-page-context';
 import { ActionProposalCard } from './ActionProposalCard';
 import { BookingSuggestionCard } from './BookingSuggestionCard';
 import { InsightsList } from './InsightCard';
 import {
   INTENT_METADATA,
   AssistantIntent,
+  type ExecuteActionResponse,
 } from '@/lib/api/services/finance-assistant';
 
 interface FinanceAssistantChatProps {
@@ -54,7 +59,9 @@ export function FinanceAssistantChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { suggestions: contextSuggestions, placeholder } = usePageContext();
+  const pageContext = usePageContext();
+  const contextSuggestions = getContextSuggestions(pageContext);
+  const placeholder = getContextPlaceholder(pageContext);
   const {
     messages,
     sendMessage,
@@ -198,15 +205,18 @@ interface ChatContentProps {
   chatError: Error | null;
   input: string;
   placeholder: string;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   onInputChange: (value: string) => void;
   onSend: () => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   onSuggestionClick: (suggestion: string) => void;
   onClearMessages: () => void;
-  onExecuteAction: (actionType: string, params: Record<string, unknown>) => Promise<any>;
-  onRollbackAction: (actionId: string) => Promise<void>;
+  onExecuteAction: (
+    actionType: string,
+    params: Record<string, unknown>
+  ) => Promise<ExecuteActionResponse>;
+  onRollbackAction: (actionId: string) => Promise<unknown>;
   onDismissAction: (actionType: string) => void;
   onDismissBooking: (index: number) => void;
   capabilities: { name: string; description: string; examples: string[] }[];

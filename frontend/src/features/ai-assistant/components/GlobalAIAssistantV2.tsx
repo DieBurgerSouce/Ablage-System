@@ -327,12 +327,7 @@ export function GlobalAIAssistantV2() {
   usePageContext();
 
   // Persistent conversation for database storage
-  const {
-    conversation: persistentConversation,
-    createConversation,
-    updateTitle,
-    isCreating: isCreatingConversation,
-  } = usePersistentConversation({
+  const { conversation: persistentConversation } = usePersistentConversation({
     sessionId: storedSessionId || undefined,
     contextPage: pageContext.type,
     autoCreate: mode === 'finance' && isOpen,
@@ -854,12 +849,12 @@ interface ChatAreaProps {
   capabilities: AssistantCapability[];
   // RefObject<T> is already nullable by design (current can be T | null)
   // Adding "| null" to the generic parameter is semantically incorrect
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   statusMessage?: string;
   contextDocuments?: ContextDocument[];
   onSuggestionClick: (suggestion: string) => void;
   onExecuteAction: (actionType: string, params: Record<string, unknown>) => Promise<ExecuteActionResponse>;
-  onRollbackAction: (actionId: string) => Promise<void>;
+  onRollbackAction: (actionId: string) => Promise<unknown>;
   onDismissAction: (actionType: string) => void;
   onDismissBooking: (index: number) => void;
   onDetailedFeedback?: (messageId: string, content: string) => void;
@@ -1020,7 +1015,7 @@ interface RAGChatAreaProps {
   showEmpty: boolean;
   isLoading: boolean;
   error?: string | null;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   statusMessage?: string;
   contextDocuments?: ContextDocument[];
   onSuggestionClick: (suggestion: string) => void;

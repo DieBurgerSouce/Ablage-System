@@ -140,7 +140,7 @@ export function useFinanceAssistantChat(options: UseFinanceAssistantChatOptions 
     (message: string, selectedDocuments?: string[]) => {
       const request: ChatRequest = {
         message,
-        current_page: pageContext?.pageType,
+        current_page: pageContext?.type,
         selected_documents: selectedDocuments,
         session_id: options.sessionId,
       };
