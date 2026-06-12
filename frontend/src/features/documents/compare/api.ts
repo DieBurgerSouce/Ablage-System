@@ -21,7 +21,7 @@ const COMPARE_BASE_URL = '/api/v1/compare';
 export async function compareDocuments(
   request: CompareDocumentsRequest
 ): Promise<ComparisonResult> {
-  const response = await apiClient.post<{
+  const { data: response } = await apiClient.post<{
     document_id_1: string;
     document_id_2: string;
     comparison_type: string;
@@ -90,7 +90,7 @@ export async function getDiffReport(
   docId2: string,
   comparisonType: ComparisonType = 'hybrid'
 ): Promise<DiffReport> {
-  const response = await apiClient.get<{
+  const { data: response } = await apiClient.get<{
     document_1_info: {
       id: string;
       filename: string;
@@ -200,7 +200,7 @@ export async function findSimilarDocuments(
     include_same_entity: includeSameEntity.toString(),
   });
 
-  const response = await apiClient.get<
+  const { data: response } = await apiClient.get<
     Array<{
       document_id: string;
       filename: string;
@@ -242,7 +242,7 @@ export async function findPotentialDuplicates(
     limit: limit.toString(),
   });
 
-  const response = await apiClient.get<
+  const { data: response } = await apiClient.get<
     Array<{
       document_1: { id: string; filename: string; created_at: string };
       document_2: { id: string; filename: string; created_at: string };

@@ -24,7 +24,7 @@ import type { InvoiceTrackingResponse } from '@/features/invoices/types/invoice-
  * Holt Skonto-Informationen für eine Rechnung
  */
 export async function getSkontoInfo(invoiceId: string): Promise<SkontoInfo> {
-  const response = await apiClient.get<{
+  const { data: response } = await apiClient.get<{
     invoice_id: string;
     skonto_percentage: number | null;
     skonto_amount: number | null;
@@ -69,7 +69,7 @@ export async function setSkonto(
     params.append('net_days', data.netDays.toString());
   }
 
-  const response = await apiClient.patch<InvoiceTrackingResponse>(
+  const { data: response } = await apiClient.patch<InvoiceTrackingResponse>(
     `/invoices/${invoiceId}/skonto?${params.toString()}`
   );
 
@@ -95,7 +95,7 @@ export async function applySkonto(
     params.append('force_apply', data.forceApply.toString());
   }
 
-  const response = await apiClient.post<InvoiceTrackingResponse>(
+  const { data: response } = await apiClient.post<InvoiceTrackingResponse>(
     `/invoices/${invoiceId}/apply-skonto?${params.toString()}`
   );
 
@@ -116,7 +116,7 @@ export async function getUpcomingSkonto(
     limit: limit.toString(),
   });
 
-  const response = await apiClient.get<Array<{
+  const { data: response } = await apiClient.get<Array<{
     invoice_id: string;
     invoice_number: string;
     entity_name: string;
@@ -152,7 +152,7 @@ export async function getMissedSkonto(
   if (filter.page) params.append('page', filter.page.toString());
   if (filter.perPage) params.append('per_page', filter.perPage.toString());
 
-  const response = await apiClient.get<{
+  const { data: response } = await apiClient.get<{
     items: Array<{
       invoice_id: string;
       invoice_number: string;
@@ -211,7 +211,7 @@ export async function getSkontoStatistics(
     end_date: endDate,
   });
 
-  const response = await apiClient.get<{
+  const { data: response } = await apiClient.get<{
     period_start: string;
     period_end: string;
     total_invoices: number;
@@ -250,7 +250,7 @@ export async function getMonthlySkontoSummary(
     months: months.toString(),
   });
 
-  const response = await apiClient.get<Array<{
+  const { data: response } = await apiClient.get<Array<{
     year: string;
     month: string;
     used_amount: number;

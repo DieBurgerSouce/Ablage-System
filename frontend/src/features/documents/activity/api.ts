@@ -150,7 +150,7 @@ export async function getMyActivities(
   const query = searchParams.toString();
   const url = `/api/v1/activity/my${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -177,7 +177,7 @@ export async function getTeamTimeline(
   const query = searchParams.toString();
   const url = `/api/v1/activity/team/${params.teamId}${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -200,7 +200,7 @@ export async function getDocumentTimeline(
   const query = searchParams.toString();
   const url = `/api/v1/activity/document/${params.documentId}${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -221,7 +221,7 @@ export async function getChainTimeline(
   const query = searchParams.toString();
   const url = `/api/v1/activity/chain/${params.chainId}${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -253,7 +253,7 @@ export async function getCompanyTimeline(
   const query = searchParams.toString();
   const url = `/api/v1/activity/company${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -277,7 +277,7 @@ export async function getActivityStatistics(
   const query = searchParams.toString();
   const url = `/api/v1/activity/stats${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiStatistics>(url);
+  const { data: response } = await apiClient.get<ApiStatistics>(url);
   return convertStatistics(response);
 }
 
@@ -306,6 +306,6 @@ export async function filterTimeline(
     important_only: filter.importantOnly,
   };
 
-  const response = await apiClient.post<ApiTimelineResponse>(url, body);
+  const { data: response } = await apiClient.post<ApiTimelineResponse>(url, body);
   return convertTimelineResponse(response);
 }

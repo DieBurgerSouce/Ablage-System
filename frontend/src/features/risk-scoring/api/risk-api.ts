@@ -53,7 +53,7 @@ export const riskService = {
    */
   async getEntityRisk(entityId: string): Promise<EntityRisk> {
     try {
-      const response = await apiClient.get<EntityRiskResponse>(
+      const { data: response } = await apiClient.get<EntityRiskResponse>(
         `/entities/${entityId}/risk`
       );
       return transformEntityRisk(response);
@@ -70,7 +70,7 @@ export const riskService = {
    */
   async calculateEntityRisk(entityId: string): Promise<RiskCalculation> {
     try {
-      const response = await apiClient.post<RiskCalculationResponse>(
+      const { data: response } = await apiClient.post<RiskCalculationResponse>(
         `/entities/${entityId}/risk/calculate`
       );
       return {
@@ -101,7 +101,7 @@ export const riskService = {
     limit?: number;
   }): Promise<BatchCalculation> {
     try {
-      const response = await apiClient.post<BatchCalculationResponse>(
+      const { data: response } = await apiClient.post<BatchCalculationResponse>(
         '/entities/risk/calculate-all',
         {
           entity_type: params?.entityType,
@@ -165,7 +165,7 @@ export const riskService = {
         params.append('min_score', '50');
       }
 
-      const response = await apiClient.get<PaginatedResponse<EntityRiskResponse>>(
+      const { data: response } = await apiClient.get<PaginatedResponse<EntityRiskResponse>>(
         `/entities/risk/high-risk?${params.toString()}`
       );
 
@@ -222,7 +222,7 @@ export const riskService = {
         params.append('per_page', filter.perPage.toString());
       }
 
-      const response = await apiClient.get<PaginatedResponse<EntityRiskResponse>>(
+      const { data: response } = await apiClient.get<PaginatedResponse<EntityRiskResponse>>(
         `/entities/risk?${params.toString()}`
       );
 
@@ -247,7 +247,7 @@ export const riskService = {
   async getRiskStatistics(entityType?: EntityType): Promise<RiskStatistics> {
     try {
       const params = entityType ? `?entity_type=${entityType}` : '';
-      const response = await apiClient.get<RiskStatisticsResponse>(
+      const { data: response } = await apiClient.get<RiskStatisticsResponse>(
         `/entities/risk/statistics${params}`
       );
       return transformRiskStatistics(response);
@@ -267,7 +267,7 @@ export const riskService = {
     days: number = 30
   ): Promise<Array<{ date: Date; score: number }>> {
     try {
-      const response = await apiClient.get<
+      const { data: response } = await apiClient.get<
         Array<{ date: string; risk_score: number }>
       >(`/entities/${entityId}/risk/trend?days=${days}`);
 
