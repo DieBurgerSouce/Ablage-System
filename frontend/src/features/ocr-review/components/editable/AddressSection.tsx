@@ -15,6 +15,8 @@ interface AddressSectionProps {
     address: ExtractedAddress | null | undefined
     prefix: 'sender' | 'recipient'
     vatId?: string
+    /** Steuernummer (Backend: sender_tax_number) — nur beim Absender vorhanden */
+    taxNumber?: string
     corrections: UseFieldCorrectionsReturn
     extractedDataReview: UseExtractedDataForReviewReturn
     disabled?: boolean
@@ -26,6 +28,7 @@ export function AddressSection({
     address,
     prefix,
     vatId,
+    taxNumber,
     corrections,
     extractedDataReview,
     disabled = false,
@@ -127,6 +130,15 @@ export function AddressSection({
                     fieldLabel="USt-IdNr"
                     {...getFieldProps('vat_id', vatId)}
                 />
+
+                {/* Steuernummer (nur wenn vorhanden, i. d. R. Absender) */}
+                {taxNumber !== undefined && (
+                    <EditableField
+                        fieldPath={`${prefix}_tax_number`}
+                        fieldLabel="Steuernummer"
+                        {...getFieldProps('tax_number', taxNumber)}
+                    />
+                )}
             </div>
         </div>
     )
