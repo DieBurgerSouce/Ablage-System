@@ -29,6 +29,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { FileText, Plus, AlertTriangle, CheckCircle2, Upload } from 'lucide-react';
 import { usePowersOfAttorney, useCreatePowerOfAttorney } from './hooks';
+import type { PowerOfAttorneyType } from '@/lib/api/services/estate-planning';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -36,7 +37,15 @@ interface PowerOfAttorneyManagerProps {
   spaceId: string;
 }
 
-const POA_TYPES = {
+const POA_TYPES: Record<
+  PowerOfAttorneyType,
+  { label: string; description: string; essential: boolean }
+> = {
+  sorgerechtsverfuegung: {
+    label: 'Sorgerechtsverfügung',
+    description: 'Wünsche zur Vormundschaft für minderjährige Kinder',
+    essential: false,
+  },
   vorsorgevollmacht: {
     label: 'Vorsorgevollmacht',
     description: 'Für Gesundheits- und Vermögensangelegenheiten bei Handlungsunfähigkeit',
@@ -66,27 +75,43 @@ const POA_TYPES = {
 
 export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [formData, setFormData] = useState({
-    type: 'vorsorgevollmacht',
-    authorizedPerson: '',
-    issueDate: '',
-    notes: '',
+  const [formData, setFormData] = useState<{
+    poaType: PowerOfAttorneyType;
+    grantedTo: string;
+    grantedDate: string;
+    scope: string;
+  }>({
+    poaType: 'vorsorgevollmacht',
+    grantedTo: '',
+    grantedDate: '',
+    scope: '',
   });
 
   const { data: poas, isLoading } = usePowersOfAttorney(spaceId);
   const createMutation = useCreatePowerOfAttorney();
 
   const handleAdd = () => {
+    // Backend-Vertrag (PowerOfAttorneyCreate): poaType, title, grantedTo Pflicht;
+    // title aus dem Typ-Label abgeleitet, optionale Felder nur wenn befuellt.
     createMutation.mutate(
-      { spaceId, data: formData },
+      {
+        spaceId,
+        data: {
+          poaType: formData.poaType,
+          title: POA_TYPES[formData.poaType]?.label ?? formData.poaType,
+          grantedTo: formData.grantedTo,
+          grantedDate: formData.grantedDate || undefined,
+          scope: formData.scope || undefined,
+        },
+      },
       {
         onSuccess: () => {
           setShowAddDialog(false);
           setFormData({
-            type: 'vorsorgevollmacht',
-            authorizedPerson: '',
-            issueDate: '',
-            notes: '',
+            poaType: 'vorsorgevollmacht',
+            grantedTo: '',
+            grantedDate: '',
+            scope: '',
           });
         },
       }
@@ -94,10 +119,10 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
   };
 
   // Fehlende essenzielle Vollmachten ermitteln
-  const existingTypes = new Set(poas?.map((p) => p.type) ?? []);
-  const missingEssential = Object.entries(POA_TYPES)
-    .filter(([type, info]) => info.essential && !existingTypes.has(type))
-    .map(([_type, info]) => info.label);
+  const existingTypes = new Set(poas?.map((p) => p.poaType) ?? []);
+  const missingEssential = (Object.keys(POA_TYPES) as PowerOfAttorneyType[])
+    .filter((type) => POA_TYPES[type].essential && !existingTypes.has(type))
+    .map((type) => POA_TYPES[type].label);
 
   if (isLoading) {
     return (
@@ -159,8 +184,8 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
                   <div className="space-y-2">
                     <Label>Art der Vollmacht</Label>
                     <Select
-                      value={formData.type}
-                      onValueChange={(v) => setFormData({ ...formData, type: v })}
+                      value={formData.poaType}
+                      onValueChange={(v) => setFormData({ ...formData, poaType: v as PowerOfAttorneyType })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -174,16 +199,16 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-muted-foreground">
-                      {POA_TYPES[formData.type as keyof typeof POA_TYPES]?.description}
+                      {POA_TYPES[formData.poaType]?.description}
                     </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="authorizedPerson">Bevollmächtigte Person</Label>
                     <Input
                       id="authorizedPerson"
-                      value={formData.authorizedPerson}
+                      value={formData.grantedTo}
                       onChange={(e) =>
-                        setFormData({ ...formData, authorizedPerson: e.target.value })
+                        setFormData({ ...formData, grantedTo: e.target.value })
                       }
                       placeholder="Name der bevollmächtigten Person"
                     />
@@ -193,21 +218,21 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
                     <Input
                       id="issueDate"
                       type="date"
-                      value={formData.issueDate}
+                      value={formData.grantedDate}
                       onChange={(e) =>
-                        setFormData({ ...formData, issueDate: e.target.value })
+                        setFormData({ ...formData, grantedDate: e.target.value })
                       }
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="notes">Notizen (optional)</Label>
+                    <Label htmlFor="scope">Umfang (optional)</Label>
                     <Textarea
-                      id="notes"
-                      value={formData.notes}
+                      id="scope"
+                      value={formData.scope}
                       onChange={(e) =>
-                        setFormData({ ...formData, notes: e.target.value })
+                        setFormData({ ...formData, scope: e.target.value })
                       }
-                      placeholder="Zusätzliche Informationen"
+                      placeholder="Umfang bzw. Geltungsbereich der Vollmacht"
                       rows={3}
                     />
                   </div>
@@ -236,7 +261,7 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
           ) : (
             <div className="space-y-4">
               {poas.map((poa) => {
-                const typeInfo = POA_TYPES[poa.type as keyof typeof POA_TYPES];
+                const typeInfo = POA_TYPES[poa.poaType];
                 return (
                   <div
                     key={poa.id}
@@ -249,7 +274,7 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">
-                            {typeInfo?.label ?? poa.type}
+                            {typeInfo?.label ?? poa.poaType}
                           </h4>
                           {typeInfo?.essential && (
                             <Badge variant="outline" className="text-xs">
@@ -258,11 +283,11 @@ export function PowerOfAttorneyManager({ spaceId }: PowerOfAttorneyManagerProps)
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Bevollmächtigt: {poa.authorizedPerson}
+                          Bevollmächtigt: {poa.grantedTo}
                         </p>
-                        {poa.issueDate && (
+                        {poa.grantedDate && (
                           <p className="text-xs text-muted-foreground">
-                            Ausgestellt: {new Date(poa.issueDate).toLocaleDateString('de-DE')}
+                            Ausgestellt: {new Date(poa.grantedDate).toLocaleDateString('de-DE')}
                           </p>
                         )}
                       </div>
