@@ -86,16 +86,16 @@ class TestSmartReconciliation:
 
         mock_tx = Mock()
         mock_tx.amount = Decimal("100.00")
-        mock_tx.sender_iban = "DE89370400440532013000"
-        mock_tx.purpose = "RE-12345"
-        mock_tx.sender_name = "Test GmbH"
+        mock_tx.counterparty_iban = "DE89370400440532013000"
+        mock_tx.reference_text = "RE-12345"
+        mock_tx.counterparty_name = "Test GmbH"
 
         mock_invoice = Mock()
         mock_invoice.id = uuid4()
         mock_invoice.invoice_number = "RE-12345"
-        mock_invoice.gross_amount = Decimal("100.00")
+        mock_invoice.amount = Decimal("100.00")
         mock_invoice.outstanding_amount = Decimal("100.00")
-        mock_invoice.business_entity_id = None
+        mock_invoice.entity_id = None
         mock_invoice.skonto_percentage = None
         mock_invoice.skonto_deadline = None
 
@@ -125,9 +125,9 @@ class TestSmartReconciliation:
 
         mock_tx = Mock()
         mock_tx.amount = Decimal("100.00")
-        mock_tx.sender_iban = None
-        mock_tx.purpose = ""
-        mock_tx.sender_name = "Test GmbH"
+        mock_tx.counterparty_iban = None
+        mock_tx.reference_text = ""
+        mock_tx.counterparty_name = "Test GmbH"
 
         mock_invoice = Mock()
         mock_invoice.id = uuid4()
@@ -218,7 +218,7 @@ class TestAmountMatching:
 
         mock_invoice = Mock()
         mock_invoice.outstanding_amount = Decimal("100.00")
-        mock_invoice.gross_amount = Decimal("100.00")
+        mock_invoice.amount = Decimal("100.00")
         mock_invoice.skonto_percentage = None
         mock_invoice.skonto_deadline = None
 
@@ -234,7 +234,7 @@ class TestAmountMatching:
 
         mock_invoice = Mock()
         mock_invoice.outstanding_amount = Decimal("100.00")
-        mock_invoice.gross_amount = Decimal("100.00")
+        mock_invoice.amount = Decimal("100.00")
         mock_invoice.skonto_percentage = Decimal("2.0")
         mock_invoice.skonto_deadline = datetime.now(timezone.utc) + timedelta(days=5)
 
@@ -250,7 +250,7 @@ class TestAmountMatching:
 
         mock_invoice = Mock()
         mock_invoice.outstanding_amount = Decimal("100.00")
-        mock_invoice.gross_amount = Decimal("100.00")
+        mock_invoice.amount = Decimal("100.00")
         mock_invoice.skonto_percentage = None
         mock_invoice.skonto_deadline = None
 
@@ -266,7 +266,7 @@ class TestAmountMatching:
 
         mock_invoice = Mock()
         mock_invoice.outstanding_amount = Decimal("0")
-        mock_invoice.gross_amount = Decimal("0")
+        mock_invoice.amount = Decimal("0")
 
         result = service._check_amount_match(mock_tx, mock_invoice)
         assert result is None
