@@ -1625,6 +1625,60 @@ class ExecutionMetrics(BaseModel):
     bottleneck_step: Optional[str] = None  # Step mit längster Wartezeit
 
 
+# Ab diesem Anteil der SLA-Zeit gilt ein laufender Schritt als "warning"
+_SLA_WARNING_RATIO = 0.8
+
+
+def _compute_step_sla(
+    step: object,
+    started_at: Optional[datetime],
+    completed_at: Optional[datetime],
+) -> "tuple[Optional[datetime], Optional[str]]":
+    """Berechnet SLA-Deadline und -Status fuer einen Workflow-Schritt.
+
+    SLA-Quelle ist die Step-Config: "sla_minutes" (bevorzugt) oder
+    "timeout_seconds". Ist keine Step-SLA konfiguriert oder hat der
+    Schritt noch nicht gestartet, wird ehrlich (None, None) geliefert.
+
+    Status:
+    - "breached": Abschluss (bzw. jetzt) liegt hinter der Deadline
+    - "warning":  >= 80% der SLA-Zeit verbraucht
+    - "ok":       innerhalb der SLA
+    """
+    from datetime import timedelta, timezone as _tz
+
+    config = getattr(step, "config", None) or {}
+
+    sla_seconds: Optional[float] = None
+    sla_minutes = config.get("sla_minutes")
+    if isinstance(sla_minutes, (int, float)) and sla_minutes > 0:
+        sla_seconds = float(sla_minutes) * 60.0
+    else:
+        timeout_seconds = config.get("timeout_seconds")
+        if isinstance(timeout_seconds, (int, float)) and timeout_seconds > 0:
+            sla_seconds = float(timeout_seconds)
+
+    if sla_seconds is None or started_at is None:
+        return None, None
+
+    # Naive Zeitstempel defensiv als UTC interpretieren
+    start = started_at if started_at.tzinfo else started_at.replace(tzinfo=_tz.utc)
+    reference_time = completed_at or datetime.now(_tz.utc)
+    if reference_time.tzinfo is None:
+        reference_time = reference_time.replace(tzinfo=_tz.utc)
+
+    deadline = start + timedelta(seconds=sla_seconds)
+
+    if reference_time > deadline:
+        sla_status = "breached"
+    elif (reference_time - start).total_seconds() >= _SLA_WARNING_RATIO * sla_seconds:
+        sla_status = "warning"
+    else:
+        sla_status = "ok"
+
+    return deadline, sla_status
+
+
 @router.get(
     "/executions/{instance_id}/state",
     response_model=ExecutionStateResponse,
@@ -1710,9 +1764,15 @@ async def get_execution_state(
         if node_status == "running":
             active_step_ids.append(str(step.id))
 
-        # SLA handling (placeholder - extend as needed)
-        sla_deadline = None
-        sla_status = None
+        # SLA pro Knoten (2026-06-12): abgeleitet aus der Step-Config
+        # ("sla_minutes" bevorzugt, sonst "timeout_seconds"). Das
+        # Workflow-weite Workflow.timeout_seconds gilt fuer die GESAMTE
+        # Ausfuehrung und wird bewusst NICHT pro Knoten interpretiert.
+        # Ohne Step-SLA und ohne Startzeit bleibt der Wert ehrlich None
+        # (kein erfundener Status).
+        sla_deadline, sla_status = _compute_step_sla(
+            step, started_at, completed_at
+        )
 
         nodes.append(
             NodeState(
