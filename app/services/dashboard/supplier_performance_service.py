@@ -22,6 +22,7 @@ from sqlalchemy import select, func, and_, or_, case, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.services.invoice_direction import is_incoming_invoice
 from app.db.models import (
     BusinessEntity,
     Document,
@@ -258,7 +259,7 @@ class SupplierPerformanceService:
             and_(
                 InvoiceTracking.entity_id == supplier.id,
                 InvoiceTracking.company_id == company_id if company_id else True,
-                InvoiceTracking.is_incoming == True,  # Eingehende Rechnungen
+                is_incoming_invoice(),  # Eingangsrechnungen (Lieferant)
                 InvoiceTracking.created_at >= cutoff_date,
             )
         )
@@ -295,7 +296,7 @@ class SupplierPerformanceService:
 
         # Volumen berechnen
         total_volume = sum(
-            Decimal(str(inv.total_amount or 0)) for inv in invoices
+            Decimal(str(inv.amount or 0)) for inv in invoices
         )
 
         # Preistrend (vereinfacht)
@@ -308,11 +309,11 @@ class SupplierPerformanceService:
             mid = len(sorted_inv) // 2
 
             first_half_avg = sum(
-                float(inv.total_amount or 0) for inv in sorted_inv[:mid]
+                float(inv.amount or 0) for inv in sorted_inv[:mid]
             ) / mid if mid > 0 else 0
 
             second_half_avg = sum(
-                float(inv.total_amount or 0) for inv in sorted_inv[mid:]
+                float(inv.amount or 0) for inv in sorted_inv[mid:]
             ) / (len(sorted_inv) - mid) if len(sorted_inv) > mid else 0
 
             if first_half_avg > 0:
@@ -350,14 +351,14 @@ class SupplierPerformanceService:
         # Gruppiere nach Monat
         query = select(
             func.date_trunc("month", InvoiceTracking.created_at).label("month"),
-            func.avg(InvoiceTracking.total_amount).label("avg_amount"),
+            func.avg(InvoiceTracking.amount).label("avg_amount"),
             func.count(InvoiceTracking.id).label("order_count"),
         ).where(
             and_(
                 InvoiceTracking.company_id == company_id if company_id else True,
-                InvoiceTracking.is_incoming == True,
+                is_incoming_invoice(),
                 InvoiceTracking.created_at >= cutoff_date,
-                InvoiceTracking.total_amount.isnot(None),
+                InvoiceTracking.amount.isnot(None),
             )
         ).group_by(
             func.date_trunc("month", InvoiceTracking.created_at)

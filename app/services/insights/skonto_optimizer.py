@@ -34,6 +34,11 @@ from app.db.models import (
     BankTransaction,
     BusinessEntity,
 )
+from app.services.invoice_direction import (
+    is_incoming_invoice,
+    is_open_invoice,
+    is_outgoing_invoice,
+)
 from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
@@ -390,7 +395,9 @@ class SkontoOptimizer:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.status.in_(["pending", "partial"]),
+                # "pending" existiert nicht in InvoiceStatus — offene
+                # Rechnungen via Status-Allowlist (invoice_direction.py)
+                is_open_invoice(),
                 InvoiceTracking.skonto_percentage.isnot(None),
                 InvoiceTracking.skonto_percentage >= self.MIN_SKONTO_PERCENTAGE,
                 InvoiceTracking.skonto_deadline.isnot(None),
@@ -449,8 +456,10 @@ class SkontoOptimizer:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",  # Forderung
-                InvoiceTracking.status.in_(["pending", "partial"]),
+                # Richtungs-Kommentar war vertauscht: Forderung = Kunde
+                # = Ausgangsrechnung (siehe app/services/invoice_direction.py)
+                is_outgoing_invoice(),  # Forderung
+                is_open_invoice(),
                 InvoiceTracking.due_date.isnot(None),
                 InvoiceTracking.due_date <= cutoff,
             )
@@ -486,8 +495,10 @@ class SkontoOptimizer:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "outgoing",  # Verbindlichkeit
-                InvoiceTracking.status.in_(["pending", "partial"]),
+                # Richtungs-Kommentar war vertauscht: Verbindlichkeit =
+                # Lieferant = Eingangsrechnung
+                is_incoming_invoice(),  # Verbindlichkeit
+                is_open_invoice(),
                 InvoiceTracking.due_date.isnot(None),
                 InvoiceTracking.due_date <= cutoff,
                 or_(

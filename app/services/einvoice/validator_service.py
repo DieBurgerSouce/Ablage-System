@@ -653,7 +653,10 @@ class EInvoiceValidatorService:
             root = etree.fromstring(xml_content.encode("utf-8"), parser=SECURE_XML_PARSER)
 
             # BR-01: Rechnungsnummer vorhanden?
-            if not self._find_element_text(root, ["ID", "InvoiceNumber"]):
+            # Achtung: NICHT irgendein "ID"-Element matchen - jede CII-Rechnung
+            # hat eine Guideline-ID (ExchangedDocumentContext/.../ram:ID),
+            # wodurch BR-01 frueher NIE feuern konnte.
+            if not self._find_invoice_number(root):
                 result.add_error(
                     code="BR-01",
                     location="BT-1",
@@ -699,11 +702,56 @@ class EInvoiceValidatorService:
         root: etree._Element,
         possible_names: List[str]
     ) -> Optional[str]:
-        """Sucht Element mit verschiedenen möglichen Namen."""
+        """Sucht Element mit verschiedenen möglichen Namen.
+
+        Fixes (2026-06-12):
+        - Kommentare/Processing Instructions haben keinen String-Tag;
+          etree.QName() warf darauf eine Exception, die die GESAMTE
+          Business-Rules-Pruefung still abbrach (0 Findings bei jedem
+          Dokument mit XML-Kommentar).
+        - Container-Elemente (z.B. IssueDateTime) tragen ihren Wert in
+          Kind-Elementen; itertext() beruecksichtigt diese und vermeidet
+          False-Positives durch Whitespace-Textknoten.
+        """
         for elem in root.iter():
+            if not isinstance(elem.tag, str):
+                continue  # Kommentar oder Processing Instruction
             local_name = etree.QName(elem.tag).localname
-            if local_name in possible_names and elem.text:
-                return elem.text.strip()
+            if local_name in possible_names:
+                text = "".join(elem.itertext()).strip()
+                if text:
+                    return text
+        return None
+
+    def _find_invoice_number(self, root: etree._Element) -> Optional[str]:
+        """Sucht die Rechnungsnummer (BT-1) an ihrer korrekten Position.
+
+        CII/ZUGFeRD: rsm:ExchangedDocument/ram:ID
+        UBL:         direktes Kind cbc:ID des Root-Elements
+
+        Eine dokumentweite Suche nach "ID" ist falsch, weil z.B. die
+        Guideline-ID (ExchangedDocumentContext) immer vorhanden ist.
+        """
+        # CII: ID als direktes Kind von ExchangedDocument
+        for elem in root.iter():
+            if not isinstance(elem.tag, str):
+                continue
+            if etree.QName(elem.tag).localname == "ExchangedDocument":
+                for child in elem:
+                    if not isinstance(child.tag, str):
+                        continue
+                    if etree.QName(child.tag).localname == "ID":
+                        text = (child.text or "").strip()
+                        if text:
+                            return text
+        # UBL: cbc:ID als direktes Kind des Invoice-Root
+        for child in root:
+            if not isinstance(child.tag, str):
+                continue
+            if etree.QName(child.tag).localname == "ID":
+                text = (child.text or "").strip()
+                if text:
+                    return text
         return None
 
 

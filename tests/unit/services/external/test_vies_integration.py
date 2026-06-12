@@ -113,11 +113,17 @@ class TestViesFormatValidation:
 
     @pytest.mark.asyncio
     async def test_invalid_format_wrong_country_code(self, service: SupplierVerificationService) -> None:
-        """Test: VAT-ID mit ungültigem Ländercode."""
-        result, findings = await service._check_vies("XX123456789")
+        """Test: VAT-ID mit ungültigem (Nicht-EU-)Ländercode."""
+        # Deterministisch offline: API-Aufruf schlaegt fehl -> Format-Fallback
+        with patch.object(
+            service,
+            "_call_vies_api",
+            AsyncMock(side_effect=RuntimeError("offline")),
+        ):
+            result, findings = await service._check_vies("XX123456789")
 
+        # 'XX' ist kein EU-Mitgliedsland -> darf nie valid=True ergeben
         assert result.valid is False
-        # Wird an API geschickt, da Format grundsätzlich ok (2 Buchstaben + Nummer)
 
     @pytest.mark.asyncio
     async def test_valid_format_german(self, service: SupplierVerificationService) -> None:
@@ -436,14 +442,26 @@ class TestViesFallbackBehavior:
         assert result.valid is False
 
     def test_fallback_unknown_country(self, service: SupplierVerificationService) -> None:
-        """Test: Fallback bei unbekanntem Land."""
+        """Test: Fallback bei unbekanntem (Nicht-EU-)Land lehnt ab."""
         findings: list = []
         result, findings = service._vies_format_fallback(
             "XX123456", "XX", "123456", findings, "Test-Fehler"
         )
 
-        # Unbekanntes Land, aber Mindestlänge erfüllt
-        assert result.valid is True  # Mindestens 2 Zeichen
+        # Fix 2026-06-12: Nicht-EU-Laendercodes kann VIES nie validieren —
+        # der alte Fallback (valid=True ab 2 Zeichen) kodifizierte den Bug.
+        assert result.valid is False
+
+    def test_fallback_eu_country_without_spezialformat(
+        self, service: SupplierVerificationService
+    ) -> None:
+        """Test: EU-Land ohne Spezialformat nutzt weiter den Laengen-Check."""
+        findings: list = []
+        result, findings = service._vies_format_fallback(
+            "DK12345678", "DK", "12345678", findings, "Test-Fehler"
+        )
+
+        assert result.valid is True
 
 
 # =============================================================================
@@ -654,17 +672,31 @@ class TestXXEPrevention:
             fromstring(malicious_xml)
 
     def test_external_dtd_blocked(self) -> None:
-        """Test: Externe DTD wird blockiert."""
+        """Test: Externe DTD ist unschaedlich bzw. hart blockierbar.
+
+        W3 (2026-06-12): Echter defusedxml-Vertrag — die blosse DOCTYPE-
+        SYSTEM-Deklaration wirft im Default KEINE Exception (forbid_dtd
+        ist standardmaessig False); expat loest externe DTDs ohnehin nie
+        auf, es findet also kein Fetch/SSRF statt. Jede tatsaechliche
+        ENTITY-Nutzung bleibt durch forbid_entities=True blockiert (siehe
+        Billion-Laughs-/Parameter-Entity-Tests). Der harte Modus
+        forbid_dtd=True lehnt bereits die Deklaration ab.
+        """
         from defusedxml.ElementTree import fromstring
-        from defusedxml import DefusedXmlException
+        from defusedxml.common import DTDForbidden
 
         malicious_xml = """<?xml version="1.0"?>
 <!DOCTYPE foo SYSTEM "http://evil.com/malicious.dtd">
 <root>test</root>"""
 
-        # defusedxml sollte externe DTDs blockieren
-        with pytest.raises(DefusedXmlException):
-            fromstring(malicious_xml)
+        # Default (App-Nutzung in _call_vies_api): parsebar, aber inert
+        root = fromstring(malicious_xml)
+        assert root.tag == "root"
+        assert root.text == "test"
+
+        # Harter Modus: DTD-Deklaration selbst wird abgelehnt
+        with pytest.raises(DTDForbidden):
+            fromstring(malicious_xml, forbid_dtd=True)
 
     def test_parameter_entity_blocked(self) -> None:
         """Test: Parameter Entity Injection wird blockiert."""

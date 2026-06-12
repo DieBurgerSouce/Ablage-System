@@ -452,8 +452,10 @@ class FallbackChain:
                     "fallback_chain_error",
                     document_id=document_id,
                     backend=backend_name,
+                    # safe_error_log enthaelt error_type bereits — ein
+                    # zusaetzliches error_type-Kwarg warf hier TypeError
+                    # und verhinderte JEDEN Fallback bei Backend-Fehlern.
                     **safe_error_log(e),
-                    error_type=error_type
                 )
 
         # Alle Backends fehlgeschlagen - verwende letztes Ergebnis wenn vorhanden

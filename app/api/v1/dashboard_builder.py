@@ -346,6 +346,7 @@ async def get_widget_data(
 @router.get(
     "",
     response_model=DashboardListResponse,
+    operation_id="builder_list_dashboards",
     summary="Dashboards auflisten",
     description=(
         "Gibt alle sichtbaren Dashboards zurueck: eigene Dashboards des Benutzers "
@@ -392,6 +393,7 @@ async def list_dashboards(
     "",
     response_model=DashboardDetailResponse,
     status_code=status.HTTP_201_CREATED,
+    operation_id="builder_create_dashboard",
     summary="Neues Dashboard erstellen",
     description=(
         "Erstellt ein neues benutzerdefiniertes Dashboard. "
@@ -445,6 +447,7 @@ async def create_dashboard(
 @router.get(
     "/{dashboard_id}",
     response_model=DashboardDetailResponse,
+    operation_id="builder_get_dashboard",
     summary="Dashboard mit Widgets abrufen",
     description="Gibt ein einzelnes Dashboard mit allen zugehoerigen Widgets zurueck.",
 )
@@ -568,6 +571,7 @@ async def update_dashboard(
 @router.delete(
     "/{dashboard_id}",
     response_model=DeleteResponse,
+    operation_id="builder_delete_dashboard",
     summary="Dashboard loeschen",
     description=(
         "Loescht ein Dashboard und alle zugehoerigen Widgets. "
@@ -629,6 +633,7 @@ async def delete_dashboard(
 @router.post(
     "/{dashboard_id}/share",
     response_model=ShareToggleResponse,
+    operation_id="builder_share_dashboard",
     summary="Dashboard-Freigabe umschalten",
     description=(
         "Schaltet die firmenweite Freigabe des Dashboards um (Toggle). "
@@ -697,6 +702,7 @@ async def share_dashboard(
     "/{dashboard_id}/widgets",
     response_model=WidgetResponse,
     status_code=status.HTTP_201_CREATED,
+    operation_id="builder_add_widget",
     summary="Widget zum Dashboard hinzufuegen",
     description=(
         "Fuegt ein neues Widget zum Dashboard hinzu. "
@@ -763,6 +769,7 @@ async def add_widget(
 @router.delete(
     "/{dashboard_id}/widgets/{widget_id}",
     response_model=DeleteResponse,
+    operation_id="builder_remove_widget",
     summary="Widget vom Dashboard entfernen",
     description="Entfernt ein Widget vom Dashboard.",
 )

@@ -140,7 +140,9 @@ class EnrichmentOrchestrator:
                 if hr_data:
                     enriched_fields.update(hr_data)
                     sources_queried.append("handelsregister")
-                    total_confidence += 0.5
+                    # Volle Punktzahl pro erfolgreich liefernder Quelle —
+                    # vorher 0.5, wodurch die Confidence nie ueber 0.5 kam.
+                    total_confidence += 1.0
             except Exception as e:
                 logger.warning(
                     "handelsregister_query_failed",
@@ -155,7 +157,7 @@ class EnrichmentOrchestrator:
                 if ba_data:
                     enriched_fields.update(ba_data)
                     sources_queried.append("bundesanzeiger")
-                    total_confidence += 0.5
+                    total_confidence += 1.0
             except Exception as e:
                 logger.warning(
                     "bundesanzeiger_query_failed",
@@ -163,20 +165,16 @@ class EnrichmentOrchestrator:
                     entity_id=str(entity_id),
                 )
 
-        # Confidence berechnen
+        # Confidence berechnen: Anteil erfolgreich liefernder Quellen
         confidence = (
             total_confidence / len(sources) if sources else 0.0
         )
 
-        # Metadata aktualisieren (optional)
-        if enriched_fields:
-            entity.metadata = entity.metadata or {}
-            entity.metadata["enrichment"] = {
-                "last_updated": datetime.utcnow().isoformat(),
-                "sources": sources_queried,
-                "fields": list(enriched_fields.keys()),
-            }
-            await db.commit()
+        # HINWEIS: BusinessEntity hat KEINE metadata-Spalte (SQLAlchemy
+        # reserviert .metadata fuer die Registry) — der fruehere Versuch
+        # `entity.metadata["enrichment"] = ...` crashte mit TypeError.
+        # Persistenz der Enrichment-Historie braucht eine Schema-Erweiterung
+        # (Followup); bis dahin wird das Ergebnis nur zurueckgegeben.
 
         logger.info(
             "enrichment_completed",
@@ -272,9 +270,14 @@ class EnrichmentOrchestrator:
             company_name=entity.name
         )
 
-        enriched = {}
+        # Erfolgreich befragt: auch ein SAUBERER Befund (keine Insolvenz —
+        # der Normalfall) ist ein echtes Ergebnis und zaehlt als befragte
+        # Quelle. Vorher wurde hier None geliefert und die Quelle fehlte in
+        # sources_queried/Confidence.
+        enriched: Dict[str, Any] = {
+            "insolvency_warning": result.has_insolvency,
+        }
         if result.has_insolvency:
-            enriched["insolvency_warning"] = True
             enriched["insolvency_count"] = result.count
 
         if result.publications:
@@ -287,4 +290,4 @@ class EnrichmentOrchestrator:
                 for pub in result.publications[:3]  # Max 3
             ]
 
-        return enriched if enriched else None
+        return enriched

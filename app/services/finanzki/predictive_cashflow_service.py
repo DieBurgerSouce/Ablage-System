@@ -38,6 +38,12 @@ from app.db.models import (
     BankAccount,
     BusinessEntity,
 )
+from app.services.invoice_direction import (
+    is_incoming_invoice,
+    is_open_invoice,
+    is_outgoing_invoice,
+    is_paid_invoice,
+)
 
 
 # =============================================================================
@@ -310,8 +316,8 @@ class PredictiveCashFlowService:
             select(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
                 InvoiceTracking.due_date <= next_30_days,
             )
             .order_by(InvoiceTracking.due_date)
@@ -465,18 +471,18 @@ class PredictiveCashFlowService:
         result = await self.db.execute(
             select(
                 func.avg(
-                    func.extract('epoch', InvoiceTracking.paid_date - InvoiceTracking.invoice_date) / 86400
+                    func.extract('epoch', InvoiceTracking.paid_at - InvoiceTracking.invoice_date) / 86400
                 ).label('avg_days'),
                 func.stddev(
-                    func.extract('epoch', InvoiceTracking.paid_date - InvoiceTracking.invoice_date) / 86400
+                    func.extract('epoch', InvoiceTracking.paid_at - InvoiceTracking.invoice_date) / 86400
                 ).label('stddev'),
                 func.count().label('count'),
             )
             .where(
                 InvoiceTracking.entity_id == entity_id,
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.is_paid == True,
-                InvoiceTracking.paid_date.isnot(None),
+                is_paid_invoice(),
+                InvoiceTracking.paid_at.isnot(None),
                 InvoiceTracking.invoice_date.isnot(None),
             )
         )
@@ -538,8 +544,8 @@ class PredictiveCashFlowService:
             select(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "outgoing",
-                InvoiceTracking.is_paid == False,
+                is_outgoing_invoice(),
+                is_open_invoice(),
             )
         )
         invoices = result.scalars().all()
@@ -576,8 +582,8 @@ class PredictiveCashFlowService:
             select(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
             )
         )
         invoices = result.scalars().all()
@@ -1139,8 +1145,8 @@ class PredictiveCashFlowService:
                 .join(BusinessEntity)
                 .where(
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
-                    InvoiceTracking.is_paid == False,
+                    is_outgoing_invoice(),
+                    is_open_invoice(),
                     BusinessEntity.name.ilike(f"%{customer_name}%"),
                 )
             )

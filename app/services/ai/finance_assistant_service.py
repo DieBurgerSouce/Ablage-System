@@ -48,6 +48,7 @@ from app.db.models_ai_conversation import (
     AIMessageRole,
     AIActionStatus,
 )
+from app.services.invoice_direction import is_incoming_invoice, is_outgoing_invoice
 
 logger = structlog.get_logger(__name__)
 
@@ -821,9 +822,9 @@ class FinanceAssistantService:
         max_amount = None
         if amount_match:
             max_amount = Decimal(amount_match.group(1).replace(",", "."))
-            invoices = [i for i in invoices if i.total_amount <= max_amount]
+            invoices = [i for i in invoices if i.amount <= max_amount]
 
-        total_amount = sum(i.total_amount for i in invoices)
+        total_amount = sum(i.amount for i in invoices)
 
         action = ActionProposal(
             action_type=ActionType.PAYMENT_RUN,
@@ -1267,12 +1268,13 @@ class FinanceAssistantService:
         month_start = date.today().replace(day=1)
         last_month_start = (month_start - timedelta(days=1)).replace(day=1)
 
-        # Einnahmen
+        # Einnahmen (Ausgangsrechnungen; Richtung via Entity-Typ 'customer')
         income_stmt = (
-            select(func.sum(InvoiceTracking.total_amount))
+            select(func.sum(InvoiceTracking.amount))
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
+                    is_outgoing_invoice(),
                     InvoiceTracking.status == "paid",
                     InvoiceTracking.paid_at >= month_start,
                 )
@@ -1281,13 +1283,13 @@ class FinanceAssistantService:
         result = await self.db.execute(income_stmt)
         income = result.scalar() or Decimal("0")
 
-        # Ausgaben (Eingangsrechnungen)
+        # Ausgaben (Eingangsrechnungen; Richtung via Entity-Typ 'supplier')
         expense_stmt = (
-            select(func.sum(InvoiceTracking.total_amount))
+            select(func.sum(InvoiceTracking.amount))
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.invoice_type == "incoming",
+                    is_incoming_invoice(),
                     InvoiceTracking.paid_at >= month_start,
                 )
             )
@@ -1323,7 +1325,7 @@ class FinanceAssistantService:
         stmt = (
             select(
                 func.count(InvoiceTracking.id),
-                func.sum(InvoiceTracking.total_amount),
+                func.sum(InvoiceTracking.amount),
             )
             .where(
                 and_(
@@ -1366,7 +1368,7 @@ Empfehlung:
 
         # Prüfe auf ungewöhnlich hohe Rechnungen
         avg_stmt = (
-            select(func.avg(InvoiceTracking.total_amount))
+            select(func.avg(InvoiceTracking.amount))
             .where(InvoiceTracking.company_id == context.company_id)
         )
         result = await self.db.execute(avg_stmt)
@@ -1379,7 +1381,7 @@ Empfehlung:
             .where(
                 and_(
                     InvoiceTracking.company_id == context.company_id,
-                    InvoiceTracking.total_amount > threshold,
+                    InvoiceTracking.amount > threshold,
                     InvoiceTracking.created_at >= date.today() - timedelta(days=30),
                 )
             )
@@ -1671,13 +1673,13 @@ BEGRÜNDUNG: [Kurze Erklärung]"""
                 func.date_trunc('month', InvoiceTracking.created_at).label('month'),
                 func.sum(
                     case(
-                        (InvoiceTracking.invoice_type == 'outgoing', InvoiceTracking.total_amount),
+                        (is_outgoing_invoice(), InvoiceTracking.amount),
                         else_=Decimal("0")
                     )
                 ).label('income'),
                 func.sum(
                     case(
-                        (InvoiceTracking.invoice_type == 'incoming', InvoiceTracking.total_amount),
+                        (is_incoming_invoice(), InvoiceTracking.amount),
                         else_=Decimal("0")
                     )
                 ).label('expenses'),

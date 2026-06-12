@@ -760,13 +760,13 @@ class NLQService:
         # Base-Query auf InvoiceTracking (für Betraege)
         if agg_type in ["sum", "avg", "max", "min"]:
             if agg_type == "sum":
-                agg_func = func.sum(InvoiceTracking.total_amount)
+                agg_func = func.sum(InvoiceTracking.amount)
             elif agg_type == "avg":
-                agg_func = func.avg(InvoiceTracking.total_amount)
+                agg_func = func.avg(InvoiceTracking.amount)
             elif agg_type == "max":
-                agg_func = func.max(InvoiceTracking.total_amount)
+                agg_func = func.max(InvoiceTracking.amount)
             else:
-                agg_func = func.min(InvoiceTracking.total_amount)
+                agg_func = func.min(InvoiceTracking.amount)
 
             stmt = select(agg_func)
 
@@ -851,7 +851,7 @@ class NLQService:
 
         results = []
         for i, dr in enumerate(date_ranges[:2]):
-            stmt = select(func.sum(InvoiceTracking.total_amount)).where(
+            stmt = select(func.sum(InvoiceTracking.amount)).where(
                 and_(
                     InvoiceTracking.created_at >= dr.value["start"],
                     InvoiceTracking.created_at <= dr.value["end"],

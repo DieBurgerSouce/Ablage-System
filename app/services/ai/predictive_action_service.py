@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log
+from app.services.invoice_direction import is_incoming_invoice
 
 if TYPE_CHECKING:
     from app.services.notification_service import NotificationService
@@ -590,7 +591,7 @@ class PredictiveActionService:
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
+                is_incoming_invoice(),
                 InvoiceTracking.skonto_deadline.isnot(None),
                 InvoiceTracking.skonto_deadline > now,
                 InvoiceTracking.skonto_used == False,
@@ -823,7 +824,7 @@ class PredictiveActionService:
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
+                is_incoming_invoice(),
                 InvoiceTracking.due_date.isnot(None),
                 InvoiceTracking.due_date <= warning_date,
                 InvoiceTracking.due_date >= now.date(),

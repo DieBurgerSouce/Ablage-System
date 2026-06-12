@@ -29,6 +29,7 @@ from app.db.models import (
     InvoiceTracking,
     User,
 )
+from app.services.invoice_direction import is_incoming_invoice, is_outgoing_invoice
 from app.services.privat.financial_health_service import (
     FinancialHealthService,
     HealthRating,
@@ -268,7 +269,7 @@ class DigitalTwinService:
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         cashflow_query = select(
-            func.coalesce(func.sum(InvoiceTracking.amount_total), 0)
+            func.coalesce(func.sum(InvoiceTracking.amount), 0)
         ).join(
             Document, InvoiceTracking.document_id == Document.id
         ).where(
@@ -284,7 +285,7 @@ class DigitalTwinService:
 
         # Open Receivables
         receivables_query = select(
-            func.coalesce(func.sum(InvoiceTracking.amount_total), 0)
+            func.coalesce(func.sum(InvoiceTracking.amount), 0)
         ).join(
             Document, InvoiceTracking.document_id == Document.id
         ).where(
@@ -292,7 +293,10 @@ class DigitalTwinService:
                 Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 InvoiceTracking.status.in_(["open", "sent"]),
-                InvoiceTracking.invoice_type == "incoming",
+                # Richtung war vertauscht: Forderungen = Ausgangsrechnungen
+                # (Kunde), nicht "incoming". Ableitung via Entity-Typ, siehe
+                # app/services/invoice_direction.py
+                is_outgoing_invoice(),
             )
         )
         result = await self.db.execute(receivables_query)
@@ -300,7 +304,7 @@ class DigitalTwinService:
 
         # Open Payables
         payables_query = select(
-            func.coalesce(func.sum(InvoiceTracking.amount_total), 0)
+            func.coalesce(func.sum(InvoiceTracking.amount), 0)
         ).join(
             Document, InvoiceTracking.document_id == Document.id
         ).where(
@@ -308,7 +312,9 @@ class DigitalTwinService:
                 Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 InvoiceTracking.status.in_(["open", "sent"]),
-                InvoiceTracking.invoice_type == "outgoing",
+                # Richtung war vertauscht: Verbindlichkeiten = Eingangs-
+                # rechnungen (Lieferant), nicht "outgoing".
+                is_incoming_invoice(),
             )
         )
         result = await self.db.execute(payables_query)
@@ -316,7 +322,7 @@ class DigitalTwinService:
 
         # Overdue Amount
         overdue_query = select(
-            func.coalesce(func.sum(InvoiceTracking.amount_total), 0)
+            func.coalesce(func.sum(InvoiceTracking.amount), 0)
         ).join(
             Document, InvoiceTracking.document_id == Document.id
         ).where(
@@ -341,7 +347,7 @@ class DigitalTwinService:
             m_start = (month_start - timedelta(days=30 * months_ago)).replace(day=1)
             m_end = (m_start + timedelta(days=32)).replace(day=1)
             prev_query = select(
-                func.coalesce(func.sum(InvoiceTracking.amount_total), 0)
+                func.coalesce(func.sum(InvoiceTracking.amount), 0)
             ).join(
                 Document, InvoiceTracking.document_id == Document.id
             ).where(
@@ -787,7 +793,7 @@ class DigitalTwinService:
             m_start = (now - timedelta(days=30 * months_ago)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             m_end = (m_start + timedelta(days=32)).replace(day=1)
             rev_query = select(
-                func.coalesce(func.sum(InvoiceTracking.amount_total), 0)
+                func.coalesce(func.sum(InvoiceTracking.amount), 0)
             ).join(
                 Document, InvoiceTracking.document_id == Document.id
             ).where(

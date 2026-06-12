@@ -169,6 +169,9 @@ class VerificationNeededResponse(BaseModel):
     "/{entity_id}/verify",
     response_model=VerificationResultResponse,
     summary="Entity verifizieren",
+    # Eindeutige operation_id: kollidierte mit entities.py (gleicher Pfad,
+    # slowapi-Wrapper uebernimmt sonst denselben Funktionsnamen)
+    operation_id="supplier_verification_verify_entity",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def verify_entity(

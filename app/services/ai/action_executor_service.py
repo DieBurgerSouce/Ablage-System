@@ -26,7 +26,14 @@ from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
-from app.db.models import Document, InvoiceTracking, BankTransaction, AuditLog
+from app.db.models import (
+    AuditLog,
+    BankAccount,
+    BankTransaction,
+    Document,
+    InvoiceTracking,
+)
+from app.services.invoice_direction import is_open_invoice
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
 # JSON-compatible value type for action parameters and metadata
@@ -476,12 +483,15 @@ class ActionExecutorService:
         matched_count = 0
 
         # Unzugeordnete Transaktionen finden
+        # BankTransaction hat KEINE Spalten company_id/matched_invoice_id:
+        # Company-Scope via BankAccount-JOIN, Zuordnung via matched_document_id.
         stmt = (
             select(BankTransaction)
+            .join(BankAccount, BankAccount.id == BankTransaction.bank_account_id)
             .where(
                 and_(
-                    BankTransaction.company_id == context.company_id,
-                    BankTransaction.matched_invoice_id.is_(None),
+                    BankAccount.company_id == context.company_id,
+                    BankTransaction.matched_document_id.is_(None),
                     BankTransaction.amount > 0,
                 )
             )
@@ -497,8 +507,9 @@ class ActionExecutorService:
                 .where(
                     and_(
                         InvoiceTracking.company_id == context.company_id,
-                        InvoiceTracking.total_amount == tx.amount,
-                        InvoiceTracking.status.in_(["pending", "open"]),
+                        InvoiceTracking.amount == tx.amount,
+                        # "pending" existiert nicht in InvoiceStatus
+                        is_open_invoice(),
                     )
                 )
                 .limit(1)
@@ -507,7 +518,9 @@ class ActionExecutorService:
             invoice = inv_result.scalar_one_or_none()
 
             if invoice:
-                tx.matched_invoice_id = invoice.id
+                tx.matched_document_id = invoice.document_id
+                tx.matched_invoice_number = invoice.invoice_number
+                tx.reconciliation_status = "matched"
                 tx.matched_at = utc_now()
                 invoice.status = "paid"
                 invoice.paid_at = utc_now()

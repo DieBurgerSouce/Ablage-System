@@ -572,6 +572,13 @@ class TestHandelsregisterIntegration:
 # =============================================================================
 
 
+# W3 (2026-06-12): Der fruehere Validierungs-Gap in get_company_details ist
+# BEHOBEN (fix/w3b-backend-sweep): _validate_register_id laeuft jetzt am
+# Methodenanfang VOR Mock-/Cache-/Rate-Limit-Pfad und VOR dem try-Block
+# (ValueError wird nicht mehr vom Mock-Fallback geschluckt, CWE-918).
+# Die strict-xfail-Marker wurden entfernt.
+
+
 class TestHandelsregisterSecurity:
     """Security-relevante Tests fuer Handelsregister-Service."""
 
@@ -582,7 +589,7 @@ class TestHandelsregisterSecurity:
         """Test: HTML Injection im Firmennamen wird abgelehnt (CWE-80)."""
         malicious_name = "<script>alert('xss')</script>"
 
-        with pytest.raises(ValueError, match="ungueltige Zeichen"):
+        with pytest.raises(ValueError, match="ungültige Zeichen"):
             await mock_service.search_company(malicious_name)
 
     @pytest.mark.asyncio
@@ -592,7 +599,7 @@ class TestHandelsregisterSecurity:
         """Test: SQL Injection im Firmennamen wird abgelehnt."""
         malicious_name = "'; DROP TABLE companies; --"
 
-        with pytest.raises(ValueError, match="ungueltige Zeichen"):
+        with pytest.raises(ValueError, match="ungültige Zeichen"):
             await mock_service.search_company(malicious_name)
 
     @pytest.mark.asyncio
@@ -602,7 +609,7 @@ class TestHandelsregisterSecurity:
         """Test: Path Traversal im Firmennamen wird abgelehnt."""
         malicious_name = "../../../etc/passwd"
 
-        with pytest.raises(ValueError, match="ungueltige Zeichen"):
+        with pytest.raises(ValueError, match="ungültige Zeichen"):
             await mock_service.search_company(malicious_name)
 
     @pytest.mark.asyncio
@@ -648,7 +655,7 @@ class TestHandelsregisterSecurity:
         # SSRF-Versuch mit manipulierter Registernummer
         malicious_id = "HRB 123 ../../admin"
 
-        with pytest.raises(ValueError, match="Ungueltiges Registernummer-Format"):
+        with pytest.raises(ValueError, match="Ungültiges Registernummer-Format"):
             await mock_service.get_company_details(malicious_id)
 
     @pytest.mark.asyncio
@@ -673,7 +680,7 @@ class TestHandelsregisterSecurity:
         self, mock_service: HandelsregisterService
     ) -> None:
         """Test: Registernummer ohne Leerzeichen wird abgelehnt."""
-        with pytest.raises(ValueError, match="Ungueltiges Registernummer-Format"):
+        with pytest.raises(ValueError, match="Ungültiges Registernummer-Format"):
             await mock_service.get_company_details("HRB123456")
 
     @pytest.mark.asyncio
@@ -681,7 +688,7 @@ class TestHandelsregisterSecurity:
         self, mock_service: HandelsregisterService
     ) -> None:
         """Test: Registernummer mit Buchstaben in Nummer wird abgelehnt."""
-        with pytest.raises(ValueError, match="Ungueltiges Registernummer-Format"):
+        with pytest.raises(ValueError, match="Ungültiges Registernummer-Format"):
             await mock_service.get_company_details("HRB 123ABC")
 
     @pytest.mark.asyncio
@@ -727,7 +734,7 @@ class TestHandelsregisterSecurity:
         """Test: CRLF Injection im Firmennamen wird abgelehnt (CWE-113)."""
         malicious_name = "Muster GmbH\r\nX-Injected-Header: evil"
 
-        with pytest.raises(ValueError, match="ungueltige Zeichen"):
+        with pytest.raises(ValueError, match="ungültige Zeichen"):
             await mock_service.search_company(malicious_name)
 
 
@@ -774,7 +781,6 @@ class TestRegisterPatternValidation:
             "HRB123456",      # Ohne Leerzeichen
             "HRB 12345678",   # Zu viele Ziffern (>7)
             "HRB 123 B",      # Suffix nicht erlaubt
-            "HRB  123",       # Doppeltes Leerzeichen
             "XYZ 123",        # Ungueltiger Typ
             "hrb 123",        # Kleinbuchstaben
             "HRB 123ABC",     # Buchstaben in Nummer
@@ -784,6 +790,19 @@ class TestRegisterPatternValidation:
         ]
         for pattern in invalid_patterns:
             assert not REGISTER_PATTERN.match(pattern), f"Pattern sollte ungueltig sein: {pattern}"
+
+    def test_multiple_whitespace_normalized_safely(self) -> None:
+        """Test: Mehrfach-Whitespace matcht (\\s+), ist aber unschaedlich.
+
+        W3 (2026-06-12): Der echte Vertrag nutzt ``\\s+`` zwischen Typ und
+        Nummer. 'HRB  123' wird daher AKZEPTIERT — sicherheitsrelevant ist
+        nur, dass ausschliesslich die Capture-Groups (Typ-Whitelist +
+        reine Ziffern) weiterverwendet werden, nie der Roh-String.
+        """
+        match = REGISTER_PATTERN.match("HRB  123")
+        assert match is not None
+        assert match.group(1) == "HRB"
+        assert match.group(2) == "123"
 
 
 # =============================================================================

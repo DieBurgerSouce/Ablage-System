@@ -27,7 +27,8 @@ from prometheus_client import Counter, Histogram, Gauge
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import InvoiceTracking, BusinessEntity
+from app.db.models import InvoiceTracking, InvoiceStatus, BusinessEntity
+from app.services.invoice_direction import is_open_invoice, is_outgoing_invoice
 from app.core.security.sensitive_data_filter import get_pii_safe_logger
 from app.core.safe_errors import safe_error_log
 
@@ -335,7 +336,7 @@ class ProactiveDunningService:
     ) -> DunningDecision:
         """Evaluiert und trifft finale Entscheidung."""
         factors: List[Tuple[str, float, str]] = []
-        amount = invoice.outstanding_amount or invoice.gross_amount or Decimal("0")
+        amount = invoice.outstanding_amount or invoice.amount or Decimal("0")
 
         # Faktor 1: Überfälligkeitsdauer (35%)
         overdue_score = min(days_overdue / 60, 1.0)  # Max bei 60 Tagen
@@ -548,8 +549,8 @@ class ProactiveDunningService:
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.is_paid == False,
-                InvoiceTracking.is_outgoing == True,
+                is_open_invoice(),
+                is_outgoing_invoice(),
                 InvoiceTracking.due_date < now,
             )
         ).order_by(InvoiceTracking.due_date.asc())
@@ -573,8 +574,8 @@ class ProactiveDunningService:
         # Rechnungsstatistiken
         stmt = select(InvoiceTracking).where(
             and_(
-                InvoiceTracking.business_entity_id == entity_id,
-                InvoiceTracking.is_outgoing == True,
+                InvoiceTracking.entity_id == entity_id,
+                is_outgoing_invoice(),
             )
         )
 
@@ -583,17 +584,20 @@ class ProactiveDunningService:
 
         if invoices:
             history.total_invoices = len(invoices)
-            history.paid_invoices = len([i for i in invoices if i.is_paid])
+            history.paid_invoices = len([
+                i for i in invoices if i.status == InvoiceStatus.PAID.value
+            ])
             history.overdue_invoices = len([
                 i for i in invoices
-                if not i.is_paid and i.due_date and i.due_date < datetime.now(timezone.utc)
+                if i.status != InvoiceStatus.PAID.value
+                and i.due_date and i.due_date < datetime.now(timezone.utc)
             ])
 
             # Zahlungsverzögerungen
             delays = []
             for inv in invoices:
-                if inv.is_paid and inv.paid_date and inv.due_date:
-                    delay = (inv.paid_date - inv.due_date).days
+                if inv.status == InvoiceStatus.PAID.value and inv.paid_at and inv.due_date:
+                    delay = (inv.paid_at - inv.due_date).days
                     delays.append(max(delay, 0))
 
             if delays:
@@ -603,17 +607,20 @@ class ProactiveDunningService:
 
             # Volumen
             history.total_volume = sum(
-                i.gross_amount or Decimal("0") for i in invoices
+                i.amount or Decimal("0") for i in invoices
             )
             history.outstanding_volume = sum(
-                i.outstanding_amount or i.gross_amount or Decimal("0")
-                for i in invoices if not i.is_paid
+                i.outstanding_amount or i.amount or Decimal("0")
+                for i in invoices if i.status != InvoiceStatus.PAID.value
             )
 
             # Letzte Zahlung
-            paid = [i for i in invoices if i.is_paid and i.paid_date]
+            paid = [
+                i for i in invoices
+                if i.status == InvoiceStatus.PAID.value and i.paid_at
+            ]
             if paid:
-                history.last_payment_date = max(i.paid_date for i in paid)
+                history.last_payment_date = max(i.paid_at for i in paid)
 
         return history
 

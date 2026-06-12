@@ -444,9 +444,11 @@ class ComplianceAutopilotService:
         recommendations: List[str] = []
 
         # Dokumente mit PII zählen
+        # Document.metadata ist SQLAlchemys MetaData-Registry — die echte
+        # JSONB-Spalte heisst document_metadata.
         stmt = select(func.count(Document.id)).where(
             Document.company_id == company_id,
-            Document.metadata.isnot(None),
+            Document.document_metadata.isnot(None),
         )
         result = await db.execute(stmt)
         personal_data_count = result.scalar() or 0
@@ -587,7 +589,9 @@ class ComplianceAutopilotService:
 
         # Prüfe ob alle Version-History haben
         docs_without_version = sum(
-            1 for doc in financial_docs if not doc.metadata or not doc.metadata.get("version_history")
+            1 for doc in financial_docs
+            if not doc.document_metadata
+            or not doc.document_metadata.get("version_history")
         )
 
         if docs_without_version == 0:
@@ -612,7 +616,7 @@ class ComplianceAutopilotService:
 
         # Check 2: Nachvollziehbarkeit (Metadaten)
         docs_without_metadata = sum(
-            1 for doc in financial_docs if not doc.metadata
+            1 for doc in financial_docs if not doc.document_metadata
         )
 
         if docs_without_metadata == 0:

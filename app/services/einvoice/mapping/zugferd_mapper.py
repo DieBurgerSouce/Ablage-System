@@ -15,6 +15,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 import hashlib
+import re
 
 import structlog
 
@@ -190,6 +191,7 @@ class ZUGFeRDMapper:
         )
         if context_param is not None and context_param.text:
             urn = context_param.text
+            metadata["guideline_id"] = urn
             for profile, profile_urn in PROFILE_URNS.items():
                 if profile_urn in urn or profile.lower() in urn.lower():
                     metadata["profile"] = profile
@@ -203,7 +205,18 @@ class ZUGFeRDMapper:
                 elif "2.3" in urn:
                     metadata["version"] = "2.3.1"
             else:
-                metadata["version"] = "2.3.3"
+                # Version aus Guideline-URN ableiten (z.B. urn:zugferd:2p0:...
+                # oder urn:ferd:...:1p0). Vorher wurde JEDE ZUGFeRD-Version
+                # hart als "2.3.3" gemeldet.
+                version_match = re.search(r"\b(\d)p(\d)\b", urn)
+                if version_match:
+                    metadata["version"] = (
+                        f"{version_match.group(1)}.{version_match.group(2)}"
+                    )
+                else:
+                    # Moderne factur-x/EN16931-URNs ohne Versionskennung:
+                    # aktuelle ZUGFeRD-Generation annehmen
+                    metadata["version"] = "2.3.3"
 
         return metadata
 

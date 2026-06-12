@@ -324,9 +324,19 @@ class TestRuleConditionMatcher:
         except ImportError:
             pytest.skip("Condition Matcher nicht verfuegbar")
 
+    # HINWEIS (Test-Drift behoben, 2026-06-12): Diese Tests nutzten frueher
+    # ein erfundenes Bedingungs-Schema ({"operator": "gt"} pro Feld bzw.
+    # {"AND": [...]} als Gruppe). Das reale Schema ist durch die API
+    # (app/api/v1/notification_rules.py: RuleConditionSchema mit "op",
+    # RuleConditionsSchema mit "operator"/"conditions") und die Engine
+    # definiert. Die scheinbaren Engine-Bugs (gt matcht nicht, AND/OR
+    # "invertiert") waren Drift; ein ECHTER Befund dabei: unbekannte
+    # Strukturen matchten fail-open ALLE Events -> Engine gehaertet,
+    # siehe test_unbekannte_struktur_matcht_nicht.
+
     @pytest.mark.asyncio
     async def test_eq_operator_works(self):
-        """Test dass eq Operator funktioniert."""
+        """Test dass eq Operator funktioniert (Feld-Operator-Key ist 'op')."""
         try:
             from app.services.notification.rule_engine import RuleConditionMatcher
 
@@ -334,7 +344,7 @@ class TestRuleConditionMatcher:
 
             conditions = {
                 "field": "status",
-                "operator": "eq",
+                "op": "eq",
                 "value": "active"
             }
 
@@ -345,7 +355,7 @@ class TestRuleConditionMatcher:
 
     @pytest.mark.asyncio
     async def test_gt_operator_works(self):
-        """Test dass gt Operator funktioniert."""
+        """Test dass gt Operator funktioniert (Feld-Operator-Key ist 'op')."""
         try:
             from app.services.notification.rule_engine import RuleConditionMatcher
 
@@ -353,7 +363,7 @@ class TestRuleConditionMatcher:
 
             conditions = {
                 "field": "amount",
-                "operator": "gt",
+                "op": "gt",
                 "value": 100
             }
 
@@ -364,16 +374,17 @@ class TestRuleConditionMatcher:
 
     @pytest.mark.asyncio
     async def test_logical_and_works(self):
-        """Test dass AND-Verknuepfung funktioniert."""
+        """Test dass AND-Verknuepfung funktioniert (Gruppen-Schema)."""
         try:
             from app.services.notification.rule_engine import RuleConditionMatcher
 
             matcher = RuleConditionMatcher()
 
             conditions = {
-                "AND": [
-                    {"field": "status", "operator": "eq", "value": "active"},
-                    {"field": "amount", "operator": "gt", "value": 100}
+                "operator": "AND",
+                "conditions": [
+                    {"field": "status", "op": "eq", "value": "active"},
+                    {"field": "amount", "op": "gt", "value": 100}
                 ]
             }
 
@@ -385,22 +396,50 @@ class TestRuleConditionMatcher:
 
     @pytest.mark.asyncio
     async def test_logical_or_works(self):
-        """Test dass OR-Verknuepfung funktioniert."""
+        """Test dass OR-Verknuepfung funktioniert (Gruppen-Schema)."""
         try:
             from app.services.notification.rule_engine import RuleConditionMatcher
 
             matcher = RuleConditionMatcher()
 
             conditions = {
-                "OR": [
-                    {"field": "priority", "operator": "eq", "value": "critical"},
-                    {"field": "priority", "operator": "eq", "value": "urgent"}
+                "operator": "OR",
+                "conditions": [
+                    {"field": "priority", "op": "eq", "value": "critical"},
+                    {"field": "priority", "op": "eq", "value": "urgent"}
                 ]
             }
 
             assert matcher.match(conditions, {"priority": "critical"}) is True
             assert matcher.match(conditions, {"priority": "urgent"}) is True
             assert matcher.match(conditions, {"priority": "low"}) is False
+        except ImportError:
+            pytest.skip("Condition Matcher nicht verfuegbar")
+
+    @pytest.mark.asyncio
+    async def test_unbekannte_struktur_matcht_nicht(self):
+        """Fail-safe: unbekannte Bedingungs-Struktur darf NICHT alles matchen.
+
+        Vor der Haertung matchte z.B. {"AND": [...]} (falsches Schema)
+        JEDES Event -> Benachrichtigungen feuerten faelschlich fuer alles.
+        """
+        try:
+            from app.services.notification.rule_engine import RuleConditionMatcher
+
+            matcher = RuleConditionMatcher()
+
+            malformed = {
+                "AND": [
+                    {"field": "status", "op": "eq", "value": "active"},
+                ]
+            }
+
+            assert matcher.match(malformed, {"status": "active"}) is False
+            # Leere Bedingung bleibt dokumentiert "immer match"
+            assert matcher.match({}, {"status": "active"}) is True
+            assert matcher.match(
+                {"operator": "AND", "conditions": []}, {"status": "active"}
+            ) is True
         except ImportError:
             pytest.skip("Condition Matcher nicht verfuegbar")
 
