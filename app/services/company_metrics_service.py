@@ -455,10 +455,10 @@ class CompanyMetricsService:
         agg_query = (
             select(
                 func.count(InvoiceTracking.id),
-                func.coalesce(func.sum(InvoiceTracking.total_amount), 0),
+                func.coalesce(func.sum(InvoiceTracking.amount), 0),
                 func.coalesce(
                     func.sum(
-                        InvoiceTracking.total_amount - InvoiceTracking.outstanding_amount
+                        InvoiceTracking.amount - InvoiceTracking.outstanding_amount
                     ),
                     0,
                 ),

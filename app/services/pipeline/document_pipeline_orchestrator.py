@@ -1006,8 +1006,8 @@ class DocumentPipelineOrchestrator:
             from app.db.models import InvoiceTracking
 
 
-            stmt = select(InvoiceTracking.gross_amount).where(
-                InvoiceTracking.business_entity_id == entity_id
+            stmt = select(InvoiceTracking.amount).where(
+                InvoiceTracking.entity_id == entity_id
             ).limit(10)
 
             result = await self.db.execute(stmt)

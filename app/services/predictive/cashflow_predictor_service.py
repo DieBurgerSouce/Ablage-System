@@ -41,6 +41,7 @@ from app.db.models import (
     Document,
     InvoiceTracking,
 )
+from app.services.invoice_direction import is_incoming_invoice, is_outgoing_invoice
 
 logger = structlog.get_logger(__name__)
 
@@ -1152,7 +1153,7 @@ class CashflowPredictorService:
             .where(
                 and_(
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.invoice_type == "outgoing",
+                    is_outgoing_invoice(),
                     InvoiceTracking.status.in_(["open", "sent", "overdue"]),
                     InvoiceTracking.deleted_at.is_(None),
                 )
@@ -1190,7 +1191,7 @@ class CashflowPredictorService:
             .where(
                 and_(
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.invoice_type == "incoming",
+                    is_incoming_invoice(),
                     InvoiceTracking.status.in_(["open", "sent"]),
                     InvoiceTracking.deleted_at.is_(None),
                 )

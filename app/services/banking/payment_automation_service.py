@@ -36,6 +36,11 @@ from app.db.models import (
     Document,
     Company,
 )
+from app.services.invoice_direction import (
+    is_incoming_invoice,
+    is_open_invoice,
+    is_paid_invoice,
+)
 from app.services.banking.sepa_credit_transfer_service import (
     SEPACreditTransferService,
     SEPACreditTransferTransaction,
@@ -313,8 +318,8 @@ class PaymentAutomationService:
             select(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
             )
         )
 
@@ -961,9 +966,9 @@ class PaymentAutomationService:
             select(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == True,
-                InvoiceTracking.paid_date >= start_date,
+                is_incoming_invoice(),
+                is_paid_invoice(),
+                InvoiceTracking.paid_at >= start_date,
             )
         )
         paid_invoices = paid_result.scalars().all()
@@ -978,8 +983,8 @@ class PaymentAutomationService:
             if inv.skonto_percentage
             and not inv.skonto_used
             and inv.skonto_deadline
-            and inv.paid_date
-            and inv.paid_date > inv.skonto_deadline
+            and inv.paid_at
+            and inv.paid_at > inv.skonto_deadline
         ]
 
         total_paid = sum(Decimal(str(inv.amount or 0)) for inv in paid_invoices)
@@ -995,8 +1000,8 @@ class PaymentAutomationService:
             .select_from(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
             )
         )
         open_count = open_result.scalar() or 0
@@ -1007,8 +1012,8 @@ class PaymentAutomationService:
             .select_from(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
                 InvoiceTracking.due_date < now,
             )
         )
@@ -1105,8 +1110,8 @@ class PaymentAutomationService:
                 .where(
                     InvoiceTracking.id == invoice_id,
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.invoice_type == "incoming",
-                    InvoiceTracking.is_paid == False,
+                    is_incoming_invoice(),
+                    is_open_invoice(),
                 )
             )
             invoice = result.scalar_one_or_none()
@@ -1225,8 +1230,8 @@ class PaymentAutomationService:
             select(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
                 InvoiceTracking.skonto_deadline.isnot(None),
                 InvoiceTracking.skonto_deadline >= today,
                 InvoiceTracking.skonto_deadline <= deadline,

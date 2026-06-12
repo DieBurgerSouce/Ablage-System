@@ -2,7 +2,7 @@
 
 Hintergrund (Manifest w2-api, 2026-06-11): ``InvoiceTracking`` hat KEINE
 Spalte ``invoice_type`` — weder im Modell noch in einer Alembic-Migration.
-Alle Filter auf ``InvoiceTracking.invoice_type`` liefen zur Laufzeit in
+Alle ``invoice_type``-Filter auf InvoiceTracking liefen zur Laufzeit in
 ``AttributeError`` (HTTP 500).
 
 Entscheidung (bindend, 2026-06-11): KEINE neue Spalte/Migration. Die
@@ -22,10 +22,39 @@ Bewusste Einschränkungen (dokumentiert, kein Bug):
   einer Rechnung bleibt auch bei gelöschtem Geschäftspartner gültig.
 """
 
+from typing import Tuple
+
 from sqlalchemy import select
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.db.models_entity_business import BusinessEntity, EntityType, InvoiceTracking
+from app.db.models_entity_business import (
+    BusinessEntity,
+    EntityType,
+    InvoiceStatus,
+    InvoiceTracking,
+)
+
+# Status-Semantik (gleiche Drift-Klasse, Sweep 2026-06-12): InvoiceTracking
+# hat auch KEINE Spalten ``is_paid``/``paid_date`` — reale Spalten sind
+# ``status`` (InvoiceStatus) und ``paid_at``. "Offen" = explizite
+# Status-Allowlist (weder bezahlt noch storniert).
+OFFENE_STATUS: Tuple[str, ...] = (
+    InvoiceStatus.OPEN.value,
+    InvoiceStatus.SENT.value,
+    InvoiceStatus.OVERDUE.value,
+    InvoiceStatus.DUNNING.value,
+    InvoiceStatus.PARTIAL.value,
+)
+
+
+def is_open_invoice() -> ColumnElement[bool]:
+    """Filter für offene Rechnungen (Ersatz für ``is_paid == False``)."""
+    return InvoiceTracking.status.in_(OFFENE_STATUS)
+
+
+def is_paid_invoice() -> ColumnElement[bool]:
+    """Filter für bezahlte Rechnungen (Ersatz für ``is_paid == True``)."""
+    return InvoiceTracking.status == InvoiceStatus.PAID.value
 
 
 def _direction_filter(entity_type: str) -> ColumnElement[bool]:
