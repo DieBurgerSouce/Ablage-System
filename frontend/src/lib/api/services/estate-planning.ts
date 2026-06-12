@@ -720,7 +720,7 @@ export const estatePlanningService = {
   calculateUsufruct: async (params: {
     assetValue: number;
     annualYieldRate: number;
-    beneficiaryAge: int;
+    beneficiaryAge: number;
     relationship: RelationshipType;
     gender?: 'm' | 'f';
   }): Promise<UsufructCalculation> => {

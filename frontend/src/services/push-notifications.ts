@@ -52,7 +52,7 @@ export interface PushNotificationOptions {
   image?: string;
   tag?: string;
   data?: Record<string, unknown>;
-  actions?: NotificationAction[];
+  actions?: Array<{ action: string; title: string; icon?: string }>;
   requireInteraction?: boolean;
   silent?: boolean;
 }

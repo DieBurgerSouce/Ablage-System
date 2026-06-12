@@ -74,6 +74,7 @@
     "react-hook-form": "^7.67.0",
     "react-hotkeys-hook": "^4.6.1",
     "react-i18next": "^16.3.5",
+    "react-markdown": "^10.1.0",
     "react-pdf": "^10.2.0",
     "react-resizable": "^3.2.0",
     "react-resizable-panels": "^4.6.2",
