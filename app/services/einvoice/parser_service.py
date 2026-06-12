@@ -302,8 +302,11 @@ class EInvoiceParserService:
         metadata: Dict[str, Any]
     ) -> EInvoiceFormatDetected:
         """Erkennt das genaue Format aus Metadaten."""
-        format_str = metadata.get("format", "unknown")
-        version = metadata.get("version", "")
+        # Defensive: Metadaten koennen die Keys mit explizitem None enthalten
+        # (z.B. UBL-XML ohne Versionsangabe) -> dict.get-Default greift dann
+        # NICHT und version.startswith() warf AttributeError (Parse-500).
+        format_str = metadata.get("format") or "unknown"
+        version = metadata.get("version") or ""
 
         if format_str == "xrechnung_cii":
             if version.startswith("3."):
