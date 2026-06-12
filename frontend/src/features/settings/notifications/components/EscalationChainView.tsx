@@ -59,7 +59,8 @@ export function EscalationChainView({
 }: EscalationChainViewProps) {
   // Support both prop interfaces
   const steps = escalationChain ?? legacySteps ?? [];
-  const isEnabled = enabled ?? !disabled ?? true;
+  // !disabled ist nie nullish — ?? true war toter Code (disabled=undefined -> !undefined=true)
+  const isEnabled = enabled ?? !disabled;
 
   if (!isEnabled) {
     return (
