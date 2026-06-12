@@ -272,8 +272,9 @@ class HoldingKPIService:
     ) -> Dict[str, Any]:
         """Hole Banking-Metriken."""
         # Summe aller Kontostaende
+        # BankAccount-Spalte heisst current_balance (kein "balance")
         balance_result = await self.db.execute(
-            select(func.sum(BankAccount.balance))
+            select(func.sum(BankAccount.current_balance))
             .where(
                 BankAccount.company_id.in_(company_ids),
                 BankAccount.is_active == True,
@@ -295,11 +296,14 @@ class HoldingKPIService:
         # Transaktionen letzte 30 Tage
         thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
+        # Company-Scope via BankAccount-JOIN (BankTransaction hat KEINE
+        # company_id-Spalte)
         transactions_result = await self.db.execute(
             select(func.count())
             .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
             .where(
-                BankTransaction.company_id.in_(company_ids),
+                BankAccount.company_id.in_(company_ids),
                 BankTransaction.booking_date >= thirty_days_ago,
             )
         )
