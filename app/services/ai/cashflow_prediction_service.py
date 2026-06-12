@@ -1221,7 +1221,9 @@ class CashflowPredictionService:
                 upper_bound=f.upper_bound - delayed_incoming + incoming_from_delay,
                 incoming=round(new_incoming, 2),
                 outgoing=f.outgoing,
-                confidence=f.confidence * Decimal("0.9"),  # Etwas niedrigere Konfidenz
+                # W1-004 #9: confidence ist float (Dataclass) - float * Decimal
+                # warf TypeError (500), sobald offene Forderungen existierten.
+                confidence=round(f.confidence * 0.9, 2),  # Etwas niedrigere Konfidenz
             ))
 
         # Risikobewertung
@@ -1360,7 +1362,8 @@ class CashflowPredictionService:
                 upper_bound=f.upper_bound + adjustment * Decimal("1.2"),
                 incoming=new_incoming,
                 outgoing=f.outgoing,
-                confidence=f.confidence * Decimal("0.85"),  # Etwas unsicherer
+                # W1-004 #9: float * Decimal -> TypeError (siehe oben)
+                confidence=round(f.confidence * 0.85, 2),  # Etwas unsicherer
             ))
 
         return ScenarioResult(
@@ -1485,7 +1488,8 @@ class CashflowPredictionService:
                 upper_bound=f.upper_bound + net_change * Decimal("1.3"),
                 incoming=f.incoming + additional_income - reduced_income,
                 outgoing=f.outgoing,
-                confidence=f.confidence * Decimal("0.9"),
+                # W1-004 #9: float * Decimal -> TypeError (siehe oben)
+                confidence=round(f.confidence * 0.9, 2),
             ))
 
         total_accelerated = sum(r["amount"] for r in receivables)

@@ -331,10 +331,31 @@ async def bulk_reset_usage(
     results = {
         "success": [],
         "failed": [],
+        "not_found": [],
     }
 
     if user_ids:
+        # Schemathesis-Fix (W1-004 #5): Nicht existente User-IDs führten beim
+        # Audit-Log-Commit zu einem FK-Fehler, der die Session vergiftete
+        # (500 im Session-Teardown). Jetzt: Existenz vorab prüfen ->
+        # Teilerfolg-Schema (not_found) bzw. 404, wenn KEINE der IDs existiert.
+        from sqlalchemy import select
+
+        existing_result = await db.execute(
+            select(User.id).where(User.id.in_(user_ids))
+        )
+        existing_ids = {row[0] for row in existing_result.all()}
+
+        if not existing_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Keiner der angegebenen Benutzer wurde gefunden",
+            )
+
         for user_id in user_ids:
+            if user_id not in existing_ids:
+                results["not_found"].append(str(user_id))
+                continue
             success = await RateLimitService.reset_usage(
                 db=db,
                 user_id=user_id,
@@ -352,5 +373,6 @@ async def bulk_reset_usage(
 
     results["success_count"] = len(results["success"])
     results["failed_count"] = len(results["failed"])
+    results["not_found_count"] = len(results["not_found"])
 
     return results

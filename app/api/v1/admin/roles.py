@@ -21,7 +21,7 @@ from app.api.dependencies import get_db, get_current_user
 from app.db.models import User, Role, Permission
 from app.services.permission_service import PermissionService
 from app.core.rbac import require_permission, require_any_permission
-from app.core.audit_logger import AuditLogger, AuditEventType
+from app.core.audit_logger import SecurityAuditLogger, SecurityEventType
 from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
@@ -265,17 +265,18 @@ async def create_role(
         )
 
     # Audit-Log
-    await AuditLogger.log_async(
-        db=db,
-        user_id=current_user.id,
-        action=AuditEventType.ROLE_ASSIGNED,  # Using existing type
+    # Schemathesis-Fix (W1-004 #6): AuditLogger.log_async / ROLE_ASSIGNED
+    # existieren nicht (AttributeError -> 500 nach JEDER Rollenerstellung).
+    await SecurityAuditLogger(db).log_event(
+        event_type=SecurityEventType.ROLE_CHANGED,
+        user_id=str(current_user.id),
         resource_type="role",
-        resource_id=role.id,
-        metadata={
+        resource_id=str(role.id),
+        details={
             "action": "role_created",
             "role_name": role.name,
             "permissions": request.permission_names
-        }
+        },
     )
 
     # Reload with permissions
@@ -352,18 +353,17 @@ async def update_role(
             detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
-    # Audit-Log
-    await AuditLogger.log_async(
-        db=db,
-        user_id=current_user.id,
-        action=AuditEventType.SETTINGS_UPDATED,
+    # Audit-Log (W1-004 #6: funktionierende SecurityAuditLogger-API)
+    await SecurityAuditLogger(db).log_event(
+        event_type=SecurityEventType.ROLE_CHANGED,
+        user_id=str(current_user.id),
         resource_type="role",
-        resource_id=role.id,
-        metadata={
+        resource_id=str(role.id),
+        details={
             "action": "role_updated",
             "role_name": role.name,
-            "changes": request.model_dump(exclude_none=True)
-        }
+            "changes": request.model_dump(exclude_none=True, mode="json")
+        },
     )
 
     # Reload with permissions
@@ -432,17 +432,16 @@ async def delete_role(
             detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
-    # Audit-Log
-    await AuditLogger.log_async(
-        db=db,
-        user_id=current_user.id,
-        action=AuditEventType.SETTINGS_UPDATED,
+    # Audit-Log (W1-004 #6: funktionierende SecurityAuditLogger-API)
+    await SecurityAuditLogger(db).log_event(
+        event_type=SecurityEventType.ROLE_CHANGED,
+        user_id=str(current_user.id),
         resource_type="role",
-        resource_id=role_id,
-        metadata={
+        resource_id=str(role_id),
+        details={
             "action": "role_deleted",
             "role_name": role.name
-        }
+        },
     )
 
     logger.info(
@@ -507,19 +506,18 @@ async def assign_role_to_user(
             detail="Rolle ist diesem Benutzer bereits zugewiesen"
         )
 
-    # Audit-Log
-    await AuditLogger.log_async(
-        db=db,
-        user_id=current_user.id,
-        action=AuditEventType.ROLE_ASSIGNED,
+    # Audit-Log (W1-004 #6: funktionierende SecurityAuditLogger-API)
+    await SecurityAuditLogger(db).log_event(
+        event_type=SecurityEventType.ROLE_CHANGED,
+        user_id=str(current_user.id),
         resource_type="user",
-        resource_id=user.id,
-        metadata={
+        resource_id=str(user.id),
+        details={
             "action": "role_assigned",
             "role_name": role.name,
             "target_user_id": str(user.id),
             "target_user_email": user.email
-        }
+        },
     )
 
     return {
@@ -581,19 +579,18 @@ async def remove_role_from_user(
             detail="Benutzer hat diese Rolle nicht"
         )
 
-    # Audit-Log
-    await AuditLogger.log_async(
-        db=db,
-        user_id=current_user.id,
-        action=AuditEventType.ROLE_REVOKED,
+    # Audit-Log (W1-004 #6: funktionierende SecurityAuditLogger-API)
+    await SecurityAuditLogger(db).log_event(
+        event_type=SecurityEventType.ROLE_CHANGED,
+        user_id=str(current_user.id),
         resource_type="user",
-        resource_id=user.id,
-        metadata={
+        resource_id=str(user.id),
+        details={
             "action": "role_removed",
             "role_name": role.name,
             "target_user_id": str(user.id),
             "target_user_email": user.email
-        }
+        },
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

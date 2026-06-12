@@ -617,10 +617,13 @@ class ActivityTimelineService:
 
         if user_id and include_owned_docs:
             # Aktivitäten vom User ODER an seinen Dokumenten
+            # Schemathesis-Fix (W1-004 #2): Document hat KEIN created_by_id
+            # (AttributeError -> 500 bei JEDEM /activity/filter und /activity/my).
+            # Eigentümerschaft liegt in Document.owner_id.
             query = query.where(
                 or_(
                     DocumentActivity.user_id == user_id,
-                    Document.created_by_id == user_id,
+                    Document.owner_id == user_id,
                 )
             )
         elif user_id:

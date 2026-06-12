@@ -440,6 +440,47 @@ async def simulate_scenario(
                     detail=f"Ungültige UUID für {key}: {parameters[key]}"
                 )
 
+    # Schemathesis-Fix (W1-004 #9): Existenzprüfung mit Mandanten-Isolation.
+    # Fremde UND nicht existente IDs liefern identisch 404 (kein
+    # Existenz-Oracle über Tenant-Grenzen, CWE-639). Muster wie in
+    # entities.py: eigene company_id ODER firmenübergreifend (NULL).
+    from sqlalchemy import or_, select
+
+    if isinstance(parameters.get("entity_id"), UUID):
+        from app.db.models_entity_business import BusinessEntity
+
+        entity_result = await db.execute(
+            select(BusinessEntity.id).where(
+                BusinessEntity.id == parameters["entity_id"],
+                or_(
+                    BusinessEntity.company_id == company_id,
+                    BusinessEntity.company_id.is_(None),
+                ),
+                BusinessEntity.deleted_at.is_(None),
+            )
+        )
+        if entity_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Geschäftspartner nicht gefunden",
+            )
+
+    if isinstance(parameters.get("invoice_id"), UUID):
+        from app.db.models_entity_business import InvoiceTracking
+
+        invoice_result = await db.execute(
+            select(InvoiceTracking.id).where(
+                InvoiceTracking.id == parameters["invoice_id"],
+                InvoiceTracking.company_id == company_id,
+                InvoiceTracking.deleted_at.is_(None),
+            )
+        )
+        if invoice_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Rechnung nicht gefunden",
+            )
+
     result = await service.simulate_scenario(
         company_id=company_id,
         scenario_type=scenario_type,
