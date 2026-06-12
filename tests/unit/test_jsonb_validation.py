@@ -98,11 +98,15 @@ class TestCompanyValidation:
         assert result is None
 
     def test_empty_company_rejected(self) -> None:
-        """Empty string company should be rejected or return None."""
-        # Depending on implementation, empty string might be treated as None
-        # or rejected as invalid
-        result = _validate_company("")
-        assert result is None or result == ""
+        """Empty string company is rejected (fail-closed, CWE-89).
+
+        W3 (2026-06-12): Echter Vertrag — nur ``None`` bedeutet "kein
+        Firmen-Filter". Ein Leerstring ist KEIN gueltiger JSONB-Key und
+        wird von der Whitelist-Validierung explizit abgelehnt statt
+        stillschweigend durchgereicht.
+        """
+        with pytest.raises(ValueError):
+            _validate_company("")
 
 
 class TestLexwareFieldValidation:
@@ -151,88 +155,91 @@ class TestLexwareFieldValidation:
                     _validate_lexware_field(keyword)
 
 
+def _make_empty_db_mock() -> AsyncMock:
+    """AsyncSession-Mock: alle Queries liefern leere Ergebnisse.
+
+    Deckt alle vom Service genutzten Result-Pfade ab
+    (scalar_one_or_none, scalars().first/all).
+    """
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_result.scalars.return_value.first.return_value = None
+    mock_result.scalars.return_value.all.return_value = []
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    return mock_db
+
+
 class TestSQLInjectionPrevention:
-    """Integration tests for SQL injection prevention."""
+    """Integration tests for SQL injection prevention.
+
+    W3 (2026-06-12): Auf den echten Service-Vertrag modernisiert.
+    ``search_by_lexware_id(db=..., field=...)`` hat nie existiert; die
+    realen Suchpfade sind ``find_by_customer_number``/``find_by_company``
+    (db kommt in den Konstruktor, W2/W1-029). Einen frei waehlbaren
+    JSONB-Feldnamen nimmt die Service-API bewusst NICHT mehr an —
+    Feld-Validierung passiert in ``_validate_lexware_field``.
+    """
 
     @pytest.mark.asyncio
     async def test_jsonb_query_with_valid_params(self) -> None:
-        """Valid parameters should produce safe queries."""
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+        """Valid parameters should produce safe queries (no raise)."""
+        mock_db = _make_empty_db_mock()
+        service = EntitySearchService(mock_db)
 
-        service = EntitySearchService()
-
-        # Get valid values
         valid_company = next(iter(VALID_COMPANIES))
-        valid_field = next(iter(VALID_LEXWARE_FIELDS))
 
-        # This should not raise
-        await service.search_by_lexware_id(
-            db=mock_db,
-            company_id=uuid4(),
-            company=valid_company,
-            field=valid_field,
-            value="12345",
+        result = await service.find_by_customer_number(
+            "12345", company=valid_company
         )
+
+        assert result is None  # leere DB -> kein Treffer
+        assert mock_db.execute.called
 
     @pytest.mark.asyncio
     async def test_jsonb_query_rejects_injection_in_company(self) -> None:
         """SQL injection in company parameter should be caught."""
-        mock_db = AsyncMock()
-        service = EntitySearchService()
+        mock_db = _make_empty_db_mock()
+        service = EntitySearchService(mock_db)
 
         with pytest.raises(ValueError):
-            await service.search_by_lexware_id(
-                db=mock_db,
-                company_id=uuid4(),
+            await service.find_by_customer_number(
+                "12345",
                 company="'; DROP TABLE business_entities--",
-                field="kd_nr",
-                value="12345",
             )
 
     @pytest.mark.asyncio
-    async def test_jsonb_query_rejects_injection_in_field(self) -> None:
-        """SQL injection in field parameter should be caught."""
-        mock_db = AsyncMock()
-        service = EntitySearchService()
-
-        valid_company = next(iter(VALID_COMPANIES))
+    async def test_find_by_company_rejects_injection(self) -> None:
+        """find_by_company validiert die Firma ebenfalls (CWE-89)."""
+        mock_db = _make_empty_db_mock()
+        service = EntitySearchService(mock_db)
 
         with pytest.raises(ValueError):
-            await service.search_by_lexware_id(
-                db=mock_db,
-                company_id=uuid4(),
-                company=valid_company,
-                field="kd_nr'; DELETE FROM--",
-                value="12345",
-            )
+            await service.find_by_company("folie'; DELETE FROM--")
+
+    def test_jsonb_query_rejects_injection_in_field(self) -> None:
+        """SQL injection in field names is caught by the field whitelist."""
+        with pytest.raises(ValueError):
+            _validate_lexware_field("kd_nr'; DELETE FROM--")
 
     @pytest.mark.asyncio
     async def test_value_is_parameterized(self) -> None:
         """The value parameter should be safely parameterized, not interpolated."""
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        service = EntitySearchService()
+        mock_db = _make_empty_db_mock()
+        service = EntitySearchService(mock_db)
 
         valid_company = next(iter(VALID_COMPANIES))
-        valid_field = next(iter(VALID_LEXWARE_FIELDS))
 
         # This value contains SQL injection attempt
         # It should be safely parameterized, not interpolated
         dangerous_value = "12345'; DROP TABLE--"
 
-        # Should NOT raise - value is parameterized
-        await service.search_by_lexware_id(
-            db=mock_db,
-            company_id=uuid4(),
-            company=valid_company,
-            field=valid_field,
-            value=dangerous_value,
+        # Should NOT raise - value is parameterized by SQLAlchemy
+        result = await service.find_by_customer_number(
+            dangerous_value, company=valid_company
         )
 
+        assert result is None
         # Verify execute was called (query was built)
         assert mock_db.execute.called
 
