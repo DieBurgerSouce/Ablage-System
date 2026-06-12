@@ -311,6 +311,7 @@ async def create_account(
     data: BankAccountCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankAccountResponse:
     """
     Registriere ein neues Bankkonto.
@@ -330,7 +331,7 @@ async def create_account(
     try:
         account = await account_service.create_account(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             data=data,
         )
 
@@ -365,11 +366,12 @@ async def list_accounts(
     include_inactive: bool = Query(False, description="Inaktive Konten einschließen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BankAccountResponse]:
     """Hole alle Bankkonten des Benutzers."""
     accounts = await account_service.get_accounts(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         include_inactive=include_inactive,
     )
     return accounts
@@ -384,11 +386,12 @@ async def list_accounts(
 async def list_accounts_with_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BankAccountWithStats]:
     """Hole Bankkonten mit erweiterten Statistiken."""
     return await account_service.get_accounts_with_stats(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
     )
 
 
@@ -402,11 +405,12 @@ async def get_account(
     account_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankAccountResponse:
     """Hole ein einzelnes Bankkonto."""
     account = await account_service.get_account(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         account_id=account_id,
     )
 
@@ -430,11 +434,12 @@ async def update_account(
     data: BankAccountUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankAccountResponse:
     """Aktualisiere ein Bankkonto."""
     account = await account_service.update_account(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         account_id=account_id,
         data=data,
     )
@@ -465,6 +470,7 @@ async def delete_account(
     account_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """
     Lösche ein Bankkonto.
@@ -474,7 +480,7 @@ async def delete_account(
     """
     deleted = await account_service.delete_account(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         account_id=account_id,
     )
 
@@ -611,6 +617,7 @@ async def import_file(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankImportResponse:
     """
     Importiere Kontoauszug in das System.
@@ -637,7 +644,7 @@ async def import_file(
     try:
         response, transaction_ids = await import_service.import_file(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             content=content,
             filename=file.filename,
             bank_account_id=bank_account_id,
@@ -693,11 +700,12 @@ async def get_import_history(
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BankImportResponse]:
     """Hole Import-Historie."""
     return await import_service.get_import_history(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         limit=limit,
     )
@@ -726,6 +734,7 @@ async def list_transactions(
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Hole Transaktionen mit Filterung.
@@ -747,7 +756,7 @@ async def list_transactions(
 
     transactions, total = await transaction_service.get_transactions(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         filters=filters,
         offset=(page - 1) * per_page,
@@ -775,11 +784,12 @@ async def get_unmatched_transactions(
     limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[BankTransactionResponse]:
     """Hole unabgeglichene Transaktionen für Reconciliation."""
     return await transaction_service.get_unmatched_transactions(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         limit=limit,
     )
@@ -797,11 +807,12 @@ async def get_transaction_stats(
     date_to: Optional[date] = Query(None, description="Enddatum"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TransactionStats:
     """Hole Transaktions-Statistiken."""
     return await transaction_service.get_transaction_stats(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         date_from=date_from,
         date_to=date_to,
@@ -819,11 +830,12 @@ async def get_monthly_summary(
     months: int = Query(12, ge=1, le=36, description="Anzahl Monate"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """Hole monatliche Zusammenfassung."""
     return await transaction_service.get_monthly_summary(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         months=months,
     )
@@ -841,11 +853,12 @@ async def get_top_counterparties(
     limit: int = Query(10, ge=1, le=50, description="Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """Hole Top-Geschäftspartner."""
     return await transaction_service.get_top_counterparties(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         direction=direction,
         limit=limit,
@@ -862,11 +875,12 @@ async def get_transaction(
     transaction_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankTransactionResponse:
     """Hole einzelne Transaktion."""
     transaction = await transaction_service.get_transaction(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         transaction_id=transaction_id,
     )
 
@@ -892,11 +906,12 @@ async def update_transaction(
     category: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankTransactionResponse:
     """Aktualisiere Transaktions-Metadaten."""
     transaction = await transaction_service.update_transaction(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         transaction_id=transaction_id,
         notes=notes,
         tags=tags,
@@ -931,11 +946,12 @@ async def reconcile_transaction(
     match_confidence: Optional[float] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BankTransactionResponse:
     """Setze Abgleich-Status einer Transaktion."""
     transaction = await transaction_service.set_reconciliation_status(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         transaction_id=transaction_id,
         status=status_value,
         matched_document_id=matched_document_id,
@@ -964,6 +980,7 @@ async def get_match_suggestions(
     limit: int = Query(5, ge=1, le=20, description="Max. Vorschläge"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """
     Finde mögliche Match-Kandidaten für eine Transaktion.
@@ -977,7 +994,7 @@ async def get_match_suggestions(
     """
     candidates = await reconciliation_service.find_matches(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         transaction_id=transaction_id,
         limit=limit,
     )
@@ -1013,6 +1030,7 @@ async def manual_match(
     notes: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Manuelles Matching einer Transaktion mit einem Dokument.
@@ -1022,7 +1040,7 @@ async def manual_match(
     try:
         result = await reconciliation_service.manual_match(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             transaction_id=transaction_id,
             document_id=document_id,
             notes=notes,
@@ -1071,11 +1089,12 @@ async def unmatch_transaction(
     transaction_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """Entferne Match von einer Transaktion."""
     success = await reconciliation_service.unmatch_transaction(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         transaction_id=transaction_id,
     )
 
@@ -1106,6 +1125,7 @@ async def split_transaction(
     splits: List[dict],
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """
     Teile eine Transaktion auf mehrere Dokumente auf.
@@ -1116,7 +1136,7 @@ async def split_transaction(
     try:
         results = await reconciliation_service.split_transaction(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             transaction_id=transaction_id,
             splits=splits,
         )
@@ -1166,6 +1186,7 @@ async def batch_reconcile(
     limit: int = Query(100, ge=1, le=500, description="Max. Transaktionen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Automatischer Batch-Abgleich.
@@ -1175,7 +1196,7 @@ async def batch_reconcile(
     """
     result = await reconciliation_service.batch_reconcile(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         limit=limit,
     )
@@ -1214,6 +1235,7 @@ async def auto_reconcile_single(
     transaction_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Automatischer Abgleich einer einzelnen Transaktion.
@@ -1222,7 +1244,7 @@ async def auto_reconcile_single(
     """
     result = await reconciliation_service.auto_reconcile_transaction(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         transaction_id=transaction_id,
     )
 
@@ -2187,12 +2209,13 @@ async def log_phone_call(
     body: PhoneCallLogCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PhoneCallLogResponse:
     """Protokolliere Telefonkontakt."""
     try:
         return await mahn_task_service.log_phone_call(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             dunning_record_id=dunning_id,
             contact_name=body.contact_name,
             phone_number=body.phone_number,
@@ -2227,11 +2250,12 @@ async def get_phone_calls(
     per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PhoneCallLogListResponse:
     """Hole Telefonkontakte zu Mahnvorgang (paginiert)."""
     items, total = await mahn_task_service.get_phone_call_history(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         dunning_record_id=dunning_id,
         limit=per_page,
         offset=(page - 1) * per_page,
@@ -2696,6 +2720,7 @@ async def list_mahn_tasks(
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Liste Mahnaufgaben."""
     filters = MahnTaskFilter(
@@ -2710,7 +2735,7 @@ async def list_mahn_tasks(
 
     tasks, total = await mahn_task_service.list_tasks(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         filters=filters,
         limit=per_page,
         offset=(page - 1) * per_page,
@@ -2733,11 +2758,12 @@ async def list_mahn_tasks(
 async def get_mahn_task_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MahnTaskSummary:
     """Hole Aufgaben-Zusammenfassung."""
     return await mahn_task_service.get_pending_tasks_summary(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
     )
 
 
@@ -2792,12 +2818,13 @@ async def assign_mahn_task(
     assigned_user_id: UUID = Query(..., description="Zuzuweisender Benutzer"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MahnTaskResponse:
     """Weise Mahnaufgabe zu."""
     try:
         return await mahn_task_service.assign_task(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             task_id=task_id,
             assigned_user_id=assigned_user_id,
         )
@@ -2828,12 +2855,13 @@ async def snooze_mahn_task(
     body: MahnTaskSnoozeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MahnTaskResponse:
     """Stelle Mahnaufgabe zurück."""
     try:
         return await mahn_task_service.snooze_task(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             task_id=task_id,
             snooze_until=body.snooze_until,
             reason=body.reason,
@@ -2866,12 +2894,13 @@ async def complete_mahn_task(
     body: MahnTaskCompleteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MahnTaskResponse:
     """Schließe Mahnaufgabe ab."""
     try:
         return await mahn_task_service.complete_task(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             task_id=task_id,
             notes=body.notes,
         )
@@ -2901,6 +2930,7 @@ async def bulk_complete_mahn_tasks(
     body: MahnTaskBulkCompleteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Schließe mehrere Mahnaufgaben ab."""
     completed = 0
@@ -2911,7 +2941,7 @@ async def bulk_complete_mahn_tasks(
         try:
             await mahn_task_service.complete_task(
                 db=db,
-                user_id=current_user.id,
+                company_id=company_id,
                 task_id=task_id,
                 notes=body.notes,
             )
@@ -2939,12 +2969,13 @@ async def bulk_complete_mahn_tasks(
 async def get_dunning_stages(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningStagesListResponse:
     """Hole konfigurierte Mahnstufen."""
     try:
         stages = await dunning_stage_service.get_stages(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
         )
 
         return DunningStagesListResponse(
@@ -2976,12 +3007,13 @@ async def create_dunning_stage(
     request: DunningStageConfigCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningStageConfigResponse:
     """Erstelle neue Mahnstufe."""
     try:
         return await dunning_stage_service.create_stage(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             stage_number=request.stage_number,
             stage_name=request.stage_name,
             trigger_days_after_due=request.trigger_days_after_due,
@@ -3012,12 +3044,13 @@ async def update_dunning_stage(
     request: DunningStageConfigUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> DunningStageConfigResponse:
     """Aktualisiere Mahnstufe."""
     try:
         return await dunning_stage_service.update_stage(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             stage_id=stage_id,
             stage_name=request.stage_name,
             trigger_days_after_due=request.trigger_days_after_due,
@@ -3049,12 +3082,13 @@ async def reorder_dunning_stages(
     request: DunningStageReorderRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[DunningStageConfigResponse]:
     """Ordne Mahnstufen neu."""
     try:
         return await dunning_stage_service.reorder_stages(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             stage_ids=request.stage_ids,
         )
     except ValueError as e:
@@ -3080,12 +3114,13 @@ async def reorder_dunning_stages(
 async def get_auto_dunning_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoDunningSettingsResponse:
     """Hole Auto-Mahnlauf-Einstellungen."""
     try:
         return await dunning_stage_service.get_auto_dunning_settings(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
         )
     except Exception as e:
         logger.error(
@@ -3109,12 +3144,13 @@ async def update_auto_dunning_settings(
     request: AutoDunningSettingsUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AutoDunningSettingsResponse:
     """Aktualisiere Auto-Mahnlauf-Einstellungen."""
     try:
         return await dunning_stage_service.update_auto_dunning_settings(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             settings=request,
         )
     except ValueError as e:

@@ -43,10 +43,20 @@ async def get_user_from_token(token: str) -> Optional[dict]:
         User-Dictionary mit id, email, company_id oder None bei ungültigem Token
     """
     try:
+        # BUGFIX (2026-06-12, B3): Das frueher referenzierte Algorithmus-Attribut
+        # existierte nicht in Settings (AttributeError -> 500 beim Handshake).
+        # Kanonische Quelle ist settings.ALGORITHM (wie app/core/security_auth.py).
+        # Zusatzbefund: SECRET_KEY ist SecretStr - PyJWT braucht den String,
+        # sonst TypeError (gleiche Behandlung wie in security_auth.py R.2).
+        secret_key = (
+            settings.SECRET_KEY.get_secret_value()
+            if hasattr(settings.SECRET_KEY, "get_secret_value")
+            else settings.SECRET_KEY
+        )
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM],
+            secret_key,
+            algorithms=[settings.ALGORITHM],
         )
         return {
             "id": payload.get("sub"),

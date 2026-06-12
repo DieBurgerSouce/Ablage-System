@@ -1409,12 +1409,12 @@ async def get_overview_stats(
     if company_id:
         workflow_conditions.append(Workflow.company_id == company_id)
 
+    # BUGFIX (2026-06-12): Ein lokaler sqlalchemy-Integer-Reimport NACH der
+    # Nutzung shadowte den Modulimport (Z.35) -> UnboundLocalError -> 500.
     workflow_query = select(
         func.count(Workflow.id).label("total"),
         func.sum(func.cast(Workflow.is_active == True, Integer)).label("active"),  # noqa: E712
     ).where(and_(*workflow_conditions))
-
-    from sqlalchemy import Integer
 
     result = await db.execute(workflow_query)
     workflow_row = result.one()
@@ -1422,10 +1422,12 @@ async def get_overview_stats(
     # SECURITY: Subquery für Workflow-IDs mit company_id Filter
     workflow_ids_subquery = select(Workflow.id).where(and_(*workflow_conditions)).scalar_subquery()
 
-    # Executions zaehlen - nur für Workflows der eigenen Company
-    exec_conditions = [WorkflowExecution.user_id == current_user.id]
-    if company_id:
-        exec_conditions.append(WorkflowExecution.workflow_id.in_(workflow_ids_subquery))
+    # BUGFIX (2026-06-12): WorkflowExecution hat KEIN user_id-Feld (nur
+    # triggered_by_id, das bei Auto-Triggern NULL ist) -> AttributeError -> 500.
+    # User-Scope laeuft korrekt ueber die Workflow-Ownership-Subquery
+    # (Workflow.user_id + optional company_id), die ALLE Executions der
+    # eigenen Workflows erfasst (auch automatisch getriggerte).
+    exec_conditions = [WorkflowExecution.workflow_id.in_(workflow_ids_subquery)]
 
     exec_query = select(
         func.count(WorkflowExecution.id).label("total"),
@@ -1486,20 +1488,22 @@ async def get_execution_history(
 
     start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
-    # Base conditions
+    # BUGFIX (2026-06-12): WorkflowExecution hat KEIN user_id-Feld (nur
+    # triggered_by_id, bei Auto-Triggern NULL) -> AttributeError -> 500.
+    # User-Scope ueber Workflow-Ownership-Subquery (Workflow.user_id +
+    # optional company_id) - erfasst auch automatisch getriggerte Executions.
+    workflow_conditions = [Workflow.user_id == current_user.id]
+    if company_id:
+        workflow_conditions.append(Workflow.company_id == company_id)
+
+    workflow_ids_subquery = (
+        select(Workflow.id).where(and_(*workflow_conditions)).scalar_subquery()
+    )
+
     conditions = [
-        WorkflowExecution.user_id == current_user.id,
+        WorkflowExecution.workflow_id.in_(workflow_ids_subquery),
         WorkflowExecution.started_at >= start_date,
     ]
-
-    # SECURITY: Filter nach company_id via Workflow-Subquery
-    if company_id:
-        workflow_ids_subquery = (
-            select(Workflow.id)
-            .where(and_(Workflow.user_id == current_user.id, Workflow.company_id == company_id))
-            .scalar_subquery()
-        )
-        conditions.append(WorkflowExecution.workflow_id.in_(workflow_ids_subquery))
 
     query = (
         select(

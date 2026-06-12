@@ -45,10 +45,18 @@ async def authenticate_websocket(token: str) -> tuple[User | None, str | None]:
         Tuple von (User, error_message)
     """
     try:
+        # BUGFIX (2026-06-12, B3-Zusatzbefund): SECRET_KEY ist SecretStr -
+        # PyJWT braucht den String, sonst TypeError (nicht von JWTError
+        # gefangen -> Handshake-Crash). Muster wie security_auth.py R.2.
+        secret_key = (
+            settings.SECRET_KEY.get_secret_value()
+            if hasattr(settings.SECRET_KEY, "get_secret_value")
+            else settings.SECRET_KEY
+        )
         # Explizite Expiration-Prüfung für Enterprise Security
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
+            secret_key,
             algorithms=[settings.ALGORITHM],
             options={"verify_exp": True, "require_exp": True}
         )
