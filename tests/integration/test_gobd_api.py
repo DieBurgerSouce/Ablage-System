@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Integration Tests fuer GoBD Archive API Endpoints.
 
@@ -27,20 +26,20 @@ W3b (2026-06-12): Komplett auf echte Vertraege modernisiert:
   (Inhalts-Drift gegen alten flachen Dict-Vertrag).
 """
 
-import pytest
-from datetime import date, datetime, timedelta, timezone
-from uuid import uuid4
-from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, Mock, MagicMock, patch
-
-from pathlib import Path
 import sys
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
 
 # Add app to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.main import app
 from app.db.models import RetentionCategory
+from app.main import app
 
 
 def _error_message(response) -> str:
@@ -123,17 +122,17 @@ def mock_archive(mock_document, mock_user):
     archive.company_id = mock_document.company_id
     archive.content_hash = "a" * 64  # SHA-256 hex
     archive.hash_algorithm = "SHA-256"
-    archive.signature_timestamp = datetime.now(timezone.utc)
+    archive.signature_timestamp = datetime.now(UTC)
     archive.signature_certificate = None
     archive.retention_category = RetentionCategory.INVOICE.value
     archive.retention_years = 10
     archive.retention_expires_at = date.today() + timedelta(days=10 * 365)
-    archive.archived_at = datetime.now(timezone.utc)
+    archive.archived_at = datetime.now(UTC)
     archive.archived_by_id = mock_user.id
     archive.is_verified = True
     # VerificationResponse verlangt last_verification_at als datetime
     # (Pflichtfeld) und verification_failed_reason als Optional[str].
-    archive.last_verification_at = datetime.now(timezone.utc)
+    archive.last_verification_at = datetime.now(UTC)
     archive.verification_failed_reason = None
     archive.retention_reminder_sent = False
     archive.archive_metadata = {}
@@ -477,7 +476,7 @@ class TestProcedureDocumentationEndpoints:
         mock_doc = Mock()
         mock_doc.id = uuid4()
         mock_doc.version = "1.0"
-        mock_doc.generated_at = datetime.now(timezone.utc)
+        mock_doc.generated_at = datetime.now(UTC)
         mock_doc.generated_by = "system"
         mock_doc.content_hash = "b" * 64
         mock_doc.change_summary = "Initiale Version"
@@ -501,7 +500,7 @@ class TestProcedureDocumentationEndpoints:
             v = Mock()
             v.id = uuid4()
             v.version = version
-            v.generated_at = datetime.now(timezone.utc) - timedelta(days=days_ago)
+            v.generated_at = datetime.now(UTC) - timedelta(days=days_ago)
             v.generated_by = "system"
             v.content_hash = "c" * 64
             v.change_summary = summary

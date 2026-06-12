@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Integration Tests fuer DATEV API Endpoints.
 
@@ -17,12 +16,11 @@ W3b (2026-06-12): Komplett auf echte Vertraege modernisiert.
 """
 
 import uuid
-from datetime import date, datetime, timezone
-from typing import Dict, Any
+from datetime import UTC, date, datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 
 
@@ -86,7 +84,7 @@ def mock_db_session():
     session.add = MagicMock()
 
     async def _refresh(obj, *args, **kwargs):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if getattr(obj, "created_at", None) is None:
             obj.created_at = now
         if getattr(obj, "updated_at", None) is None:
@@ -134,7 +132,7 @@ def auth_overrides(mock_user, mock_db_session):
 
 
 @pytest.fixture
-def valid_config_create_data() -> Dict[str, Any]:
+def valid_config_create_data() -> dict[str, Any]:
     """Gueltige Daten fuer DATEV-Konfiguration."""
     return {
         "berater_nr": "1234567",
@@ -147,7 +145,7 @@ def valid_config_create_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def valid_export_request_data() -> Dict[str, Any]:
+def valid_export_request_data() -> dict[str, Any]:
     """Gueltige Daten fuer Export-Request."""
     return {
         "period_from": "2025-01-01",
@@ -157,7 +155,7 @@ def valid_export_request_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_auth_headers() -> Dict[str, str]:
+def mock_auth_headers() -> dict[str, str]:
     """Dummy-Bearer-Header: aktiviert den CSRF-bearer_token_bypass.
 
     Die eigentliche Authentifizierung laeuft ueber dependency_overrides;

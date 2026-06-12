@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Integration tests for Backup API endpoints.
 
@@ -12,19 +11,19 @@ W3b (2026-06-12): Lokal lauffaehig gemacht (W3-Triage-Rezept):
   dependency_overrides, der Header-Inhalt ist irrelevant).
 """
 
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from pathlib import Path
-
-import sys
 
 # Add app to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from app.api.dependencies import get_current_superuser
 from app.main import app
 from app.services.backup_service import BackupResult
-from app.api.dependencies import get_current_superuser
 
 
 @pytest.fixture(autouse=True)
