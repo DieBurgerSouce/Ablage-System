@@ -22,6 +22,7 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.services.invoice_direction import is_incoming_invoice, is_outgoing_invoice
 from app.db.models import (
     InvoiceTracking,
     BankTransaction,
@@ -245,7 +246,7 @@ class CashFlowForecastService:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id if company_id else True,
-                InvoiceTracking.is_incoming == False,  # Ausgehende Rechnungen = Forderungen
+                is_outgoing_invoice(),  # Ausgangsrechnungen (Kunde) = Forderungen
                 InvoiceTracking.paid_at.is_(None),  # Noch nicht bezahlt
                 or_(
                     InvoiceTracking.due_date.is_(None),
@@ -262,7 +263,7 @@ class CashFlowForecastService:
             expected_date = inv.due_date or from_date + timedelta(days=14)
             probability = self._calculate_payment_probability(inv, from_date)
 
-            amount = inv.outstanding_amount or inv.total_amount or Decimal("0.00")
+            amount = inv.outstanding_amount or inv.amount or Decimal("0.00")
 
             receivables.append({
                 "invoice_id": str(inv.id),
@@ -288,7 +289,7 @@ class CashFlowForecastService:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id if company_id else True,
-                InvoiceTracking.is_incoming == True,  # Eingehende Rechnungen = Verbindlichkeiten
+                is_incoming_invoice(),  # Eingangsrechnungen (Lieferant) = Verbindlichkeiten
                 InvoiceTracking.paid_at.is_(None),  # Noch nicht bezahlt
                 or_(
                     InvoiceTracking.due_date.is_(None),
@@ -305,7 +306,7 @@ class CashFlowForecastService:
             expected_date = inv.due_date or from_date + timedelta(days=14)
             probability = 0.9  # Verbindlichkeiten zahlen wir mit hoher Wahrscheinlichkeit
 
-            amount = inv.outstanding_amount or inv.total_amount or Decimal("0.00")
+            amount = inv.outstanding_amount or inv.amount or Decimal("0.00")
 
             payables.append({
                 "invoice_id": str(inv.id),
@@ -444,7 +445,7 @@ class CashFlowForecastService:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id if company_id else True,
-                InvoiceTracking.is_incoming == True,
+                is_incoming_invoice(),
                 InvoiceTracking.paid_at.is_(None),
                 InvoiceTracking.skonto_percentage.isnot(None),
                 InvoiceTracking.skonto_percentage > 0,
@@ -459,7 +460,7 @@ class CashFlowForecastService:
 
         total_savings = Decimal("0.00")
         for inv in invoices:
-            amount = inv.outstanding_amount or inv.total_amount or Decimal("0.00")
+            amount = inv.outstanding_amount or inv.amount or Decimal("0.00")
             skonto_pct = Decimal(str(inv.skonto_percentage or 0)) / 100
             saving = amount * skonto_pct
             total_savings += saving

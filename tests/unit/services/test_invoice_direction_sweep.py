@@ -606,6 +606,29 @@ async def test_action_executor_matching_nutzt_amount_und_status() -> None:
 
 
 # ============================================================================
+# (19a) CashFlowForecastService — Phantom is_incoming ersetzt
+# ============================================================================
+
+
+async def test_cash_flow_forecast_receivables_nutzt_customer_join() -> None:
+    from app.services.dashboard.cash_flow_forecast_service import (
+        CashFlowForecastService,
+    )
+
+    db, captured = _make_db([_FakeResult(scalars=[])])
+    service = CashFlowForecastService()
+
+    receivables = await service._get_open_receivables(
+        db, uuid.uuid4(), uuid.uuid4(), date.today(), 30
+    )
+
+    assert receivables == []
+    sql, params = _compiled(captured[0])
+    _assert_keine_phantom_spalten(sql)
+    assert "customer" in params  # Forderungen = Ausgangsrechnungen
+
+
+# ============================================================================
 # (19) NLQService — Aggregationen via amount
 # ============================================================================
 
