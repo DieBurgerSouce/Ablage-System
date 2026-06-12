@@ -13,17 +13,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Send,
-  Loader2,
-  Sparkles,
-  Trash2,
-  HelpCircle,
-  Lightbulb,
-  MessageSquare,
-  ChevronDown,
-  AlertCircle,
-} from 'lucide-react';
+import { Send, Loader2, Sparkles, Trash2, Lightbulb, MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,14 +26,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import {
-  useFinanceAssistant,
-  ChatMessage,
-} from '../hooks/use-finance-assistant';
+import { useFinanceAssistant, type ChatMessage } from '../hooks/use-finance-assistant';
 import { usePageContext } from '../hooks/use-page-context';
 import { ActionProposalCard } from './ActionProposalCard';
 import { BookingSuggestionCard } from './BookingSuggestionCard';
-import { InsightCard, InsightsList } from './InsightCard';
+import { InsightsList } from './InsightCard';
 import {
   INTENT_METADATA,
   AssistantIntent,

@@ -29,7 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FlaskConical, Play, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { LearningStats, ABTestResult } from '../api/ocr-learning-api';
+import type { LearningStats } from '../api/ocr-learning-api';
 import { useStartABTest, useEndABTest, useABTestResult } from '../hooks/use-ocr-learning';
 
 interface ABTestCardProps {

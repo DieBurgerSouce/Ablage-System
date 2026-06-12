@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CarrierIcon } from './CarrierIcon';
 import { STATUS_STYLES, DIRECTION_STYLES, UI_LABELS } from '../types/shipment-types';
-import type { ShipmentResponse, ShipmentStatus, ShipmentDirection } from '../types/shipment-types';
+import type { ShipmentResponse, ShipmentStatus } from '../types/shipment-types';
 
 interface ShipmentTrackingCardProps {
   shipment: ShipmentResponse;

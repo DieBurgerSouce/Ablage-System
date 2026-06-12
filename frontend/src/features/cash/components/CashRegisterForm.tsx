@@ -42,6 +42,7 @@ const registerSchema = z.object({
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
+type RegisterFormDataInput = z.input<typeof registerSchema>;
 
 interface CashRegisterFormProps {
   open: boolean;
@@ -60,7 +61,7 @@ export function CashRegisterForm({
   const createMutation = useCreateRegister();
   const updateMutation = useUpdateRegister();
 
-  const form = useForm<RegisterFormData>({
+  const form = useForm<RegisterFormDataInput, unknown, RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       name: register?.name ?? '',

@@ -27,8 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -37,7 +36,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
-import { cn } from '@/lib/utils';
 import { DocumentListSkeleton } from '@/components/ui/skeletons/DocumentListSkeleton';
 import { TransactionListItem } from './TransactionTimeline';
 import { transactionsService } from '@/lib/api/services/transactions';

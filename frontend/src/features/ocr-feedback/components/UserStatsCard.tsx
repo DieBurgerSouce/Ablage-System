@@ -5,7 +5,7 @@
  * Punkte, Streak, Rank und Achievements.
  */
 
-import { Target, TrendingUp, Star, Award, Zap, Trophy, Medal, Crown, Diamond, Flame } from 'lucide-react';
+import { Target, TrendingUp, Star, Award, Zap, Trophy, Crown, Diamond, Flame } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';

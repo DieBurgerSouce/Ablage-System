@@ -40,7 +40,7 @@ import {
   Download,
   X,
 } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { LineageEventType, EventTypeLabels } from '@/lib/api/services/lineage';
 

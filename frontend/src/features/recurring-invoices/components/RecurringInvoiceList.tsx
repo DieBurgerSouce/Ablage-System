@@ -8,15 +8,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import {
-  Search,
-  RefreshCw,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { RefreshCw, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {

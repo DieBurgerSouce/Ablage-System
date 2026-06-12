@@ -1,14 +1,5 @@
 import { apiClient } from '@/lib/api/client';
-import type {
-  OcrRegion,
-  OcrRegionBackend,
-  OcrFeedbackRequest,
-  OcrFeedbackBackend,
-  SelfLearningStats,
-  SelfLearningStatsBackend,
-  DocumentVersion,
-  DocumentVersionBackend,
-} from '../types';
+import type { OcrRegion, OcrRegionBackend, OcrFeedbackRequest, SelfLearningStats, SelfLearningStatsBackend, DocumentVersion, DocumentVersionBackend } from '../types';
 import {
   transformOcrRegion,
   transformOcrFeedback,

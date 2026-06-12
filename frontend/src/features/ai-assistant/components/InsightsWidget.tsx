@@ -7,7 +7,6 @@
  * Designed to be embedded in the main dashboard.
  */
 
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Lightbulb,
@@ -26,13 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useInsights } from '../hooks/use-finance-assistant';
-import {
-  InsightResponse,
-  InsightCategory,
-  InsightSeverity,
-  SEVERITY_METADATA,
-  CATEGORY_METADATA,
-} from '@/lib/api/services/finance-assistant';
+import { type InsightResponse, InsightCategory, InsightSeverity, SEVERITY_METADATA, CATEGORY_METADATA } from '@/lib/api/services/finance-assistant';
 import { useNavigate } from '@tanstack/react-router';
 
 const SEVERITY_COLORS: Record<InsightSeverity, string> = {

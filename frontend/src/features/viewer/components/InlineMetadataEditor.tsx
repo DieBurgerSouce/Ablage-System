@@ -13,18 +13,7 @@
 
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  FileText,
-  Building2,
-  Calendar,
-  Euro,
-  Hash,
-  FileCode,
-  User,
-  MapPin,
-  AlertTriangle,
-  Loader2,
-} from 'lucide-react';
+import { FileText, Building2, Euro, Hash, FileCode, User, AlertTriangle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

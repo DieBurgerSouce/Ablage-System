@@ -30,7 +30,6 @@ import {
   revokeOAuth,
   calendarSyncKeys,
 } from '../api/calendar-sync-api'
-import type { OAuthStatusMap } from '../types/calendar-types'
 
 // Types for local iCal config (kept from original)
 interface CalendarSyncConfig {

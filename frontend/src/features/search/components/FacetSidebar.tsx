@@ -8,7 +8,6 @@ import { useFacets } from '../hooks/useFacets';
 import { FacetSection } from './FacetSection';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Filter,
   Bookmark,

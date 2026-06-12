@@ -7,19 +7,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Clock,
-  RefreshCw,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Trash2,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+import { Clock, RefreshCw, Loader2, CheckCircle2, XCircle, AlertTriangle, ArrowUpCircle, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

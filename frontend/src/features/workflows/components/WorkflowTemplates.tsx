@@ -6,22 +6,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import {
-  FileText,
-  Brain,
-  Mail,
-  Clock,
-  Copy,
-  Plus,
-  Search,
-  Filter,
-  Webhook,
-  CheckCircle,
-  AlertTriangle,
-  Tag,
-  FolderOpen,
-  Zap,
-} from 'lucide-react';
+import { FileText, Brain, Mail, Clock, Plus, Search, Webhook, CheckCircle, AlertTriangle, FolderOpen, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

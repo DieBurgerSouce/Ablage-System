@@ -8,15 +8,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { logger } from '@/lib/logger'
-import {
-  Tour,
-  TourStep,
-  TourProgress,
-  TourBadge,
-  TourState,
-  TOURS,
-  getTourById,
-} from '../types'
+import { type Tour, type TourStep, type TourProgress, type TourBadge, type TourState, TOURS, getTourById } from '../types'
 
 const TOUR_STORAGE_KEY = 'ablage-tour-progress'
 const BADGES_STORAGE_KEY = 'ablage-tour-badges'

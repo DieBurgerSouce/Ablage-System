@@ -6,18 +6,7 @@
 
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  teamsApi,
-  TeamCreateRequest,
-  TeamUpdateRequest,
-  TeamListParams,
-  MemberAddRequest,
-  MemberUpdateRequest,
-  InvitationCreateRequest,
-  DocumentShareRequest,
-  ActivityListParams,
-  TeamDocumentPermission,
-} from '../api/teams-api';
+import { teamsApi, type TeamCreateRequest, type TeamUpdateRequest, type TeamListParams, type MemberAddRequest, type MemberUpdateRequest, type InvitationCreateRequest, type DocumentShareRequest, type ActivityListParams, type TeamDocumentPermission } from '../api/teams-api';
 
 // ==================== Query Keys ====================
 

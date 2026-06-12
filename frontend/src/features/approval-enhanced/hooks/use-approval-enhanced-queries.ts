@@ -22,26 +22,7 @@ import {
   triggerAutoMatch,
   getAutoMatchResults,
 } from '../api/approval-enhanced-api';
-import {
-  ConditionalRule,
-  EscalationRule,
-  SubstitutionRule,
-  SLAMetrics,
-  SLAReport,
-  AutoFileStats,
-  AutoMatchResult,
-  transformConditionalRule,
-  transformEscalationRule,
-  transformSubstitutionRule,
-  transformSLAMetrics,
-  transformSLAReport,
-  transformAutoFileStats,
-  transformAutoMatchResult,
-  CreateConditionalRuleDTO,
-  UpdateConditionalRuleDTO,
-  CreateEscalationRuleDTO,
-  CreateSubstitutionRuleDTO,
-} from '../types/approval-enhanced-types';
+import { type ConditionalRule, type EscalationRule, type SubstitutionRule, type SLAMetrics, type SLAReport, type AutoFileStats, type AutoMatchResult, transformConditionalRule, transformEscalationRule, transformSubstitutionRule, transformSLAMetrics, transformSLAReport, transformAutoFileStats, transformAutoMatchResult, type CreateConditionalRuleDTO, type UpdateConditionalRuleDTO, type CreateEscalationRuleDTO, type CreateSubstitutionRuleDTO } from '../types/approval-enhanced-types';
 
 // ==================== Query Keys ====================
 

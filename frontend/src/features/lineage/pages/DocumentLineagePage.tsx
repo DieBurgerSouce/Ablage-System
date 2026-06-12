@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 import { formatDateDE } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,13 +19,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import {
-  ArrowLeft,
-  FileText,
-  GitBranch,
-  Download,
-  RefreshCw,
-} from 'lucide-react';
+import { ArrowLeft, GitBranch, Download, RefreshCw } from 'lucide-react';
 
 import { LineageFlowchart } from '../LineageFlowchart';
 import { LineageStatsCards } from '../components/LineageStatsCards';

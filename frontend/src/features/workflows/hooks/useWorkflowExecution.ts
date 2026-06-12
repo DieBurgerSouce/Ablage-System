@@ -7,7 +7,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import * as workflowsApi from '../api/workflows-api';
-import type { ExecutionState, TimelineEntry, ExecutionMetrics } from '../types/workflow-types';
 
 // =============================================================================
 // Query Keys

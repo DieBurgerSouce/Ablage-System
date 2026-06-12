@@ -17,10 +17,13 @@ type InterceptorHandler = {
   rejected?: (error: unknown) => unknown;
 };
 
-const requestInterceptors: InterceptorHandler[] = [];
-const responseInterceptors: InterceptorHandler[] = [];
+// vi.mock wird gehoistet — die Instanz muss daher via vi.hoisted entstehen,
+// sonst greift die Factory vor der Initialisierung darauf zu (TDZ).
+const { requestInterceptors, responseInterceptors, mockAxiosInstance } = vi.hoisted(() => {
+  const requestInterceptors: InterceptorHandler[] = [];
+  const responseInterceptors: InterceptorHandler[] = [];
 
-const mockAxiosInstance = {
+  const mockAxiosInstance = {
   defaults: {
     baseURL: '/api/v1',
     timeout: 10000,
@@ -48,7 +51,10 @@ const mockAxiosInstance = {
   post: vi.fn(),
   put: vi.fn(),
   delete: vi.fn(),
-};
+  };
+
+  return { requestInterceptors, responseInterceptors, mockAxiosInstance };
+});
 
 vi.mock('axios', () => ({
   default: {

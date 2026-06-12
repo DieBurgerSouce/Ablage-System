@@ -19,16 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  Condition,
-  Action,
-  CONDITION_OPERATORS,
-  CONDITION_FIELDS,
-  ACTION_TYPES,
-  type ConditionField,
-  type ConditionOperator,
-  type ActionType,
-} from '../types/approval-enhanced-types';
+import { type Condition, type Action, CONDITION_OPERATORS, CONDITION_FIELDS, ACTION_TYPES, type ConditionField, type ConditionOperator, type ActionType } from '../types/approval-enhanced-types';
 
 interface ConditionalRuleEditorProps {
   initialName?: string;

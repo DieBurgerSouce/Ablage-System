@@ -40,7 +40,7 @@ import { motionTokens } from '@/lib/motion-tokens';
 import { useSavedSearches } from '../hooks/use-saved-searches';
 import { useRecentSearches } from '../hooks/use-recent-searches';
 import { useFormDefaults } from '@/hooks';
-import { generateSearchName, type SavedSearch } from '../types/saved-search';
+import { generateSearchName } from '../types/saved-search';
 import type { SearchParams } from '../types/search-params';
 import {
     Dialog,

@@ -65,6 +65,7 @@ import { Route as ExecutiveRouteImport } from './app/routes/executive'
 import { Route as EmailImportRouteImport } from './app/routes/email-import'
 import { Route as DocumentHintsRouteImport } from './app/routes/document-hints'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
+import { Route as DocumentGraphRouteImport } from './app/routes/document-graph'
 import { Route as DocumentChainsRouteImport } from './app/routes/document-chains'
 import { Route as DigitalTwinRouteImport } from './app/routes/digital-twin'
 import { Route as DeveloperRouteImport } from './app/routes/developer'
@@ -585,6 +586,11 @@ const DocumentHintsRoute = DocumentHintsRouteImport.update({
 const DocumentGroupsRoute = DocumentGroupsRouteImport.update({
   id: '/document-groups',
   path: '/document-groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentGraphRoute = DocumentGraphRouteImport.update({
+  id: '/document-graph',
+  path: '/document-graph',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentChainsRoute = DocumentChainsRouteImport.update({
@@ -1849,6 +1855,7 @@ export interface FileRoutesByFullPath {
   '/developer': typeof DeveloperRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
+  '/document-graph': typeof DocumentGraphRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
@@ -2146,6 +2153,7 @@ export interface FileRoutesByTo {
   '/developer': typeof DeveloperRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
+  '/document-graph': typeof DocumentGraphRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
@@ -2418,6 +2426,7 @@ export interface FileRoutesById {
   '/developer': typeof DeveloperRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
+  '/document-graph': typeof DocumentGraphRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
@@ -2719,6 +2728,7 @@ export interface FileRouteTypes {
     | '/developer'
     | '/digital-twin'
     | '/document-chains'
+    | '/document-graph'
     | '/document-groups'
     | '/document-hints'
     | '/email-import'
@@ -3016,6 +3026,7 @@ export interface FileRouteTypes {
     | '/developer'
     | '/digital-twin'
     | '/document-chains'
+    | '/document-graph'
     | '/document-groups'
     | '/document-hints'
     | '/email-import'
@@ -3287,6 +3298,7 @@ export interface FileRouteTypes {
     | '/developer'
     | '/digital-twin'
     | '/document-chains'
+    | '/document-graph'
     | '/document-groups'
     | '/document-hints'
     | '/email-import'
@@ -3587,6 +3599,7 @@ export interface RootRouteChildren {
   DeveloperRoute: typeof DeveloperRoute
   DigitalTwinRoute: typeof DigitalTwinRoute
   DocumentChainsRoute: typeof DocumentChainsRouteWithChildren
+  DocumentGraphRoute: typeof DocumentGraphRoute
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   DocumentHintsRoute: typeof DocumentHintsRoute
   EmailImportRoute: typeof EmailImportRoute
@@ -4047,6 +4060,13 @@ declare module '@tanstack/react-router' {
       path: '/document-groups'
       fullPath: '/document-groups'
       preLoaderRoute: typeof DocumentGroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/document-graph': {
+      id: '/document-graph'
+      path: '/document-graph'
+      fullPath: '/document-graph'
+      preLoaderRoute: typeof DocumentGraphRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/document-chains': {
@@ -6684,6 +6704,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeveloperRoute: DeveloperRoute,
   DigitalTwinRoute: DigitalTwinRoute,
   DocumentChainsRoute: DocumentChainsRouteWithChildren,
+  DocumentGraphRoute: DocumentGraphRoute,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   DocumentHintsRoute: DocumentHintsRoute,
   EmailImportRoute: EmailImportRoute,

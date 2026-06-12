@@ -61,17 +61,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import {
-    useSlackStatus,
-    useSlackStatistics,
-    useSlackChannels,
-    useSlackMessages,
-    useDeleteSlackChannel,
-    useSendTestMessage,
-} from '../hooks/use-slack-queries';
+import { useSlackStatus, useSlackStatistics, useSlackChannels, useSlackMessages, useDeleteSlackChannel } from '../hooks/use-slack-queries';
 import { SlackChannelDialog } from './SlackChannelDialog';
 import { SlackTestDialog } from './SlackTestDialog';
-import type { SlackChannel, SlackMessageLog } from '../types';
+import type { SlackChannel } from '../types';
 
 export function SlackSettingsPage() {
     const [activeTab, setActiveTab] = useState('overview');

@@ -5,7 +5,7 @@
  * Zeigt Übersichts-Metriken mit echten Daten.
  */
 
-import { Clock, CheckCircle, AlertTriangle, FileText, Users, Activity } from 'lucide-react';
+import { Clock, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TrainingOverviewStats } from '../types';
 

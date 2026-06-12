@@ -37,7 +37,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import type { NotificationChannel, ChannelConfig } from '../types';
 import { CHANNEL_LABELS } from '../types';
 

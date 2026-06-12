@@ -5,26 +5,7 @@
  */
 
 import { useMemo } from 'react';
-import {
-  AlertCircle,
-  Ban,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  Copy,
-  ExternalLink,
-  FileText,
-  Loader2,
-  Pause,
-  Play,
-  RefreshCw,
-  RotateCcw,
-  Server,
-  Skull,
-  User,
-  XCircle,
-  Zap,
-} from 'lucide-react';
+import { AlertCircle, Ban, Calendar, CheckCircle2, Clock, Copy, FileText, Loader2, Pause, Play, RotateCcw, Server, Skull, User, XCircle, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

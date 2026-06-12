@@ -14,14 +14,7 @@ import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceService, InvoiceApiError } from '../api/invoice-api';
 import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
-import type {
-  InvoiceFilter,
-  InvoiceTrackingCreate,
-  InvoiceTrackingUpdate,
-  InvoiceTrackingResponse,
-  SkontoUpdate,
-  PaymentCreate,
-} from '../types/invoice-types';
+import type { InvoiceFilter, InvoiceTrackingCreate, InvoiceTrackingUpdate, SkontoUpdate, PaymentCreate } from '../types/invoice-types';
 
 // ==================== Konfiguration ====================
 

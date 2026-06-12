@@ -46,10 +46,7 @@ import {
   useUpdateRule,
   useDeleteRule,
 } from '../hooks/use-validation-queue';
-import {
-  ValidationRuleType,
-  RULE_TYPE_LABELS,
-} from '../types/validation-queue.types';
+import { RULE_TYPE_LABELS } from '../types/validation-queue.types';
 import type { ValidationRule, ValidationRuleCreate, ValidationRuleUpdate } from '../types/validation-queue.types';
 import { RuleFormDialog } from './RuleFormDialog';
 import { SampleConfigDialog } from './SampleConfigDialog';

@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreHorizontal, Pencil, Trash2, Play, Copy, History } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Copy, History } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { toast } from '@/components/ui/use-toast'

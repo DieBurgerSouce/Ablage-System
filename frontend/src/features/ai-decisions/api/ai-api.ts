@@ -5,7 +5,6 @@
  * SHAP Erklärungen und A/B Testing.
  */
 
-import { logger } from '@/lib/logger';
 import type {
   DriftStatus,
   DriftReport,

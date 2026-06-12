@@ -27,7 +27,9 @@ export function CreateDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [mode, setMode] = useState<'blank' | 'preset'>('blank');
+  type CreateMode = 'blank' | 'preset';
+  const isCreateMode = (v: string): v is CreateMode => v === 'blank' || v === 'preset';
+  const [mode, setMode] = useState<CreateMode>('blank');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
@@ -135,7 +137,7 @@ export function CreateDashboard() {
             <CardTitle>Startpunkt wählen</CardTitle>
           </CardHeader>
           <CardContent>
-            <RadioGroup value={mode} onValueChange={(v) => setMode(v as any)}>
+            <RadioGroup value={mode} onValueChange={(v) => isCreateMode(v) && setMode(v)}>
               <div className="space-y-3">
                 <div
                   className={`flex items-start p-4 rounded-lg border cursor-pointer transition-colors ${

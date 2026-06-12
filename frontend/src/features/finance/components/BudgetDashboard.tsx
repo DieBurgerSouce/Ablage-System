@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -34,14 +33,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   BarChart,
   Bar,
   XAxis,
@@ -56,43 +47,9 @@ import {
   type TooltipProps,
 } from 'recharts';
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
-import {
-  useBudgets,
-  useBudgetSummary,
-  useVarianceReport,
-  useBudgetAlerts,
-  useKostenstellenTree,
-  useAcknowledgeAlert,
-  useActivateBudget,
-  useCloseBudget,
-} from '../hooks/use-budget-queries';
-import type {
-  Budget,
-  BudgetSummary,
-  BudgetVarianceReport,
-  BudgetAlert,
-  BudgetLineStatus,
-  AlertSeverity,
-  KostenstelleTreeNode,
-} from '@/lib/api/services/budgets';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  AlertCircle,
-  TrendingUp,
-  TrendingDown,
-  RefreshCw,
-  ChevronRight,
-  Building2,
-  Wallet,
-  FileText,
-  Bell,
-  ChevronDown,
-  Check,
-  X,
-  Info,
-  Target,
-} from 'lucide-react';
+import { useBudgets, useBudgetSummary, useVarianceReport, useBudgetAlerts, useAcknowledgeAlert, useActivateBudget, useCloseBudget } from '../hooks/use-budget-queries';
+import type { BudgetSummary, BudgetVarianceReport, BudgetLineStatus, AlertSeverity } from '@/lib/api/services/budgets';
+import { AlertTriangle, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, RefreshCw, Building2, Wallet, FileText, Bell, ChevronDown, Check, Info, Target } from 'lucide-react';
 import { useTheme } from '@/lib/theme/ThemeContext';
 
 // ==================== Utility Functions ====================

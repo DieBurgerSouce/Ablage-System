@@ -26,7 +26,7 @@ export const AnimatedButton = forwardRef<
 /** Input with subtle glow on focus */
 export const AnimatedInput = forwardRef<
   HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement> & { className?: string }
+  HTMLMotionProps<'input'> & { className?: string }
 >(function AnimatedInput({ className, ...props }, ref) {
   const reducedMotion = useReducedMotion();
   return (

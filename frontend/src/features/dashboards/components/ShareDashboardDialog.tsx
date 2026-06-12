@@ -4,7 +4,7 @@
  * Dialog zum Teilen von Dashboards mit anderen Benutzern
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,

@@ -31,7 +31,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { Team, TeamType, TeamStatus, TeamVisibility } from '../api/teams-api';
+import type { Team, TeamType, TeamStatus, TeamVisibility } from '../api/teams-api';
 import { useTeam } from '../hooks/use-teams';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { TeamMemberList } from './TeamMemberList';

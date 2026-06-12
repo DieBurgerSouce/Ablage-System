@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { RiskStatistics } from '../types/risk-types';
-import { UI_LABELS, getRiskLevel, RISK_LEVEL_COLORS } from '../types/risk-types';
+import { UI_LABELS } from '../types/risk-types';
 
 interface RiskTrendChartProps {
   data: RiskStatistics['trend'];

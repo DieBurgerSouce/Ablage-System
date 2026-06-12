@@ -40,7 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { X, Plus, Shield, Clock, Droplets } from 'lucide-react';
-import { DLPPolicy, DLPAction, PolicyCreateRequest } from '../api/dlp-api';
+import type { DLPPolicy, DLPAction, PolicyCreateRequest } from '../api/dlp-api';
 import { useCreatePolicy, useUpdatePolicy } from '../hooks/use-dlp';
 
 // ==================== Schema ====================

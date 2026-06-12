@@ -8,7 +8,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { FileX } from 'lucide-react';
 import { KanbanCard } from './KanbanCard';
-import { cn } from '@/lib/utils';
 import type { KanbanStage } from '../hooks/use-kanban-queries';
 
 // ==================== Component ====================

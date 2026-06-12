@@ -4,7 +4,7 @@
  * Input field with send button for chat messages.
  */
 
-import { useState, useCallback, useRef, useEffect, KeyboardEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';

@@ -3,20 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  submitCorrectionFeedback,
-  getCalibratedConfidence,
-  getConfidenceStats,
-  startABTest,
-  getABTestResult,
-  endABTest,
-  getLearningStats,
-  setLearningMode,
-  getCurrentModelVersion,
-  CorrectionFeedbackRequest,
-  CalibratedConfidenceRequest,
-  ABTestStartRequest,
-} from '../api/ocr-learning-api';
+import { submitCorrectionFeedback, getCalibratedConfidence, getConfidenceStats, startABTest, getABTestResult, endABTest, getLearningStats, setLearningMode, getCurrentModelVersion, type CorrectionFeedbackRequest, type CalibratedConfidenceRequest, type ABTestStartRequest } from '../api/ocr-learning-api';
 
 // ==================== Query Keys ====================
 

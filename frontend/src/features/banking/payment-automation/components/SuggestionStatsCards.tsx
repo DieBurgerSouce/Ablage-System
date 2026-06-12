@@ -4,13 +4,7 @@
  * Übersichtskarten für Zahlungsvorschläge-Statistiken.
  */
 
-import {
-  Banknote,
-  Clock,
-  AlertTriangle,
-  TrendingUp,
-  Percent,
-} from 'lucide-react';
+import { Banknote, Clock, TrendingUp, Percent } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';

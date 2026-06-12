@@ -25,16 +25,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import {
-  Save,
-  Play,
-  Undo,
-  Redo,
-  ZoomIn,
-  ZoomOut,
-  Maximize,
-  Download,
-} from 'lucide-react';
+import { Save, Play, Download } from 'lucide-react';
 import { bpmnNodeTypes } from './nodes';
 import { BpmnPalette } from './BpmnPalette';
 import { BpmnPropertiesPanel } from './BpmnPropertiesPanel';

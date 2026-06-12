@@ -32,43 +32,7 @@ import {
     CommandShortcut,
 } from "@/components/ui/command"
 import { Badge } from "@/components/ui/badge"
-import {
-    LayoutDashboard,
-    FileText,
-    FolderOpen,
-    Search,
-    Upload,
-    Settings,
-    Sun,
-    Moon,
-    Laptop,
-    LogOut,
-    Calculator,
-    Receipt,
-    Users,
-    Building2,
-    ShieldCheck,
-    Link2,
-    Truck,
-    AlertTriangle,
-    Clock,
-    Star,
-    Zap,
-    Plus,
-    History,
-    ArrowRight,
-    Loader2,
-    Lightbulb,
-    LayoutGrid,
-    Euro,
-    FileBarChart2,
-    BrainCircuit,
-    Pen,
-    CheckCircle,
-    Gauge,
-    type LucideIcon,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+import { LayoutDashboard, FileText, FolderOpen, Search, Upload, Settings, Sun, Moon, Laptop, LogOut, Calculator, Receipt, Users, Building2, ShieldCheck, Link2, Truck, AlertTriangle, Clock, Zap, History, ArrowRight, Loader2, Lightbulb, LayoutGrid, Euro, FileBarChart2, BrainCircuit, Pen, CheckCircle, Gauge, type LucideIcon } from "lucide-react"
 
 // ==================== Types ====================
 

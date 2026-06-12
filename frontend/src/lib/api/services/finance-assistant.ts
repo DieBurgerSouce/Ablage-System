@@ -121,42 +121,46 @@ export interface AssistantHelpResponse {
 
 // ===== Enums =====
 
-export enum AssistantIntent {
-  SEARCH = 'search',
-  EXECUTE_ACTION = 'execute_action',
-  EXPLAIN = 'explain',
-  SUGGEST_BOOKING = 'suggest_booking',
-  ANALYZE = 'analyze',
-  PREDICT = 'predict',
-  HELP = 'help',
-  CHAT = 'chat',
-}
+export const AssistantIntent = {
+  SEARCH: 'search',
+  EXECUTE_ACTION: 'execute_action',
+  EXPLAIN: 'explain',
+  SUGGEST_BOOKING: 'suggest_booking',
+  ANALYZE: 'analyze',
+  PREDICT: 'predict',
+  HELP: 'help',
+  CHAT: 'chat',
+} as const;
+export type AssistantIntent = (typeof AssistantIntent)[keyof typeof AssistantIntent];
 
-export enum ActionExecutionStatus {
-  PENDING = 'pending',
-  EXECUTING = 'executing',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  ROLLED_BACK = 'rolled_back',
-}
+export const ActionExecutionStatus = {
+  PENDING: 'pending',
+  EXECUTING: 'executing',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+  ROLLED_BACK: 'rolled_back',
+} as const;
+export type ActionExecutionStatus = (typeof ActionExecutionStatus)[keyof typeof ActionExecutionStatus];
 
-export enum InsightCategory {
-  OVERDUE = 'overdue',
-  CASHFLOW = 'cashflow',
-  SKONTO = 'skonto',
-  ANOMALY = 'anomaly',
-  TREND = 'trend',
-  RISK = 'risk',
-  OPPORTUNITY = 'opportunity',
-}
+export const InsightCategory = {
+  OVERDUE: 'overdue',
+  CASHFLOW: 'cashflow',
+  SKONTO: 'skonto',
+  ANOMALY: 'anomaly',
+  TREND: 'trend',
+  RISK: 'risk',
+  OPPORTUNITY: 'opportunity',
+} as const;
+export type InsightCategory = (typeof InsightCategory)[keyof typeof InsightCategory];
 
-export enum InsightSeverity {
-  INFO = 'info',
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical',
-}
+export const InsightSeverity = {
+  INFO: 'info',
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical',
+} as const;
+export type InsightSeverity = (typeof InsightSeverity)[keyof typeof InsightSeverity];
 
 // ===== Intent Metadata (German Labels) =====
 

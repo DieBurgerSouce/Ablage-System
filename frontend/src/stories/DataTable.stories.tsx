@@ -7,7 +7,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from '@storybook/test';
-import { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal, ArrowUpDown } from 'lucide-react';
 import { EnterpriseDataTable } from '@/components/ui/data-table/EnterpriseDataTable';
 import { Button } from '@/components/ui/button';

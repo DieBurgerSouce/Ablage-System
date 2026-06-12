@@ -19,8 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -29,19 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Activity,
-  TrendingUp,
-  Shield,
-  Wallet,
-  Clock,
-  PieChart,
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  RefreshCw,
-  Target,
-} from 'lucide-react';
+import { Activity, TrendingUp, Shield, Wallet, Clock, PieChart, AlertTriangle, CheckCircle2, RefreshCw, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { privatIntelligenceService } from '@/lib/api/services/privat-intelligence';
 import type { FinancialHealthScore, HealthDimension } from '@/types/privat';

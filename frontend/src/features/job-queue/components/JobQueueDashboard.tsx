@@ -6,22 +6,7 @@
  */
 
 import { useState } from 'react';
-import {
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  Bell,
-  CheckCircle2,
-  Clock,
-  Cpu,
-  ListOrdered,
-  RefreshCw,
-  Server,
-  Settings,
-  Wifi,
-  WifiOff,
-  Zap,
-} from 'lucide-react';
+import { BarChart3, Bell, Clock, ListOrdered, RefreshCw, Server, Wifi, WifiOff, Zap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

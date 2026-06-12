@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, MapPin, Star } from 'lucide-react';
-import { useWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse, Warehouse, WarehouseCreate } from '../hooks/useInventory';
+import { useWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse, type Warehouse, type WarehouseCreate } from '../hooks/useInventory';
 import { toast } from 'sonner';
 
 export function WarehouseManagement() {

@@ -9,17 +9,7 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useMutation } from '@tanstack/react-query'
-import {
-  Upload,
-  FileType,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  FileText,
-  Cpu,
-  ScanSearch,
-  Sparkles,
-} from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle2, Loader2, FileText, Cpu, ScanSearch, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { documentsService } from '@/lib/api/services/documents'

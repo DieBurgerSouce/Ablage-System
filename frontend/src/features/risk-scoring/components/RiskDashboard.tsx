@@ -5,15 +5,7 @@
  */
 
 import { useState } from 'react';
-import {
-  AlertTriangle,
-  Users,
-  Package,
-  RefreshCw,
-  TrendingUp,
-  Loader2,
-  Filter,
-} from 'lucide-react';
+import { AlertTriangle, Users, Package, RefreshCw, TrendingUp, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,7 +21,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RiskScoreGauge } from './RiskScoreGauge';
 import { HighRiskEntitiesTable } from './HighRiskEntitiesTable';
 import { RiskTrendChart, RiskDistributionChart } from './RiskTrendChart';
-import { FactorContributionChart } from './RiskFactorBreakdown';
 import {
   useRiskDashboard,
   useRiskMutations,

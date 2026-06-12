@@ -35,21 +35,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip'
-import {
-    Settings2,
-    RotateCcw,
-    Plus,
-    LayoutGrid,
-    Check,
-    Grid3X3,
-    Shrink,
-    User,
-    Calculator,
-    Users,
-    Shield,
-    Layers,
-    Settings,
-} from 'lucide-react'
+import { Settings2, RotateCcw, Plus, LayoutGrid, Check, Grid3X3, Shrink, User, Calculator, Users, Shield, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 

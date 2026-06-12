@@ -7,22 +7,7 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import {
-  Folder,
-  RefreshCw,
-  Settings,
-  Trash2,
-  Play,
-  Pause,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Loader2,
-  Plus,
-  FolderOpen,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+import { Folder, RefreshCw, Settings, Trash2, Play, AlertCircle, Loader2, Plus, FolderOpen, Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +49,6 @@ import {
   useDeleteFolderConfig,
   useTriggerFolderPoll,
 } from '../hooks/use-import-queries';
-import type { FolderConfigListItem } from '../types/import-types';
 
 // ==================== Status Badge ====================
 

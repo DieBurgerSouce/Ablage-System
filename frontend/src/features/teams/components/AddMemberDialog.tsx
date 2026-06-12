@@ -50,7 +50,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, Check, ChevronsUpDown, UserPlus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { TeamMemberRole } from '../api/teams-api';
+import type { TeamMemberRole } from '../api/teams-api';
 import { useAddMember } from '../hooks/use-teams';
 import { apiClient } from '@/lib/api/client';
 

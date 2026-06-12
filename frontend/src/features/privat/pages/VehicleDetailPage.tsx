@@ -25,7 +25,6 @@ import { toast } from 'sonner';
 import * as privatApi from '../api/privat-api';
 import type { PrivatVehicleWithStats, PrivatVehicleUpdate, PrivatFuelLog, PrivatFuelStatistics } from '@/types/privat';
 import { VehicleEditDialog } from '../components/vehicles/VehicleEditDialog';
-import { DocumentUploadSection } from '../components/shared/DocumentUploadSection';
 
 const VEHICLE_TYPE_LABELS: Record<string, string> = {
   car: 'PKW',

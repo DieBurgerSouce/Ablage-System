@@ -36,14 +36,7 @@ import {
   useVerifyTrainingSample,
 } from '../hooks/use-validation-queries';
 import { getSamplePreviewUrl, getSampleBenchmarks } from '../api/validation-api';
-import {
-  TrainingSampleStatus,
-  SAMPLE_STATUS_LABELS,
-  getStatusColor,
-  getFieldConfidenceFromBenchmarks,
-  calculateConfidenceFromBenchmarks,
-  type SampleBenchmark,
-} from '../types';
+import { TrainingSampleStatus, SAMPLE_STATUS_LABELS, getStatusColor, getFieldConfidenceFromBenchmarks, type SampleBenchmark } from '../types';
 
 interface ValidationEditorProps {
   sampleId: string;

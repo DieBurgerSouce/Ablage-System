@@ -14,15 +14,18 @@
  */
 
 // Konfiguration
-const LOKI_URL = import.meta.env.VITE_LOKI_URL || 'http://localhost:3100';
-const LOKI_ENABLED = import.meta.env.VITE_LOKI_ENABLED === 'true';
+const configuredLokiUrl: string | undefined = import.meta.env.VITE_LOKI_URL;
+// localhost-Fallback NUR im DEV-Mode; in Produktion ohne konfigurierte URL
+// bleibt der Client deaktiviert (verhindert fehlschlagende Requests beim Client).
+const LOKI_URL = configuredLokiUrl || (import.meta.env.DEV ? 'http://localhost:3100' : '');
+const LOKI_ENABLED = import.meta.env.VITE_LOKI_ENABLED === 'true' && LOKI_URL !== '';
 const BATCH_SIZE = 10;
 const BATCH_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
-// Warne wenn keine LOKI_URL konfiguriert ist
-if (!import.meta.env.VITE_LOKI_URL && LOKI_ENABLED) {
+// Warne wenn keine LOKI_URL konfiguriert ist (nur im DEV-Mode)
+if (import.meta.env.DEV && !configuredLokiUrl && LOKI_ENABLED) {
   console.warn('[Loki] Keine LOKI_URL konfiguriert - verwende Fallback: http://localhost:3100');
 }
 
@@ -314,10 +317,13 @@ class LokiClient {
  * Helper-Klasse für Component-spezifisches Logging.
  */
 class LokiClientWithLabels {
-  constructor(
-    private client: LokiClient,
-    private extraLabels: Record<string, string>
-  ) {}
+  private client: LokiClient;
+  private extraLabels: Record<string, string>;
+
+  constructor(client: LokiClient, extraLabels: Record<string, string>) {
+    this.client = client;
+    this.extraLabels = extraLabels;
+  }
 
   push(level: LogLevel, message: string, context?: Record<string, unknown>): void {
     this.client.push(level, message, {

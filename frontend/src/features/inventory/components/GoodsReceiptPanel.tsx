@@ -31,19 +31,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { PackagePlus, FileText, CheckCircle, XCircle, Wand2, Play, ChevronRight } from 'lucide-react';
-import {
-  useGoodsReceipts,
-  useUnprocessedDeliveryNotes,
-  useWarehouses,
-  useCreateGoodsReceipt,
-  useAutoMatchGoodsReceipt,
-  useProcessGoodsReceipt,
-  useInventoryItems,
-  useMatchGoodsReceiptLine,
-  useUpdateGoodsReceiptLineQuantity,
-  GoodsReceipt,
-  GoodsReceiptLine,
-} from '../hooks/useInventory';
+import { useGoodsReceipts, useUnprocessedDeliveryNotes, useWarehouses, useCreateGoodsReceipt, useAutoMatchGoodsReceipt, useProcessGoodsReceipt, useInventoryItems, useMatchGoodsReceiptLine, useUpdateGoodsReceiptLineQuantity, type GoodsReceipt } from '../hooks/useInventory';
 import { toast } from 'sonner';
 
 function formatDate(dateStr: string): string {

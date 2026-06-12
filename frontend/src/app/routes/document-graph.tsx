@@ -7,7 +7,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useCallback } from 'react';
-import { Network, AlertCircle } from 'lucide-react';
+import { Network } from 'lucide-react';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 

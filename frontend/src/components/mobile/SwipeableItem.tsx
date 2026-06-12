@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useRef, useState } from "react"
-import { Archive, Trash2, MoreHorizontal } from "lucide-react"
+import { Archive, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // =============================================================================

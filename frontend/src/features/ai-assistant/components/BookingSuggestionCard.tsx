@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { BookingSuggestionData } from '@/lib/api/services/finance-assistant';
+import type { BookingSuggestionData } from '@/lib/api/services/finance-assistant';
 
 interface BookingSuggestionCardProps {
   suggestion: BookingSuggestionData;

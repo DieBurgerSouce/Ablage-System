@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Bookmark, X, MoreHorizontal, Pin, Trash2 } from 'lucide-react';
+import { Bookmark, MoreHorizontal, Pin, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {

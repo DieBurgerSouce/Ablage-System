@@ -7,19 +7,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as workflowsApi from '../api/workflows-api';
-import type {
-  Workflow,
-  WorkflowCreate,
-  WorkflowUpdate,
-  WorkflowListParams,
-  WorkflowStep,
-  StepCreate,
-  StepUpdate,
-  StepReorderItem,
-  WorkflowExecution,
-  ExecutionListParams,
-  ExecutionStart,
-} from '../types/workflow-types';
+import type { WorkflowCreate, WorkflowUpdate, WorkflowListParams, StepCreate, StepUpdate, StepReorderItem, ExecutionListParams, ExecutionStart } from '../types/workflow-types';
 
 // =============================================================================
 // Query Keys

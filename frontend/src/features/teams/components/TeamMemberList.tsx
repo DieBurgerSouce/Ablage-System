@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MoreHorizontal, UserMinus, Shield, UserCog, Crown, Eye, Users } from 'lucide-react';
-import { TeamMember, TeamMemberRole } from '../api/teams-api';
+import type { TeamMember, TeamMemberRole } from '../api/teams-api';
 import { useTeamMembers, useUpdateMemberRole, useRemoveMember } from '../hooks/use-teams';
 
 interface TeamMemberListProps {

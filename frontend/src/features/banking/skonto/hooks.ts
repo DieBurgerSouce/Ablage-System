@@ -16,17 +16,7 @@ import {
   getMonthlySkontoSummary,
   exportMissedSkonto,
 } from './api';
-import type {
-  SkontoInfo,
-  SkontoOpportunity,
-  MissedSkontoResponse,
-  SkontoStatistics,
-  MonthlySkontoSummary,
-  ApplySkontoRequest,
-  SetSkontoRequest,
-  MissedSkontoFilter,
-} from './types';
-import type { InvoiceTrackingResponse } from '@/features/invoices/types/invoice-types';
+import type { ApplySkontoRequest, SetSkontoRequest, MissedSkontoFilter } from './types';
 
 // ==================== Query Keys ====================
 

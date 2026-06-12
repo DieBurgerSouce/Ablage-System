@@ -24,11 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import type { CategoryScore, RankingCategory, CategoryTrend } from '../types/supplier-ranking-types';
-import {
-  CATEGORY_LABELS,
-  CATEGORY_DESCRIPTIONS,
-  CATEGORY_WEIGHTS,
-} from '../types/supplier-ranking-types';
+import { CATEGORY_DESCRIPTIONS, CATEGORY_WEIGHTS } from '../types/supplier-ranking-types';
 
 interface RankingFactorsProps {
   categoryScores: CategoryScore[];

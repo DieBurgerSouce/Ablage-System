@@ -4,7 +4,6 @@
  * Formular zum Erstellen/Bearbeiten von Ordner-Import-Konfigurationen.
  */
 
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';

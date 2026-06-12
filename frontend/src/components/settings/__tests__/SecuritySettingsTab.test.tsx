@@ -9,6 +9,13 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SecuritySettingsTab } from '../SecuritySettingsTab';
 
+// ActiveSessionsTab nutzt TanStack Query (eigener QueryClient-Kontext) und hat
+// eigene Tests — fuer den 2FA-Unit-Test als Stub mocken, sonst crasht der Baum
+// mit 'No QueryClient set'.
+vi.mock('../ActiveSessionsTab', () => ({
+    ActiveSessionsTab: () => null,
+}));
+
 // Mock the auth service
 const mockGet2FAStatus = vi.fn();
 const mockSetup2FA = vi.fn();

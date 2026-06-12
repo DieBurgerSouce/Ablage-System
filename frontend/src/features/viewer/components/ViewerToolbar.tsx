@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2, FileSearch, SunDim, Maximize2, Minimize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2, FileSearch, Maximize2, Minimize2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
 import { useAnnotationStore } from '../store/useAnnotationStore';

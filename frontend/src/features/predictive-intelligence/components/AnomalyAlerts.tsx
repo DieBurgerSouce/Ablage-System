@@ -32,17 +32,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  CheckCircle,
-  XCircle,
-  Eye,
-  ThumbsUp,
-  ThumbsDown,
-  ChevronRight,
-} from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, CheckCircle, XCircle, Eye, ThumbsDown, ChevronRight } from 'lucide-react';
 
 export type AnomalySeverity = 'info' | 'warning' | 'error' | 'critical';
 export type AnomalyStatus = 'new' | 'acknowledged' | 'resolved' | 'false_positive';

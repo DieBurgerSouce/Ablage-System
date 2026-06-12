@@ -53,15 +53,7 @@ import {
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardSectionError } from '../shared';
 import { useWidgetSubscription } from '@/hooks/use-widget-subscription';
-import {
-  getCustomerLTV,
-  dashboardWidgetKeys,
-  formatChurnRiskLabel,
-  formatTrendLabel,
-  type CustomerLTVData,
-  type CustomerMetrics,
-  type AtRiskCustomer,
-} from '../../api/dashboard-widgets';
+import { getCustomerLTV, dashboardWidgetKeys, formatChurnRiskLabel, type CustomerLTVData, type CustomerMetrics, type AtRiskCustomer } from '../../api/dashboard-widgets';
 
 /**
  * Formatiere Währung

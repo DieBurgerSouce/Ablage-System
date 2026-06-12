@@ -8,7 +8,6 @@
  * - Animierte Pulse-Animation
  */
 
-import * as React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,

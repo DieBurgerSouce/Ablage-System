@@ -2,10 +2,12 @@
  * ActivityFeed Component Tests
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/utils';
 import { ActivityFeed } from '../ActivityFeed';
 import { createMockActivityEvent } from '@/test/utils';
+// ESM-konformer Zugriff auf die gemockten Hooks (require() existiert in Vitest/ESM nicht)
+import * as websocketModule from '@/lib/websocket';
 
 // Mock WebSocket hook
 vi.mock('@/lib/websocket', () => ({
@@ -16,6 +18,12 @@ vi.mock('@/lib/websocket', () => ({
 }));
 
 describe('ActivityFeed', () => {
+  beforeEach(() => {
+    // Mock-Rueckgaben zwischen Tests zuruecksetzen (mockReturnValue ist persistent)
+    vi.mocked(websocketModule.useEventStream).mockReturnValue([]);
+    vi.mocked(websocketModule.useWebSocket).mockReturnValue({ state: 'connected' });
+  });
+
   it('renders with empty state when no events', () => {
     render(<ActivityFeed />);
 
@@ -24,7 +32,7 @@ describe('ActivityFeed', () => {
   });
 
   it('displays event count badge', () => {
-    const { useEventStream } = require('@/lib/websocket');
+    const useEventStream = vi.mocked(websocketModule.useEventStream);
     useEventStream.mockReturnValue([
       createMockActivityEvent({ event_id: '1' }),
       createMockActivityEvent({ event_id: '2' }),
@@ -36,7 +44,7 @@ describe('ActivityFeed', () => {
   });
 
   it('renders events from useEventStream', () => {
-    const { useEventStream } = require('@/lib/websocket');
+    const useEventStream = vi.mocked(websocketModule.useEventStream);
     const mockEvents = [
       createMockActivityEvent({
         event_id: '1',
@@ -58,7 +66,7 @@ describe('ActivityFeed', () => {
   });
 
   it('shows connection status when showConnectionStatus is true', () => {
-    const { useWebSocket } = require('@/lib/websocket');
+    const useWebSocket = vi.mocked(websocketModule.useWebSocket);
     useWebSocket.mockReturnValue({ state: 'connected' });
 
     render(<ActivityFeed showConnectionStatus />);
@@ -69,7 +77,7 @@ describe('ActivityFeed', () => {
   });
 
   it('displays disconnected state', () => {
-    const { useWebSocket } = require('@/lib/websocket');
+    const useWebSocket = vi.mocked(websocketModule.useWebSocket);
     useWebSocket.mockReturnValue({ state: 'disconnected' });
 
     render(<ActivityFeed showConnectionStatus />);
@@ -79,7 +87,7 @@ describe('ActivityFeed', () => {
   });
 
   it('respects maxEvents limit', () => {
-    const { useEventStream } = require('@/lib/websocket');
+    const useEventStream = vi.mocked(websocketModule.useEventStream);
     const mockEvents = Array.from({ length: 100 }, (_, i) =>
       createMockActivityEvent({ event_id: `event-${i}` })
     );
@@ -92,7 +100,7 @@ describe('ActivityFeed', () => {
   });
 
   it('renders in compact mode', () => {
-    const { useEventStream } = require('@/lib/websocket');
+    const useEventStream = vi.mocked(websocketModule.useEventStream);
     useEventStream.mockReturnValue([
       createMockActivityEvent({
         event_id: '1',
@@ -107,7 +115,7 @@ describe('ActivityFeed', () => {
   });
 
   it('shows priority badges for high/critical events', () => {
-    const { useEventStream } = require('@/lib/websocket');
+    const useEventStream = vi.mocked(websocketModule.useEventStream);
     useEventStream.mockReturnValue([
       createMockActivityEvent({
         event_id: '1',
@@ -123,7 +131,7 @@ describe('ActivityFeed', () => {
   });
 
   it('formats German timestamps correctly', () => {
-    const { useEventStream } = require('@/lib/websocket');
+    const useEventStream = vi.mocked(websocketModule.useEventStream);
     const now = new Date();
     useEventStream.mockReturnValue([
       createMockActivityEvent({

@@ -10,15 +10,7 @@
  */
 
 import * as React from 'react';
-import {
-  WifiOff,
-  Wifi,
-  CloudOff,
-  RefreshCw,
-  Check,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { WifiOff, Wifi, CloudOff, RefreshCw, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';

@@ -9,7 +9,7 @@ import { useEffect } from 'react'
 import { TourSpotlight } from './TourSpotlight'
 import { TourTooltip } from './TourTooltip'
 import { useTour } from '../hooks/use-tour'
-import { Tour, TourBadge } from '../types'
+import type { Tour, TourBadge } from '../types'
 
 interface ProductTourProps {
   tourId?: string

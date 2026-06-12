@@ -5,23 +5,7 @@
  */
 
 import { cn } from '@/lib/utils';
-import {
-  Play,
-  Square,
-  User,
-  Cog,
-  Code,
-  Hand,
-  Send,
-  Inbox,
-  BookOpen,
-  X,
-  Plus,
-  Circle,
-  Zap,
-  Clock,
-  Mail,
-} from 'lucide-react';
+import { Play, Square, User, Cog, Code, Hand, Send, Inbox, BookOpen, X, Plus, Circle, Zap } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,

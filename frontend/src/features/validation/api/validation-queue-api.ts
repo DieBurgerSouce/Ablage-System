@@ -6,41 +6,7 @@
  */
 
 import { apiClient } from '@/lib/api/client';
-import type {
-  ValidationQueueItem,
-  ValidationQueueItemDetail,
-  ValidationQueueListResponse,
-  ValidationQueueItemCreate,
-  ValidationQueueItemUpdate,
-  ValidationQueueItemAssign,
-  ValidationQueueItemApprove,
-  ValidationQueueItemReject,
-  ValidationFieldReview,
-  ValidationFieldUpdate,
-  ValidationFieldValidateResult,
-  ValidationRule,
-  ValidationRuleCreate,
-  ValidationRuleUpdate,
-  ValidationRuleListResponse,
-  ValidationSampleConfig,
-  ValidationSampleConfigUpdate,
-  BatchApproveRequest,
-  BatchRejectRequest,
-  BatchAssignRequest,
-  BatchOperationResult,
-  ValidationAnalyticsOverview,
-  EditorStats,
-  EditorStatsListResponse,
-  TrendDataPoint,
-  TrendDataResponse,
-  DocumentTypeStats,
-  DocumentTypeStatsResponse,
-  ConfidenceDistribution,
-  ValidationQueueFilters,
-  ValidationQueueSortOptions,
-  ValidationStatus,
-  SampleSource,
-} from '../types/validation-queue.types';
+import type { ValidationQueueItem, ValidationQueueItemDetail, ValidationQueueListResponse, ValidationQueueItemCreate, ValidationQueueItemUpdate, ValidationQueueItemAssign, ValidationQueueItemApprove, ValidationQueueItemReject, ValidationFieldReview, ValidationFieldUpdate, ValidationFieldValidateResult, ValidationRule, ValidationRuleCreate, ValidationRuleUpdate, ValidationRuleListResponse, ValidationSampleConfig, ValidationSampleConfigUpdate, BatchApproveRequest, BatchRejectRequest, BatchAssignRequest, BatchOperationResult, ValidationAnalyticsOverview, EditorStatsListResponse, TrendDataResponse, DocumentTypeStatsResponse, ConfidenceDistribution, ValidationQueueFilters, ValidationQueueSortOptions, ValidationStatus } from '../types/validation-queue.types';
 
 // Note: apiClient already has baseURL '/api/v1', so we only add the resource path
 const BASE_URL = '/validation';

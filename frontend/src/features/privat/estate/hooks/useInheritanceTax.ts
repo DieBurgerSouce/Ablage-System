@@ -4,14 +4,8 @@
  * Berechnet Erbschaftsteuer-Szenarien nach deutschem Recht
  */
 
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
-import {
-  estatePlanningService,
-  type InheritanceTaxCalculation,
-  type InheritanceTaxScenario,
-  type UsufructCalculation,
-  type RelationshipType,
-} from '@/lib/api/services/estate-planning';
+import { useQuery, useMutation, type UseQueryOptions } from '@tanstack/react-query';
+import { estatePlanningService, type InheritanceTaxCalculation, type RelationshipType } from '@/lib/api/services/estate-planning';
 import { estateQueryKeys } from './useEstateOverview';
 
 // ==================== Constants ====================

@@ -14,7 +14,6 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, Play, TrendingUp, TrendingDown } from 'lucide-react';
 import { useRunCashflowScenario } from '../hooks/use-german-finance-queries';
-import type { CashflowAdjustment, CashflowForecast } from '../types/german-finance-types';
 import { UI_LABELS } from '../types/german-finance-types';
 
 const formatEuro = (amount: number): string => {

@@ -16,7 +16,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { motion } from 'framer-motion';
-import { Loader2, AlertTriangle, FileText, ImageIcon } from 'lucide-react';
+import { Loader2, AlertTriangle, FileText } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { logger } from '@/lib/logger';
 import type { ValidationFieldReview } from '../types/validation-queue.types';

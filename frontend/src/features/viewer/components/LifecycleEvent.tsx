@@ -1,27 +1,7 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import {
-  Upload,
-  ScanLine,
-  Tag,
-  FileText,
-  Link2,
-  Edit,
-  ThumbsUp,
-  ThumbsDown,
-  Download,
-  Archive,
-  RefreshCw,
-  ShieldCheck,
-  Settings,
-  Eye,
-  Trash2,
-  RotateCcw,
-  ChevronDown,
-  ChevronRight,
-  LucideIcon,
-} from 'lucide-react';
+import { Upload, ScanLine, Tag, FileText, Link2, Edit, ThumbsUp, ThumbsDown, Download, Archive, RefreshCw, ShieldCheck, Settings, Eye, Trash2, RotateCcw, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
 import { type LifecycleEvent as LifecycleEventType } from '../api/lifecycle-api';
 
 interface LifecycleEventProps {

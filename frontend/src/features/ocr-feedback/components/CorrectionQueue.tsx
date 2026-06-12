@@ -6,16 +6,7 @@
  */
 
 import { useState } from 'react';
-import {
-  AlertCircle,
-  AlertTriangle,
-  Info,
-  ChevronDown,
-  FileText,
-  Building2,
-  Loader2,
-  CheckCircle2,
-} from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, ChevronDown, FileText, Building2, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useCorrectionQueue, useClaimQueueItem } from '../hooks/use-ocr-feedback';
+import { useCorrectionQueue } from '../hooks/use-ocr-feedback';
 import type { QueueItem, QueuePriority } from '../api/ocr-feedback-api';
 import { CorrectionDialog } from './CorrectionDialog';
 

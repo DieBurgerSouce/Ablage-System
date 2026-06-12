@@ -9,16 +9,8 @@
  */
 
 import { useState } from 'react';
-import {
-  Calculator,
-  Calendar,
-  Download,
-  FileSearch,
-  Info,
-  TrendingUp,
-  AlertTriangle,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calculator, Calendar, FileSearch, Info, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

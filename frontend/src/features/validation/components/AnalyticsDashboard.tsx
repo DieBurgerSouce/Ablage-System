@@ -6,18 +6,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import {
-  BarChart3,
-  TrendingUp,
-  Users,
-  Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Download,
-  Filter,
-} from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Calendar, Clock, CheckCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,23 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import {
   useAnalyticsOverview,
   useEditorStats,

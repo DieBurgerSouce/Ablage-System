@@ -2,14 +2,15 @@
  * Help System Types
  */
 
-export enum HelpCategory {
-  GETTING_STARTED = 'getting_started',
-  DOCUMENTS = 'documents',
-  INVOICES = 'invoices',
-  WORKFLOWS = 'workflows',
-  REPORTS = 'reports',
-  ADMIN = 'admin',
-}
+export const HelpCategory = {
+  GETTING_STARTED: 'getting_started',
+  DOCUMENTS: 'documents',
+  INVOICES: 'invoices',
+  WORKFLOWS: 'workflows',
+  REPORTS: 'reports',
+  ADMIN: 'admin',
+} as const;
+export type HelpCategory = (typeof HelpCategory)[keyof typeof HelpCategory];
 
 export const HELP_CATEGORY_LABELS: Record<HelpCategory, string> = {
   [HelpCategory.GETTING_STARTED]: 'Erste Schritte',

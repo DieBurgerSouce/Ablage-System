@@ -3,9 +3,9 @@
  * Admin-Seite für Genehmigung autonomer Aktionen
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, XCircle, Clock, Filter, RefreshCw, Loader2, ListChecks, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, XCircle, Filter, RefreshCw, Loader2, ListChecks } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { getActionQueue, approveAction, rejectAction } from './api/automation-config-api'
-import type { QueuedAction } from './api/automation-config-api'
 
 // German labels for action types
 const ACTION_TYPE_LABELS: Record<string, string> = {

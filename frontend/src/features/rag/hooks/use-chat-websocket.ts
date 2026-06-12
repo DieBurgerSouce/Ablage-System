@@ -9,13 +9,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { logger } from '@/lib/logger';
-import type {
-    ChatMessage,
-    ContextDocument,
-    ConnectionStatus,
-    WSMessage,
-    ChatMessageSource,
-} from '../types/chat-types';
+import type { ChatMessage, ContextDocument, ConnectionStatus, WSMessage } from '../types/chat-types';
 
 // ==================== Types ====================
 

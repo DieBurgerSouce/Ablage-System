@@ -5,7 +5,7 @@
  * Unterstützt verschiedene Zeiträume (Woche, Monat, Gesamt).
  */
 
-import { Trophy, Medal, Award, Star, Crown, User } from 'lucide-react';
+import { Trophy, Medal, Award, Crown, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';

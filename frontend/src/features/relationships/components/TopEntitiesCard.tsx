@@ -6,14 +6,7 @@
  */
 
 import { useNavigate } from '@tanstack/react-router';
-import {
-    Users,
-    Truck,
-    FileText,
-    Clock,
-    ChevronRight,
-    LucideIcon,
-} from 'lucide-react';
+import { Users, Truck, FileText, Clock, ChevronRight, type LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

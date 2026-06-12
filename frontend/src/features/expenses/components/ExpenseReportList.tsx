@@ -49,7 +49,6 @@ import {
 import { useExpenseReports } from '../hooks/use-expense-queries';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '../utils/format';
 import type { ExpenseReport, ExpenseReportStatus } from '@/types/models/expense';
-import { cn } from '@/lib/utils';
 
 interface ExpenseReportListProps {
   onSelect?: (report: ExpenseReport) => void;

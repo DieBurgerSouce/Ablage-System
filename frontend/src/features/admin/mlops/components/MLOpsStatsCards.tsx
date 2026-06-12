@@ -4,7 +4,7 @@
  * Zeigt Übersicht über Model Registry und Retraining Status.
  */
 
-import { Brain, RefreshCw, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Brain, RefreshCw, CheckCircle, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMLOpsStats } from '../hooks/useMLOps';

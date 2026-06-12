@@ -4,7 +4,7 @@
  */
 
 import { Button } from '@/components/ui/button';
-import { Download, FileText, FileSpreadsheet, Table } from 'lucide-react';
+import { FileText, FileSpreadsheet, Table } from 'lucide-react';
 import type { ExportFormat } from '../types/adhoc-reporting-types';
 import { EXPORT_FORMAT_LABELS } from '../types/adhoc-reporting-types';
 

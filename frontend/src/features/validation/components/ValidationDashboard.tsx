@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { CheckCircle, Clock, AlertTriangle, Filter, RefreshCw, Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, Filter, RefreshCw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

@@ -4,12 +4,10 @@
  * Einstellungen für Benachrichtigungen
  */
 
-import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import {

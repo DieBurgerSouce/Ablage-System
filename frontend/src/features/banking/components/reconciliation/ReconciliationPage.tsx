@@ -11,20 +11,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-    AlertTriangle,
-    BarChart3,
-    CheckCircle2,
-    Filter,
-    Link2,
-    Loader2,
-    RefreshCw,
-    Settings2,
-    Sparkles,
-    TrendingUp,
-    Unlink,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart3, CheckCircle2, Filter, Link2, Loader2, RefreshCw, Sparkles, TrendingUp, Unlink } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {

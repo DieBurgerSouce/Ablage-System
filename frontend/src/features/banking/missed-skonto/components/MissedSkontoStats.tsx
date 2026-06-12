@@ -4,7 +4,7 @@
  */
 
 import { TrendingDown, TrendingUp, Percent, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/features/banking/utils/format';
 import type { SkontoStatistics } from '../types';

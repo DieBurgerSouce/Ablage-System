@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, X, Loader2, AlertTriangle, Sparkles, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertTriangle, Sparkles, ArrowRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
 import { useSubmitCorrection } from '../hooks/use-ocr-feedback';
 import type { QueueItem, CorrectionRequest, CorrectionResult } from '../api/ocr-feedback-api';
 import { toast } from 'sonner';

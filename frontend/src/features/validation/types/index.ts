@@ -9,3 +9,7 @@ export * from '../types';
 
 // Neue Queue-basierte Typen
 export * from './validation-queue.types';
+
+// Explizit: neue Queue-Typen/-Helper sind kanonisch (Legacy nur Rueckwaertskompatibilitaet)
+export type { ValidationQueueItem } from './validation-queue.types';
+export { getConfidenceColor, getConfidenceBgColor } from './validation-queue.types';

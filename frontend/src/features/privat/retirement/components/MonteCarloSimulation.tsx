@@ -21,28 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  Area,
-  ComposedChart,
-} from 'recharts';
-import {
-  TrendingUp,
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
-  Play,
-  Target,
-  BarChart3,
-} from 'lucide-react';
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts';
+import { Activity, AlertTriangle, CheckCircle2, ChevronRight, Play, Target, BarChart3 } from 'lucide-react';
 import { useRunMonteCarlo } from '../hooks/useRetirementQueries';
 import type { MonteCarloResult, RiskProfile } from '@/lib/api/services/retirement';
 

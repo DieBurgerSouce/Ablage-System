@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Network, AlertTriangle, Link2, MapPin, CreditCard, ShieldAlert } from 'lucide-react';
+import { Network, Link2, MapPin, CreditCard, ShieldAlert } from 'lucide-react';
 import type { NetworkAnalysis, NetworkConnection } from '../api/risk-intelligence-api';
 
 interface NetworkGraphProps {

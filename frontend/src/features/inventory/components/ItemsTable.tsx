@@ -33,14 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Search, Package, AlertTriangle } from 'lucide-react';
-import {
-  useInventoryItems,
-  useItemCategories,
-  useCreateItem,
-  useLowStockItems,
-  InventoryItem,
-  ItemCreate,
-} from '../hooks/useInventory';
+import { useInventoryItems, useItemCategories, useCreateItem, useLowStockItems, type ItemCreate } from '../hooks/useInventory';
 import { toast } from 'sonner';
 
 function formatCurrency(value: number | undefined): string {

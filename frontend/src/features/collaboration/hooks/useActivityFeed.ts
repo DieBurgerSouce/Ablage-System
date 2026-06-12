@@ -12,7 +12,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import type { Activity, ActivitiesResponse } from '../types/collaboration.types';
+import type { ActivitiesResponse } from '../types/collaboration.types';
 
 // ==================== Query Keys ====================
 

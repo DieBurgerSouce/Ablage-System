@@ -17,7 +17,7 @@ import { CashCountDialog } from '../components/CashCountDialog';
 import { CancelEntryDialog } from '../components/CancelEntryDialog';
 import { ExportButtons } from '../components/ExportButtons';
 import { useRegister } from '../hooks/use-cash-queries';
-import type { CashEntry, CashRegister } from '@/types/models/cash';
+import type { CashEntry } from '@/types/models/cash';
 
 export function CashBookPage() {
   const { registerId } = useParams({ strict: false }) as { registerId: string };

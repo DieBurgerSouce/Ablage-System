@@ -5,11 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type {
-  AnnotationTask,
-  AnnotationTaskStatus,
-  AnnotationTaskPriority,
-} from "../types/annotations-extended-types";
+import type { AnnotationTask } from "../types/annotations-extended-types";
 import {
   TASK_STATUS_LABELS,
   TASK_PRIORITY_LABELS,

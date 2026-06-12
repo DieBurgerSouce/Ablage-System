@@ -12,17 +12,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  predictiveActionsService,
-  type PredictiveActionsFilter,
-  type AcceptActionRequest,
-  type RejectActionRequest,
-  type SnoozeActionRequest,
-  type PredictiveActionsListResponse,
-  type ActionResult,
-  type ActionStatistics,
-  type ActionTypesResponse,
-} from '@/lib/api/services/predictive-actions';
+import { predictiveActionsService, type PredictiveActionsFilter, type AcceptActionRequest, type RejectActionRequest, type SnoozeActionRequest } from '@/lib/api/services/predictive-actions';
 import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 // ==================== Query Keys ====================

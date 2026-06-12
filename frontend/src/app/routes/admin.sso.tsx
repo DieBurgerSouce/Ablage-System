@@ -17,37 +17,11 @@ import { useState } from 'react';
 import { logger } from '@/lib/logger';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-    Shield,
-    Plus,
-    Settings,
-    Trash2,
-    Power,
-    PowerOff,
-    Star,
-    ExternalLink,
-    AlertTriangle,
-    CheckCircle2,
-    Loader2,
-    Copy,
-    Key,
-} from 'lucide-react';
+import { Shield, Plus, Settings, Trash2, Power, PowerOff, Star, AlertTriangle, Key } from 'lucide-react';
 
 import { EditProviderDialog, type SSOProviderUpdate } from '@/features/admin/sso/components/EditProviderDialog';
 import { z } from 'zod';
-import {
-    ssoProviderCreateSchema,
-    providerPresetSchema,
-    type SSOProviderCreateRequest,
-    type SSOProviderListItem,
-    type ProviderPreset,
-    type SSOProviderResponse,
-    getPresetLabel,
-    getPresetIcon,
-    validateCreateRequest,
-    validateProviderResponse,
-    validateProviderListResponse,
-} from '@/features/admin/sso/types/sso-schemas';
+import { providerPresetSchema, type SSOProviderCreateRequest, type SSOProviderListItem, type ProviderPreset, type SSOProviderResponse, getPresetLabel, getPresetIcon, validateCreateRequest, validateProviderResponse, validateProviderListResponse } from '@/features/admin/sso/types/sso-schemas';
 
 // SSOProviderResponse is the validated API type - use directly instead of unsafe casts
 
@@ -75,7 +49,6 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';

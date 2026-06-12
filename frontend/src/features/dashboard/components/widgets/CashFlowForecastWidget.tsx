@@ -22,15 +22,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AreaChart,
@@ -42,15 +34,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import {
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  RefreshCw,
-  Wallet,
-  ArrowUp,
-  ArrowDown,
-} from 'lucide-react';
+import { TrendingDown, AlertTriangle, RefreshCw, Wallet, ArrowUp, ArrowDown } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardSectionError } from '../shared';
 import { useWidgetSubscription } from '@/hooks/use-widget-subscription';

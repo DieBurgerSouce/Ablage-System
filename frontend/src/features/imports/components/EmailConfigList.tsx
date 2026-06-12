@@ -61,7 +61,7 @@ import {
   useTestEmailConnection,
   useTriggerEmailSync,
 } from '../hooks/use-import-queries';
-import type { EmailConfigListItem, ConnectionStatus } from '../types/import-types';
+import type { ConnectionStatus } from '../types/import-types';
 
 // ==================== Status Badge ====================
 

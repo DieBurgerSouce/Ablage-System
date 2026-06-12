@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Shield, Plus, Search, Settings, FileWarning, Lock, Eye } from 'lucide-react';
 import { PolicyTable, PolicyFormDialog, SensitiveDataScanner } from './components';
 import { useDLPPolicies } from './hooks/use-dlp';
-import { DLPPolicy } from './api/dlp-api';
+import type { DLPPolicy } from './api/dlp-api';
 
 export function DLPAdminPage() {
   const [dialogOpen, setDialogOpen] = useState(false);

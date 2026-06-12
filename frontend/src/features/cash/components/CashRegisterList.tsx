@@ -4,7 +4,6 @@
  * Liste aller Kassen mit Aktionen.
  */
 
-import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,14 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Plus,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Calculator,
-  Archive,
-} from 'lucide-react';
+import { Plus, MoreHorizontal, Eye, Edit, Calculator } from 'lucide-react';
 import { useRegisters } from '../hooks/use-cash-queries';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import type { CashRegister } from '@/types/models/cash';

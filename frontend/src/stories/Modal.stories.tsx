@@ -7,7 +7,6 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { fn } from '@storybook/test';
 import { Trash2, AlertTriangle, Info, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

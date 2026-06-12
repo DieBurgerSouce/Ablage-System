@@ -19,7 +19,7 @@ import * as LucideIcons from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { TourStep } from '../types'
+import type { TourStep } from '../types'
 
 interface TooltipPosition {
   top: number
