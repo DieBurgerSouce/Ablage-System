@@ -114,7 +114,7 @@ test.describe('Auth Error Handling - Geschuetzte Routen ohne Auth', () => {
     });
 
     await page.goto('/documents');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(page).toHaveURL(/login|auth/i, { timeout: 10000 });
   });
 
@@ -126,7 +126,7 @@ test.describe('Auth Error Handling - Geschuetzte Routen ohne Auth', () => {
       window.sessionStorage.clear();
     });
     await page.goto('/admin');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(page).toHaveURL(/login|auth|forbidden/i, { timeout: 10000 });
   });
 });

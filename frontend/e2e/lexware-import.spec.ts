@@ -37,7 +37,7 @@ test.describe('Lexware Import - API', () => {
 authTest.describe('Lexware Import - PII-Sicherheit (CRITICAL)', () => {
   authTest('Keine unmaskierte IBAN im sichtbaren Text der Kundenliste', async ({ authenticatedPage: page }) => {
     await page.goto('/kunden');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     const content = (await page.textContent('body')) || '';
 
@@ -54,7 +54,7 @@ authTest.describe('Lexware Import - PII-Sicherheit (CRITICAL)', () => {
 authTest.describe('Lexware Import - Admin-Seite', () => {
   authTest('Lexware-Import-Seite rendert ohne Crash', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/lexware');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     const content = (await page.textContent('body')) || '';
     authExpect(content).not.toMatch(/Internal Server Error|Traceback/);

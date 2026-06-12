@@ -170,23 +170,29 @@ export const test = base.extend<{
     // UI-Test stabil. ENTFERNEN, sobald der API-Contract gefixt ist!
     // =========================================================================
     await page.route('**/api/v1/notifications*', async (route) => {
-      const response = await route.fetch();
-      let body: unknown;
       try {
-        body = await response.json();
+        const response = await route.fetch();
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          return await route.fulfill({ response });
+        }
+        if (
+          body &&
+          typeof body === 'object' &&
+          !Array.isArray(body) &&
+          'notifications' in body &&
+          !('items' in body)
+        ) {
+          (body as Record<string, unknown>).items = (body as Record<string, unknown>).notifications;
+        }
+        return await route.fulfill({ response, json: body as object });
       } catch {
-        return route.fulfill({ response });
+        // Page/Context bereits im Teardown geschlossen -> Request regulaer
+        // weiterlaufen lassen statt den Test im Nachgang zu reissen.
+        return route.continue().catch(() => {});
       }
-      if (
-        body &&
-        typeof body === 'object' &&
-        !Array.isArray(body) &&
-        'notifications' in body &&
-        !('items' in body)
-      ) {
-        (body as Record<string, unknown>).items = (body as Record<string, unknown>).notifications;
-      }
-      return route.fulfill({ response, json: body as object });
     });
 
     // Now navigate to the app - auth data will already be in sessionStorage
@@ -219,6 +225,9 @@ export const test = base.extend<{
     if (refreshInterval) {
       clearInterval(refreshInterval);
     }
+    // Offene Route-Handler (Notifications-Shim) sauber abraeumen, damit
+    // In-Flight-Requests beim Page-Close keine Teardown-Fehler ausloesen.
+    await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
   },
 });
 

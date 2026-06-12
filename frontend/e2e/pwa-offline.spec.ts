@@ -29,13 +29,18 @@ test.describe('PWA Offline Features', () => {
     });
 
     test('should have active service worker', async ({ authenticatedPage: page }) => {
+      // navigator.serviceWorker.ready abwarten statt sofortigem getRegistration():
+      // Direkt nach dem ersten Load ist der SW oft noch "installing" und
+      // registration.active null (Flake im QA-Lauf 2026-06-12).
       const swActive = await page.evaluate(async () => {
         if (!('serviceWorker' in navigator)) {
           return false;
         }
-
-        const registration = await navigator.serviceWorker.getRegistration();
-        return registration?.active !== null;
+        const registration = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
+        ]);
+        return !!registration && registration.active !== null;
       });
 
       expect(swActive).toBe(true);
@@ -78,7 +83,7 @@ test.describe('PWA Offline Features', () => {
   test.describe('Share Target Route', () => {
     test('should load /share page', async ({ authenticatedPage: page }) => {
       await page.goto('/share');
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
       // Share page should either show shared content or redirect to upload
       const url = page.url();
@@ -99,7 +104,7 @@ test.describe('PWA Offline Features', () => {
     test('should pass query parameters from share-target to share', async ({ authenticatedPage: page }) => {
       // Navigate with query params
       await page.goto('/share-target?title=TestTitle&text=TestText');
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
       // Should be redirected to /share with params
       const url = page.url();
@@ -111,7 +116,7 @@ test.describe('PWA Offline Features', () => {
     test('should show shared content UI elements', async ({ authenticatedPage: page }) => {
       // Navigate with params that trigger content display
       await page.goto('/share?url=https://example.com/test');
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
       // Check for share-related UI elements
       // Note: may redirect to upload if no actual shared data
@@ -227,7 +232,7 @@ test.describe('PWA Offline Features', () => {
     test('should have API cache created by service worker', async ({ authenticatedPage: page }) => {
       // Make an API request first to ensure cache is populated
       await page.goto('/');
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
       const hasApiCache = await page.evaluate(async () => {
         if (!('caches' in window)) return false;
@@ -319,7 +324,7 @@ test.describe('PWA Offline Features', () => {
     test('should serve cached pages when offline', async ({ authenticatedPage: page, context }) => {
       // First load the page to cache it
       await page.goto('/');
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
       // Store current title
       const onlineTitle = await page.title();

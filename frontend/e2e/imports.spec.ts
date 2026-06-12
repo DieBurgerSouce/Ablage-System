@@ -19,13 +19,18 @@ const API_BASE = process.env.VITE_API_URL || 'http://localhost:8000';
 test.describe('Import-Verwaltung - UI', () => {
   test('Seite rendert mit Import-Runs-Panel (W3-F2)', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/imports');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     await expect(
       page.getByRole('heading', { name: 'Import-Verwaltung' })
     ).toBeVisible({ timeout: 15000 });
 
-    // W3-F2: Panel "Letzte Import-Läufe"
+    // W3-F2: Panel "Letzte Import-Läufe".
+    // HINWEIS: Schlaegt aktuell KORREKT fehl — App-Befund (Kategorie B,
+    // 2026-06-12): ImportRunsPanel (W3-F2, Commit cc5f38ae9) existiert und ist
+    // exportiert (features/imports/index.ts:22), wird aber von KEINER Seite
+    // gerendert — die ImportsPage (pages/ImportsPage.tsx) bindet es nicht ein.
+    // Das W3-F2-Ziel "Nutzer sieht Import-Laeufe" ist im UI nicht erfuellt.
     await expect(page.getByText('Letzte Import-Läufe')).toBeVisible({ timeout: 15000 });
   });
 });

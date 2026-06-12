@@ -26,7 +26,7 @@ test.describe('Dashboard - UI', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     // Kein React-Error-Boundary / kein unbehandelter Fehler sichtbar.
     // HINWEIS: Schlaegt aktuell KORREKT fehl — bekannter App-Bug (Kategorie B,

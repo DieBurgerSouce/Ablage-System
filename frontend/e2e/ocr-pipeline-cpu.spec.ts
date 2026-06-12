@@ -93,7 +93,7 @@ apiTest.describe('OCR-Pipeline (CPU) - Upload und Verarbeitung', () => {
 test.describe('OCR-Pipeline - Upload-UI', () => {
   test('/upload rendert den Upload-Wizard', async ({ authenticatedPage: page }) => {
     await page.goto('/upload');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(
       page.getByRole('heading', { name: 'Dokumente hochladen' })
     ).toBeVisible({ timeout: 15000 });

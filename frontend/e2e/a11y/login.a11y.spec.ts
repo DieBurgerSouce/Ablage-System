@@ -4,7 +4,7 @@ import { expectNoA11yViolations, checkKeyboardNavigation } from './a11y-utils';
 test.describe('Login-Seite Barrierefreiheit', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
   });
 
   test('WCAG 2.1 AA: Keine Verletzungen auf Login-Seite', async ({ page }) => {
