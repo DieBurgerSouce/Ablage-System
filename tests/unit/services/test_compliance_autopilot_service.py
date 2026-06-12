@@ -79,11 +79,13 @@ async def test_compliance_scan_gobd(service, mock_db, company_id):
     mock_doc1 = MagicMock(spec=Document)
     mock_doc1.id = uuid4()
     mock_doc1.document_type = DocumentType.INVOICE
+    mock_doc1.created_at = datetime.utcnow() - timedelta(days=30)
     mock_doc1.metadata = {"version_history": [{"version": 1}]}
 
     mock_doc2 = MagicMock(spec=Document)
     mock_doc2.id = uuid4()
     mock_doc2.document_type = DocumentType.RECEIPT
+    mock_doc2.created_at = datetime.utcnow() - timedelta(days=30)
     mock_doc2.metadata = {"version_history": [{"version": 1}]}
 
     mock_result = MagicMock()
@@ -364,6 +366,21 @@ async def test_compliance_recommendations(service, mock_db, company_id):
     assert len(items_with_recommendations) > 0
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "ECHTER BUG (W3, 2026-06-12): run_gdpr_check baut die Query mit "
+        "Document.metadata.isnot(None) — `Document.metadata` ist SQLAlchemys "
+        "MetaData-Registry, die echte JSONB-Spalte heisst "
+        "Document.document_metadata. Der GDPR-Check crasht damit bei JEDEM "
+        "Aufruf mit AttributeError (auch in Produktion, unabhaengig von "
+        "Mocks). Gleiches Muster in _check_gobd (doc.metadata statt "
+        "doc.document_metadata). Fix liegt in app/services/compliance/"
+        "autopilot_service.py (out-of-zone fuer w3-tests) — siehe Manifest "
+        ".claude/reviews/2026-06-11/manifests/w3-tests.md. Nach dem App-Fix "
+        "schlaegt dieser Test als XPASS(strict) an -> Marker entfernen."
+    ),
+)
 @pytest.mark.asyncio
 async def test_run_gdpr_check(service, mock_db, company_id):
     """Test dedicated GDPR check method."""
