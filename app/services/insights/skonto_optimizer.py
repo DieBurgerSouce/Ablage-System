@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     InvoiceTracking,
+    BankAccount,
     BankTransaction,
     BusinessEntity,
 )
@@ -375,8 +376,13 @@ class SkontoOptimizer:
         company_id: UUID,
     ) -> Decimal:
         """Laedt aktuellen Kontostand."""
-        query = select(func.coalesce(func.sum(BankTransaction.amount), 0)).where(
-            BankTransaction.company_id == company_id
+        # Company-Scope via BankAccount-JOIN (BankTransaction hat KEINE
+        # company_id-Spalte)
+        query = (
+            select(func.coalesce(func.sum(BankTransaction.amount), 0))
+            .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(BankAccount.company_id == company_id)
         )
 
         result = await db.execute(query)

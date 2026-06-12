@@ -28,9 +28,10 @@ from prometheus_client import Counter, Histogram
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BankTransaction, InvoiceTracking, BusinessEntity
+from app.db.models import BankAccount, BankTransaction, InvoiceTracking, BusinessEntity
 from app.core.security.sensitive_data_filter import get_pii_safe_logger
 from app.core.safe_errors import safe_error_log
+from app.services.invoice_direction import is_open_invoice, is_outgoing_invoice
 
 logger = get_pii_safe_logger(__name__)
 
@@ -345,13 +346,13 @@ class SmartReconciliationService:
         match = ReconciliationMatch(
             invoice_id=invoice.id,
             invoice_number=invoice.invoice_number or "",
-            invoice_amount=invoice.gross_amount or Decimal("0"),
+            invoice_amount=Decimal(str(invoice.amount or 0)),
             transaction_amount=transaction.amount,
         )
 
-        # Entity-Name laden
-        if invoice.business_entity_id:
-            entity = await self._get_entity(invoice.business_entity_id)
+        # Entity-Name laden (InvoiceTracking-Spalte heisst entity_id)
+        if invoice.entity_id:
+            entity = await self._get_entity(invoice.entity_id)
             match.entity_name = entity.name if entity else ""
 
         # Faktoren sammeln
@@ -368,7 +369,7 @@ class SmartReconciliationService:
 
         # Strategy 2: Referenznummer im Verwendungszweck
         ref_confidence = self._check_reference_match(
-            transaction.purpose or "",
+            transaction.reference_text or "",
             invoice.invoice_number or ""
         )
         if ref_confidence > 0:
@@ -385,14 +386,14 @@ class SmartReconciliationService:
 
         # Strategy 6: Name-Match
         name_confidence = self._check_name_match(
-            transaction.sender_name or "",
+            transaction.counterparty_name or "",
             match.entity_name
         )
         if name_confidence > 0:
             factors.append((
                 ReconciliationStrategy.NAME_FUZZY,
                 name_confidence,
-                f"Absendername ähnlich: {transaction.sender_name}"
+                f"Absendername ähnlich: {transaction.counterparty_name}"
             ))
 
         if not factors:
@@ -415,7 +416,9 @@ class SmartReconciliationService:
         ]
 
         # Betragsabweichung
-        match.difference = transaction.amount - (invoice.outstanding_amount or invoice.gross_amount or Decimal("0"))
+        match.difference = transaction.amount - Decimal(
+            str(invoice.outstanding_amount or invoice.amount or 0)
+        )
 
         return match
 
@@ -425,15 +428,15 @@ class SmartReconciliationService:
         invoice: InvoiceTracking,
     ) -> float:
         """Prüft IBAN-Übereinstimmung."""
-        if not transaction.sender_iban or not invoice.business_entity_id:
+        if not transaction.counterparty_iban or not invoice.entity_id:
             return 0.0
 
-        entity = await self._get_entity(invoice.business_entity_id)
+        entity = await self._get_entity(invoice.entity_id)
         if not entity or not entity.iban:
             return 0.0
 
         # Normalisieren und vergleichen
-        trans_iban = transaction.sender_iban.replace(" ", "").upper()
+        trans_iban = transaction.counterparty_iban.replace(" ", "").upper()
         entity_iban = entity.iban.replace(" ", "").upper()
 
         if trans_iban == entity_iban:
@@ -474,7 +477,7 @@ class SmartReconciliationService:
     ) -> Optional[Tuple[ReconciliationStrategy, float, str]]:
         """Prüft Betrags-Übereinstimmung (exakt, Skonto, Teilzahlung)."""
         trans_amount = transaction.amount
-        invoice_amount = invoice.outstanding_amount or invoice.gross_amount or Decimal("0")
+        invoice_amount = Decimal(str(invoice.outstanding_amount or invoice.amount or 0))
 
         if invoice_amount <= 0:
             return None
@@ -593,25 +596,35 @@ class SmartReconciliationService:
         """Lädt nicht-reconciled Transaktionen."""
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
 
-        stmt = select(BankTransaction).where(
-            and_(
-                BankTransaction.company_id == company_id,
-                BankTransaction.amount > 0,  # Nur Eingänge
-                BankTransaction.reconciled == False,
-                BankTransaction.booking_date >= cutoff_date,
+        # BankTransaction hat KEINE Spalten company_id/reconciled:
+        # Company-Scope via BankAccount-JOIN, unzugeordnet = kein
+        # gematchtes Dokument (matched_document_id IS NULL).
+        stmt = (
+            select(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(
+                and_(
+                    BankAccount.company_id == company_id,
+                    BankTransaction.amount > 0,  # Nur Eingänge
+                    BankTransaction.matched_document_id.is_(None),
+                    BankTransaction.booking_date >= cutoff_date,
+                )
             )
-        ).order_by(BankTransaction.booking_date.desc())
+            .order_by(BankTransaction.booking_date.desc())
+        )
 
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
     async def _get_open_invoices(self, company_id: UUID) -> List[InvoiceTracking]:
         """Lädt offene Rechnungen."""
+        # InvoiceTracking hat KEINE Spalten is_paid/is_outgoing — offen =
+        # Status-Allowlist, Richtung via Entity-Typ (invoice_direction.py).
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.is_paid == False,
-                InvoiceTracking.is_outgoing == True,  # Nur Ausgangsrechnungen
+                is_open_invoice(),
+                is_outgoing_invoice(),  # Nur Ausgangsrechnungen (Kunde)
             )
         ).order_by(InvoiceTracking.due_date.asc())
 

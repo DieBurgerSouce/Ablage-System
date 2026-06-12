@@ -43,6 +43,7 @@ from app.db.models import (
     Company,
     Document,
     InvoiceTracking,
+    BankAccount,
     BankTransaction,
 )
 from app.core.safe_errors import safe_error_log
@@ -502,17 +503,21 @@ class TaxAuthorityExportService:
         table_def = get_bank_transaction_table_definition()
         file_path = os.path.join(output_dir, f"{table_def.name}.csv")
 
-        # Query bank transactions
+        # Query bank transactions (BankTransaction hat KEINE Spalten
+        # company_id/account_number/bank_code — Company-Scope und
+        # Konto-Identifikation via BankAccount-JOIN)
         result = await self.db.execute(
-            select(BankTransaction).where(
+            select(BankTransaction, BankAccount)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(
                 and_(
-                    BankTransaction.company_id == company_id,
+                    BankAccount.company_id == company_id,
                     BankTransaction.booking_date >= period_start,
                     BankTransaction.booking_date <= period_end,
                 )
             )
         )
-        transactions = result.scalars().all()
+        transactions = result.all()
 
         # Write CSV
         with open(file_path, "w", newline="", encoding=ENCODING) as f:
@@ -522,16 +527,16 @@ class TaxAuthorityExportService:
             writer.writerow([field.name for field in table_def.fields])
 
             # Data rows
-            for tx in transactions:
+            for tx, account in transactions:
                 row = [
                     str(tx.id),
-                    tx.account_number or "",
-                    tx.bank_code or "",
+                    account.iban or "",
+                    account.bic or account.blz or "",
                     tx.booking_date.strftime("%Y-%m-%d") if tx.booking_date else "",
                     tx.value_date.strftime("%Y-%m-%d") if tx.value_date else "",
                     str(tx.amount) if tx.amount else "",
                     tx.currency or "EUR",
-                    (tx.reference or "")[:MAX_FIELD_LENGTH],
+                    (tx.reference_text or "")[:MAX_FIELD_LENGTH],
                     (tx.counterparty_name or "")[:100],
                     tx.counterparty_iban or "",
                     tx.transaction_type or "",
@@ -774,11 +779,14 @@ class TaxAuthorityExportService:
         )
         counts["rechnungen"] = invoice_count.scalar() or 0
 
-        # Bankbewegungen zählen
+        # Bankbewegungen zählen (Company-Scope via BankAccount-JOIN)
         transaction_count = await self.db.execute(
-            select(func.count(BankTransaction.id)).where(
+            select(func.count(BankTransaction.id))
+            .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(
                 and_(
-                    BankTransaction.company_id == company_id,
+                    BankAccount.company_id == company_id,
                     BankTransaction.booking_date >= period_start,
                     BankTransaction.booking_date <= period_end,
                 )

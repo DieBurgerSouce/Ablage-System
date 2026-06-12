@@ -600,11 +600,16 @@ class LiquidityForecastService:
         today = date.today()
         lookback_start = today - timedelta(days=lookback_days)
 
-        # 1. Historische Transaktionen laden
-        query = select(BankTransaction).where(
-            and_(
-                BankTransaction.company_id == company_id,
-                BankTransaction.booking_date >= lookback_start,
+        # 1. Historische Transaktionen laden (BankTransaction hat KEINE
+        # company_id-Spalte — Company-Scope via BankAccount-JOIN)
+        query = (
+            select(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(
+                and_(
+                    BankAccount.company_id == company_id,
+                    BankTransaction.booking_date >= lookback_start,
+                )
             )
         )
 

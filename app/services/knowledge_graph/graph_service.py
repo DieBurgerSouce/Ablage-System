@@ -25,6 +25,7 @@ from app.db.models import (
     BusinessEntity,
     Document,
     InvoiceTracking,
+    BankAccount,
     BankTransaction,
     DocumentEntityLink,
 )
@@ -337,11 +338,18 @@ class KnowledgeGraphService:
                         )
                     )
 
-            # Finde Bank-Transaktionen
-            transactions_query = select(BankTransaction).where(
-                and_(
-                    BankTransaction.linked_entity_id == node_uuid,
-                    BankTransaction.company_id == company_id,
+            # Finde Bank-Transaktionen. BankTransaction hat KEINE Spalten
+            # linked_entity_id/company_id: Entity-Bezug via gematchtes
+            # Dokument, Company-Scope via BankAccount-JOIN.
+            transactions_query = (
+                select(BankTransaction)
+                .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+                .join(Document, BankTransaction.matched_document_id == Document.id)
+                .where(
+                    and_(
+                        Document.business_entity_id == node_uuid,
+                        BankAccount.company_id == company_id,
+                    )
                 )
             )
             transactions_result = await db.execute(transactions_query)
@@ -355,7 +363,7 @@ class KnowledgeGraphService:
                         label=f"{txn.amount} EUR",
                         type="transaction",
                         properties={
-                            "purpose": txn.purpose or "",
+                            "purpose": txn.reference_text or "",
                             "date": txn.value_date.isoformat() if txn.value_date else "",
                         },
                     )
@@ -1037,13 +1045,21 @@ class KnowledgeGraphService:
                 "documents": invoice_nodes,
             })
 
-        # Stage: Transaktionen/Zahlungen
-        txns_query = select(BankTransaction).where(
-            and_(
-                BankTransaction.linked_entity_id == entity_id,
-                BankTransaction.company_id == company_id,
+        # Stage: Transaktionen/Zahlungen. BankTransaction hat KEINE Spalten
+        # linked_entity_id/company_id: Entity-Bezug via gematchtes Dokument,
+        # Company-Scope via BankAccount-JOIN.
+        txns_query = (
+            select(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .join(Document, BankTransaction.matched_document_id == Document.id)
+            .where(
+                and_(
+                    Document.business_entity_id == entity_id,
+                    BankAccount.company_id == company_id,
+                )
             )
-        ).limit(50)
+            .limit(50)
+        )
         txns_result = await db.execute(txns_query)
         txns = txns_result.scalars().all()
 
@@ -1056,7 +1072,7 @@ class KnowledgeGraphService:
                 "data": {
                     "amount": float(txn.amount or 0),
                     "date": txn.value_date.isoformat() if txn.value_date else None,
-                    "purpose": txn.purpose or "",
+                    "purpose": txn.reference_text or "",
                 },
             })
 
@@ -1106,11 +1122,17 @@ class KnowledgeGraphService:
 
         nodes: List[Dict[str, object]] = []
         for entity in entities:
-            # Berechne Transaktionsvolumen
-            vol_query = select(BankTransaction.amount).where(
-                and_(
-                    BankTransaction.linked_entity_id == entity.id,
-                    BankTransaction.company_id == company_id,
+            # Berechne Transaktionsvolumen (Entity-Bezug via gematchtes
+            # Dokument, Company-Scope via BankAccount-JOIN — siehe oben)
+            vol_query = (
+                select(BankTransaction.amount)
+                .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+                .join(Document, BankTransaction.matched_document_id == Document.id)
+                .where(
+                    and_(
+                        Document.business_entity_id == entity.id,
+                        BankAccount.company_id == company_id,
+                    )
                 )
             )
             vol_result = await db.execute(vol_query)
