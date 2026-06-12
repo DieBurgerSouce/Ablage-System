@@ -81,7 +81,7 @@ export function SplitViewLayout({
 
     return (
         <ResizablePanelGroup
-            direction="horizontal"
+            orientation="horizontal"
             className="min-h-[calc(100vh-280px)] rounded-lg border"
         >
             {/* Linkes Panel: PDF/Bild-Vorschau */}

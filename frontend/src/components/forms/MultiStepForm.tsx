@@ -23,7 +23,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, createContext, useContext } from 'react';
-import { useForm, FormProvider, type UseFormReturn } from 'react-hook-form';
+import { useForm, FormProvider, type UseFormReturn, type FieldValues, type Path, type DefaultValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,7 +36,7 @@ import { logger } from '@/lib/logger';
 
 // ==================== Types ====================
 
-export interface StepProps<T = Record<string, unknown>> {
+export interface StepProps<T extends FieldValues = FieldValues> {
     /** Form methods from react-hook-form */
     form: UseFormReturn<T>;
     /** Move to next step */
@@ -53,7 +53,7 @@ export interface StepProps<T = Record<string, unknown>> {
     isSubmitting: boolean;
 }
 
-export interface Step<T = Record<string, unknown>> {
+export interface Step<T extends FieldValues = FieldValues> {
     /** Unique step identifier */
     id: string;
     /** Step title (shown in indicator) */
@@ -68,7 +68,7 @@ export interface Step<T = Record<string, unknown>> {
     fields?: (keyof T)[];
 }
 
-export interface MultiStepFormProps<T extends Record<string, unknown>> {
+export interface MultiStepFormProps<T extends FieldValues> {
     /** Array of step definitions */
     steps: Step<T>[];
     /** Called when form is completed */
@@ -76,7 +76,8 @@ export interface MultiStepFormProps<T extends Record<string, unknown>> {
     /** Initial form data */
     initialData?: Partial<T>;
     /** Combined Zod schema for entire form (optional) */
-    schema?: z.ZodSchema<T>;
+    /** Zod-Schema; Input und Output muessen T sein, damit der Resolver zu useForm<T> passt */
+    schema?: z.ZodType<T, T>;
     /** Key for SessionStorage persistence */
     persistKey?: string;
     /** Custom class for container */
@@ -114,7 +115,7 @@ export function useWizard() {
 
 // ==================== Main Component ====================
 
-export function MultiStepForm<T extends Record<string, unknown>>({
+export function MultiStepForm<T extends FieldValues>({
     steps,
     onComplete,
     initialData,
@@ -134,7 +135,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
     // Initialize form with schema if provided
     const form = useForm<T>({
         resolver: schema ? zodResolver(schema) : undefined,
-        defaultValues: initialData as T,
+        defaultValues: initialData as DefaultValues<T>,
         mode: 'onChange',
     });
 
@@ -299,7 +300,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
 
         // If step has specific fields, validate only those
         if (stepConfig.fields && stepConfig.fields.length > 0) {
-            const result = await form.trigger(stepConfig.fields as string[]);
+            const result = await form.trigger(stepConfig.fields as unknown as Path<T>[]);
             return result;
         }
 
@@ -357,7 +358,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
             for (let i = currentStep; i < step; i++) {
                 const stepConfig = steps[i];
                 if (stepConfig.fields) {
-                    const isValid = await form.trigger(stepConfig.fields as string[]);
+                    const isValid = await form.trigger(stepConfig.fields as unknown as Path<T>[]);
                     if (!isValid) {
                         setCurrentStep(i);
                         return;
@@ -434,9 +435,8 @@ export function MultiStepForm<T extends Record<string, unknown>>({
                                 exit="exit"
                                 transition={{ duration: 0.2, ease: 'easeInOut' }}
                             >
-                                {/* Type assertion is safe: T extends Record<string, unknown> per constraint */}
                                 <StepComponent
-                                    form={form as UseFormReturn<T & Record<string, unknown>>}
+                                    form={form}
                                     goNext={goNext}
                                     goPrev={goPrev}
                                     currentStep={currentStep}
@@ -513,13 +513,13 @@ export function MultiStepForm<T extends Record<string, unknown>>({
 
 // ==================== Step Indicator ====================
 
-interface StepIndicatorProps {
-    steps: Step[];
+interface StepIndicatorProps<T extends FieldValues> {
+    steps: Step<T>[];
     currentStep: number;
     onStepClick: (step: number) => void;
 }
 
-function StepIndicator({ steps, currentStep, onStepClick }: StepIndicatorProps) {
+function StepIndicator<T extends FieldValues>({ steps, currentStep, onStepClick }: StepIndicatorProps<T>) {
     return (
         <div className="flex items-center justify-center">
             {steps.map((step, index) => {
