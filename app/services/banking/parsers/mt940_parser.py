@@ -83,68 +83,79 @@ class MT940Parser(BaseParser):
         )
 
         try:
-            # Parse mit mt-940 Bibliothek
-            statements = mt940_parse(content)
+            # Parse mit mt-940 Bibliothek.
+            #
+            # BUGFIX (2026-06-12): mt940.parse() liefert eine Transactions-
+            # COLLECTION (Statement-Metadaten wie :25:/:60F:/:62F: liegen in
+            # .data), KEINE Liste von Statement-Objekten. Der alte Code
+            # iterierte die Collection und behandelte jede TRANSAKTION als
+            # "Statement": account_id/bic existierten dort nie (account blieb
+            # immer None) und ueber den .transactions-Backref wurde jede
+            # Transaktion N-fach verarbeitet (quadratische Duplikate ab 2
+            # Transaktionen pro Datei).
+            transactions_obj = mt940_parse(content)
+            statement_data = dict(getattr(transactions_obj, "data", {}) or {})
+            mt940_transactions = list(transactions_obj)
 
-            if not statements:
+            if not mt940_transactions and not statement_data.get(
+                "account_identification"
+            ):
                 result.errors.append({
                     "type": "parse_error",
                     "message": "Keine MT940-Statements gefunden",
                 })
                 return result
 
-            # Verarbeite alle Statements
-            for statement in statements:
-                # Kontoinfo
-                if hasattr(statement, "account_id") and statement.account_id:
-                    account_id = statement.account_id
-                    # Versuche IBAN zu extrahieren
-                    if len(account_id) >= 15 and account_id[:2].isalpha():
-                        result.account_iban = self.normalize_iban(account_id)
+            # Kontoinfo aus :25: (Formate: "IBAN", "IBAN/BIC", "BLZ/Konto")
+            account_identification = statement_data.get("account_identification")
+            if account_identification:
+                first_part, _, second_part = str(
+                    account_identification
+                ).partition("/")
+                if len(first_part) >= 15 and first_part[:2].isalpha():
+                    result.account_iban = self.normalize_iban(first_part)
+                    # Suffix nach "/" ist bei IBAN-Form i.d.R. der BIC
+                    if second_part and re.fullmatch(
+                        r"[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?", second_part
+                    ):
+                        result.account_bic = second_part
+                else:
+                    # BLZ/Konto oder unbekanntes Format: unveraendert ablegen
+                    result.account_number = str(account_identification)
+
+            # Salden aus Statement-Metadaten
+            ob = statement_data.get(
+                "final_opening_balance"
+            ) or statement_data.get("opening_balance")
+            if ob:
+                result.opening_balance = Decimal(str(ob.amount.amount))
+                result.date_from = ob.date
+
+            cb = statement_data.get(
+                "final_closing_balance"
+            ) or statement_data.get("closing_balance")
+            if cb:
+                result.closing_balance = Decimal(str(cb.amount.amount))
+                result.balance_date = cb.date
+
+            # Transaktionen (jede genau einmal)
+            for tx in mt940_transactions:
+                parsed = self._parse_transaction(tx)
+                if parsed:
+                    result.transactions.append(parsed)
+
+                    # Statistik
+                    if parsed.amount > 0:
+                        result.total_credits += parsed.amount
                     else:
-                        result.account_number = account_id
+                        result.total_debits += abs(parsed.amount)
 
-                # BIC
-                if hasattr(statement, "bic") and statement.bic:
-                    result.account_bic = statement.bic
-
-                # Salden
-                if hasattr(statement, "opening_balance"):
-                    ob = statement.opening_balance
-                    if ob:
-                        result.opening_balance = Decimal(str(ob.amount.amount))
-                        result.date_from = ob.date
-
-                if hasattr(statement, "final_closing_balance"):
-                    cb = statement.final_closing_balance
-                    if cb:
-                        result.closing_balance = Decimal(str(cb.amount.amount))
-                        result.balance_date = cb.date
-                elif hasattr(statement, "closing_balance"):
-                    cb = statement.closing_balance
-                    if cb:
-                        result.closing_balance = Decimal(str(cb.amount.amount))
-                        result.balance_date = cb.date
-
-                # Transaktionen
-                if hasattr(statement, "transactions"):
-                    for tx in statement.transactions:
-                        parsed = self._parse_transaction(tx)
-                        if parsed:
-                            result.transactions.append(parsed)
-
-                            # Statistik
-                            if parsed.amount > 0:
-                                result.total_credits += parsed.amount
-                            else:
-                                result.total_debits += abs(parsed.amount)
-
-                            # Zeitraum aktualisieren
-                            if parsed.booking_date:
-                                if not result.date_from or parsed.booking_date < result.date_from:
-                                    result.date_from = parsed.booking_date
-                                if not result.date_to or parsed.booking_date > result.date_to:
-                                    result.date_to = parsed.booking_date
+                    # Zeitraum aktualisieren
+                    if parsed.booking_date:
+                        if not result.date_from or parsed.booking_date < result.date_from:
+                            result.date_from = parsed.booking_date
+                        if not result.date_to or parsed.booking_date > result.date_to:
+                            result.date_to = parsed.booking_date
 
             result.success = True
 
