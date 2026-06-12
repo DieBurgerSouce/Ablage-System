@@ -478,7 +478,5 @@ export function useGlobalUndoRedo(): UseUndoRedoReturn {
   return context;
 }
 
-// ==================== Exports ====================
-
-export type { UndoableAction, ActionDefinition, UseUndoRedoOptions, UseUndoRedoReturn };
+// Typen sind bereits an ihrer Deklaration exportiert (kein Re-Export noetig).
 export default useUndoRedo;

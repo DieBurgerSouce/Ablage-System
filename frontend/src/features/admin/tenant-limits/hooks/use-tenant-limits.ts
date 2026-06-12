@@ -6,7 +6,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { UUID } from '@/types';
+// '@/types' exportiert kein UUID — UUIDs sind im Frontend einfache Strings
+type UUID = string;
 
 // ==================== Types ====================
 

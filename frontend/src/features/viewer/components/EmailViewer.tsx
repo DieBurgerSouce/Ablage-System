@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config as DOMPurifyConfig } from 'dompurify';
 import {
     Loader2,
     AlertTriangle,
@@ -277,7 +277,7 @@ function formatEmailDate(dateString: string): string {
  *
  * E-Mails sind nicht vertrauenswürdige Eingaben - minimale Erlaubnisse!
  */
-const PURIFY_CONFIG: DOMPurify.Config = {
+const PURIFY_CONFIG: DOMPurifyConfig = {
     ALLOWED_TAGS: [
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'p', 'br', 'hr', 'div', 'span',

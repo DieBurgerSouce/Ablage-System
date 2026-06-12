@@ -16,7 +16,9 @@ export { useSpotlightSearch } from './use-spotlight-search';
 // Voice Search Hook
 export { useVoiceSearch } from './use-voice-search';
 
-// Re-export types
-export type { UseSearchOptions, UseSmartSearchOptions, UseSmartAutocompleteOptions } from './useSmartSearch';
+// Re-export types (aus den Modulen, die sie tatsaechlich deklarieren)
+export type { UseSearchOptions } from './useSearch';
+export type { UseSmartAutocompleteOptions } from './useSmartAutocomplete';
+export type { UseSmartSearchOptions, UseSmartSearchReturn } from './useSmartSearch';
 export type { SmartSearchFilters } from '../api/smart-search-api';
 export type { UseVoiceSearchOptions, UseVoiceSearchReturn } from './use-voice-search';

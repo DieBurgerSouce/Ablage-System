@@ -769,6 +769,4 @@ export const SHORTCUT_LABELS = {
   cut: 'Ausschneiden',
 } as const;
 
-// ==================== Exports ====================
-
-export type { KeyboardShortcut, KeySequence, ShortcutScope, ShortcutCategory };
+// Typen sind bereits an ihrer Deklaration exportiert (kein Re-Export noetig).

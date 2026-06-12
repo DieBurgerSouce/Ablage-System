@@ -8,12 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-interface SyncQueueItem {
-  id: string
-  type: string
-  timestamp: number
-}
-
 export function OfflineSyncStatusBar() {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [queueCount, setQueueCount] = useState(0)

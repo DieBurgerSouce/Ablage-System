@@ -8,7 +8,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import mammoth from 'mammoth';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config as DOMPurifyConfig } from 'dompurify';
+
+// mammoth nutzt 'export =' und exportiert seine Typen nicht einzeln —
+// Message-Typ aus der Rueckgabe von convertToHtml ableiten.
+type MammothMessage = Awaited<ReturnType<typeof mammoth.convertToHtml>>['messages'][number];
 import { Loader2, AlertTriangle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
@@ -25,13 +29,13 @@ interface DocxViewerProps {
 
 interface ConversionResult {
     html: string;
-    messages: mammoth.Message[];
+    messages: MammothMessage[];
 }
 
 // ==================== Sanitization Config ====================
 
 // Configure DOMPurify to allow safe HTML elements from Word docs
-const PURIFY_CONFIG: DOMPurify.Config = {
+const PURIFY_CONFIG: DOMPurifyConfig = {
     ALLOWED_TAGS: [
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'p', 'br', 'hr',
@@ -56,7 +60,7 @@ const PURIFY_CONFIG: DOMPurify.Config = {
 
 export function DocxViewer({ fileData, className }: DocxViewerProps) {
     const [htmlContent, setHtmlContent] = useState<string | null>(null);
-    const [messages, setMessages] = useState<mammoth.Message[]>([]);
+    const [messages, setMessages] = useState<MammothMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [scale, setScale] = useState(1.0);

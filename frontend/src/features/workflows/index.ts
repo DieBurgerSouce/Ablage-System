@@ -60,15 +60,14 @@ export {
   useCancelExecution,
   useRetryExecution,
   useTemplates,
-  useTemplate,
   useInstantiateTemplate,
   useWebhookConfig,
   useRegenerateWebhookSecret,
   useWorkflowStats,
   useOverviewStats,
   useExecutionHistory,
-  useAvailableOperators,
-  useAvailableFields,
+  useOperators,
+  useFields,
   workflowKeys,
 } from './hooks/useWorkflows';
 
