@@ -312,6 +312,10 @@ IGNORE_PATTERNS = [
     r"DEPRECATED",
     r"healthcheck",
     r"health check",
+    # Celery druckt beim Start die Task-Registry als ". <task_name>"-Zeilen;
+    # Task-Namen wie alert_on_critical_dlq_count matchen sonst das
+    # IGNORECASE-"CRITICAL"-Pattern (False Positive, Loop-3 2026-06-12).
+    r"^\s*\.\s+app\.workers\.",
 ]
 
 

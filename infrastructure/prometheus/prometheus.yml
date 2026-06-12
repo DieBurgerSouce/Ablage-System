@@ -48,6 +48,19 @@ scrape_configs:
         target_label: instance
         replacement: 'ablage-worker'
 
+  # Celery CPU-Worker Metrics (W4: fehlte komplett — worker-cpu bedient die
+  # Queues validation/.../privat und fuehrt praktisch alle Beat-Tasks aus;
+  # ohne diesen Scrape blieb ablage_celery_tasks_total flach und
+  # CeleryNoActivity feuerte dauerhaft trotz gesundem Celery.)
+  - job_name: 'ablage-worker-cpu'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['worker-cpu:8001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ablage-worker-cpu'
+
   # PostgreSQL Metrics (via postgres_exporter)
   # ENTERPRISE FIX: Container-Name statt Service-Name fuer DNS-Aufloesung
   - job_name: 'postgres'

@@ -1327,7 +1327,11 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: ablage-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # W4: Der Go-lib/pq-Treiber des Exporters kennt KEIN sslmode=prefer
+      # (nur require/verify-full/verify-ca/disable) -> pg_up=0, Alert
+      # "PostgreSQLDown" feuerte dauerhaft. Internes Docker-Netz -> disable;
+      # bei echtem TLS POSTGRES_EXPORTER_SSLMODE=require setzen.
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${POSTGRES_EXPORTER_SSLMODE:-disable}
     ports:
       - "127.0.0.1:9187:9187"  # Nur localhost
     depends_on:
