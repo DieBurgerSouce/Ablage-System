@@ -248,7 +248,7 @@ export function ProactiveInsightsWidget() {
             critical: summary.critical_count,
             high: summary.high_count,
             potentialValue: summary.total_potential_value,
-            dataQuality: summary.data_quality_score,
+            dataQuality: summary.data_quality_score ?? null,
         };
     }, [summary]);
 

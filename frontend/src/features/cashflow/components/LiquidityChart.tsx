@@ -43,7 +43,9 @@ export function LiquidityChart({ forecast, currency = 'EUR' }: LiquidityChartPro
     const zones: { start: string; end: string; type: 'warning' | 'critical' }[] = [];
     let currentZone: { start: string; type: 'warning' | 'critical' } | null = null;
 
-    forecast.forEach((day, index) => {
+    // for-of statt forEach, damit TypeScript die currentZone-Zuweisungen
+    // im Kontrollfluss verfolgen kann (sonst TS2698 beim Spread)
+    for (const [index, day] of forecast.entries()) {
       const type = day.is_critical ? 'critical' : day.is_warning ? 'warning' : null;
 
       if (type && !currentZone) {
@@ -55,7 +57,7 @@ export function LiquidityChart({ forecast, currency = 'EUR' }: LiquidityChartPro
         zones.push({ ...currentZone, end: forecast[index - 1].date });
         currentZone = { start: day.date, type };
       }
-    });
+    }
 
     if (currentZone) {
       zones.push({ ...currentZone, end: forecast[forecast.length - 1].date });
