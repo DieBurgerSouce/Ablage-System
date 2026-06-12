@@ -334,7 +334,7 @@ export function validateCreateRequest(data: unknown): {
 } | {
   success: false;
   error: string;
-  details: z.ZodError['errors'];
+  details: z.ZodError['issues'];
 } {
   const result = ssoProviderCreateSchema.safeParse(data);
   if (result.success) {
@@ -342,7 +342,7 @@ export function validateCreateRequest(data: unknown): {
   }
 
   // Get first error message for display
-  const firstError = result.error.errors[0];
+  const firstError = result.error.issues[0];
   const errorPath = firstError.path.join('.');
   const errorMessage = errorPath
     ? `${errorPath}: ${firstError.message}`
@@ -351,7 +351,7 @@ export function validateCreateRequest(data: unknown): {
   return {
     success: false,
     error: errorMessage,
-    details: result.error.errors,
+    details: result.error.issues,
   };
 }
 
@@ -371,13 +371,13 @@ export function validateProviderResponse(data: unknown): ValidateProviderRespons
     return { success: true, data: result.data };
   }
   // Get first error for display
-  const firstError = result.error.errors[0];
+  const firstError = result.error.issues[0];
   const errorPath = firstError.path.join('.');
   const errorMessage = errorPath
     ? `${errorPath}: ${firstError.message}`
     : firstError.message;
 
-  logger.error('[SSO] Validation failed:', errorMessage, result.error.errors);
+  logger.error('[SSO] Validation failed:', errorMessage, result.error.issues);
   return { success: false, error: errorMessage, data: null };
 }
 
@@ -390,6 +390,6 @@ export function validateProviderListResponse(data: unknown): SSOProviderListItem
   }
   return data
     .map(item => ssoProviderListItemSchema.safeParse(item))
-    .filter((result): result is z.SafeParseSuccess<SSOProviderListItem> => result.success)
+    .filter((result): result is z.ZodSafeParseSuccess<SSOProviderListItem> => result.success)
     .map(result => result.data);
 }
