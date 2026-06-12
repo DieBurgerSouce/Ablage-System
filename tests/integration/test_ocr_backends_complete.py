@@ -274,89 +274,99 @@ class TestDeepSeekLayoutDetection:
 
 
 class TestGOTOCRGermanPostProcessing:
-    """Test GOT-OCR German post-processing functionality."""
+    """Test GOT-OCR German post-processing functionality.
+
+    W3 (2026-06-12): Auf den echten Vertrag modernisiert — _postprocess_german
+    nimmt/liefert ein OCRResult-OBJEKT (app/agents/base.py), kein dict mit
+    german_processed/corrections-Keys (alte API existiert nicht mehr).
+    Korrekturen kommen aus dem Unified German Postprocessor.
+    """
 
     @pytest.fixture
     def got_ocr_agent(self):
         """Create GOT-OCR agent for testing."""
         try:
-            from agents.ocr.got_ocr_agent import GOTOCRAgent
+            from app.agents.ocr.got_ocr_agent import GOTOCRAgent
             return GOTOCRAgent()
         except ImportError:
             pytest.skip("GOT-OCR agent not available")
+
+    @staticmethod
+    def _ocr_result(text: str):
+        from app.agents.base import OCRResult
+        return OCRResult(
+            success=True,
+            text=text,
+            confidence=0.9,
+            backend="got_ocr",
+        )
 
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_umlaut_restoration(self, got_ocr_agent):
         """Test umlaut restoration for common German words."""
-        result = {"text": "Die Ueberprüfung der Groesse war noetig."}
+        result = self._ocr_result("Mueller aus Muenchen liefert die Ware.")
         processed = await got_ocr_agent._postprocess_german(result)
 
-        # Should restore umlauts in known words
-        assert processed["german_processed"] == True
-        # Check for corrections (at least some should be made)
-        assert "corrections" in processed
+        # Bekannte Woerter werden korrigiert, has_umlauts wird gesetzt
+        assert "Müller" in processed.text
+        assert "München" in processed.text
+        assert processed.has_umlauts is True
 
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_eszett_restoration(self, got_ocr_agent):
         """Test ß restoration for known words."""
-        result = {"text": "Die Strasse ist gross."}
+        result = self._ocr_result("Die Strasse ist gross.")
         processed = await got_ocr_agent._postprocess_german(result)
 
-        # Should restore ß in known words
-        text = processed["text"]
-        assert "straße" in text.lower() or "groß" in text.lower()
-        assert processed["german_processed"] == True
+        assert "straße" in processed.text.lower()
+        assert "groß" in processed.text.lower()
+        assert processed.has_umlauts is True
 
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_preserve_correct_text(self, got_ocr_agent):
         """Test that already correct text is preserved."""
-        result = {"text": "Die Größe der Straße ist korrekt."}
+        result = self._ocr_result("Die Größe der Straße ist korrekt.")
         processed = await got_ocr_agent._postprocess_german(result)
 
-        # Text should remain the same
-        assert "Größe" in processed["text"]
-        assert "Straße" in processed["text"]
+        assert "Größe" in processed.text
+        assert "Straße" in processed.text
 
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_mixed_text_handling(self, got_ocr_agent):
         """Test handling of text with mixed correct and incorrect umlauts."""
-        result = {"text": "Müller aus Muenchen prüft die Größe."}
+        result = self._ocr_result("Müller aus Muenchen kennt die Größe.")
         processed = await got_ocr_agent._postprocess_german(result)
 
-        # Should preserve correct umlauts and fix incorrect ones
-        assert "Müller" in processed["text"]
-        assert "Größe" in processed["text"]
-        assert processed["german_processed"] == True
+        # Korrekte Umlaute bleiben erhalten, bekannte Fehler werden korrigiert
+        assert "Müller" in processed.text
+        assert "Größe" in processed.text
+        assert "München" in processed.text
+        assert processed.has_umlauts is True
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_corrections_tracking(self, got_ocr_agent):
-        """Test that corrections are tracked."""
-        result = {"text": "Die Strasse ist gross."}
+    async def test_empty_text_is_noop(self, got_ocr_agent):
+        """Leerer Text wird unveraendert zurueckgegeben (kein Crash)."""
+        result = self._ocr_result("")
         processed = await got_ocr_agent._postprocess_german(result)
 
-        # Should have corrections list
-        assert "corrections" in processed
-        assert "corrections_count" in processed
-        # At least one correction should be made
-        if processed["corrections_count"] > 0:
-            assert len(processed["corrections"]) > 0
+        assert processed.text == ""
+        assert processed.has_umlauts is False
 
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_validator_integration(self, got_ocr_agent):
-        """Test integration with GermanValidator."""
-        result = {"text": "Müller GmbH aus München, Straße 123"}
+        """Postprocessor setzt Qualitaets-Score-Feld (>= 0.0)."""
+        result = self._ocr_result("Müller GmbH aus München, Straße 123")
         processed = await got_ocr_agent._postprocess_german(result)
 
-        # Should include validation result if validator is available
-        if "umlaut_validation" in processed:
-            assert "umlauts_found" in processed["umlaut_validation"]
-            assert "confidence" in processed["umlaut_validation"]
+        # Realer Vertrag: Score landet in german_validation_score (float)
+        assert isinstance(processed.german_validation_score, float)
+        assert processed.german_validation_score >= 0.0
 
 
 class TestGermanValidatorIntegration:
