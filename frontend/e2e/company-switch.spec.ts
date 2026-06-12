@@ -95,6 +95,14 @@ test.describe('Firmenwechsel - UI', () => {
     const companies = Array.isArray(body) ? body : body.companies || body.items || [];
     expect(companies.length).toBeGreaterThan(0);
 
+    // Auf eine nicht-crashende Route wechseln: Das Admin-Dashboard ('/')
+    // crasht aktuell im ErrorBoundary (App-Bug: Tooltip ohne TooltipProvider,
+    // DashboardGridEnhanced.tsx:302) — dann ist auch die Sidebar samt
+    // CompanySwitcher unmounted. Der Switcher ist global, /kunden ist gleichwertig.
+    await page.goto('/kunden');
+    await page.waitForLoadState('domcontentloaded');
+    await page.locator('#main-content').waitFor({ state: 'attached', timeout: 15000 });
+
     // In beiden Varianten ist der Name der aktuellen Firma sichtbar
     await expect(page.getByText('E2E Test GmbH').first()).toBeVisible({ timeout: 15000 });
 

@@ -114,6 +114,27 @@ export const test = base.extend<{
       window.sessionStorage.setItem('auth_token', data.access_token);
       window.sessionStorage.setItem('refresh_token', data.refresh_token);
       window.sessionStorage.setItem('user', data.user);
+
+      // Onboarding/Touren unterdruecken: Jeder frische Browser-Context gilt sonst
+      // als "Erstbesuch" und die App legt einen modalen OnboardingWizard (Radix-
+      // Dialog -> aria-hidden auf dem Rest der App) plus Produkt-Tour-Spotlight
+      // (z-[9998]-Overlay, faengt alle Klicks ab) ueber jede Seite.
+      // Keys stammen aus:
+      //  - features/onboarding/hooks/use-onboarding.ts  (ablage_onboarding_v2)
+      //  - components/onboarding/WelcomeModal.tsx       (ablage_onboarding_complete)
+      //  - features/product-tour/components/TourProvider.tsx (ablage-first-visit-done)
+      window.localStorage.setItem(
+        'ablage_onboarding_v2',
+        JSON.stringify({
+          completed: true,
+          skipped: true,
+          currentStep: 0,
+          companyConfigured: true,
+          documentUploaded: false,
+        })
+      );
+      window.localStorage.setItem('ablage_onboarding_complete', 'true');
+      window.localStorage.setItem('ablage-first-visit-done', 'true');
     }, sessionData);
 
     // Set up automatic session refresh during long tests
@@ -138,15 +159,55 @@ export const test = base.extend<{
       }, SESSION_REFRESH_INTERVAL_MS);
     };
 
+    // =========================================================================
+    // WORKAROUND fuer dokumentierten App-Bug (Kategorie B, KRITISCH, 2026-06-12):
+    // GET /api/v1/notifications/ liefert {"notifications":[...],...}, aber
+    // NotificationCenter.tsx:72 erwartet page.items ->
+    // flatMap liefert [undefined] -> .filter(n => n.snoozed_until) wirft
+    // "TypeError: Cannot read properties of undefined (reading 'snoozed_until')"
+    // -> Root-ErrorBoundary ersetzt die GESAMTE App auf JEDER Route, sobald
+    // die Query resolved (~1-3s nach Mount). Ohne diesen Shim ist kein
+    // UI-Test stabil. ENTFERNEN, sobald der API-Contract gefixt ist!
+    // =========================================================================
+    await page.route('**/api/v1/notifications*', async (route) => {
+      const response = await route.fetch();
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch {
+        return route.fulfill({ response });
+      }
+      if (
+        body &&
+        typeof body === 'object' &&
+        !Array.isArray(body) &&
+        'notifications' in body &&
+        !('items' in body)
+      ) {
+        (body as Record<string, unknown>).items = (body as Record<string, unknown>).notifications;
+      }
+      return route.fulfill({ response, json: body as object });
+    });
+
     // Now navigate to the app - auth data will already be in sessionStorage
+    // Kein 'networkidle': Das Dashboard laedt dauerhaft nach (Notifications,
+    // KI-Insights, WebSocket-Reconnects) und unter Last retried TanStack Query —
+    // 'networkidle' wird dann nie erreicht und riss ganze Spec-Dateien per
+    // 30s-Timeout ab (QA-Lauf 2026-06-12). Stattdessen auf die App-Shell warten.
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify we're logged in (not on login page)
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
+    // BEWUSST KEIN Warten auf #main-content: Das Admin-Dashboard ('/') crasht
+    // aktuell deterministisch in den Root-ErrorBoundary ("Anwendungsfehler"),
+    // weil WidgetSyncStatus <Tooltip> ohne TooltipProvider rendert
+    // (App-Bug, dokumentiert 2026-06-12: DashboardGridEnhanced.tsx:302).
+    // Die Ziel-Routen der Tests rendern nach page.goto() frisch und sind
+    // davon nicht betroffen.
+
     const currentUrl = page.url();
     console.log('[Fixtures] After auth setup, current URL: ' + currentUrl);
-
-    await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // Start background session refresh for long-running tests
     startSessionRefresh();

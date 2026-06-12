@@ -59,8 +59,11 @@ test.describe('Auth Error Handling - API', () => {
   test('Rate-Limiting/Abweisung nach mehreren Fehlversuchen (401 oder 429)', async ({ request }) => {
     const statuses: number[] = [];
     for (let i = 0; i < 6; i++) {
+      // WICHTIG: keine .local-Domain verwenden — der Backend-E-Mail-Validator
+      // (pydantic/email-validator) lehnt Special-Use-Domains wie .local mit
+      // 422 ab, BEVOR die Credential-Pruefung greift (verifiziert 2026-06-12).
       const resp = await request.post(`${API_BASE}/api/v1/auth/login`, {
-        data: { email: 'test@rate-limit.local', password: 'WrongPassword!' },
+        data: { email: 'falsche-creds@example.com', password: 'WrongPassword!' },
       });
       statuses.push(resp.status());
     }
@@ -111,7 +114,7 @@ test.describe('Auth Error Handling - Geschuetzte Routen ohne Auth', () => {
     });
 
     await page.goto('/documents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(page).toHaveURL(/login|auth/i, { timeout: 10000 });
   });
 
@@ -123,7 +126,7 @@ test.describe('Auth Error Handling - Geschuetzte Routen ohne Auth', () => {
       window.sessionStorage.clear();
     });
     await page.goto('/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(page).toHaveURL(/login|auth|forbidden/i, { timeout: 10000 });
   });
 });

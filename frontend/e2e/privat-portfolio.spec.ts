@@ -21,20 +21,20 @@ test.describe('Privat - Portfolio', () => {
     });
 
     await page.goto('/privat/portfolio');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     await expect(
       page.getByRole('heading', { name: 'Portfolio' })
     ).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/Etwas ist schiefgelaufen|Unerwarteter Fehler/)).toHaveCount(0);
+    await expect(page.getByText(/Etwas ist schiefgelaufen|[Uu]nerwarteter Fehler|Anwendungsfehler/)).toHaveCount(0);
 
     expect(serverErrors, `Portfolio loeste 5xx aus: ${serverErrors.join(', ')}`).toHaveLength(0);
   });
 
   test('Privat-Index laedt ohne Fehlerzustand', async ({ authenticatedPage: page }) => {
     await page.goto('/privat');
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByText(/Etwas ist schiefgelaufen|Unerwarteter Fehler/)).toHaveCount(0);
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await expect(page.getByText(/Etwas ist schiefgelaufen|[Uu]nerwarteter Fehler|Anwendungsfehler/)).toHaveCount(0);
     await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15000 });
   });
 });

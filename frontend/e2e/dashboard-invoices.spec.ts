@@ -26,10 +26,14 @@ test.describe('Dashboard - UI', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
-    // Kein React-Error-Boundary / kein unbehandelter Fehler sichtbar
-    await expect(page.getByText(/Etwas ist schiefgelaufen|Unerwarteter Fehler/)).toHaveCount(0);
+    // Kein React-Error-Boundary / kein unbehandelter Fehler sichtbar.
+    // HINWEIS: Schlaegt aktuell KORREKT fehl — bekannter App-Bug (Kategorie B,
+    // 2026-06-12): Das Admin-Dashboard ('/') crasht in den Root-ErrorBoundary
+    // ("Anwendungsfehler"), weil WidgetSyncStatus <Tooltip> ohne
+    // TooltipProvider rendert (DashboardGridEnhanced.tsx:302).
+    await expect(page.getByText(/Etwas ist schiefgelaufen|[Uu]nerwarteter Fehler|Anwendungsfehler/)).toHaveCount(0);
     // Dashboard hat mindestens eine Ueberschrift gerendert (kein Blank-Screen)
     await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15000 });
 

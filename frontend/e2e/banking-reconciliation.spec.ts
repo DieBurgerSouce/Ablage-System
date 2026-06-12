@@ -67,7 +67,7 @@ test.describe('Banking - CSV-Import-Journey', () => {
   test('CSV hochladen, Vorschau erstellen, ggf. importieren', async ({ authenticatedPage: page }) => {
     test.setTimeout(120_000);
     await page.goto('/admin/banking/import');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     await expect(
       page.getByRole('heading', { name: 'Transaktionen importieren' })
@@ -114,12 +114,12 @@ test.describe('Banking - CSV-Import-Journey', () => {
 
   test('Transaktionsliste und Zahlungsabgleich laden ohne Fehlerseite', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/banking/transactions');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     // Seite darf keinen unbehandelten Fehler zeigen
-    await expect(page.getByText(/Etwas ist schiefgelaufen|Unerwarteter Fehler/)).toHaveCount(0);
+    await expect(page.getByText(/Etwas ist schiefgelaufen|[Uu]nerwarteter Fehler|Anwendungsfehler/)).toHaveCount(0);
 
     await page.goto('/admin/banking/reconciliation');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(
       page.getByRole('heading', { name: 'Zahlungsabgleich' })
     ).toBeVisible({ timeout: 15000 });

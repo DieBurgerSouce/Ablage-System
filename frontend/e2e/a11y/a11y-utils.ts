@@ -22,6 +22,26 @@ export interface A11yViolation {
 }
 
 /**
+ * Wartet, bis die App-Shell steht und Lade-Skeletons verschwunden sind.
+ *
+ * Axe soll den fertig geladenen Zustand pruefen: Der Lade-Shimmer
+ * (.animate-pulse-Skeletons, Platzhalter-Buttons) erzeugt transiente
+ * button-name/color-contrast-Findings, die nach dem Laden nicht mehr
+ * existieren (verifiziert 2026-06-12 auf /kunden).
+ */
+export async function waitForAppSettled(page: Page): Promise<void> {
+  await page.locator('#main-content').waitFor({ state: 'attached', timeout: 15000 });
+  await page
+    .waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, {
+      timeout: 15000,
+    })
+    .catch(() => {
+      /* Skeletons bleiben sichtbar -> trotzdem scannen, dann ist es ein echter Befund */
+    });
+  await page.waitForTimeout(500);
+}
+
+/**
  * Runs axe-core analysis with WCAG 2.1 AA ruleset.
  * Optionally excludes specific selectors (e.g. third-party widgets).
  */

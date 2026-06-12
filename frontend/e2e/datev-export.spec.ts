@@ -21,7 +21,7 @@ const API_BASE = process.env.VITE_API_URL || 'http://localhost:8000';
 test.describe('DATEV-Export - Validator-Gate (W3-F4)', () => {
   test('Export-Button ist ohne Vorschau gesperrt', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/datev/export');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     await expect(page.getByText('Neuen Export erstellen')).toBeVisible({ timeout: 15000 });
 
@@ -38,7 +38,7 @@ test.describe('DATEV-Export - Validator-Gate (W3-F4)', () => {
 
   test('Vorschau-Button existiert und ist nicht im Lade-Zustand haengend', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/datev/export');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
 
     const previewButton = page.getByRole('button', { name: /Vorschau/ });
     await expect(previewButton).toBeVisible({ timeout: 15000 });

@@ -111,7 +111,7 @@ test.describe('File Upload Validation - API', () => {
 authTest.describe('File Upload Validation - UI', () => {
   authTest('Upload-Seite rendert ein Datei-Eingabefeld', async ({ authenticatedPage: page }) => {
     await page.goto('/upload');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     const body = await page.textContent('body');
     authExpect(body).not.toMatch(/Internal Server Error|Traceback/);
     await authExpect(page.locator('input[type="file"]').first()).toBeAttached({ timeout: 10000 });
