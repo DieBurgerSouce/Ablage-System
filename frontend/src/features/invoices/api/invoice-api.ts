@@ -35,7 +35,7 @@ export class InvoiceApiError extends Error {
 
 // ==================== Transformers ====================
 
-function transformInvoice(inv: InvoiceTrackingBackend): InvoiceTrackingResponse {
+export function transformInvoice(inv: InvoiceTrackingBackend): InvoiceTrackingResponse {
   return {
     id: inv.id,
     documentId: inv.document_id,

@@ -117,18 +117,17 @@ export class ReportDataUnavailableError extends Error {
 // API Functions
 // =============================================================================
 
-export async function fetchReportData(
-  templateId: string,
-  params: ReportParams
-): Promise<CostAnalysisData | CashflowForecastData | DocumentVolumeData> {
+export async function fetchReportData<
+  T extends CostAnalysisData | CashflowForecastData | DocumentVolumeData,
+>(templateId: string, params: ReportParams): Promise<T> {
   try {
     // Primaer: Prebuilt-Report-Daten vom Backend laden
-    const response = await apiClient.post(`/reports/prebuilt/${templateId}/data`, params)
+    const response = await apiClient.post<T>(`/reports/prebuilt/${templateId}/data`, params)
     return response.data
   } catch {
     try {
       // Alternativ: GET-Endpunkt versuchen
-      const response = await apiClient.get(`/reports/data/${templateId}`, { params })
+      const response = await apiClient.get<T>(`/reports/data/${templateId}`, { params })
       return response.data
     } catch {
       // Beide Backend-Endpunkte nicht erreichbar -> KEINE synthetischen Daten mehr.

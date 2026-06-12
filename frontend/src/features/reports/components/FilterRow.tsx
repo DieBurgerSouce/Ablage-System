@@ -29,6 +29,7 @@ import type {
     OperatorInfo,
     DataType,
     FilterOperator,
+    FilterValue,
 } from '../types';
 
 interface FilterRowProps {
@@ -107,7 +108,7 @@ export function FilterRow({
         }
     };
 
-    const handleValueChange = (value: string | number | boolean | string[] | number[] | undefined) => {
+    const handleValueChange = (value: FilterValue | undefined) => {
         if (onUpdate) {
             onUpdate({ value });
         }

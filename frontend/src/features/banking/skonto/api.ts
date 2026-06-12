@@ -16,7 +16,11 @@ import type {
   SetSkontoRequest,
   MissedSkontoFilter,
 } from './types';
-import type { InvoiceTrackingResponse } from '@/features/invoices/types/invoice-types';
+import type {
+  InvoiceTrackingBackend,
+  InvoiceTrackingResponse,
+} from '@/features/invoices/types/invoice-types';
+import { transformInvoice } from '@/features/invoices/api/invoice-api';
 
 // ==================== Skonto Info ====================
 
@@ -69,12 +73,12 @@ export async function setSkonto(
     params.append('net_days', data.netDays.toString());
   }
 
-  const { data: response } = await apiClient.patch<InvoiceTrackingResponse>(
+  const { data: response } = await apiClient.patch<InvoiceTrackingBackend>(
     `/invoices/${invoiceId}/skonto?${params.toString()}`
   );
 
   // Transform snake_case to camelCase
-  return transformInvoiceResponse(response);
+  return transformInvoice(response);
 }
 
 /**
@@ -95,11 +99,11 @@ export async function applySkonto(
     params.append('force_apply', data.forceApply.toString());
   }
 
-  const { data: response } = await apiClient.post<InvoiceTrackingResponse>(
+  const { data: response } = await apiClient.post<InvoiceTrackingBackend>(
     `/invoices/${invoiceId}/apply-skonto?${params.toString()}`
   );
 
-  return transformInvoiceResponse(response);
+  return transformInvoice(response);
 }
 
 // ==================== Upcoming Skonto ====================
@@ -301,28 +305,3 @@ export async function exportMissedSkonto(
   return response.blob();
 }
 
-// ==================== Helper Functions ====================
-
-/**
- * Transform Backend snake_case Response to Frontend camelCase
- */
-function transformInvoiceResponse(data: InvoiceTrackingResponse): InvoiceTrackingResponse {
-  return {
-    id: data.id,
-    documentId: data.document_id,
-    invoiceNumber: data.invoice_number,
-    invoiceDate: data.invoice_date,
-    dueDate: data.due_date,
-    amount: data.amount,
-    currency: data.currency,
-    status: data.status,
-    paidAmount: data.paid_amount,
-    paidAt: data.paid_at,
-    dunningLevel: data.dunning_level,
-    lastDunningAt: data.last_dunning_at,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-    isOverdue: data.is_overdue,
-    daysOverdue: data.days_overdue,
-  };
-}
