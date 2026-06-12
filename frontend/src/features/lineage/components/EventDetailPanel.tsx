@@ -348,7 +348,7 @@ function EventDataRenderer({
     case 'import':
       return (
         <div className="space-y-3">
-          {eventData.source_type && (
+          {Boolean(eventData.source_type) && (
             <InfoRow
               icon={FileUp}
               label="Import-Quelle"
@@ -359,21 +359,21 @@ function EventDataRenderer({
               }
             />
           )}
-          {eventData.filename && (
+          {Boolean(eventData.filename) && (
             <InfoRow
               icon={FileText}
               label="Dateiname"
               value={String(eventData.filename)}
             />
           )}
-          {eventData.file_size && (
+          {Boolean(eventData.file_size) && (
             <InfoRow
               icon={FileText}
               label="Dateigröße"
               value={formatFileSize(Number(eventData.file_size))}
             />
           )}
-          {eventData.mime_type && (
+          {Boolean(eventData.mime_type) && (
             <InfoRow
               icon={Tag}
               label="MIME-Typ"
@@ -387,7 +387,7 @@ function EventDataRenderer({
     case 'ocr_failed':
       return (
         <div className="space-y-3">
-          {eventData.backend && (
+          {Boolean(eventData.backend) && (
             <InfoRow
               icon={ScanSearch}
               label="OCR-Backend"
@@ -405,7 +405,7 @@ function EventDataRenderer({
               value={String(eventData.pages)}
             />
           )}
-          {eventData.error && (
+          {Boolean(eventData.error) && (
             <InfoRow
               icon={XCircle}
               label="Fehler"
@@ -422,7 +422,7 @@ function EventDataRenderer({
     case 'classification':
       return (
         <div className="space-y-3">
-          {eventData.document_type && (
+          {Boolean(eventData.document_type) && (
             <InfoRow
               icon={Tag}
               label="Dokumenttyp"
@@ -431,7 +431,7 @@ function EventDataRenderer({
               }
             />
           )}
-          {eventData.direction && (
+          {Boolean(eventData.direction) && (
             <InfoRow
               icon={FileUp}
               label="Richtung"
@@ -449,14 +449,14 @@ function EventDataRenderer({
     case 'entity_unlink':
       return (
         <div className="space-y-3">
-          {eventData.entity_name && (
+          {Boolean(eventData.entity_name) && (
             <InfoRow
               icon={Link2}
               label="Geschäftspartner"
               value={
                 <div className="flex items-center gap-2">
                   <span>{String(eventData.entity_name)}</span>
-                  {eventData.entity_id && onNavigateToEntity && (
+                  {Boolean(eventData.entity_id) && onNavigateToEntity && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -471,7 +471,7 @@ function EventDataRenderer({
               }
             />
           )}
-          {eventData.match_type && (
+          {Boolean(eventData.match_type) && (
             <InfoRow
               icon={Tag}
               label="Match-Methode"
@@ -482,7 +482,7 @@ function EventDataRenderer({
               }
             />
           )}
-          {eventData.reason && (
+          {Boolean(eventData.reason) && (
             <InfoRow
               icon={FileText}
               label="Begründung"
@@ -495,7 +495,7 @@ function EventDataRenderer({
     case 'export':
       return (
         <div className="space-y-3">
-          {eventData.format && (
+          {Boolean(eventData.format) && (
             <InfoRow
               icon={Download}
               label="Export-Format"
@@ -506,7 +506,7 @@ function EventDataRenderer({
               }
             />
           )}
-          {eventData.destination && (
+          {Boolean(eventData.destination) && (
             <InfoRow
               icon={Server}
               label="Ziel"
@@ -520,7 +520,7 @@ function EventDataRenderer({
     case 'metadata_update':
       return (
         <div className="space-y-3">
-          {eventData.field && (
+          {Boolean(eventData.field) && (
             <InfoRow
               icon={Edit3}
               label="Bearbeitetes Feld"
@@ -549,7 +549,7 @@ function EventDataRenderer({
               }
             />
           )}
-          {eventData.reason && (
+          {Boolean(eventData.reason) && (
             <InfoRow
               icon={FileText}
               label="Begründung"
@@ -563,14 +563,14 @@ function EventDataRenderer({
     case 'rejection':
       return (
         <div className="space-y-3">
-          {eventData.comment && (
+          {Boolean(eventData.comment) && (
             <InfoRow
               icon={FileText}
               label="Kommentar"
               value={String(eventData.comment)}
             />
           )}
-          {eventData.workflow_step && (
+          {Boolean(eventData.workflow_step) && (
             <InfoRow
               icon={Tag}
               label="Workflow-Schritt"

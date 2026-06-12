@@ -11,14 +11,7 @@ import { cn } from '@/lib/utils';
 import { formatDateDE } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+import { Link } from '@tanstack/react-router';
 import { ArrowLeft, GitBranch, Download, RefreshCw } from 'lucide-react';
 
 import { LineageFlowchart } from '../LineageFlowchart';
@@ -107,23 +100,26 @@ export function DocumentLineagePage({
               </Button>
             )}
 
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/documents">Dokumente</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href={`/documents/${documentId}`}>
-                    {documentName || documentId.slice(0, 8) + '...'}
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Lineage</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+            <nav
+              aria-label="Brotkrumen-Navigation"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground"
+            >
+              <Link to="/search" className="hover:text-foreground">
+                Dokumente
+              </Link>
+              <span aria-hidden="true">/</span>
+              <Link
+                to="/documents/$documentId"
+                params={{ documentId }}
+                className="hover:text-foreground"
+              >
+                {documentName || documentId.slice(0, 8) + '...'}
+              </Link>
+              <span aria-hidden="true">/</span>
+              <span className="text-foreground" aria-current="page">
+                Lineage
+              </span>
+            </nav>
           </div>
 
           <div className="flex items-center gap-2">
