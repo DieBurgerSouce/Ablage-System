@@ -865,6 +865,14 @@ class SupplierVerificationService:
     VIES_MAX_RETRIES = 3
     VIES_RETRY_DELAY_SECONDS = 1.0
 
+    # Von VIES unterstuetzte Laendercodes: EU-27 (Griechenland = "EL")
+    # plus Nordirland ("XI", Protokoll Irland/Nordirland).
+    VIES_EU_COUNTRY_CODES = frozenset({
+        "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "ES",
+        "FI", "FR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT",
+        "NL", "PL", "PT", "RO", "SE", "SI", "SK", "XI",
+    })
+
     async def _check_vies(
         self,
         vat_id: str,
@@ -1222,7 +1230,12 @@ class SupplierVerificationService:
         if pattern:
             return bool(re.match(pattern, vat_number))
 
-        # Fallback: Mindestens 2 Zeichen
+        # Nicht-EU-Laendercodes kann VIES nie validieren -> niemals valid=True
+        # (vorher lieferte der Fallback fuer beliebige Codes wie "XX" True).
+        if country_code not in self.VIES_EU_COUNTRY_CODES:
+            return False
+
+        # Fallback fuer EU-Laender ohne Spezialformat: Mindestens 2 Zeichen
         return len(vat_number) >= 2
 
     async def _check_bundesanzeiger(

@@ -446,6 +446,11 @@ class HandelsregisterService:
         Returns:
             CompanyDetails oder None
         """
+        # SECURITY: Registernummer IMMER zuerst validieren (CWE-918).
+        # Vorher wurde erst tief im Portal-Fetch validiert — Mock-/Cache-/
+        # Rate-Limit-Pfade akzeptierten beliebige (manipulierte) IDs.
+        _validate_register_id(register_id)
+
         # SECURITY: Keine PII (register_id) in Logs - nur Typ loggen
         register_type = register_id.split()[0] if " " in register_id else "unknown"
         logger.info(

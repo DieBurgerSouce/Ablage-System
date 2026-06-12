@@ -79,11 +79,13 @@ async def test_compliance_scan_gobd(service, mock_db, company_id):
     mock_doc1 = MagicMock(spec=Document)
     mock_doc1.id = uuid4()
     mock_doc1.document_type = DocumentType.INVOICE
+    mock_doc1.created_at = datetime.utcnow() - timedelta(days=30)
     mock_doc1.metadata = {"version_history": [{"version": 1}]}
 
     mock_doc2 = MagicMock(spec=Document)
     mock_doc2.id = uuid4()
     mock_doc2.document_type = DocumentType.RECEIPT
+    mock_doc2.created_at = datetime.utcnow() - timedelta(days=30)
     mock_doc2.metadata = {"version_history": [{"version": 1}]}
 
     mock_result = MagicMock()
