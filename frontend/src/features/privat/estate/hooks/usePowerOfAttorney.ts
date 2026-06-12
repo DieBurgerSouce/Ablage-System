@@ -119,7 +119,7 @@ export function useUpdatePowerOfAttorney() {
     mutationFn: ({
       poaId,
       data,
-      spaceId,
+      spaceId: _spaceId,
     }: {
       poaId: string;
       data: PowerOfAttorneyUpdate;
@@ -139,7 +139,7 @@ export function useDeletePowerOfAttorney() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ poaId, spaceId }: { poaId: string; spaceId: string }) =>
+    mutationFn: ({ poaId, spaceId: _spaceId }: { poaId: string; spaceId: string }) =>
       estatePlanningService.deletePowerOfAttorney(poaId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: estateQueryKeys.powersOfAttorney(spaceId) });
@@ -171,7 +171,7 @@ export function useDeleteHeirDocumentAccess() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ accessId, spaceId }: { accessId: string; spaceId: string }) =>
+    mutationFn: ({ accessId, spaceId: _spaceId }: { accessId: string; spaceId: string }) =>
       estatePlanningService.deleteHeirDocumentAccess(accessId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: estateQueryKeys.heirAccess(spaceId) });

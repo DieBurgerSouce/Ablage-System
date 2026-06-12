@@ -14,7 +14,7 @@ import type { EntityNodeData } from '../api/relationships-api';
 
 // ==================== Component ====================
 
-function EntityNodeComponent({ data, selected }: NodeProps<{ data: EntityNodeData }>) {
+function EntityNodeComponent({ data, selected }: NodeProps) {
     const nodeData = data as unknown as EntityNodeData;
     const isCustomer = nodeData.nodeType === 'customer';
     const Icon = isCustomer ? Users : Truck;

@@ -148,9 +148,9 @@ export async function getMyActivities(
   if (params.search) searchParams.set('search', params.search);
 
   const query = searchParams.toString();
-  const url = `/api/v1/activity/my${query ? `?${query}` : ''}`;
+  const url = `/activity/my${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -175,9 +175,9 @@ export async function getTeamTimeline(
   if (params.dateUntil) searchParams.set('date_until', params.dateUntil);
 
   const query = searchParams.toString();
-  const url = `/api/v1/activity/team/${params.teamId}${query ? `?${query}` : ''}`;
+  const url = `/activity/team/${params.teamId}${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -198,9 +198,9 @@ export async function getDocumentTimeline(
   if (params.activityType) searchParams.set('activity_type', params.activityType);
 
   const query = searchParams.toString();
-  const url = `/api/v1/activity/document/${params.documentId}${query ? `?${query}` : ''}`;
+  const url = `/activity/document/${params.documentId}${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -219,9 +219,9 @@ export async function getChainTimeline(
   if (params.offset) searchParams.set('offset', params.offset.toString());
 
   const query = searchParams.toString();
-  const url = `/api/v1/activity/chain/${params.chainId}${query ? `?${query}` : ''}`;
+  const url = `/activity/chain/${params.chainId}${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -251,9 +251,9 @@ export async function getCompanyTimeline(
   if (params.search) searchParams.set('search', params.search);
 
   const query = searchParams.toString();
-  const url = `/api/v1/activity/company${query ? `?${query}` : ''}`;
+  const url = `/activity/company${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiTimelineResponse>(url);
+  const { data: response } = await apiClient.get<ApiTimelineResponse>(url);
   return convertTimelineResponse(response);
 }
 
@@ -275,9 +275,9 @@ export async function getActivityStatistics(
   if (params.dateUntil) searchParams.set('date_until', params.dateUntil);
 
   const query = searchParams.toString();
-  const url = `/api/v1/activity/stats${query ? `?${query}` : ''}`;
+  const url = `/activity/stats${query ? `?${query}` : ''}`;
 
-  const response = await apiClient.get<ApiStatistics>(url);
+  const { data: response } = await apiClient.get<ApiStatistics>(url);
   return convertStatistics(response);
 }
 
@@ -292,7 +292,7 @@ export async function filterTimeline(
   if (offset) searchParams.set('offset', offset.toString());
 
   const query = searchParams.toString();
-  const url = `/api/v1/activity/filter${query ? `?${query}` : ''}`;
+  const url = `/activity/filter${query ? `?${query}` : ''}`;
 
   // Convert to snake_case for API
   const body = {
@@ -306,6 +306,6 @@ export async function filterTimeline(
     important_only: filter.importantOnly,
   };
 
-  const response = await apiClient.post<ApiTimelineResponse>(url, body);
+  const { data: response } = await apiClient.post<ApiTimelineResponse>(url, body);
   return convertTimelineResponse(response);
 }

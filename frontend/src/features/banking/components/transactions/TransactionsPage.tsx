@@ -300,7 +300,7 @@ export function TransactionsPage() {
                             {totalPages > 1 && (
                                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                                     <p className="text-sm text-muted-foreground">
-                                        Seite {page + 1} von {totalPages} ({data.total} Transaktionen)
+                                        Seite {page + 1} von {totalPages} ({data?.total ?? 0} Transaktionen)
                                     </p>
                                     <div className="flex gap-2">
                                         <Button

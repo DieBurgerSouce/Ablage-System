@@ -180,7 +180,7 @@ function SummaryCard({
 // ==================== Quick Actions ====================
 
 function QuickActions({
-  spaceId,
+  spaceId: _spaceId,
   onRefresh,
   isRefreshing,
   onValuationUpdate,
@@ -337,7 +337,7 @@ export function NetWorthDashboard() {
 
   // Snapshot creation mutation
   const createSnapshotMutation = useCreatePortfolioSnapshot();
-  const refreshNetWorth = useRefreshNetWorth();
+  void useRefreshNetWorth();
 
   // Handle refresh
   const handleRefresh = React.useCallback(async () => {
@@ -506,7 +506,14 @@ export function NetWorthDashboard() {
           totalAssets={totalAssets}
           onCategoryClick={handleCategoryClick}
         />
-        <NetWorthChart history={history} />
+        <NetWorthChart
+          history={history.map((s) => ({
+            date: s.snapshotDate,
+            totalAssets: s.totalAssets,
+            totalLiabilities: s.totalLiabilities,
+            netWorth: s.netWorth,
+          }))}
+        />
       </div>
 
       {/* Breakdown Cards */}

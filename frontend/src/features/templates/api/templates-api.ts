@@ -26,7 +26,8 @@ import type {
   CategorySummary,
 } from '../types/template-types';
 
-const API_BASE = '/api/v1/document-templates';
+// Relativ zur apiClient-baseURL ('/api/v1') — KEIN /api/v1-Prefix (sonst Doppel-Prefix /api/v1/api/v1/...)
+const API_BASE = '/document-templates';
 
 // =============================================================================
 // Query Keys
@@ -145,7 +146,8 @@ export async function getGeneratedDocument(id: string): Promise<GeneratedDocumen
 }
 
 export async function downloadGeneratedDocument(id: string): Promise<Blob> {
-  const response = await fetch(`${API_BASE}/generated/${id}/download`, {
+  // Raw fetch geht NICHT durch die apiClient-baseURL -> voller Pfad inkl. /api/v1 noetig
+  const response = await fetch(`/api/v1${API_BASE}/generated/${id}/download`, {
     credentials: 'include',
   });
   if (!response.ok) {

@@ -13,12 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowUp, ArrowDown, Columns } from 'lucide-react';
 import type { Column } from '../types/adhoc-reporting-types';
 
-interface ColumnConfig {
-  key: string;
-  alias?: string;
-  order: number;
-}
-
 interface ColumnConfiguratorProps {
   columns: Column[];
   selectedColumns: string[];

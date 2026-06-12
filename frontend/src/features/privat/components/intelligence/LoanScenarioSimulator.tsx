@@ -55,7 +55,7 @@ export function LoanScenarioSimulator({
   loanName,
   currentBalance,
   interestRate,
-  monthlyPayment,
+  monthlyPayment: _monthlyPayment,
   className,
 }: LoanScenarioSimulatorProps) {
   const [activeTab, setActiveTab] = React.useState('extra-payment');

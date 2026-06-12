@@ -354,7 +354,7 @@ export function EditProviderDialog({
 
     try {
       // Call test endpoint
-      await api.post(`/api/v1/sso/providers/${provider.id}/test`);
+      await api.post(`/sso/providers/${provider.id}/test`);
       setTestResult('success');
       toast({
         title: 'Verbindung erfolgreich',

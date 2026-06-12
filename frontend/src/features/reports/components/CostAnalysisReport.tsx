@@ -112,7 +112,7 @@ export function CostAnalysisReport() {
 
   const { data, isLoading, isError, refetch } = useQuery<CostAnalysisData>({
     queryKey: ['report', 'cost-analysis', period, comparison],
-    queryFn: () => fetchReportData('cost-analysis', { period, comparison }),
+    queryFn: () => fetchReportData<CostAnalysisData>('cost-analysis', { period, comparison }),
   })
 
   const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {
@@ -328,7 +328,13 @@ export function CostAnalysisReport() {
                     cx="50%"
                     cy="50%"
                     outerRadius={120}
-                    label={({ kostenstelle, anteil }) => `${kostenstelle} (${anteil.toFixed(1)}%)`}
+                    label={(props) => {
+                      const { kostenstelle, anteil } = props.payload as {
+                        kostenstelle: string
+                        anteil: number
+                      }
+                      return `${kostenstelle} (${anteil.toFixed(1)}%)`
+                    }}
                   >
                     {data?.costCenters.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />

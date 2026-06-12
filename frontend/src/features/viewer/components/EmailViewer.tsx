@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config as DOMPurifyConfig } from 'dompurify';
 import {
     Loader2,
     AlertTriangle,
@@ -226,7 +226,7 @@ function parseAddressList(addressString: string): string[] {
  * Decode RFC 2047 encoded words (=?charset?encoding?text?=)
  */
 function decodeEncodedWords(text: string): string {
-    return text.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (match, charset, encoding, encoded) => {
+    return text.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (match, _charset, encoding, encoded) => {
         try {
             if (encoding.toUpperCase() === 'B') {
                 // Base64
@@ -235,7 +235,7 @@ function decodeEncodedWords(text: string): string {
                 // Quoted-Printable
                 return encoded
                     .replace(/_/g, ' ')
-                    .replace(/=([0-9A-F]{2})/gi, (m: string, hex: string) =>
+                    .replace(/=([0-9A-F]{2})/gi, (_m: string, hex: string) =>
                         String.fromCharCode(parseInt(hex, 16))
                     );
             }
@@ -277,7 +277,7 @@ function formatEmailDate(dateString: string): string {
  *
  * E-Mails sind nicht vertrauenswürdige Eingaben - minimale Erlaubnisse!
  */
-const PURIFY_CONFIG: DOMPurify.Config = {
+const PURIFY_CONFIG: DOMPurifyConfig = {
     ALLOWED_TAGS: [
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'p', 'br', 'hr', 'div', 'span',
@@ -311,7 +311,7 @@ function registerDOMPurifySecurityHooks(): void {
     domPurifyHooksRegistered = true;
 
     // Zusätzliche Hooks für erweiterte Sicherheit
-    DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+    DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
         // Blockiere data: URIs in src (potenzielle Script-Injection)
         if (data.attrName === 'src' && data.attrValue.startsWith('data:')) {
             data.attrValue = '';
@@ -400,13 +400,14 @@ export function EmailViewer({ fileData, className }: EmailViewerProps) {
             // Clear existing content
             htmlContentRef.current.textContent = '';
 
-            // Use DOMPurify to sanitize and get a DocumentFragment directly
-            const cleanFragment = DOMPurify.sanitize(email.htmlBody, PURIFY_CONFIG);
+            // DOMPurify mit RETURN_DOM_FRAGMENT liefert ein DocumentFragment
+            const cleanFragment = DOMPurify.sanitize(email.htmlBody, {
+                ...PURIFY_CONFIG,
+                RETURN_DOM_FRAGMENT: true,
+            });
 
             // Append the sanitized fragment
-            if (cleanFragment instanceof DocumentFragment) {
-                htmlContentRef.current.appendChild(cleanFragment.cloneNode(true));
-            }
+            htmlContentRef.current.appendChild(cleanFragment.cloneNode(true));
         }
     }, [email?.htmlBody, showHtml]);
 
@@ -620,7 +621,7 @@ if (import.meta.hot) {
  * Sie ist NUR in Test-Umgebung verfügbar und sollte NICHT in Produktion verwendet werden.
  */
 export function __resetDOMPurifyHooks(): void {
-    if (process.env.NODE_ENV === 'test' || import.meta.env?.MODE === 'test') {
+    if (import.meta.env?.MODE === 'test') {
         domPurifyHooksRegistered = false;
         DOMPurify.removeAllHooks();
     } else {

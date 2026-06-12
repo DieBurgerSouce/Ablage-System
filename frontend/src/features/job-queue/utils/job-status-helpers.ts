@@ -186,6 +186,8 @@ export function getJobTypeLabel(jobType: JobType): string {
     gdpr: 'GDPR',
     rag: 'RAG',
     maintenance: 'Wartung',
+    cleanup: 'Bereinigung',
+    metrics: 'Metriken',
   };
   return labelMap[jobType] || jobType;
 }
@@ -231,6 +233,16 @@ export function getJobTypeColors(jobType: JobType): StatusColors {
       bg: 'bg-slate-100 dark:bg-slate-800',
       text: 'text-slate-700 dark:text-slate-300',
       border: 'border-slate-300 dark:border-slate-600',
+    },
+    cleanup: {
+      bg: 'bg-stone-100 dark:bg-stone-800',
+      text: 'text-stone-700 dark:text-stone-300',
+      border: 'border-stone-300 dark:border-stone-600',
+    },
+    metrics: {
+      bg: 'bg-cyan-100 dark:bg-cyan-900/30',
+      text: 'text-cyan-700 dark:text-cyan-300',
+      border: 'border-cyan-300 dark:border-cyan-600',
     },
   };
   return colorMap[jobType] || colorMap.maintenance;

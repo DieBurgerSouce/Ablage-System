@@ -3,7 +3,7 @@
  * Admin-Seite für KI-Autonomie Konfiguration
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Save, RotateCcw, Settings, Sliders, Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -41,8 +41,12 @@ export function AutonomyConfigPage() {
   const { data: config, isLoading } = useQuery({
     queryKey: ['autonomy-config'],
     queryFn: getAutonomyConfig,
-    onSuccess: (data) => setFormData(data),
   })
+
+  // TanStack Query v5 kennt kein onSuccess mehr -> Formular via Effekt fuellen
+  useEffect(() => {
+    if (config) setFormData(config)
+  }, [config])
 
   // Update mutation
   const updateMutation = useMutation({

@@ -129,7 +129,7 @@ export function useUpdateConfig() {
                 queryKey: datevQueryKeys.configDetail(variables.id),
             });
         },
-        onError: (error, variables) => {
+        onError: (error, _variables) => {
             if (import.meta.env.DEV) {
                 logger.error('DATEV: Konfiguration aktualisieren fehlgeschlagen', error);
             }
@@ -148,7 +148,7 @@ export function useDeleteConfig() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: datevQueryKeys.configs() });
         },
-        onError: (error, id) => {
+        onError: (error, _id) => {
             if (import.meta.env.DEV) {
                 logger.error('DATEV: Konfiguration löschen fehlgeschlagen', error);
             }
@@ -193,7 +193,7 @@ export function useCreateVendorMapping() {
             // Cascade: Configs auch invalidieren (kann vendor_count haben)
             queryClient.invalidateQueries({ queryKey: datevQueryKeys.configs() });
         },
-        onError: (error, variables) => {
+        onError: (error, _variables) => {
             if (import.meta.env.DEV) {
                 logger.error('DATEV: Vendor-Mapping erstellen fehlgeschlagen', error);
             }
@@ -224,7 +224,7 @@ export function useUpdateVendorMapping() {
             // Cascade: Configs auch invalidieren
             queryClient.invalidateQueries({ queryKey: datevQueryKeys.configs() });
         },
-        onError: (error, variables) => {
+        onError: (error, _variables) => {
             if (import.meta.env.DEV) {
                 logger.error('DATEV: Vendor-Mapping aktualisieren fehlgeschlagen', error);
             }
@@ -248,7 +248,7 @@ export function useDeleteVendorMapping() {
             // Cascade: Configs auch invalidieren
             queryClient.invalidateQueries({ queryKey: datevQueryKeys.configs() });
         },
-        onError: (error, variables) => {
+        onError: (error, _variables) => {
             if (import.meta.env.DEV) {
                 logger.error('DATEV: Vendor-Mapping löschen fehlgeschlagen', error);
             }

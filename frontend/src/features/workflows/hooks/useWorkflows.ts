@@ -434,8 +434,8 @@ export function useExecution(executionId: string, enabled = true) {
     queryKey: workflowKeys.execution(executionId),
     queryFn: () => workflowsApi.getExecution(executionId),
     enabled: enabled && !!executionId,
-    refetchInterval: (data) =>
-      data?.status === 'running' ? 2000 : false, // Auto-refresh bei laufender Execution
+    refetchInterval: (query) =>
+      query.state.data?.status === 'running' ? 2000 : false, // Auto-refresh bei laufender Execution (v5: Query-Objekt)
   });
 }
 

@@ -50,7 +50,7 @@ export function GraphControls({
     limit,
     onLimitChange,
     statistics,
-    isLoading,
+    isLoading: _isLoading,
     isFetching,
     onRefresh,
     onFitView,

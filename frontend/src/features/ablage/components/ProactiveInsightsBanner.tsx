@@ -314,7 +314,7 @@ export function ProactiveInsightsBanner({
   onFilterDocuments,
 }: ProactiveInsightsBannerProps) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-  const [isExecuting, setIsExecuting] = useState(false);
+  const [isExecuting, _setIsExecuting] = useState(false);
 
   // Generiere Insights
   const insights = useMemo(

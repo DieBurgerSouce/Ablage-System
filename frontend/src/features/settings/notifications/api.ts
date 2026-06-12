@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import type { NotificationPreferencesResponse, UpdateNotificationPreferencesRequest, TestNotificationRequest, TestNotificationResponse, UpdateSeverityMatrixRequest, NotificationChannel, QuietHoursConfig, ChannelConfig, EscalationStep, NotificationPreferences } from './types';
 import { DEFAULT_QUIET_HOURS, DEFAULT_ESCALATION_CHAIN } from './types';
 
-const BASE_URL = '/api/v1/notifications';
+const BASE_URL = '/notifications';
 const PREFERENCES_URL = `${BASE_URL}/preferences`;
 
 /**

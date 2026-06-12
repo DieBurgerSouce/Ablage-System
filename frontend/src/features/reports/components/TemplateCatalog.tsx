@@ -246,7 +246,7 @@ export function TemplateCatalog({ onTemplateCreated, compact = false }: Template
                 onTemplateCreated(newTemplate.id);
             } else {
                 // Navigate to the new template
-                navigate({ to: '/reports/builder/$templateId', params: { templateId: newTemplate.id } });
+                navigate({ to: '/berichte' });
             }
         },
         onError: (err) => {

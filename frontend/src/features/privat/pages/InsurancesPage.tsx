@@ -41,6 +41,18 @@ export function InsurancesPage({ spaceId: propSpaceId }: InsurancesPageProps = {
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  // Suche erfolgt clientseitig ueber die geladene Seite —
+  // der Backend-Endpunkt kennt keinen search-Parameter.
+  const visibleInsurances = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return insurances;
+    return insurances.filter(
+      (i) =>
+        i.name.toLowerCase().includes(q) ||
+        (i.provider ?? '').toLowerCase().includes(q)
+    );
+  }, [insurances, searchQuery]);
   const [typeFilter, setTypeFilter] = React.useState<InsuranceType | 'all'>('all');
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
@@ -76,7 +88,6 @@ export function InsurancesPage({ spaceId: propSpaceId }: InsurancesPageProps = {
         const response = await privatApi.listInsurances(spaceId, {
           page: page + 1,
           pageSize,
-          search: searchQuery || undefined,
           insuranceType: typeFilter !== 'all' ? typeFilter : undefined,
         });
         setInsurances(response.items);
@@ -156,7 +167,7 @@ export function InsurancesPage({ spaceId: propSpaceId }: InsurancesPageProps = {
   return (
     <div className="p-8">
       <InsuranceList
-        insurances={insurances}
+        insurances={visibleInsurances}
         total={total}
         page={page}
         pageSize={pageSize}

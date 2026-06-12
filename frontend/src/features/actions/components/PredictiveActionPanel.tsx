@@ -499,12 +499,6 @@ function ActionsList({
 // ==================== Statistics Panel Component ====================
 
 function StatisticsPanel({ stats }: { stats: ActionStatistics }) {
-  const acceptanceRateColor =
-    stats.acceptanceRate >= 70
-      ? 'text-green-600'
-      : stats.acceptanceRate >= 50
-        ? 'text-yellow-600'
-        : 'text-red-600';
 
   return (
     <div className="space-y-6">

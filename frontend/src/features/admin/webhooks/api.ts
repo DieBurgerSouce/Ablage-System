@@ -36,7 +36,7 @@ export const WEBHOOK_KEYS = {
     [...WEBHOOK_KEYS.all, 'events', params] as const,
 }
 
-const BASE = '/api/v1/webhooks/outbound'
+const BASE = '/webhooks/outbound'
 
 // =============================================================================
 // Endpoint Queries

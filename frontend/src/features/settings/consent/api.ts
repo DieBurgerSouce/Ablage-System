@@ -14,7 +14,7 @@ import type {
   ConsentScope,
 } from './types';
 
-const CONSENT_BASE_URL = '/api/v1/users/me/gdpr/consent';
+const CONSENT_BASE_URL = '/users/me/gdpr/consent';
 
 /**
  * Ruft den aktuellen Einwilligungs-Status ab

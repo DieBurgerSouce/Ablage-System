@@ -102,8 +102,6 @@ export function SystemHealthOverview() {
     const komponenten = healthData?.komponenten ?? {};
 
     // Extract component metrics
-    const _cpuDetails = komponenten.cpu?.details as Record<string, number> | null;
-    const _dbDetails = komponenten.datenbank?.details as Record<string, number> | null;
     const gpuDetails = komponenten.gpu?.details as Record<string, number> | null;
     const diskDetails = komponenten.speicherplatz?.details as Record<string, number> | null;
 

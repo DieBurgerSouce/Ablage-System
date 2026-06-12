@@ -42,7 +42,6 @@ export function LearningStatsCards({ stats }: LearningStatsCardsProps) {
   const qualityScore = baselineMetrics?.quality_score || 0;
 
   // Count active adjustments
-  const activeAdjustments = Object.keys(stats.backend_adjustments || {}).length;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -32,6 +32,11 @@ import { toast } from 'sonner';
 
 import { authService, type TwoFactorSetupResponse } from '@/lib/api/services/auth';
 
+/** Extrahiert das TOTP-Secret aus der otpauth-Provisioning-URI (fuer manuelle Eingabe). */
+function extractTotpSecret(provisioningUri: string): string {
+  return provisioningUri.split('secret=')[1]?.split('&')[0] ?? '';
+}
+
 interface MFASetupProps {
   onComplete: () => void;
   onCancel: () => void;
@@ -216,10 +221,12 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Secret Key</label>
+                {/* Backend liefert kein Klartext-secret-Feld mehr —
+                    Secret steckt im provisioning_uri (otpauth://...?secret=...) */}
                 <div className="flex gap-2">
                   <Input
                     type={showSecret ? 'text' : 'password'}
-                    value={setupData.secret}
+                    value={extractTotpSecret(setupData.provisioning_uri)}
                     readOnly
                     className="font-mono text-sm"
                   />
@@ -234,7 +241,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
                     variant="outline"
                     size="icon"
                     onClick={() => {
-                      navigator.clipboard.writeText(setupData.secret);
+                      navigator.clipboard.writeText(extractTotpSecret(setupData.provisioning_uri));
                       toast.success('Secret kopiert');
                     }}
                   >

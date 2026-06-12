@@ -73,7 +73,7 @@ export function ReportsDashboard() {
     setBuilderOpen(true);
   };
 
-  const handleEditReport = (template: ReportTemplate) => {
+  const handleEditReport = (template?: ReportTemplate) => {
     setEditingTemplate(template);
     setBuilderOpen(true);
   };

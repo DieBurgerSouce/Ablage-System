@@ -5,7 +5,7 @@
  * Behält die bestehende iCal-Export-Funktionalität im Export-Tab
  * und integriert die neuen OAuth/Sync-Komponenten.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Calendar, Download, Settings, Loader2, Info } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -87,13 +87,15 @@ export function CalendarSyncSettings() {
   const [configForm, setConfigForm] = useState<CalendarSyncConfig | null>(null)
 
   // Existing config query (iCal export)
-  const { data: config, isLoading } = useQuery({
+  const { data: existingConfig, isLoading } = useQuery({
     queryKey: ['calendar-sync-config'],
     queryFn: getCalendarSyncConfig,
-    onSuccess: (data: CalendarSyncConfig) => {
-      if (!configForm) setConfigForm(data)
-    },
   })
+
+  // react-query v5 hat kein onSuccess mehr auf useQuery
+  useEffect(() => {
+    if (existingConfig && !configForm) setConfigForm(existingConfig)
+  }, [existingConfig, configForm])
 
   // OAuth status query
   const { data: oauthStatus } = useQuery({

@@ -171,7 +171,7 @@ export function useUserAuditTrail(userId: string | undefined, limit: number = 10
 }
 
 export function useExportAuditLogs() {
-  const queryClient = useQueryClient();
+  void useQueryClient();
 
   return useMutation({
     mutationFn: ({ format, filters }: { format: 'csv' | 'json'; filters: AuditLogFilters }) =>

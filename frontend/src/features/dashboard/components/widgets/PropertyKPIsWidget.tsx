@@ -70,7 +70,7 @@ function usePropertyKPIs() {
     return useQuery({
         queryKey: ['properties', 'kpis'],
         queryFn: async (): Promise<PropertyKPIsResponse> => {
-            const response = await api.get('/api/v1/properties/kpis');
+            const response = await api.get('/properties/kpis');
             return response.data;
         },
         staleTime: 5 * 60 * 1000,
@@ -315,7 +315,7 @@ function PropertyKPIsWidgetContent() {
 
             {/* Link to properties */}
             <Link
-                to="/portfolio/properties"
+                to="/privat/immobilien"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Alle Immobilien anzeigen

@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { formatDistanceToNow } from 'date-fns';
+import { format as formatDate, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   useSchedulePresets,
@@ -183,7 +183,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
                   {template.schedule_config.next_run && (
                     <p>
                       Nächste Ausführung:{' '}
-                      {format(new Date(template.schedule_config.next_run), "d. MMMM yyyy 'um' HH:mm", {
+                      {formatDate(new Date(template.schedule_config.next_run), "d. MMMM yyyy 'um' HH:mm", {
                         locale: de,
                       })}
                     </p>

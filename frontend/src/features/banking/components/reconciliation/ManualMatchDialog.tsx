@@ -38,7 +38,8 @@ import { Progress } from '@/components/ui/progress';
 import { logger } from '@/lib/logger';
 import { formatCurrency, formatDate } from '@/features/banking/utils/format';
 import { useMatchSuggestions } from '@/features/banking/hooks/use-banking-queries';
-import type { BankTransaction, MatchCandidate } from '@/lib/api/services/banking';
+import type { MatchCandidate } from '@/lib/api/services/banking';
+import type { ReconcilableTransaction } from './MatchSuggestions';
 import { cn } from '@/lib/utils';
 
 interface Document {
@@ -53,7 +54,7 @@ interface Document {
 interface ManualMatchDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    transaction: BankTransaction | null;
+    transaction: ReconcilableTransaction | null;
     documents: Document[];
     isLoading?: boolean;
     onMatch: (transactionId: string, documentId: string) => Promise<void>;

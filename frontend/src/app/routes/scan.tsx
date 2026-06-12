@@ -61,7 +61,7 @@ function ScanPage() {
     ocrResult,
     suggestions,
     isAssigning,
-    startScan,
+    startScan: _startScan,
     onUploadComplete,
     startAssigning,
     assignToEntity,

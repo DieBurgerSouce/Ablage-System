@@ -107,7 +107,7 @@ export function CashflowForecastReport() {
 
   const { data, isLoading, isError, refetch } = useQuery<CashflowForecastData>({
     queryKey: ['report', 'cashflow-forecast', daysAhead],
-    queryFn: () => fetchReportData('cashflow-forecast', { period: daysAhead }),
+    queryFn: () => fetchReportData<CashflowForecastData>('cashflow-forecast', { period: daysAhead }),
   })
 
   const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {

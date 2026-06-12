@@ -13,7 +13,7 @@ import type {
   QueueFilters,
 } from './types';
 
-const API_BASE = '/api/v1/training';
+const API_BASE = '/training';
 
 /**
  * Dokumente mit niedriger Confidence abrufen
@@ -216,7 +216,7 @@ export async function deleteExport(exportId: string): Promise<{ success: boolean
  * Verfügbare OCR-Backends abrufen
  */
 export async function getAvailableBackends(): Promise<string[]> {
-  const response = await api.get('/api/v1/ocr/backends');
+  const response = await api.get('/ocr/backends');
   return (response.data.backends || []).map((b: Record<string, unknown>) =>
     String(b.name || b)
   );

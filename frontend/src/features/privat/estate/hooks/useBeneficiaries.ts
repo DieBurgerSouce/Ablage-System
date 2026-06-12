@@ -78,7 +78,7 @@ export function useUpdateBeneficiary() {
     mutationFn: ({
       beneficiaryId,
       data,
-      spaceId,
+      spaceId: _spaceId,
     }: {
       beneficiaryId: string;
       data: BeneficiaryUpdate;
@@ -99,7 +99,7 @@ export function useDeleteBeneficiary() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ beneficiaryId, spaceId }: { beneficiaryId: string; spaceId: string }) =>
+    mutationFn: ({ beneficiaryId, spaceId: _spaceId }: { beneficiaryId: string; spaceId: string }) =>
       estatePlanningService.deleteBeneficiary(beneficiaryId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: estateQueryKeys.beneficiaries(spaceId) });

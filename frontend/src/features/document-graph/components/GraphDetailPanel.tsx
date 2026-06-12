@@ -45,7 +45,7 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   receipt: 'Beleg',
 };
 
-export function GraphDetailPanel({ document, chainId, onClose }: GraphDetailPanelProps) {
+export function GraphDetailPanel({ document, chainId: _chainId, onClose }: GraphDetailPanelProps) {
   if (!document) return null;
 
   const typeLabel = DOCUMENT_TYPE_LABELS[document.documentType] || document.documentType;

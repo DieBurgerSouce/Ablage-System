@@ -263,7 +263,7 @@ export default function WorkflowBuilder({
   }, [nodes, selectedNodes, setNodes]);
 
   // Save history for undo/redo
-  const saveHistory = useCallback(() => {
+  void useCallback(() => {
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push({ nodes: [...nodes], edges: [...edges] });
     setHistory(newHistory.slice(-50)); // Keep last 50 states

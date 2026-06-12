@@ -48,7 +48,7 @@ export function SlackTestDialog({ open, onOpenChange }: SlackTestDialogProps) {
             notification_type: notificationType,
             priority,
         });
-        setResult(response);
+        setResult({ success: response.success, error: response.error ?? undefined });
     };
 
     const handleClose = () => {

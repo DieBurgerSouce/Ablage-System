@@ -69,6 +69,28 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
   const [investmentsTotal, setInvestmentsTotal] = React.useState(0);
   const [investmentsPage, setInvestmentsPage] = React.useState(0);
   const [investmentsSearch, setInvestmentsSearch] = React.useState('');
+
+  // Suche erfolgt clientseitig ueber die geladene Seite —
+  // die Backend-Endpunkte kennen keinen search-Parameter.
+  const visibleLoans = React.useMemo(() => {
+    const q = loansSearch.trim().toLowerCase();
+    if (!q) return loans;
+    return loans.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        (l.lender ?? '').toLowerCase().includes(q)
+    );
+  }, [loans, loansSearch]);
+
+  const visibleInvestments = React.useMemo(() => {
+    const q = investmentsSearch.trim().toLowerCase();
+    if (!q) return investments;
+    return investments.filter(
+      (i) =>
+        i.name.toLowerCase().includes(q) ||
+        (i.institution ?? '').toLowerCase().includes(q)
+    );
+  }, [investments, investmentsSearch]);
   const [investmentsLoading, setInvestmentsLoading] = React.useState(true);
   const [investmentsError, setInvestmentsError] = React.useState<Error | null>(null);
   const [deleteInvestment, setDeleteInvestment] = React.useState<PrivatInvestmentWithStats | null>(null);
@@ -108,7 +130,6 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
         const response = await privatApi.listLoans(spaceId, {
           page: loansPage + 1,
           pageSize,
-          search: loansSearch || undefined,
         });
         setLoans(response.items);
         setLoansTotal(response.total);
@@ -144,7 +165,6 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
         const response = await privatApi.listInvestments(spaceId, {
           page: investmentsPage + 1,
           pageSize,
-          search: investmentsSearch || undefined,
         });
         setInvestments(response.items);
         setInvestmentsTotal(response.total);
@@ -292,7 +312,7 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
 
         <TabsContent value="loans">
           <LoanList
-            loans={loans}
+            loans={visibleLoans}
             total={loansTotal}
             page={loansPage}
             pageSize={pageSize}
@@ -313,7 +333,7 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
 
         <TabsContent value="investments">
           <InvestmentList
-            investments={investments}
+            investments={visibleInvestments}
             total={investmentsTotal}
             page={investmentsPage}
             pageSize={pageSize}
@@ -337,10 +357,9 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
             <LoanScenarioSimulator
               loanId={loans[0].id}
               loanName={loans[0].name}
-              currentRate={loans[0].interestRate}
-              currentPayment={loans[0].monthlyPayment}
-              outstandingAmount={loans[0].outstandingAmount ?? loans[0].originalAmount}
-              remainingMonths={loans[0].remainingMonths ?? loans[0].termMonths}
+              currentBalance={loans[0].currentBalance}
+              interestRate={loans[0].interestRate ?? 0}
+              monthlyPayment={loans[0].monthlyPayment ?? 0}
             />
           ) : (
             <div className="text-center py-12 text-muted-foreground">

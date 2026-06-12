@@ -508,7 +508,7 @@ export function EmailConfigForm({
                         <FormItem>
                           <FormLabel>Verarbeitet-Ordner</FormLabel>
                           <FormControl>
-                            <Input placeholder="INBOX/Processed" {...field} value={field.value ?? ''} />
+                            <Input placeholder="INBOX/Verarbeitet" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormDescription>
                             Optional: Emails nach Import verschieben

@@ -98,7 +98,10 @@ const employeeFormSchema = z.object({
   bank_name: z.string().max(100).optional().nullable(),
 });
 
-type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
+// z.coerce.number() macht Input- und Output-Typ des Schemas verschieden —
+// beide explizit ableiten und useForm mit Transformed-Values typisieren.
+type EmployeeFormInput = z.input<typeof employeeFormSchema>;
+type EmployeeFormValues = z.output<typeof employeeFormSchema>;
 
 interface EmployeeFormProps {
   open: boolean;
@@ -121,7 +124,7 @@ export function EmployeeForm({
 
   const isEditing = !!employee;
 
-  const form = useForm<EmployeeFormValues>({
+  const form = useForm<EmployeeFormInput, unknown, EmployeeFormValues>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       employee_number: '',
@@ -227,7 +230,7 @@ export function EmployeeForm({
           key,
           value === '' ? undefined : value,
         ])
-      ) as EmployeeCreate;
+      ) as unknown as EmployeeCreate;
 
       let result: EmployeeDetail;
 
@@ -722,7 +725,7 @@ export function EmployeeForm({
                       <FormItem>
                         <FormLabel>Wochenstunden</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} max={168} step={0.5} {...field} value={field.value ?? ''} />
+                          <Input type="number" min={0} max={168} step={0.5} {...field} value={(field.value as number | string | undefined) ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -735,7 +738,7 @@ export function EmployeeForm({
                       <FormItem>
                         <FormLabel>Urlaubstage/Jahr</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} max={365} {...field} value={field.value ?? ''} />
+                          <Input type="number" min={0} max={365} {...field} value={(field.value as number | string | undefined) ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

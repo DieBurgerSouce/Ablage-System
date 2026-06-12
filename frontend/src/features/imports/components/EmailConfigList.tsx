@@ -128,7 +128,7 @@ export function EmailConfigList({ onCreateNew, onEdit }: EmailConfigListProps) {
   const triggerSync = useTriggerEmailSync();
 
   // Handlers
-  const handleTestConnection = async (configId: string, configName: string) => {
+  const handleTestConnection = async (configId: string, _configName: string) => {
     try {
       const result = await testConnection.mutateAsync(configId);
       toast({

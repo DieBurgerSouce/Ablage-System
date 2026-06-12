@@ -1575,7 +1575,7 @@ export function useProcessAutomaticDunning() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (dryRun = false) => bankingService.processAutomaticDunning(dryRun),
+        mutationFn: (dryRun: boolean) => bankingService.processAutomaticDunning(dryRun),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
             queryClient.invalidateQueries({ queryKey: autoMahnlaufQueryKeys.autoDunning() });

@@ -14,10 +14,6 @@ function formatCurrency(amount: number): string {
   return amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
 
-function formatDate(dateString: string | null): string {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('de-DE');
-}
 
 function AlertItem({ alert }: { alert: SkontoAlert }) {
   const urgencyConfig = {

@@ -63,11 +63,6 @@ function getConfidenceColor(confidence: number): string {
   return 'text-red-600 bg-red-500/10 border-red-500/20'
 }
 
-function getConfidenceLabel(confidence: number): string {
-  if (confidence >= 95) return 'Hoch'
-  if (confidence >= 70) return 'Mittel'
-  return 'Niedrig'
-}
 
 export function ResultStep({ document }: ResultStepProps) {
   const fields = generateExtractedFields(document)

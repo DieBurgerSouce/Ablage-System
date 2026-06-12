@@ -40,7 +40,6 @@ const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_ROWS_DISPLAY = 1000;
 
 /** Warning threshold for large files */
-const LARGE_FILE_ROW_THRESHOLD = 500;
 
 // ==================== Helper Functions ====================
 
@@ -69,7 +68,7 @@ function columnIndexToLetter(index: number): string {
 // ==================== Component ====================
 
 export function XlsxViewer({ fileData, className }: XlsxViewerProps) {
-    const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
+    const [_workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
     const [sheets, setSheets] = useState<SheetData[]>([]);
     const [activeSheet, setActiveSheet] = useState(0);
     const [isLoading, setIsLoading] = useState(true);

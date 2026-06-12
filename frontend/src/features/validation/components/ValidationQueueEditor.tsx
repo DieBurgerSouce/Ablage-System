@@ -395,7 +395,9 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
                 fields.map((field) => (
                   <Card
                     key={field.id}
-                    ref={(el) => (fieldRefs.current[field.field_key] = el)}
+                    ref={(el) => {
+                      fieldRefs.current[field.field_key] = el;
+                    }}
                     className={`transition-all ${
                       highlightedField === field.field_key
                         ? 'ring-2 ring-primary'

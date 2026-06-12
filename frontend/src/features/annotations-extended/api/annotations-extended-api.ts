@@ -10,6 +10,9 @@ import type {
   BoundingBox,
   CommentReply,
   AnnotationTask,
+} from "../types/annotations-extended-types";
+// Transformer sind Laufzeit-Funktionen -> kein import type
+import {
   transformBoundingBox,
   transformCommentReply,
   transformAnnotationTask,

@@ -123,7 +123,7 @@ const CHART_TYPE_OPTIONS = [
 export function WidgetConfigModal({
   isOpen,
   onClose,
-  widgetId,
+  widgetId: _widgetId,
   widgetType,
   currentSettings,
   onSave,

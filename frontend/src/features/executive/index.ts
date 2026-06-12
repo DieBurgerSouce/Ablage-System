@@ -7,7 +7,7 @@
 // Types
 export type {
   KPIResponse,
-  DepartmentBreakdown,
+  DepartmentBreakdown as DepartmentBreakdownData,
   TrendDataPoint,
   TrendResponse,
   ExecutiveSummaryResponse,

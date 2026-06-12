@@ -125,7 +125,7 @@ export function useMLOpsStats() {
   return useQuery({
     queryKey: mlopsKeys.stats(),
     queryFn: async () => {
-      const response = await api.get<MLOpsStats>('/api/v1/mlops/stats');
+      const response = await api.get<MLOpsStats>('/mlops/stats');
       return response.data;
     },
     staleTime: 30_000, // 30 Sekunden
@@ -144,7 +144,7 @@ export function useModelVersions(modelType: ModelType, status?: ModelStatus) {
       if (status) params.set('status', status);
 
       const response = await api.get<ModelVersion[]>(
-        `/api/v1/mlops/models/versions?${params.toString()}`
+        `/mlops/models/versions?${params.toString()}`
       );
       return response.data;
     },
@@ -160,7 +160,7 @@ export function useActiveModel(modelType: ModelType) {
     queryKey: mlopsKeys.activeModel(modelType),
     queryFn: async () => {
       const response = await api.get<ModelMetadata | null>(
-        `/api/v1/mlops/models/${modelType}/active`
+        `/mlops/models/${modelType}/active`
       );
       return response.data;
     },
@@ -176,7 +176,7 @@ export function useRetrainingJobs(limit = 20) {
     queryKey: mlopsKeys.jobs(),
     queryFn: async () => {
       const response = await api.get<RetrainingJob[]>(
-        `/api/v1/mlops/retraining/jobs?limit=${limit}`
+        `/mlops/retraining/jobs?limit=${limit}`
       );
       return response.data;
     },
@@ -191,7 +191,7 @@ export function useRetrainingConfig() {
   return useQuery({
     queryKey: mlopsKeys.config(),
     queryFn: async () => {
-      const response = await api.get<RetrainingConfig>('/api/v1/mlops/retraining/config');
+      const response = await api.get<RetrainingConfig>('/mlops/retraining/config');
       return response.data;
     },
     staleTime: 300_000, // 5 Minuten
@@ -207,7 +207,7 @@ export function useUpdateRetrainingConfig() {
   return useMutation({
     mutationFn: async (config: Partial<RetrainingConfig>) => {
       const response = await api.patch<RetrainingConfig>(
-        '/api/v1/mlops/retraining/config',
+        '/mlops/retraining/config',
         config
       );
       return response.data;
@@ -233,7 +233,7 @@ export function usePerformanceHistory(modelType: ModelType, days = 30) {
           created_at: string;
           status: ModelStatus;
         }>
-      >(`/api/v1/mlops/models/${modelType}/history?days=${days}`);
+      >(`/mlops/models/${modelType}/history?days=${days}`);
       return response.data;
     },
     staleTime: 300_000,
@@ -254,7 +254,7 @@ export function useStartRetraining() {
       modelType: ModelType;
       trigger?: RetrainingTrigger;
     }) => {
-      const response = await api.post<RetrainingJob>('/api/v1/mlops/retraining/start', {
+      const response = await api.post<RetrainingJob>('/mlops/retraining/start', {
         model_type: modelType,
         trigger,
       });
@@ -282,7 +282,7 @@ export function usePromoteModel() {
       version: string;
     }) => {
       const response = await api.post<ModelMetadata>(
-        `/api/v1/mlops/models/${modelType}/promote`,
+        `/mlops/models/${modelType}/promote`,
         { version }
       );
       return response.data;
@@ -310,7 +310,7 @@ export function useRollbackModel() {
       reason: string;
     }) => {
       const response = await api.post<ModelMetadata | null>(
-        `/api/v1/mlops/models/${modelType}/rollback`,
+        `/mlops/models/${modelType}/rollback`,
         { reason }
       );
       return response.data;
@@ -375,7 +375,7 @@ export function useABTests(modelType?: ModelType, status?: ABTestStatus, limit =
       params.set('limit', String(limit));
 
       const response = await api.get<ABTest[]>(
-        `/api/v1/ocr-learning/ab-tests?${params.toString()}`
+        `/ocr-learning/ab-tests?${params.toString()}`
       );
       return response.data;
     },
@@ -395,7 +395,7 @@ export function useRollbackHistory(modelType?: ModelType, limit = 20) {
       params.set('limit', String(limit));
 
       const response = await api.get<RollbackEvent[]>(
-        `/api/v1/mlops/rollback-history?${params.toString()}`
+        `/mlops/rollback-history?${params.toString()}`
       );
       return response.data;
     },
@@ -423,7 +423,7 @@ export function useStartABTest() {
       variantBVersion: string;
       trafficSplit?: number;
     }) => {
-      const response = await api.post<ABTest>('/api/v1/ocr-learning/ab-test/start', {
+      const response = await api.post<ABTest>('/ocr-learning/ab-test/start', {
         name,
         model_type: modelType,
         variant_a_version: variantAVersion,
@@ -447,7 +447,7 @@ export function useEndABTest() {
   return useMutation({
     mutationFn: async ({ testId }: { testId: string }) => {
       const response = await api.post<ABTest>(
-        `/api/v1/ocr-learning/ab-test/${testId}/end`,
+        `/ocr-learning/ab-test/${testId}/end`,
         {}
       );
       return response.data;

@@ -35,7 +35,7 @@ export function RiskAlertBanner({
   compact = false,
   className,
 }: RiskAlertBannerProps) {
-  const { riskScore, riskLevel, riskFactors, entityName } = entityRisk;
+  const { riskScore, riskLevel, riskFactors, entityName: _entityName } = entityRisk;
 
   // Only show for high and critical risk
   if (riskLevel !== 'high' && riskLevel !== 'critical') {

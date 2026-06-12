@@ -24,7 +24,7 @@ export function RecentDocumentsWidget() {
 
     // FIX Phase 7.6: Type-safe Navigation
     const handleDocumentClick = (docId: string) => {
-        navigate({ to: '/documents/$id', params: { id: docId } })
+        navigate({ to: '/documents/$documentId', params: { documentId: docId } })
     }
 
     return (

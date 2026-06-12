@@ -294,13 +294,7 @@ function SpaceCard({ space, onEdit, onDelete, onSettings }: SpaceCardProps) {
             <dt className="sr-only">Speichergröße</dt>
             <dd>{formatBytes(space.totalSizeBytes)}</dd>
           </div>
-          {!isPersonal && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Users className="h-4 w-4" aria-hidden="true" />
-              <dt className="sr-only">Anzahl Nutzer</dt>
-              <dd>{space.accessCount ?? 0} Nutzer</dd>
-            </div>
-          )}
+          {/* Nutzer-Anzeige entfernt: PrivatSpaceWithStats liefert keinen accessCount */}
         </dl>
         <div className="mt-4">
           <Link to="/privat/spaces/$spaceId" params={{ spaceId: space.id }}>

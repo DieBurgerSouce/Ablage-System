@@ -122,7 +122,7 @@ export function EntityTimeline({
     // Handle document click
     const handleEventClick = (documentId: string | undefined) => {
         if (documentId) {
-            navigate({ to: '/viewer/$documentId', params: { documentId } });
+            navigate({ to: '/documents/$documentId', params: { documentId } });
         }
     };
 
@@ -138,7 +138,7 @@ export function EntityTimeline({
             return acc;
         },
         {} as Record<TimelineEventType, number>
-    ) ?? {};
+    ) ?? ({} as Record<TimelineEventType, number>);
 
     return (
         <Card className={compact ? 'border-0 shadow-none' : undefined}>

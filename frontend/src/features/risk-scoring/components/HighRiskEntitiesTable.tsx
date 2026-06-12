@@ -224,16 +224,21 @@ export function HighRiskEntitiesTable({
                         </Button>
                       )}
                       <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                        <Link
-                          to={
-                            entity.entityType === 'customer'
-                              ? '/kunden/$entityId'
-                              : '/lieferanten/$entityId'
-                          }
-                          params={{ entityId: entity.entityId }}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Link>
+                        {entity.entityType === 'customer' ? (
+                          <Link
+                            to="/kunden/$customerId"
+                            params={{ customerId: entity.entityId }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        ) : (
+                          <Link
+                            to="/lieferanten/$supplierId"
+                            params={{ supplierId: entity.entityId }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        )}
                       </Button>
                     </div>
                   </TableCell>
@@ -311,28 +316,42 @@ export function RiskEntityList({
 
   return (
     <div className={cn('space-y-2', className)}>
-      {displayEntities.map((entity) => (
-        <Link
-          key={entity.entityId}
-          to={
-            entity.entityType === 'customer'
-              ? '/kunden/$entityId'
-              : '/lieferanten/$entityId'
-          }
-          params={{ entityId: entity.entityId }}
-          className="flex items-center justify-between p-2 rounded-md hover:bg-accent transition-colors"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            {entity.entityType === 'customer' ? (
-              <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            ) : (
-              <Package className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            )}
-            <span className="text-sm truncate">{entity.entityName}</span>
-          </div>
-          <RiskIndicator score={entity.riskScore} />
-        </Link>
-      ))}
+      {displayEntities.map((entity) => {
+        const rowContent = (
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              {entity.entityType === 'customer' ? (
+                <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              ) : (
+                <Package className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              )}
+              <span className="text-sm truncate">{entity.entityName}</span>
+            </div>
+            <RiskIndicator score={entity.riskScore} />
+          </>
+        );
+        const rowClassName =
+          'flex items-center justify-between p-2 rounded-md hover:bg-accent transition-colors';
+        return entity.entityType === 'customer' ? (
+          <Link
+            key={entity.entityId}
+            to="/kunden/$customerId"
+            params={{ customerId: entity.entityId }}
+            className={rowClassName}
+          >
+            {rowContent}
+          </Link>
+        ) : (
+          <Link
+            key={entity.entityId}
+            to="/lieferanten/$supplierId"
+            params={{ supplierId: entity.entityId }}
+            className={rowClassName}
+          >
+            {rowContent}
+          </Link>
+        );
+      })}
       {entities.length > maxItems && (
         <p className="text-xs text-center text-muted-foreground pt-2">
           +{entities.length - maxItems} weitere

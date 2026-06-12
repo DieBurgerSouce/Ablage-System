@@ -30,7 +30,6 @@ export function ContractDataSection({ data, onFieldEdit }: ContractDataSectionPr
   // Group fields by category
   const dateFields = ['contract_date', 'start_date', 'end_date', 'duration'];
   const terminationFields = ['notice_period', 'termination_notice', 'auto_renewal'];
-  const contractFields = ['contract_type', 'contract_value', 'governing_law'];
 
   const getField = (key: string): ExtractedField | undefined => {
     return data[key as keyof ContractData] as ExtractedField | undefined;

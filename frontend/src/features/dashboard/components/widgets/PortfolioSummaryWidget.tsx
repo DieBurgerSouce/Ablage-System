@@ -56,7 +56,7 @@ function usePortfolioSummary() {
     return useQuery({
         queryKey: ['portfolio', 'summary'],
         queryFn: async (): Promise<PortfolioSummary> => {
-            const response = await api.get('/api/v1/portfolio/summary');
+            const response = await api.get('/portfolio/summary');
             return response.data;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -265,7 +265,7 @@ function PortfolioSummaryWidgetContent() {
 
             {/* Link to full portfolio */}
             <Link
-                to="/portfolio"
+                to="/privat/portfolio"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Portfolio-Details anzeigen

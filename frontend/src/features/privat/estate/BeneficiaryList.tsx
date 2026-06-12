@@ -36,25 +36,33 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { useBeneficiaries, useCreateBeneficiary, useUpdateBeneficiary, useDeleteBeneficiary } from './hooks';
+import type { Beneficiary, RelationshipType } from '@/lib/api/services/estate-planning';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface BeneficiaryListProps {
   spaceId: string;
 }
 
-const RELATIONSHIP_LABELS: Record<string, string> = {
-  spouse: 'Ehepartner',
-  child: 'Kind',
-  grandchild: 'Enkel',
-  sibling: 'Geschwister',
-  parent: 'Elternteil',
-  other: 'Sonstige',
+// Backend-Vertrag: RelationshipType/TaxClass sind deutsche Enum-Strings
+// (app/services/privat/estate_planning_service.py)
+const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
+  ehepartner: 'Ehepartner',
+  lebenspartner: 'Lebenspartner',
+  kind: 'Kind',
+  stiefkind: 'Stiefkind',
+  enkelkind: 'Enkel',
+  enkelkind_eltern_leben: 'Enkel (Eltern leben)',
+  elternteil: 'Elternteil',
+  geschwister: 'Geschwister',
+  neffe_nichte: 'Neffe/Nichte',
+  sonstige_verwandte: 'Sonstige Verwandte',
+  nicht_verwandt: 'Nicht verwandt',
 };
 
-const TAX_CLASS_LABELS: Record<number, string> = {
-  1: 'Klasse I',
-  2: 'Klasse II',
-  3: 'Klasse III',
+const TAX_CLASS_LABELS: Record<string, string> = {
+  klasse_i: 'Klasse I',
+  klasse_ii: 'Klasse II',
+  klasse_iii: 'Klasse III',
 };
 
 const formatCurrency = (value: number): string =>
@@ -68,11 +76,16 @@ const formatCurrency = (value: number): string =>
 export function BeneficiaryList({ spaceId }: BeneficiaryListProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingBeneficiary, setEditingBeneficiary] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    relationship: RelationshipType;
+    sharePercent: number;
+    notes: string;
+  }>({
     name: '',
-    relationship: 'child',
-    share: 0,
-    email: '',
+    relationship: 'kind',
+    sharePercent: 0,
+    notes: '',
   });
 
   const { data: beneficiaries, isLoading } = useBeneficiaries(spaceId);
@@ -112,21 +125,21 @@ export function BeneficiaryList({ spaceId }: BeneficiaryListProps) {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', relationship: 'child', share: 0, email: '' });
+    setFormData({ name: '', relationship: 'kind', sharePercent: 0, notes: '' });
   };
 
-  const startEdit = (beneficiary: (typeof beneficiaries)[0]) => {
+  const startEdit = (beneficiary: Beneficiary) => {
     setFormData({
       name: beneficiary.name,
       relationship: beneficiary.relationship,
-      share: beneficiary.share,
-      email: beneficiary.email ?? '',
+      sharePercent: beneficiary.sharePercent,
+      notes: beneficiary.notes ?? '',
     });
     setEditingBeneficiary(beneficiary.id);
   };
 
   // Gesamtanteil berechnen
-  const totalShare = beneficiaries?.reduce((sum, b) => sum + b.share, 0) ?? 0;
+  const totalShare = beneficiaries?.reduce((sum, b) => sum + b.sharePercent, 0) ?? 0;
   const shareWarning = totalShare !== 100 && (beneficiaries?.length ?? 0) > 0;
 
   if (isLoading) {
@@ -187,18 +200,17 @@ export function BeneficiaryList({ spaceId }: BeneficiaryListProps) {
                   <Label htmlFor="relationship">Verwandtschaftsgrad</Label>
                   <Select
                     value={formData.relationship}
-                    onValueChange={(v) => setFormData({ ...formData, relationship: v })}
+                    onValueChange={(v) => setFormData({ ...formData, relationship: v as RelationshipType })}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="spouse">Ehepartner</SelectItem>
-                      <SelectItem value="child">Kind</SelectItem>
-                      <SelectItem value="grandchild">Enkel</SelectItem>
-                      <SelectItem value="sibling">Geschwister</SelectItem>
-                      <SelectItem value="parent">Elternteil</SelectItem>
-                      <SelectItem value="other">Sonstige</SelectItem>
+                      {(Object.keys(RELATIONSHIP_LABELS) as RelationshipType[]).map((rel) => (
+                        <SelectItem key={rel} value={rel}>
+                          {RELATIONSHIP_LABELS[rel]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -209,19 +221,18 @@ export function BeneficiaryList({ spaceId }: BeneficiaryListProps) {
                     type="number"
                     min={0}
                     max={100}
-                    value={formData.share}
+                    value={formData.sharePercent}
                     onChange={(e) =>
-                      setFormData({ ...formData, share: Number(e.target.value) })
+                      setFormData({ ...formData, sharePercent: Number(e.target.value) })
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">E-Mail (optional)</Label>
+                  <Label htmlFor="notes">Notizen (optional)</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Für Benachrichtigungen"
                   />
                 </div>
@@ -281,10 +292,10 @@ export function BeneficiaryList({ spaceId }: BeneficiaryListProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {ben.share}%
+                    {ben.sharePercent}%
                   </TableCell>
                   <TableCell className="text-right text-green-600">
-                    {formatCurrency(ben.taxAllowance)}
+                    {formatCurrency(ben.personalAllowance)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -333,9 +344,9 @@ export function BeneficiaryList({ spaceId }: BeneficiaryListProps) {
                   type="number"
                   min={0}
                   max={100}
-                  value={formData.share}
+                  value={formData.sharePercent}
                   onChange={(e) =>
-                    setFormData({ ...formData, share: Number(e.target.value) })
+                    setFormData({ ...formData, sharePercent: Number(e.target.value) })
                   }
                 />
               </div>

@@ -151,10 +151,7 @@ const MAX_FORMS = 100;
 /** Zeit in ms nach der nicht-dirty Formulare als stale gelten */
 const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 Minuten
 
-export function FormRegistryProvider({
-    children,
-    warningMessage = 'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
-}: FormRegistryProviderProps) {
+export function FormRegistryProvider({ children }: FormRegistryProviderProps) {
     const [forms, setForms] = useState<Map<string, FormState>>(new Map());
 
     // Computed values

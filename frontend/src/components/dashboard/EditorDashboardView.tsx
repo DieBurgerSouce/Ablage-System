@@ -86,7 +86,7 @@ export function EditorDashboardView({ userName }: EditorDashboardViewProps) {
 
     // Document click handler
     const handleDocumentClick = (docId: string) => {
-        navigate({ to: '/documents/$id', params: { id: docId } })
+        navigate({ to: '/documents/$documentId', params: { documentId: docId } })
     }
 
     const greeting = getGreeting()
@@ -150,7 +150,7 @@ export function EditorDashboardView({ userName }: EditorDashboardViewProps) {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <Link to="/validierung" aria-label={`${taskStats.pendingValidation} Belege zur Validierung`}>
+                                <Link to="/validation-queue" aria-label={`${taskStats.pendingValidation} Belege zur Validierung`}>
                                     <Card className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer">
                                         <CardHeader className="pb-2">
                                             <div className="flex items-center justify-between">

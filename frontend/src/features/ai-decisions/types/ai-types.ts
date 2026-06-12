@@ -197,6 +197,8 @@ export interface AIDecision {
 }
 
 export interface AIDecisionFilters {
+  /** Backend-Query-Param decision_type (app/api/v1/ai_autonomy.py) */
+  decision_type?: string;
   confidence_level?: ConfidenceLevel[];
   quality_decision?: QualityDecision[];
   needs_review?: boolean;

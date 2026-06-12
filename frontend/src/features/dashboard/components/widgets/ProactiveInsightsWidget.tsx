@@ -79,7 +79,7 @@ function useInsightsSummary() {
     return useQuery({
         queryKey: ['insights', 'summary'],
         queryFn: async (): Promise<InsightSummary> => {
-            const response = await api.get('/api/v1/insights/summary');
+            const response = await api.get('/insights/summary');
             return response.data;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -91,7 +91,7 @@ function useTopInsights(limit: number = 5) {
     return useQuery({
         queryKey: ['insights', 'all', { limit }],
         queryFn: async (): Promise<InsightListResponse> => {
-            const response = await api.get('/api/v1/insights/all', {
+            const response = await api.get('/insights/all', {
                 params: { limit, priority: 'high,critical' },
             });
             return response.data;
@@ -248,7 +248,7 @@ export function ProactiveInsightsWidget() {
             critical: summary.critical_count,
             high: summary.high_count,
             potentialValue: summary.total_potential_value,
-            dataQuality: summary.data_quality_score,
+            dataQuality: summary.data_quality_score ?? null,
         };
     }, [summary]);
 
@@ -274,7 +274,7 @@ export function ProactiveInsightsWidget() {
                         </h2>
                     </div>
                     <Link
-                        to="/insights"
+                        to="/proactive-assistant"
                         className="text-sm text-primary hover:underline flex items-center"
                     >
                         Alle anzeigen
@@ -321,7 +321,7 @@ export function ProactiveInsightsWidget() {
                                 icon={Lightbulb}
                                 trend={getTrend(stats.critical, stats.high)}
                                 subtext={stats.critical > 0 ? `${stats.critical} kritisch` : 'Alles im Blick'}
-                                href="/insights"
+                                href="/proactive-assistant"
                                 isCurrency={false}
                             />
                             <KPICard

@@ -384,7 +384,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                     <FormItem>
                       <FormLabel>Erlaubte Rollen</FormLabel>
                       <TagInput
-                        value={field.value}
+                        value={field.value ?? []}
                         onChange={field.onChange}
                         placeholder="Rolle hinzufügen..."
                         suggestions={['admin', 'manager', 'user', 'accountant', 'viewer']}
@@ -404,7 +404,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                     <FormItem>
                       <FormLabel>Blockierte Rollen</FormLabel>
                       <TagInput
-                        value={field.value}
+                        value={field.value ?? []}
                         onChange={field.onChange}
                         placeholder="Rolle hinzufügen..."
                         suggestions={['guest', 'external', 'temp']}
@@ -427,7 +427,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                     <FormItem>
                       <FormLabel>Dokument-Typen</FormLabel>
                       <TagInput
-                        value={field.value}
+                        value={field.value ?? []}
                         onChange={field.onChange}
                         placeholder="Typ hinzufügen..."
                         suggestions={['all', 'pdf', 'image', 'invoice', 'contract']}
@@ -447,7 +447,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                     <FormItem>
                       <FormLabel>Erforderliche Tags</FormLabel>
                       <TagInput
-                        value={field.value}
+                        value={field.value ?? []}
                         onChange={field.onChange}
                         placeholder="Tag hinzufügen..."
                         suggestions={['vertraulich', 'intern', 'geheim']}
@@ -467,7 +467,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                     <FormItem>
                       <FormLabel>Blockierte Tags</FormLabel>
                       <TagInput
-                        value={field.value}
+                        value={field.value ?? []}
                         onChange={field.onChange}
                         placeholder="Tag hinzufügen..."
                         suggestions={['public', 'draft']}

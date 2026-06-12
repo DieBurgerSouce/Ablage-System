@@ -23,6 +23,7 @@ import {
   CATEGORIES_WITH_PAYMENT_STATUS,
   DEFAULT_CATEGORY_FILTER,
   type CategoryDocumentFilter,
+  type PaymentStatus,
 } from '../types';
 import {
   useCategoryPage,
@@ -183,27 +184,19 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
   }, []);
 
   // Export handlers for QuickActionsBar
+  // Export-Hooks arbeiten dokumentbasiert (documentIds) — die aktuell
+  // gefilterte Liste wird exportiert (Hook-Vertrag use-ablage-queries).
   const handleExportCsv = useCallback(async () => {
     await exportCsv.mutateAsync({
-      filter: {
-        businessEntityId: entityId || '',
-        folderId: folderId || '',
-        category: category || '',
-        ...filter,
-      },
+      documentIds: documentList.map((d) => d.id),
     });
-  }, [entityId, folderId, category, filter, exportCsv]);
+  }, [documentList, exportCsv]);
 
   const handleDownloadZip = useCallback(async () => {
     await downloadZip.mutateAsync({
-      filter: {
-        businessEntityId: entityId || '',
-        folderId: folderId || '',
-        category: category || '',
-        ...filter,
-      },
+      documentIds: documentList.map((d) => d.id),
     });
-  }, [entityId, folderId, category, filter, downloadZip]);
+  }, [documentList, downloadZip]);
 
   // Filter handlers for banners
   const handleFilterOverdue = useCallback(() => {
@@ -254,7 +247,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
           documents={documentList}
           category={category}
           isLoading={isLoadingAggregations}
-          onFilterDocuments={(f) => handleFilterChange({ paymentStatus: f.paymentStatus as string[] | undefined })}
+          onFilterDocuments={(f) => handleFilterChange({ paymentStatus: f.paymentStatus as PaymentStatus[] | undefined })}
         />
       )}
 
@@ -370,7 +363,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
         entityId={entityId || ''}
-        entityName={entityInfo?.display_name || ''}
+        entityName={entityInfo?.name || ''}
         entityType={entityType}
         folderId={folderId || ''}
         folderName={folderDisplayName}

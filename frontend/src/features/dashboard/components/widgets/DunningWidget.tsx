@@ -35,16 +35,19 @@ export function DunningWidget() {
     const isLoading = isLoadingStats || isLoadingOverdue;
 
     // Berechne Statistiken
-    const totalOverdue = dunningStats?.total_overdue ?? 0;
-    const totalAmount = dunningStats?.total_amount ?? 0;
-    const oldestOverdueDays = dunningStats?.oldest_overdue_days ?? 0;
+    // Echte DunningStats-Felder (Backend dunning_service.get_dunning_stats):
+    // total_active, total_amount_overdue, avg_days_overdue
+    const totalOverdue = dunningStats?.total_active ?? 0;
+    const totalAmount = dunningStats?.total_amount_overdue ?? 0;
+    const oldestOverdueDays = Math.round(dunningStats?.avg_days_overdue ?? 0);
     const uniqueDebtors = overdueInvoices?.length ?? 0;
 
     // Mahnstufen-Verteilung
-    const byLevel = dunningStats?.by_level ?? [];
-    const level1Count = byLevel.find(l => l.level === '1')?.count ?? 0;
-    const level2Count = byLevel.find(l => l.level === '2')?.count ?? 0;
-    const level3Count = byLevel.find(l => l.level === '3')?.count ?? 0;
+    // by_level ist ein Record { mahnstufe: anzahl } (Backend dunning_service)
+    const byLevel = dunningStats?.by_level ?? {};
+    const level1Count = byLevel[1] ?? 0;
+    const level2Count = byLevel[2] ?? 0;
+    const level3Count = byLevel[3] ?? 0;
 
     const getLevelSubtext = () => {
         const parts = [];
@@ -100,11 +103,11 @@ export function DunningWidget() {
                             href="/banking?tab=dunning"
                         />
                         <KPICard
-                            title="Älteste Mahnung"
+                            title="Ø Überfälligkeit"
                             value={oldestOverdueDays}
                             icon={Clock}
                             trend={getTrend(oldestOverdueDays, 60)}
-                            subtext="Tage überfällig"
+                            subtext="Tage überfällig (Durchschnitt)"
                             href="/banking?tab=dunning"
                             isCurrency={false}
                         />

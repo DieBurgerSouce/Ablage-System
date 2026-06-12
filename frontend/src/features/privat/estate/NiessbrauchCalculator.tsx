@@ -58,7 +58,7 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export function NiessbrauchCalculator({ spaceId }: NiessbrauchCalculatorProps) {
+export function NiessbrauchCalculator(_props: NiessbrauchCalculatorProps) {
   const [propertyValue, setPropertyValue] = useState(500000);
   const [annualRent, setAnnualRent] = useState(12000);
   const [age, setAge] = useState(65);

@@ -31,7 +31,7 @@ import {
   Users,
   Settings,
   Mail,
-  Activity,
+  Activity as ActivityIcon,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -71,7 +71,7 @@ const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   users: Users,
   settings: Settings,
   mail: Mail,
-  activity: Activity,
+  activity: ActivityIcon,
 };
 
 // Farb-Klassen für den Timeline-Punkt
@@ -137,7 +137,7 @@ export function ActivityItem({ activity, showTarget = true, isLast = false }: Ac
     if (activity.icon && ACTIVITY_ICONS[activity.icon]) {
       return ACTIVITY_ICONS[activity.icon];
     }
-    return Activity;
+    return ActivityIcon;
   }, [activity.icon]);
 
   const color: ActivityColor | 'default' = activity.color || 'default';
@@ -234,7 +234,7 @@ export function ActivityItem({ activity, showTarget = true, isLast = false }: Ac
           )}
 
           {/* Team Badge */}
-          {activity.teamId && (
+          {!!activity.teamId && (
             <Badge variant="secondary" className="text-xs">
               Team
             </Badge>
@@ -248,13 +248,13 @@ export function ActivityItem({ activity, showTarget = true, isLast = false }: Ac
           )}
 
           {/* OCR Metadata */}
-          {activity.activityType === 'ocr_completed' && activity.metadata?.backend && (
+          {activity.activityType === 'ocr_completed' && !!activity.metadata?.backend && (
             <Badge variant="outline" className="text-xs">
               {String(activity.metadata.backend)}
             </Badge>
           )}
 
-          {activity.activityType === 'ocr_completed' && activity.metadata?.confidence && (
+          {activity.activityType === 'ocr_completed' && !!activity.metadata?.confidence && (
             <Badge
               variant="outline"
               className={cn(

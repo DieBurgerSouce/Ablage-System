@@ -41,7 +41,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useDebounce } from '@/hooks/use-debounce';
 
 export type EntityType =
   | 'document'

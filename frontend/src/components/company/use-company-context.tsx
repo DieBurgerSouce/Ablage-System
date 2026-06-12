@@ -85,7 +85,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
 
   const value: CompanyContextValue = {
     currentCompany: currentCompany ?? null,
-    companies: companiesData?.companies ?? [],
+    companies: companiesData?.items ?? [],
     isLoading: isLoadingCompanies || isLoadingCurrent,
     error: (companiesError as Error) ?? (currentError as Error) ?? null,
     switchCompany,

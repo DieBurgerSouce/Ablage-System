@@ -220,7 +220,9 @@ export function DiscrepancyPanel({
                     variant="outline"
                     className={cn(
                       'text-xs',
-                      DISCREPANCY_SEVERITY_STYLES[selectedDiscrepancy.severity].className
+                      DISCREPANCY_SEVERITY_STYLES[selectedDiscrepancy.severity].bgColor,
+                      DISCREPANCY_SEVERITY_STYLES[selectedDiscrepancy.severity].textColor,
+                      DISCREPANCY_SEVERITY_STYLES[selectedDiscrepancy.severity].borderColor
                     )}
                   >
                     {DISCREPANCY_SEVERITY_STYLES[selectedDiscrepancy.severity].label}

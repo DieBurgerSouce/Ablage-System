@@ -186,7 +186,7 @@ export function WorkflowRuleBuilder() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <WorkflowFormDialog
-                onSubmit={(data) => createMutation.mutate(data)}
+                onSubmit={(data) => createMutation.mutate(data as WorkflowCreate)}
                 isLoading={createMutation.isPending}
               />
             </DialogContent>
@@ -249,7 +249,7 @@ export function WorkflowRuleBuilder() {
                       </Badge>
                     </TableCell>
                     <TableCell>{workflow.execution_count}</TableCell>
-                    <TableCell>{formatDate(workflow.last_executed_at)}</TableCell>
+                    <TableCell>{formatDate(workflow.last_executed_at ?? null)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button

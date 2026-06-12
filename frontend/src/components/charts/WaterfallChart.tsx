@@ -43,7 +43,7 @@ export interface WaterfallChartProps {
 // Transform waterfall data for stacked bar visualization
 function transformWaterfallData(data: WaterfallDataPoint[]) {
     let runningTotal = 0
-    return data.map((item, index) => {
+    return data.map((item, _index) => {
         if (item.isTotal || item.isSubtotal) {
             const result = {
                 ...item,

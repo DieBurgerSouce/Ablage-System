@@ -10,7 +10,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { useRealtimeEvent } from '@/lib/websocket';
+
 
 // ==================== Types ====================
 
@@ -69,24 +69,17 @@ export function usePresence(documentId: string, enabled = true) {
     retry: 1,
   });
 
-  // WebSocket-Updates für Präsenz-Änderungen
+  // Praesenz-Updates via Polling. Hinweis: Ein 'document.viewed'-Realtime-Event
+  // existiert weder im RealtimeEventType-Katalog noch im Backend — die fruehere
+  // Subscription war zudem ein Rules-of-Hooks-Verstoss (Hook im Effect).
   useEffect(() => {
     if (!enabled || !documentId) return;
 
-    // Wenn User ein Dokument öffnet/schließt
-    const unsubscribeJoin = useRealtimeEvent('document.viewed', (event) => {
-      if (event.payload.document_id === documentId) {
-        queryClient.invalidateQueries({ queryKey: presenceKeys.document(documentId) });
-      }
-    });
-
-    // Periodic invalidation for presence updates
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: presenceKeys.document(documentId) });
-    }, 15000); // 15 seconds
+    }, 15000); // 15 Sekunden
 
     return () => {
-      unsubscribeJoin();
       clearInterval(interval);
     };
   }, [documentId, enabled, queryClient]);

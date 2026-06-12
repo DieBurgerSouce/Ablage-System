@@ -60,7 +60,7 @@ export function AnnotationTasksPage() {
 
   // Get unique assignees for filter
   const uniqueAssignees = Array.from(
-    new Set(tasks.map((t) => t.assignee).filter(Boolean))
+    new Set(tasks.map((t) => t.assignee).filter((a): a is string => Boolean(a)))
   );
 
   return (

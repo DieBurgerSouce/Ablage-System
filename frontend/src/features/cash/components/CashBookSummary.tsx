@@ -76,7 +76,7 @@ export function CashBookSummary({ registerId, startDate, endDate, className }: C
   const totalExpense = summary?.total_expense ?? 0;
   const netChange = totalIncome - totalExpense;
   const entryCount = summary?.entry_count ?? 0;
-  const currentBalance = summary?.current_balance ?? 0;
+  const currentBalance = summary?.closing_balance ?? 0;
 
   // Balance-Status ermitteln
   const balanceStatus = currentBalance < 0

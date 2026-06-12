@@ -22,10 +22,6 @@ function formatCurrency(amount: number): string {
   return amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-}
 
 function getDayOfWeek(dateString: string): number {
   return new Date(dateString).getDay();

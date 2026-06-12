@@ -85,10 +85,11 @@ export function useContractsInfinite(
 
   return useInfiniteQuery({
     queryKey: contractQueryKeys.infinite(params),
-    queryFn: ({ pageParam = 0 }) =>
+    queryFn: ({ pageParam }) =>
       contractsService.listContracts({
         ...params,
-        offset: pageParam,
+        // pageParam ist durch initialPageParam: 0 immer number
+        offset: (pageParam as number | undefined) ?? 0,
         limit: pageSize,
       }),
     getNextPageParam: (lastPage) => {

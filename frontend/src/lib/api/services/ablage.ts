@@ -64,6 +64,11 @@ interface CategoryDocumentBackend {
   tags: string[];
   thumbnail_url: string | null;
   preview_url: string | null;
+  // Skonto-Daten (Backend CategoryDocumentResponse, app/db/schemas.py)
+  skonto_percent: number | null;
+  skonto_days: number | null;
+  skonto_deadline: string | null;
+  skonto_amount: number | null;
 }
 
 interface CategoryDocumentListBackend {
@@ -135,6 +140,10 @@ function transformDocument(doc: CategoryDocumentBackend): CategoryDocumentRespon
     tags: doc.tags,
     thumbnailUrl: doc.thumbnail_url,
     previewUrl: doc.preview_url,
+    skontoPercent: doc.skonto_percent,
+    skontoDays: doc.skonto_days,
+    skontoDeadline: doc.skonto_deadline,
+    skontoAmount: doc.skonto_amount,
   };
 }
 

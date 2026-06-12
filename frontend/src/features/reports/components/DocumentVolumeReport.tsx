@@ -96,7 +96,7 @@ export function DocumentVolumeReport() {
 
   const { data, isLoading, isError, refetch } = useQuery<DocumentVolumeData>({
     queryKey: ['report', 'document-volume', period],
-    queryFn: () => fetchReportData('document-volume', { period }),
+    queryFn: () => fetchReportData<DocumentVolumeData>('document-volume', { period }),
   })
 
   const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {

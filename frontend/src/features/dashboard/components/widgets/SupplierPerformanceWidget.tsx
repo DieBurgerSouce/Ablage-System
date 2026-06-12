@@ -79,14 +79,6 @@ function getProgressColor(score: number): string {
   return 'bg-red-500';
 }
 
-/**
- * Formatiere Währung kompakt
- */
-function formatVolume(value: number): string {
-  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-  return value.toFixed(0);
-}
 
 interface TrendIconProps {
   direction: 'up' | 'down' | 'stable';

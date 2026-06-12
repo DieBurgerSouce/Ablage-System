@@ -47,7 +47,7 @@ export function ChatSessionList({
     onSessionSelect,
     className,
 }: ChatSessionListProps) {
-    const { data: sessionsData, isLoading, refetch } = useChatSessions();
+    const { data: sessionsData, isLoading, refetch: _refetch } = useChatSessions();
     const createSession = useCreateSession();
     const deleteSession = useDeleteSession();
 

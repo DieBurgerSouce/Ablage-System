@@ -248,7 +248,7 @@ export function InlineMetadataEditor({
 }: InlineMetadataEditorProps) {
   const queryClient = useQueryClient();
   const { data, isLoading, error, isError } = useExtractedData(documentId);
-  const [savingField, setSavingField] = useState<string | null>(null);
+  const [_savingField, setSavingField] = useState<string | null>(null);
 
   // Mutation zum Speichern von Metadaten
   const updateMutation = useMutation({
@@ -274,7 +274,7 @@ export function InlineMetadataEditor({
 
       return { previousData };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       // Rollback bei Fehler
       if (context?.previousData) {
         queryClient.setQueryData(['extracted-data', documentId], context.previousData);

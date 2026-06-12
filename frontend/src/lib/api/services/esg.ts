@@ -162,14 +162,16 @@ export interface SupplierRatingCreate {
     notes?: string;
 }
 
+/**
+ * Backend-Vertrag: SupplierSustainabilityService.get_risk_summary
+ * (app/services/compliance/esg/supplier_sustainability.py)
+ */
 export interface SupplierRiskSummary {
     total_suppliers: number;
-    rated_suppliers: number;
+    average_score: number | null;
     by_risk_level: Record<RiskLevel, number>;
-    avg_overall_score: number | null;
-    avg_e_score: number | null;
-    avg_s_score: number | null;
-    avg_g_score: number | null;
+    /** Backend-berechnet: high + critical */
+    high_risk_count: number;
 }
 
 // Certification Types

@@ -92,7 +92,7 @@ interface WorkflowStatsProps {
 export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
   const { data: overviewStats, isLoading: overviewLoading } = useOverviewStats();
   const { data: executionHistory, isLoading: historyLoading } = useExecutionHistory(30);
-  const { data: workflowStats, isLoading: workflowStatsLoading } = useWorkflowStats(
+  const { data: workflowStats } = useWorkflowStats(
     workflowId || '',
     !!workflowId
   );

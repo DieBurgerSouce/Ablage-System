@@ -4,7 +4,7 @@
  * Zeigt Checkliste, Fortschritt, finanzielle Auswirkungen und Empfehlungen.
  */
 
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -81,19 +81,19 @@ export function LifeEventDetail({ eventId, onBack }: LifeEventDetailProps) {
   const progressPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   const allDone = totalItems > 0 && completedItems === totalItems;
 
-  function handleToggle(itemId: string, currentDone: boolean) {
+  const handleToggle = (itemId: string, currentDone: boolean) => {
     toggleItem.mutate({
       eventId: event.id,
       itemId,
       done: !currentDone,
     });
-  }
+  };
 
-  function handleComplete() {
+  const handleComplete = () => {
     completeEvent.mutate(event.id, {
       onSuccess: () => onBack(),
     });
-  }
+  };
 
   return (
     <div className="space-y-6">

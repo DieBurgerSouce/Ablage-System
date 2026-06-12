@@ -37,16 +37,6 @@ const CATEGORY_ICONS: Record<HintCategory, React.ElementType> = {
     action_required: Zap,
 };
 
-const CATEGORY_LABELS: Record<HintCategory, string> = {
-    missing_document: 'Fehlendes Dokument',
-    skonto_deadline: 'Skonto-Frist',
-    entity_risk: 'Entitäts-Risiko',
-    payment_overdue: 'Überfällige Zahlung',
-    ocr_quality: 'OCR-Qualität',
-    duplicate_suspect: 'Duplikat-Verdacht',
-    compliance: 'Compliance',
-    action_required: 'Aktion erforderlich',
-};
 
 const SEVERITY_ICONS: Record<HintSeverity, React.ElementType> = {
     critical: AlertCircle,

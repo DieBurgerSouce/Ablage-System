@@ -73,7 +73,7 @@ const ACCESS_TYPES = {
   emergency: 'Im Notfall (mit Verifikation)',
 };
 
-export function TimeControlledAccess({ spaceId }: TimeControlledAccessProps) {
+export function TimeControlledAccess(_props: TimeControlledAccessProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [accessRules, setAccessRules] = useState(mockAccessRules);
   const [formData, setFormData] = useState({

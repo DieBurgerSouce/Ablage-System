@@ -70,7 +70,7 @@ export function useNotificationNavigation(
       });
 
       // Call callback if provided
-      onNavigate?.({ url, ...data });
+      onNavigate?.({ ...data, url });
 
       // Navigate to the URL
       if (url && url.startsWith('/')) {

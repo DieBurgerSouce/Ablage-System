@@ -100,7 +100,7 @@ export function CashRegisterForm({
         const createData: CashRegisterCreate = {
           name: data.name,
           description: data.description,
-          opening_balance: data.opening_balance ?? 0,
+          initial_balance: data.opening_balance ?? 0,
         };
         const result = await createMutation.mutateAsync(createData);
         onSuccess?.(result);

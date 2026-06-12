@@ -32,7 +32,7 @@ import {
   Euro,
 } from 'lucide-react';
 
-interface CashFlowPrediction {
+export interface CashFlowPrediction {
   month: string;
   predictedIncome: number;
   predictedExpenses: number;
@@ -40,7 +40,7 @@ interface CashFlowPrediction {
   confidence: number;
 }
 
-interface UpcomingDeadline {
+export interface UpcomingDeadline {
   id: string;
   title: string;
   dueDate: string;
@@ -49,7 +49,7 @@ interface UpcomingDeadline {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-interface MaintenancePrediction {
+export interface MaintenancePrediction {
   entityId: string;
   entityType: 'vehicle' | 'property';
   entityName: string;
@@ -59,7 +59,7 @@ interface MaintenancePrediction {
   confidence: number;
 }
 
-interface CostTrend {
+export interface CostTrend {
   category: string;
   currentMonthly: number;
   previousMonthly: number;

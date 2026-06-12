@@ -250,7 +250,6 @@ export function KundenPage() {
           {customers.map((customer) => {
             const totalDocs = getTotalDocs(customer)
             const openCount = getOpenInvoices(customer)
-            const folderCount = customer.companyPresence?.length || 0
 
             return (
               <Card

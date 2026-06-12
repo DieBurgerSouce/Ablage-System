@@ -31,16 +31,17 @@ export function JobQueueDashboard() {
 
   // Queries für Tab-Badges
   const { data: stats } = useJobStats();
-  const { data: activeJobsData } = useActiveJobs();
+  // Hook beibehalten (Live-Badge-Cache), Binding ungenutzt
+  useActiveJobs();
   const { data: dlqStats } = useDLQStats();
 
   // WebSocket für Live-Updates
   const { isConnected, isPolling, lastUpdate, reconnect } = useJobWebSocket({
     enabled: permissions.canView,
-    onJobCompleted: (jobId) => {
+    onJobCompleted: (_jobId) => {
       // Toast wird bereits im Mutation Hook gezeigt
     },
-    onJobFailed: (jobId, error) => {
+    onJobFailed: (_jobId, _error) => {
       // Toast wird bereits im Mutation Hook gezeigt
     },
   });

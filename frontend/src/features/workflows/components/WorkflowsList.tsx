@@ -259,7 +259,7 @@ export default function WorkflowsList() {
   };
 
   const handleViewExecution = (id: string) => {
-    navigate({ to: '/workflows/$workflowId/execution', params: { workflowId: id } });
+    navigate({ to: '/workflows/$workflowId/history', params: { workflowId: id } });
   };
 
   const handleCreateNew = () => {

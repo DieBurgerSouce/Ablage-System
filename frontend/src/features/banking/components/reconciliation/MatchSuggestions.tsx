@@ -51,8 +51,17 @@ import { useMatchSuggestions, useManualMatch, useRejectMatchEnhanced } from '@/f
 import type { BankTransaction, MatchCandidate } from '@/lib/api/services/banking';
 import { cn } from '@/lib/utils';
 
+/**
+ * Minimaler Transaktions-Vertrag — erfuellt von BankTransaction UND
+ * UnmatchedTransactionEnhanced (UnmatchedList liefert letztere).
+ */
+export type ReconcilableTransaction = Pick<
+    BankTransaction,
+    'id' | 'amount' | 'currency' | 'counterparty_name' | 'booking_date' | 'reference_text'
+>;
+
 interface MatchSuggestionsProps {
-    transaction: BankTransaction;
+    transaction: ReconcilableTransaction;
     onMatchSuccess?: () => void;
     onClose?: () => void;
 }
@@ -139,7 +148,7 @@ function SuggestionItem({
     isAccepting,
 }: {
     suggestion: MatchCandidate;
-    transaction: BankTransaction;
+    transaction: ReconcilableTransaction;
     isSelected: boolean;
     onSelect: () => void;
     onAccept: () => void;
@@ -295,10 +304,11 @@ function SuggestionItem({
                         {formatDate(suggestion.due_date)}
                     </div>
                 )}
-                {suggestion.customer_number && (
+                {/* Kundennummer liegt im Backend in match_details (auto_reconciliation_service) */}
+                {typeof suggestion.match_details?.customer_number === 'string' && (
                     <div>
                         <span className="block text-[10px] uppercase">Kundennr.</span>
-                        {suggestion.customer_number}
+                        {suggestion.match_details.customer_number}
                     </div>
                 )}
             </div>

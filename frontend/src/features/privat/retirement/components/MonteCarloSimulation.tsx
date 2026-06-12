@@ -70,7 +70,7 @@ export function MonteCarloSimulation({
   const [withdrawal, setWithdrawal] = React.useState(defaultWithdrawal);
   const [timeHorizon, setTimeHorizon] = React.useState(30);
   const [riskProfile, setRiskProfile] = React.useState<RiskProfile>('ausgewogen');
-  const [iterations, setIterations] = React.useState(1000);
+  const [iterations, _setIterations] = React.useState(1000);
 
   // Result State
   const [result, setResult] = React.useState<MonteCarloResult | null>(null);

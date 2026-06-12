@@ -110,9 +110,9 @@ export function ExpenseItemForm({
         expense_date: data.expense_date,
         receipt_number: data.receipt_number,
         tax_rate: data.tax_rate,
-        kilometers: data.kilometers,
-        travel_start: data.travel_start,
-        travel_end: data.travel_end,
+        // Backend-Vertrag: mileage_km (travel_start/_end existieren im
+        // Create-Schema nicht — sie fliessen nur in die Beschreibung ein)
+        mileage_km: data.kilometers,
       };
 
       const result = await addMutation.mutateAsync({
@@ -128,16 +128,16 @@ export function ExpenseItemForm({
 
   const handleMileageCalculation = (calc: MileageCalculation) => {
     form.setValue('amount', calc.total_amount);
-    form.setValue('kilometers', calc.total_kilometers);
-    form.setValue('description', `Kilometergeld: ${calc.total_kilometers} km x EUR ${calc.rate_per_km}`);
+    form.setValue('kilometers', calc.kilometers);
+    form.setValue('description', `Kilometergeld: ${calc.kilometers} km x EUR ${calc.rate_per_km}`);
   };
 
   const handlePerDiemCalculation = (calc: PerDiemCalculation) => {
     form.setValue('amount', calc.total_amount);
     form.setValue('travel_start', calc.travel_start);
     form.setValue('travel_end', calc.travel_end);
-    const fullDaysText = calc.full_days > 0 ? `${calc.full_days} volle Tage` : '';
-    const partialDaysText = calc.partial_days > 0 ? `${calc.partial_days} An-/Abreisetage` : '';
+    const fullDaysText = (calc.full_days ?? 0) > 0 ? `${calc.full_days} volle Tage` : '';
+    const partialDaysText = (calc.partial_days ?? 0) > 0 ? `${calc.partial_days} An-/Abreisetage` : '';
     const daysText = [fullDaysText, partialDaysText].filter(Boolean).join(', ');
     form.setValue('description', `Verpflegungspauschale: ${daysText}`);
   };

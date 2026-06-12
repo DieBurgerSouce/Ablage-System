@@ -477,7 +477,7 @@ export function AgentChatView() {
       const response = await apiClient.post<AgentQueryResponse>('/agent/query', payload);
       return response.data;
     },
-    onSuccess: (data, query) => {
+    onSuccess: (data, _query) => {
       // conversation_id beibehalten fuer Folgeanfragen
       if (data.conversation_id) {
         setConversationId(data.conversation_id);

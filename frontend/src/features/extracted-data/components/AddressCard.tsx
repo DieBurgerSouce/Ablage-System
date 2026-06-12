@@ -9,10 +9,12 @@ import type { ExtractedAddress } from "../types/extracted-data.types";
 interface AddressCardProps {
     title: string;
     address?: ExtractedAddress | null;
+    /** Ansprechpartner/Unterzeichner (z. B. party_a_signatory, orderer_contact) */
+    contact?: string;
     className?: string;
 }
 
-export function AddressCard({ title, address, className }: AddressCardProps) {
+export function AddressCard({ title, address, contact, className }: AddressCardProps) {
     if (!address) {
         return (
             <Card className={className}>
@@ -43,6 +45,9 @@ export function AddressCard({ title, address, className }: AddressCardProps) {
                 )}
                 {address.name && (
                     <p className="text-sm">{address.name}</p>
+                )}
+                {contact && (
+                    <p className="text-sm text-muted-foreground">Ansprechpartner: {contact}</p>
                 )}
                 {(address.street || address.street_number) && (
                     <p className="text-sm text-muted-foreground">

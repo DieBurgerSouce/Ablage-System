@@ -40,7 +40,7 @@ import { cn } from '@/lib/utils';
  * damit die bestehende DiffBlockDisplay-Komponente wiederverwendet werden kann.
  */
 function comparisonResultToDiffResponse(result: ComparisonResult): DiffResponse {
-  const blocks: DiffBlock[] = result.textDifferences.map((d, i) => ({
+  const blocks: DiffBlock[] = result.textDifferences.map((d, _i) => ({
     diff_type:
       d.type === 'added'
         ? 'added'

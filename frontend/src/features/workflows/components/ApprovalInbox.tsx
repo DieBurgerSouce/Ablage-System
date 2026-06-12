@@ -66,7 +66,7 @@ export function ApprovalInbox() {
       setVoteDialog(null);
       setComment('');
     },
-    onError: (err) => {
+    onError: (_err) => {
       toast({
         title: 'Fehler',
         description: 'Die Freigabe konnte nicht verarbeitet werden.',

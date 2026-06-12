@@ -24,9 +24,6 @@ export const Route = createFileRoute('/share-target')({
       })
     }
 
-    const queryString = searchParams.toString()
-    const targetPath = queryString ? `/share?${queryString}` : '/share'
-
     throw redirect({
       to: '/share',
       search: search as Record<string, string>,

@@ -109,7 +109,7 @@ export function CorrectionDialog({ open, onOpenChange, item, onSuccess }: Correc
           onSuccess?.(result);
         }, 1500);
       },
-      onError: (err) => {
+      onError: (_err) => {
         toast.error('Korrektur konnte nicht gespeichert werden.');
       },
     });

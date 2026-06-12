@@ -156,12 +156,21 @@ export interface ReportColumnReorder {
 // Report Filter
 // =============================================================================
 
+/** Moeglicher Wert eines Report-Filters (inkl. Bereichs-Tupel fuer between). */
+export type FilterValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | number[]
+  | [string | number, string | number];
+
 export interface ReportFilter {
   id: string;
   template_id: string;
   field_path: string;
   operator: FilterOperator;
-  value?: string | number | boolean | string[] | number[];
+  value?: FilterValue;
   value_type: DataType;
   is_required: boolean;
   allow_user_input: boolean;

@@ -72,7 +72,7 @@ export function ValidationDialog({
   classification,
   onValidated,
 }: ValidationDialogProps) {
-  const { t, language } = useLanguage();
+  const { t, language: _language } = useLanguage();
   const [transactionType, setTransactionType] = useState<TransactionType>(
     classification.transactionType
   );

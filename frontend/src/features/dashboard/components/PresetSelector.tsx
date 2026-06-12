@@ -47,12 +47,6 @@ const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
     admin: <Shield className="h-4 w-4" />,
 }
 
-const ROLE_LABELS: Record<UserRole, string> = {
-    user: 'Benutzer',
-    accountant: 'Buchhalter',
-    manager: 'Manager',
-    admin: 'Administrator',
-}
 
 // ==================== Component ====================
 

@@ -52,7 +52,7 @@ export interface PushNotificationOptions {
   image?: string;
   tag?: string;
   data?: Record<string, unknown>;
-  actions?: NotificationAction[];
+  actions?: Array<{ action: string; title: string; icon?: string }>;
   requireInteraction?: boolean;
   silent?: boolean;
 }
@@ -71,14 +71,15 @@ const SUBSCRIPTION_STORAGE_KEY = 'push_subscription_endpoint';
 /**
  * Convert URL-safe base64 to Uint8Array for VAPID key
  */
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/');
 
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+  // Expliziter ArrayBuffer: BufferSource verlangt Uint8Array<ArrayBuffer>
+  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
 
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
@@ -198,7 +199,7 @@ class PushNotificationService {
     }
 
     try {
-      const response = await apiClient.get('/api/v1/push/vapid-public-key');
+      const response = await apiClient.get('/push/vapid-public-key');
       const publicKey = response.data.public_key;
 
       // Cache the key
@@ -274,7 +275,7 @@ class PushNotificationService {
 
       // Register with backend
       const subscriptionJson = subscription.toJSON();
-      await apiClient.post('/api/v1/push/subscriptions', {
+      await apiClient.post('/push/subscriptions', {
         endpoint: subscriptionJson.endpoint,
         keys: {
           p256dh: subscriptionJson.keys?.p256dh,
@@ -321,7 +322,7 @@ class PushNotificationService {
         await subscription.unsubscribe();
 
         // Unregister from backend
-        await apiClient.delete('/api/v1/push/subscriptions', {
+        await apiClient.delete('/push/subscriptions', {
           params: { endpoint: subscription.endpoint },
         });
 
@@ -353,7 +354,7 @@ class PushNotificationService {
   ): Promise<{ success: boolean }> {
     try {
       await apiClient.patch(
-        `/api/v1/push/subscriptions/${subscriptionId}/preferences`,
+        `/push/subscriptions/${subscriptionId}/preferences`,
         { preferences }
       );
 
@@ -387,7 +388,7 @@ class PushNotificationService {
     }>
   > {
     try {
-      const response = await apiClient.get('/api/v1/push/subscriptions');
+      const response = await apiClient.get('/push/subscriptions');
       return response.data;
     } catch (error) {
       logger.error('[PushNotifications] Abruf der Subscriptions fehlgeschlagen', {
@@ -410,6 +411,8 @@ class PushNotificationService {
     try {
       const registration = await this.getServiceWorkerRegistration();
 
+      // image/actions sind Service-Worker-Erweiterungen ausserhalb des
+      // DOM-NotificationOptions-Typs — daher erweitert typisiert.
       await registration.showNotification(options.title, {
         body: options.body,
         icon: options.icon || '/icons/icon-192x192.png',
@@ -421,7 +424,7 @@ class PushNotificationService {
         requireInteraction: options.requireInteraction,
         silent: options.silent,
         vibrate: [200, 100, 200],
-      });
+      } as NotificationOptions);
 
       return true;
     } catch (error) {
@@ -437,7 +440,7 @@ class PushNotificationService {
    */
   async trackClick(subscriptionId: string, tag: string): Promise<void> {
     try {
-      await apiClient.post('/api/v1/push/track-click', {
+      await apiClient.post('/push/track-click', {
         tag,
       }, {
         params: { subscription_id: subscriptionId },
@@ -454,7 +457,7 @@ class PushNotificationService {
    */
   async sendTestNotification(): Promise<{ success: boolean; message: string }> {
     try {
-      await apiClient.post('/api/v1/push/test');
+      await apiClient.post('/push/test');
       return {
         success: true,
         message: 'Test-Benachrichtigung gesendet',

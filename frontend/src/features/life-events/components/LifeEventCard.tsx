@@ -20,7 +20,7 @@ import {
   Split,
   type LucideIcon,
 } from 'lucide-react';
-import type { LifeEventType } from '../api/life-events-api';
+import type { LifeEvent, LifeEventType } from '../api/life-events-api';
 
 // =============================================================================
 // Event Type Configuration

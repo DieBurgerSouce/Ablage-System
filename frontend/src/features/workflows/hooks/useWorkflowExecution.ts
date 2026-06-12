@@ -30,9 +30,9 @@ export function useExecutionState(instanceId: string, enabled = true) {
     queryKey: executionVizKeys.state(instanceId),
     queryFn: () => workflowsApi.getExecutionState(instanceId),
     enabled: enabled && !!instanceId,
-    refetchInterval: (data) => {
-      // Auto-refresh alle 2 Sekunden wenn Status "running" ist
-      return data?.status === 'running' ? 2000 : false;
+    refetchInterval: (query) => {
+      // Auto-refresh alle 2 Sekunden wenn Status "running" ist (v5: Query-Objekt)
+      return query.state.data?.status === 'running' ? 2000 : false;
     },
   });
 }
@@ -45,9 +45,12 @@ export function useExecutionTimeline(instanceId: string, enabled = true) {
     queryKey: executionVizKeys.timeline(instanceId),
     queryFn: () => workflowsApi.getExecutionTimeline(instanceId),
     enabled: enabled && !!instanceId,
-    refetchInterval: (data) => {
-      // Auto-refresh alle 3 Sekunden wenn noch Einträge mit Status "running" vorhanden
-      const hasRunning = data?.some((entry) => entry.status === 'running');
+    refetchInterval: (query) => {
+      // Auto-refresh alle 3 Sekunden wenn noch Einträge mit Status "running"
+      // vorhanden (TanStack v5: Callback erhaelt das Query-Objekt, nicht data)
+      const hasRunning = query.state.data?.some(
+        (entry) => entry.status === 'running'
+      );
       return hasRunning ? 3000 : false;
     },
   });

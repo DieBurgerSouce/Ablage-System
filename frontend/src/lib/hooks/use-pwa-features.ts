@@ -40,8 +40,8 @@ export function usePWAFeatures(): UsePWAFeaturesResult {
 
   // Use VitePWA's register hook
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    offlineReady: [offlineReady, setOfflineReady],
+    needRefresh: [needRefresh, _setNeedRefresh],
+    offlineReady: [offlineReady, _setOfflineReady],
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(registration) {

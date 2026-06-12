@@ -257,16 +257,24 @@ function PolicyRow({ policy, onEdit, onDelete }: PolicyRowProps) {
       <TableCell>
         <div className="flex items-center gap-2">
           {policy.require_watermark && (
-            <Droplets className="h-4 w-4 text-blue-500" title="Wasserzeichen erforderlich" />
+            <span title="Wasserzeichen erforderlich">
+              <Droplets className="h-4 w-4 text-blue-500" />
+            </span>
           )}
           {policy.notify_admin && (
-            <Bell className="h-4 w-4 text-yellow-500" title="Admin-Benachrichtigung" />
+            <span title="Admin-Benachrichtigung">
+              <Bell className="h-4 w-4 text-yellow-500" />
+            </span>
           )}
           {policy.log_access && (
-            <Eye className="h-4 w-4 text-muted-foreground" title="Zugriffs-Logging" />
+            <span title="Zugriffs-Logging">
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            </span>
           )}
           {policy.time_restrictions && (
-            <ShieldAlert className="h-4 w-4 text-orange-500" title="Zeitbeschränkung" />
+            <span title="Zeitbeschränkung">
+              <ShieldAlert className="h-4 w-4 text-orange-500" />
+            </span>
           )}
         </div>
       </TableCell>

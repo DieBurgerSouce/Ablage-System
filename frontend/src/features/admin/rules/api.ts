@@ -40,7 +40,7 @@ export function useRulesList(params?: {
   return useQuery({
     queryKey: RULES_KEYS.list(params),
     queryFn: async () => {
-      const response = await api.get<RuleListResponse>('/api/v1/rules', {
+      const response = await api.get<RuleListResponse>('/rules', {
         params,
       })
       return response.data
@@ -56,7 +56,7 @@ export function useRule(id: string) {
   return useQuery({
     queryKey: RULES_KEYS.detail(id),
     queryFn: async () => {
-      const response = await api.get<BusinessRule>(`/api/v1/rules/${id}`)
+      const response = await api.get<BusinessRule>(`/rules/${id}`)
       return response.data
     },
     enabled: !!id,
@@ -70,7 +70,7 @@ export function useOperators() {
   return useQuery({
     queryKey: RULES_KEYS.operators(),
     queryFn: async () => {
-      const response = await api.get<OperatorsResponse>('/api/v1/rules/schema/operators')
+      const response = await api.get<OperatorsResponse>('/rules/schema/operators')
       return response.data
     },
     staleTime: Infinity, // Schema ändert sich nicht
@@ -85,7 +85,7 @@ export function useCreateRule() {
 
   return useMutation({
     mutationFn: async (data: RuleCreateRequest) => {
-      const response = await api.post<BusinessRule>('/api/v1/rules', data)
+      const response = await api.post<BusinessRule>('/rules', data)
       return response.data
     },
     onSuccess: () => {
@@ -102,7 +102,7 @@ export function useUpdateRule() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: RuleUpdateRequest }) => {
-      const response = await api.patch<BusinessRule>(`/api/v1/rules/${id}`, data)
+      const response = await api.patch<BusinessRule>(`/rules/${id}`, data)
       return response.data
     },
     onSuccess: (_, { id }) => {
@@ -120,7 +120,7 @@ export function useDeleteRule() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/api/v1/rules/${id}`)
+      await api.delete(`/rules/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RULES_KEYS.all })
@@ -134,7 +134,7 @@ export function useDeleteRule() {
 export function useTestRule() {
   return useMutation({
     mutationFn: async (data: RuleTestRequest) => {
-      const response = await api.post<RuleTestResponse>('/api/v1/rules/test', data)
+      const response = await api.post<RuleTestResponse>('/rules/test', data)
       return response.data
     },
   })
@@ -153,7 +153,7 @@ export function useExecutionLogs(params?: {
   return useQuery({
     queryKey: RULES_KEYS.logs(params),
     queryFn: async () => {
-      const response = await api.get<ExecutionLog[]>('/api/v1/rules/logs', {
+      const response = await api.get<ExecutionLog[]>('/rules/logs', {
         params,
       })
       return response.data
@@ -183,7 +183,7 @@ interface GeneratedRule {
 export function useGenerateRule() {
   return useMutation({
     mutationFn: async (prompt: string): Promise<GeneratedRule> => {
-      const response = await api.post<GeneratedRule>('/api/v1/rules/generate', {
+      const response = await api.post<GeneratedRule>('/rules/generate', {
         prompt,
       })
       return response.data

@@ -16,7 +16,7 @@ import type {
   DelegationFilters,
 } from './types';
 
-const DELEGATIONS_BASE_URL = '/api/v1/delegations';
+const DELEGATIONS_BASE_URL = '/delegations';
 
 /**
  * Get list of delegations (given and received)
@@ -168,7 +168,7 @@ export async function searchDelegateUsers(
   limit: number = 10
 ): Promise<{ users: Array<{ id: string; email: string; display_name?: string }> }> {
   const response = await apiClient.get<{ users: Array<{ id: string; email: string; display_name?: string }> }>(
-    `/api/v1/users/search?q=${encodeURIComponent(query)}&limit=${limit}`
+    `/users/search?q=${encodeURIComponent(query)}&limit=${limit}`
   );
   return response.data;
 }

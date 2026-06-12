@@ -70,8 +70,8 @@ export function EntityGraphPage() {
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
     // React Flow State
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
     // Query Params
     const queryParams: GraphParams = useMemo(() => ({

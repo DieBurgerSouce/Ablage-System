@@ -62,7 +62,6 @@ export function BuchungenPage() {
     const { toast } = useToast();
 
     // Aktive Verbindung
-    const activeConnection = connections?.find((c) => c.id === selectedConnectionId);
 
     // Buchungen laden
     const {

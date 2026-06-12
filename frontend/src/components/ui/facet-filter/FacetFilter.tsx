@@ -63,7 +63,7 @@ export function FacetFilter({
   onResetAll,
   title = 'Filter',
   isVisible = true,
-  onVisibilityChange,
+  onVisibilityChange: _onVisibilityChange,
   className,
   width = 280,
 }: FacetFilterProps) {

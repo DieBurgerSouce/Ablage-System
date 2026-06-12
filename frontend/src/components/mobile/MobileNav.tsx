@@ -115,7 +115,7 @@ function useNavCounts() {
   return useQuery<NavCounts>({
     queryKey: ['nav-counts'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/v1/notifications/counts');
+      const response = await apiClient.get('/notifications/counts');
       return response.data;
     },
     enabled: isOnline,

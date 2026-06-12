@@ -84,9 +84,6 @@ export function DailyBriefingPage() {
     generateMutation.mutate();
   };
 
-  const _filteredInsights = data
-    ? filterInsights(data.insights, activeTab)
-    : [];
 
   return (
     <div className="p-8 space-y-6">

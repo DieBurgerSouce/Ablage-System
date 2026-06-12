@@ -41,12 +41,27 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 
 import { useTestImportRule, useImportRules } from '../hooks/use-import-queries';
+import { importRulesService } from '../api/imports-api';
+import type { RuleActions } from '../types/import-types';
 
 // ==================== Types ====================
 
 interface RuleTestingPanelProps {
   ruleId?: string;
   className?: string;
+}
+
+/** RuleActions-Objekt in anzeigbare Aktions-Badges umwandeln */
+function ruleActionsToEntries(
+  actions: RuleActions | null
+): Array<{ type: string; value: string }> {
+  if (!actions) return [];
+  return Object.entries(actions)
+    .filter(([, value]) => value !== undefined && value !== null && value !== false)
+    .map(([type, value]) => ({
+      type,
+      value: typeof value === 'string' ? value : JSON.stringify(value),
+    }));
 }
 
 interface TestResult {
@@ -96,7 +111,7 @@ interface TestResultDisplayProps {
   testType: 'email' | 'folder';
 }
 
-function TestResultDisplay({ results, testType }: TestResultDisplayProps) {
+function TestResultDisplay({ results, testType: _testType }: TestResultDisplayProps) {
   if (results.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -611,100 +626,68 @@ export function RuleTestingPanel({ ruleId, className }: RuleTestingPanelProps) {
       return;
     }
 
-    // If ruleId is provided, only test that rule
-    const rulesToTest = ruleId
-      ? rules.filter((r) => r.id === ruleId)
-      : rules;
-
-    // Simulate rule matching (in production, this would call the backend)
-    const simulatedResults: TestResult[] = rulesToTest.map((rule) => {
-      // Simple simulation - in real implementation this would call backend
-      const matchedConditions = rule.conditions?.rules?.map((condition) => {
-        // Simulate condition matching
-        const testValue = getTestValue(data, condition.field);
-        const result = evaluateCondition(testValue, condition.operator, condition.value ?? '');
-        return {
-          field: condition.field,
-          operator: condition.operator,
-          value: condition.value ?? '',
-          result,
-        };
-      }) ?? [];
-
-      const allConditionsMatch = matchedConditions.length > 0 && matchedConditions.every((c) => c.result);
-
-      return {
-        ruleId: rule.id,
-        ruleName: rule.name,
-        matched: allConditionsMatch,
-        matchedConditions,
-        appliedActions: allConditionsMatch
-          ? Object.entries(rule.actions ?? {})
-              .filter(([_, value]) => value)
-              .map(([type, value]) => ({
-                type,
-                value: typeof value === 'string' ? value : JSON.stringify(value),
-              }))
-          : [],
-        // Backend-ImportRule kennt kein stop_on_match-Feld -> Simulation
-        // verhaelt sich wie bisher (Cast lieferte immer undefined/falsy)
-        stopProcessing: false,
-      };
-    });
-
-    setResults(simulatedResults);
-
-    const matchedCount = simulatedResults.filter((r) => r.matched).length;
-    toast({
-      title: 'Test abgeschlossen',
-      description: `${matchedCount} von ${simulatedResults.length} Regeln passen.`,
-    });
-  };
-
-  // Helper: Get test value from data based on field name
-  const getTestValue = (data: EmailTestData | FolderTestData, field: string): string => {
-    const fieldMap: Record<string, string> = {
+    // Test-Metadaten im Backend-Format (snake_case) aufbauen
+    const metadata: Record<string, unknown> = {
       sender_email: 'senderEmail' in data ? data.senderEmail : '',
       sender_name: 'senderName' in data ? (data.senderName ?? '') : '',
       subject: 'subject' in data ? data.subject : '',
       filename: data.filename,
-      file_extension: 'fileExtension' in data ? data.fileExtension : data.filename.split('.').pop() ?? '',
-      file_size: String(data.fileSize),
+      file_extension:
+        'fileExtension' in data
+          ? data.fileExtension
+          : data.filename.split('.').pop() ?? '',
+      file_size: data.fileSize,
       folder_path: 'folderPath' in data ? data.folderPath : '',
     };
-    return fieldMap[field] ?? '';
-  };
 
-  // Helper: Evaluate a condition
-  const evaluateCondition = (value: string, operator: string, expected: string): boolean => {
-    const valueLower = value.toLowerCase();
-    const expectedLower = expected.toLowerCase();
+    // ECHTER Backend-Test statt lokaler Simulation
+    try {
+      let testResults: TestResult[];
+      if (ruleId) {
+        const rule = rules.find((r) => r.id === ruleId);
+        const result = await testRule.mutateAsync({
+          ruleId,
+          metadata,
+          sourceType: testType,
+        });
+        testResults = [
+          {
+            ruleId,
+            ruleName: rule?.name ?? ruleId,
+            matched: result.matches,
+            matchedConditions: [],
+            appliedActions: ruleActionsToEntries(result.actions),
+            stopProcessing: false,
+          },
+        ];
+      } else {
+        const allResults = await importRulesService.testAllRules(
+          metadata,
+          testType
+        );
+        testResults = allResults.map((result) => ({
+          ruleId: result.ruleId,
+          ruleName: result.ruleName,
+          matched: result.matches,
+          matchedConditions: [],
+          appliedActions: ruleActionsToEntries(result.actions),
+          stopProcessing: false,
+        }));
+      }
 
-    switch (operator) {
-      case 'equals':
-        return valueLower === expectedLower;
-      case 'not_equals':
-        return valueLower !== expectedLower;
-      case 'contains':
-        return valueLower.includes(expectedLower);
-      case 'not_contains':
-        return !valueLower.includes(expectedLower);
-      case 'starts_with':
-        return valueLower.startsWith(expectedLower);
-      case 'ends_with':
-        return valueLower.endsWith(expectedLower);
-      case 'matches_regex':
-        try {
-          return new RegExp(expected, 'i').test(value);
-        } catch {
-          return false;
-        }
-      case 'greater_than':
-        return parseFloat(value) > parseFloat(expected);
-      case 'less_than':
-        return parseFloat(value) < parseFloat(expected);
-      default:
-        return false;
+      setResults(testResults);
+
+      const matchedCount = testResults.filter((r) => r.matched).length;
+      toast({
+        title: 'Test abgeschlossen',
+        description: `${matchedCount} von ${testResults.length} Regeln passen.`,
+      });
+    } catch {
+      toast({
+        title: 'Test fehlgeschlagen',
+        description: 'Die Regeln konnten nicht gegen das Backend getestet werden.',
+        variant: 'destructive',
+      });
     }
   };
 

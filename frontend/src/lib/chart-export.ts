@@ -124,7 +124,7 @@ export async function exportElement(
  * Export a chart by ref
  */
 export async function exportChartByRef(
-  chartRef: React.RefObject<HTMLElement>,
+  chartRef: React.RefObject<HTMLElement | null>,
   options: ExportOptions = {}
 ): Promise<ExportResult> {
   if (!chartRef.current) {
@@ -306,7 +306,7 @@ import { useCallback, useRef, useState } from 'react'
 
 export interface UseChartExportReturn<T extends HTMLElement> {
   /** Ref to attach to chart container */
-  chartRef: React.RefObject<T>
+  chartRef: React.RefObject<T | null>
   /** Export the chart */
   exportChart: (options?: ExportOptions) => Promise<ExportResult>
   /** Copy chart to clipboard */

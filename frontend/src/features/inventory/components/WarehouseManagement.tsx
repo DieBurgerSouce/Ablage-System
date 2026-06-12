@@ -111,7 +111,7 @@ export function WarehouseManagement() {
     });
   };
 
-  const WarehouseForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+  const WarehouseForm = (_props: { isEdit?: boolean }) => (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="code" className="text-right">

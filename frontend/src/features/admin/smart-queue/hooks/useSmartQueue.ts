@@ -87,7 +87,7 @@ export function useQueueStats() {
   return useQuery({
     queryKey: smartQueueKeys.stats(),
     queryFn: async () => {
-      const response = await api.get<QueueStats>('/api/v1/ocr/queue/stats');
+      const response = await api.get<QueueStats>('/ocr/queue/stats');
       return response.data;
     },
     staleTime: 10_000, // 10 Sekunden
@@ -107,7 +107,7 @@ export function useQueueItems(status?: QueueStatus, limit = 50) {
       params.set('limit', String(limit));
 
       const response = await api.get<{ items: QueueItem[]; total: number }>(
-        `/api/v1/ocr/queue/items?${params.toString()}`
+        `/ocr/queue/items?${params.toString()}`
       );
       return response.data;
     },
@@ -123,7 +123,7 @@ export function usePriorityRules() {
   return useQuery({
     queryKey: smartQueueKeys.rules(),
     queryFn: async () => {
-      const response = await api.get<PriorityRule[]>('/api/v1/ocr/queue/rules');
+      const response = await api.get<PriorityRule[]>('/ocr/queue/rules');
       return response.data;
     },
     staleTime: 300_000, // 5 Minuten
@@ -147,7 +147,7 @@ export function useChangePriority() {
       reason?: string;
     }) => {
       const response = await api.patch<QueueItem>(
-        `/api/v1/ocr/queue/items/${documentId}/priority`,
+        `/ocr/queue/items/${documentId}/priority`,
         { priority, reason }
       );
       return response.data;
@@ -174,7 +174,7 @@ export function usePauseResumeItem() {
       action: 'pause' | 'resume';
     }) => {
       const response = await api.post<QueueItem>(
-        `/api/v1/ocr/queue/items/${documentId}/${action}`
+        `/ocr/queue/items/${documentId}/${action}`
       );
       return response.data;
     },
@@ -194,12 +194,12 @@ export function useSavePriorityRule() {
     mutationFn: async (rule: Omit<PriorityRule, 'id' | 'created_at'> & { id?: string }) => {
       if (rule.id) {
         const response = await api.patch<PriorityRule>(
-          `/api/v1/ocr/queue/rules/${rule.id}`,
+          `/ocr/queue/rules/${rule.id}`,
           rule
         );
         return response.data;
       } else {
-        const response = await api.post<PriorityRule>('/api/v1/ocr/queue/rules', rule);
+        const response = await api.post<PriorityRule>('/ocr/queue/rules', rule);
         return response.data;
       }
     },
@@ -217,7 +217,7 @@ export function useDeletePriorityRule() {
 
   return useMutation({
     mutationFn: async (ruleId: string) => {
-      await api.delete(`/api/v1/ocr/queue/rules/${ruleId}`);
+      await api.delete(`/ocr/queue/rules/${ruleId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: smartQueueKeys.rules() });
@@ -234,7 +234,7 @@ export function useRecalculatePriorities() {
   return useMutation({
     mutationFn: async () => {
       const response = await api.post<{ recalculated: number }>(
-        '/api/v1/ocr/queue/recalculate'
+        '/ocr/queue/recalculate'
       );
       return response.data;
     },

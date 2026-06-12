@@ -67,11 +67,6 @@ export function CrossDocumentMatchList({
     );
   }
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.9) return 'bg-green-500';
-    if (confidence >= 0.6) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
 
   return (
     <Card className={cn('w-full', className)}>

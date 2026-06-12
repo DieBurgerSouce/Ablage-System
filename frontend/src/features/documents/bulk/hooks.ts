@@ -96,7 +96,7 @@ export function useDocumentBulkOperations(
   // Selection hook
   const {
     selectedIds,
-    selectedItems,
+    selectedItems: _selectedItems,
     selectedCount,
     isSelected,
     toggleSelection: baseToggleSelection,

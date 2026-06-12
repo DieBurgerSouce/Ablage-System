@@ -58,12 +58,6 @@ type SortOrder = 'asc' | 'desc';
 
 // ==================== Helper Functions ====================
 
-const STATUS_LABELS: Record<TransactionStatus, string> = {
-  draft: 'Entwurf',
-  pending: 'In Bearbeitung',
-  completed: 'Abgeschlossen',
-  cancelled: 'Abgebrochen',
-};
 
 // ==================== Sub-Components ====================
 
@@ -305,7 +299,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'all'>('all');
   const [sortField, setSortField] = useState<SortField>('lastActivityAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [page, setPage] = useState(1);
+  const [page, _setPage] = useState(1);
 
   // Debounce search
   useEffect(() => {
@@ -340,7 +334,6 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
   });
 
   const transactions = data?.items || [];
-  const totalCount = data?.total || 0;
 
   // Filter and sort - API handles primary filtering, client-side as backup
   const filteredTransactions = useMemo(() => {
