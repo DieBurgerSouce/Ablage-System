@@ -120,8 +120,8 @@ export function CashEntryForm({
   onSuccess,
 }: CashEntryFormProps) {
   const createMutation = useCreateEntry();
-  const { data: categoriesResponse } = useCategories();
-  const categories = categoriesResponse?.categories ?? [];
+  const { data: categoriesData } = useCategories();
+  const categories = categoriesData ?? [];
 
   const today = new Date().toISOString().split('T')[0];
 

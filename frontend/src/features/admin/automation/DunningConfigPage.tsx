@@ -3,7 +3,7 @@
  * Admin-Seite für Mahnung-Automatisierung Konfiguration
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Save, RotateCcw, AlertTriangle, Clock, Euro, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -25,8 +25,12 @@ export function DunningConfigPage() {
   const { data: config, isLoading: isLoadingConfig } = useQuery({
     queryKey: ['dunning-config'],
     queryFn: getDunningConfig,
-    onSuccess: (data) => setFormData(data),
   })
+
+  // TanStack Query v5 kennt kein onSuccess mehr -> Formular via Effekt fuellen
+  useEffect(() => {
+    if (config) setFormData(config)
+  }, [config])
 
   // Load stats
   const { data: stats, isLoading: isLoadingStats } = useQuery({

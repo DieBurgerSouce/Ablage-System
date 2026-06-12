@@ -41,10 +41,11 @@ export function DunningWidget() {
     const uniqueDebtors = overdueInvoices?.length ?? 0;
 
     // Mahnstufen-Verteilung
-    const byLevel = dunningStats?.by_level ?? [];
-    const level1Count = byLevel.find(l => l.level === '1')?.count ?? 0;
-    const level2Count = byLevel.find(l => l.level === '2')?.count ?? 0;
-    const level3Count = byLevel.find(l => l.level === '3')?.count ?? 0;
+    // by_level ist ein Record { mahnstufe: anzahl } (Backend dunning_service)
+    const byLevel = dunningStats?.by_level ?? {};
+    const level1Count = byLevel[1] ?? 0;
+    const level2Count = byLevel[2] ?? 0;
+    const level3Count = byLevel[3] ?? 0;
 
     const getLevelSubtext = () => {
         const parts = [];

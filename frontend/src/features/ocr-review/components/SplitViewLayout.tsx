@@ -4,7 +4,6 @@
  * mit verlinkter Hervorhebung.
  */
 
-import { useState } from 'react'
 import {
     ResizablePanelGroup,
     ResizablePanel,

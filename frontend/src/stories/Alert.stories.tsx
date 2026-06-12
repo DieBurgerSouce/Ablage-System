@@ -1,3 +1,4 @@
+import * as React from 'react';
 /**
  * Alert Component Stories
  *
@@ -244,7 +245,7 @@ export const DarkMode: Story = {
         backgrounds: { default: 'dark' },
     },
     decorators: [
-        (Story) => (
+        (Story: React.ComponentType) => (
             <div className="dark">
                 <Story />
             </div>

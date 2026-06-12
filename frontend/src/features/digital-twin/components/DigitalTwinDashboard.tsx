@@ -11,6 +11,14 @@
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type {
+  FinancialHealth,
+  RiskOverview,
+  DocumentPipeline,
+  ComplianceStatus,
+  KeyMetrics,
+  Trends,
+} from '../api/digital-twin-api';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -91,7 +99,7 @@ export function DigitalTwinDashboard() {
 
 // ==================== Sub-Components ====================
 
-function FinancialHealthCard({ data }: { data: typeof import('../api/digital-twin-api').FinancialHealth }) {
+function FinancialHealthCard({ data }: { data: FinancialHealth }) {
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
@@ -194,7 +202,7 @@ function FinancialHealthCard({ data }: { data: typeof import('../api/digital-twi
   );
 }
 
-function RiskOverviewCard({ data }: { data: typeof import('../api/digital-twin-api').RiskOverview }) {
+function RiskOverviewCard({ data }: { data: RiskOverview }) {
   const getScoreColor = (score: number) => {
     if (score < 30) return 'text-green-600';
     if (score < 60) return 'text-yellow-600';
@@ -278,7 +286,7 @@ function RiskOverviewCard({ data }: { data: typeof import('../api/digital-twin-a
   );
 }
 
-function DocumentPipelineCard({ data }: { data: typeof import('../api/digital-twin-api').DocumentPipeline }) {
+function DocumentPipelineCard({ data }: { data: DocumentPipeline }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -344,7 +352,7 @@ function DocumentPipelineCard({ data }: { data: typeof import('../api/digital-tw
   );
 }
 
-function ComplianceStatusCard({ data }: { data: typeof import('../api/digital-twin-api').ComplianceStatus }) {
+function ComplianceStatusCard({ data }: { data: ComplianceStatus }) {
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
@@ -418,7 +426,7 @@ function ComplianceStatusCard({ data }: { data: typeof import('../api/digital-tw
   );
 }
 
-function KeyMetricsCard({ data }: { data: typeof import('../api/digital-twin-api').KeyMetrics }) {
+function KeyMetricsCard({ data }: { data: KeyMetrics }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -473,7 +481,7 @@ function KeyMetricsCard({ data }: { data: typeof import('../api/digital-twin-api
   );
 }
 
-function TrendsCard({ data }: { data: typeof import('../api/digital-twin-api').Trends }) {
+function TrendsCard({ data }: { data: Trends }) {
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'up':
