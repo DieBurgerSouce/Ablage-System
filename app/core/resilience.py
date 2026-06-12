@@ -217,9 +217,13 @@ class CircuitBreaker:
                     max_calls=self.half_open_max_calls
                 )
 
-                # Transition to CLOSED after enough successful calls
+                # Transition to CLOSED after enough successful calls.
+                # WICHTIG: NICHT self.reset() aufrufen — das nimmt denselben
+                # non-reentranten Lock erneut -> Selbst-Deadlock. Der Bug
+                # fror jeden Recovery-Pfad (HALF_OPEN -> CLOSED) dauerhaft
+                # ein (gefunden via haengender Unit-Suite, W3b 2026-06-12).
                 if self._half_open_calls >= self.half_open_max_calls:
-                    self.reset()
+                    self._reset_locked()
                     self._transition_to(CircuitBreakerState.CLOSED)
 
             elif self._state == CircuitBreakerState.CLOSED:
@@ -276,10 +280,14 @@ class CircuitBreaker:
     def reset(self) -> None:
         """Reset Circuit Breaker counters."""
         with self._lock:
-            self._failure_count = 0
-            self._success_count = 0
-            self._half_open_calls = 0
-            logger.info("circuit_breaker_reset", name=self.name)
+            self._reset_locked()
+
+    def _reset_locked(self) -> None:
+        """Reset-Logik fuer Aufrufer, die self._lock BEREITS halten."""
+        self._failure_count = 0
+        self._success_count = 0
+        self._half_open_calls = 0
+        logger.info("circuit_breaker_reset", name=self.name)
 
     def _transition_to(self, new_state: CircuitBreakerState) -> None:
         """Führe State Transition aus (internal, requires lock).
@@ -723,9 +731,31 @@ class Bulkhead:
 
     async def __aenter__(self):
         """Async Context Manager Entry."""
-        # Check queue limit
         async with self._lock:
-            if self.max_queue > 0 and self._queue_count >= self.max_queue:
+            # max_queue == 0 bedeutet laut Vertrag "keine Warteschlange":
+            # Ist das Limit erreicht, wird SOFORT abgelehnt. Vorher wartete
+            # der Aufrufer hier unbegrenzt am Semaphor (W3b 2026-06-12) —
+            # das Bulkhead hat sein Limit also nie durchgesetzt.
+            if self.max_queue == 0:
+                if self._semaphore.locked():
+                    bulkhead_rejections.labels(name=self.name).inc()
+                    logger.warning(
+                        "bulkhead_full_rejected",
+                        name=self.name,
+                        max_concurrent=self.max_concurrent
+                    )
+                    raise BulkheadFullError(
+                        service_name=self.name,
+                        max_concurrent=self.max_concurrent
+                    )
+                # Permit ist frei -> Acquire kehrt ohne Warten zurueck;
+                # innerhalb des Locks gehalten, damit kein paralleler
+                # Aufrufer zwischen Pruefung und Acquire grätscht.
+                await self._semaphore.acquire()
+                return self
+
+            # Mit Warteschlange: Queue-Limit pruefen
+            if self._queue_count >= self.max_queue:
                 bulkhead_rejections.labels(name=self.name).inc()
                 logger.warning(
                     "bulkhead_queue_full",
@@ -739,7 +769,7 @@ class Bulkhead:
                 )
             self._queue_count += 1
 
-        # Acquire semaphore
+        # Acquire semaphore (ausserhalb des Locks: Warten ist hier erlaubt)
         await self._semaphore.acquire()
 
         async with self._lock:

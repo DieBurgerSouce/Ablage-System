@@ -110,10 +110,14 @@ Invoke-Stage 'gates' {
 # --continue-on-collection-errors: tests/unit/orchestration/** importiert das
 # Host-Tooling-Paket 'orchestration' (.claude/orchestration, im Container nicht
 # gemountet) -> ohne das Flag bricht die GESAMTE Collection ab (exit 2).
+# GNU timeout als Haenger-Schutz: ein deadlockender Test (vgl. CircuitBreaker-
+# Selbst-Deadlock, W3b) soll die Stufe nach einem harten Limit ROT beenden
+# (Exit 124) statt den Loop unendlich zu blockieren. pytest-timeout ist im
+# Image nicht installiert (read-only Rootfs).
 Invoke-Stage 'docker'   { python -m pytest tests/docker -q --no-header }
-Invoke-Stage 'unit'     { docker compose @ComposeFiles exec -T backend pytest tests/unit -q --no-header -p no:cacheprovider --continue-on-collection-errors }
-Invoke-Stage 'security' { docker compose @ComposeFiles exec -T backend pytest tests/security -q --no-header -p no:cacheprovider --continue-on-collection-errors }
-Invoke-Stage 'integ'    { docker compose @ComposeFiles exec -T backend pytest tests/integration -q --no-header -p no:cacheprovider -m 'not gpu' --continue-on-collection-errors }
+Invoke-Stage 'unit'     { docker compose @ComposeFiles exec -T backend timeout -k 30 7200 pytest tests/unit -q --no-header -p no:cacheprovider --continue-on-collection-errors }
+Invoke-Stage 'security' { docker compose @ComposeFiles exec -T backend timeout -k 30 3600 pytest tests/security -q --no-header -p no:cacheprovider --continue-on-collection-errors }
+Invoke-Stage 'integ'    { docker compose @ComposeFiles exec -T backend timeout -k 30 5400 pytest tests/integration -q --no-header -p no:cacheprovider -m 'not gpu' --continue-on-collection-errors }
 
 Invoke-Stage 'api' {
     $env:BASE_URL = $BackendUrl
