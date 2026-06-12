@@ -372,7 +372,7 @@ async def test_enrichment_cache_expired(orchestrator, mock_db, mock_entity):
     assert "legal_form" in result.enriched_fields
 
 
-@pytest.mark.xfail(strict=True, reason=_ENRICHMENT_CONFIDENCE_QUIRK)
+# xfail entfernt (W3b-Integration): Confidence-Formel gefixt in 48cf08588.
 @pytest.mark.asyncio
 async def test_enrichment_confidence_scoring(orchestrator, mock_db, mock_entity):
     """Test confidence scores are calculated correctly."""
@@ -414,7 +414,7 @@ async def test_enrichment_confidence_scoring(orchestrator, mock_db, mock_entity)
     assert result.confidence == 1.0
 
 
-@pytest.mark.xfail(strict=True, reason=_ENRICHMENT_CLEAN_RESULT_QUIRK)
+# xfail entfernt (W3b-Integration): sauberer Befund zaehlt als befragte Quelle (48cf08588).
 @pytest.mark.asyncio
 async def test_enrichment_error_handling(orchestrator, mock_db, mock_entity):
     """Test graceful error handling on source failure."""

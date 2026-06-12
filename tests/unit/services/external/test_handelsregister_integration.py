@@ -648,10 +648,7 @@ class TestHandelsregisterSecurity:
         assert len(results) >= 1
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        strict=True,
-        reason=_REGISTER_ID_VALIDATION_GAP,
-    )
+    # xfail entfernt (W3b-Integration): register_id-Validierung laeuft seit 48cf08588 vor Mock/Cache/Rate-Limit (CWE-918).
     async def test_invalid_register_id_format_rejected(
         self, mock_service: HandelsregisterService
     ) -> None:
@@ -680,10 +677,7 @@ class TestHandelsregisterSecurity:
         assert result is not None
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        strict=True,
-        reason=_REGISTER_ID_VALIDATION_GAP,
-    )
+    # xfail entfernt (W3b-Integration): register_id-Validierung laeuft seit 48cf08588 vor Mock/Cache/Rate-Limit (CWE-918).
     async def test_register_id_without_space_rejected(
         self, mock_service: HandelsregisterService
     ) -> None:
@@ -692,10 +686,7 @@ class TestHandelsregisterSecurity:
             await mock_service.get_company_details("HRB123456")
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        strict=True,
-        reason=_REGISTER_ID_VALIDATION_GAP,
-    )
+    # xfail entfernt (W3b-Integration): register_id-Validierung laeuft seit 48cf08588 vor Mock/Cache/Rate-Limit (CWE-918).
     async def test_register_id_with_letters_rejected(
         self, mock_service: HandelsregisterService
     ) -> None:

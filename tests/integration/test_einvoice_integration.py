@@ -1244,18 +1244,8 @@ class TestZUGFeRDVersionSupport:
     </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>"""
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "ECHTER BUG (W3, 2026-06-12): _extract_metadata meldet fuer "
-            "ALLE Nicht-XRechnung-CII-Dokumente pauschal version='2.3.3' — "
-            "die Guideline-URN des Dokuments (hier 'urn:zugferd:2p0:"
-            "en16931' = ZUGFeRD 2.0) wird nicht ausgewertet, guideline_id "
-            "fehlt im Metadata-Dict. Versions-Misreporting fuer Alt-"
-            "Dokumente. Fix in app/services/einvoice/mapping/"
-            "zugferd_mapper.py (out-of-zone), siehe Manifest w3-tests."
-        ),
-    )
+    # xfail entfernt (W3b-Integration): Versions-Erkennung aus der
+    # Guideline-URN ist in Commit 4c8a33efc gefixt (2p0 -> 2.0).
     def test_detect_zugferd_2_0_version(
         self,
         zugferd_mapper: ZUGFeRDMapper,
@@ -1653,8 +1643,8 @@ class TestXRechnungUBLFormat:
     </cac:LegalMonetaryTotal>
 </Invoice>"""
 
+    # xfail entfernt (W3b-Integration): version-None-Crash gefixt in 4c8a33efc.
     @pytest.mark.asyncio
-    @pytest.mark.xfail(strict=True, reason=_UBL_VERSION_NONE_CRASH)
     async def test_detect_ubl_format(
         self,
         parser_service: EInvoiceParserService,
@@ -1666,8 +1656,9 @@ class TestXRechnungUBLFormat:
         # Should detect as XRechnung UBL
         assert result.success or "ubl" in str(result.format_detected).lower()
 
+    # xfail entfernt (W3b-Integration): Crash gefixt in 4c8a33efc; der
+    # ehrliche pytest.skip fuer den UBL-Feldextraktions-Gap unten bleibt.
     @pytest.mark.asyncio
-    @pytest.mark.xfail(strict=True, reason=_UBL_VERSION_NONE_CRASH)
     async def test_parse_ubl_buyer_reference(
         self,
         parser_service: EInvoiceParserService,

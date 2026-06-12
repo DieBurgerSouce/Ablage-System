@@ -158,21 +158,8 @@ class TestImportWorkflow:
         assert result.transaction_count >= 1
         assert result.total_debits == Decimal("1234.56")
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "ECHTER BUG (W3, 2026-06-12): MT940Parser liest die Konto-"
-            "Identifikation via hasattr(statement, 'account_id') — die "
-            "mt940-Bibliothek liefert sie aber NUR auf der Transactions-"
-            "Collection (transactions.data['account_identification']), "
-            "Einzel-Transactions haben kein account_id-Attribut. Folge: "
-            "account_iban ist bei JEDEM MT940-Import None -> IBAN-basiertes "
-            "Konto-Matching in ImportService.import_file laeuft nie. Fix in "
-            "app/services/banking/parsers/mt940_parser.py (out-of-zone), "
-            "siehe Manifest w3-tests. Nach App-Fix: XPASS(strict) -> Marker "
-            "entfernen."
-        ),
-    )
+    # xfail entfernt (W3b-Integration): Parser nutzt seit Commit 7e55cb232
+    # die Collection-API (transactions.data['account_identification']).
     @pytest.mark.asyncio
     async def test_mt940_account_iban_extracted(self, sample_mt940_content):
         """MT940: IBAN aus :25: wird extrahiert (fuer Konto-Matching)."""
