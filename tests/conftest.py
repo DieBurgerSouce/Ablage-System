@@ -63,36 +63,6 @@ def _mock_weasyprint_if_unavailable() -> None:
         sys.modules["weasyprint"] = MagicMock()
 
 
-def _patch_async_queuepool_compat() -> None:
-    """Kompat-Shim: QueuePool ist ab SQLAlchemy 2.0.30 fuer async Engines verboten.
-
-    ``app/db/database.py`` uebergibt ``poolclass=QueuePool`` an
-    ``create_async_engine``. Der Container pinnt sqlalchemy==2.0.25 (toleriert
-    das noch), neuere Versionen (>=2.0.30, z.B. lokale Dev-Maschinen) werfen
-    ``ArgumentError: Pool class QueuePool cannot be used with asyncio engine``
-    bereits beim Import von ``app.api.dependencies`` (instanziiert
-    DatabaseManager auf Modulebene) -> saemtliche App-Tests brechen in der
-    Collection statt zu laufen.
-
-    Cross-Stream-Fix (out of scope, app/**): in ``app/db/database.py``
-    ``AsyncAdaptedQueuePool`` statt ``QueuePool`` verwenden. Bis dahin biegt
-    dieser test-seitige Shim die Referenz im Modul-Namespace um.
-    ``AsyncAdaptedQueuePool`` ist ohnehin der SQLAlchemy-Default fuer async
-    Engines und existiert auch in 2.0.25 - der Shim ist in beiden
-    Umgebungen verhaltensneutral.
-    """
-    try:
-        from sqlalchemy.pool import AsyncAdaptedQueuePool
-
-        import app.db.database as _app_database
-
-        if getattr(_app_database, "QueuePool", None) is not AsyncAdaptedQueuePool:
-            _app_database.QueuePool = AsyncAdaptedQueuePool
-    except Exception:
-        # App-Modul nicht importierbar -> regulaere Skip-Pfade greifen spaeter
-        pass
-
-
 # Mock GPU modules BEFORE any app imports
 _mock_gpu_modules()
 
@@ -115,9 +85,6 @@ except Exception:
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-# QueuePool->AsyncAdaptedQueuePool umbiegen BEVOR app.main/app.api importiert wird
-_patch_async_queuepool_compat()
 
 # Try to import application components - they may not be available for unit tests
 try:

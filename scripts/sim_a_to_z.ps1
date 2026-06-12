@@ -74,7 +74,13 @@ function Invoke-Stage {
 
 Invoke-Stage 'build' {
     if ($SkipBuild) { Write-Host 'SkipBuild gesetzt - Build uebersprungen'; $global:LASTEXITCODE = 0; return }
-    docker compose @ComposeFiles build frontend
+    # Docker Desktop wirft unter Last sporadische grpc-/API-Abbrueche -> bis zu 3 Versuche
+    foreach ($attempt in 1..3) {
+        docker compose @ComposeFiles build frontend
+        if ($LASTEXITCODE -eq 0) { return }
+        Write-Host "Build-Versuch $attempt fehlgeschlagen (Exit $LASTEXITCODE) - Retry in 15s"
+        Start-Sleep 15
+    }
 }
 
 Invoke-Stage 'up' {

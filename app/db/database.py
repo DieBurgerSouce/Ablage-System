@@ -9,7 +9,7 @@ SECURITY: Z.2 Fix - URL-encode password to prevent injection
 from typing import AsyncGenerator, Optional
 from urllib.parse import quote_plus
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
 from sqlalchemy import text
 from contextlib import asynccontextmanager
 import structlog
@@ -117,7 +117,11 @@ class DatabaseManager:
             self._engine = create_async_engine(
                 self.config.DATABASE_URL,
                 echo=self.config.ECHO_SQL,
-                poolclass=QueuePool,
+                # W2: QueuePool ist ab SQLAlchemy 2.0.30 fuer async Engines verboten
+                # (ArgumentError beim Engine-Bau) — AsyncAdaptedQueuePool ist das
+                # async-Pendant mit identischer Pool-Semantik. Von 3 Streams
+                # unabhaengig gemeldet (Host-Dev + Upgrade-Blocker).
+                poolclass=AsyncAdaptedQueuePool,
                 pool_size=self.config.POOL_SIZE,
                 max_overflow=self.config.MAX_OVERFLOW,
                 pool_timeout=self.config.POOL_TIMEOUT,

@@ -25,23 +25,8 @@ from uuid import uuid4
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# Host-Workaround (nur lokal wirksam): SQLAlchemy >= 2.0.31 verbietet ein
-# explizites poolclass=QueuePool fuer Async-Engines. app/api/dependencies.py
-# instanziiert den DatabaseManager auf Modulebene -> ohne diesen Patch sind
-# ALLE app.api.*-Module auf dem Host nicht importierbar. Im Container (aeltere
-# SQLAlchemy-Version bzw. bereits initialisierte Engine) ist das ein No-Op.
-# ---------------------------------------------------------------------------
-import sqlalchemy.pool as _sa_pool
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
-
-import app.db.database as _app_db
-
-if "app.api.dependencies" not in sys.modules and getattr(
-    _app_db, "QueuePool", None
-) is _sa_pool.QueuePool:
-    _app_db.QueuePool = _sa_pool.AsyncAdaptedQueuePool
 
 from app.api import dependencies as deps
 
