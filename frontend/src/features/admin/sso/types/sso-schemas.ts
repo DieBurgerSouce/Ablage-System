@@ -38,7 +38,7 @@ export const ALL_PRESETS = [...OIDC_PRESETS, ...SAML_PRESETS] as const;
 
 export type OIDCPreset = (typeof OIDC_PRESETS)[number];
 export type SAMLPreset = (typeof SAML_PRESETS)[number];
-export type ProviderPreset = (typeof ALL_PRESETS)[number];
+export type ProviderPresetName = (typeof ALL_PRESETS)[number];
 
 // =============================================================================
 // Base Schemas (Shared Fields)

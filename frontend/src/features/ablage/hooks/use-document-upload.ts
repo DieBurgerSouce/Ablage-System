@@ -55,7 +55,7 @@ export function useDocumentUpload(
 ): UseDocumentUploadReturn {
   const [state, setState] = useState<UploadWorkflowState>(initialState)
   const queryClient = useQueryClient()
-  const ttlExtendInterval = useRef<NodeJS.Timeout | null>(null)
+  const ttlExtendInterval = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortController = useRef<AbortController | null>(null)
 
   // Cleanup TTL-Extend Interval on unmount

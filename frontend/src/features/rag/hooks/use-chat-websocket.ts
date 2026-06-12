@@ -79,7 +79,7 @@ export function useChatWebSocket(
 
     // Refs
     const wsRef = useRef<WebSocket | null>(null);
-    const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentStreamingId = useRef<string | null>(null);
 
     // ==================== Cleanup ====================

@@ -301,7 +301,7 @@ export function AllocationPieChart({
             <PieChart>
               <Pie
                 activeIndex={activeIndex}
-                activeShape={renderActiveShape as unknown as (props: unknown) => JSX.Element}
+                activeShape={renderActiveShape as unknown as (props: unknown) => React.JSX.Element}
                 data={chartData}
                 cx="50%"
                 cy="50%"

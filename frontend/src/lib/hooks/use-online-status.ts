@@ -58,7 +58,7 @@ export function useOnlineStatus(options: OnlineStatusOptions = {}): OnlineStatus
   const [offlineSince, setOfflineSince] = useState<Date | null>(null);
 
   const wasOnlineRef = useRef(isOnline);
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
    * Check if API is reachable via ping

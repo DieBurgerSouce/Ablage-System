@@ -31,7 +31,7 @@ import {
   Users,
   Settings,
   Mail,
-  Activity,
+  Activity as ActivityIcon,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -137,7 +137,7 @@ export function ActivityItem({ activity, showTarget = true, isLast = false }: Ac
     if (activity.icon && ACTIVITY_ICONS[activity.icon]) {
       return ACTIVITY_ICONS[activity.icon];
     }
-    return Activity;
+    return ActivityIcon;
   }, [activity.icon]);
 
   const color: ActivityColor | 'default' = activity.color || 'default';
