@@ -39,7 +39,8 @@ class TestFolderSchemas:
         assert data.name == "Test-Ordner"
         assert data.parent_id is None
         assert data.icon == "Folder"
-        assert data.folder_type == "geschaeftlich"
+        # Echte Umlaute sind korrekt (Critical Rule 2: UTF-8 fuer Umlaute)
+        assert data.folder_type == "geschäftlich"
 
     def test_folder_create_full(self):
         """Vollstaendige Ordner-Erstellung mit allen Feldern."""
