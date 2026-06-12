@@ -337,9 +337,6 @@ export function GlobalCommandDialog() {
                                     ? entity.customer_number
                                     : entity.supplier_number
                                 const entityLabel = isCustomer ? "Kunde" : "Lieferant"
-                                const targetPath = isCustomer
-                                    ? "/kunden/$entityId"
-                                    : "/lieferanten/$entityId"
 
                                 return (
                                     <CommandItem
@@ -348,10 +345,15 @@ export function GlobalCommandDialog() {
                                         onSelect={() => {
                                             addRecentSearch(query.trim())
                                             runCommand(() =>
-                                                navigate({
-                                                    to: targetPath,
-                                                    params: { entityId: entity.entity_id },
-                                                })
+                                                isCustomer
+                                                    ? navigate({
+                                                          to: "/kunden/$customerId",
+                                                          params: { customerId: entity.entity_id },
+                                                      })
+                                                    : navigate({
+                                                          to: "/lieferanten/$supplierId",
+                                                          params: { supplierId: entity.entity_id },
+                                                      })
                                             )
                                         }}
                                     >
@@ -390,11 +392,11 @@ export function GlobalCommandDialog() {
                         <span>Dashboard</span>
                         <CommandShortcut>Ctrl+D</CommandShortcut>
                     </CommandItem>
-                    <CommandItem onSelect={() => runCommand(() => navigate({ to: "/ablage" }))}>
+                    <CommandItem onSelect={() => runCommand(() => navigate({ to: "/kunden" }))}>
                         <FolderOpen className="mr-2 h-4 w-4" />
                         <span>Ablage</span>
                     </CommandItem>
-                    <CommandItem onSelect={() => runCommand(() => navigate({ to: "/documents" }))}>
+                    <CommandItem onSelect={() => runCommand(() => navigate({ to: "/search" }))}>
                         <FileText className="mr-2 h-4 w-4" />
                         <span>Dokumente</span>
                     </CommandItem>

@@ -369,7 +369,7 @@ function CashPositionWidgetContent() {
 
             {/* Link to banking */}
             <Link
-                to="/banking"
+                to="/admin/banking"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Banking-Übersicht

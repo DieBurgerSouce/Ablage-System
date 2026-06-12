@@ -228,7 +228,7 @@ function SupplierTableRow({
           </TableCell>
           <TableCell className="text-right">
             <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-              <Link to="/lieferanten/$entityId" params={{ entityId: supplier.entityId }}>
+              <Link to="/lieferanten/$supplierId" params={{ supplierId: supplier.entityId }}>
                 <ExternalLink className="h-4 w-4" />
               </Link>
             </Button>
@@ -329,7 +329,7 @@ function CompactSupplierRow({
       <div className="flex items-center gap-2">
         <ScoreBadge score={supplier.overallScore} tier={supplier.tier} size="sm" />
         <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-          <Link to="/lieferanten/$entityId" params={{ entityId: supplier.entityId }}>
+          <Link to="/lieferanten/$supplierId" params={{ supplierId: supplier.entityId }}>
             <ExternalLink className="h-4 w-4" />
           </Link>
         </Button>

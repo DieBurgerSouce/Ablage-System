@@ -274,7 +274,7 @@ export function ProactiveInsightsWidget() {
                         </h2>
                     </div>
                     <Link
-                        to="/insights"
+                        to="/proactive-assistant"
                         className="text-sm text-primary hover:underline flex items-center"
                     >
                         Alle anzeigen
@@ -321,7 +321,7 @@ export function ProactiveInsightsWidget() {
                                 icon={Lightbulb}
                                 trend={getTrend(stats.critical, stats.high)}
                                 subtext={stats.critical > 0 ? `${stats.critical} kritisch` : 'Alles im Blick'}
-                                href="/insights"
+                                href="/proactive-assistant"
                                 isCurrency={false}
                             />
                             <KPICard

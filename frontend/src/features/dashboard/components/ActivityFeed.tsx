@@ -568,7 +568,7 @@ export function ActivityFeed({
         break;
       case 'validation.item_added':
       case 'validation.item_resolved':
-        navigate({ to: '/validation' });
+        navigate({ to: '/validation-queue' });
         break;
       case 'approval.requested':
       case 'approval.approved':

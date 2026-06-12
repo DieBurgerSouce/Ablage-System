@@ -379,7 +379,7 @@ function MissedSkontoRow({ item }: { item: any }) {
       </TableCell>
       <TableCell>
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/invoices" search={{ invoiceId: item.invoiceId }}>
+          <Link to="/admin/rechnungen/liste" search={{ invoiceId: item.invoiceId }}>
             <ExternalLink className="w-4 h-4" />
           </Link>
         </Button>

@@ -210,7 +210,7 @@ export function EnhancedCommandPalette() {
                 icon: Calculator,
                 category: 'quick-actions',
                 keywords: ['prüfen', 'validieren', 'check'],
-                action: () => navigate({ to: '/validation' }),
+                action: () => navigate({ to: '/validation-queue' }),
             },
 
             // Navigation
@@ -228,7 +228,7 @@ export function EnhancedCommandPalette() {
                 icon: FileText,
                 category: 'navigation',
                 keywords: ['liste', 'alle'],
-                action: () => navigate({ to: '/documents' }),
+                action: () => navigate({ to: '/search' }),
             },
             {
                 id: 'nav-ablage',
@@ -236,7 +236,7 @@ export function EnhancedCommandPalette() {
                 icon: FolderOpen,
                 category: 'navigation',
                 keywords: ['ordner', 'archiv'],
-                action: () => navigate({ to: '/ablage' }),
+                action: () => navigate({ to: '/kunden' }),
             },
             {
                 id: 'nav-chains',
@@ -261,7 +261,7 @@ export function EnhancedCommandPalette() {
                 icon: Truck,
                 category: 'navigation',
                 keywords: ['tracking', 'versand', 'lieferung', 'paket'],
-                action: () => navigate({ to: '/shipments' }),
+                action: () => navigate({ to: '/sendungen' }),
             },
             {
                 id: 'nav-holding',

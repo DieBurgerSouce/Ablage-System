@@ -313,7 +313,7 @@ function InsuranceCoverageWidgetContent() {
 
             {/* Link to insurance page */}
             <Link
-                to="/portfolio/insurance"
+                to="/privat/versicherungen"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Alle Versicherungen anzeigen

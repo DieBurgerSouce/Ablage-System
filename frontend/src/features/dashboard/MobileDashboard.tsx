@@ -393,7 +393,8 @@ function RecentDocumentsSection({ documents, isLoading }: RecentDocumentsSection
                     {documents.map((doc) => (
                         <Link
                             key={doc.id}
-                            to={`/documents/${doc.id}`}
+                            to="/documents/$documentId"
+                            params={{ documentId: doc.id }}
                             className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors"
                         >
                             <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -415,7 +416,7 @@ function RecentDocumentsSection({ documents, isLoading }: RecentDocumentsSection
                     ))}
 
                     <Link
-                        to="/ablage"
+                        to="/kunden"
                         className="flex items-center justify-center gap-2 p-2 text-sm text-primary hover:underline"
                     >
                         Alle Dokumente anzeigen
@@ -532,7 +533,7 @@ export function MobileDashboard() {
             <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
                 <div className="flex items-center justify-between px-4 h-14">
                     <h1 className="text-lg font-semibold">Dashboard</h1>
-                    <Link to="/notifications">
+                    <Link to="/alerts">
                         <Button variant="ghost" size="icon" className="relative">
                             <TrendingUp className="h-5 w-5" />
                             <span className="sr-only">Benachrichtigungen</span>

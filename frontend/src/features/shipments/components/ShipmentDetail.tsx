@@ -328,8 +328,8 @@ export function ShipmentDetail({
                   label="Geschäftspartner"
                 >
                   <Link
-                    to="/kunden/$entityId"
-                    params={{ entityId: shipment.entityId }}
+                    to="/kunden/$customerId"
+                    params={{ customerId: shipment.entityId }}
                     className="text-primary hover:underline"
                   >
                     Details anzeigen

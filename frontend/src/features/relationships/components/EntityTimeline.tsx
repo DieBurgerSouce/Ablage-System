@@ -122,7 +122,7 @@ export function EntityTimeline({
     // Handle document click
     const handleEventClick = (documentId: string | undefined) => {
         if (documentId) {
-            navigate({ to: '/viewer/$documentId', params: { documentId } });
+            navigate({ to: '/documents/$documentId', params: { documentId } });
         }
     };
 

@@ -265,7 +265,7 @@ function PortfolioSummaryWidgetContent() {
 
             {/* Link to full portfolio */}
             <Link
-                to="/portfolio"
+                to="/privat/portfolio"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Portfolio-Details anzeigen

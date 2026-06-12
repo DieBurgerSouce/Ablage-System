@@ -126,7 +126,7 @@ export function ActionProposalCard({
           <div className="flex items-center gap-2">
             <h4 className="font-medium">{getActionTypeLabel(action.action_type)}</h4>
             {action.requires_confirmation && (
-              <Badge variant="outline\" className="text-xs">
+              <Badge variant="outline" className="text-xs">
                 <AlertTriangle className="mr-1 h-3 w-3" />
                 Bestätigung
               </Badge>

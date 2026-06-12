@@ -315,7 +315,7 @@ function PropertyKPIsWidgetContent() {
 
             {/* Link to properties */}
             <Link
-                to="/portfolio/properties"
+                to="/privat/immobilien"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Alle Immobilien anzeigen

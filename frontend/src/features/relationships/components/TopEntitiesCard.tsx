@@ -117,9 +117,9 @@ export function TopEntitiesCard({
 
     const handleEntityClick = (entityId: string) => {
         if (type === 'customer') {
-            navigate({ to: '/ablage/kunden/$entityId', params: { entityId } });
+            navigate({ to: '/kunden/$customerId', params: { customerId: entityId } });
         } else {
-            navigate({ to: '/ablage/lieferanten/$entityId', params: { entityId } });
+            navigate({ to: '/lieferanten/$supplierId', params: { supplierId: entityId } });
         }
     };
 

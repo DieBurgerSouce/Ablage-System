@@ -314,7 +314,7 @@ function ComplianceDeadlineWidgetContent() {
 
             {/* Link to compliance page */}
             <Link
-                to="/admin/compliance"
+                to="/compliance"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Compliance-Übersicht

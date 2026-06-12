@@ -292,8 +292,8 @@ function FolderNode({
 
             {/* Name */}
             <Link
-              to="/privat/spaces/$spaceId/folders/$folderId"
-              params={{ spaceId, folderId: folder.id }}
+              to="/privat/spaces/$spaceId"
+              params={{ spaceId }}
               className="flex-1 truncate text-sm hover:underline"
               onClick={(e) => e.stopPropagation()}
             >

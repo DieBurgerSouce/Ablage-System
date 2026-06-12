@@ -51,7 +51,8 @@ function MentionItem({
 
   return (
     <Link
-      to={`/documents/${mention.document_id}`}
+      to="/documents/$documentId"
+      params={{ documentId: mention.document_id }}
       className="block p-3 hover:bg-accent/50 transition-colors border-b last:border-0"
       onClick={() => {
         if (!mention.is_read) {
@@ -124,7 +125,7 @@ export function MentionsBadge({
   if (!showPreview) {
     // Simple Badge ohne Dropdown
     return (
-      <Link to="/mentions" className={cn('relative', className)}>
+      <Link to="/activity" className={cn('relative', className)}>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
@@ -190,7 +191,7 @@ export function MentionsBadge({
 
             {hasMore && (
               <div className="border-t p-2 text-center">
-                <Link to="/mentions">
+                <Link to="/activity">
                   <Button variant="ghost" size="sm" className="text-xs w-full">
                     Alle {mentions.length} Erwähnungen anzeigen
                   </Button>
