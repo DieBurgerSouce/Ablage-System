@@ -141,7 +141,7 @@ class TestValidateUploadFile:
             await validate_upload_file(file)
 
         assert exc.value.status_code == 400
-        assert "Nicht unterstuetzter Dateityp" in exc.value.detail
+        assert "Nicht unterstützter Dateityp" in exc.value.detail
 
     @pytest.mark.asyncio
     async def test_reject_oversized_file(self):
@@ -181,7 +181,7 @@ class TestValidateUploadFile:
             await validate_upload_file(file)
 
         assert exc.value.status_code == 400
-        assert "keine gueltige PDF" in exc.value.detail
+        assert "keine gültige PDF" in exc.value.detail
 
     @pytest.mark.asyncio
     async def test_reject_invalid_xml_magic_bytes(self):
@@ -201,7 +201,7 @@ class TestValidateUploadFile:
             await validate_upload_file(file)
 
         assert exc.value.status_code == 400
-        assert "kein gueltiges XML" in exc.value.detail
+        assert "kein gültiges XML" in exc.value.detail
 
 
 class TestAllowedFormats:
@@ -235,7 +235,7 @@ class TestAccountEndpoints:
 
     @pytest.fixture
     def mock_account_service(self):
-        with patch('app.api.v1.banking.account_service') as mock:
+        with patch('app.api.v1.banking.routes.account_service') as mock:
             yield mock
 
     @pytest.fixture
@@ -378,7 +378,7 @@ class TestImportEndpoints:
 
     @pytest.fixture
     def mock_import_service(self):
-        with patch('app.api.v1.banking.import_service') as mock:
+        with patch('app.api.v1.banking.routes.import_service') as mock:
             yield mock
 
     @pytest.fixture
@@ -429,7 +429,7 @@ class TestTransactionEndpoints:
 
     @pytest.fixture
     def mock_transaction_service(self):
-        with patch('app.api.v1.banking.transaction_service') as mock:
+        with patch('app.api.v1.banking.routes.transaction_service') as mock:
             yield mock
 
     @pytest.fixture
@@ -573,7 +573,7 @@ class TestReconciliationEndpoints:
 
     @pytest.fixture
     def mock_reconciliation_service(self):
-        with patch('app.api.v1.banking.reconciliation_service') as mock:
+        with patch('app.api.v1.banking.routes.reconciliation_service') as mock:
             yield mock
 
     @pytest.fixture
@@ -729,12 +729,12 @@ class TestPaymentEndpoints:
 
     @pytest.fixture
     def mock_payment_service(self):
-        with patch('app.api.v1.banking.payment_service') as mock:
+        with patch('app.api.v1.banking.routes.payment_service') as mock:
             yield mock
 
     @pytest.fixture
     def mock_tan_handler_service(self):
-        with patch('app.api.v1.banking.tan_handler_service') as mock:
+        with patch('app.api.v1.banking.routes.tan_handler_service') as mock:
             yield mock
 
     @pytest.fixture
@@ -766,7 +766,7 @@ class TestPaymentEndpoints:
     @pytest.fixture
     def mock_limiter(self):
         """Mock the slowapi limiter to bypass Redis."""
-        with patch('app.api.v1.banking.limiter') as mock:
+        with patch('app.api.v1.banking.routes.limiter') as mock:
             mock.limit = MagicMock(return_value=lambda f: f)
             yield mock
 
@@ -831,7 +831,16 @@ class TestPaymentEndpoints:
             1,
         ))
 
-        result = await list_payments(db=mock_db, current_user=mock_user)
+        # page/per_page sind Query()-Defaults; bei Direktaufruf explizit setzen,
+        # sonst landen Query-Objekte in (page-1)*per_page.
+        result = await list_payments(
+            bank_account_id=None,
+            status_filter=None,
+            page=1,
+            per_page=50,
+            db=mock_db,
+            current_user=mock_user,
+        )
 
         assert "payments" in result
         assert result["total"] == 1
@@ -976,7 +985,7 @@ class TestCashFlowEndpoints:
 
     @pytest.fixture
     def mock_cash_flow_service(self):
-        with patch('app.api.v1.banking.cash_flow_service') as mock:
+        with patch('app.api.v1.banking.routes.cash_flow_service') as mock:
             yield mock
 
     @pytest.fixture
@@ -1063,7 +1072,7 @@ class TestDunningEndpoints:
 
     @pytest.fixture
     def mock_dunning_service(self):
-        with patch('app.api.v1.banking.dunning_service') as mock:
+        with patch('app.api.v1.banking.routes.dunning_service') as mock:
             yield mock
 
     @pytest.fixture
@@ -1229,7 +1238,7 @@ class TestAgingReportEndpoints:
 
     @pytest.fixture
     def mock_aging_service(self):
-        with patch('app.api.v1.banking.aging_report_service') as mock:
+        with patch('app.api.v1.banking.routes.aging_report_service') as mock:
             yield mock
 
     @pytest.fixture
