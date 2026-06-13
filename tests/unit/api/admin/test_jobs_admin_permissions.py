@@ -480,9 +480,23 @@ class TestJobsAdminEndpointsIntegration:
 
     @pytest.fixture
     def test_client(self) -> Generator:
-        """Create a TestClient for API testing."""
-        with TestClient(app, raise_server_exceptions=False) as client:
+        """Create a TestClient for API testing.
+
+        Der App-Startup macht einen DB-Connectivity-Check; ist die DB nicht
+        erreichbar, wird (wie in conftest.client) sauber geskippt statt mit
+        einem Setup-Error rot zu werden.
+        """
+        client_cm = TestClient(app, raise_server_exceptions=False)
+        try:
+            client = client_cm.__enter__()
+        except Exception as exc:
+            pytest.skip(
+                f"App-Startup fehlgeschlagen (Backend/DB nicht verfuegbar): {exc}"
+            )
+        try:
             yield client
+        finally:
+            client_cm.__exit__(None, None, None)
 
     @pytest.fixture
     def superuser_token(self):
@@ -812,9 +826,23 @@ class TestHTTPStatusCodesIntegration:
 
     @pytest.fixture
     def test_client(self) -> Generator:
-        """Create a TestClient for API testing."""
-        with TestClient(app, raise_server_exceptions=False) as client:
+        """Create a TestClient for API testing.
+
+        Der App-Startup macht einen DB-Connectivity-Check; ist die DB nicht
+        erreichbar, wird (wie in conftest.client) sauber geskippt statt mit
+        einem Setup-Error rot zu werden.
+        """
+        client_cm = TestClient(app, raise_server_exceptions=False)
+        try:
+            client = client_cm.__enter__()
+        except Exception as exc:
+            pytest.skip(
+                f"App-Startup fehlgeschlagen (Backend/DB nicht verfuegbar): {exc}"
+            )
+        try:
             yield client
+        finally:
+            client_cm.__exit__(None, None, None)
 
     def test_401_for_missing_auth(self, test_client):
         """401 Unauthorized bei fehlendem Token."""
