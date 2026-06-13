@@ -6,10 +6,9 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
-import { LazyLoadFallback } from '@/components/LazyLoadFallback';
+import { lazyRoute } from '@/lib/lazyRoute';
 
-const DashboardList = lazy(() =>
+const DashboardList = lazyRoute(() =>
   import('@/features/dashboards/components/DashboardList').then((m) => ({
     default: m.DashboardList,
   }))
@@ -20,9 +19,5 @@ export const Route = createFileRoute('/dashboards/')({
 });
 
 function DashboardsIndexPage() {
-  return (
-    <Suspense fallback={<LazyLoadFallback />}>
-      <DashboardList />
-    </Suspense>
-  );
+  return <DashboardList />;
 }

@@ -1,17 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
-import { LazyLoadFallback } from '@/components/LazyLoadFallback';
+import { lazyRoute } from '@/lib/lazyRoute';
 
-const TransactionsPage = lazy(() => import('@/features/banking/components/transactions/TransactionsPage').then(m => ({ default: m.TransactionsPage })));
+const TransactionsPage = lazyRoute(() => import('@/features/banking/components/transactions/TransactionsPage').then(m => ({ default: m.TransactionsPage })));
 
 export const Route = createFileRoute('/admin/banking/transactions')({
     component: LazyTransactionsPage,
 });
 
 function LazyTransactionsPage() {
-    return (
-        <Suspense fallback={<LazyLoadFallback />}>
-            <TransactionsPage />
-        </Suspense>
-    );
+    return <TransactionsPage />;
 }

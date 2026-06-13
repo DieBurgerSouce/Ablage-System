@@ -1,9 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { lazy, Suspense } from 'react'
-import { LazyLoadFallback } from '@/components/LazyLoadFallback'
+import { lazyRoute } from '@/lib/lazyRoute'
 import { authService } from '@/lib/api/services/auth'
 
-const ValidationQueueDashboard = lazy(() => import('@/features/validation/components/ValidationQueueDashboard').then(m => ({ default: m.ValidationQueueDashboard })))
+const ValidationQueueDashboard = lazyRoute(() => import('@/features/validation/components/ValidationQueueDashboard').then(m => ({ default: m.ValidationQueueDashboard })))
 
 export const Route = createFileRoute('/validation-queue')({
     beforeLoad: async () => {
@@ -22,10 +21,8 @@ export const Route = createFileRoute('/validation-queue')({
 
 function ValidationQueuePage() {
     return (
-        <Suspense fallback={<LazyLoadFallback />}>
-            <div className="p-8">
-                <ValidationQueueDashboard />
-            </div>
-        </Suspense>
+        <div className="p-8">
+            <ValidationQueueDashboard />
+        </div>
     )
 }

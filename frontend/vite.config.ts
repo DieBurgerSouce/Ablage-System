@@ -113,11 +113,41 @@ export default defineConfig({
     // Optimize chunk splitting
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'router-vendor': ['@tanstack/react-router', '@tanstack/react-query'],
-          'chart-vendor': ['recharts'],
-          'ui-vendor': ['framer-motion', 'lucide-react'],
+        // B7-ROOT-CAUSE (2026-06-13): Die fruehere Objekt-Form
+        //   manualChunks: { 'react-vendor': ['react', 'react-dom'], ... }
+        // hat im Production-Build React FRAGMENTIERT: `react` (inkl.
+        // ReactSharedInternals + jsx-runtime) landete in `react-vendor`,
+        // waehrend `react-dom` (Reconciler + Scheduler) sowie `react/jsx-runtime`
+        // anderer Module in den 6,5-MB-`index`-Chunk gezogen wurden. Ergebnis:
+        // ZWEI Instanzen von `ReactSharedInternals` in zwei Chunks (per
+        // `grep "SharedInternals"` in beiden nachweisbar). React.lazy registriert
+        // sein Suspense-"Ping" ueber ReactSharedInternals; bei zwei Instanzen
+        // pingt der geladene Lazy-Chunk eine ANDERE Internals-Instanz als die,
+        // die der Reconciler beim Suspense-Boundary liest -> die Boundary wird
+        // nie aufgeweckt -> ALLE 25 React.lazy-Routen (/upload,
+        // /admin/banking/* u.a.) haengen im Production-Build dauerhaft im
+        // LazyLoadFallback-Spinner (Chunk laedt, KEIN Fehler, KEINE Rejection;
+        // ein DIREKTER, nicht-lazy Import derselben Komponente rendert sofort).
+        // Im Dev-Server tritt das nicht auf, weil dort nicht gechunkt wird.
+        // Fix: React-Runtime (react, react-dom, react/jsx-runtime, scheduler
+        // und Reacts interne Pakete) MUSS in EINEM Chunk bleiben, damit es genau
+        // EINE ReactSharedInternals-Instanz gibt. Funktion statt Objekt, weil das
+        // Objekt-Format transitive react-dom-/jsx-runtime-Importe nicht zuverlaessig
+        // demselben Chunk zuordnet.
+        manualChunks(id: string) {
+          // Die GESAMTE React-Runtime in EINEN Chunk: react, react-dom,
+          // scheduler UND react/jsx-runtime. Nur so existiert genau eine
+          // ReactSharedInternals-Instanz (siehe Kommentar oben). `react` muss
+          // VOR `react-dom` geprueft werden; `react-dom` enthaelt den Reconciler,
+          // `react` die Internals/jsx-runtime - beide gehoeren in denselben Chunk.
+          // Wir splitten bewusst NUR React selbst manuell und ueberlassen den Rest
+          // dem Rollup-Default, damit keine Chunk-Ladereihenfolge-/Zirkular-
+          // Probleme entstehen (z.B. ein Vendor-Chunk, der `React.forwardRef`
+          // referenziert, bevor der React-Chunk initialisiert ist).
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
+            return 'react-vendor'
+          }
+          return undefined
         },
       },
     },

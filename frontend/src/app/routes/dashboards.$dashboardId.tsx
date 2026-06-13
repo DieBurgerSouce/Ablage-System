@@ -6,18 +6,18 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
-import { LazyLoadFallback } from '@/components/LazyLoadFallback';
+import type { ComponentType } from 'react';
+import { lazyRoute } from '@/lib/lazyRoute';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import '@/features/dashboards/dashboard-grid.css';
 
-const DashboardEditor = lazy(() =>
+const DashboardEditor = lazyRoute(() =>
   import('@/features/dashboards/components/DashboardEditor').then((m) => ({
     default: m.DashboardEditor,
   }))
-);
+) as ComponentType<{ dashboardId: string }>;
 
 export const Route = createFileRoute('/dashboards/$dashboardId')({
   component: DashboardEditorPage,
@@ -25,9 +25,5 @@ export const Route = createFileRoute('/dashboards/$dashboardId')({
 
 function DashboardEditorPage() {
   const { dashboardId } = Route.useParams();
-  return (
-    <Suspense fallback={<LazyLoadFallback />}>
-      <DashboardEditor dashboardId={dashboardId} />
-    </Suspense>
-  );
+  return <DashboardEditor dashboardId={dashboardId} />;
 }

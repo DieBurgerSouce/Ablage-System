@@ -7,10 +7,9 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
-import { LazyLoadFallback } from '@/components/LazyLoadFallback';
+import { lazyRoute } from '@/lib/lazyRoute';
 
-const InvoiceListPage = lazy(() => import('@/features/invoices/components/InvoiceListPage').then(m => ({ default: m.InvoiceListPage })));
+const InvoiceListPage = lazyRoute(() => import('@/features/invoices/components/InvoiceListPage').then(m => ({ default: m.InvoiceListPage })));
 
 interface RechnungenListeSearch {
   overdueOnly?: string;
@@ -30,9 +29,5 @@ export const Route = createFileRoute('/admin/rechnungen/liste')({
 });
 
 function RechnungenListePage() {
-  return (
-    <Suspense fallback={<LazyLoadFallback />}>
-      <InvoiceListPage />
-    </Suspense>
-  );
+  return <InvoiceListPage />;
 }
