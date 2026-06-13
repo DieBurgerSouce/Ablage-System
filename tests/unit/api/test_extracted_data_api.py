@@ -1082,7 +1082,7 @@ class TestExtractedDataErrors:
                 )
 
             assert exc.value.status_code == 400
-            assert "nicht unterstuetzt" in exc.value.detail
+            assert "nicht unterstützt" in exc.value.detail
 
     @pytest.mark.asyncio
     async def test_export_all_no_documents(self, mock_db, mock_user):
