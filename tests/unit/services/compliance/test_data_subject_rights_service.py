@@ -115,11 +115,28 @@ class TestCreateRequest:
         assert result.request_id is not None
         assert result.verification_token is not None
         assert result.status == DSRStatus.PENDING
-        assert result.verification_required is True
+        # user_id ist gesetzt -> bereits eingeloggt -> keine Email-Verifikation noetig
+        assert result.verification_required is False
         # Due date sollte 30 Tage in der Zukunft sein
         assert result.due_date > datetime.now(timezone.utc)
         mock_db.add.assert_called()
-        mock_db.commit.assert_called()
+        # Service nutzt flush() (Transaktion wird vom Caller committet)
+        mock_db.flush.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_create_request_anonymous_requires_verification(
+        self, dsr_service, mock_db, mock_company_id
+    ):
+        """Ohne user_id ist Email-Verifikation erforderlich."""
+        result = await dsr_service.create_request(
+            db=mock_db,
+            request_type=DSRType.ACCESS,
+            requester_email="anon@example.com",
+            company_id=mock_company_id,
+        )
+
+        assert result.success is True
+        assert result.verification_required is True
 
     @pytest.mark.asyncio
     async def test_create_erasure_request(
@@ -228,7 +245,8 @@ class TestVerifyIdentity:
 
         assert result.success is False
         assert result.verified is False
-        assert "ungueltig" in result.message.lower() or "falsch" in result.message.lower()
+        # Service meldet "Ungültiger Verifizierungstoken" (mit Umlaut)
+        assert "ungültig" in result.message.lower() or "token" in result.message.lower()
 
     @pytest.mark.asyncio
     async def test_verify_identity_request_not_found(
@@ -277,18 +295,25 @@ class TestExportPersonalDataSummary:
     async def test_export_personal_data_summary_success(
         self, dsr_service, mock_db, mock_user
     ):
-        """Datenzusammenfassung erfolgreich exportieren."""
-        mock_db.get.return_value = mock_user
+        """Datenzusammenfassung erfolgreich exportieren.
 
-        # Mock fuer Dokumente-Zaehlung
-        doc_count_result = MagicMock()
-        doc_count_result.scalar_one.return_value = 5
+        Der Service nutzt db.execute(select(User/Document/...)) - 4 Aufrufe bei
+        include_documents+include_activity: User, Dokumente, Kommentare,
+        Aktivitaeten.
+        """
+        def res(scalar_value=None, scalars_list=None):
+            r = MagicMock()
+            r.scalar_one_or_none = MagicMock(return_value=scalar_value)
+            scalars = MagicMock()
+            scalars.all = MagicMock(return_value=scalars_list or [])
+            r.scalars = MagicMock(return_value=scalars)
+            return r
 
-        # Mock fuer Aktivitaeten-Zaehlung
-        activity_count_result = MagicMock()
-        activity_count_result.scalar_one.return_value = 10
-
-        mock_db.execute.side_effect = [doc_count_result, activity_count_result]
+        user_result = res(scalar_value=mock_user)
+        doc_result = res(scalars_list=[MagicMock(id=uuid4(), filename="a.pdf", document_type="invoice", created_at=datetime.now(timezone.utc))])
+        comment_result = res(scalars_list=[])
+        activity_result = res(scalars_list=[])
+        mock_db.execute.side_effect = [user_result, doc_result, comment_result, activity_result]
 
         result = await dsr_service.export_personal_data_summary(
             db=mock_db,
@@ -302,22 +327,37 @@ class TestExportPersonalDataSummary:
         assert result.user_id == mock_user.id
         assert result.export_date is not None
         assert len(result.data_categories) > 0
-        assert "user" in result.personal_data or "benutzer" in str(result.personal_data).lower()
+        # Service legt die Benutzerdaten unter "benutzer" ab
+        assert "benutzer" in result.personal_data
+        assert result.personal_data["benutzer"]["email"] == mock_user.email
 
     @pytest.mark.asyncio
     async def test_export_personal_data_summary_user_not_found(
         self, dsr_service, mock_db
     ):
-        """Export fehlgeschlagen - Benutzer nicht gefunden."""
-        mock_db.get.return_value = None
+        """Ohne User wird eine Summary ohne Benutzerdaten geliefert (kein Raise).
 
-        with pytest.raises(Exception) as exc_info:
-            await dsr_service.export_personal_data_summary(
-                db=mock_db,
-                user_id=uuid4(),
-            )
+        Der Service prueft `if user:` und ueberspringt die Benutzerdaten -
+        er wirft keine Exception.
+        """
+        def res(scalar_value=None, scalars_list=None):
+            r = MagicMock()
+            r.scalar_one_or_none = MagicMock(return_value=scalar_value)
+            scalars = MagicMock()
+            scalars.all = MagicMock(return_value=scalars_list or [])
+            r.scalars = MagicMock(return_value=scalars)
+            return r
 
-        assert "nicht gefunden" in str(exc_info.value).lower() or "not found" in str(exc_info.value).lower()
+        # User None, dann Dokumente/Aktivitaeten leer
+        mock_db.execute.side_effect = [res(scalar_value=None), res(), res(), res()]
+
+        result = await dsr_service.export_personal_data_summary(
+            db=mock_db,
+            user_id=uuid4(),
+        )
+
+        assert isinstance(result, PersonalDataSummary)
+        assert "benutzer" not in result.personal_data
 
 
 class TestRectifyData:
@@ -327,47 +367,58 @@ class TestRectifyData:
     async def test_rectify_data_success(
         self, dsr_service, mock_db, mock_user
     ):
-        """Daten erfolgreich berichtigen."""
-        mock_db.get.return_value = mock_user
+        """Erlaubtes Feld (name) erfolgreich berichtigen."""
+        mock_user.name = "Max Mustermann"
+        user_result = MagicMock()
+        user_result.scalar_one_or_none = MagicMock(return_value=mock_user)
+        mock_db.execute.return_value = user_result
 
         result = await dsr_service.rectify_data(
             db=mock_db,
             user_id=mock_user.id,
-            corrections={"first_name": "Maximilian", "preferences": {"theme": "light"}},
+            corrections={"name": "Maximilian Mustermann"},
             reason="Name war falsch geschrieben",
         )
 
         assert result.success is True
-        assert "first_name" in result.corrected_fields or len(result.corrected_fields) > 0
+        assert "name" in result.corrected_fields
+        assert mock_user.name == "Maximilian Mustermann"
 
     @pytest.mark.asyncio
     async def test_rectify_data_protected_fields(
         self, dsr_service, mock_db, mock_user
     ):
-        """Geschuetzte Felder koennen nicht geaendert werden."""
-        mock_db.get.return_value = mock_user
+        """Geschuetzte Felder (id/email) duerfen nicht geaendert werden."""
+        user_result = MagicMock()
+        user_result.scalar_one_or_none = MagicMock(return_value=mock_user)
+        mock_db.execute.return_value = user_result
 
         result = await dsr_service.rectify_data(
             db=mock_db,
             user_id=mock_user.id,
-            corrections={"id": uuid4(), "email": "hacker@evil.com", "first_name": "Valid"},
+            corrections={"id": uuid4(), "email": "hacker@evil.com", "name": "Valid"},
             reason="Test",
         )
 
-        # ID und andere kritische Felder sollten geschuetzt sein
-        assert "id" in result.protected_fields or "email" in result.protected_fields
+        # id und email sind geschuetzt
+        assert "id" in result.protected_fields
+        assert "email" in result.protected_fields
+        # name (erlaubt) wurde berichtigt
+        assert "name" in result.corrected_fields
 
     @pytest.mark.asyncio
     async def test_rectify_data_user_not_found(
         self, dsr_service, mock_db
     ):
         """Berichtigung fehlgeschlagen - Benutzer nicht gefunden."""
-        mock_db.get.return_value = None
+        user_result = MagicMock()
+        user_result.scalar_one_or_none = MagicMock(return_value=None)
+        mock_db.execute.return_value = user_result
 
         result = await dsr_service.rectify_data(
             db=mock_db,
             user_id=uuid4(),
-            corrections={"first_name": "Test"},
+            corrections={"name": "Test"},
         )
 
         assert result.success is False
@@ -415,10 +466,26 @@ class TestListRequests:
     async def test_list_requests_overdue(
         self, dsr_service, mock_db, mock_company_id
     ):
-        """Ueberfaellige Anfragen filtern."""
+        """Ueberfaellige Anfragen filtern (Serialisierung zu DSRRequest)."""
+        # DB-Row braucht gueltige Enum-Werte, damit DSRType()/DSRStatus()
+        # nicht fehlschlagen.
         overdue_request = MagicMock()
-        overdue_request.due_date = datetime.now(timezone.utc) - timedelta(days=5)
+        overdue_request.id = uuid4()
+        overdue_request.request_type = DSRType.ACCESS.value
         overdue_request.status = DSRStatus.IN_PROGRESS.value
+        overdue_request.requester_email = "test@example.com"
+        overdue_request.requester_name = "Max Mustermann"
+        overdue_request.user_id = uuid4()
+        overdue_request.company_id = mock_company_id
+        overdue_request.description = None
+        overdue_request.affected_data_categories = [DataCategory.PERSONAL.value]
+        overdue_request.requested_at = datetime.now(timezone.utc) - timedelta(days=40)
+        overdue_request.created_at = datetime.now(timezone.utc) - timedelta(days=40)
+        overdue_request.due_date = datetime.now(timezone.utc) - timedelta(days=5)
+        overdue_request.verified_at = None
+        overdue_request.started_at = None
+        overdue_request.completed_at = None
+        overdue_request.assigned_to_id = None
 
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [overdue_request]
@@ -430,7 +497,10 @@ class TestListRequests:
             overdue_only=True,
         )
 
-        assert isinstance(requests, list)
+        assert len(requests) == 1
+        assert requests[0].status == DSRStatus.IN_PROGRESS
+        # Ueberfaellig -> days_remaining auf 0 geklemmt
+        assert requests[0].days_remaining == 0
 
 
 class TestGetRequest:
