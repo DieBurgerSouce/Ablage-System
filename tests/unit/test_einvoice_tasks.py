@@ -21,9 +21,11 @@ class TestParserService:
 
         parser = get_parser_service()
 
-        # Mock ZUGFeRD 2.3 XML
+        # Mock ZUGFeRD 2.3 XML (ram-Namespace muss deklariert sein, sonst lehnt
+        # der sichere Parser das XML korrekt als ungueltig ab)
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100">
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
+                          xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
     <rsm:ExchangedDocumentContext>
         <ram:GuidelineSpecifiedDocumentContextParameter>
             <ram:ID>urn:cen.eu:en16931:2017</ram:ID>
@@ -43,9 +45,10 @@ class TestParserService:
 
         parser = get_parser_service()
 
-        # Mock XRechnung CII XML
+        # Mock XRechnung CII XML (ram-Namespace deklariert)
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100">
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
+                          xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
     <rsm:ExchangedDocumentContext>
         <ram:GuidelineSpecifiedDocumentContextParameter>
             <ram:ID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</ram:ID>
@@ -74,9 +77,21 @@ class TestParserService:
     <data>&xxe;</data>
 </rsm:CrossIndustryInvoice>"""
 
-        # Sollte XXE-Entity nicht auflösen (sicherer Parser)
-        with pytest.raises(Exception):
-            await parser.parse_xml(malicious_xml)
+        # Sicherer Parser (resolve_entities=False, no_network=True): die externe
+        # Entity wird NICHT aufgeloest. Entscheidend ist, dass kein Dateiinhalt
+        # leakt - egal ob geparst wird oder eine Exception fliegt.
+        leaked = ""
+        try:
+            result = await parser.parse_xml(malicious_xml)
+            leaked = result.xml_content or ""
+        except Exception:
+            # Auch ein Reject ist ein sicheres Ergebnis
+            leaked = ""
+
+        # /etc/passwd-Inhalt darf NICHT im Ergebnis auftauchen (XXE verhindert)
+        assert "root:" not in leaked
+        assert "/bin/bash" not in leaked
+        assert "daemon:" not in leaked
 
     @pytest.mark.asyncio
     async def test_parse_invoice_data(self):
@@ -287,9 +302,13 @@ class TestGeneratorService:
             gross_amount=100.0,
         )
 
-        # Sollte None zurückgeben oder Exception werfen
-        xml = await generator.generate_xml_only(invoice_data, profile="MINIMUM")
-        assert xml is None or len(xml) == 0
+        # Fehlende Rechnungsnummer -> Generator wirft Validierungsfehler
+        # (oder gibt leeres Ergebnis). Beide Ausgaenge sind korrekt.
+        try:
+            xml = await generator.generate_xml_only(invoice_data, profile="MINIMUM")
+            assert xml is None or len(xml) == 0
+        except ValueError as e:
+            assert "invoice_number" in str(e) or "Rechnungsnummer" in str(e)
 
 
 # ============================================================
