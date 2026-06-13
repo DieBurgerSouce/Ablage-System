@@ -361,11 +361,10 @@ trailer << /Size 4 /Root 1 0 R >>
 class TestEInvoiceTasks:
     """Tests für E-Invoice Celery Tasks."""
 
-    @pytest.mark.asyncio
     @patch("app.workers.tasks.einvoice_tasks.get_async_session_context")
-    @patch("app.workers.tasks.einvoice_tasks.get_parser_service")
-    @patch("app.workers.tasks.einvoice_tasks.get_storage_service")
-    async def test_parse_einvoice_task_success(
+    @patch("app.services.einvoice.get_parser_service")
+    @patch("app.services.storage_service.get_storage_service")
+    def test_parse_einvoice_task_success(
         self, mock_storage, mock_parser, mock_db_context
     ):
         """Parse-Task verarbeitet Dokument erfolgreich."""
@@ -386,7 +385,11 @@ class TestEInvoiceTasks:
         mock_doc.file_path = "path/to/file.pdf"
         mock_doc.owner_id = uuid4()
 
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_doc
+        # result.scalar_one_or_none() ist SYNCHRON -> Result als MagicMock,
+        # nur db.execute awaitet (AsyncMock).
+        exec_result = MagicMock()
+        exec_result.scalar_one_or_none.return_value = mock_doc
+        mock_session.execute = AsyncMock(return_value=exec_result)
 
         # Mock Storage
         mock_storage_instance = AsyncMock()
@@ -407,13 +410,13 @@ class TestEInvoiceTasks:
 
         assert result["success"] is True
         assert "einvoice_id" in result
-        assert result["format"] == "zugferd_2_3"
+        # Echter Enum-Wert von EInvoiceFormatDetected.ZUGFERD_2_3
+        assert result["format"] == "zugferd_2.3"
 
-    @pytest.mark.asyncio
     @patch("app.workers.tasks.einvoice_tasks.get_async_session_context")
-    @patch("app.workers.tasks.einvoice_tasks.get_generator_service")
-    @patch("app.workers.tasks.einvoice_tasks.get_storage_service")
-    async def test_generate_zugferd_task_success(
+    @patch("app.services.einvoice.get_generator_service")
+    @patch("app.services.storage_service.get_storage_service")
+    def test_generate_zugferd_task_success(
         self, mock_storage, mock_generator, mock_db_context
     ):
         """ZUGFeRD-Generierung erfolgreich."""
@@ -431,7 +434,10 @@ class TestEInvoiceTasks:
         mock_doc.company_id = company_id
         mock_doc.extracted_data = {"invoice": {"invoice_number": "RE-001"}}
 
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_doc
+        # result.scalar_one_or_none() ist SYNCHRON -> Result als MagicMock.
+        exec_result = MagicMock()
+        exec_result.scalar_one_or_none.return_value = mock_doc
+        mock_session.execute = AsyncMock(return_value=exec_result)
 
         # Mock Generator
         mock_generator_instance = AsyncMock()
@@ -450,11 +456,10 @@ class TestEInvoiceTasks:
         assert result["einvoice_id"] == str(einvoice_id)
         assert result["profile"] == "EN16931"
 
-    @pytest.mark.asyncio
     @patch("app.workers.tasks.einvoice_tasks.get_async_session_context")
-    @patch("app.workers.tasks.einvoice_tasks.get_generator_service")
-    @patch("app.workers.tasks.einvoice_tasks.get_storage_service")
-    async def test_generate_xrechnung_task_success(
+    @patch("app.services.einvoice.get_generator_service")
+    @patch("app.services.storage_service.get_storage_service")
+    def test_generate_xrechnung_task_success(
         self, mock_storage, mock_generator, mock_db_context
     ):
         """XRechnung-Generierung erfolgreich."""
@@ -472,7 +477,10 @@ class TestEInvoiceTasks:
         mock_doc.company_id = company_id
         mock_doc.extracted_data = {"invoice": {"invoice_number": "XR-001"}}
 
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_doc
+        # result.scalar_one_or_none() ist SYNCHRON -> Result als MagicMock.
+        exec_result = MagicMock()
+        exec_result.scalar_one_or_none.return_value = mock_doc
+        mock_session.execute = AsyncMock(return_value=exec_result)
 
         # Mock Generator
         mock_generator_instance = AsyncMock()
@@ -494,10 +502,9 @@ class TestEInvoiceTasks:
         assert result["syntax"] == "CII"
         assert result["leitweg_id"] == "99012-12345-67"
 
-    @pytest.mark.asyncio
     @patch("app.workers.tasks.einvoice_tasks.get_async_session_context")
-    @patch("app.workers.tasks.einvoice_tasks.get_validator_service")
-    async def test_batch_validate_task(
+    @patch("app.services.einvoice.get_validator_service")
+    def test_batch_validate_task(
         self, mock_validator, mock_db_context
     ):
         """Batch-Validierung verarbeitet alle Dokumente."""
@@ -520,9 +527,12 @@ class TestEInvoiceTasks:
         mock_einvoice2.format = "xrechnung_cii"
         mock_einvoice2.xml_content = "<xml>valid</xml>"
 
-        mock_session.execute.return_value.scalars.return_value.all.return_value = [
+        # result.scalars().all() ist SYNCHRON -> Result als MagicMock.
+        exec_result = MagicMock()
+        exec_result.scalars.return_value.all.return_value = [
             mock_einvoice1, mock_einvoice2
         ]
+        mock_session.execute = AsyncMock(return_value=exec_result)
 
         # Mock Validator
         mock_validator_instance = AsyncMock()
