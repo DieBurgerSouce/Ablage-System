@@ -170,8 +170,8 @@ class TestListFeatureFlags:
             result = await list_feature_flags(
                 request=mock_request,
                 enabled_only=False,
-                limit=100,
-                offset=0,
+                page=1,
+                per_page=100,
                 db=mock_db,
                 current_user=mock_user,
             )
@@ -206,8 +206,8 @@ class TestListFeatureFlags:
             await list_feature_flags(
                 request=mock_request,
                 enabled_only=False,
-                limit=100,
-                offset=0,
+                page=1,
+                per_page=100,
                 db=mock_db,
                 current_user=mock_user,
             )
