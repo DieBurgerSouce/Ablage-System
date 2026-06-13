@@ -55,18 +55,17 @@ test.describe('Suche - UI', () => {
     expect(serverErrors, `Such-Backend antwortete mit 5xx: ${serverErrors.join(', ')}`).toHaveLength(0);
   });
 
-  // BEKANNTER APP-BUG (Kategorie B, 2026-06-12, bestaetigt Stream s5 2026-06-13):
-  // ZWEI konkurrierende globale Strg+K-Paletten sind gleichzeitig gemountet
-  // (GlobalCommandDialog via __root.tsx:92 + eigener Listener
-  // GlobalCommandDialog.tsx:126 UND SpotlightDialog via AppLayout.tsx:121 +
-  // Listener features/spotlight/hooks/use-spotlight.ts:114). Strg+K oeffnet
-  // BEIDE uebereinander, Escape schliesst nur die oberste -> eine bleibt offen
-  // (Assertion toHaveCount(0) schlaegt korrekt fehl). App-Code-Befund (Konflikt
-  // zweier global gemounteter Dialoge), nicht in der Spec-Zone -> fixme bis
-  // zum App-Fix (ein einziger globaler Strg+K-Handler).
-  test.fixme(true, 'App-Bug: Zwei konkurrierende globale Strg+K-Paletten gemountet (GlobalCommandDialog + SpotlightDialog), Escape schliesst nur eine. Siehe stream-Report s5-e2e-a11y.');
-
   test('Spotlight (Strg+K) oeffnet die Befehlspalette', async ({ authenticatedPage: page }) => {
+    // BEKANNTER APP-BUG (Kategorie B, 2026-06-12, bestaetigt Stream s5 2026-06-13):
+    // ZWEI konkurrierende globale Strg+K-Paletten sind gleichzeitig gemountet
+    // (GlobalCommandDialog via __root.tsx:92 + eigener Listener
+    // GlobalCommandDialog.tsx:126 UND SpotlightDialog via AppLayout.tsx:121 +
+    // Listener features/spotlight/hooks/use-spotlight.ts:114). Strg+K oeffnet
+    // BEIDE uebereinander, Escape schliesst nur die oberste -> eine bleibt offen
+    // (Assertion toHaveCount(0) schlaegt korrekt fehl). App-Code-Befund (Konflikt
+    // zweier global gemounteter Dialoge), nicht in der Spec-Zone -> fixme bis
+    // zum App-Fix (ein einziger globaler Strg+K-Handler).
+    test.fixme(true, 'App-Bug: Zwei konkurrierende globale Strg+K-Paletten gemountet (GlobalCommandDialog + SpotlightDialog), Escape schliesst nur eine. Siehe stream-Report s5-e2e-a11y.');
     // Auf eine nicht-crashende Route wechseln: Das Admin-Dashboard ('/')
     // crasht aktuell im ErrorBoundary (App-Bug: Tooltip ohne TooltipProvider,
     // DashboardGridEnhanced.tsx:302) — dann ist auch der globale
