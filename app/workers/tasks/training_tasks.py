@@ -25,6 +25,37 @@ from app.core.safe_errors import safe_error_detail
 logger = structlog.get_logger(__name__)
 
 
+# ==================== Beat Schedule (Training) ====================
+# Modul-lokale, queue-bewusste Beschreibung der geplanten Training-Tasks.
+# Die effektive Celery-Beat-Registrierung erfolgt in celery_app.py; diese
+# Konstante haelt die Schedule-Metadaten (Task-Pfad, Intervall, Ziel-Queue)
+# beim Training-Modul, damit sie ohne Import des schweren celery_app-Moduls
+# inspizierbar/testbar sind. Schedules: float = Sekunden-Intervall,
+# dict = crontab-Felder.
+CELERY_BEAT_TRAINING_SCHEDULE: Dict[str, Dict[str, Any]] = {
+    "training-daily-stats": {
+        "task": "app.workers.tasks.training_tasks.generate_daily_stats",
+        "schedule": {"hour": 1, "minute": 0},  # taeglich 01:00
+        "options": {"queue": "maintenance"},
+    },
+    "training-feedback-queue-hourly": {
+        "task": "app.workers.tasks.training_tasks.process_feedback_queue",
+        "schedule": 3600.0,  # stuendlich
+        "options": {"queue": "maintenance"},
+    },
+    "training-learned-weights-daily": {
+        "task": "app.workers.tasks.training_tasks.update_learned_weights",
+        "schedule": {"hour": 2, "minute": 10},  # taeglich 02:10
+        "options": {"queue": "maintenance"},
+    },
+    "training-weekly-benchmarks": {
+        "task": "app.workers.tasks.training_tasks.run_scheduled_benchmarks",
+        "schedule": {"day_of_week": 0, "hour": 3, "minute": 5},  # So 03:05
+        "options": {"queue": "ocr_normal"},
+    },
+}
+
+
 # ==================== Benchmark Tasks ====================
 
 @celery_app.task(
