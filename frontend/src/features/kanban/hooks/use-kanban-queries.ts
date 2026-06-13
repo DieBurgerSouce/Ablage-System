@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { useCurrentCompanyId } from '@/context/CompanyContext';
 
 // ==================== Types ====================
 
@@ -44,23 +45,35 @@ export interface StageStatistic {
 // ==================== Queries ====================
 
 export function useKanbanBoard(workflowType: string) {
+  // B10: Der Backend-Endpoint verlangt company_id als PFLICHT-Query-Parameter
+  // (app/api/v1/kanban.py: `company_id: UUID = Query(...)`). Ohne ihn antwortet
+  // FastAPI mit 422 und das Board laedt nie. company_id kommt - wie bei allen
+  // company-scoped Calls im Frontend - aus dem aktiven Company-Context.
+  const companyId = useCurrentCompanyId();
   return useQuery({
-    queryKey: ['kanban', 'board', workflowType],
+    queryKey: ['kanban', 'board', workflowType, companyId],
     queryFn: async (): Promise<KanbanBoard> => {
-      const res = await apiClient.get(`/kanban/${workflowType}/board`);
+      const res = await apiClient.get(`/kanban/${workflowType}/board`, {
+        params: { company_id: companyId },
+      });
       return res.data;
     },
+    enabled: !!companyId,
     refetchInterval: 30000, // Refresh every 30s
   });
 }
 
 export function useKanbanStatistics(workflowType: string) {
+  const companyId = useCurrentCompanyId();
   return useQuery({
-    queryKey: ['kanban', 'statistics', workflowType],
+    queryKey: ['kanban', 'statistics', workflowType, companyId],
     queryFn: async (): Promise<StageStatistic[]> => {
-      const res = await apiClient.get(`/kanban/${workflowType}/statistics`);
+      const res = await apiClient.get(`/kanban/${workflowType}/statistics`, {
+        params: { company_id: companyId },
+      });
       return res.data;
     },
+    enabled: !!companyId,
   });
 }
 
@@ -68,11 +81,14 @@ export function useKanbanStatistics(workflowType: string) {
 
 export function useMoveItem() {
   const queryClient = useQueryClient();
+  const companyId = useCurrentCompanyId();
   return useMutation({
     mutationFn: async ({ itemId, targetStageId }: { itemId: string; targetStageId: string }) => {
-      const res = await apiClient.patch(`/kanban/items/${itemId}/move`, {
-        target_stage_id: targetStageId,
-      });
+      const res = await apiClient.patch(
+        `/kanban/items/${itemId}/move`,
+        { target_stage_id: targetStageId },
+        { params: { company_id: companyId } },
+      );
       return res.data;
     },
     onSuccess: () => {
@@ -83,9 +99,12 @@ export function useMoveItem() {
 
 export function useAddItem(workflowType: string) {
   const queryClient = useQueryClient();
+  const companyId = useCurrentCompanyId();
   return useMutation({
     mutationFn: async (data: { document_id: string; priority?: string; assigned_to?: string }) => {
-      const res = await apiClient.post(`/kanban/${workflowType}/items`, data);
+      const res = await apiClient.post(`/kanban/${workflowType}/items`, data, {
+        params: { company_id: companyId },
+      });
       return res.data;
     },
     onSuccess: () => {
