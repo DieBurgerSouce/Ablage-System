@@ -744,8 +744,13 @@ class TestBackendHealthCheck:
 
             health = await manager.check_backend_health("deepseek")
 
+            # Health-Check faengt JEDE Backend-Status-Exception ab und meldet
+            # unhealthy. Die Begruendung ist bewusst PII-sicher generisch
+            # (safe_error_detail scrubbt die Roh-Message), enthaelt aber den
+            # deutschen Kontext + Exception-Typ.
             assert health["healthy"] is False
-            assert "Status error" in health["reason"]
+            assert "Health-Check fehlgeschlagen" in health["reason"]
+            assert "Exception" in health["reason"]
 
 
 # ========================= Fallback Order Tests =========================

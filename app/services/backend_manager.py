@@ -586,21 +586,24 @@ class BackendManager:
                 self.backends["surya_gpu"] = SuryaGPUAgent()
                 gpu_surya_initialized = True
                 logger.info("surya_gpu_backend_initialized", device=torch.cuda.get_device_name(0))
-            except (RuntimeError, MemoryError, OSError, ImportError) as e:
+            except Exception as e:
+                # Bewusst breit: ein einzelnes Backend darf den Manager nicht
+                # blockieren (Graceful Degradation). Backend-Konstruktoren koennen
+                # je nach Lib beliebige Exception-Typen werfen.
                 logger.info("surya_gpu_backend_unavailable", **safe_error_log(e))
 
         # Always initialize CPU Surya as fallback
         try:
             self.backends["surya"] = SuryaDoclingAgent()
             logger.info("surya_cpu_backend_initialized")
-        except (RuntimeError, ImportError, OSError) as e:
+        except Exception as e:
             logger.error("surya_cpu_backend_init_failed", **safe_error_log(e))
 
         # Initialize Enhanced Surya+Docling (CPU-only with layout analysis)
         try:
             self.backends["surya_enhanced"] = SuryaDoclingEnhancedAgent()
             logger.info("surya_enhanced_backend_initialized")
-        except (RuntimeError, ImportError, OSError) as e:
+        except Exception as e:
             logger.warning("surya_enhanced_backend_unavailable", **safe_error_log(e))
 
         # Try to initialize GPU-based backends if PyTorch and GPU are available
@@ -609,14 +612,14 @@ class BackendManager:
             try:
                 self.backends["deepseek"] = DeepSeekAgent()
                 logger.info("deepseek_backend_initialized")
-            except (RuntimeError, MemoryError, OSError, ImportError) as e:
+            except Exception as e:
                 logger.warning("deepseek_backend_unavailable", **safe_error_log(e))
 
             # Initialize GOT-OCR (requires GPU)
             try:
                 self.backends["got_ocr"] = GOTOCRAgent()
                 logger.info("got_ocr_backend_initialized")
-            except (RuntimeError, MemoryError, OSError, ImportError) as e:
+            except Exception as e:
                 logger.warning("got_ocr_backend_unavailable", **safe_error_log(e))
 
             # Initialize DONUT for multilingual document understanding (8GB VRAM)
@@ -624,7 +627,7 @@ class BackendManager:
                 try:
                     self.backends["donut"] = DonutOCRAgent()
                     logger.info("donut_backend_initialized")
-                except (RuntimeError, MemoryError, OSError, ImportError) as e:
+                except Exception as e:
                     logger.warning("donut_backend_unavailable", **safe_error_log(e))
 
             # Initialize Hybrid Agent for maximum accuracy (combines multiple backends)
@@ -636,7 +639,7 @@ class BackendManager:
                     self.backends["hybrid"] = HybridOCRAgent()
                     logger.info("hybrid_backend_initialized",
                                available_engines=available_for_hybrid)
-                except (RuntimeError, MemoryError, ImportError) as e:
+                except Exception as e:
                     logger.warning("hybrid_backend_unavailable", **safe_error_log(e))
         else:
             logger.info("gpu_unavailable_cpu_only")
@@ -959,7 +962,7 @@ class BackendManager:
 
             return {"healthy": True, "status": status}
 
-        except (RuntimeError, AttributeError, KeyError) as e:  # Catch-all: various backend status API errors possible
+        except Exception as e:  # noqa: BLE001 - Health-Check darf NIE propagieren; jeder Backend-Status-Fehler -> unhealthy
             logger.warning("backend_health_check_failed", backend=backend_name, **safe_error_log(e))
             # Invalidate cache on error
             self._health_cache.invalidate(backend_name)
@@ -1122,7 +1125,7 @@ class BackendManager:
 
                 return result
 
-            except (RuntimeError, MemoryError, OSError, ValueError) as e:  # Catch-all: OCR processing can fail in many ways
+            except Exception as e:  # noqa: BLE001 - Jeder Verarbeitungsfehler MUSS Fallback ausloesen, sonst ist die Fallback-Kette wirkungslos
                 last_error = e
                 latency_ms = (time.monotonic() - start_time) * 1000
 
@@ -1354,7 +1357,7 @@ class BackendManager:
             try:
                 await backend.cleanup()
                 logger.info("backend_cleaned_up", backend=name)
-            except (RuntimeError, AttributeError) as e:  # Catch-all: cleanup can fail in various ways
+            except Exception as e:  # noqa: BLE001 - Cleanup ist Teardown; Fehler eines Backends darf andere nicht blockieren
                 logger.error("backend_cleanup_failed", backend=name, **safe_error_log(e))
 
         # Clear health cache
