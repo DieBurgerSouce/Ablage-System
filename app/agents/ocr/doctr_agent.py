@@ -26,7 +26,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -545,9 +545,9 @@ class DocTRAgent(OCRAgent):
                 exc_info=True
             )
 
-            # Create standardized error result
+            # Create standardized error result (PII-frei)
             result = self.create_error_result(
-                **safe_error_log(e),
+                error=safe_error_detail(e, "docTR-OCR"),
                 error_code="DOCTR_OCR_ERROR",
                 processing_time_ms=processing_time_ms
             )

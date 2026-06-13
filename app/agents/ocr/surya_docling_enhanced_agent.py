@@ -20,7 +20,7 @@ import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
 from app.agents.ocr.docling_layout_analyzer import DoclingLayoutAnalyzer
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.agents.ocr.models.layout_models import (
 
     DocumentLayout,
@@ -116,7 +116,13 @@ class SuryaDoclingEnhancedAgent(OCRAgent):
             # Parameter extrahieren
             image_path = input_data.get("image_path")
             if not image_path:
-                raise ValueError("image_path ist erforderlich")
+                # Input-Validierung: feldbenennende, PII-freie Fehlermeldung
+                # (nicht ueber den generischen Exception-Handler maskieren).
+                result = self.create_error_result(
+                    error="Parameter 'image_path' ist erforderlich",
+                    error_code="SURYA_DOCLING_ENHANCED_INPUT_ERROR",
+                )
+                return result.to_dict()
 
             language = input_data.get("language", self.default_language)
             options = input_data.get("options", {})
@@ -189,7 +195,7 @@ class SuryaDoclingEnhancedAgent(OCRAgent):
             logger.error("Enhanced OCR fehlgeschlagen", **safe_error_log(e), exc_info=True)
             processing_time_ms = int((time.perf_counter() - start_time) * 1000)
             result = self.create_error_result(
-                **safe_error_log(e),
+                error=safe_error_detail(e, "Surya-Docling-Enhanced-OCR"),
                 error_code="SURYA_DOCLING_ENHANCED_ERROR",
                 processing_time_ms=processing_time_ms,
             )
