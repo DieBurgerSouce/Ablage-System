@@ -31,13 +31,29 @@ if TYPE_CHECKING:
 # =============================================================================
 
 def _empty_result() -> MagicMock:
-    """DB-Result-Mock: alle Konsum-Pfade liefern 'leer'."""
+    """DB-Result-Mock: alle Konsum-Pfade liefern 'leer'.
+
+    2026-06-13: `.one()`/`.first()` liefern jetzt eine Aggregat-Zeile, deren
+    numerische Felder 0 sind (statt eines nackten MagicMock). Sonst lieferte
+    `row.total or 0` den MagicMock und `if total > 0` warf TypeError —
+    `_calculate_company_metrics` (IndustryBenchmarkService) konsumiert
+    `result.one().total/paid/dunned/...`. Damit bildet der Mock den echten
+    Vertrag einer leeren Aggregat-Query ab.
+    """
+    zero_row = MagicMock()
+    for _field in (
+        "total", "paid", "dunned", "cancelled", "skonto_used",
+        "total_amount", "outstanding",
+    ):
+        setattr(zero_row, _field, 0)
+
     res = MagicMock()
     res.scalar.return_value = 0
     res.scalar_one_or_none.return_value = None
     res.scalars.return_value.all.return_value = []
     res.all.return_value = []
-    res.first.return_value = None
+    res.first.return_value = zero_row
+    res.one.return_value = zero_row
     res.one_or_none.return_value = None
     return res
 

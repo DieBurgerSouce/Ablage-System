@@ -1007,28 +1007,16 @@ class TestEdgeCases:
         hashed = get_password_hash(password)
         assert verify_password(password, hashed)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "ECHTER BUG (W3, 2026-06-12): get_password_hash reicht das "
-            "Roh-Passwort an bcrypt.hashpw durch; bcrypt>=4 wirft bei "
-            ">72 Bytes ValueError. validate_password_strength akzeptiert "
-            "aber beliebig lange Passwoerter -> Registrierung/Passwort-"
-            "Aenderung mit langem Passwort endet als unbehandelter 500er. "
-            "Fix gehoert ins Backend (explizite Max-Laenge mit deutscher "
-            "422-Meldung ODER Pre-Hashing), app/core/security_auth.py — "
-            "out-of-zone fuer w3-tests, siehe Manifest w3-tests."
-        ),
-        raises=ValueError,
-    )
     def test_very_long_password(self):
         """Vertrag: Ueberlange Passwoerter werden DEUTSCH abgelehnt.
 
-        Frueher strict-xfail (unbehandelter bcrypt-ValueError -> 500er);
-        seit dem Backend-Fix lehnt get_password_hash Passwoerter ueber
-        dem bcrypt-Limit explizit mit deutscher 72-Bytes-Meldung ab
-        (kein stilles Truncating). Byte-Limit-Details:
-        tests/unit/core/test_password_byte_limit.py
+        2026-06-13: Der frueher als ECHTER BUG markierte unbehandelte
+        bcrypt-ValueError (>72 Bytes -> 500er) ist behoben — get_password_hash
+        lehnt Passwoerter ueber dem bcrypt-Limit jetzt explizit mit deutscher
+        72-Bytes-Meldung ab (app/core/security_auth.py, BCRYPT_MAX_PASSWORD_BYTES;
+        kein stilles Truncating). Der stale `xfail(strict=True)` wurde entfernt;
+        dieser Test bewacht jetzt aktiv das korrekte Ablehn-Verhalten.
+        Byte-Limit-Details: tests/unit/core/test_password_byte_limit.py
         """
         password = "Aa1!" * 250  # 1000 Zeichen >> 72 Bytes
         # Der Staerke-Check kennt bewusst kein Byte-Limit (separater Layer)
@@ -1436,8 +1424,12 @@ class TestSessionManagement:
         created = mock_session["created_at"]
         expires = mock_session["expires_at"]
 
-        # Should expire in 24 hours
-        assert (expires - created).total_seconds() == 24 * 3600
+        # Should expire in 24 hours.
+        # 2026-06-13: Die mock_session-Fixture ruft datetime.now() zweimal auf
+        # (created_at vs. expires_at), daher liegen die Zeitstempel ~1 µs
+        # auseinander -> exakte Gleichheit war flaky (86400.000001 != 86400).
+        # Toleranz statt exakter Gleichheit.
+        assert (expires - created).total_seconds() == pytest.approx(24 * 3600, abs=1.0)
 
         # Check if session is expired
         def is_session_expired(session: Dict) -> bool:
