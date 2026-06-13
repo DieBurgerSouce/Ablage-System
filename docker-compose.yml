@@ -622,6 +622,13 @@ services:
       # Ganzes Verzeichnis mounten, damit __init__.py-Hierarchie greift (sentry, vault, etc).
       - ./infrastructure:/app/infrastructure:ro
       - ./Trainings_Data:/app/Trainings_Data:ro
+      # 2026-06-13 (Offensive s1): Execution_Layer-Package mounten, damit die
+      # Agent-Unit-Tests (tests/unit/execution_layer/*) ihren Import
+      # `from Execution_Layer.Agents.* import ...` im backend-Container aufloesen.
+      # Das Package liegt im Repo-Root (nicht unter app/) und war nicht ins Image
+      # kopiert -> ModuleNotFoundError: No module named 'Execution_Layer'.
+      # Read-only, beeinflusst den Prod-Pfad nicht (analog tests/ + infrastructure/).
+      - ./Execution_Layer:/app/Execution_Layer:ro
       # 2026-06-07: tests/ + pytest.ini gemountet, damit der dokumentierte
       # `docker-compose exec backend pytest tests/...`-Gesundheitscheck out-of-the-box
       # laeuft (Image enthaelt tests/ nicht). Read-only, beeinflusst den Prod-Pfad nicht.
