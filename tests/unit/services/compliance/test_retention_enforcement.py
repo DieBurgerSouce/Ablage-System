@@ -15,6 +15,18 @@ from datetime import date, datetime, timedelta
 from typing import AsyncGenerator
 
 import pytest
+
+# Diese Integrationstests fahren ein In-Memory-SQLite ueber sqlite+aiosqlite
+# hoch (create_all gegen das ORM). Ist der aiosqlite-Treiber in der Umgebung
+# nicht installiert (Projekt nutzt produktiv Postgres/asyncpg), koennen die
+# Tests nicht laufen -> sauberer Skip mit praezisem Grund (Infra/Dependency,
+# kein Test-Drift).
+pytest.importorskip(
+    "aiosqlite",
+    reason="aiosqlite-Treiber nicht installiert (SQLite-Integrationstest, "
+    "kein Test-Drift)",
+)
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
