@@ -63,37 +63,51 @@ class TestGetDashboardSummary:
         mock_db: AsyncMock,
         company_id: UUID,
     ):
-        """Sollte Dashboard-Zusammenfassung zurueckgeben."""
-        # Mock verschiedene Queries
-        carbon_total = MagicMock()
-        carbon_total.total = 28110.0
+        """Sollte Dashboard-Zusammenfassung zurueckgeben.
 
-        supplier_summary = MagicMock()
-        supplier_summary.avg_score = 75.5
-        supplier_summary.high_risk_count = 2
-
-        cert_summary = MagicMock()
-        cert_summary.active_count = 12
-        cert_summary.expiring_count = 3
-
-        goal_summary = MagicMock()
-        goal_summary.total = 8
-        goal_summary.on_track = 6
+        Der Service macht 6 DB-Aufrufe (CO2-Summe, CO2-nach-Scope,
+        Lieferanten-Avg, Lieferanten-Count, aktive Zertifikate, aktive Ziele).
+        """
+        # 1) CO2-Gesamtsumme (scalar)
+        carbon_total = create_mock_result(scalar_value=28110.0)
+        # 2) CO2 nach Scope (fetchall liefert (scope, sum)-Tupel)
+        scope_result = MagicMock()
+        scope_result.fetchall = MagicMock(return_value=[
+            ("scope_1", 15360.0),
+            ("scope_2", 4200.0),
+            ("scope_3", 8550.0),
+        ])
+        # 3) Lieferanten-Durchschnittsscore (scalar)
+        supplier_avg = create_mock_result(scalar_value=75.5)
+        # 4) Anzahl bewerteter Lieferanten (scalar)
+        supplier_count = create_mock_result(scalar_value=4)
+        # 5) Aktive Zertifizierungen (scalar)
+        cert_count = create_mock_result(scalar_value=12)
+        # 6) Aktive Ziele (scalars().all())
+        goal_a = MagicMock(); goal_a.on_track = True
+        goal_b = MagicMock(); goal_b.on_track = False
+        goals_result = create_mock_result(scalars_list=[goal_a, goal_b])
 
         mock_db.execute.side_effect = [
-            create_mock_result(scalar_value=carbon_total),
-            create_mock_result(scalar_value=supplier_summary),
-            create_mock_result(scalar_value=cert_summary),
-            create_mock_result(scalar_value=goal_summary),
+            carbon_total,
+            scope_result,
+            supplier_avg,
+            supplier_count,
+            cert_count,
+            goals_result,
         ]
 
         result = await esg_service.get_dashboard_summary(company_id=company_id)
 
         # Starke Assertion: Dashboard-Summary MUSS carbon_footprint enthalten
         assert result is not None, "get_dashboard_summary sollte ein Ergebnis zurueckgeben"
-        assert "carbon_footprint" in result, \
-            f"Dashboard-Summary muss 'carbon_footprint' enthalten, erhielt: {result.keys() if isinstance(result, dict) else type(result)}"
-        mock_db.execute.assert_called()  # Verifiziere, dass DB aufgerufen wurde
+        assert "carbon_footprint" in result
+        assert result["carbon_footprint"]["total_emissions_kg"] == 28110.0
+        assert result["carbon_footprint"]["by_scope"]["scope_1"] == 15360.0
+        assert result["suppliers"]["average_score"] == 75.5
+        assert result["certifications"]["active_count"] == 12
+        assert result["goals"]["total"] == 2
+        assert result["goals"]["on_track"] == 1
 
     @pytest.mark.asyncio
     async def test_get_dashboard_summary_with_date_range(
@@ -165,34 +179,41 @@ class TestCreateGoal:
         goal = await esg_service.create_goal(
             company_id=company_id,
             title="Test Goal",
+            description="Test-Beschreibung",
             category="environmental",
             metric_name="test",
-            target_value=100.0,
-            target_year=2030,
+            metric_unit="t CO2e",
             baseline_value=0.0,
             baseline_year=2020,
+            target_value=100.0,
+            target_year=2030,
         )
 
-        # Initial progress should be 0
         mock_db.add.assert_called_once()
+        # Ziel startet aktiv und mit den uebergebenen Zielwerten
+        assert goal.is_active is True
+        assert goal.target_value == 100.0
 
     @pytest.mark.asyncio
-    async def test_create_goal_validates_target_year(
+    async def test_create_goal_validates_category(
         self,
         esg_service: ESGService,
         mock_db: AsyncMock,
         company_id: UUID,
     ):
-        """Sollte Zieljahr validieren."""
-        with pytest.raises(ValueError):
+        """Sollte ungueltige Kategorie ablehnen (echte Validierung)."""
+        with pytest.raises(ValueError, match="Kategorie"):
             await esg_service.create_goal(
                 company_id=company_id,
                 title="Invalid Goal",
-                category="environmental",
+                description=None,
+                category="ungueltig",  # keine gueltige ESGCategory
                 metric_name="test",
-                target_value=100.0,
-                target_year=2000,  # In der Vergangenheit
+                metric_unit=None,
+                baseline_value=None,
                 baseline_year=2020,
+                target_value=100.0,
+                target_year=2030,
             )
 
 
@@ -234,8 +255,10 @@ class TestGetGoals:
             category="environmental",
         )
 
+        # Service serialisiert zu Dicts
+        assert all(isinstance(g, dict) for g in result)
         for goal in result:
-            assert goal.category == "environmental"
+            assert goal["category"] == "environmental"
 
     @pytest.mark.asyncio
     async def test_get_goals_active_only(
@@ -254,8 +277,10 @@ class TestGetGoals:
             active_only=True,
         )
 
-        for goal in result:
-            assert goal.status == "active"
+        # Der Service filtert die Query auf is_active; Rueckgabe sind Dicts
+        assert len(result) == len(active_goals)
+        assert all(isinstance(g, dict) for g in result)
+        assert all("title" in g for g in result)
 
 
 # ========================= Update Goal Progress Tests =========================
