@@ -274,13 +274,15 @@ class TestPredictRoutingEndpoint:
         with patch("app.api.v1.routing.RoutingPredictor") as MockPredictor:
             mock_predictor = MockPredictor.return_value
             mock_predictor.model_version = "1.0.0"
-            mock_predictor.predict.return_value = RoutingPrediction(
-                target_type=RoutingTarget.PRIORITY,
-                prediction="high",
-                confidence=0.85,
-                alternatives=[],
-                explanation="Hoher Betrag",
-                features_used=["total_amount"],
+            mock_predictor.predict = AsyncMock(
+                return_value=RoutingPrediction(
+                    target_type=RoutingTarget.PRIORITY,
+                    prediction="high",
+                    confidence=0.85,
+                    alternatives=[],
+                    explanation="Hoher Betrag",
+                    features_used=["total_amount"],
+                )
             )
 
             response = await predict_routing(
