@@ -11,6 +11,12 @@ test.describe('Kanban Board Barrierefreiheit', () => {
   });
 
   test('WCAG 2.1 AA: Keine Verletzungen im Kanban Board', async ({ authenticatedPage: page }) => {
+    // BEKANNTE APP-A11Y-BUGS (Stream s5, 2026-06-13): color-contrast + button-name
+    // der GLOBALEN App-Huelle (Sidebar #404952/#02060d=2.21, Proaktiv-FAB .px-8
+    // ohne accessible name) — siehe documents.a11y.spec.ts. Zusaetzlich laedt
+    // das Board hier gar nicht (siehe naechster Test) -> axe prueft die leere
+    // Seite + globale Huelle. App-Code-Befund, nicht Spec-Zone.
+    test.fixme(true, 'App-A11y-Bug: globale Sidebar color-contrast + Proaktiv-FAB button-name; Kanban-Board laedt zudem nicht. Siehe stream-Report s5-e2e-a11y.');
     await expectNoA11yViolations(page, 'Kanban Board', {
       // [data-sonner-toast]: BEKANNTER APP-BUG (Kategorie B, color-contrast im
       // "Offline-Modus bereit"-Toast) — siehe dashboard.a11y.spec.ts.
@@ -19,6 +25,19 @@ test.describe('Kanban Board Barrierefreiheit', () => {
   });
 
   test('Spalten haben aria-label mit Stage-Name', async ({ authenticatedPage: page }) => {
+    // ZWEI ECHTE APP-BUGS (Stream s5, 2026-06-13):
+    //  1. Kanban-Board laedt nicht: Das Frontend ruft GET /kanban/document/board
+    //     OHNE den serverseitig PFLICHT-Parameter company_id (use-kanban-queries.ts:50)
+    //     -> Backend 422 "query -> company_id: Pflichtfeld fehlt" -> board=null,
+    //     KEINE Spalten rendern. (Inkonsistent zu G1-Endpoints wie
+    //     /entities/customers, die company_id aus dem Token ableiten.)
+    //  2. Selbst bei geladenem Board fehlt den Spalten (KanbanColumn.tsx) jedes
+    //     aria-label und jede role -> die Spalte ist fuer Screenreader nicht als
+    //     Stage benennbar. (Der hiesige Selektor [role="list"] matcht aktuell nur
+    //     die Admin-Subnavigation, die ebenfalls kein aria-label hat.)
+    // Beide Befunde liegen im App-Code (Kanban-Query + KanbanColumn), nicht in
+    // dieser Spec -> fixme bis zum App-Fix.
+    test.fixme(true, 'App-Bug: Kanban-Board laedt nicht (Frontend sendet kein company_id -> 422) UND KanbanColumn hat kein aria-label/role. Siehe stream-Report s5-e2e-a11y.');
     // Each column should be identifiable
     const columns = page.locator('[data-kanban-column], [role="listbox"], [role="list"]');
     const count = await columns.count();

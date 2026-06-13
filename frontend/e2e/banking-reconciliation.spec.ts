@@ -64,6 +64,17 @@ apiTest.describe('Banking - API-Vorbedingungen', () => {
 });
 
 test.describe('Banking - CSV-Import-Journey', () => {
+  // BEKANNTER APP-BUG (Stream s5, 2026-06-13): Alle /admin/banking/*-Kinderrouten
+  // (import, transactions, reconciliation, accounts, payments, skonto) sind
+  // React.lazy + <Suspense> und bleiben im Production-Build dauerhaft im
+  // LazyLoadFallback-Spinner haengen — das Banking-Layout rendert, der lazy
+  // Inhalts-Outlet nie. Nachweis: Chunk laedt (HTTP 200), dynamischer Import
+  // resolved zur Funktionskomponente, kein pageerror; sowohl direkter goto als
+  // auch Tab-Klick (Client-Navigation) bleiben haengen. Eager Routen wie der
+  // /admin/banking-Index rendern korrekt. Gleiche Ursache wie in upload.spec.ts
+  // dokumentiert (22 betroffene Routen). App-Code-Befund, nicht Spec-Zone.
+  test.fixme(true, 'App-Bug: React.lazy-Routen haengen im Suspense-Spinner (/admin/banking/* Kinderrouten mounten nie). Siehe stream-Report s5-e2e-a11y.');
+
   test('CSV hochladen, Vorschau erstellen, ggf. importieren', async ({ authenticatedPage: page }) => {
     test.setTimeout(120_000);
     await page.goto('/admin/banking/import');

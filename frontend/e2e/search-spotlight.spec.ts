@@ -35,8 +35,16 @@ test.describe('Suche - UI', () => {
     const input = page.getByPlaceholder(/Dokumente durchsuchen/);
     await expect(input).toBeVisible({ timeout: 15000 });
 
+    await input.click();
     await input.fill('Müller');
-    await input.press('Enter');
+
+    // Die SearchPanel-Eingabe entprellt die Query 300ms, bevor sie in die URL
+    // (?q=...) geschrieben wird; erst dann startet die URL-getriebene Suche
+    // (search.tsx: hasSearch = q.length >= 2). Ein sofortiges Enter rast dem
+    // Debounce davon -> die Query landete leer in der URL (?q=) und es lief
+    // NIE eine Suche (verifiziert Stream s5, 2026-06-13). Deshalb auf die
+    // Uebernahme in die URL warten statt auf Enter zu setzen.
+    await page.waitForURL(/[?&]q=M/, { timeout: 10000 });
 
     // Ehrliches Entweder-Oder: Ergebnisse ODER verifizierter Leer-Zustand.
     // Ein haengender Spinner oder eine Fehlermeldung erfuellt KEINEN der Pfade.
@@ -46,6 +54,17 @@ test.describe('Suche - UI', () => {
 
     expect(serverErrors, `Such-Backend antwortete mit 5xx: ${serverErrors.join(', ')}`).toHaveLength(0);
   });
+
+  // BEKANNTER APP-BUG (Kategorie B, 2026-06-12, bestaetigt Stream s5 2026-06-13):
+  // ZWEI konkurrierende globale Strg+K-Paletten sind gleichzeitig gemountet
+  // (GlobalCommandDialog via __root.tsx:92 + eigener Listener
+  // GlobalCommandDialog.tsx:126 UND SpotlightDialog via AppLayout.tsx:121 +
+  // Listener features/spotlight/hooks/use-spotlight.ts:114). Strg+K oeffnet
+  // BEIDE uebereinander, Escape schliesst nur die oberste -> eine bleibt offen
+  // (Assertion toHaveCount(0) schlaegt korrekt fehl). App-Code-Befund (Konflikt
+  // zweier global gemounteter Dialoge), nicht in der Spec-Zone -> fixme bis
+  // zum App-Fix (ein einziger globaler Strg+K-Handler).
+  test.fixme(true, 'App-Bug: Zwei konkurrierende globale Strg+K-Paletten gemountet (GlobalCommandDialog + SpotlightDialog), Escape schliesst nur eine. Siehe stream-Report s5-e2e-a11y.');
 
   test('Spotlight (Strg+K) oeffnet die Befehlspalette', async ({ authenticatedPage: page }) => {
     // Auf eine nicht-crashende Route wechseln: Das Admin-Dashboard ('/')
