@@ -206,7 +206,7 @@ async def vault_health_check() -> VaultHealthResponse:
             logger.warning("vault_kv_permission_denied", **safe_error_log(e))
             secrets_status = "permission_denied"
         except Exception as e:
-            logger.warning("vault_kv_check_failed", error_type=type(e).__name__, **safe_error_log(e))
+            logger.warning("vault_kv_check_failed", **safe_error_log(e))
             secrets_status = "unhealthy"
 
         # Prüfe Transit-Engine
@@ -221,7 +221,7 @@ async def vault_health_check() -> VaultHealthResponse:
             logger.debug("vault_transit_permission_denied", **safe_error_log(e))
             transit_status = "not_configured"
         except Exception as e:
-            logger.debug("vault_transit_check_failed", error_type=type(e).__name__, **safe_error_log(e))
+            logger.debug("vault_transit_check_failed", **safe_error_log(e))
             transit_status = "not_configured"
 
         # Bestimme Gesamtstatus
