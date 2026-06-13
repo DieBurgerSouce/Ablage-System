@@ -16,6 +16,7 @@ import hmac
 import json
 import sys
 import types
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -102,9 +103,25 @@ def _mock_event_db_row(
     return row
 
 
+@contextmanager
 def _patch_get_db(mock_db: AsyncMock):
-    """Patcht die get_db-Dependency fuer den Webhook-Router."""
-    return patch("app.api.v1.webhooks_receive.get_db", return_value=mock_db)
+    """Ueberschreibt die get_db-Dependency fuer den Webhook-Router.
+
+    FastAPI loest Depends(get_db) zur Registrierungszeit auf; ein mock.patch
+    auf den Modul-Namen greift daher NICHT. Stattdessen wird die Dependency
+    ueber app.dependency_overrides ersetzt (und sauber wieder entfernt).
+    """
+    from app.main import app
+    from app.api.dependencies import get_db
+
+    async def _override():
+        yield mock_db
+
+    app.dependency_overrides[get_db] = _override
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(get_db, None)
 
 
 # =============================================================================
