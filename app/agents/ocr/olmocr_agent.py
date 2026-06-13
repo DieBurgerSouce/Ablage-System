@@ -21,7 +21,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -537,7 +537,7 @@ class OlmOCRAgent(OCRAgent):
             )
 
             result = self.create_error_result(
-                **safe_error_log(e),
+                error=safe_error_detail(e, "olmOCR"),
                 error_code="OLMOCR_ERROR",
                 processing_time_ms=processing_time_ms
             )
