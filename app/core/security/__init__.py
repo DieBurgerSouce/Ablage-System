@@ -72,6 +72,15 @@ from app.core.security_auth import (
     sanitize_email_header,
     # TOTP replay protection
     check_and_mark_totp_used,
+    check_totp_replay,
+    mark_totp_used,
+    TOTP_REPLAY_PREFIX,
+    TOTP_REPLAY_TTL_SECONDS,
+    _totp_used_fallback,
+    _totp_fallback_lock,
+    # Redis helper / DNS timeout (fuer Tests & Patching)
+    _get_redis_client,
+    DNS_RESOLUTION_TIMEOUT_SECONDS,
 )
 
 __all__ = [
@@ -126,4 +135,10 @@ __all__ = [
     "build_content_disposition",
     "sanitize_email_header",
     "check_and_mark_totp_used",
+    "check_totp_replay",
+    "mark_totp_used",
+    "TOTP_REPLAY_PREFIX",
+    "TOTP_REPLAY_TTL_SECONDS",
+    "_get_redis_client",
+    "DNS_RESOLUTION_TIMEOUT_SECONDS",
 ]

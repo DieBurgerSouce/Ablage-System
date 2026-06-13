@@ -1263,6 +1263,23 @@ async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
         return False  # Erstmalige Verwendung
 
 
+async def check_totp_replay(user_id: str, code: str) -> bool:
+    """DEPRECATED: Nutze check_and_mark_totp_used (atomar, race-frei).
+
+    Diese Funktion existierte im alten check-then-mark-Muster und ist nur noch
+    aus Kompatibilitaetsgruenden vorhanden. Sie delegiert an die atomare
+    Variante.
+    """
+    return await check_and_mark_totp_used(user_id, code)
+
+
+async def mark_totp_used(user_id: str, code: str) -> None:
+    """DEPRECATED: Nutze check_and_mark_totp_used (atomar, race-frei).
+
+    Das separate Markieren ist Teil der atomaren Operation; dieser Wrapper ist
+    nur noch aus Kompatibilitaetsgruenden vorhanden.
+    """
+    await check_and_mark_totp_used(user_id, code)
 
 
 def _cleanup_totp_fallback() -> None:
