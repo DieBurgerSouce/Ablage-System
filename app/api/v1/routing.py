@@ -243,10 +243,13 @@ async def predict_routing(
                 )
 
             elif target == RoutingTarget.PRIORITY:
+                priority_value = prediction.prediction
+                if hasattr(priority_value, "value"):
+                    priority_value = priority_value.value
                 predictions["priority_prediction"] = PriorityPredictionResponse(
-                    priority=prediction.predicted_value or "normal",
+                    priority=str(priority_value) if priority_value else "normal",
                     confidence=prediction.confidence,
-                    reasoning=prediction.reasoning,
+                    reasoning=prediction.explanation,
                 )
 
             elif target == RoutingTarget.TAGS:
@@ -375,7 +378,7 @@ async def train_routing_model(
             .where(Document.company_id == company_id)
             .where(Document.created_at >= cutoff_date)
             .where(Document.deleted_at.is_(None))
-            .where(Document.assigned_to_id.isnot(None))  # Nur zugewiesene Dokumente
+            .where(Document.owner_id.isnot(None))  # Nur zugewiesene Dokumente
         )
         result = await db.execute(stmt)
         documents = result.scalars().all()
@@ -383,7 +386,7 @@ async def train_routing_model(
         for doc in documents:
             history = RoutingHistory(
                 document_id=doc.id,
-                routed_to=str(doc.assigned_to_id) if doc.assigned_to_id else None,
+                routed_to=str(doc.owner_id) if doc.owner_id else None,
                 routed_at=doc.updated_at or doc.created_at,
                 was_correct=True,  # Annahme: manuelle Zuweisungen waren korrekt
                 time_to_process=None,
@@ -545,7 +548,7 @@ async def get_quick_suggestions(
 
             user_stmt = (
                 select(UserModel.id, UserModel.username, func.count().label("count"))
-                .join(Document, Document.assigned_to_id == UserModel.id)
+                .join(Document, Document.owner_id == UserModel.id)
                 .where(Document.business_entity_id == entity.id)
                 .where(Document.deleted_at.is_(None))
                 .group_by(UserModel.id, UserModel.username)
