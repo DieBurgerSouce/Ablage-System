@@ -12,6 +12,7 @@ Testet:
 - GET /api/v1/hardware/alerts
 """
 
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -214,6 +215,7 @@ def admin_user() -> MagicMock:
     user.id = uuid4()
     user.email = "admin@test.com"
     user.is_admin = True
+    user.is_superuser = True
     user.is_active = True
     user.company_id = uuid4()
     return user
@@ -226,9 +228,33 @@ def non_admin_user() -> MagicMock:
     user.id = uuid4()
     user.email = "user@test.com"
     user.is_admin = False
+    user.is_superuser = False
     user.is_active = True
     user.company_id = uuid4()
     return user
+
+
+@contextmanager
+def _override_auth(user: MagicMock):
+    """
+    Ueberschreibt die Basis-Auth-Dependency (get_current_active_user) des
+    Hardware-Routers per app.dependency_overrides.
+
+    Hintergrund: Die Endpoints haengen via Depends(get_current_superuser) an
+    der Auth ab; ein mock.patch greift hier NICHT (Depends bindet die Referenz
+    bei Decoration). Durch Override von get_current_active_user bleibt die
+    echte Superuser-Pruefung in get_current_superuser aktiv -> Non-Admins
+    erhalten korrekt 403, Admins (is_superuser=True) kommen durch.
+    Cleanup ist garantiert.
+    """
+    from app.main import app
+    from app.api.dependencies import get_current_active_user
+
+    app.dependency_overrides[get_current_active_user] = lambda: user
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(get_current_active_user, None)
 
 
 # =============================================================================
@@ -246,12 +272,13 @@ class TestAuthorization:
         non_admin_user: MagicMock,
     ) -> None:
         """Hardware-Status erfordert Admin-Rechte."""
-        with patch(
-            "app.api.v1.hardware.get_current_user", return_value=non_admin_user
-        ):
-            response = await async_client.get("/api/v1/hardware/status")
+        with _override_auth(non_admin_user):
+            response = await async_client.get(
+                "/api/v1/hardware/status",
+                headers={"Authorization": "Bearer dummy"},
+            )
 
-            # Sollte 403 Forbidden zurueckgeben
+            # Sollte 403 Forbidden zurueckgeben (Non-Admin)
             assert response.status_code in [
                 status.HTTP_401_UNAUTHORIZED,
                 status.HTTP_403_FORBIDDEN,
@@ -266,7 +293,7 @@ class TestAuthorization:
     ) -> None:
         """Hardware-Status erlaubt Admin-Zugriff."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -301,7 +328,7 @@ class TestHardwareStatusEndpoint:
     ) -> None:
         """Status-Response hat korrekte Struktur."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -335,7 +362,7 @@ class TestCPUEndpoint:
     ) -> None:
         """CPU-Response hat korrekte Struktur."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -369,7 +396,7 @@ class TestMemoryEndpoint:
     ) -> None:
         """Memory-Response hat korrekte Struktur."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -405,7 +432,7 @@ class TestDisksEndpoint:
     ) -> None:
         """Disks-Response ist eine Liste."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -439,7 +466,7 @@ class TestGPUEndpoint:
     ) -> None:
         """GPU-Response hat korrekte Struktur."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -463,7 +490,7 @@ class TestGPUEndpoint:
     ) -> None:
         """GPU-Response ist leer ohne NVIDIA."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -500,7 +527,7 @@ class TestNetworkEndpoint:
     ) -> None:
         """Network-Response ist eine Liste."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -536,7 +563,7 @@ class TestAlertsEndpoint:
     ) -> None:
         """Alerts-Response ist eine Liste."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -560,7 +587,7 @@ class TestAlertsEndpoint:
     ) -> None:
         """Alerts-Response ist leer bei gesundem System."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -596,7 +623,7 @@ class TestHealthEndpoint:
     ) -> None:
         """Health-Response hat korrekte Struktur."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -630,7 +657,7 @@ class TestHealthEndpoint:
         )
 
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
@@ -670,7 +697,7 @@ class TestResponseFormats:
     ) -> None:
         """Alle Endpoints geben JSON zurueck."""
         with (
-            patch("app.api.v1.hardware.get_current_admin_user", return_value=admin_user),
+            _override_auth(admin_user),
             patch(
                 "app.api.v1.hardware.get_hardware_monitoring_service"
             ) as mock_service,
