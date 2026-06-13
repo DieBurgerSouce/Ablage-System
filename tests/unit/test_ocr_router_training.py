@@ -499,28 +499,29 @@ class TestModelTraining:
 class TestModelVersioning:
     """Tests für Modell-Versionierung."""
 
-    def test_get_model_version(self) -> None:
+    def test_get_model_version(self, tmp_path: Path) -> None:
         """Test Modell-Versionierung."""
         # OCRRouterModel funktioniert auch ohne XGBoost (graceful, _xgb=None);
         # kein modul-lokales XGBOOST_AVAILABLE-Flag noetig.
+        # registry_path auf tmp_path: Default 'models/ocr_router' ist read-only.
         from app.agents.orchestration.ml_router_model import OCRRouterModel
 
-        model = OCRRouterModel()
+        model = OCRRouterModel(registry_path=tmp_path / "registry")
         version = model.get_model_version()
 
         # Untrainiertes Modell hat unversioned string
         assert "unversioned" in version or "v" in version
 
-    def test_get_model_metrics(self) -> None:
+    def test_get_model_metrics(self, tmp_path: Path) -> None:
         """Test Modell-Metriken."""
         from app.agents.orchestration.ml_router_model import OCRRouterModel
 
-        model = OCRRouterModel()
+        model = OCRRouterModel(registry_path=tmp_path / "registry")
         metrics = model.get_model_metrics()
 
         assert isinstance(metrics, dict)
         assert "training_samples" in metrics
-            assert "validation_accuracy" in metrics
+        assert "validation_accuracy" in metrics
 
 
 if __name__ == "__main__":
