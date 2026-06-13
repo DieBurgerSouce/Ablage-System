@@ -311,6 +311,7 @@ class TestListRecurringInvoices:
             page_size=25,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.total == 1
@@ -349,6 +350,7 @@ class TestListRecurringInvoices:
             page_size=25,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.total == 0
@@ -419,6 +421,7 @@ class TestGetRecurringInvoice:
             recurring_id=TEST_RECURRING_UUID,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.id == TEST_RECURRING_UUID
@@ -526,6 +529,7 @@ class TestCreateRecurringInvoice:
             data=create_data,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.vendor_name == "Testfirma GmbH"
@@ -708,6 +712,7 @@ class TestDetectRecurringInvoices:
             lookback_months=12,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert len(result) == 1
@@ -743,6 +748,7 @@ class TestDetectRecurringInvoices:
             lookback_months=6,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert len(result) == 0
@@ -814,6 +820,7 @@ class TestGetMissingInvoices:
             request=mock_request,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert len(result) == 1
@@ -945,6 +952,7 @@ class TestGetSollIstReport:
             month=1,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.company_id == TEST_COMPANY_UUID
