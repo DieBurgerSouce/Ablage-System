@@ -123,13 +123,15 @@ class TestTableDefinitions:
         field_names = [f.name for f in table.fields]
         assert "dokument_id" in field_names
         assert "dokumenttyp" in field_names
-        assert "pruefsumme_sha256" in field_names
+        # Feldname mit Umlaut (deutsche Finanzbehoerden-Konvention)
+        assert "prüfsumme_sha256" in field_names
 
     def test_audit_log_table_definition(self):
         """Test: Aenderungsprotokoll-Definition ist vollstaendig."""
         table = get_audit_log_table_definition()
 
-        assert table.name == "aenderungsprotokoll"
+        # Tabellenname mit Umlaut (deutsche Finanzbehoerden-Konvention)
+        assert table.name == "änderungsprotokoll"
         assert table.category == DataCategory.AUDIT_LOG
         assert table.primary_key == "log_id"
 
@@ -280,13 +282,20 @@ class TestTaxAuthorityExportService:
         assert str(company_id)[:8] in export_id
         assert "2024" in export_id
 
-    def test_parse_period(self, service):
-        """Test: Period-Parsing."""
-        # Test H1 format
-        assert service._parse_period("2024-H1") == "2024-01-01"
+    def test_generate_export_id_is_deterministic_prefix(self, service):
+        """Test: Export-ID enthaelt Praefix, Company-Praefix und Jahr.
 
-        # Test H2 format
-        assert service._parse_period("2024-H2") == "2024-07-01"
+        (Der frueher getestete _parse_period existiert im Service nicht -
+        Test auf die real vorhandene _generate_export_id-Logik umgestellt.)
+        """
+        company_id = uuid4()
+        export_id_h1 = service._generate_export_id(company_id, date(2024, 1, 1))
+        export_id_h2 = service._generate_export_id(company_id, date(2024, 7, 1))
+
+        for eid in (export_id_h1, export_id_h2):
+            assert eid.startswith("GDPDU_")
+            assert str(company_id)[:8] in eid
+            assert "2024" in eid
 
 
 class TestGDPdUExport:
@@ -312,34 +321,27 @@ class TestGDPdUExport:
     @pytest.mark.asyncio
     async def test_export_creates_files(self, service, mock_db, mock_company, temp_output_dir):
         """Test: Export erstellt die erwarteten Dateien."""
-        # Mock Company Query
+        # Der Export iteriert ueber ALLE DataCategory-Werte (inkl. beider
+        # Rechnungsrichtungen) -> es fallen mehr als 5 db.execute-Aufrufe an.
+        # Erstes Result = Company, alle weiteren = leere Trefferlisten.
         mock_company_result = MagicMock()
         mock_company_result.scalar_one_or_none.return_value = mock_company
 
-        # Mock Invoice Query - leere Liste
-        mock_invoice_result = MagicMock()
-        mock_invoice_result.scalars.return_value.all.return_value = []
+        def empty_result():
+            r = MagicMock()
+            r.scalars.return_value.all.return_value = []
+            r.scalar.return_value = 0
+            return r
 
-        # Mock Bank Transaction Query - leere Liste
-        mock_tx_result = MagicMock()
-        mock_tx_result.scalars.return_value.all.return_value = []
+        first_call = {"done": False}
 
-        # Mock Document Query - leere Liste
-        mock_doc_result = MagicMock()
-        mock_doc_result.scalars.return_value.all.return_value = []
+        async def execute_side_effect(*args, **kwargs):
+            if not first_call["done"]:
+                first_call["done"] = True
+                return mock_company_result
+            return empty_result()
 
-        # Mock Audit Log Query - leere Liste
-        mock_log_result = MagicMock()
-        mock_log_result.scalars.return_value.all.return_value = []
-
-        # Setup execute to return different results
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_company_result,
-            mock_invoice_result,
-            mock_tx_result,
-            mock_doc_result,
-            mock_log_result,
-        ])
+        mock_db.execute = AsyncMock(side_effect=execute_side_effect)
 
         result = await service.create_gdpdu_export(
             company_id=mock_company.id,
@@ -356,6 +358,38 @@ class TestGDPdUExport:
 
         # Pruefen ob DTD erstellt wurde
         assert any("dtd" in f for f in result.files)
+
+    @pytest.mark.asyncio
+    async def test_export_exception_returns_clean_failure(
+        self, service, mock_db, mock_company
+    ):
+        """Regression: Exception waehrend Export liefert sauberes Fehler-Result.
+
+        Frueher rief der except-Block ExportResult(**safe_error_log(e)) auf -
+        safe_error_log liefert {"error_type", "error_id", ...}, was KEINE
+        gueltigen ExportResult-Felder sind und SELBST einen TypeError ausloeste
+        (verschleierte den eigentlichen Fehler). Jetzt: success=False + error.
+        """
+        mock_company_result = MagicMock()
+        mock_company_result.scalar_one_or_none.return_value = mock_company
+        mock_invoice_result = MagicMock()
+        # Eine TypeError-aehnliche Stoerung beim Daten-Sammeln erzwingen:
+        mock_invoice_result.scalars.side_effect = RuntimeError("DB kaputt")
+        mock_db.execute = AsyncMock(side_effect=[
+            mock_company_result,
+            mock_invoice_result,
+        ])
+
+        result = await service.create_gdpdu_export(
+            company_id=mock_company.id,
+            period_start=date(2024, 1, 1),
+            period_end=date(2024, 12, 31),
+        )
+
+        # Kein TypeError mehr, sondern sauberes Fehler-Result
+        assert result.success is False
+        assert result.error is not None
+        assert "Export fehlgeschlagen" in result.error
 
 
 # =============================================================================
@@ -540,7 +574,7 @@ class TestCountRecordsByCategory:
         assert counts["rechnungen"] == 0
         assert counts["bankbewegungen"] == 0
         assert counts["belege"] == 0
-        assert counts["aenderungsprotokoll"] == 0
+        assert counts["änderungsprotokoll"] == 0
 
     @pytest.mark.asyncio
     async def test_count_records_with_data(self, mock_db):
@@ -569,7 +603,7 @@ class TestCountRecordsByCategory:
         assert counts["rechnungen"] == 5
         assert counts["bankbewegungen"] == 10
         assert counts["belege"] == 15
-        assert counts["aenderungsprotokoll"] == 20
+        assert counts["änderungsprotokoll"] == 20
 
     @pytest.mark.asyncio
     async def test_count_records_returns_dict(self, mock_db):

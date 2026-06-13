@@ -410,7 +410,15 @@ class TaxAuthorityExportService:
             )
 
         except Exception as e:
-            logger.error("GDPdU-Export fehlgeschlagen", **safe_error_log(e))
+            # BUGFIX: safe_error_log(e) liefert {"error_type", "error_id", ...} -
+            # diese Keys sind KEINE gueltigen ExportResult-Felder. Frueher wurde
+            # es per **safe_error_log(e) an den Konstruktor uebergeben und loeste
+            # selbst einen TypeError aus (verschleierte den eigentlichen Fehler).
+            # Korrekt: nur fuer das Logging entpacken, im Ergebnis ein
+            # PII-freies error= mit Korrelations-ID liefern.
+            log_data = safe_error_log(e)
+            logger.error("GDPdU-Export fehlgeschlagen", **log_data)
+            error_id = log_data.get("error_id", "")
             return ExportResult(
                 success=False,
                 export_id=export_id,
@@ -421,7 +429,7 @@ class TaxAuthorityExportService:
                 created_at=datetime.now(timezone.utc),
                 statistics=statistics,
                 files=[],
-                **safe_error_log(e),
+                error=f"Export fehlgeschlagen (Fehler-ID: {error_id})",
             )
 
     # =========================================================================
