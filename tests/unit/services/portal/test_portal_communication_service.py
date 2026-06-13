@@ -57,26 +57,29 @@ class TestFactoryFunction:
 
 
 class TestSendMessage:
-    """Tests fuer send_message() Methode."""
+    """Tests fuer send_message() Methode.
+
+    Vertrag des echten Services:
+        send_message(portal_user, content, subject=None, complaint_id=None,
+                     attachments=None) -> PortalMessage (immer INBOUND).
+    Die company_id/entity_id/portal_user_id werden aus dem portal_user-Objekt
+    abgeleitet, nicht als einzelne Argumente uebergeben.
+    """
 
     @pytest.mark.asyncio
     async def test_send_message_success(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+        sample_portal_user,
     ):
         """Sollte Nachricht erfolgreich senden."""
         mock_db.add = MagicMock()
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
 
-        message = await communication_service.send_message(
-            entity_id=entity_id,
-            company_id=company_id,
-            portal_user_id=portal_user_id,
+        await communication_service.send_message(
+            portal_user=sample_portal_user,
             subject="Frage zur Rechnung",
             content="Ich habe eine Frage zu meiner letzten Rechnung.",
         )
@@ -89,9 +92,7 @@ class TestSendMessage:
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+        sample_portal_user,
     ):
         """Sollte Nachricht mit Reklamationsbezug senden."""
         complaint_id = uuid4()
@@ -100,9 +101,7 @@ class TestSendMessage:
         mock_db.refresh = AsyncMock()
 
         await communication_service.send_message(
-            entity_id=entity_id,
-            company_id=company_id,
-            portal_user_id=portal_user_id,
+            portal_user=sample_portal_user,
             subject="Nachfrage zur Reklamation",
             content="Wann wird meine Reklamation bearbeitet?",
             complaint_id=complaint_id,
@@ -115,50 +114,45 @@ class TestSendMessage:
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+        sample_portal_user,
     ):
         """Sollte Nachricht mit Anhaengen senden."""
-        attachment_ids = [uuid4(), uuid4()]
+        attachments = [str(uuid4()), str(uuid4())]
         mock_db.add = MagicMock()
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
 
         await communication_service.send_message(
-            entity_id=entity_id,
-            company_id=company_id,
-            portal_user_id=portal_user_id,
+            portal_user=sample_portal_user,
             subject="Dokumente anbei",
             content="Hier sind die angeforderten Dokumente.",
-            attachment_ids=attachment_ids,
+            attachments=attachments,
         )
 
         mock_db.add.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_message_internal_user(
+    async def test_send_message_is_inbound(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
+        sample_portal_user,
     ):
-        """Sollte Nachricht von internem Benutzer senden (outbound)."""
-        internal_user_id = uuid4()
-        mock_db.add = MagicMock()
+        """Eine vom Kunden gesendete Nachricht ist immer INBOUND."""
+        added = {}
+        mock_db.add = MagicMock(side_effect=lambda obj: added.setdefault("msg", obj))
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
 
         await communication_service.send_message(
-            entity_id=entity_id,
-            company_id=company_id,
-            internal_user_id=internal_user_id,
+            portal_user=sample_portal_user,
             subject="Antwort auf Ihre Anfrage",
             content="Vielen Dank fuer Ihre Nachricht. Hier sind die Details...",
         )
 
         mock_db.add.assert_called_once()
+        assert added["msg"].direction == MessageDirection.INBOUND.value
+        assert added["msg"].portal_user_id == sample_portal_user.id
 
 
 # ========================= Get Messages Tests =========================
@@ -216,8 +210,9 @@ class TestGetMessages:
         )
 
         assert total == 3
+        # get_messages liefert eine Liste von Dicts (serialisierte Nachrichten)
         for m in result:
-            assert m.direction == MessageDirection.INBOUND.value
+            assert m["direction"] == MessageDirection.INBOUND.value
 
     @pytest.mark.asyncio
     async def test_get_messages_unread_only(
@@ -244,8 +239,9 @@ class TestGetMessages:
         )
 
         assert total == 2
+        # get_messages liefert eine Liste von Dicts (serialisierte Nachrichten)
         for m in result:
-            assert m.is_read is False
+            assert m["is_read"] is False
 
     @pytest.mark.asyncio
     async def test_get_messages_by_complaint(
@@ -299,11 +295,16 @@ class TestGetMessages:
 # ========================= Get Message Detail Tests =========================
 
 
-class TestGetMessageDetail:
-    """Tests fuer get_message_detail() Methode."""
+class TestGetConversation:
+    """Tests fuer get_conversation() Methode.
+
+    Der echte Service besitzt keinen get_message_detail-Einzelabruf; die
+    chronologische Konversation wird ueber get_conversation geladen
+    (entity-/company-isoliert, Rueckgabe als Liste von Dicts).
+    """
 
     @pytest.mark.asyncio
-    async def test_get_message_detail_success(
+    async def test_get_conversation_success(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
@@ -311,48 +312,53 @@ class TestGetMessageDetail:
         entity_id: UUID,
         company_id: UUID,
     ):
-        """Sollte Nachrichtendetails zurueckgeben."""
+        """Sollte Konversation als Liste von Dicts zurueckgeben."""
         mock_db.execute.return_value = create_mock_result(
-            scalar_value=sample_message_inbound
+            scalars_list=[sample_message_inbound]
         )
 
-        result = await communication_service.get_message_detail(
-            message_id=sample_message_inbound.id,
+        result = await communication_service.get_conversation(
             entity_id=entity_id,
             company_id=company_id,
         )
 
-        assert result is not None
-        assert result.id == sample_message_inbound.id
+        assert len(result) == 1
+        assert result[0]["id"] == str(sample_message_inbound.id)
+        assert result[0]["direction"] == sample_message_inbound.direction
 
     @pytest.mark.asyncio
-    async def test_get_message_detail_not_found(
+    async def test_get_conversation_empty(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
         entity_id: UUID,
         company_id: UUID,
     ):
-        """Sollte None zurueckgeben wenn nicht gefunden."""
-        mock_db.execute.return_value = create_mock_result(scalar_value=None)
+        """Sollte leere Liste zurueckgeben wenn keine Nachrichten existieren."""
+        mock_db.execute.return_value = create_mock_result(scalars_list=[])
 
-        result = await communication_service.get_message_detail(
-            message_id=uuid4(),
+        result = await communication_service.get_conversation(
             entity_id=entity_id,
             company_id=company_id,
         )
 
-        assert result is None
+        assert result == []
 
 
 # ========================= Mark Message Read Tests =========================
 
 
-class TestMarkMessageRead:
-    """Tests fuer mark_message_read() Methode."""
+class TestMarkAsRead:
+    """Tests fuer mark_as_read() Methode.
+
+    Vertrag des echten Services:
+        mark_as_read(message_id, entity_id, company_id) -> bool.
+        Nur ausgehende (OUTBOUND) Nachrichten koennen als gelesen markiert
+        werden. Nicht gefundene Nachrichten liefern False (kein Raise).
+    """
 
     @pytest.mark.asyncio
-    async def test_mark_message_read_success(
+    async def test_mark_as_read_success(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
@@ -368,58 +374,61 @@ class TestMarkMessageRead:
         )
         mock_db.commit = AsyncMock()
 
-        result = await communication_service.mark_message_read(
+        result = await communication_service.mark_as_read(
             message_id=sample_message_outbound.id,
             entity_id=entity_id,
             company_id=company_id,
         )
 
-        assert result is not None
+        assert result is True
+        assert sample_message_outbound.is_read is True
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_mark_message_read_already_read(
+    async def test_mark_as_read_already_read(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
-        sample_message_inbound,
+        sample_message_outbound,
         entity_id: UUID,
         company_id: UUID,
     ):
-        """Sollte keine Aenderung bei bereits gelesener Nachricht."""
-        sample_message_inbound.is_read = True
-        sample_message_inbound.read_at = datetime.now(timezone.utc)
+        """Sollte True liefern aber nicht erneut committen wenn bereits gelesen."""
+        sample_message_outbound.is_read = True
+        sample_message_outbound.read_at = datetime.now(timezone.utc)
         mock_db.execute.return_value = create_mock_result(
-            scalar_value=sample_message_inbound
+            scalar_value=sample_message_outbound
         )
         mock_db.commit = AsyncMock()
 
-        result = await communication_service.mark_message_read(
-            message_id=sample_message_inbound.id,
+        result = await communication_service.mark_as_read(
+            message_id=sample_message_outbound.id,
             entity_id=entity_id,
             company_id=company_id,
         )
 
-        assert result is not None
-        # Still committed but no actual change
+        assert result is True
+        # Bereits gelesen -> kein erneuter Commit
+        mock_db.commit.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_mark_message_read_not_found(
+    async def test_mark_as_read_not_found(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
         entity_id: UUID,
         company_id: UUID,
     ):
-        """Sollte Fehler werfen wenn nicht gefunden."""
+        """Sollte False liefern wenn Nachricht nicht gefunden."""
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
-        with pytest.raises(ValueError, match="nicht gefunden"):
-            await communication_service.mark_message_read(
-                message_id=uuid4(),
-                entity_id=entity_id,
-                company_id=company_id,
-            )
+        result = await communication_service.mark_as_read(
+            message_id=uuid4(),
+            entity_id=entity_id,
+            company_id=company_id,
+        )
+
+        assert result is False
 
 
 # ========================= Get Unread Count Tests =========================
@@ -493,25 +502,28 @@ class TestEntityIsolation:
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_cannot_read_other_entity_message(
+    async def test_cannot_mark_other_entity_message_read(
         self,
         communication_service: PortalCommunicationService,
         mock_db: AsyncMock,
-        sample_message_inbound,
+        sample_message_outbound,
         other_entity_id: UUID,
         company_id: UUID,
     ):
-        """Sollte Nachricht anderer Entity nicht lesen koennen."""
-        # Query returns None for wrong entity
+        """Sollte Nachricht anderer Entity nicht als gelesen markieren koennen.
+
+        Die entity-gefilterte Query liefert fuer die fremde Entity None ->
+        mark_as_read gibt False zurueck (Isolation).
+        """
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
-        result = await communication_service.get_message_detail(
-            message_id=sample_message_inbound.id,
+        result = await communication_service.mark_as_read(
+            message_id=sample_message_outbound.id,
             entity_id=other_entity_id,
             company_id=company_id,
         )
 
-        assert result is None
+        assert result is False
 
     @pytest.mark.asyncio
     async def test_unread_count_isolated_by_entity(
