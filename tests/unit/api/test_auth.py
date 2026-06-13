@@ -436,7 +436,7 @@ class TestTokenBlacklist:
         jti = "test_jti_" + str(uuid4())
         expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
-        with patch("app.core.security._get_redis_client") as mock_redis:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis:
             mock_client = AsyncMock()
             mock_client.setex = AsyncMock(return_value=True)
             mock_redis.return_value = mock_client
@@ -453,7 +453,7 @@ class TestTokenBlacklist:
 
         jti = "test_jti_" + str(uuid4())
 
-        with patch("app.core.security._get_redis_client") as mock_redis:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis:
             mock_client = AsyncMock()
             mock_client.exists = AsyncMock(return_value=0)  # Nicht blacklisted
             mock_redis.return_value = mock_client
