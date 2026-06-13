@@ -185,26 +185,29 @@ class TestTaskRetryConfiguration:
 
 
 class TestDatabaseSessionFactory:
-    """Tests for database session factory in tasks."""
+    """Tests for database session factory in tasks.
 
-    def test_async_session_maker_exists(self):
-        """async_session_maker sollte existieren."""
-        from app.workers.tasks.ocr_tasks import async_session_maker
-        assert async_session_maker is not None
+    ocr_tasks nutzt den async-Context-Manager get_async_session_context aus
+    app.db.session (kein modul-lokaler engine/session_maker mehr).
+    """
 
-    def test_engine_exists(self):
-        """Engine sollte initialisiert sein."""
-        from app.workers.tasks.ocr_tasks import engine
-        assert engine is not None
+    def test_session_context_imported(self):
+        """ocr_tasks importiert get_async_session_context."""
+        from app.workers.tasks.ocr_tasks import get_async_session_context
+        assert get_async_session_context is not None
 
-    @pytest.mark.asyncio
-    async def test_get_db_session_returns_session(self):
-        """get_db_session sollte AsyncSession zurueckgeben."""
-        from app.workers.tasks.ocr_tasks import get_db_session
+    def test_session_context_is_the_canonical_one(self):
+        """Der Session-Context entspricht dem aus app.db.session."""
+        from app.workers.tasks.ocr_tasks import get_async_session_context as ctx
+        from app.db.session import get_async_session_context as canonical
+        assert ctx is canonical
 
-        # This is a coroutine
-        import asyncio
-        assert asyncio.iscoroutinefunction(get_db_session)
+    def test_session_context_provides_async_cm(self):
+        """get_async_session_context liefert einen async-Context-Manager."""
+        from app.workers.tasks.ocr_tasks import get_async_session_context
+        cm = get_async_session_context()
+        assert hasattr(cm, "__aenter__")
+        assert hasattr(cm, "__aexit__")
 
 
 class TestOCRTaskIntegration:
