@@ -103,7 +103,7 @@ async def test_render_notification_success(
     """Test: Erfolgreiches Rendering mit allen erforderlichen Variablen."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Render template
@@ -130,7 +130,7 @@ async def test_render_notification_missing_variable(
     """Test: Fehler bei fehlenden erforderlichen Variablen."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Unvollstaendige Variablen (fehlt 'status')
@@ -158,7 +158,7 @@ async def test_render_notification_template_not_found(
     """Test: Fehler bei nicht existierender Vorlage."""
     # Mock DB response - keine Vorlage gefunden
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_result.scalar_one_or_none = MagicMock(return_value=None)
     mock_db.execute.return_value = mock_result
 
     with pytest.raises(ValueError) as exc_info:
@@ -182,7 +182,7 @@ async def test_render_notification_inactive_template(
 
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with pytest.raises(ValueError) as exc_info:
@@ -207,7 +207,7 @@ async def test_validate_variables_all_present(
     """Test: Validierung mit allen erforderlichen Variablen."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Validate
@@ -230,7 +230,7 @@ async def test_validate_variables_missing(
     """Test: Validierung meldet fehlende Variablen."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Unvollstaendige Variablen
@@ -260,7 +260,7 @@ async def test_validate_variables_template_not_found(
     """Test: Validierung bei nicht existierender Vorlage."""
     # Mock DB response - keine Vorlage
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_result.scalar_one_or_none = MagicMock(return_value=None)
     mock_db.execute.return_value = mock_result
 
     # Validate
@@ -287,7 +287,7 @@ async def test_preview_template_with_sample_data(
     """Test: Vorschau mit benutzerdefinierten Beispieldaten."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Preview with sample data
@@ -313,7 +313,7 @@ async def test_preview_template_default_data(
     """Test: Vorschau mit Standard-Platzhaltern."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Preview without sample data (uses placeholders)
@@ -386,7 +386,7 @@ async def test_update_template(
     """Test: Aktualisieren einer bestehenden Vorlage."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Update template
@@ -412,7 +412,7 @@ async def test_update_template_not_found(
     """Test: Update bei nicht existierender Vorlage."""
     # Mock DB response - keine Vorlage
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_result.scalar_one_or_none = MagicMock(return_value=None)
     mock_db.execute.return_value = mock_result
 
     # Update should return None
@@ -433,7 +433,7 @@ async def test_delete_template_soft_delete(
     """Test: Soft-Delete setzt is_active=False."""
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     # Delete template
@@ -453,7 +453,7 @@ async def test_delete_template_not_found(
     """Test: Delete bei nicht existierender Vorlage."""
     # Mock DB response - keine Vorlage
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_result.scalar_one_or_none = MagicMock(return_value=None)
     mock_db.execute.return_value = mock_result
 
     # Delete should return False
@@ -537,7 +537,7 @@ async def test_sandboxed_environment_blocks_unsafe(
 
     # Mock DB response
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=unsafe_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=unsafe_template)
     mock_db.execute.return_value = mock_result
 
     # Should raise SecurityError or similar
