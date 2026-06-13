@@ -24,7 +24,13 @@ export function KanbanColumn({ stage }: KanbanColumnProps) {
   const itemIds = stage.items.map((item) => item.id);
 
   return (
-    <div className="flex flex-col min-w-[280px] max-w-[320px] border rounded-lg bg-muted/20">
+    <div
+      // a11y: Spalte als Gruppe mit sprechendem Namen fuer Screenreader.
+      role="group"
+      aria-label={`Phase: ${stage.stage_name} (${stage.item_count})`}
+      data-kanban-column
+      className="flex flex-col min-w-[280px] max-w-[320px] border rounded-lg bg-muted/20"
+    >
       {/* Column Header */}
       <div className="p-3 border-b bg-white/80 rounded-t-lg">
         <div className="flex items-center justify-between mb-2">

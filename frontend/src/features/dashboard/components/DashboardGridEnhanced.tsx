@@ -12,7 +12,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect, type MouseEvent } from 'react'
 import { useDashboardStore, DASHBOARD_PRESETS, GRID_COLUMNS } from '../stores/useDashboardStore'
-import { getWidgetComponent, getWidgetDefinition } from '../registry'
+import { getWidgetComponent } from '../registry'
 import { ResizableWidget } from './ResizableWidget'
 import { WidgetCatalogDrawer } from './WidgetCatalogDrawer'
 import { WidgetConfigModal } from './WidgetConfigModal'
@@ -342,12 +342,20 @@ export function DashboardGridEnhanced() {
                 style={{
                     gridTemplateRows: `repeat(${maxRow}, minmax(${compactMode ? 60 : 80}px, auto))`,
                 }}
-                role="list"
+                // a11y (axe aria-required-children): Vorher war dies role="list",
+                // dessen DIREKTE Kinder aber <ResizableWidget> mit role="article"
+                // waren (kein role="listitem") - und das role="listitem" sass
+                // verschachtelt INNERHALB des article. Das verletzt sowohl
+                // aria-required-children (list ohne listitem-Kinder) als auch
+                // aria-required-parent (listitem ohne list-Elternteil). role="group"
+                // mit Label stellt die Gruppierung bereit OHNE listitem-Kinder zu
+                // verlangen; jedes Widget bleibt ein eigenes role="article"
+                // (in ResizableWidget) mit eigenem aria-label.
+                role="group"
                 aria-label="Dashboard-Widgets"
             >
                 {sortedWidgets.map((widget) => {
                     const Component = getWidgetComponent(widget.type)
-                    const widgetDef = getWidgetDefinition(widget.type)
 
                     return (
                         <ResizableWidget
@@ -366,8 +374,6 @@ export function DashboardGridEnhanced() {
                                     'h-full rounded-xl border bg-card text-card-foreground shadow',
                                     compactMode && 'p-2'
                                 )}
-                                role="listitem"
-                                aria-label={widgetDef?.label || widget.type}
                             >
                                 <Component />
                             </div>

@@ -79,7 +79,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     </h1>
                     <NotificationBell />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Enterprise Document Management</p>
+                <p className="text-xs text-sidebar-muted-foreground mt-1">Enterprise Document Management</p>
 
                 {/* Company Switcher - Multi-Mandanten Firmenauswahl */}
                 <div className="mt-3 pt-3 border-t border-sidebar-border">
@@ -170,7 +170,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 {/* Ablage-Struktur Section */}
                 <div className="pt-4">
                     <div className="px-3 mb-2" data-tour="nav-ablage">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-sidebar-muted-foreground uppercase tracking-wider">
                             Ablage
                         </span>
                     </div>
@@ -201,7 +201,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 {/* Logistik Section */}
                 <div className="pt-4">
                     <div className="px-3 mb-2">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-sidebar-muted-foreground uppercase tracking-wider">
                             Logistik
                         </span>
                     </div>
@@ -212,7 +212,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 {/* System Utilities */}
                 <div className="pt-4">
                     <div className="px-3 mb-2">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-sidebar-muted-foreground uppercase tracking-wider">
                             System
                         </span>
                     </div>
@@ -227,7 +227,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <div className="pt-4">
                         <button
                             onClick={() => setShowSmartFolders(!showSmartFolders)}
-                            className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-sidebar-muted-foreground hover:text-sidebar-foreground transition-colors"
                             aria-expanded={showSmartFolders}
                             aria-label={showSmartFolders ? "Gespeicherte Suchen ausblenden" : "Gespeicherte Suchen anzeigen"}
                         >
@@ -286,7 +286,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <Link
                                         to="/search"
                                         onClick={onNavigate}
-                                        className="flex items-center gap-2 px-3 py-1.5 min-h-[44px] text-xs text-muted-foreground hover:text-foreground"
+                                        className="flex items-center gap-2 px-3 py-1.5 min-h-[44px] text-xs text-sidebar-muted-foreground hover:text-sidebar-foreground"
                                     >
                                         Alle anzeigen ({savedSearches.length})
                                     </Link>
@@ -301,7 +301,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <div className="pt-4">
                         <button
                             onClick={() => setShowAdminMenu(!showAdminMenu)}
-                            className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-sidebar-muted-foreground hover:text-sidebar-foreground transition-colors"
                             aria-expanded={showAdminMenu}
                             aria-label={showAdminMenu ? "Administration ausblenden" : "Administration anzeigen"}
                             data-tour="nav-admin"
@@ -485,7 +485,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     Editor
                                 </Badge>
                             ) : (
-                                <span className="text-xs text-muted-foreground">Benutzer</span>
+                                <span className="text-xs text-sidebar-muted-foreground">Benutzer</span>
                             )}
                         </div>
                     </div>

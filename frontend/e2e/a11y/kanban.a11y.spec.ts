@@ -16,7 +16,8 @@ test.describe('Kanban Board Barrierefreiheit', () => {
     // ohne accessible name) — siehe documents.a11y.spec.ts. Zusaetzlich laedt
     // das Board hier gar nicht (siehe naechster Test) -> axe prueft die leere
     // Seite + globale Huelle. App-Code-Befund, nicht Spec-Zone.
-    test.fixme(true, 'App-A11y-Bug: globale Sidebar color-contrast + Proaktiv-FAB button-name; Kanban-Board laedt zudem nicht. Siehe stream-Report s5-e2e-a11y.');
+    // B7-Stream 2026-06-13 GEFIXT: Sidebar-Kontrast, FAB-aria-label, und das Board
+    // sendet jetzt company_id (use-kanban-queries.ts) -> laedt.
     await expectNoA11yViolations(page, 'Kanban Board', {
       // [data-sonner-toast]: BEKANNTER APP-BUG (Kategorie B, color-contrast im
       // "Offline-Modus bereit"-Toast) — siehe dashboard.a11y.spec.ts.
@@ -35,9 +36,9 @@ test.describe('Kanban Board Barrierefreiheit', () => {
     //     aria-label und jede role -> die Spalte ist fuer Screenreader nicht als
     //     Stage benennbar. (Der hiesige Selektor [role="list"] matcht aktuell nur
     //     die Admin-Subnavigation, die ebenfalls kein aria-label hat.)
-    // Beide Befunde liegen im App-Code (Kanban-Query + KanbanColumn), nicht in
-    // dieser Spec -> fixme bis zum App-Fix.
-    test.fixme(true, 'App-Bug: Kanban-Board laedt nicht (Frontend sendet kein company_id -> 422) UND KanbanColumn hat kein aria-label/role. Siehe stream-Report s5-e2e-a11y.');
+    // B7-Stream 2026-06-13 GEFIXT: (1) use-kanban-queries.ts sendet jetzt
+    // company_id aus dem CompanyContext -> Board laedt; (2) KanbanColumn hat
+    // role="group" + aria-label={`Phase: ${stage_name}`} + data-kanban-column.
     // Each column should be identifiable
     const columns = page.locator('[data-kanban-column], [role="listbox"], [role="list"]');
     const count = await columns.count();

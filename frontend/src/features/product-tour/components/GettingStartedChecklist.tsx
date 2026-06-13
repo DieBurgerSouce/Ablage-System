@@ -164,7 +164,8 @@ export function GettingStartedChecklist() {
           <span className="text-xs font-semibold">Erste Schritte</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">
+          {/* a11y: Sidebar-scoped Muted-Token (>=4.5:1 auf dunklem Sidebar). */}
+          <span className="text-xs text-sidebar-muted-foreground">
             {completedCount}/{totalCount}
           </span>
           <Button
@@ -198,11 +199,11 @@ export function GettingStartedChecklist() {
               {isDone ? (
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
               ) : (
-                <Circle className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <Circle className="h-3.5 w-3.5 text-sidebar-muted-foreground flex-shrink-0" />
               )}
               <span className={cn(isDone && 'line-through')}>{item.label}</span>
               {!isDone && (
-                <ChevronRight className="h-3 w-3 ml-auto text-muted-foreground" />
+                <ChevronRight className="h-3 w-3 ml-auto text-sidebar-muted-foreground" />
               )}
             </Link>
           );

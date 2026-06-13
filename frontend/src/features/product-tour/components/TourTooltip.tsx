@@ -203,6 +203,8 @@ export function TourTooltip({
             size="icon"
             className="h-8 w-8"
             onClick={onClose}
+            // a11y (button-name): nur X-Icon -> accessible name noetig.
+            aria-label="Tour schließen"
           >
             <X className="h-4 w-4" />
           </Button>

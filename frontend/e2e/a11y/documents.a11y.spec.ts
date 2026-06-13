@@ -27,7 +27,8 @@ test.describe('Dokumentenliste Barrierefreiheit', () => {
     // Beides liegt im App-Code (Sidebar-Komponente + Proaktiv-FAB), nicht in
     // dieser Spec. NICHT durch Ausschluss gruen biegen, sonst verschwindet der
     // echte WCAG-Befund.
-    test.fixme(true, 'App-A11y-Bug: globale Sidebar color-contrast (#404952/#02060d=2.21) + Proaktiv-FAB ohne accessible name (button-name). Siehe stream-Report s5-e2e-a11y.');
+    // B7-Stream 2026-06-13 GEFIXT: Sidebar text-sidebar-muted-foreground (>=4.5:1)
+    // + Proaktiv-FAB aria-label.
     await expectNoA11yViolations(page, 'Dokumentenliste', {
       // [data-sonner-toast]: BEKANNTER APP-BUG (Kategorie B, color-contrast im
       // "Offline-Modus bereit"-Toast) — siehe dashboard.a11y.spec.ts.

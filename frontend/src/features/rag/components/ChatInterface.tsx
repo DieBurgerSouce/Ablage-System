@@ -204,6 +204,8 @@ export function ChatInterface({
                                     size="icon"
                                     onClick={handleClear}
                                     disabled={status !== 'connected' || messages.length === 0}
+                                    // a11y (button-name): nur Icon + Tooltip -> echter accessible name noetig.
+                                    aria-label="Verlauf löschen"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>

@@ -595,6 +595,10 @@ export function GlobalAIAssistantV2() {
                   <Button
                     onClick={open}
                     size="lg"
+                    // a11y: Der Button enthaelt nur aria-hidden-SVGs (Bot/Lightbulb)
+                    // und ein Tooltip - axe (button-name) braucht einen echten
+                    // accessible name am Button selbst.
+                    aria-label="AI-Assistent öffnen"
                     className={cn(
                       'h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all',
                       'bg-primary hover:bg-primary/90'

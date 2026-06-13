@@ -33,7 +33,8 @@ test.describe('Dashboard Barrierefreiheit', () => {
     //    verschachteln -> die list/listitem-ARIA-Beziehung ist gebrochen
     //    ("Element has children which are not allowed: [role=article]").
     // App-Code-Befund (Sidebar + Widget-Grid-ARIA), nicht in dieser Spec.
-    test.fixme(true, 'App-A11y-Bug: Sidebar color-contrast + FAB button-name + Dashboard-Widget-Grid aria-required-children (role=list mit role=article-Kindern). Siehe stream-Report s5-e2e-a11y.');
+    // B7-Stream 2026-06-13 GEFIXT: Sidebar text-sidebar-muted-foreground (>=4.5:1),
+    // FAB aria-label, Widget-Grid role="group" (statt list mit article-Kindern).
     await expectNoA11yViolations(page, 'Dashboard', {
       // Exclude third-party chart widgets that may have known issues.
       // [data-sonner-toast]: BEKANNTER APP-BUG (dokumentiert, Kategorie B):
@@ -80,7 +81,7 @@ test.describe('Dashboard Barrierefreiheit', () => {
     // Assistent-FAB (.px-8, Bot-Icon, fixed bottom-6 right-6) hat nur
     // aria-hidden-SVGs und KEINEN barrierefreien Namen -> ein sichtbarer Button
     // ohne accessible name. App-Code-Befund (Proaktiv-FAB), nicht Spec-Zone.
-    test.fixme(true, 'App-A11y-Bug: Proaktiv-Assistent-FAB (.px-8) ist ein sichtbarer Button ohne aria-label/Text. Siehe stream-Report s5-e2e-a11y.');
+    // B7-Stream 2026-06-13 GEFIXT: FAB hat jetzt aria-label="AI-Assistent öffnen".
     // Check buttons have accessible names
     const buttons = page.locator('button');
     const count = await buttons.count();
