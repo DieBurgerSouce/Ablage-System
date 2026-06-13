@@ -74,7 +74,10 @@ class OCRRouterFeatures:
         for level in self.COMPLEXITY_LEVELS:
             self._feature_names.append(f"complexity_{level}")
 
-        # Numeric features (14 features)
+        # WICHTIG: Reihenfolge MUSS exakt der Append-Reihenfolge in
+        # extract_features entsprechen, sonst zeigt feature_names.index(...) auf
+        # die falsche Vektor-Position (Bug: fraktur_score las SLA-Wert).
+        # Basis-Numeric-Features
         self._feature_names.extend([
             "quality_score",
             "has_tables",
@@ -85,18 +88,23 @@ class OCRRouterFeatures:
             "gpu_memory_available",
             "gpu_available",
             "queue_length_normalized",
+        ])
+
+        # SLA features (3 features) - werden in extract_features VOR den
+        # neuen Feldern angehaengt
+        self._feature_names.extend([
+            "needs_fast_processing",
+            "needs_high_accuracy",
+            "is_critical",
+        ])
+
+        # Neue Features (nach den SLA-Features angehaengt)
+        self._feature_names.extend([
             "fraktur_score",
             "handwriting_score",
             "layout_complexity",
             "dpi",
             "available_vram_gb",
-        ])
-
-        # SLA features (3 features)
-        self._feature_names.extend([
-            "needs_fast_processing",
-            "needs_high_accuracy",
-            "is_critical",
         ])
 
     @property

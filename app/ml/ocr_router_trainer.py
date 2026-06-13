@@ -189,7 +189,7 @@ class OCRRouterTrainingPipeline:
                     and_(
                         OCRResult.created_at >= cutoff_date,
                         OCRResult.confidence_score >= min_confidence,
-                        OCRResult.backend_used.isnot(None),
+                        OCRResult.backend.isnot(None),
                         OCRResult.processing_time_ms.isnot(None),
                     )
                 )
@@ -214,8 +214,10 @@ class OCRRouterTrainingPipeline:
             backend_counts: Dict[str, int] = {}
 
             for ocr_result in ocr_results:
-                # Extrahiere Metadaten
-                metadata = ocr_result.document_metadata or {}
+                # Extrahiere Metadaten aus dem verknuepften Dokument
+                # (OCRResult selbst hat keine document_metadata-Spalte).
+                doc = getattr(ocr_result, "document", None)
+                metadata = (getattr(doc, "document_metadata", None) or {}) if doc is not None else {}
                 document_metadata = {
                     "document_type": metadata.get("document_type", "other"),
                     "complexity": metadata.get("complexity", "medium"),
@@ -246,7 +248,7 @@ class OCRRouterTrainingPipeline:
                     document_metadata=document_metadata,
                     sla_requirements=sla_requirements,
                     resource_status=resource_status,
-                    selected_backend=ocr_result.backend_used,
+                    selected_backend=ocr_result.backend,
                     was_successful=ocr_result.confidence_score >= min_confidence,
                     accuracy_score=ocr_result.confidence_score,
                     processing_time_ms=ocr_result.processing_time_ms or 0,
@@ -256,7 +258,7 @@ class OCRRouterTrainingPipeline:
                 samples.append(sample)
 
                 # Count backends
-                backend = ocr_result.backend_used
+                backend = ocr_result.backend
                 backend_counts[backend] = backend_counts.get(backend, 0) + 1
 
             logger.info(
