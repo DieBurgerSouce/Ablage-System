@@ -22,11 +22,13 @@ from app.api.v1.health import (
     _check_gpu,
     _check_minio,
     _check_redis,
+    _set_cached_result,
     basic_health,
     detailed_health,
     liveness_probe,
     readiness_probe,
 )
+from app.core.config import settings
 
 
 # =============================================================================
@@ -44,7 +46,8 @@ class TestBasicHealth:
 
         assert isinstance(result, BasicHealthResponse)
         assert result.status == "gesund"
-        assert result.version == "1.0.0"  # Updated from 0.2.0-poc to 1.0.0
+        # Version kommt aus settings.APP_VERSION (echter Vertrag, kein Literal)
+        assert result.version == settings.APP_VERSION
         assert result.zeitstempel is not None
 
     @pytest.mark.asyncio
@@ -286,6 +289,8 @@ class TestDetailedHealth:
     @pytest.mark.asyncio
     async def test_detailed_health_all_healthy(self):
         """Alle Komponenten gesund."""
+        # Modul-Cache leeren, damit dieser Test hermetisch ist.
+        _set_cached_result("detailed_health", None)
         mock_db = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar.return_value = 1
@@ -312,6 +317,9 @@ class TestDetailedHealth:
     @pytest.mark.asyncio
     async def test_detailed_health_database_critical(self):
         """Datenbank kritisch - sollte kritischen Status ergeben."""
+        # detailed_health cacht das Ergebnis modulweit -> vor dem Test leeren,
+        # sonst liefert ein vorheriger "gesund"-Lauf einen Cache-Treffer (Test-Pollution).
+        _set_cached_result("detailed_health", None)
         mock_db = AsyncMock()
         mock_db.execute.side_effect = Exception("DB down")
 
@@ -336,6 +344,8 @@ class TestDetailedHealth:
     @pytest.mark.asyncio
     async def test_detailed_health_redis_degraded(self):
         """Redis nicht verfuegbar - sollte beeintraechtigt sein."""
+        # Modul-Cache leeren (Test-Pollution-Schutz, siehe DB-kritisch-Test).
+        _set_cached_result("detailed_health", None)
         mock_db = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar.return_value = 1
