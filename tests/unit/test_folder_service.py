@@ -34,7 +34,7 @@ class TestFolderModels:
 
     def test_folder_type_enum(self):
         """FolderType Enum hat alle erwarteten Werte."""
-        assert FolderType.GESCHAEFTLICH.value == "geschaeftlich"
+        assert FolderType.GESCHAEFTLICH.value == "geschäftlich"
         assert FolderType.ARCHIV.value == "archiv"
         assert FolderType.PROJEKT.value == "projekt"
         assert FolderType.EINGANG.value == "eingang"
@@ -137,7 +137,7 @@ class TestFolderServiceCreate:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
 
-        with pytest.raises(ValueError, match="Uebergeordneter Ordner nicht gefunden"):
+        with pytest.raises(ValueError, match="Übergeordneter Ordner nicht gefunden"):
             await service.create_folder(
                 mock_db,
                 company_id=company_id,

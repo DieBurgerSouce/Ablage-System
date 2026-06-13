@@ -433,14 +433,22 @@ class TestSingletonDetector:
     """Test singleton detector access."""
 
     @pytest.mark.unit
-    def test_get_drift_detector_singleton(self):
+    def test_get_drift_detector_singleton(self, tmp_path, monkeypatch):
         """Test get_drift_detector returns same instance."""
+        import app.ml.drift_detector as dd
+
+        # Default-Storage 'data/drift_reports' ist auf dem read-only Container-
+        # Rootfs nicht beschreibbar -> Singleton mit tmp-Pfad vorinitialisieren.
+        detector = dd.DriftDetector(storage_path=tmp_path / "drift_reports")
+        monkeypatch.setattr(dd, "_drift_detector", detector)
+
         from app.ml.drift_detector import get_drift_detector
 
         detector1 = get_drift_detector()
         detector2 = get_drift_detector()
 
         assert detector1 is detector2
+        assert detector1 is detector
 
 
 if __name__ == "__main__":
