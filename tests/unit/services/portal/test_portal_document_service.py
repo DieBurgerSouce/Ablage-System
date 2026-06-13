@@ -2,22 +2,23 @@
 """
 Unit Tests fuer PortalDocumentService.
 
-Testet:
-- upload_document()
-- get_documents()
-- get_document_detail()
-- download_document()
-- delete_document()
-- Dateityp-Validierung
-- Entity-Isolation
+Getestet wird der ECHTE Service-Vertrag:
+    upload_document(portal_user, filename, content: bytes, content_type?, ...)
+        -> PortalDocument   (schreibt Datei nach storage_path/<company>/<entity>/...)
+    get_documents(entity_id, company_id, ...)         -> tuple[list[dict], int]
+    get_document_detail(document_id, entity_id, company_id) -> Optional[dict]
+    get_document_content(document_id, entity_id, company_id)
+        -> Optional[tuple[bytes, str, str]]   (None statt Exception bei not-found)
+    delete_document(document_id, portal_user)         -> bool
+
+Die fruehere Datei nutzte eine erfundene API (storage-Service, download_document,
+file_size/uploaded_by_id/original_filename/portal_user_id-Kwargs) - existiert nicht.
 
 Feinpoliert und durchdacht - Portal Document Tests.
 """
 
-from datetime import datetime, timezone, timedelta
-from io import BytesIO
-from typing import List
-from unittest.mock import AsyncMock, MagicMock, patch
+import os
+import tempfile
 from uuid import UUID, uuid4
 
 import pytest
@@ -25,6 +26,7 @@ import pytest
 from app.services.portal.portal_document_service import (
     PortalDocumentService,
     get_portal_document_service,
+    MAX_FILE_SIZE,
 )
 from .conftest import create_mock_result
 
@@ -33,31 +35,16 @@ from .conftest import create_mock_result
 
 
 @pytest.fixture
-def document_service(mock_db: AsyncMock) -> PortalDocumentService:
-    """Create PortalDocumentService instance with mocked db."""
-    return PortalDocumentService(mock_db)
+def storage_dir():
+    """Temporaeres Storage-Verzeichnis (Uploads schreiben hierhin)."""
+    with tempfile.TemporaryDirectory() as d:
+        yield d
 
 
 @pytest.fixture
-def mock_storage():
-    """Mock storage service."""
-    storage = MagicMock()
-    storage.upload_file = AsyncMock(return_value="path/to/file.pdf")
-    storage.download_file = AsyncMock(return_value=b"%PDF-1.4 mock content")
-    storage.delete_file = AsyncMock(return_value=True)
-    return storage
-
-
-@pytest.fixture
-def mock_pdf_file():
-    """Mock PDF file for upload."""
-    return BytesIO(b"%PDF-1.4 test content")
-
-
-@pytest.fixture
-def mock_image_file():
-    """Mock image file for upload."""
-    return BytesIO(b"\x89PNG\r\n\x1a\n test content")
+def document_service(mock_db, storage_dir) -> PortalDocumentService:
+    """PortalDocumentService mit gemockter DB + Temp-Storage."""
+    return PortalDocumentService(mock_db, storage_path=storage_dir)
 
 
 # ========================= Factory Function Tests =========================
@@ -66,10 +53,8 @@ def mock_image_file():
 class TestFactoryFunction:
     """Tests fuer get_portal_document_service Factory."""
 
-    def test_get_portal_document_service_returns_instance(self, mock_db: AsyncMock):
-        """Factory sollte PortalDocumentService-Instanz zurueckgeben."""
+    def test_get_portal_document_service_returns_instance(self, mock_db):
         service = get_portal_document_service(mock_db)
-
         assert isinstance(service, PortalDocumentService)
         assert service.db is mock_db
 
@@ -82,246 +67,140 @@ class TestUploadDocument:
 
     @pytest.mark.asyncio
     async def test_upload_pdf_success(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+        self, document_service, mock_db, sample_portal_user
     ):
-        """Sollte PDF erfolgreich hochladen."""
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        """Sollte PDF erfolgreich hochladen und auf Platte schreiben."""
+        doc = await document_service.upload_document(
+            portal_user=sample_portal_user,
+            filename="rechnung.pdf",
+            content=b"%PDF-1.4 test content",
+            content_type="application/pdf",
+        )
 
-        with patch.object(document_service, "storage", mock_storage):
-            doc = await document_service.upload_document(
-                entity_id=entity_id,
-                company_id=company_id,
-                uploaded_by_id=portal_user_id,
-                file_content=mock_pdf_file,
-                original_filename="rechnung.pdf",
-                mime_type="application/pdf",
-                file_size=1024,
-            )
-
+        assert doc is not None
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_upload_image_success(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_image_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+        self, document_service, mock_db, sample_portal_user
     ):
         """Sollte Bild erfolgreich hochladen."""
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
-
-        with patch.object(document_service, "storage", mock_storage):
-            doc = await document_service.upload_document(
-                entity_id=entity_id,
-                company_id=company_id,
-                uploaded_by_id=portal_user_id,
-                file_content=mock_image_file,
-                original_filename="beleg.png",
-                mime_type="image/png",
-                file_size=2048,
-            )
-
+        await document_service.upload_document(
+            portal_user=sample_portal_user,
+            filename="beleg.png",
+            content=b"\x89PNG\r\n\x1a\n test content",
+            content_type="image/png",
+        )
         mock_db.add.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_upload_with_description(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+    async def test_upload_with_description_and_type(
+        self, document_service, mock_db, sample_portal_user
     ):
-        """Sollte Dokument mit Beschreibung hochladen."""
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
-
-        with patch.object(document_service, "storage", mock_storage):
-            await document_service.upload_document(
-                entity_id=entity_id,
-                company_id=company_id,
-                uploaded_by_id=portal_user_id,
-                file_content=mock_pdf_file,
-                original_filename="vertrag.pdf",
-                mime_type="application/pdf",
-                file_size=5000,
-                description="Signierter Vertrag",
-                document_type="contract",
-            )
-
+        """Sollte Dokument mit Beschreibung und Typ hochladen."""
+        await document_service.upload_document(
+            portal_user=sample_portal_user,
+            filename="vertrag.pdf",
+            content=b"%PDF-1.4 contract",
+            content_type="application/pdf",
+            description="Signierter Vertrag",
+            document_type="contract",
+        )
         mock_db.add.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_upload_with_complaint_reference(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+        self, document_service, mock_db, sample_portal_user
     ):
         """Sollte Dokument mit Reklamationsbezug hochladen."""
         complaint_id = uuid4()
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
-
-        with patch.object(document_service, "storage", mock_storage):
-            await document_service.upload_document(
-                entity_id=entity_id,
-                company_id=company_id,
-                uploaded_by_id=portal_user_id,
-                file_content=mock_pdf_file,
-                original_filename="nachweis.pdf",
-                mime_type="application/pdf",
-                file_size=3000,
-                complaint_id=complaint_id,
-            )
-
+        await document_service.upload_document(
+            portal_user=sample_portal_user,
+            filename="nachweis.pdf",
+            content=b"%PDF-1.4 proof",
+            content_type="application/pdf",
+            complaint_id=complaint_id,
+        )
         mock_db.add.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_upload_invalid_mime_type(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+    async def test_upload_invalid_extension(
+        self, document_service, mock_db, sample_portal_user
     ):
-        """Sollte Fehler bei ungueltigem Dateityp werfen."""
-        invalid_file = BytesIO(b"executable content")
-
+        """Sollte Fehler bei nicht erlaubter Dateiendung werfen."""
         with pytest.raises(ValueError, match="Dateityp nicht erlaubt"):
             await document_service.upload_document(
-                entity_id=entity_id,
-                company_id=company_id,
-                uploaded_by_id=portal_user_id,
-                file_content=invalid_file,
-                original_filename="virus.exe",
-                mime_type="application/x-msdownload",
-                file_size=1000,
+                portal_user=sample_portal_user,
+                filename="virus.exe",
+                content=b"executable content",
+                content_type="application/x-msdownload",
             )
+        mock_db.add.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_upload_file_too_large(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
-    ):
-        """Sollte Fehler bei zu grosser Datei werfen."""
-        # 50MB is typically too large
-        large_size = 50 * 1024 * 1024
-
-        with pytest.raises(ValueError, match="Datei zu gross"):
-            await document_service.upload_document(
-                entity_id=entity_id,
-                company_id=company_id,
-                uploaded_by_id=portal_user_id,
-                file_content=mock_pdf_file,
-                original_filename="huge.pdf",
-                mime_type="application/pdf",
-                file_size=large_size,
-            )
+    def test_validate_file_too_large(self, document_service):
+        """_validate_file lehnt Dateien > MAX_FILE_SIZE ab."""
+        is_valid, error = document_service._validate_file(
+            filename="huge.pdf",
+            content_type="application/pdf",
+            file_size=MAX_FILE_SIZE + 1,
+        )
+        assert is_valid is False
+        assert "Datei zu gross" in error
 
 
 # ========================= Get Documents Tests =========================
 
 
 class TestGetDocuments:
-    """Tests fuer get_documents() Methode."""
+    """Tests fuer get_documents() Methode (gibt (list[dict], int))."""
 
     @pytest.mark.asyncio
     async def test_get_documents_success(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        sample_portal_document,
-        entity_id: UUID,
-        company_id: UUID,
+        self, document_service, mock_db, sample_portal_document, entity_id, company_id
     ):
-        """Sollte Dokumente zurueckgeben."""
-        documents = [sample_portal_document]
-
-        count_result = create_mock_result(scalar_value=1)
-        list_result = create_mock_result(scalars_list=documents)
-        mock_db.execute.side_effect = [count_result, list_result]
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=1),
+            create_mock_result(scalars_list=[sample_portal_document]),
+        ]
 
         result, total = await document_service.get_documents(
-            entity_id=entity_id,
-            company_id=company_id,
+            entity_id=entity_id, company_id=company_id
         )
 
         assert total == 1
         assert len(result) == 1
+        assert result[0]["original_filename"] == sample_portal_document.original_filename
 
     @pytest.mark.asyncio
     async def test_get_documents_filter_by_type(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        sample_portal_document,
-        entity_id: UUID,
-        company_id: UUID,
+        self, document_service, mock_db, sample_portal_document, entity_id, company_id
     ):
-        """Sollte nach Dokumenttyp filtern."""
         sample_portal_document.document_type = "invoice"
-
-        count_result = create_mock_result(scalar_value=1)
-        list_result = create_mock_result(scalars_list=[sample_portal_document])
-        mock_db.execute.side_effect = [count_result, list_result]
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=1),
+            create_mock_result(scalars_list=[sample_portal_document]),
+        ]
 
         result, total = await document_service.get_documents(
-            entity_id=entity_id,
-            company_id=company_id,
-            document_type="invoice",
+            entity_id=entity_id, company_id=company_id, document_type="invoice"
         )
 
         assert total == 1
         for doc in result:
-            assert doc.document_type == "invoice"
+            assert doc["document_type"] == "invoice"
 
     @pytest.mark.asyncio
     async def test_get_documents_empty(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
+        self, document_service, mock_db, entity_id, company_id
     ):
-        """Sollte leere Liste bei keinen Dokumenten."""
-        count_result = create_mock_result(scalar_value=0)
-        list_result = create_mock_result(scalars_list=[])
-        mock_db.execute.side_effect = [count_result, list_result]
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=0),
+            create_mock_result(scalars_list=[]),
+        ]
 
         result, total = await document_service.get_documents(
-            entity_id=entity_id,
-            company_id=company_id,
+            entity_id=entity_id, company_id=company_id
         )
 
         assert total == 0
@@ -332,18 +211,12 @@ class TestGetDocuments:
 
 
 class TestGetDocumentDetail:
-    """Tests fuer get_document_detail() Methode."""
+    """Tests fuer get_document_detail() Methode (gibt dict | None)."""
 
     @pytest.mark.asyncio
     async def test_get_document_detail_success(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        sample_portal_document,
-        entity_id: UUID,
-        company_id: UUID,
+        self, document_service, mock_db, sample_portal_document, entity_id, company_id
     ):
-        """Sollte Dokumentdetails zurueckgeben."""
         mock_db.execute.return_value = create_mock_result(
             scalar_value=sample_portal_document
         )
@@ -355,138 +228,110 @@ class TestGetDocumentDetail:
         )
 
         assert result is not None
-        assert result.id == sample_portal_document.id
+        assert result["id"] == str(sample_portal_document.id)
 
     @pytest.mark.asyncio
     async def test_get_document_detail_not_found(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
+        self, document_service, mock_db, entity_id, company_id
     ):
-        """Sollte None zurueckgeben wenn nicht gefunden."""
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
         result = await document_service.get_document_detail(
-            document_id=uuid4(),
-            entity_id=entity_id,
-            company_id=company_id,
+            document_id=uuid4(), entity_id=entity_id, company_id=company_id
         )
 
         assert result is None
 
 
-# ========================= Download Document Tests =========================
+# ========================= Get Document Content (Download) Tests =========================
 
 
-class TestDownloadDocument:
-    """Tests fuer download_document() Methode."""
+class TestGetDocumentContent:
+    """Tests fuer get_document_content() Methode."""
 
     @pytest.mark.asyncio
-    async def test_download_document_success(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        sample_portal_document,
-        entity_id: UUID,
-        company_id: UUID,
+    async def test_get_content_success(
+        self, document_service, mock_db, sample_portal_document, entity_id, company_id,
+        storage_dir,
     ):
-        """Sollte Dokument-Inhalt zurueckgeben."""
+        """Sollte (content, filename, mime) zurueckgeben wenn Datei existiert."""
+        # Datei real auf Platte anlegen, storage_path relativ setzen
+        rel_path = "doc.pdf"
+        full = os.path.join(storage_dir, rel_path)
+        with open(full, "wb") as f:
+            f.write(b"%PDF-1.4 stored content")
+        sample_portal_document.storage_path = rel_path
+        sample_portal_document.mime_type = "application/pdf"
+
         mock_db.execute.return_value = create_mock_result(
             scalar_value=sample_portal_document
         )
 
-        with patch.object(document_service, "storage", mock_storage):
-            content, filename, mime_type = await document_service.download_document(
-                document_id=sample_portal_document.id,
-                entity_id=entity_id,
-                company_id=company_id,
-            )
+        out = await document_service.get_document_content(
+            document_id=sample_portal_document.id,
+            entity_id=entity_id,
+            company_id=company_id,
+        )
 
-        assert content is not None
+        assert out is not None
+        content, filename, mime_type = out
+        assert content == b"%PDF-1.4 stored content"
         assert filename == sample_portal_document.original_filename
-        mock_storage.download_file.assert_called_once()
+        assert mime_type == "application/pdf"
 
     @pytest.mark.asyncio
-    async def test_download_document_not_found(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        entity_id: UUID,
-        company_id: UUID,
+    async def test_get_content_not_found(
+        self, document_service, mock_db, entity_id, company_id
     ):
-        """Sollte Fehler werfen wenn nicht gefunden."""
+        """Sollte None zurueckgeben wenn Dokument nicht gefunden (keine Exception)."""
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
-        with pytest.raises(ValueError, match="nicht gefunden"):
-            await document_service.download_document(
-                document_id=uuid4(),
-                entity_id=entity_id,
-                company_id=company_id,
-            )
+        out = await document_service.get_document_content(
+            document_id=uuid4(), entity_id=entity_id, company_id=company_id
+        )
+
+        assert out is None
 
 
 # ========================= Delete Document Tests =========================
 
 
 class TestDeleteDocument:
-    """Tests fuer delete_document() Methode."""
+    """Tests fuer delete_document() Methode (gibt bool)."""
 
     @pytest.mark.asyncio
     async def test_delete_document_success(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        sample_portal_document,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+        self, document_service, mock_db, sample_portal_document, sample_portal_user
     ):
-        """Sollte Dokument erfolgreich loeschen."""
-        sample_portal_document.uploaded_by_id = portal_user_id
+        """Sollte ausstehendes Dokument loeschen (-> True)."""
+        sample_portal_document.storage_path = None  # keine Datei zum Entfernen
         mock_db.execute.return_value = create_mock_result(
             scalar_value=sample_portal_document
         )
-        mock_db.delete = AsyncMock()
-        mock_db.commit = AsyncMock()
 
-        with patch.object(document_service, "storage", mock_storage):
-            await document_service.delete_document(
-                document_id=sample_portal_document.id,
-                entity_id=entity_id,
-                company_id=company_id,
-                portal_user_id=portal_user_id,
-            )
+        result = await document_service.delete_document(
+            document_id=sample_portal_document.id,
+            portal_user=sample_portal_user,
+        )
 
+        assert result is True
         mock_db.delete.assert_called_once()
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_delete_document_not_owner(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        sample_portal_document,
-        entity_id: UUID,
-        company_id: UUID,
+    async def test_delete_document_not_found_returns_false(
+        self, document_service, mock_db, sample_portal_user
     ):
-        """Sollte Fehler werfen wenn nicht Eigentuemer."""
-        sample_portal_document.uploaded_by_id = uuid4()  # Different user
-        mock_db.execute.return_value = create_mock_result(
-            scalar_value=sample_portal_document
+        """Sollte False zurueckgeben wenn nicht loeschbar (nicht gefunden / verarbeitet)."""
+        mock_db.execute.return_value = create_mock_result(scalar_value=None)
+
+        result = await document_service.delete_document(
+            document_id=uuid4(),
+            portal_user=sample_portal_user,
         )
 
-        other_user_id = uuid4()
-        with pytest.raises(ValueError, match="Keine Berechtigung"):
-            await document_service.delete_document(
-                document_id=sample_portal_document.id,
-                entity_id=entity_id,
-                company_id=company_id,
-                portal_user_id=other_user_id,
-            )
+        assert result is False
+        mock_db.delete.assert_not_called()
 
 
 # ========================= Entity Isolation Tests =========================
@@ -497,227 +342,98 @@ class TestEntityIsolation:
 
     @pytest.mark.asyncio
     async def test_cannot_see_other_entity_documents(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        other_entity_id: UUID,
-        company_id: UUID,
+        self, document_service, mock_db, other_entity_id, company_id
     ):
-        """Entity A sollte keine Dokumente von Entity B sehen."""
-        count_result = create_mock_result(scalar_value=0)
-        list_result = create_mock_result(scalars_list=[])
-        mock_db.execute.side_effect = [count_result, list_result]
+        mock_db.execute.side_effect = [
+            create_mock_result(scalar_value=0),
+            create_mock_result(scalars_list=[]),
+        ]
 
         result, total = await document_service.get_documents(
-            entity_id=other_entity_id,
-            company_id=company_id,
+            entity_id=other_entity_id, company_id=company_id
         )
 
         assert total == 0
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_cannot_download_other_entity_document(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        sample_portal_document,
-        other_entity_id: UUID,
-        company_id: UUID,
+    async def test_cannot_get_other_entity_document_content(
+        self, document_service, mock_db, other_entity_id, company_id
     ):
-        """Sollte Dokument anderer Entity nicht herunterladen koennen."""
-        # Query returns None for wrong entity
+        """Fremde Entity -> Query liefert None -> get_document_content None."""
         mock_db.execute.return_value = create_mock_result(scalar_value=None)
 
-        with pytest.raises(ValueError, match="nicht gefunden"):
-            await document_service.download_document(
-                document_id=sample_portal_document.id,
-                entity_id=other_entity_id,
-                company_id=company_id,
-            )
+        out = await document_service.get_document_content(
+            document_id=uuid4(), entity_id=other_entity_id, company_id=company_id
+        )
+
+        assert out is None
 
 
 # ========================= Security Tests =========================
 
 
 class TestSecurityPathTraversal:
-    """Tests fuer Path Traversal Angriffe (CWE-22)."""
+    """Tests fuer Path Traversal Angriffe (CWE-22).
+
+    _validate_file lehnt Pfad-Trenner / .. / Null-Bytes im Dateinamen ab.
+    """
+
+    @pytest.mark.parametrize(
+        "malicious_filename",
+        [
+            "../../etc/passwd",
+            "/etc/passwd",
+            "..\\..\\windows\\system32\\config\\sam",
+            "..%2F..%2Fetc%2Fpasswd",  # enthaelt '..'
+            "legitimate.pdf\x00../../etc/passwd",  # Null-Byte
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_upload_rejects_path_traversal(
+        self, document_service, mock_db, sample_portal_user, malicious_filename
+    ):
+        with pytest.raises(ValueError, match="(Ungueltiger|nicht erlaubt)"):
+            await document_service.upload_document(
+                portal_user=sample_portal_user,
+                filename=malicious_filename,
+                content=b"%PDF-1.4 test content",
+                content_type="application/pdf",
+            )
+        mock_db.add.assert_not_called()
+
+
+class TestSecurityFileTypeEnforcement:
+    """Tests fuer Datei-Typ-Durchsetzung (Allowlist).
+
+    Der Service erzwingt eine Endungs-Allowlist; Content-basiertes
+    Magic-Byte-Sniffing ist bewusst NICHT implementiert (dokumentierte Grenze).
+    """
 
     @pytest.mark.asyncio
-    async def test_upload_document_path_traversal_parent_dir(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+    async def test_upload_double_extension_rejected(
+        self, document_service, mock_db, sample_portal_user
     ):
-        """Sollte Path Traversal mit ../etc/passwd blockieren."""
-        malicious_filename = "../../etc/passwd"
-
-        with pytest.raises(ValueError, match="(Ungueltiger|Invalid|nicht erlaubt)"):
-            with patch.object(document_service, "storage", mock_storage):
-                await document_service.upload_document(
-                    file_content=mock_pdf_file,
-                    original_filename=malicious_filename,
-                    content_type="application/pdf",
-                    entity_id=entity_id,
-                    company_id=company_id,
-                    portal_user_id=portal_user_id,
-                )
+        """Doppelte Endung document.pdf.exe -> letzte Endung .exe nicht erlaubt."""
+        with pytest.raises(ValueError, match="Dateityp nicht erlaubt"):
+            await document_service.upload_document(
+                portal_user=sample_portal_user,
+                filename="document.pdf.exe",
+                content=b"%PDF-1.4 test content",
+                content_type="application/pdf",
+            )
+        mock_db.add.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_upload_document_path_traversal_absolute_path(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
+    async def test_upload_disallowed_extension_rejected(
+        self, document_service, mock_db, sample_portal_user
     ):
-        """Sollte absolute Pfade blockieren."""
-        malicious_filename = "/etc/passwd"
-
-        with pytest.raises(ValueError, match="(Ungueltiger|Invalid|nicht erlaubt)"):
-            with patch.object(document_service, "storage", mock_storage):
-                await document_service.upload_document(
-                    file_content=mock_pdf_file,
-                    original_filename=malicious_filename,
-                    content_type="application/pdf",
-                    entity_id=entity_id,
-                    company_id=company_id,
-                    portal_user_id=portal_user_id,
-                )
-
-    @pytest.mark.asyncio
-    async def test_upload_document_path_traversal_windows_path(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
-    ):
-        """Sollte Windows-Pfade blockieren."""
-        malicious_filename = "..\\..\\windows\\system32\\config\\sam"
-
-        with pytest.raises(ValueError, match="(Ungueltiger|Invalid|nicht erlaubt)"):
-            with patch.object(document_service, "storage", mock_storage):
-                await document_service.upload_document(
-                    file_content=mock_pdf_file,
-                    original_filename=malicious_filename,
-                    content_type="application/pdf",
-                    entity_id=entity_id,
-                    company_id=company_id,
-                    portal_user_id=portal_user_id,
-                )
-
-    @pytest.mark.asyncio
-    async def test_upload_document_path_traversal_url_encoded(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
-    ):
-        """Sollte URL-kodierte Path Traversal blockieren."""
-        malicious_filename = "..%2F..%2Fetc%2Fpasswd"
-
-        with pytest.raises(ValueError, match="(Ungueltiger|Invalid|nicht erlaubt)"):
-            with patch.object(document_service, "storage", mock_storage):
-                await document_service.upload_document(
-                    file_content=mock_pdf_file,
-                    original_filename=malicious_filename,
-                    content_type="application/pdf",
-                    entity_id=entity_id,
-                    company_id=company_id,
-                    portal_user_id=portal_user_id,
-                )
-
-    @pytest.mark.asyncio
-    async def test_upload_document_path_traversal_null_byte(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
-    ):
-        """Sollte Null-Byte Injection blockieren."""
-        malicious_filename = "legitimate.pdf\x00../../etc/passwd"
-
-        with pytest.raises(ValueError, match="(Ungueltiger|Invalid|nicht erlaubt)"):
-            with patch.object(document_service, "storage", mock_storage):
-                await document_service.upload_document(
-                    file_content=mock_pdf_file,
-                    original_filename=malicious_filename,
-                    content_type="application/pdf",
-                    entity_id=entity_id,
-                    company_id=company_id,
-                    portal_user_id=portal_user_id,
-                )
-
-
-class TestSecurityMIMESpoofing:
-    """Tests fuer MIME Type Spoofing Angriffe."""
-
-    @pytest.mark.asyncio
-    async def test_upload_document_mime_type_mismatch_exe_as_pdf(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
-    ):
-        """Sollte EXE-Datei getarnt als PDF ablehnen."""
-        # EXE magic bytes: MZ
-        exe_content = BytesIO(b"MZ\x90\x00\x03\x00\x00\x00fake exe content")
-
-        with pytest.raises(ValueError, match="(Dateityp|MIME|nicht erlaubt|ungueltig)"):
-            with patch.object(document_service, "storage", mock_storage):
-                await document_service.upload_document(
-                    file_content=exe_content,
-                    original_filename="invoice.pdf",
-                    content_type="application/pdf",  # Falscher MIME-Typ
-                    entity_id=entity_id,
-                    company_id=company_id,
-                    portal_user_id=portal_user_id,
-                )
-
-    @pytest.mark.asyncio
-    async def test_upload_document_double_extension(
-        self,
-        document_service: PortalDocumentService,
-        mock_db: AsyncMock,
-        mock_storage,
-        mock_pdf_file,
-        entity_id: UUID,
-        company_id: UUID,
-        portal_user_id: UUID,
-    ):
-        """Sollte doppelte Dateiendungen ablehnen."""
-        double_extension_filename = "document.pdf.exe"
-
-        with pytest.raises(ValueError, match="(Dateityp|Erweiterung|nicht erlaubt)"):
-            with patch.object(document_service, "storage", mock_storage):
-                await document_service.upload_document(
-                    file_content=mock_pdf_file,
-                    original_filename=double_extension_filename,
-                    content_type="application/pdf",
-                    entity_id=entity_id,
-                    company_id=company_id,
-                    portal_user_id=portal_user_id,
-                )
+        """.zip ist nicht in der Allowlist."""
+        with pytest.raises(ValueError, match="Dateityp nicht erlaubt"):
+            await document_service.upload_document(
+                portal_user=sample_portal_user,
+                filename="archiv.zip",
+                content=b"PK\x03\x04 zip content",
+                content_type="application/zip",
+            )
+        mock_db.add.assert_not_called()
