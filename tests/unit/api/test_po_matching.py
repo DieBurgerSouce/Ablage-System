@@ -240,6 +240,7 @@ class TestListMatches:
             page_size=25,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         # Pruefen dass Filter an Service uebergeben wurde
@@ -344,6 +345,7 @@ class TestGetMatchDetail:
             match_id=TEST_MATCH_UUID,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.id == TEST_MATCH_UUID
@@ -441,6 +443,7 @@ class TestCreateMatch:
             data=data,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.id == TEST_MATCH_UUID
@@ -534,6 +537,7 @@ class TestAutoDetectMatches:
             request=mock_request,
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         assert result.matches_updated == 1
@@ -938,6 +942,7 @@ class TestGetUnmatchedDocuments:
             document_type="invoice",
             current_user=mock_user,
             db=mock_db,
+            company_id=TEST_COMPANY_UUID,
         )
 
         service.get_unmatched_documents.assert_called_once_with(
