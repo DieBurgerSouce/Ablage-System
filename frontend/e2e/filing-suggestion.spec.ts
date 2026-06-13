@@ -19,6 +19,13 @@ import { adminToken } from './utils/auth-cache';
 
 const API_BASE = process.env.VITE_API_URL || 'http://localhost:8000';
 
+// HINWEIS (Stream s5, 2026-06-13): Der Upload-Endpoint validiert die
+// PDF-Struktur serverseitig mit pypdf (app/core/file_validation.py ->
+// validate_file_security). Ein PDF OHNE xref-Tabelle + startxref loest dort
+// einen PdfReadError aus -> HTTP 400 "PDF-Validierung fehlgeschlagen".
+// Die fruehere Fixture-PDF hatte keine xref-Tabelle und schlug deshalb
+// (korrekt!) bereits beim Upload fehl. Diese Variante ist strukturell
+// vollstaendig (xref + startxref + trailer) und wird vom Server akzeptiert.
 const MINIMAL_PDF = Buffer.from(
   `%PDF-1.4
 1 0 obj
@@ -31,12 +38,21 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>
 endobj
 4 0 obj
-<< /Length 52 >>
+<< /Length 44 >>
 stream
 BT /F1 12 Tf 100 700 Td (Rechnung E2E Filing) Tj ET
 endstream
 endobj
+xref
+0 5
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000206 00000 n
 trailer << /Size 5 /Root 1 0 R >>
+startxref
+300
 %%EOF`,
   'latin1'
 );

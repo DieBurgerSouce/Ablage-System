@@ -27,15 +27,16 @@ test.describe('Ablage - Kunden (Customers)', () => {
     // Verify search input exists
     await expect(page.getByPlaceholder(/Suche/i)).toBeVisible();
 
-    // Verify at least one customer is displayed (or empty state)
+    // Verify at least one customer is displayed (or empty state).
+    // KundenPage zeigt bei leerer Liste OHNE Suche "Keine Kunden vorhanden"
+    // und nur MIT Suche "Keine Kunden gefunden" (KundenPage.tsx:236) -> beide
+    // Leer-Varianten akzeptieren. Auf das Ende des Initial-Ladens warten,
+    // damit weder der "Lade Kunden..."-Spinner noch eine Render-Race den
+    // Zaehler verfaelscht.
     const customerCards = page.locator('[data-testid="customer-card"]');
-    const emptyState = page.getByText(/Keine Kunden gefunden/i);
+    const emptyState = page.getByText(/Keine Kunden (gefunden|vorhanden)/i);
 
-    // Either customers or empty state should be visible
-    const hasCustomers = await customerCards.count() > 0;
-    const hasEmptyState = await emptyState.isVisible().catch(() => false);
-
-    expect(hasCustomers || hasEmptyState).toBeTruthy();
+    await expect(customerCards.first().or(emptyState)).toBeVisible({ timeout: 15000 });
   });
 
   test('should filter customers by search', async ({ authenticatedPage: page }) => {
@@ -122,21 +123,35 @@ test.describe('Ablage - Folder Navigation', () => {
 
     // Click first customer
     const customerCard = page.locator('[data-testid="customer-card"]').first();
-    if (await customerCard.isVisible().catch(() => false)) {
-      await customerCard.click();
-      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await expect(customerCard).toBeVisible({ timeout: 15000 });
+    await customerCard.click();
 
-      // Check if we're on folder selection (Folie/Spargelmesser cards)
-      const folderCards = page.locator('[data-testid="folder-card"]');
-      const folieCard = page.getByText(/Folie/i);
-      const messerCard = page.getByText(/Spargelmesser/i);
+    // Die Ordner-Ansicht (CustomerFoldersView) laedt die Ordner async ueber
+    // /entities/{id}/folders und zeigt bis dahin "Lade Ordner...". Direkt auf
+    // einen der ehrlichen Endzustaende warten (NICHT auf eine Shell-Ueberschrift,
+    // die vor den Karten erscheint -> sonst Render-Race -> 0 Karten):
+    //   - Ordner-Auswahl (folder-card)
+    //   - Auto-Skip in einen konkreten Ordner (URL /kunden/{id}/{folderId})
+    //   - leerer Zustand "Keine Ordner gefunden"
+    const folderCard = page.locator('[data-testid="folder-card"]').first();
+    const emptyFolders = page.getByText(/Keine Ordner gefunden/i);
+    const autoSkippedPattern = /\/kunden\/[\w-]+\/[\w-]+/;
 
-      // If multi-folder, both should be visible
-      const hasFolderSelection = await folderCards.count() > 0;
-      const hasAutoSkipped = page.url().includes('/folie') || page.url().includes('/messer');
+    await expect
+      .poll(
+        async () =>
+          (await page.locator('[data-testid="folder-card"]').count()) > 0 ||
+          (await emptyFolders.isVisible().catch(() => false)) ||
+          autoSkippedPattern.test(page.url()),
+        { timeout: 15000 }
+      )
+      .toBeTruthy();
 
-      expect(hasFolderSelection || hasAutoSkipped).toBeTruthy();
-    }
+    const hasFolderSelection = (await page.locator('[data-testid="folder-card"]').count()) > 0;
+    const hasEmptyFolders = await emptyFolders.isVisible().catch(() => false);
+    const hasAutoSkipped = autoSkippedPattern.test(page.url());
+
+    expect(hasFolderSelection || hasAutoSkipped || hasEmptyFolders).toBeTruthy();
   });
 });
 
@@ -149,31 +164,23 @@ test.describe('Ablage - Category Navigation', () => {
 
     // Navigate through the hierarchy
     const customerCard = page.locator('[data-testid="customer-card"]').first();
-    if (await customerCard.isVisible().catch(() => false)) {
-      await customerCard.click();
-      await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await expect(customerCard).toBeVisible({ timeout: 15000 });
+    await customerCard.click();
 
-      // Click on a folder if visible
-      const folderCard = page.locator('[data-testid="folder-card"]').first();
-      if (await folderCard.isVisible().catch(() => false)) {
-        await folderCard.click();
-        await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
-      }
+    // Auf die Ordner-Auswahl warten (async geladen) und in den ersten Ordner
+    // navigieren. Erst danach erscheinen die Kategorie-Cards.
+    const folderCard = page.locator('[data-testid="folder-card"]').first();
+    await expect(folderCard).toBeVisible({ timeout: 15000 });
+    await folderCard.click();
 
-      // Should see category cards
-      const categoryCards = page.locator('[data-testid="category-card"]');
-      const categoriesVisible = await categoryCards.count() > 0;
-
-      // Alternative: check for specific category names
-      const rechnungenCard = page.getByText(/Rechnungen/i);
-      const angeboteCard = page.getByText(/Angebote/i);
-
-      const hasCategories = categoriesVisible ||
-        await rechnungenCard.isVisible().catch(() => false) ||
-        await angeboteCard.isVisible().catch(() => false);
-
-      expect(hasCategories).toBeTruthy();
-    }
+    // Kategorie-Cards erscheinen nach dem Laden der Kategorie-Statistiken.
+    // Auf eine konkrete Kategorie-Card ODER einen verifizierten Kategorienamen
+    // warten (kein sofortiges count() -> Render-Race):
+    const categoryCard = page.locator('[data-testid="category-card"]').first();
+    const rechnungenCard = page.getByText(/Rechnungen/i).first();
+    await expect(
+      categoryCard.or(rechnungenCard).or(page.getByText(/Angebote/i).first())
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('should show Druckdaten category only for Messer folder', async ({ authenticatedPage: page }) => {
