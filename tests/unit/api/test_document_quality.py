@@ -313,6 +313,7 @@ class TestGetCompanyQualityOverview:
                 request=request,
                 current_user=mock_user,
                 db=mock_db_session,
+                company_id=TEST_COMPANY_UUID,
             )
 
         assert result.total_documents == 50
@@ -385,4 +386,4 @@ class TestGetCompanyQualityOverview:
                 )
 
         assert exc_info.value.status_code == 500
-        assert exc_info.value.detail == "Qualitaetsuebersicht konnte nicht berechnet werden"
+        assert exc_info.value.detail == "Qualitaetsübersicht konnte nicht berechnet werden"
