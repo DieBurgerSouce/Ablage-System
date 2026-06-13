@@ -130,6 +130,7 @@ class TestSecurityCompliance:
                 {"entity_id": str(uuid4()), "error": "Another error"},
             ],
             "processing_time_ms": 1500,
+            "version": "v1",
         }
 
         result = calculate_all_risk_scores_task()
@@ -203,6 +204,7 @@ class TestCalculateAllRiskScoresTask:
             "skipped": 2,
             "errors": [],
             "processing_time_ms": 5000,
+            "version": "v1",
         }
 
         result = calculate_all_risk_scores_task()
@@ -223,6 +225,7 @@ class TestCalculateAllRiskScoresTask:
             "skipped": 0,
             "errors": [],
             "processing_time_ms": 2500,
+            "version": "v1",
         }
 
         result = calculate_all_risk_scores_task(entity_type="customer")
@@ -239,6 +242,7 @@ class TestCalculateAllRiskScoresTask:
             "skipped": 0,
             "errors": [],
             "processing_time_ms": 500,
+            "version": "v1",
         }
 
         result = calculate_all_risk_scores_task(limit=10)
@@ -394,6 +398,11 @@ class TestGenerateRiskStatisticsTask:
                 "high": 40,
                 "critical": 10,
             },
+            "trend_distribution": {
+                "improving": 200,
+                "stable": 250,
+                "worsening": 50,
+            },
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -418,6 +427,11 @@ class TestGenerateRiskStatisticsTask:
                 "medium": 25,
                 "high": 25,
                 "critical": 25,
+            },
+            "trend_distribution": {
+                "improving": 33,
+                "stable": 34,
+                "worsening": 33,
             },
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
