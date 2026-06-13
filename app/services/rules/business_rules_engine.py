@@ -55,6 +55,15 @@ DANGEROUS_REGEX_PATTERNS: tuple[str, ...] = (
     r"\(\w\+\)\+",      # (\w+)+
     r"\(\d\+\)\+",      # (\d+)+
     r"\(\s\+\)\+",      # (\s+)+
+    # Allgemein: Gruppe, deren Inhalt mit *|+ endet, gefolgt von *|+ aussen.
+    # Faengt (a+)+, (a*)*, (a+)*, (.*)+, ([a-z]*)+, (\w+)*, ((a+)+)+ etc. ab.
+    r"\([^()]*[*+]\)[*+]",
+    # Char-Klasse mit verschachteltem Quantifier: ([...]*)+ / ([...]+)+
+    r"\(\[[^\]]*\][*+]\)[*+]",
+    # Ueberlappende Alternation mit Quantifier: (a|a)+ / (a|aa)+
+    r"\([^)]*\|[^)]*\)[*+]",
+    # Gruppe mit innerem *|+ und {n,}-Wiederholung: (.*a){10,}
+    r"\([^()]*[*+][^()]*\)\{\d+,?\d*\}",
 )
 
 
@@ -73,7 +82,7 @@ def _is_regex_safe(pattern: str) -> tuple[bool, str]:
 
     for dangerous in DANGEROUS_REGEX_PATTERNS:
         if re.search(dangerous, pattern):
-            return False, "Gefaehrliches Regex-Pattern erkannt (ReDoS-Risiko)"
+            return False, "Gefährliches Regex-Pattern erkannt (ReDoS-Risiko)"
 
     # Try to compile to catch syntax errors
     try:
