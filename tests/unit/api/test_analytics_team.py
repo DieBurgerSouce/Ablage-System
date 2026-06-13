@@ -62,6 +62,19 @@ def _make_scalar_result(value):
     return result
 
 
+def _make_approvals_result(count=0, oldest=None):
+    """
+    Mock fuer die Pending-Approvals-Abfrage im Operations-Endpoint.
+
+    Der Endpoint ruft (innerhalb eines try-Blocks) zwischen prev_ocr und
+    error_rate ein zusaetzliches db.execute fuer ApprovalRequest auf und
+    liest .one().count / .one().oldest.
+    """
+    result = Mock()
+    result.one.return_value = Mock(count=count, oldest=oldest)
+    return result
+
+
 # =============================================================================
 # Shared Fixtures
 # =============================================================================
@@ -142,6 +155,7 @@ class TestOperationsEndpoint:
             _make_execute_result(doc_row),        # doc_counts
             _make_execute_result(ocr_row),        # ocr_accuracy
             prev_ocr_result,                      # prev_ocr
+            _make_approvals_result(),             # pending approvals
             _make_execute_result(error_row),      # error_rate
             Mock(all=Mock(return_value=[])),       # top_errors (AuditLog)
             _make_execute_result(timing_row),     # processing times
@@ -185,6 +199,7 @@ class TestOperationsEndpoint:
             _make_execute_result(doc_row),
             _make_execute_result(ocr_row),
             prev_ocr_scalar,
+            _make_approvals_result(),
             _make_execute_result(error_row),
             Mock(all=Mock(return_value=[])),
             _make_execute_result(timing_row),
@@ -220,6 +235,7 @@ class TestOperationsEndpoint:
             _make_execute_result(doc_row),
             _make_execute_result(ocr_row),
             prev_ocr_scalar,
+            _make_approvals_result(),
             _make_execute_result(error_row),
             Mock(all=Mock(return_value=[])),
             _make_execute_result(timing_row),
@@ -255,6 +271,7 @@ class TestOperationsEndpoint:
             _make_execute_result(doc_row),
             _make_execute_result(ocr_row),
             prev_ocr_scalar,
+            _make_approvals_result(),
             _make_execute_result(error_row),
             Mock(all=Mock(return_value=[])),
             _make_execute_result(timing_row),
@@ -292,6 +309,7 @@ class TestOperationsEndpoint:
             _make_execute_result(doc_row),
             _make_execute_result(ocr_row),
             prev_ocr_scalar,
+            _make_approvals_result(),
             _make_execute_result(error_row),
             Mock(all=Mock(return_value=[])),
             _make_execute_result(timing_row),
@@ -332,6 +350,7 @@ class TestOperationsEndpoint:
             _make_execute_result(empty_doc_row),
             _make_execute_result(empty_ocr_row),
             prev_ocr_scalar,
+            _make_approvals_result(),
             _make_execute_result(empty_error_row),
             Mock(all=Mock(return_value=[])),
             _make_execute_result(empty_timing_row),
@@ -391,6 +410,7 @@ class TestOperationsEndpoint:
                 _make_execute_result(doc_row_a),
                 _make_execute_result(empty_ocr),
                 prev_scalar,
+                _make_approvals_result(),
                 _make_execute_result(empty_error),
                 Mock(all=Mock(return_value=[])),
                 _make_execute_result(empty_timing),
@@ -402,6 +422,7 @@ class TestOperationsEndpoint:
                 _make_execute_result(doc_row_b),
                 _make_execute_result(empty_ocr),
                 prev_scalar,
+                _make_approvals_result(),
                 _make_execute_result(empty_error),
                 Mock(all=Mock(return_value=[])),
                 _make_execute_result(empty_timing),
@@ -457,7 +478,7 @@ class TestOperationsEndpoint:
             app.dependency_overrides = {}
 
         assert response.status_code == 500
-        assert "Betriebsdaten" in response.json().get("detail", "")
+        assert "Betriebsdaten" in response.json().get("nachricht", "")
 
     @pytest.mark.asyncio
     async def test_operations_top_errors_populated(
@@ -482,6 +503,7 @@ class TestOperationsEndpoint:
             _make_execute_result(doc_row),
             _make_execute_result(ocr_row),
             prev_ocr_scalar,
+            _make_approvals_result(),
             _make_execute_result(error_row),
             Mock(all=Mock(return_value=[err1, err2])),
             _make_execute_result(timing_row),
@@ -520,6 +542,7 @@ class TestOperationsEndpoint:
             _make_execute_result(doc_row),
             _make_execute_result(ocr_row),
             prev_ocr_scalar,
+            _make_approvals_result(),
             _make_execute_result(error_row),
             Mock(all=Mock(return_value=[])),
             _make_execute_result(timing_row),
@@ -598,7 +621,7 @@ class TestFinanceEndpoint:
             pay_date=datetime(2026, 2, 10, tzinfo=timezone.utc),
             amount=5000.0,
         )
-        cashflow_row.pay_date.strftime = lambda fmt: "2026-02-10"
+        # pay_date ist ein echtes datetime; sein .strftime liefert korrekt "2026-02-10".
 
         mock_db.execute.side_effect = self._make_finance_db_side_effects(
             open_row=open_row,
@@ -795,7 +818,7 @@ class TestFinanceEndpoint:
             app.dependency_overrides = {}
 
         assert response.status_code == 500
-        assert "Finanzdaten" in response.json().get("detail", "")
+        assert "Finanzdaten" in response.json().get("nachricht", "")
 
     @pytest.mark.asyncio
     async def test_finance_aging_buckets_populated(
@@ -1131,7 +1154,7 @@ class TestTeamStatsEndpoint:
             app.dependency_overrides = {}
 
         assert response.status_code == 500
-        assert "Team-Statistiken" in response.json().get("detail", "")
+        assert "Team-Statistiken" in response.json().get("nachricht", "")
 
     @pytest.mark.asyncio
     async def test_team_stats_quality_score_calculation(
@@ -1453,7 +1476,7 @@ class TestTeamWorkloadEndpoint:
             app.dependency_overrides = {}
 
         assert response.status_code == 500
-        assert "Workload" in response.json().get("detail", "")
+        assert "Workload" in response.json().get("nachricht", "")
 
     @pytest.mark.asyncio
     async def test_workload_skips_null_user_ids(
