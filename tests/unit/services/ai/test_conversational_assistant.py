@@ -318,7 +318,8 @@ class TestConversationalAssistantService:
         )
 
         assert len(follow_ups) == 3
-        assert any("aehnlich" in f.lower() for f in follow_ups)
+        # Echter Follow-up nutzt UTF-8-Umlaut: "Zeige ähnliche Dokumente"
+        assert any("ähnlich" in f.lower() for f in follow_ups)
 
 
 # =============================================================================

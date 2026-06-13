@@ -121,7 +121,7 @@ class TestSmartTaggingService:
             auto_apply=False,
         )
 
-        assert any(t.name == "ueberfaellig" for t in result.suggested_tags)
+        assert any(t.name == "überfällig" for t in result.suggested_tags)
 
     # -------------------------------------------------------------------------
     # Financial Analysis Tests
@@ -141,7 +141,7 @@ class TestSmartTaggingService:
         )
 
         financial_tags = [t for t in result.suggested_tags if t.category == TagCategory.FINANCIAL]
-        assert any(t.name == "skonto-moeglich" for t in financial_tags)
+        assert any(t.name == "skonto-möglich" for t in financial_tags)
 
     @pytest.mark.asyncio
     async def test_high_amount_detection(
@@ -225,7 +225,7 @@ class TestSmartTaggingService:
         )
 
         quality_tags = [t for t in result.suggested_tags if t.category == TagCategory.QUALITY]
-        assert any(t.name == "duplikat-moeglich" for t in quality_tags)
+        assert any(t.name == "duplikat-möglich" for t in quality_tags)
 
     @pytest.mark.asyncio
     async def test_incomplete_invoice_detection(
@@ -253,7 +253,7 @@ class TestSmartTaggingService:
         )
 
         quality_tags = [t for t in result.suggested_tags if t.category == TagCategory.QUALITY]
-        assert any(t.name == "unvollstaendig" for t in quality_tags)
+        assert any(t.name == "unvollständig" for t in quality_tags)
 
     # -------------------------------------------------------------------------
     # Action Analysis Tests
@@ -313,7 +313,7 @@ class TestSmartTaggingService:
         )
 
         action_tags = [t for t in result.suggested_tags if t.category == TagCategory.ACTION]
-        assert any(t.name == "mahnung-faellig" for t in action_tags)
+        assert any(t.name == "mahnung-fällig" for t in action_tags)
 
     # -------------------------------------------------------------------------
     # Trust Analysis Tests

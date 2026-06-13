@@ -90,6 +90,8 @@ INTENT_KEYWORDS: Dict[AssistantIntent, List[str]] = {
     ],
     AssistantIntent.ACTION_REQUEST: [
         "genehmige", "freigeben", "ablehnen", "kategorisiere", "verknüpfe",
+        # ASCII-Umlaut-Schreibweisen (Nutzer tippen oft ue/ae/oe statt ü/ä/ö)
+        "verknuepfe", "loesche", "kuerze",
         "erstelle", "exportiere", "plane", "approve", "reject", "categorize",
         "link", "create", "export", "schedule",
     ],
@@ -449,10 +451,21 @@ class ConversationalAssistantService:
                 if keyword in message_lower:
                     intent_scores[intent] += 1
 
-        # Hoechster Score als Vor-Klassifikation
+        # Hoechster Score als Vor-Klassifikation. Bei Gleichstand hat eine
+        # explizite Aktion (imperativer Verb) Vorrang vor reiner Dokument-Suche
+        # bzw. NLQ — "Genehmige diese Rechnung" ist eine Aktion, keine Suche.
         max_score = max(intent_scores.values())
         if max_score > 0:
-            preliminary_intent = max(intent_scores, key=intent_scores.get)
+            tie_break_priority = {
+                AssistantIntent.ACTION_REQUEST: 3,
+                AssistantIntent.NLQ: 2,
+                AssistantIntent.DOCUMENT_SEARCH: 1,
+                AssistantIntent.GENERAL: 0,
+            }
+            preliminary_intent = max(
+                intent_scores,
+                key=lambda i: (intent_scores[i], tie_break_priority.get(i, 0)),
+            )
             preliminary_confidence = min(0.5 + (max_score * 0.1), 0.85)
         else:
             preliminary_intent = AssistantIntent.GENERAL
