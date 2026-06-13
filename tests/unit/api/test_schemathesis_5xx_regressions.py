@@ -294,8 +294,13 @@ class TestJobsQueueClear:
 
     @pytest.mark.asyncio
     async def test_valid_status_still_fail_closed_503(self, mock_user, mock_db, company_id):
-        """Fail-Closed bleibt: valider Status ohne Rate-Limiter -> 503."""
-        with patch(
+        """Fail-Closed bleibt: valider Status ohne Rate-Limiter -> 503.
+
+        Seit Bugfix 2026-06-12 greift Fail-Closed nur bei aktiviertem
+        Rate-Limiting (conftest setzt RATE_LIMIT_ENABLED=False). Daher hier
+        explizit aktivieren, sonst kehrt die Dependency frueh mit 200 zurueck.
+        """
+        with patch.object(deps.settings, "RATE_LIMIT_ENABLED", True), patch(
             "app.core.rate_limiting.get_redis_storage",
             new=AsyncMock(return_value=None),
         ):
