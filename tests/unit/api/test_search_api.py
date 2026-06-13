@@ -627,7 +627,7 @@ class TestClearSearchHistoryEndpoint:
             data = response.json()
 
             assert data["erfolg"] is True
-            assert "geloeschte_eintraege" in data
+            assert "gelöschte_einträge" in data
             assert "nachricht" in data
 
     @pytest.mark.asyncio
@@ -662,7 +662,7 @@ class TestClearSearchHistoryEndpoint:
                 response = await client.delete("/search/recent")
 
             assert response.status_code == 503
-            assert "Redis nicht verfuegbar" in response.json()["detail"]
+            assert "Redis nicht verfügbar" in response.json()["detail"]
 
 
 # ========================= Trending Searches Endpoint Tests =========================
@@ -919,7 +919,7 @@ class TestGermanResponses:
 
             # German field names
             assert "erfolg" in data
-            assert "geloeschte_eintraege" in data
+            assert "gelöschte_einträge" in data
             assert "nachricht" in data
             assert "Suchhistorie" in data["nachricht"]
 

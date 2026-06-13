@@ -122,26 +122,26 @@ async def get_search_facets(
         )
 
     except OperationalError as e:
-        logger.error("facets_db_connection_error", error_type="OperationalError", **safe_error_log(e))
+        logger.error("facets_db_connection_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfügbar"
         )
     except SQLAlchemyError as e:
-        logger.error("facets_db_error", error_type=type(e).__name__, **safe_error_log(e))
+        logger.error("facets_db_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Facetten"
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("facets_validation_error", error_type="ValueError", **safe_error_log(e))
+        logger.warning("facets_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungültige Filterparameter. Bitte Eingaben prüfen."
         )
     except Exception as e:
-        logger.error("facets_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
+        logger.error("facets_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Facetten"
@@ -279,19 +279,19 @@ async def get_search_suggestions(
         )
 
     except OperationalError as e:
-        logger.error("suggest_db_connection_error", error_type="OperationalError", **safe_error_log(e))
+        logger.error("suggest_db_connection_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfügbar"
         )
     except SQLAlchemyError as e:
-        logger.error("suggest_db_error", error_type=type(e).__name__, **safe_error_log(e))
+        logger.error("suggest_db_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler bei der Autovervollständigung"
         )
     except Exception as e:
-        logger.error("suggest_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
+        logger.error("suggest_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler bei der Autovervollständigung"
@@ -345,19 +345,19 @@ async def get_popular_tags(
         }
 
     except OperationalError as e:
-        logger.error("popular_tags_db_connection_error", error_type="OperationalError", **safe_error_log(e))
+        logger.error("popular_tags_db_connection_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfügbar"
         )
     except SQLAlchemyError as e:
-        logger.error("popular_tags_db_error", error_type=type(e).__name__, **safe_error_log(e))
+        logger.error("popular_tags_db_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Tags"
         )
     except Exception as e:
-        logger.error("popular_tags_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
+        logger.error("popular_tags_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Tags"
@@ -473,13 +473,13 @@ async def clear_search_history(
         }
 
     except (RedisError, RedisConnectionError) as e:
-        logger.error("clear_search_history_redis_error", error_type=type(e).__name__, **safe_error_log(e))
+        logger.error("clear_search_history_redis_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Redis nicht verfügbar - Suchhistorie konnte nicht gelöscht werden"
         )
     except Exception as e:
-        logger.error("clear_search_history_error", error_type=type(e).__name__, **safe_error_log(e))
+        logger.error("clear_search_history_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Löschen der Suchhistorie"
@@ -780,19 +780,19 @@ async def get_search_stats(
         }
 
     except OperationalError as e:
-        logger.error("search_stats_db_connection_error", error_type="OperationalError", **safe_error_log(e))
+        logger.error("search_stats_db_connection_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfügbar"
         )
     except SQLAlchemyError as e:
-        logger.error("search_stats_db_error", error_type=type(e).__name__, **safe_error_log(e))
+        logger.error("search_stats_db_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Statistiken"
         )
     except Exception as e:
-        logger.error("search_stats_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
+        logger.error("search_stats_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Statistiken"
@@ -858,19 +858,19 @@ async def get_weighted_ctr_analytics(
         return result
 
     except OperationalError as e:
-        logger.error("weighted_ctr_db_connection_error", error_type="OperationalError", **safe_error_log(e))
+        logger.error("weighted_ctr_db_connection_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfügbar"
         )
     except SQLAlchemyError as e:
-        logger.error("weighted_ctr_db_error", error_type=type(e).__name__, **safe_error_log(e))
+        logger.error("weighted_ctr_db_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Weighted CTR Statistiken"
         )
     except Exception as e:
-        logger.error("weighted_ctr_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
+        logger.error("weighted_ctr_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Weighted CTR Statistiken"
