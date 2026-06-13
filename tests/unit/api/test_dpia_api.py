@@ -85,7 +85,8 @@ class TestGetDpiaMultiTenant:
             from app.api.v1.dpia import get_dpia
 
             result = await get_dpia(
-                request=mock_request, dpia_id=dpia.id, db=mock_db, current_user=user_company_a
+                request=mock_request, dpia_id=dpia.id, db=mock_db,
+                current_user=user_company_a, company_id=user_company_a.company_id
             )
 
         # Service wurde mit company_id-Filter aufgerufen
@@ -170,6 +171,7 @@ class TestUpdateDpiaStatusMultiTenant:
                 body=req,
                 db=mock_db,
                 current_user=user_company_a,
+                company_id=user_company_a.company_id,
             )
 
         kwargs = mock_svc.update_status.await_args.kwargs
@@ -222,6 +224,7 @@ class TestAddDpoConsultationMultiTenant:
                 body=req,
                 db=mock_db,
                 current_user=user_company_a,
+                company_id=user_company_a.company_id,
             )
 
         kwargs = mock_svc.add_dpo_consultation.await_args.kwargs
@@ -294,7 +297,8 @@ class TestRecommendationsAndAuditMultiTenant:
             from app.api.v1.dpia import get_audit_trail
 
             result = await get_audit_trail(
-                request=mock_request, dpia_id=dpia.id, db=mock_db, current_user=user_company_a
+                request=mock_request, dpia_id=dpia.id, db=mock_db,
+                current_user=user_company_a, company_id=user_company_a.company_id
             )
         mock_svc.get_by_id.assert_awaited_once_with(
             mock_db, dpia.id, company_id=user_company_a.company_id
