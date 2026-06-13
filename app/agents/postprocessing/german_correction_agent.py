@@ -248,12 +248,27 @@ class CustomVocabularyManager:
             vocab_dir: Verzeichnis für Vocabulary-Dateien
         """
         self.vocab_dir = vocab_dir or self.DEFAULT_VOCAB_DIR
-        self.vocab_dir.mkdir(parents=True, exist_ok=True)
         self._vocabularies: Dict[str, Set[str]] = {}
         self._corrections: Dict[str, Dict[str, str]] = {}
         self._lock = threading.Lock()
 
-        # Load existing vocabularies
+        # Persistenz ist optional: Steht das Vocabulary-Verzeichnis nicht zur
+        # Verfügung (z. B. Read-Only-Dateisystem, fehlende Rechte), arbeitet der
+        # Manager rein In-Memory weiter, statt den gesamten Agenten lahmzulegen.
+        # (Analog zu den optionalen Hunspell-/LanguageTool-Integrationen.)
+        self._persistence_enabled = True
+        try:
+            self.vocab_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            self._persistence_enabled = False
+            logger.warning(
+                "custom_vocabulary_persistence_disabled",
+                message="Vocabulary-Verzeichnis nicht verfügbar - In-Memory-Modus aktiv",
+                vocab_dir=str(self.vocab_dir),
+                **safe_error_log(e),
+            )
+
+        # Load existing vocabularies (no-op wenn Persistenz deaktiviert)
         self._load_all_vocabularies()
 
         logger.info(
@@ -264,6 +279,8 @@ class CustomVocabularyManager:
 
     def _load_all_vocabularies(self) -> None:
         """Lade alle existierenden Vocabularies."""
+        if not self._persistence_enabled:
+            return
         for vocab_file in self.vocab_dir.glob("*.json"):
             try:
                 project_id = vocab_file.stem
@@ -291,6 +308,8 @@ class CustomVocabularyManager:
 
     def _save_vocabulary(self, project_id: str) -> None:
         """Speichere Vocabulary für ein Projekt."""
+        if not self._persistence_enabled:
+            return
         vocab_file = self.vocab_dir / f"{project_id}.json"
 
         with self._lock:
@@ -367,6 +386,8 @@ class CustomVocabularyManager:
             if project_id in self._corrections:
                 del self._corrections[project_id]
 
+        if not self._persistence_enabled:
+            return False
         vocab_file = self.vocab_dir / f"{project_id}.json"
         if vocab_file.exists():
             vocab_file.unlink()
