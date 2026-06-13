@@ -18,6 +18,7 @@ Testet alle 11 Outbound-Webhook-Endpoints:
 Feinpoliert und durchdacht - Enterprise Test Coverage.
 """
 
+import contextlib
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, Mock, patch
@@ -85,24 +86,52 @@ def _mock_event_log(company_id=None):
 
 
 def _patch_deps():
-    """Patcht require_company, get_db und get_webhook_service fuer Outbound-API."""
+    """Bereitet Dependency-Overrides + Service-Patch fuer die Outbound-API vor.
+
+    WICHTIG: require_company und get_db sind FastAPI-Depends. Diese muessen
+    ueber app.dependency_overrides ersetzt werden - ein unittest.mock.patch auf
+    den Modul-Symbolen wirkt NICHT, weil FastAPI die Dependencies zur
+    Wiring-Zeit aufloest (das war der Grund fuer 401 in allen Tests).
+
+    get_webhook_service wird hingegen direkt im Endpoint-Body aufgerufen und
+    laesst sich daher per patch ersetzen.
+
+    Rueckgabe: (deps_cm, p_db_noop, p_service, company, mock_db, mock_service)
+    - deps_cm setzt die dependency_overrides (require_company + get_db) und
+      raeumt sie am Ende wieder ab.
+    - p_db_noop ist ein Dummy-Kontext (Abwaertskompatibilitaet mit `with ...`).
+    """
+    from app.main import app
+    from app.middleware.company_context import require_company
+    from app.api.dependencies import get_db
+
     company = Mock()
     company.id = uuid4()
 
     mock_db = AsyncMock()
     mock_service = Mock()
 
-    p_company = patch(
-        "app.api.v1.webhooks_outbound.require_company", return_value=company
-    )
-    p_db = patch(
-        "app.api.v1.webhooks_outbound.get_db", return_value=mock_db
-    )
+    @contextlib.contextmanager
+    def _deps_cm():
+        async def _override_company():
+            return company
+
+        async def _override_db():
+            yield mock_db
+
+        app.dependency_overrides[require_company] = _override_company
+        app.dependency_overrides[get_db] = _override_db
+        try:
+            yield
+        finally:
+            app.dependency_overrides.pop(require_company, None)
+            app.dependency_overrides.pop(get_db, None)
+
     p_service = patch(
         "app.api.v1.webhooks_outbound.get_webhook_service", return_value=mock_service
     )
 
-    return p_company, p_db, p_service, company, mock_db, mock_service
+    return _deps_cm(), contextlib.nullcontext(), p_service, company, mock_db, mock_service
 
 
 # =============================================================================
@@ -371,10 +400,12 @@ class TestTestEndpoint:
         mock_db.refresh = AsyncMock()
         mock_db.commit = AsyncMock()
 
+        # deliver_webhook und WebhookDelivery werden im Endpoint LOKAL importiert
+        # (from ... import ... innerhalb der Funktion), daher an der Quelle patchen.
         with p_company, p_db, p_service, patch(
-            "app.api.v1.webhooks_outbound.WebhookDelivery", return_value=mock_delivery
+            "app.db.models_webhooks.WebhookDelivery", return_value=mock_delivery
         ), patch(
-            "app.api.v1.webhooks_outbound.deliver_webhook"
+            "app.workers.tasks.webhook_tasks.deliver_webhook"
         ) as mock_task:
             mock_task.delay = Mock()
             response = await async_client.post(
@@ -416,10 +447,12 @@ class TestTestEndpoint:
         mock_db.refresh = AsyncMock()
         mock_db.commit = AsyncMock()
 
+        # deliver_webhook und WebhookDelivery werden im Endpoint LOKAL importiert
+        # (from ... import ... innerhalb der Funktion), daher an der Quelle patchen.
         with p_company, p_db, p_service, patch(
-            "app.api.v1.webhooks_outbound.WebhookDelivery", return_value=mock_delivery
+            "app.db.models_webhooks.WebhookDelivery", return_value=mock_delivery
         ), patch(
-            "app.api.v1.webhooks_outbound.deliver_webhook"
+            "app.workers.tasks.webhook_tasks.deliver_webhook"
         ) as mock_task:
             mock_task.delay = Mock()
             response = await async_client.post(
