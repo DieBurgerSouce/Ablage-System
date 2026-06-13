@@ -133,7 +133,7 @@ class TestBackupPostgresTask:
 
                 assert result["erfolg"] is True
                 assert result["typ"] == "postgres"
-                assert result["groesse_mb"] == 50.0
+                assert result["größe_mb"] == 50.0
 
     def test_backup_postgres_calculates_size(self, mock_backup_service):
         """Groesse sollte korrekt berechnet werden."""
@@ -154,7 +154,7 @@ class TestBackupPostgresTask:
 
                 result = backup_postgres_task.run()
 
-                assert result["groesse_mb"] == 100.0
+                assert result["größe_mb"] == 100.0
 
 
 # ========================= backup_redis_task Tests =========================
@@ -209,7 +209,7 @@ class TestApplyRetentionTask:
                 result = apply_retention_task.run()
 
                 assert result["erfolg"] is True
-                assert result["geloescht_gesamt"] == 10
+                assert result["gelöscht_gesamt"] == 10
 
     def test_retention_no_old_backups(self, mock_backup_service):
         """Ohne alte Backups sollte nichts geloescht werden."""
@@ -223,7 +223,7 @@ class TestApplyRetentionTask:
 
                 result = apply_retention_task.run()
 
-                assert result["geloescht_gesamt"] == 0
+                assert result["gelöscht_gesamt"] == 0
 
 
 # ========================= sync_to_remote_task Tests =========================
