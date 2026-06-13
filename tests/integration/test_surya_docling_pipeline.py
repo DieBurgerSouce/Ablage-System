@@ -11,6 +11,8 @@ Hinweis: Diese Tests benötigen installierte Abhängigkeiten (surya-ocr, docling
 
 import pytest
 import asyncio
+import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 import time
@@ -64,24 +66,25 @@ class TestBackendManagerIntegration:
         if "surya_enhanced" not in manager.get_available_backends():
             pytest.skip("surya_enhanced nicht verfügbar")
 
-        # Temporäre PDF-Datei simulieren
-        with patch('pathlib.Path.stat') as mock_stat:
-            mock_stat.return_value = MagicMock(st_size=1024 * 1024)  # 1MB
+        # 2026-06-13: Frueher wurde `pathlib.Path` global gemockt — das brach
+        # `Path(image_path)` im Backend (Py3.11: 'Path' has no attribute
+        # '_flavour'). Gegen den echten Vertrag testen: `select_backend` ruft
+        # `Path(image_path).stat().st_size` auf, die Datei MUSS also existieren.
+        # Daher echte temporaere PDF-Datei statt Mock.
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(b"%PDF-1.4 dummy content for backend selection test")
+            pdf_path = tmp.name
 
-            with patch('pathlib.Path.suffix', new_callable=lambda: property(lambda self: '.pdf')):
-                # Mock Path-Objekt
-                mock_path = MagicMock()
-                mock_path.suffix = '.pdf'
-                mock_path.stat.return_value.st_size = 1024 * 1024
+        try:
+            backend = await manager.select_backend(
+                image_path=pdf_path,
+                language="de",
+                prefer_gpu=False,
+            )
+        finally:
+            os.unlink(pdf_path)
 
-                with patch('pathlib.Path', return_value=mock_path):
-                    backend = await manager.select_backend(
-                        image_path="/tmp/test.pdf",
-                        language="de",
-                        prefer_gpu=False,
-                    )
-
-        # Bei PDF sollte surya_enhanced bevorzugt werden
+        # Bei PDF (CPU-only) waehlt der Manager Surya/GOT-OCR — kein GPU-Backend
         assert backend in ["surya_enhanced", "surya", "got_ocr"]
 
 

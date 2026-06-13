@@ -328,16 +328,22 @@ class TestCeleryTaskIntegration:
 
     @pytest.mark.asyncio
     async def test_task_names(self):
-        """Test that tasks have correct names."""
+        """Test that tasks have correct names.
+
+        2026-06-13: Auf die tatsaechlich registrierte Namenskonvention
+        modernisiert. Alle ERP-Tasks in app/workers/tasks/erp_sync_tasks.py
+        verwenden konsistent den vollqualifizierten Modulpfad als `name=` (nicht
+        den frueher erwarteten Kurznamen `erp.*`, der nirgends registriert ist).
+        """
         from app.workers.tasks.erp_sync_tasks import (
             sync_connection,
             sync_entity,
             scheduled_sync_all,
         )
 
-        assert sync_connection.name == "erp.sync_connection"
-        assert sync_entity.name == "erp.sync_entity"
-        assert scheduled_sync_all.name == "erp.scheduled_sync_all"
+        assert sync_connection.name == "app.workers.tasks.erp_sync_tasks.sync_connection"
+        assert sync_entity.name == "app.workers.tasks.erp_sync_tasks.sync_entity"
+        assert scheduled_sync_all.name == "app.workers.tasks.erp_sync_tasks.scheduled_sync_all"
 
 
 # =============================================================================

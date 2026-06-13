@@ -15,7 +15,16 @@ import sys
 # Add MCP server to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / ".claude" / "mcp-server"))
 
-from orchestration_server import (
+# Diese Suite testet das claude-flow-Orchestrierungs-Tooling unter
+# `.claude/mcp-server/`, NICHT die Ablage-App. Dieses Verzeichnis ist im
+# Backend-Container nicht gemountet (nur `app/` + `tests/`), daher ist das
+# Modul dort nicht importierbar. Sauber ueberspringen statt Collection-Error.
+pytest.importorskip(
+    "orchestration_server",
+    reason="claude-flow MCP-Server-Tooling (.claude/mcp-server) im App-Container nicht verfuegbar",
+)
+
+from orchestration_server import (  # noqa: E402
     OrchestrationMCPServer,
     TaskRouting,
     TaskClassifier,

@@ -13,10 +13,19 @@ from typing import Dict, Any
 # ein flacher Import bricht mit "attempted relative import with no known parent package".
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude"))
 
-from orchestration.orchestrator import Orchestrator, OverrideMode, OrchestrationResult
-from orchestration.task_classifier import TaskClassifier, ModelTier
-from orchestration.quality_gate import QualityGate, QualityResult, QualityLevel
-from orchestration.decision_cache import DecisionCache
+# Diese Suite testet das claude-flow-Orchestrierungs-Tooling unter
+# `.claude/orchestration/`, NICHT die Ablage-App. Dieses Verzeichnis ist im
+# Backend-Container nicht gemountet (nur `app/` + `tests/`), daher ist das Paket
+# dort nicht importierbar. Sauber ueberspringen statt Collection-Error.
+pytest.importorskip(
+    "orchestration.orchestrator",
+    reason="claude-flow-Orchestrierungs-Tooling (.claude/orchestration) im App-Container nicht verfuegbar",
+)
+
+from orchestration.orchestrator import Orchestrator, OverrideMode, OrchestrationResult  # noqa: E402
+from orchestration.task_classifier import TaskClassifier, ModelTier  # noqa: E402
+from orchestration.quality_gate import QualityGate, QualityResult, QualityLevel  # noqa: E402
+from orchestration.decision_cache import DecisionCache  # noqa: E402
 
 
 @pytest.mark.integration

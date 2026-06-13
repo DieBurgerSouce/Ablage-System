@@ -568,23 +568,17 @@ class TestPipelineWorkflows:
         assert result.backend_used == "deepseek"
         assert result.processing_time_ms >= 0
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "ECHTER BUG (W3, 2026-06-12): Im generischen except-Block von "
-            "FallbackChain.execute kollidiert `**safe_error_log(e)` mit dem "
-            "zusaetzlichen Kwarg `error_type=` (safe_error_log enthaelt "
-            "error_type bereits) -> TypeError IM Exception-Handler -> die "
-            "urspruengliche Backend-Exception propagiert und es findet KEIN "
-            "Fallback statt. Kern-Resilienz-Feature tot fuer Backend-Fehler. "
-            "Fix: doppeltes error_type-Kwarg in app/services/fallback_chain.py "
-            "(~Zeile 450) entfernen (out-of-zone), siehe Manifest w3-tests."
-        ),
-        raises=TypeError,  # der Logging-TypeError ueberlagert die RuntimeError
-    )
     @pytest.mark.asyncio
     async def test_fallback_workflow(self) -> None:
-        """Teste Fallback-Workflow wenn primaeres Backend fehlschlaegt."""
+        """Teste Fallback-Workflow wenn primaeres Backend fehlschlaegt.
+
+        Regression (2026-06-13): Der frueher als ECHTER BUG markierte
+        TypeError-im-Exception-Handler (doppeltes `error_type`-Kwarg neben
+        `**safe_error_log(e)` in FallbackChain.execute) ist behoben
+        (app/services/fallback_chain.py ~Z. 455). Der stale `xfail(strict=True)`
+        wurde entfernt; dieser Test bewacht jetzt aktiv das Fallback-Verhalten:
+        Backend-Fehler darf den Fallback NICHT mehr verhindern.
+        """
         chain = FallbackChain(
             backends=[
                 BackendConfig(

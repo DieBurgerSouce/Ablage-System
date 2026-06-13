@@ -9,6 +9,20 @@ from unittest.mock import Mock, patch, mock_open
 # Add hooks to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "hooks"))
 
+# Diese Suite testet die claude-flow-Hooks unter `.claude/hooks/`
+# (claude_task_interceptor, post_task_quality), NICHT die Ablage-App. Dieses
+# Verzeichnis ist im Backend-Container nicht gemountet (nur `app/` + `tests/`),
+# daher sind die Module dort nicht importierbar. Sauber ueberspringen statt
+# ModuleNotFoundError je Testmethode.
+pytest.importorskip(
+    "claude_task_interceptor",
+    reason="claude-flow-Hook-Tooling (.claude/hooks) im App-Container nicht verfuegbar",
+)
+pytest.importorskip(
+    "post_task_quality",
+    reason="claude-flow-Hook-Tooling (.claude/hooks) im App-Container nicht verfuegbar",
+)
+
 
 @pytest.mark.integration
 class TestHookInterception:

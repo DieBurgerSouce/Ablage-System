@@ -153,7 +153,8 @@ class GermanSpellchecker:
         max_edit_distance: int = 2,
         prefix_length: int = 7,
         count_threshold: int = 1,
-        load_business_vocab: bool = True
+        load_business_vocab: bool = True,
+        max_auto_correct_distance: int = 1
     ):
         """
         Initialize German Spellchecker.
@@ -164,10 +165,20 @@ class GermanSpellchecker:
             prefix_length: Prefix length for SymSpell (affects memory/speed tradeoff)
             count_threshold: Minimum word frequency threshold
             load_business_vocab: Load built-in German business vocabulary
+            max_auto_correct_distance: Maximale Editierdistanz, ab der eine
+                Korrektur AUTOMATISCH (correct_word/correct_text) angewendet wird.
+                Standard 1, da das eingebaute Frequenzwoerterbuch klein/lueckig
+                ist: Distanz-2-Treffer ersetzen sonst korrekte, nur nicht
+                gelistete Woerter durch falsche (z. B. "Müller"->"Mueller",
+                "Größe"->"Grüßen", "ist"->"mit", "World"->"Wolf"). Distanz-1
+                deckt den dominanten OCR-Fehlerfall (Einzelzeichen) ab. Die
+                allgemeine `lookup`-Methode bleibt von dieser Grenze unberuehrt
+                und liefert weiterhin Vorschlaege bis `max_edit_distance`.
         """
         self.max_edit_distance = max_edit_distance
         self.prefix_length = prefix_length
         self.count_threshold = count_threshold
+        self.max_auto_correct_distance = max(1, min(max_auto_correct_distance, max_edit_distance))
         self._custom_words: Set[str] = set()
         self._sym_spell: Optional["SymSpell"] = None
         self._initialized = False
@@ -342,9 +353,20 @@ class GermanSpellchecker:
             return word
 
         suggestions = self.lookup(word, max_edit_distance)
-        if suggestions:
-            return suggestions[0][0]
-        return word
+        if not suggestions:
+            return word
+
+        best_term, best_distance, _best_count = suggestions[0]
+
+        # Konservativ: Nur AUTOMATISCH ersetzen, wenn der beste Vorschlag nah
+        # genug ist. Das eingebaute Frequenzwoerterbuch ist klein und enthaelt
+        # viele korrekte Alltagswoerter NICHT (z. B. "ist", "Müller", "Größe").
+        # Distanz-2-Treffer wuerden solche Woerter sonst durch ein anderes,
+        # haeufiges Woerterbuchwort ersetzen und korrekten Text zerstoeren.
+        if best_distance > self.max_auto_correct_distance:
+            return word
+
+        return best_term
 
     def correct_text(
         self,
