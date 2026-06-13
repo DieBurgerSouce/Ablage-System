@@ -223,19 +223,18 @@ class TestMT940ParserParse:
             "currency": "EUR",
         }
 
-        mock_stmt = Mock()
-        mock_stmt.account_id = None
-        mock_stmt.bic = None
-        mock_stmt.opening_balance = None
-        mock_stmt.final_closing_balance = None
-        mock_stmt.closing_balance = None
-        mock_stmt.transactions = [mock_tx]
+        # mt940.parse() liefert eine Transactions-COLLECTION: Iteration ergibt
+        # die einzelnen Transaktionen, Statement-Metadaten liegen in .data
+        # (Parser-Refactor 2026-06-12).
+        collection = _make_mt940_collection(data={}, transactions=[mock_tx])
 
-        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=[mock_stmt]):
+        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=collection):
             result = parser.parse("mt940 content")
 
         assert result.success is True
         assert len(result.transactions) == 1
+        # extra_details als String wird als counterparty_name uebernommen
+        assert result.transactions[0].counterparty_name == "Max Mustermann"
 
     def test_parse_statistics(self, parser: MT940Parser) -> None:
         """Berechnet Gutschriften und Belastungen korrekt."""
@@ -260,18 +259,17 @@ class TestMT940ParserParse:
             }
             return tx
 
-        mock_stmt = Mock()
-        mock_stmt.account_id = None
-        mock_stmt.bic = None
-        mock_stmt.opening_balance = None
-        mock_stmt.final_closing_balance = None
-        mock_stmt.closing_balance = None
-        mock_stmt.transactions = [
-            make_tx(mock_credit, date(2024, 1, 10)),
-            make_tx(mock_debit, date(2024, 1, 15)),
-        ]
+        # Transactions-COLLECTION: Iteration ergibt die einzelnen Transaktionen
+        # (Parser-Refactor 2026-06-12).
+        collection = _make_mt940_collection(
+            data={},
+            transactions=[
+                make_tx(mock_credit, date(2024, 1, 10)),
+                make_tx(mock_debit, date(2024, 1, 15)),
+            ],
+        )
 
-        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=[mock_stmt]):
+        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=collection):
             result = parser.parse("mt940 content")
 
         assert result.success is True
