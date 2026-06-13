@@ -76,6 +76,26 @@ class PortalAuthService:
         """Hash ein Passwort."""
         return pwd_context.hash(password)
 
+    # Marker fuer HTML-/Skript-Injection in Anzeigenamen (CWE-79).
+    _UNSAFE_NAME_MARKERS = ("<", ">", "script", "javascript:", "onerror", "onclick", "onload")
+
+    def _validate_display_name(self, value: str, field_label: str) -> None:
+        """Lehnt Anzeigenamen mit HTML-/Skript-Injection-Markern ab.
+
+        Portal-Anzeigenamen werden in der Admin-Oberflaeche gerendert; sie
+        duerfen daher keine HTML-Tags oder Skript-Vektoren enthalten.
+
+        Raises:
+            ValueError: Wenn der Name unsichere Marker enthaelt.
+        """
+        lowered = value.lower()
+        for marker in self._UNSAFE_NAME_MARKERS:
+            if marker in lowered:
+                raise ValueError(
+                    f"{field_label} enthaelt unzulaessige Zeichen "
+                    f"und kann nicht gespeichert werden."
+                )
+
     async def create_invitation(
         self,
         entity_id: UUID,
@@ -169,6 +189,13 @@ class PortalAuthService:
         # Prüfe Ablauf
         if portal_user.invitation_expires_at and portal_user.invitation_expires_at < datetime.now(timezone.utc):
             raise PortalAuthError("Einladung ist abgelaufen")
+
+        # Eingaben gegen XSS/HTML-Injection validieren (CWE-79).
+        # Anzeigenamen duerfen keine HTML- oder Skript-Marker enthalten.
+        if first_name:
+            self._validate_display_name(first_name, "Vorname")
+        if last_name:
+            self._validate_display_name(last_name, "Nachname")
 
         # Aktiviere Account
         portal_user.hashed_password = self._hash_password(password)

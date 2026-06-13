@@ -125,7 +125,7 @@ class TestAuthentication:
             with pytest.raises(InvalidPortalCredentialsError) as exc_info:
                 await auth_service.authenticate("kunde@beispiel.de", "wrongpassword", company_id)
 
-            assert "Ungueltige Anmeldedaten" in str(exc_info.value)
+            assert "Ungültige Anmeldedaten" in str(exc_info.value)
             assert sample_portal_user.failed_login_attempts == 1
 
     @pytest.mark.asyncio
@@ -395,7 +395,7 @@ class TestSessionRefresh:
         with pytest.raises(PortalAuthError) as exc_info:
             await auth_service.refresh_session("invalid_refresh_token")
 
-        assert "Ungueltige oder abgelaufene Session" in str(exc_info.value)
+        assert "Ungültige oder abgelaufene Session" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_refresh_session_expired_refresh_token(
@@ -574,7 +574,7 @@ class TestAccountActivation:
         with pytest.raises(PortalUserNotFoundError) as exc_info:
             await auth_service.activate_account("invalid_token", "password")
 
-        assert "Ungueltige oder abgelaufene Einladung" in str(exc_info.value)
+        assert "Ungültige oder abgelaufene Einladung" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_activate_account_expired_invitation(
@@ -995,13 +995,28 @@ class TestSecurityBruteForce:
         sample_portal_user: PortalUser,
         company_id: UUID,
     ):
-        """Account sollte nach MAX_FAILED_ATTEMPTS gesperrt werden."""
-        sample_portal_user.failed_login_attempts = MAX_FAILED_ATTEMPTS
+        """Account sollte nach MAX_FAILED_ATTEMPTS gesperrt werden.
+
+        Vertrag des echten Services: Ein falsches Passwort beim Erreichen der
+        Maximalzahl erhoeht den Zaehler, SETZT die Sperre (locked_until) und
+        wirft fuer DIESEN Versuch noch InvalidPortalCredentialsError. Erst der
+        NAECHSTE Versuch wuerde PortalAccountLockedError ausloesen.
+        """
+        sample_portal_user.failed_login_attempts = MAX_FAILED_ATTEMPTS - 1
+        sample_portal_user.locked_until = None
 
         mock_db.execute.return_value = create_mock_result(scalar_value=sample_portal_user)
 
-        with pytest.raises(PortalAccountLockedError):
-            await auth_service.authenticate("kunde@beispiel.de", "wrong", company_id)
+        # _verify_password mocken: Der Fixture-Hash ist kein gueltiger bcrypt-Hash,
+        # echtes pwd_context.verify wuerde mit "salt too small" abbrechen, bevor die
+        # Lockout-Logik erreicht wird. Falsches Passwort -> Verify liefert False.
+        with patch.object(auth_service, "_verify_password", return_value=False):
+            with pytest.raises(InvalidPortalCredentialsError):
+                await auth_service.authenticate("kunde@beispiel.de", "wrong", company_id)
+
+        # Sperre wurde gesetzt, sobald die Maximalzahl erreicht ist.
+        assert sample_portal_user.failed_login_attempts == MAX_FAILED_ATTEMPTS
+        assert sample_portal_user.locked_until is not None
 
     @pytest.mark.asyncio
     async def test_lockout_duration_enforced(
