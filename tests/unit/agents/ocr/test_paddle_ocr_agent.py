@@ -122,8 +122,13 @@ class TestPaddleOCRModelLoading:
     def test_load_model_sync_creates_ocr_instance(self):
         """_load_model_sync() sollte PaddleOCR Instanz erstellen."""
         mock_ocr = Mock()
+        mock_class = Mock(return_value=mock_ocr)
 
-        with patch('paddleocr.PaddleOCR', return_value=mock_ocr) as mock_class:
+        # 'from paddleocr import PaddleOCR' loest die echte paddleocr-Init aus
+        # (PDX/.paddlex, read-only Rootfs). Daher das Modul in sys.modules mocken.
+        fake_paddleocr = MagicMock()
+        fake_paddleocr.PaddleOCR = mock_class
+        with patch.dict('sys.modules', {'paddleocr': fake_paddleocr}):
             from app.agents.ocr.paddle_ocr_agent import PaddleOCRAgent
 
             agent = PaddleOCRAgent()
@@ -137,7 +142,10 @@ class TestPaddleOCRModelLoading:
 
     def test_load_model_sync_skips_if_already_loaded(self):
         """_load_model_sync() sollte ueberspringen wenn schon geladen."""
-        with patch('paddleocr.PaddleOCR') as mock_class:
+        mock_class = Mock()
+        fake_paddleocr = MagicMock()
+        fake_paddleocr.PaddleOCR = mock_class
+        with patch.dict('sys.modules', {'paddleocr': fake_paddleocr}):
             from app.agents.ocr.paddle_ocr_agent import PaddleOCRAgent
 
             agent = PaddleOCRAgent()
@@ -152,8 +160,9 @@ class TestPaddleOCRModelLoading:
     async def test_load_model_async_uses_lock(self):
         """_load_model_async() sollte Lock verwenden."""
         mock_ocr = Mock()
-
-        with patch('paddleocr.PaddleOCR', return_value=mock_ocr):
+        fake_paddleocr = MagicMock()
+        fake_paddleocr.PaddleOCR = Mock(return_value=mock_ocr)
+        with patch.dict('sys.modules', {'paddleocr': fake_paddleocr}):
             from app.agents.ocr.paddle_ocr_agent import PaddleOCRAgent
 
             agent = PaddleOCRAgent()
@@ -307,7 +316,9 @@ class TestPaddleOCRProcessing:
             [[[0, 0], [100, 0], [100, 30], [0, 30]], ("Test Document", 0.90)],
         ]]
 
-        with patch('paddleocr.PaddleOCR', return_value=mock_ocr):
+        fake_paddleocr = MagicMock()
+        fake_paddleocr.PaddleOCR = Mock(return_value=mock_ocr)
+        with patch.dict('sys.modules', {'paddleocr': fake_paddleocr}):
             from app.agents.ocr.paddle_ocr_agent import PaddleOCRAgent
 
             agent = PaddleOCRAgent()
@@ -444,7 +455,9 @@ class TestPaddleOCRThreadSafety:
             load_count += 1
             return mock_ocr
 
-        with patch('paddleocr.PaddleOCR', side_effect=mock_paddle_ocr_init):
+        fake_paddleocr = MagicMock()
+        fake_paddleocr.PaddleOCR = Mock(side_effect=mock_paddle_ocr_init)
+        with patch.dict('sys.modules', {'paddleocr': fake_paddleocr}):
             from app.agents.ocr.paddle_ocr_agent import PaddleOCRAgent
 
             # Reset lock
