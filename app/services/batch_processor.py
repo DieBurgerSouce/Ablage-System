@@ -752,11 +752,23 @@ class BatchProcessor:
             return result
 
         except Exception as e:
-            logger.error("document_processing_error", file_path=file_path, **safe_error_log(e))
+            safe_info = safe_error_log(e)
+            logger.error("document_processing_error", file_path=file_path, **safe_info)
+            # PII-sichere, aber einheitliche Fehlerform: alle Batch-Ergebnisse
+            # tragen einen "error"-Schluessel (analog _process_chunk_parallel).
+            # safe_info["error_message"] ist bereits PII-gefiltert; sonst Fallback
+            # auf eine generische Meldung mit Error-Typ.
+            error_text = safe_info.get(
+                "error_message",
+                f"Verarbeitung fehlgeschlagen ({safe_info['error_type']})",
+            )
             return {
                 "success": False,
                 "file": file_path,
-                "file_name": Path(file_path).name, **safe_error_log(e)}
+                "file_name": Path(file_path).name,
+                "error": error_text,
+                **safe_info,
+            }
 
     async def process_directory(
         self,
