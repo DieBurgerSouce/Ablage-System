@@ -57,12 +57,13 @@ class TestEnhancedFinTSServiceTypeSafety:
         # Pruefe dass es ein TypedDict ist
         assert hasattr(TransactionData, '__annotations__')
 
-        # Pruefe erforderliche Felder
+        # Pruefe erforderliche Felder (echter Vertrag, wie in
+        # enhanced_fints_service.py konstruiert + gelesen):
+        # id, booking_date, amount, sender_name, sender_iban, reference, account_iban
         annotations = TransactionData.__annotations__
         expected_fields = {
-            'id', 'amount', 'currency', 'booking_date', 'value_date',
-            'counterparty_name', 'counterparty_iban', 'purpose',
-            'transaction_type', 'is_credit'
+            'id', 'booking_date', 'amount', 'sender_name',
+            'sender_iban', 'reference', 'account_iban'
         }
 
         for field in expected_fields:
@@ -119,10 +120,13 @@ class TestSteuerberaterPackageServiceTypeSafety:
     def test_package_dict_structure(self) -> None:
         """Test: SteuerberaterPackageDict hat korrekte Struktur."""
 
+        # Echter Vertrag (SteuerberaterPackage.to_dict): id (nicht package_id),
+        # period_from/period_to (nicht period_start/_end),
+        # total_documents (nicht document_count).
         annotations = SteuerberaterPackageDict.__annotations__
         expected_fields = {
-            'package_id', 'company_id', 'period_start', 'period_end',
-            'document_count', 'total_amount', 'status'
+            'id', 'company_id', 'period_from', 'period_to',
+            'total_documents', 'total_amount', 'status'
         }
 
         for field in expected_fields:
