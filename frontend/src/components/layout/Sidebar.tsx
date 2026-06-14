@@ -469,7 +469,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <div className="p-4 border-t border-sidebar-border">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
+                        {/* a11y (WCAG 2.1 AA color-contrast): voller Primary-Hintergrund mit
+                            primary-foreground-Text statt bg-primary/20 + text-primary
+                            (Kontrast 1.79 -> AA-konform). Standard-Avatar-Muster. */}
+                        <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
                             {getInitials()}
                         </AvatarFallback>
                     </Avatar>
