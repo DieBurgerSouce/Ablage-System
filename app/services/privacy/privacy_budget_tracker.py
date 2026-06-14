@@ -115,7 +115,8 @@ class PrivacyBudgetTracker:
         """
         self.redis = redis_client
         self.config = config or BudgetConfig()
-        self._local_cache: Dict[str, float] = {}  # Fallback ohne Redis
+        self._local_cache: Dict[str, float] = {}  # Fallback ohne Redis (Budget)
+        self._local_query_counts: Dict[str, int] = {}  # Fallback ohne Redis (Query-Count)
 
         logger.info(
             "privacy_budget_tracker_initialized",
@@ -265,6 +266,9 @@ class PrivacyBudgetTracker:
             except Exception as e:
                 logger.warning("redis_incr_failed", key=key, **safe_error_log(e))
 
+        # Immer auch Local Cache updaten (Fallback ohne Redis), analog zu _set_consumed
+        self._local_query_counts[key] = self._local_query_counts.get(key, 0) + 1
+
     async def _get_query_count(self, company_id: UUID) -> int:
         """Liest Query-Zähler."""
         key = self._get_query_count_key(company_id)
@@ -276,7 +280,8 @@ class PrivacyBudgetTracker:
             except Exception as e:
                 logger.warning("redis_get_failed", key=key, **safe_error_log(e))
 
-        return 0
+        # Fallback zu Local Cache
+        return self._local_query_counts.get(key, 0)
 
     async def _log_consumption(
         self,
@@ -394,12 +399,15 @@ class PrivacyBudgetTracker:
         """
         await self._set_consumed(company_id, 0.0)
 
+        key = self._get_query_count_key(company_id)
         if self.redis:
-            key = self._get_query_count_key(company_id)
             try:
                 await self.redis.delete(key)
             except Exception as e:
                 logger.warning("redis_delete_failed", key=key, **safe_error_log(e))
+
+        # Auch Local Cache zuruecksetzen (Fallback ohne Redis)
+        self._local_query_counts.pop(key, None)
 
         logger.info(
             "privacy_budget_reset",

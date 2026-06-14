@@ -46,15 +46,18 @@ class TestLaplaceMechanism:
         sensitivity = 1.0
         expected_scale = sensitivity / epsilon
 
-        # Viele Samples
-        noises = []
+        # Viele Samples - add_laplace_noise liefert |noise| (noise_magnitude),
+        # nicht das signierte Rauschen.
+        noise_magnitudes = []
         for _ in range(1000):
-            _, noise = service.add_laplace_noise(0.0, sensitivity, epsilon)
-            noises.append(noise)
+            _, noise_magnitude = service.add_laplace_noise(0.0, sensitivity, epsilon)
+            noise_magnitudes.append(noise_magnitude)
 
-        # Varianz von Laplace: 2 * scale^2
-        expected_variance = 2 * (expected_scale ** 2)
-        actual_variance = np.var(noises)
+        # Fuer X ~ Laplace(0, b) gilt Var(X) = 2*b^2, ABER der Service gibt
+        # |X| zurueck. Fuer den Betrag gilt Var(|X|) = E[X^2] - E[|X|]^2
+        # = 2*b^2 - b^2 = b^2 (= scale^2).
+        expected_variance = expected_scale ** 2
+        actual_variance = np.var(noise_magnitudes)
 
         # Toleranz fuer statistische Tests
         assert abs(actual_variance - expected_variance) < expected_variance * 0.3
