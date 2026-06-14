@@ -23,24 +23,33 @@ class TestToolRegistry:
     """Tests fuer ToolRegistry."""
 
     def test_registry_has_all_tools(self) -> None:
-        """Alle 8 Tools sind registriert."""
+        """Alle 14 Tools sind registriert (admin sieht alle)."""
         registry = ToolRegistry()
 
         # Alle Tools abrufen (admin = all tools)
         all_tools = registry.get_tools_for_user("admin")
 
-        assert len(all_tools) == 8, "Registry muss genau 8 Tools enthalten"
+        assert len(all_tools) == 14, "Registry muss genau 14 Tools enthalten"
 
         tool_names = {tool.name for tool in all_tools}
         expected_names = {
+            # Read-Only (viewer)
             "search_documents",
             "get_invoice_status",
             "filter_documents",
             "get_entity_summary",
-            "move_document",
+            "get_daily_agenda",
+            "compare_expenses",
+            "get_skonto_opportunities",
+            "get_overdue_invoices",
+            # Write (editor)
             "tag_document",
             "categorize_document",
             "create_reminder",
+            "approve_document",
+            # Write (admin)
+            "move_document",
+            "book_invoice",
         }
 
         assert tool_names == expected_names, "Alle erwarteten Tools muessen vorhanden sein"
@@ -70,7 +79,7 @@ class TestToolRegistry:
 
         viewer_tools = registry.get_tools_for_user("viewer")
 
-        assert len(viewer_tools) == 4, "Viewer sollte 4 Tools haben"
+        assert len(viewer_tools) == 8, "Viewer sollte 8 Tools haben"
 
         tool_names = {tool.name for tool in viewer_tools}
         expected_names = {
@@ -78,6 +87,10 @@ class TestToolRegistry:
             "get_invoice_status",
             "filter_documents",
             "get_entity_summary",
+            "get_daily_agenda",
+            "compare_expenses",
+            "get_skonto_opportunities",
+            "get_overdue_invoices",
         }
 
         assert tool_names == expected_names, "Viewer sollte nur read-only Tools haben"
@@ -92,20 +105,30 @@ class TestToolRegistry:
 
         editor_tools = registry.get_tools_for_user("editor")
 
-        assert len(editor_tools) == 7, "Editor sollte 7 Tools haben"
+        assert len(editor_tools) == 12, "Editor sollte 12 Tools haben"
 
         tool_names = {tool.name for tool in editor_tools}
         expected_names = {
+            # viewer tools
             "search_documents",
             "get_invoice_status",
             "filter_documents",
             "get_entity_summary",
+            "get_daily_agenda",
+            "compare_expenses",
+            "get_skonto_opportunities",
+            "get_overdue_invoices",
+            # editor write tools
             "tag_document",
             "categorize_document",
             "create_reminder",
+            "approve_document",
         }
 
         assert tool_names == expected_names, "Editor sollte viewer + write tools haben"
+        # Admin-only Tools duerfen NICHT enthalten sein
+        assert "move_document" not in tool_names, "Editor darf move_document nicht haben"
+        assert "book_invoice" not in tool_names, "Editor darf book_invoice nicht haben"
 
     def test_admin_tools(self) -> None:
         """Admin bekommt alle Tools inkl move_document."""
@@ -113,10 +136,11 @@ class TestToolRegistry:
 
         admin_tools = registry.get_tools_for_user("admin")
 
-        assert len(admin_tools) == 8, "Admin sollte alle 8 Tools haben"
+        assert len(admin_tools) == 14, "Admin sollte alle 14 Tools haben"
 
         tool_names = {tool.name for tool in admin_tools}
         assert "move_document" in tool_names, "Admin sollte move_document haben"
+        assert "book_invoice" in tool_names, "Admin sollte book_invoice haben"
 
     def test_format_tools_for_llm(self) -> None:
         """Output enthaelt Tool-Namen und Beschreibungen."""
@@ -232,7 +256,7 @@ class TestToolRegistry:
 
         tools = registry.get_tools_for_user("unknown_level")
 
-        assert len(tools) == 4, "Unbekanntes Level sollte auf Viewer defaulten"
+        assert len(tools) == 8, "Unbekanntes Level sollte auf Viewer defaulten"
 
     def test_tool_to_json_schema(self) -> None:
         """Tool kann zu JSON Schema konvertiert werden."""
