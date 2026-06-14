@@ -447,7 +447,7 @@ class TestExportContractsExcel:
         wb = load_workbook(io.BytesIO(excel_bytes))
         ws = wb.active
 
-        assert ws.title == "Vertraege"
+        assert ws.title == "Verträge"
         assert ws.cell(2, 1).value == "VT-2024-010"
 
 
@@ -477,12 +477,12 @@ class TestExportAllExcel:
         assert len(wb.sheetnames) == 3
         assert "Rechnungen" in wb.sheetnames
         assert "Bestellungen" in wb.sheetnames
-        assert "Vertraege" in wb.sheetnames
+        assert "Verträge" in wb.sheetnames
 
         # Daten in jedem Tab
         assert wb["Rechnungen"].cell(2, 1).value == "RE-2024-001"
         assert wb["Bestellungen"].cell(2, 1).value == "BE-2024-050"
-        assert wb["Vertraege"].cell(2, 1).value == "VT-2024-010"
+        assert wb["Verträge"].cell(2, 1).value == "VT-2024-010"
 
     def test_export_with_empty_categories(self):
         """Export funktioniert auch wenn einzelne Kategorien leer sind."""
@@ -500,7 +500,7 @@ class TestExportAllExcel:
         # Header in jedem Tab
         assert wb["Rechnungen"].cell(1, 1).value == "Rechnungsnummer"
         assert wb["Bestellungen"].cell(1, 1).value == "Bestellnummer"
-        assert wb["Vertraege"].cell(1, 1).value == "Vertragsnummer"
+        assert wb["Verträge"].cell(1, 1).value == "Vertragsnummer"
 
 
 # =============================================================================

@@ -571,7 +571,7 @@ class OCRPipeline:
                 corrections_applied=0,
                 processing_time_ms=int((time.perf_counter() - start_time) * 1000),
                 german_correction_applied=False,
-                **safe_error_log(e)
+                error=str(e)
             )
         except Exception as e:
             # Unexpected error - log with full context
@@ -592,7 +592,7 @@ class OCRPipeline:
                 corrections_applied=0,
                 processing_time_ms=int((time.perf_counter() - start_time) * 1000),
                 german_correction_applied=False,
-                **safe_error_log(e)
+                error=str(e)
             )
 
         if not fallback_result.success:
