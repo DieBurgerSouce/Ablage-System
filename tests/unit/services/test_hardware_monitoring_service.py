@@ -34,6 +34,23 @@ from app.services.hardware_monitoring_service import (
 )
 
 
+async def _collect_and_check_alerts(
+    service: HardwareMonitoringService,
+) -> list:
+    """Sammelt alle Hardware-Metriken und ruft check_health_alerts auf.
+
+    check_health_alerts(cpu, memory, disks, gpus, temperatures) erwartet die
+    bereits erfassten Metrik-Objekte (Trennung von Erfassung und Bewertung).
+    Dieser Helper bildet den realen Aufrufpfad ab.
+    """
+    cpu = await service.get_cpu_metrics()
+    memory = await service.get_memory_metrics()
+    disks = await service.get_disk_metrics()
+    gpus = await service.get_gpu_metrics()
+    temperatures = await service.get_temperature_metrics()
+    return await service.check_health_alerts(cpu, memory, disks, gpus, temperatures)
+
+
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -287,27 +304,15 @@ class TestGPUMetrics:
         mock_pynvml.nvmlDeviceGetFanSpeed.return_value = 50
         mock_pynvml.NVML_TEMPERATURE_GPU = 0
 
+        # NVMLError muss eine echte Exception-Klasse sein (Quelle nutzt
+        # `except pynvml.NVMLError`); ein MagicMock waere nicht fangbar.
+        mock_pynvml.NVMLError = type("NVMLError", (Exception,), {})
+
         with patch.dict("sys.modules", {"pynvml": mock_pynvml}):
             hardware_service._nvml_available = True
 
-            # Rufe Methode mit internem Mock auf
-            with patch.object(
-                hardware_service, "_get_gpu_metrics_internal"
-            ) as mock_method:
-                mock_method.return_value = [
-                    GPUMetrics(
-                        gpu_id=0,
-                        name="NVIDIA RTX 4080",
-                        utilization_percent=75.0,
-                        memory_total_bytes=17179869184,
-                        memory_used_bytes=8589934592,
-                        memory_used_percent=50.0,
-                        temperature_celsius=65.0,
-                        power_watts=250.0,
-                        fan_speed_percent=50.0,
-                    )
-                ]
-                metrics = await hardware_service.get_gpu_metrics()
+            # get_gpu_metrics() liest direkt aus pynvml (kein internes Helper).
+            metrics = await hardware_service.get_gpu_metrics()
 
             assert isinstance(metrics, list)
 
@@ -357,7 +362,7 @@ class TestAlertGeneration:
         self, hardware_service: HardwareMonitoringService
     ) -> None:
         """Alert-Check gibt Liste zurueck."""
-        alerts = await hardware_service.check_health_alerts()
+        alerts = await _collect_and_check_alerts(hardware_service)
 
         assert isinstance(alerts, list)
 
@@ -366,7 +371,7 @@ class TestAlertGeneration:
         self, hardware_service_low_thresholds: HardwareMonitoringService
     ) -> None:
         """Alerts haben korrektes Format."""
-        alerts = await hardware_service_low_thresholds.check_health_alerts()
+        alerts = await _collect_and_check_alerts(hardware_service_low_thresholds)
 
         # Mit niedrigen Thresholds sollten Alerts generiert werden
         for alert in alerts:
@@ -383,7 +388,7 @@ class TestAlertGeneration:
         self, hardware_service_low_thresholds: HardwareMonitoringService
     ) -> None:
         """Disk-Alert wird bei hoher Auslastung generiert."""
-        alerts = await hardware_service_low_thresholds.check_health_alerts()
+        alerts = await _collect_and_check_alerts(hardware_service_low_thresholds)
 
         # Suche nach Disk-Alert
         disk_alerts = [a for a in alerts if a.alert_type == AlertType.DISK_SPACE]
@@ -543,7 +548,7 @@ class TestEdgeCases:
         )
 
         # Sollte keine Exception werfen
-        alerts = await service.check_health_alerts()
+        alerts = await _collect_and_check_alerts(service)
         assert isinstance(alerts, list)
 
     def test_init_with_custom_thresholds(self) -> None:
