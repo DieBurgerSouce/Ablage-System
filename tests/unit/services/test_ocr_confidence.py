@@ -161,7 +161,7 @@ class MockOCRConfidenceService:
             return {
                 "document_id": document_id,
                 "has_confidence_data": False,
-                "message": "Keine OCR Confidence-Daten verfuegbar"
+                "message": "Keine OCR Confidence-Daten verfügbar"
             }
 
         # Backend handling
@@ -319,7 +319,7 @@ class TestOCRConfidenceGracefulDegradation:
         result = await service.get_confidence_data(str(document_without_confidence_data.id))
 
         assert result["has_confidence_data"] is False
-        assert "Keine OCR Confidence-Daten verfuegbar" in result["message"]
+        assert "Keine OCR Confidence-Daten verfügbar" in result["message"]
 
     @pytest.mark.asyncio
     async def test_document_with_partial_confidence(self, mock_db_session, document_with_partial_confidence):
@@ -411,7 +411,7 @@ class TestOCRConfidenceSummary:
         summary = await service.get_confidence_summary(str(document_without_confidence_data.id))
 
         assert summary["has_confidence_data"] is False
-        assert "Keine OCR Confidence-Daten verfuegbar" in summary["message"]
+        assert "Keine OCR Confidence-Daten verfügbar" in summary["message"]
 
 
 # =============================================================================

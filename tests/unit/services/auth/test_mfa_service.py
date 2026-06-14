@@ -133,7 +133,7 @@ class TestKeyDerivation:
     def test_derive_encryption_key_includes_domain_separation(self, mfa_service):
         """Schluessel sollte Domain-Separation enthalten."""
         from app.core.config import settings
-        wrong_key = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+        wrong_key = hashlib.sha256(f"{settings.SECRET_KEY}".encode()).digest()
         actual_key = mfa_service._derive_encryption_key()
         assert actual_key != wrong_key
 
