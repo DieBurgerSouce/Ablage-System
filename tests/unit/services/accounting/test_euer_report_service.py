@@ -75,7 +75,7 @@ class TestGenerateEuer:
             create_mock_row("4000", Decimal("15000"), Decimal("0")),  # Expense
         ]
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = mock_rows
+        mock_result.all.return_value = mock_rows
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -107,7 +107,7 @@ class TestGenerateEuer:
             create_mock_row("4000", Decimal("25000"), Decimal("0")),  # Expense
         ]
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = mock_rows
+        mock_result.all.return_value = mock_rows
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -129,7 +129,7 @@ class TestGenerateEuer:
         """Test: No entries = all zeros."""
         # Arrange
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = []
+        mock_result.all.return_value = []
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -155,7 +155,7 @@ class TestGenerateEuer:
         # Arrange
         test_year = 2024
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = []
+        mock_result.all.return_value = []
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -182,7 +182,7 @@ class TestGenerateEuer:
             create_mock_row("8999", Decimal("0"), Decimal("5000")),
         ]
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = mock_rows
+        mock_result.all.return_value = mock_rows
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -211,7 +211,7 @@ class TestGenerateEuer:
             create_mock_row("4999", Decimal("3000"), Decimal("0")),
         ]
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = mock_rows
+        mock_result.all.return_value = mock_rows
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -245,7 +245,7 @@ class TestGenerateEuer:
             create_mock_row("9000", Decimal("1000"), Decimal("1000")),    # Other
         ]
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = mock_rows
+        mock_result.all.return_value = mock_rows
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -272,7 +272,7 @@ class TestGenerateEuer:
             # Should calculate as 50000 - 5000 = 45000
         ]
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = mock_rows
+        mock_result.all.return_value = mock_rows
         mock_db.execute.return_value = mock_result
 
         # Act
@@ -283,7 +283,13 @@ class TestGenerateEuer:
 
 
 class TestExportAnlageEuer:
-    """Tests für export_anlage_euer Methode."""
+    """Tests für export_anlage_euer Methode.
+
+    export_anlage_euer delegiert an die dokumentbasierte EURService:
+    get_eur_service(db) -> generate_eur_report(...) -> EURReport.to_anlage_eur().
+    Die Tests patchen daher get_eur_service (im euer_report_service-Modul
+    lokal importiert -> in eur_service patchen, da es kein Modul-Attribut ist).
+    """
 
     @pytest.mark.asyncio
     async def test_export_anlage_euer_calls_eur_service(
@@ -293,27 +299,33 @@ class TestExportAnlageEuer:
         company_id: uuid4,
         fiscal_year: int
     ) -> None:
-        """Test: Delegates to EURService."""
+        """Test: Delegiert an EURService.generate_eur_report + to_anlage_eur."""
         # Arrange
         mock_eur_data = {
             "betriebseinnahmen": Decimal("100000"),
             "betriebsausgaben": Decimal("60000"),
             "gewinn": Decimal("40000")
         }
+        mock_eur_report = MagicMock()
+        mock_eur_report.to_anlage_eur.return_value = mock_eur_data
+        mock_eur_report.profit_loss = Decimal("40000")
 
-        with patch("app.services.accounting.euer_report_service.EURService") as MockEURService:
-            mock_eur_instance = AsyncMock()
-            mock_eur_instance.generate_anlage_eur.return_value = mock_eur_data
-            MockEURService.return_value = mock_eur_instance
+        mock_eur_instance = MagicMock()
+        mock_eur_instance.generate_eur_report = AsyncMock(return_value=mock_eur_report)
 
+        with patch(
+            "app.services.accounting.eur_service.get_eur_service",
+            return_value=mock_eur_instance,
+        ) as mock_get_eur:
             # Act
             result = await euer_service.export_anlage_euer(company_id, fiscal_year)
 
             # Assert
-            MockEURService.assert_called_once_with(mock_db)
-            mock_eur_instance.generate_anlage_eur.assert_called_once_with(
+            mock_get_eur.assert_called_once_with(mock_db)
+            mock_eur_instance.generate_eur_report.assert_called_once_with(
                 company_id=company_id,
-                fiscal_year=fiscal_year
+                fiscal_year=fiscal_year,
+                include_details=False,
             )
             assert result == mock_eur_data
 
@@ -333,12 +345,17 @@ class TestExportAnlageEuer:
             "gewinn": Decimal("30000"),
             "steuerpflichtiger_gewinn": Decimal("30000")
         }
+        mock_eur_report = MagicMock()
+        mock_eur_report.to_anlage_eur.return_value = mock_eur_data
+        mock_eur_report.profit_loss = Decimal("30000")
 
-        with patch("app.services.accounting.euer_report_service.EURService") as MockEURService:
-            mock_eur_instance = AsyncMock()
-            mock_eur_instance.generate_anlage_eur.return_value = mock_eur_data
-            MockEURService.return_value = mock_eur_instance
+        mock_eur_instance = MagicMock()
+        mock_eur_instance.generate_eur_report = AsyncMock(return_value=mock_eur_report)
 
+        with patch(
+            "app.services.accounting.eur_service.get_eur_service",
+            return_value=mock_eur_instance,
+        ):
             # Act
             result = await euer_service.export_anlage_euer(company_id, fiscal_year)
 
@@ -359,21 +376,23 @@ class TestExportAnlageEuer:
     ) -> None:
         """Test: Logs profit_loss."""
         # Arrange
-        mock_eur_data = {
-            "gewinn": Decimal("25000")
-        }
+        mock_eur_data = {"gewinn": Decimal("25000")}
+        mock_eur_report = MagicMock()
+        mock_eur_report.to_anlage_eur.return_value = mock_eur_data
+        mock_eur_report.profit_loss = Decimal("25000")
 
-        with patch("app.services.accounting.euer_report_service.EURService") as MockEURService:
+        mock_eur_instance = MagicMock()
+        mock_eur_instance.generate_eur_report = AsyncMock(return_value=mock_eur_report)
+
+        with patch(
+            "app.services.accounting.eur_service.get_eur_service",
+            return_value=mock_eur_instance,
+        ):
             with patch("app.services.accounting.euer_report_service.logger") as mock_logger:
-                mock_eur_instance = AsyncMock()
-                mock_eur_instance.generate_anlage_eur.return_value = mock_eur_data
-                MockEURService.return_value = mock_eur_instance
-
                 # Act
                 await euer_service.export_anlage_euer(company_id, fiscal_year)
 
                 # Assert
-                # Verify logger was called (implementation-specific)
                 assert mock_logger.info.called or mock_logger.debug.called
 
 
