@@ -202,7 +202,7 @@ class TestTableDefinitions:
         column_names = [col.name for col in DOCUMENT_TABLE.columns]
         assert "DokumentID" in column_names
         assert "Dateiname" in column_names
-        assert "Pruefsumme" in column_names
+        assert "Prüfsumme" in column_names
 
     def test_archive_table_structure(self) -> None:
         """Archiv-Tabelle hat korrekte Struktur."""
@@ -228,8 +228,8 @@ class TestTableDefinitions:
 
     def test_contract_table_structure(self) -> None:
         """Vertrags-Tabelle hat korrekte Struktur."""
-        assert CONTRACT_TABLE.name == "Vertraege"
-        assert CONTRACT_TABLE.filename == "vertraege.csv"
+        assert CONTRACT_TABLE.name == "Verträge"
+        assert CONTRACT_TABLE.filename == "verträge.csv"
         assert len(CONTRACT_TABLE.columns) == 9
 
         column_names = [col.name for col in CONTRACT_TABLE.columns]
@@ -285,8 +285,8 @@ class TestHelperMethods:
     def test_translate_category(self, gdpdu_service: GDPdUExportService) -> None:
         """Uebersetzt Kategorien korrekt."""
         assert gdpdu_service._translate_category("invoice") == "Rechnungen"
-        assert gdpdu_service._translate_category("contract") == "Vertraege"
-        assert gdpdu_service._translate_category("correspondence") == "Geschaeftsbriefe"
+        assert gdpdu_service._translate_category("contract") == "Verträge"
+        assert gdpdu_service._translate_category("correspondence") == "Geschäftsbriefe"
         assert gdpdu_service._translate_category("unknown") == "unknown"
 
     def test_format_date_str(self, gdpdu_service: GDPdUExportService) -> None:
@@ -329,7 +329,7 @@ class TestExportPreview:
         assert "zeitraum" in preview
         assert "anzahl" in preview
         assert "tabellen" in preview
-        assert "geschaetzte_groesse_kb" in preview
+        assert "geschätzte_größe_kb" in preview
 
         assert preview["zeitraum"]["von"] == "2024-01-01"
         assert preview["zeitraum"]["bis"] == "2024-12-31"
