@@ -498,7 +498,7 @@ class EmailImportService:
 
         # Headers extrahieren
         message_id = msg.get("Message-ID", f"<unknown-{uid}>")
-        from_addr = self._decode_header(msg.get("From", ""))
+        from_addr = self._decode_header(msg.get("From", "")) or "(Kein Absender)"
         subject = self._decode_header(msg.get("Subject", "(Kein Betreff)"))
 
         # Datum parsen

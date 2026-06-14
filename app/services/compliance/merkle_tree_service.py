@@ -364,6 +364,16 @@ class MerkleTreeService:
                     "hash": sibling.hash,
                     "position": side,
                 })
+            elif current_position % 2 == 0 and current_position < len(level_nodes):
+                # Ungeradzahliges Level: letztes (linkes) Element ohne rechten
+                # Sibling wird beim Tree-Bau mit sich selbst verdoppelt
+                # (right = left). Der Proof-Pfad muss diesen Duplikat-Schritt
+                # ebenfalls enthalten, sonst bricht die Verifikation ab.
+                sibling = level_nodes[current_position]
+                proof_path.append({
+                    "hash": sibling.hash,
+                    "position": "right",
+                })
 
             # Move up
             current_position = current_position // 2
