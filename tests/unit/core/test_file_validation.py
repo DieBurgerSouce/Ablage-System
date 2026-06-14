@@ -134,7 +134,11 @@ class TestValidatePdfSecurity:
             page.extract_text.return_value = "Test content " * 100
 
         with patch('pypdf.PdfReader', return_value=mock_reader):
-            content = b"fake pdf content"
+            # Content muss gross genug sein, sonst greift der Dekompressions-
+            # Bomben-Schutz (Komprimierungs-Verhaeltnis > 100:1). Bei ~13000
+            # extrahierten Bytes ueber 10 Seiten ist >=2000 Byte Content
+            # unauffaellig (~6.5:1).
+            content = b"%PDF-1.4\n" + b"x" * 4000
             is_valid, error_msg, metadata = validate_pdf_security(content, "test.pdf")
 
         assert is_valid is True
@@ -676,15 +680,14 @@ class TestSanitizeFilename:
         # Result should be the basename (passwd) with allowed chars only
         assert result == "passwd"
 
-    def test_path_traversal_backslash_sanitized(self):
-        """Backslash Path Traversal wird sanitisiert (basename extrahiert)."""
-        # Implementation uses os.path.basename() which strips path components
-        result = sanitize_filename("..\\windows\\system32")
-        # Should return basename without dangerous path components
-        assert ".." not in result
-        assert "\\" not in result
-        # Result should be the basename
-        assert result == "system32"
+    def test_path_traversal_backslash_raises(self):
+        """Backslash Path Traversal wird abgelehnt (PathTraversalError)."""
+        # Auf Linux (Container) ist "\\" kein Pfadtrenner -> os.path.basename
+        # laesst den String stehen; "..\\" und "\\" sind in
+        # DANGEROUS_FILENAME_PATTERNS -> die gehaertete Quelle WIRFT
+        # (sicherer als stilles Sanitisieren).
+        with pytest.raises(PathTraversalError):
+            sanitize_filename("..\\windows\\system32")
 
     def test_absolute_path_linux_sanitized(self):
         """Absoluter Linux-Pfad wird sanitisiert (basename extrahiert)."""
@@ -693,14 +696,13 @@ class TestSanitizeFilename:
         assert "/" not in result
         assert result == "passwd"
 
-    def test_absolute_path_windows_sanitized(self):
-        """Absoluter Windows-Pfad wird sanitisiert (basename extrahiert)."""
-        # os.path.basename("C:\\Windows\\system.ini") returns "system.ini"
-        result = sanitize_filename("C:\\Windows\\system.ini")
-        assert "\\" not in result
-        assert ":" not in result
-        # Note: basename strips path, result is just the filename
-        assert "system" in result
+    def test_absolute_path_windows_raises(self):
+        """Absoluter Windows-Pfad wird abgelehnt (PathTraversalError)."""
+        # Auf Linux (Container) ist "\\" kein Pfadtrenner -> basename behaelt
+        # "C:\\Windows\\system.ini"; das enthaltene "\\" triggert die gehaertete
+        # Path-Traversal-Erkennung -> PathTraversalError.
+        with pytest.raises(PathTraversalError):
+            sanitize_filename("C:\\Windows\\system.ini")
 
     def test_null_byte_injection_raises(self):
         """Null-Byte Injection wird erkannt und wirft PathTraversalError."""
@@ -763,20 +765,28 @@ class TestSanitizeFilename:
 
     def test_dangerous_patterns_comprehensive(self):
         """Alle gefährlichen Patterns werden behandelt."""
-        # Patterns that get sanitized (path components stripped by basename)
-        sanitized_names = [
-            ("../secret", "secret"),
-            ("..\\secret", "secret"),
-            ("/root/.ssh/id_rsa", "id_rsa"),
-            ("C:\\Users\\Admin\\secret.txt", "secret.txt"),
+        # Backslash-Inputs werden von der gehaerteten Quelle ABGELEHNT
+        # (PathTraversalError). Auf Linux ist "\\" kein Pfadtrenner, daher
+        # ueberlebt es os.path.basename und triggert die Erkennung.
+        raising_names = [
+            "..\\secret",
+            "C:\\Users\\Admin\\secret.txt",
         ]
+        for name in raising_names:
+            with pytest.raises(PathTraversalError):
+                sanitize_filename(name)
 
-        for name, expected_base in sanitized_names:
-            # Implementation sanitizes instead of raising
+        # Reine Forward-Slash-Pfade (inkl. "../") werden via os.path.basename
+        # auf den reinen Dateinamen reduziert -> kein ".." mehr enthalten,
+        # daher sanitisiert statt Raise.
+        for name, expected in [
+            ("../secret", "secret"),
+            ("/root/ssh_id_rsa", "ssh_id_rsa"),
+        ]:
             result = sanitize_filename(name)
-            # Ensure no dangerous path separators in result
             assert "/" not in result
             assert "\\" not in result
+            assert result == expected
 
         # URL-encoded patterns get sanitized (% is replaced with _)
         result = sanitize_filename("..%2f..%2fetc%2fpasswd")
