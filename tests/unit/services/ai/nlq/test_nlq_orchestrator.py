@@ -306,6 +306,8 @@ class TestNLQOrchestrator:
                     sql="SELECT COUNT(*) as total FROM invoices WHERE company_id = :company_id",
                     confidence=0.92,
                     explanation="Count all invoices",
+                    model_used="qwen3:8b",
+                    generation_time_ms=12,
                 )
 
                 # Mock sanitization
@@ -313,18 +315,22 @@ class TestNLQOrchestrator:
                     mock_san.return_value = SanitizationResult(
                         safe=True,
                         sanitized_sql="SELECT COUNT(*) as total FROM invoices WHERE company_id = :company_id",
+                        original_sql="SELECT COUNT(*) as total FROM invoices WHERE company_id = :company_id",
                         violations=[],
                     )
 
                     # Mock query execution
+                    # `engine.begin()` muss SYNCHRON einen Async-Context-Manager
+                    # liefern (Code: `async with self.engine.begin() as conn`),
+                    # daher begin = MagicMock (kein AsyncMock).
                     mock_conn = AsyncMock()
                     mock_result = Mock()
                     mock_result.fetchall = Mock(return_value=[(42,)])
                     mock_result.keys = Mock(return_value=["total"])
                     mock_conn.execute = AsyncMock(return_value=mock_result)
-                    mock_engine.begin = AsyncMock(return_value=mock_conn)
                     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
-                    mock_conn.__aexit__ = AsyncMock()
+                    mock_conn.__aexit__ = AsyncMock(return_value=None)
+                    mock_engine.begin = MagicMock(return_value=mock_conn)
 
                     # Mock Query Log
                     mock_log = Mock()
@@ -365,6 +371,8 @@ class TestNLQOrchestrator:
                     sql="DROP TABLE users; --",
                     confidence=0.10,
                     explanation="Malicious query",
+                    model_used="qwen3:8b",
+                    generation_time_ms=8,
                 )
 
                 # Mock sanitization (reject)
@@ -372,6 +380,7 @@ class TestNLQOrchestrator:
                     mock_san.return_value = SanitizationResult(
                         safe=False,
                         sanitized_sql="",
+                        original_sql="DROP TABLE users; --",
                         violations=["DROP statement not allowed"],
                     )
 
@@ -394,7 +403,7 @@ class TestNLQOrchestrator:
 
         # Act
         viz_type = recommender.recommend(
-            natural_query="Umsatz pro Monat",
+            query="Umsatz pro Monat",
             columns=["month", "revenue"],
             row_count=12,
         )
@@ -411,7 +420,7 @@ class TestNLQOrchestrator:
 
         # Act
         viz_type = recommender.recommend(
-            natural_query="Entwicklung des Umsatzes über Zeit",
+            query="Entwicklung des Umsatzes über Zeit",
             columns=["date", "total_revenue"],
             row_count=30,
         )
