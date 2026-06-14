@@ -260,7 +260,8 @@ class TestAcceptInvite:
         """Fehler bei ungueltigem Token."""
         mock_db._mock_result.scalar_one_or_none.return_value = None
 
-        with pytest.raises(ValueError, match="Ungueltige Einladung"):
+        # App liefert korrektes UTF-8-Deutsch ("Ungültige"); Test daran angeglichen.
+        with pytest.raises(ValueError, match="Ungültige Einladung"):
             await service.accept_invite(
                 db=mock_db,
                 token="invalid_token",

@@ -242,7 +242,8 @@ class TestDHLProvider:
         """Testet dass ungueltige Tracking-Nummern abgelehnt werden."""
         provider = DHLProvider()
 
-        with pytest.raises(ValueError, match="Ungueltige Tracking-Nummer"):
+        # App liefert korrektes UTF-8-Deutsch ("Ungültige"); Test daran angeglichen.
+        with pytest.raises(ValueError, match="Ungültige Tracking-Nummer"):
             await provider.track_shipment("invalid<script>")
 
 
