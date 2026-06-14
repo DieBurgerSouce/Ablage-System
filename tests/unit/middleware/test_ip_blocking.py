@@ -336,20 +336,19 @@ class TestIsIPBlocked:
     @pytest.mark.asyncio
     async def test_check_redis_fallback(self, ip_blocking_middleware):
         """Redis sollte als Fallback geprüft werden wenn konfiguriert."""
-        import sys
-
-        # Mock das redis_client Modul bevor es importiert wird
-        mock_redis_module = MagicMock()
-        mock_redis = AsyncMock()
-        mock_redis.get.return_value = "blocked"
-        mock_redis_module.get_redis = AsyncMock(return_value=mock_redis)
+        # Quelle importiert `from app.core.redis_state import get_redis` und
+        # nutzt den rohen aioredis-Client unter manager._redis (der
+        # RedisStateManager hat keine generische .get()-Methode).
+        mock_manager = AsyncMock()
+        mock_manager._redis = AsyncMock()
+        mock_manager._redis.get.return_value = "blocked"
 
         with patch('app.services.incident_response_service.get_incident_response_service') as mock_get_service:
             mock_service = Mock()
             mock_service.is_ip_blocked.return_value = False
             mock_get_service.return_value = mock_service
 
-            with patch.dict(sys.modules, {'app.core.redis_client': mock_redis_module}):
+            with patch('app.core.redis_state.get_redis', AsyncMock(return_value=mock_manager)):
                 is_blocked, reason = await ip_blocking_middleware._is_ip_blocked("192.168.1.100")
 
                 assert is_blocked is True
@@ -358,19 +357,16 @@ class TestIsIPBlocked:
     @pytest.mark.asyncio
     async def test_not_blocked_when_all_clear(self, ip_blocking_middleware):
         """Sollte False zurückgeben wenn IP nicht blockiert."""
-        import sys
-
-        mock_redis_module = MagicMock()
-        mock_redis = AsyncMock()
-        mock_redis.get.return_value = None
-        mock_redis_module.get_redis = AsyncMock(return_value=mock_redis)
+        mock_manager = AsyncMock()
+        mock_manager._redis = AsyncMock()
+        mock_manager._redis.get.return_value = None
 
         with patch('app.services.incident_response_service.get_incident_response_service') as mock_get_service:
             mock_service = Mock()
             mock_service.is_ip_blocked.return_value = False
             mock_get_service.return_value = mock_service
 
-            with patch.dict(sys.modules, {'app.core.redis_client': mock_redis_module}):
+            with patch('app.core.redis_state.get_redis', AsyncMock(return_value=mock_manager)):
                 is_blocked, reason = await ip_blocking_middleware._is_ip_blocked("192.168.1.100")
 
                 assert is_blocked is False
@@ -379,17 +375,14 @@ class TestIsIPBlocked:
     @pytest.mark.asyncio
     async def test_incident_service_error_continues(self, ip_blocking_middleware):
         """Fehler beim IncidentService sollte nicht blockieren."""
-        import sys
-
-        mock_redis_module = MagicMock()
-        mock_redis = AsyncMock()
-        mock_redis.get.return_value = None
-        mock_redis_module.get_redis = AsyncMock(return_value=mock_redis)
+        mock_manager = AsyncMock()
+        mock_manager._redis = AsyncMock()
+        mock_manager._redis.get.return_value = None
 
         with patch('app.services.incident_response_service.get_incident_response_service') as mock_get_service:
             mock_get_service.side_effect = Exception("Service unavailable")
 
-            with patch.dict(sys.modules, {'app.core.redis_client': mock_redis_module}):
+            with patch('app.core.redis_state.get_redis', AsyncMock(return_value=mock_manager)):
                 is_blocked, reason = await ip_blocking_middleware._is_ip_blocked("192.168.1.100")
 
                 assert is_blocked is False
@@ -397,17 +390,12 @@ class TestIsIPBlocked:
     @pytest.mark.asyncio
     async def test_redis_error_continues(self, ip_blocking_middleware):
         """Fehler bei Redis sollte nicht blockieren."""
-        import sys
-
-        mock_redis_module = MagicMock()
-        mock_redis_module.get_redis = AsyncMock(side_effect=Exception("Redis unavailable"))
-
         with patch('app.services.incident_response_service.get_incident_response_service') as mock_get_service:
             mock_service = Mock()
             mock_service.is_ip_blocked.return_value = False
             mock_get_service.return_value = mock_service
 
-            with patch.dict(sys.modules, {'app.core.redis_client': mock_redis_module}):
+            with patch('app.core.redis_state.get_redis', AsyncMock(side_effect=Exception("Redis unavailable"))):
                 is_blocked, reason = await ip_blocking_middleware._is_ip_blocked("192.168.1.100")
 
                 assert is_blocked is False

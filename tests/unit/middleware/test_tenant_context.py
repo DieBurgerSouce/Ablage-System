@@ -5,6 +5,7 @@ Testet Mandanten-Kontext-Extraktion und -Propagierung.
 """
 
 import pytest
+from types import SimpleNamespace
 from uuid import uuid4
 from unittest.mock import MagicMock, AsyncMock
 
@@ -20,10 +21,11 @@ class TestTenantContextMiddleware:
     @pytest.mark.asyncio
     async def test_exempt_path_skips_tenant_check(self) -> None:
         """Test: Ausgenommene Pfade ueberspringen Mandanten-Pruefung."""
-        # Mock Request
+        # Mock Request - request.state als echtes Objekt, damit hasattr
+        # aussagekraeftig ist (MagicMock erzeugt jedes Attribut on-the-fly).
         request = MagicMock(spec=Request)
         request.url.path = "/api/v1/health"
-        request.state = MagicMock()
+        request.state = SimpleNamespace()
 
         # Mock next handler
         call_next = AsyncMock(return_value=Response())
@@ -37,7 +39,7 @@ class TestTenantContextMiddleware:
         # Verify
         assert response is not None
         call_next.assert_called_once()
-        # tenant_id sollte nicht gesetzt werden
+        # tenant_id sollte nicht gesetzt werden (Exempt-Pfad short-circuited)
         assert not hasattr(request.state, "tenant_id")
 
     @pytest.mark.asyncio
@@ -160,10 +162,10 @@ class TestTenantContextMiddleware:
         middleware = TenantContextMiddleware(app=MagicMock())
 
         for path in exempt_paths:
-            # Mock Request
+            # Mock Request - echtes state-Objekt fuer aussagekraeftiges hasattr
             request = MagicMock(spec=Request)
             request.url.path = path
-            request.state = MagicMock()
+            request.state = SimpleNamespace()
 
             # Execute
             response = await middleware.dispatch(request, call_next)
@@ -176,16 +178,21 @@ class TestTenantContextMiddleware:
     @pytest.mark.asyncio
     async def test_error_handling_returns_500(self) -> None:
         """Test: Unerwartete Fehler geben 500 zurueck."""
-        # Mock Request
+
+        # state-Objekt, dessen company_id-Zugriff einen unerwarteten Fehler
+        # wirft -> getattr(request.state, "company_id", None) propagiert die
+        # RuntimeError in den except-Exception-Zweig der Middleware.
+        # (Globales builtins.getattr zu patchen ist zu breit und bricht
+        # JSONResponse/structlog -> stattdessen gezielt am state-Objekt.)
+        class _RaisingState:
+            @property
+            def company_id(self):  # type: ignore[no-untyped-def]
+                raise RuntimeError("Unexpected error")
+
         request = MagicMock(spec=Request)
         request.url.path = "/api/v1/documents"
-        request.state = MagicMock()
-
-        # Mock getattr to raise exception
-        def mock_getattr(obj, name, default=None):
-            if name == "company_id":
-                raise RuntimeError("Unexpected error")
-            return default
+        request.state = _RaisingState()
+        request.method = "GET"
 
         # Mock next handler
         call_next = AsyncMock(return_value=Response())
@@ -193,10 +200,8 @@ class TestTenantContextMiddleware:
         # Middleware
         middleware = TenantContextMiddleware(app=MagicMock())
 
-        # Execute with patched getattr
-        with pytest.MonkeyPatch.context() as m:
-            m.setattr("builtins.getattr", mock_getattr)
-            response = await middleware.dispatch(request, call_next)
+        # Execute
+        response = await middleware.dispatch(request, call_next)
 
         # Verify
         assert isinstance(response, JSONResponse)

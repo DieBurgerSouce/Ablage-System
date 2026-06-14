@@ -361,7 +361,12 @@ class TestDocumentAccessLoggingMiddlewareDispatch:
         mock_log.assert_called_once()
         call_args = mock_log.call_args
         assert call_args.kwargs['success'] is False
-        assert "Test Error" in call_args.kwargs['error_message']
+        # Quelle nutzt safe_error_detail -> loggt nur den Exception-TYP, nicht
+        # die Roh-Message ("Test Error" waere ein PII-Leak, CLAUDE.md Regel 1).
+        error_message = call_args.kwargs['error_message']
+        assert "ValueError" in error_message
+        assert "fehlgeschlagen" in error_message
+        assert "Test Error" not in error_message
 
     @pytest.mark.asyncio
     async def test_context_cleared_after_request(self):
