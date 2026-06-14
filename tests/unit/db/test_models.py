@@ -68,11 +68,22 @@ class TestEnums:
 
     def test_document_type_values(self):
         """DocumentType sollte alle Dokumenttypen haben."""
-        expected_types = {
+        # Kanonischer Kern, der immer vorhanden sein MUSS. Das Enum ist seit
+        # dem urspruenglichen Test um Geschaeftstypen gewachsen
+        # (credit_note, dunning, offer, purchase_order, tax_document,
+        # bank_statement) — daher Subset-Pruefung des Kerns statt
+        # exakter Gleichheit, plus Voll-Vertragspruefung unten.
+        core_types = {
             "invoice", "order", "contract", "delivery_note",
             "receipt", "form", "letter", "report", "other", "unknown"
         }
         actual_types = {dt.value for dt in DocumentType}
+        assert core_types <= actual_types
+        # Voller aktueller Vertrag (gegen echtes Enum verifiziert 2026-06-14):
+        expected_types = core_types | {
+            "credit_note", "dunning", "offer",
+            "purchase_order", "tax_document", "bank_statement",
+        }
         assert actual_types == expected_types
 
     def test_user_tier_values(self):

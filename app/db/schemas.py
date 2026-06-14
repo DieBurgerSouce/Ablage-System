@@ -40,7 +40,10 @@ class DocumentType(str, Enum):
     """Document type classification."""
     DOCUMENT = "document"  # Generic document (default for uncategorized)
     INVOICE = "invoice"
+    CREDIT_NOTE = "credit_note"          # Gutschrift
+    DUNNING = "dunning"                  # Mahnung
     ORDER = "order"
+    PURCHASE_ORDER = "purchase_order"    # Bestellung
     OFFER = "offer"  # Angebote
     CONTRACT = "contract"
     DELIVERY_NOTE = "delivery_note"
@@ -51,6 +54,7 @@ class DocumentType(str, Enum):
     OTHER = "other"
     UNKNOWN = "unknown"
     # Finanz-Dokumenttypen
+    TAX_DOCUMENT = "tax_document"               # Steuerdokument (generisch)
     TAX_ASSESSMENT = "tax_assessment"           # Grundabgabenbescheid
     TAX_NOTICE = "tax_notice"                   # Steuerbescheid
     TAX_PREPAYMENT = "tax_prepayment"           # Vorauszahlung
