@@ -288,7 +288,9 @@ class ContractRenewalService:
         notice_patterns = [
             r"kündigungsfrist\s+(?:von\s+)?(\d+)\s+(tage?|wochen?|monate?|jahre?)",
             r"(\d+)\s+(tage?|wochen?|monate?|jahre?)\s+(?:vor\s+)?kündig",
-            r"frist\s+(?:von\s+)?(\d+)\s+(tage?|wochen?|monate?|jahre?)",
+            # "4 Wochen vor Vertragsende" (im Docstring dokumentiert)
+            r"(\d+)\s+(tage?|wochen?|monate?|jahre?)\s+vor\s+vertragsende",
+            r"frist\s+(?:von\s+|beträgt\s+)?(\d+)\s+(tage?|wochen?|monate?|jahre?)",
             r"(\d+)\s+(tage?|wochen?|monate?|jahre?)\s+frist",
         ]
 
