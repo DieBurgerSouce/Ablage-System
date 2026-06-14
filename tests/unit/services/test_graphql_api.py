@@ -55,7 +55,7 @@ async def test_query_entity_basic():
 
     # Act
     items, total_count = await QueryBuilder.build_query(
-        request=request,
+        body=request,
         company_id=company_id,
         db=mock_db,
     )
@@ -98,7 +98,7 @@ async def test_query_entity_filter_eq():
 
     # Act
     items, total_count = await QueryBuilder.build_query(
-        request=request,
+        body=request,
         company_id=company_id,
         db=mock_db,
     )
@@ -140,7 +140,7 @@ async def test_query_entity_filter_like():
 
     # Act
     items, total_count = await QueryBuilder.build_query(
-        request=request,
+        body=request,
         company_id=company_id,
         db=mock_db,
     )
@@ -187,7 +187,7 @@ async def test_query_entity_filter_in():
 
     # Act
     items, total_count = await QueryBuilder.build_query(
-        request=request,
+        body=request,
         company_id=company_id,
         db=mock_db,
     )
@@ -231,7 +231,7 @@ async def test_query_entity_filter_gte_lte():
 
     # Act
     items, total_count = await QueryBuilder.build_query(
-        request=request,
+        body=request,
         company_id=company_id,
         db=mock_db,
     )
@@ -244,7 +244,7 @@ async def test_query_entity_filter_gte_lte():
 def test_query_invalid_entity_type():
     """Test GraphQL query rejects unknown entity types."""
     # Act & Assert
-    with pytest.raises(ValueError, match="Ungueltiger Entity-Typ"):
+    with pytest.raises(ValueError, match="Ungültiger Entity-Typ"):
         GraphQLQueryRequest(
             entity_type="malicious_type",
             fields=["id"],
@@ -264,7 +264,7 @@ def test_query_invalid_field_name():
 
     for bad_field in malicious_fields:
         # Act & Assert
-        with pytest.raises(ValueError, match="Ungueltiger Feldname"):
+        with pytest.raises(ValueError, match="Ungültiger Feldname"):
             GraphQLQueryRequest(
                 entity_type="document",
                 fields=["id", bad_field],
@@ -329,7 +329,7 @@ async def test_query_company_isolation():
 
     # Act
     items, total_count = await QueryBuilder.build_query(
-        request=request,
+        body=request,
         company_id=company_id,
         db=mock_db,
     )
@@ -373,7 +373,7 @@ async def test_query_pagination():
 
     # Act
     items, total_count = await QueryBuilder.build_query(
-        request=request,
+        body=request,
         company_id=company_id,
         db=mock_db,
     )
@@ -418,7 +418,7 @@ def test_query_order_by_validation():
     assert request.order_by == "created_at"
 
     # Invalid order_by with SQL injection
-    with pytest.raises(ValueError, match="Ungueltiges Sortierfeld"):
+    with pytest.raises(ValueError, match="Ungültiges Sortierfeld"):
         GraphQLQueryRequest(
             entity_type="document",
             fields=["id"],
