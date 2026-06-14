@@ -146,7 +146,7 @@ class TestAlertTemplates:
         template = ALERT_TEMPLATES.get(AlertCodes.FRAUD_DUPLICATE_INVOICE)
         assert template is not None
         assert "Duplikat" in template["title"]
-        assert "moeglicherweise" in template["message"]
+        assert "möglicherweise" in template["message"]
 
     def test_deadline_templates_have_placeholders(self) -> None:
         """Verify deadline templates have proper placeholders."""
@@ -318,7 +318,7 @@ class TestAlertStatusWorkflow:
         """Test acknowledging an alert."""
         # Setup mock query result
         mock_result = MagicMock()
-        mock_result.scalars.return_value.first.return_value = sample_alert
+        mock_result.scalar_one_or_none.return_value = sample_alert
         mock_session.execute.return_value = mock_result
 
         result = await alert_service.acknowledge_alert(
@@ -341,7 +341,7 @@ class TestAlertStatusWorkflow:
     ) -> None:
         """Test dismissing an alert."""
         mock_result = MagicMock()
-        mock_result.scalars.return_value.first.return_value = sample_alert
+        mock_result.scalar_one_or_none.return_value = sample_alert
         mock_session.execute.return_value = mock_result
 
         result = await alert_service.dismiss_alert(
@@ -364,7 +364,7 @@ class TestAlertStatusWorkflow:
     ) -> None:
         """Test resolving an alert."""
         mock_result = MagicMock()
-        mock_result.scalars.return_value.first.return_value = sample_alert
+        mock_result.scalar_one_or_none.return_value = sample_alert
         mock_session.execute.return_value = mock_result
 
         result = await alert_service.resolve_alert(
@@ -387,7 +387,7 @@ class TestAlertStatusWorkflow:
     ) -> None:
         """Test that operations on non-existent alert return None."""
         mock_result = MagicMock()
-        mock_result.scalars.return_value.first.return_value = None
+        mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
 
         result = await alert_service.acknowledge_alert(
