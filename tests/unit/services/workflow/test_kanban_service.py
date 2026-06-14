@@ -64,7 +64,7 @@ async def test_ensure_default_stages_creates_6_stages(kanban_service, mock_db, c
     assert len(stages) == 6
     assert stages[0].stage_key == "eingang"
     assert stages[1].stage_key == "ocr"
-    assert stages[2].stage_key == "pruefung"
+    assert stages[2].stage_key == "prüfung"
     assert stages[3].stage_key == "freigabe"
     assert stages[4].stage_key == "gebucht"
     assert stages[5].stage_key == "archiv"
@@ -295,7 +295,7 @@ async def test_move_item_updates_stage_and_previous(kanban_service, mock_db, com
     mock_db.execute.side_effect = [mock_result_item, mock_result_target]
 
     # Mock WebSocket manager
-    with patch("app.services.workflow.kanban_service.get_realtime_ws_manager") as mock_ws:
+    with patch("app.services.realtime.realtime_websocket_manager.get_realtime_ws_manager") as mock_ws:
         mock_manager = AsyncMock()
         mock_ws.return_value = mock_manager
 
@@ -342,7 +342,7 @@ async def test_move_item_emits_websocket_event(kanban_service, mock_db, company_
     mock_db.execute.side_effect = [mock_result_item, mock_result_target]
 
     # Mock WebSocket
-    with patch("app.services.workflow.kanban_service.get_realtime_ws_manager") as mock_ws:
+    with patch("app.services.realtime.realtime_websocket_manager.get_realtime_ws_manager") as mock_ws:
         mock_manager = AsyncMock()
         mock_ws.return_value = mock_manager
 
