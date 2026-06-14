@@ -214,7 +214,7 @@ class TestVersionCreation:
         versioning_service: WorkflowVersioningService,
     ) -> None:
         """Testet Fehler bei ungueltigem change_type."""
-        with pytest.raises(ValueError, match="Ungueltiger change_type"):
+        with pytest.raises(ValueError, match="Ungültiger change_type"):
             await versioning_service.create_version(
                 workflow_id=uuid4(),
                 company_id=uuid4(),
