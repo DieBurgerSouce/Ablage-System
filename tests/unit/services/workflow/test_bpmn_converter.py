@@ -278,7 +278,7 @@ class TestBPMNParser:
         """Testet dass ungueltiges XML einen Fehler wirft."""
         with pytest.raises(ValueError) as exc_info:
             parser.parse(INVALID_XML)
-        assert "Ungueltiges BPMN-Format" in str(exc_info.value)
+        assert "Ungültiges BPMN-Format" in str(exc_info.value)
 
     def test_parse_no_process_raises_error(self, parser: BPMNParser):
         """Testet dass fehlender Process einen Fehler wirft."""
@@ -843,7 +843,7 @@ class TestGermanErrorMessages:
         """Testet deutsche Fehlermeldung bei ungueltigem XML."""
         with pytest.raises(ValueError) as exc_info:
             parser.parse(INVALID_XML)
-        assert "Ungueltiges BPMN-Format" in str(exc_info.value)
+        assert "Ungültiges BPMN-Format" in str(exc_info.value)
 
     def test_no_process_error_message(self, parser: BPMNParser):
         """Testet deutsche Fehlermeldung bei fehlendem Process."""
