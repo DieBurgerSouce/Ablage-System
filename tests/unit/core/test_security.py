@@ -62,24 +62,28 @@ class TestSecretKeyValidation:
         from pydantic import ValidationError, model_validator
         from pydantic_settings import BaseSettings
 
-        with pytest.raises((ValueError, ValidationError)) as exc_info:
-            class IsolatedSettings(BaseSettings):
-                SECRET_KEY: str = short_key
-                DEBUG: bool = True
+        # Env-Isolation: Container setzt ein echtes SECRET_KEY (86 Zeichen),
+        # das BaseSettings sonst aus os.environ liest und den Inline-Default
+        # ueberschreibt -> Test wuerde nie ausloesen (Test-Pollution, Wurzel e).
+        with patch.dict(os.environ, {"SECRET_KEY": short_key, "DEBUG": "true"}, clear=True):
+            with pytest.raises((ValueError, ValidationError)) as exc_info:
+                class IsolatedSettings(BaseSettings):
+                    SECRET_KEY: str = short_key
+                    DEBUG: bool = True
 
-                class Config:
-                    env_file = None
+                    class Config:
+                        env_file = None
 
-                @model_validator(mode='after')
-                def validate_key(self):
-                    if len(self.SECRET_KEY) < 32:
-                        raise ValueError(
-                            f"SECRET_KEY ist zu kurz ({len(self.SECRET_KEY)} Zeichen). "
-                            "Mindestens 32 Zeichen erforderlich für sichere JWT-Signierung."
-                        )
-                    return self
+                    @model_validator(mode='after')
+                    def validate_key(self):
+                        if len(self.SECRET_KEY) < 32:
+                            raise ValueError(
+                                f"SECRET_KEY ist zu kurz ({len(self.SECRET_KEY)} Zeichen). "
+                                "Mindestens 32 Zeichen erforderlich für sichere JWT-Signierung."
+                            )
+                        return self
 
-            IsolatedSettings(_env_file=None)
+                IsolatedSettings(_env_file=None)
 
         error_str = str(exc_info.value)
         assert "32" in error_str or "kurz" in error_str.lower()
@@ -91,22 +95,25 @@ class TestSecretKeyValidation:
         from pydantic import model_validator
         from pydantic_settings import BaseSettings
 
-        class IsolatedSettings(BaseSettings):
-            SECRET_KEY: str = valid_key
-            DEBUG: bool = False
+        # Env-Isolation (Wurzel e): sonst leakt das Container-SECRET_KEY in
+        # die Inline-Settings und der ==valid_key-Vergleich schlaegt fehl.
+        with patch.dict(os.environ, {"SECRET_KEY": valid_key, "DEBUG": "false"}, clear=True):
+            class IsolatedSettings(BaseSettings):
+                SECRET_KEY: str = valid_key
+                DEBUG: bool = False
 
-            class Config:
-                env_file = None
+                class Config:
+                    env_file = None
 
-            @model_validator(mode='after')
-            def validate_key(self):
-                if len(self.SECRET_KEY) < 32:
-                    raise ValueError("SECRET_KEY zu kurz")
-                return self
+                @model_validator(mode='after')
+                def validate_key(self):
+                    if len(self.SECRET_KEY) < 32:
+                        raise ValueError("SECRET_KEY zu kurz")
+                    return self
 
-        settings = IsolatedSettings(_env_file=None)
-        assert settings.SECRET_KEY == valid_key
-        assert len(settings.SECRET_KEY) >= 32
+            settings = IsolatedSettings(_env_file=None)
+            assert settings.SECRET_KEY == valid_key
+            assert len(settings.SECRET_KEY) >= 32
 
     def test_secret_key_minimum_length_boundary(self):
         """SECRET_KEY mit genau 32 Zeichen muss funktionieren."""
@@ -115,21 +122,23 @@ class TestSecretKeyValidation:
         from pydantic import model_validator
         from pydantic_settings import BaseSettings
 
-        class IsolatedSettings(BaseSettings):
-            SECRET_KEY: str = boundary_key
-            DEBUG: bool = False
+        # Env-Isolation (Wurzel e): sonst leakt das 86-Zeichen-Container-Key.
+        with patch.dict(os.environ, {"SECRET_KEY": boundary_key, "DEBUG": "false"}, clear=True):
+            class IsolatedSettings(BaseSettings):
+                SECRET_KEY: str = boundary_key
+                DEBUG: bool = False
 
-            class Config:
-                env_file = None
+                class Config:
+                    env_file = None
 
-            @model_validator(mode='after')
-            def validate_key(self):
-                if len(self.SECRET_KEY) < 32:
-                    raise ValueError("SECRET_KEY zu kurz")
-                return self
+                @model_validator(mode='after')
+                def validate_key(self):
+                    if len(self.SECRET_KEY) < 32:
+                        raise ValueError("SECRET_KEY zu kurz")
+                    return self
 
-        settings = IsolatedSettings(_env_file=None)
-        assert len(settings.SECRET_KEY) == 32
+            settings = IsolatedSettings(_env_file=None)
+            assert len(settings.SECRET_KEY) == 32
 
 
 # ==================== CORS Validation Tests ====================
@@ -310,7 +319,11 @@ class TestSecureErrorLogging:
     @pytest.mark.asyncio
     async def test_redis_error_logs_only_error_type(self):
         """Redis-Fehler sollten nur Fehlertyp loggen, nicht Details."""
-        from app.core import security as security_module
+        # Definitionsort ist app.core.security_auth (das Paket app.core.security
+        # re-exportiert nur). Modul-Globals (_redis_available/_redis_client),
+        # logger und _get_redis_client muessen am Definitionsmodul gesetzt/
+        # gepatcht werden, sonst greift die fail-closed-Logik nicht (Wurzel c).
+        from app.core import security_auth as security_module
 
         # Reset Redis state for testing
         security_module._redis_client = None
@@ -350,7 +363,11 @@ class TestSecureErrorLogging:
     @pytest.mark.asyncio
     async def test_blacklist_token_redis_error_logs_securely(self):
         """blacklist_token_redis gibt HTTPException im fail-closed Modus."""
-        from app.core import security as security_module
+        # Definitionsort ist app.core.security_auth (das Paket app.core.security
+        # re-exportiert nur). Modul-Globals (_redis_available/_redis_client),
+        # logger und _get_redis_client muessen am Definitionsmodul gesetzt/
+        # gepatcht werden, sonst greift die fail-closed-Logik nicht (Wurzel c).
+        from app.core import security_auth as security_module
         from fastapi import HTTPException
 
         # SECURITY FIX: Mit fail-closed Modus wird HTTPException geworfen
@@ -374,7 +391,11 @@ class TestSecureErrorLogging:
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_redis_error_logs_securely(self):
         """is_token_blacklisted_redis gibt HTTPException im fail-closed Modus."""
-        from app.core import security as security_module
+        # Definitionsort ist app.core.security_auth (das Paket app.core.security
+        # re-exportiert nur). Modul-Globals (_redis_available/_redis_client),
+        # logger und _get_redis_client muessen am Definitionsmodul gesetzt/
+        # gepatcht werden, sonst greift die fail-closed-Logik nicht (Wurzel c).
+        from app.core import security_auth as security_module
         from fastapi import HTTPException
 
         # SECURITY FIX: Mit fail-closed Modus wird HTTPException geworfen
@@ -537,59 +558,87 @@ class TestTokenBlacklisting:
     @pytest.mark.asyncio
     async def test_blacklist_token_fails_closed_on_redis_unavailable(self):
         """Token-Blacklisting gibt HTTPException im fail-closed Modus."""
-        from app.core import security as security_module
+        # Definitionsort ist app.core.security_auth (das Paket app.core.security
+        # re-exportiert nur). Modul-Globals (_redis_available/_redis_client),
+        # logger und _get_redis_client muessen am Definitionsmodul gesetzt/
+        # gepatcht werden, sonst greift die fail-closed-Logik nicht (Wurzel c).
+        from app.core import security_auth as security_module
         from fastapi import HTTPException
 
         # SECURITY FIX: Mit fail-closed Modus gibt es keinen Fallback mehr
         # Das System verweigert Operationen wenn Redis nicht verfügbar ist
 
-        # Ensure Redis is "unavailable"
+        # Ensure Redis is "unavailable" — Globals nach dem Test restaurieren,
+        # damit keine Pollution in andere Tests leakt (Wurzel e).
+        _orig_avail = security_module._redis_available
+        _orig_client = security_module._redis_client
         security_module._redis_available = False
         security_module._redis_client = None
+        try:
+            expires = datetime.now(timezone.utc) + timedelta(hours=1)
+            jti = "test-fallback-jti-" + secrets_module.token_hex(8)
 
-        expires = datetime.now(timezone.utc) + timedelta(hours=1)
-        jti = "test-fallback-jti-" + secrets_module.token_hex(8)
+            # Im fail-closed Modus sollte HTTPException 503 geworfen werden
+            with pytest.raises(HTTPException) as exc_info:
+                await security_module.blacklist_token(jti, expires)
 
-        # Im fail-closed Modus sollte HTTPException 503 geworfen werden
-        with pytest.raises(HTTPException) as exc_info:
-            await security_module.blacklist_token(jti, expires)
-
-        assert exc_info.value.status_code == 503
+            assert exc_info.value.status_code == 503
+        finally:
+            security_module._redis_available = _orig_avail
+            security_module._redis_client = _orig_client
 
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_fails_closed_on_redis_unavailable(self):
         """is_token_blacklisted gibt HTTPException im fail-closed Modus."""
-        from app.core import security as security_module
+        # Definitionsort ist app.core.security_auth (das Paket app.core.security
+        # re-exportiert nur). Modul-Globals (_redis_available/_redis_client),
+        # logger und _get_redis_client muessen am Definitionsmodul gesetzt/
+        # gepatcht werden, sonst greift die fail-closed-Logik nicht (Wurzel c).
+        from app.core import security_auth as security_module
         from fastapi import HTTPException
 
         # SECURITY FIX: Mit fail-closed Modus gibt es keinen Fallback mehr
 
+        _orig_avail = security_module._redis_available
+        _orig_client = security_module._redis_client
         security_module._redis_available = False
         security_module._redis_client = None
+        try:
+            jti = "test-check-fallback-jti-" + secrets_module.token_hex(8)
 
-        jti = "test-check-fallback-jti-" + secrets_module.token_hex(8)
+            # Im fail-closed Modus sollte HTTPException 503 geworfen werden
+            with pytest.raises(HTTPException) as exc_info:
+                await security_module.is_token_blacklisted(jti)
 
-        # Im fail-closed Modus sollte HTTPException 503 geworfen werden
-        with pytest.raises(HTTPException) as exc_info:
-            await security_module.is_token_blacklisted(jti)
-
-        assert exc_info.value.status_code == 503
+            assert exc_info.value.status_code == 503
+        finally:
+            security_module._redis_available = _orig_avail
+            security_module._redis_client = _orig_client
 
     @pytest.mark.asyncio
     async def test_token_blacklist_fail_closed_security_message(self):
         """Fail-closed gibt deutsche Sicherheitsmeldung."""
-        from app.core import security as security_module
+        # Definitionsort ist app.core.security_auth (das Paket app.core.security
+        # re-exportiert nur). Modul-Globals (_redis_available/_redis_client),
+        # logger und _get_redis_client muessen am Definitionsmodul gesetzt/
+        # gepatcht werden, sonst greift die fail-closed-Logik nicht (Wurzel c).
+        from app.core import security_auth as security_module
         from fastapi import HTTPException
 
         # SECURITY FIX: Überprüfe dass die Fehlermeldung sicher und auf Deutsch ist
 
+        _orig_avail = security_module._redis_available
+        _orig_client = security_module._redis_client
         security_module._redis_available = False
         security_module._redis_client = None
+        try:
+            jti = "test-security-msg-jti-" + secrets_module.token_hex(8)
 
-        jti = "test-security-msg-jti-" + secrets_module.token_hex(8)
+            with pytest.raises(HTTPException) as exc_info:
+                await security_module.is_token_blacklisted(jti)
 
-        with pytest.raises(HTTPException) as exc_info:
-            await security_module.is_token_blacklisted(jti)
-
-        # Fehlermeldung sollte auf Deutsch sein und keine sensiblen Infos enthalten
-        assert "sicherheit" in exc_info.value.detail.lower() or "verfügbar" in exc_info.value.detail.lower()
+            # Fehlermeldung sollte auf Deutsch sein und keine sensiblen Infos enthalten
+            assert "sicherheit" in exc_info.value.detail.lower() or "verfügbar" in exc_info.value.detail.lower()
+        finally:
+            security_module._redis_available = _orig_avail
+            security_module._redis_client = _orig_client
