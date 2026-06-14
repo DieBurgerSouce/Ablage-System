@@ -965,7 +965,8 @@ class TestDataBasis:
 
         basis = service._determine_data_basis(kpis)
 
-        assert basis == "Vollstaendige Finanzdaten"
+        # Echter Service liefert korrektes UTF-8-Umlaut (CLAUDE.md Rule 2)
+        assert basis == "Vollständige Finanzdaten"
 
     def test_basic_data(self, service):
         """Basis-Finanzdaten bei 5-9 KPIs."""
