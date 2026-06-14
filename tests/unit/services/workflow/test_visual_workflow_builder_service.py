@@ -130,10 +130,16 @@ def simple_workflow_blocks(
 
 @pytest.fixture
 def simple_workflow_edges() -> List[Dict[str, Any]]:
-    """Edges fuer einfachen Workflow."""
+    """Edges fuer einfachen Workflow.
+
+    Der Service nutzt durchgaengig source_id/target_id/source_handle als
+    Eingabe-Kontrakt (WorkflowEdge-Dataclass, Validierung, Simulation,
+    Adjazenz, ReactFlow-Export). ReactFlow-Keys source/target sind nur die
+    Ausgabe von _edges_to_reactflow_edges.
+    """
     return [
-        {"id": "e1", "source": "trigger-1", "target": "approval-1"},
-        {"id": "e2", "source": "approval-1", "target": "end-1", "sourceHandle": "approved"},
+        {"id": "e1", "source_id": "trigger-1", "target_id": "approval-1"},
+        {"id": "e2", "source_id": "approval-1", "target_id": "end-1", "source_handle": "approved"},
     ]
 
 
@@ -379,8 +385,8 @@ class TestSimulateWorkflow:
         """Simulation verarbeitet Bedingungen korrekt."""
         blocks = [trigger_block, condition_block, end_block]
         edges = [
-            {"id": "e1", "source": "trigger-1", "target": "condition-1"},
-            {"id": "e2", "source": "condition-1", "target": "end-1", "sourceHandle": "true"},
+            {"id": "e1", "source_id": "trigger-1", "target_id": "condition-1"},
+            {"id": "e2", "source_id": "condition-1", "target_id": "end-1", "source_handle": "true"},
         ]
 
         # Test mit hohem Betrag (sollte true-Branch nehmen)
