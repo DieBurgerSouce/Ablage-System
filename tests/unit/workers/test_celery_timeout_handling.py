@@ -605,9 +605,10 @@ class TestWorkerMaxTasksPerChild:
 
         max_tasks = celery_app.conf.worker_max_tasks_per_child
 
-        # Should be set to prevent memory leaks
+        # Should be set to prevent memory leaks (Worker-Restart nach N Tasks).
+        # Echter Wert in celery_app.py: 100.
         assert max_tasks is not None
-        assert max_tasks == 10
+        assert max_tasks == 100
 
     def test_worker_prefetch_multiplier_configured(self):
         """worker_prefetch_multiplier sollte fuer GPU Tasks 1 sein."""
