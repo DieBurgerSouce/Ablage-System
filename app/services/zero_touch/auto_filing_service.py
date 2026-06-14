@@ -166,7 +166,8 @@ class AutoFilingService:
         # Phase 11.1: Nutze default_folder_id wenn vorhanden
         if entity.default_folder_id:
             # Lade zugehoerigen Ordner für den Namen
-            from app.db.models import Folder
+            # Folder lebt in models_folder (nicht in models) -> sonst ImportError
+            from app.db.models_folder import Folder
 
             folder = await db.get(Folder, entity.default_folder_id)
             if folder:

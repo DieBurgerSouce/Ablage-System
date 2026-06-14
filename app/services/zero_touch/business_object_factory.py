@@ -241,7 +241,11 @@ class BusinessObjectFactory:
         invoice_date_dt = self._parse_date(invoice_date)
         due_date_dt = self._parse_date(due_date)
 
-        # InvoiceTracking erstellen
+        # InvoiceTracking erstellen.
+        # Hinweis: InvoiceTracking hat KEINE vendor_name-Spalte - der
+        # Geschaeftspartner wird ueber entity_id verknuepft (vendor_name
+        # dient nur dem Logging). company_id/entity_id sind Pflicht fuer
+        # Multi-Tenant-Isolation.
         invoice_tracking = InvoiceTracking(
             document_id=document_id,
             invoice_number=invoice_number,
@@ -250,7 +254,8 @@ class BusinessObjectFactory:
             amount=amount_float,
             currency=currency,
             status=InvoiceStatus.OPEN.value,
-            vendor_name=vendor_name,
+            company_id=company_id,
+            entity_id=entity_id,
         )
 
         db.add(invoice_tracking)
