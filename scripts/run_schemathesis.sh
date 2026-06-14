@@ -45,6 +45,16 @@ if [ "$SEED" = "1" ]; then
         exec -T backend python - < scripts/seed_e2e.py
 fi
 
+# OpenAPI-Schema vorwaermen: Die Spec ist gross (~7-8 MB) und die ERSTE
+# Generierung nach (Re-)Start dauert >10s. Schemathesis v4 hat einen festen
+# 10s-Schema-Load-Read-Timeout -> ohne Warmup schlaegt das Laden fehl
+# ("Read timed out after 10 seconds"). Nach dem Warmup laedt /openapi.json
+# in <0.5s. Generoeses --max-time, Fehler nicht fatal (schemathesis meldet es
+# sonst selbst).
+echo ">> Waerme OpenAPI-Schema vor (erste Generierung kann >10s dauern)..."
+curl -fsS --max-time 90 "$BASE_URL/openapi.json" >/dev/null 2>&1 \
+    || echo "WARNUNG: OpenAPI-Warmup langsam/fehlgeschlagen - Schemathesis koennte beim Laden scheitern." >&2
+
 echo ">> Hole Access-Token ($ADMIN_EMAIL)..."
 TOKEN=$(curl -fsS -X POST "$BASE_URL/api/v1/auth/login" \
     -H "Content-Type: application/json" \

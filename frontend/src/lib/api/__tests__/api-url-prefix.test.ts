@@ -76,5 +76,7 @@ describe('Statischer Guard: keine /api/v1-praefixierten axios-Call-Sites', () =>
       `Doppel-Prefix-Gefahr: Diese Dateien rufen api/apiClient/fetchWithAuth mit '/api/v1/...' auf ` +
         `(baseURL ist bereits '/api/v1' -> ergibt '/api/v1/api/v1/...'): ${offenders.join(', ')}`
     ).toEqual([]);
-  });
+    // Synchroner Tree-Walk ueber alle Quelldateien: unter A-Z-Last (paralleler
+    // Stack) ueberschreitet das den 5s-Default -> 20s-Timeout (kein Flake).
+  }, 20000);
 });

@@ -171,6 +171,7 @@ Invoke-Stage 'monitor' {
     # gemeldet). Echte App-Alerts (Backend down, PostgreSQLDown, Celery,
     # Pipeline-SLOs) bleiben blockierend.
     $envAlerts = @('HostDiskSpaceLow','HostHighCpuLoad','HostOutOfMemory',
+                   'HostHighSwapUsage','HostSwapUsageHigh',
                    'RedisLowCacheHitRate','RedisHighLatency','RedisRDBSnapshotFailed')
     $targets = curl.exe -s 'http://localhost:9090/api/v1/targets' | ConvertFrom-Json
     $down = $targets.data.activeTargets | Where-Object { $_.health -ne 'up' } | ForEach-Object { $_.labels.job }
