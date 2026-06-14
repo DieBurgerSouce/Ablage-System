@@ -290,7 +290,6 @@ class ContextualUmlautRestorer:
         except (ValueError, RuntimeError, TypeError) as e:
             logger.warning(
                 "sentence_scoring_failed",
-                error_type=type(e).__name__,
                 **safe_error_log(e)
             )
             return 0.0
@@ -306,7 +305,6 @@ class ContextualUmlautRestorer:
         except Exception as e:
             logger.warning(
                 "sentence_scoring_unexpected_error",
-                error_type=type(e).__name__,
                 **safe_error_log(e)
             )
             return 0.0

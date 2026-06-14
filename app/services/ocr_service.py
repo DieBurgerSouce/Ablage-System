@@ -201,7 +201,6 @@ class OCRService:
 
                     logger.warning(
                         "german_correction_failed",
-                        error_type=type(e).__name__,
                         **safe_error_log(e),
                         text_length=len(result.get("text", "")),
                         total_correction_errors=self.processing_stats["total_correction_errors"],

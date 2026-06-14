@@ -558,7 +558,6 @@ class OCRPipeline:
             logger.error(
                 "ocr_pipeline_processing_error",
                 document_id=document_id,
-                error_type=type(e).__name__,
                 **safe_error_log(e)
             )
             return OCRPipelineResult(
@@ -579,7 +578,6 @@ class OCRPipeline:
             logger.error(
                 "ocr_pipeline_unexpected_error",
                 document_id=document_id,
-                error_type=type(e).__name__,
                 **safe_error_log(e),
                 exc_info=True
             )

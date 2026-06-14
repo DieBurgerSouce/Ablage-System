@@ -299,7 +299,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "http_request_failed",
                 request_id=request_id,
-                error_type=type(e).__name__,
                 **safe_error_log(e),
                 duration_ms=duration_ms,
                 **request_log

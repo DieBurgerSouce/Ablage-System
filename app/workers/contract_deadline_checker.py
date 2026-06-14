@@ -67,7 +67,6 @@ def check_contract_deadlines(self, company_id: Optional[str] = None) -> Dict[str
     except Exception as exc:
         logger.error(
             "contract_deadline_check_failed",
-            error_type=type(exc).__name__,
             **safe_error_log(exc),
         )
         raise self.retry(exc=exc)

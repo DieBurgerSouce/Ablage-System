@@ -652,7 +652,7 @@ class BatchProcessor:
                         errors.append({"file": file_path, "error": str(e2)})
 
             except Exception as e:
-                logger.error("chunk_processing_unexpected_error", error_type=type(e).__name__, **safe_error_log(e))
+                logger.error("chunk_processing_unexpected_error", **safe_error_log(e))
                 # Process remaining documents individually
                 for file_path in chunk:
                     try:

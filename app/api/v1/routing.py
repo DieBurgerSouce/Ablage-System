@@ -279,7 +279,7 @@ async def predict_routing(
             confidences.append(prediction.confidence)
 
         except Exception as e:
-            logger.debug("prediction_failed", target=target, error_type=type(e).__name__, **safe_error_log(e))
+            logger.debug("prediction_failed", target=target, **safe_error_log(e))
             continue
 
     overall_confidence = sum(confidences) / len(confidences) if confidences else 0.0

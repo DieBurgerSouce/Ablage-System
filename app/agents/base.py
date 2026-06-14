@@ -138,9 +138,8 @@ class BaseAgent(ABC):
         except Exception as e:
             error = e
             status = AgentStatus.FAILED
-            error_type = type(e).__name__
 
-            self.logger.error("agent_task_failed", task_id=task_id, error_type=error_type, **safe_error_log(e), exc_info=True)
+            self.logger.error("agent_task_failed", task_id=task_id, **safe_error_log(e), exc_info=True)
 
             # Error metrics removed for POC
 
