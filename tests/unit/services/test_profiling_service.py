@@ -461,9 +461,12 @@ class TestProfilingServiceConfig:
 
         result = fresh_service.reset_stats()
 
-        assert result["geloeschte_endpoints"] == 1
-        assert result["geloeschte_langsame_requests"] == 1
-        assert result["geloeschte_snapshots"] == 1
+        # Service-interne Dict-Keys nutzen UTF-8-Umlaute (gelöschte_*);
+        # die API-Schicht (profiling.py) mappt sie auf ASCII-Feldnamen
+        # für die externe HTTP-Antwort. Hier wird der echte interne Vertrag geprüft.
+        assert result["gelöschte_endpoints"] == 1
+        assert result["gelöschte_langsame_requests"] == 1
+        assert result["gelöschte_snapshots"] == 1
         assert len(fresh_service._endpoint_stats) == 0
 
 
