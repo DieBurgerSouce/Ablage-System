@@ -533,7 +533,9 @@ class FormulaExtractionService:
 
         for match in self._variable_pattern.finditer(cleaned):
             var = match.group(1)
-            if len(var) == 1 or var.startswith("_"):
+            # Akzeptiere Einzelbuchstaben sowie indizierte Variablen (z. B. "x_1",
+            # "x_{n}"), die das Pattern bewusst als Buchstabe + Subscript erfasst.
+            if len(var) == 1 or "_" in var:
                 variables.add(var)
 
         return sorted(list(variables))
