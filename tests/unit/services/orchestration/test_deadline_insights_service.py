@@ -19,10 +19,14 @@ from uuid import UUID, uuid4
 
 import pytest
 
+import app.services.orchestration.deadline_insights_service as deadline_module
 from app.services.orchestration.deadline_insights_service import (
     DeadlineInsightsService,
+    DeadlineAlert,
     DeadlineType,
     DeadlineCheckResult,
+    UrgencyLevel,
+    _calculate_urgency,
     get_deadline_insights_service,
 )
 
@@ -33,10 +37,15 @@ from app.services.orchestration.deadline_insights_service import (
 
 @pytest.fixture
 def reset_service():
-    """Reset Singleton vor und nach jedem Test."""
-    DeadlineInsightsService._instance = None
+    """Reset modul-globalen Singleton vor und nach jedem Test.
+
+    Der Singleton lebt auf Modulebene (_deadline_insights_instance) und
+    wird ueber get_deadline_insights_service() bereitgestellt; direkte
+    Instanziierung ist KEIN Singleton.
+    """
+    deadline_module._deadline_insights_instance = None
     yield
-    DeadlineInsightsService._instance = None
+    deadline_module._deadline_insights_instance = None
 
 
 @pytest.fixture
@@ -95,14 +104,18 @@ def sample_contract_with_cancellation():
 # =============================================================================
 
 class TestSingletonPattern:
-    """Tests fuer Singleton-Verhalten."""
+    """Tests fuer Singleton-Verhalten (modul-globaler Factory-Singleton)."""
 
-    def test_singleton_returns_same_instance(self, reset_service):
-        """Singleton gibt immer dieselbe Instanz zurueck."""
+    def test_direct_instantiation_is_not_singleton(self, reset_service):
+        """Direkte Instanziierung erzeugt JE eine neue Instanz.
+
+        Der echte Vertrag: die Klasse selbst ist kein Singleton; nur die
+        Factory get_deadline_insights_service() liefert eine geteilte Instanz.
+        """
         instance1 = DeadlineInsightsService()
         instance2 = DeadlineInsightsService()
 
-        assert instance1 is instance2
+        assert instance1 is not instance2
 
     def test_factory_returns_same_instance(self, reset_service):
         """Factory-Funktion gibt Singleton zurueck."""
@@ -212,19 +225,24 @@ class TestSkontoDeadlines:
 
         assert expected_savings == Decimal("23.80")
 
-    @pytest.mark.asyncio
-    async def test_check_skonto_prioritizes_by_days(self, service):
-        """Priorisiert nach verbleibenden Tagen."""
-        # 3 Tage oder weniger = critical
-        # 5 Tage oder weniger = high
-        # Sonst = medium
+    def test_urgency_by_days(self):
+        """Dringlichkeit wird ueber _calculate_urgency aus dem Deadline-Datum bestimmt.
 
-        assert service._get_skonto_priority(2) == "critical"
-        assert service._get_skonto_priority(3) == "critical"
-        assert service._get_skonto_priority(4) == "high"
-        assert service._get_skonto_priority(5) == "high"
-        assert service._get_skonto_priority(7) == "medium"
-        assert service._get_skonto_priority(10) == "medium"
+        Echter Vertrag (UrgencyLevel): <=1 Tag CRITICAL, <=3 URGENT,
+        <=7 SOON, <=14 UPCOMING, sonst FUTURE.
+        """
+        now = datetime.now(timezone.utc)
+
+        # +0/+1 Tag -> CRITICAL (timedelta.days rundet ab, daher +1d12h)
+        assert _calculate_urgency(now + timedelta(days=1, hours=12)) == UrgencyLevel.CRITICAL
+        # +3 Tage -> URGENT
+        assert _calculate_urgency(now + timedelta(days=3, hours=1)) == UrgencyLevel.URGENT
+        # +5 Tage -> SOON
+        assert _calculate_urgency(now + timedelta(days=5, hours=1)) == UrgencyLevel.SOON
+        # +10 Tage -> UPCOMING
+        assert _calculate_urgency(now + timedelta(days=10, hours=1)) == UrgencyLevel.UPCOMING
+        # +20 Tage -> FUTURE
+        assert _calculate_urgency(now + timedelta(days=20, hours=1)) == UrgencyLevel.FUTURE
 
 
 # =============================================================================
@@ -253,20 +271,28 @@ class TestContractDeadlines:
 
         assert isinstance(insights, list)
 
-    @pytest.mark.asyncio
-    async def test_contract_auto_renewal_warning(self, service):
-        """Warnt bei automatischer Verlaengerung."""
-        # Vertrag mit Auto-Renewal sollte extra Warnung haben
-        contract = MagicMock(
-            auto_renewal=True,
-            end_date=datetime.now(timezone.utc) + timedelta(days=45),
-            cancellation_notice_days=30,
-            title="Test Vertrag",
+    def test_contract_cancellation_message(self):
+        """Vertrags-Kuendigungs-Alert generiert deutsche Kuendigungs-Nachricht.
+
+        Echter Vertrag: DeadlineAlert._generate_message() fuer
+        CONTRACT_CANCELLATION nennt den Vertragsnamen und das
+        Kuendigungs-Stichdatum.
+        """
+        deadline = datetime.now(timezone.utc) + timedelta(days=15)
+        alert = DeadlineAlert(
+            deadline_type=DeadlineType.CONTRACT_CANCELLATION,
+            entity_id=uuid4(),
+            entity_name="Test Vertrag",
+            deadline_date=deadline,
+            urgency=_calculate_urgency(deadline),
+            metadata={"notice_period_months": 1, "auto_extend_months": 12},
         )
 
-        message = service._build_contract_message(contract, 15)  # 15 Tage bis Kuendigung
+        message = alert._generate_message()
 
-        assert "automatisch" in message.lower() or "verlaengert" in message.lower()
+        assert "Test Vertrag" in message
+        assert "gekündigt" in message
+        assert deadline.strftime("%d.%m.%Y") in message
 
 
 # =============================================================================
@@ -304,23 +330,21 @@ class TestPaymentDueDeadlines:
 
         assert isinstance(insights, list)
 
-    @pytest.mark.asyncio
-    async def test_payment_overdue_is_critical(self, service):
-        """Ueberfaellige Zahlungen haben kritische Prioritaet."""
-        days_overdue = -5  # 5 Tage ueberfaellig
+    def test_payment_overdue_is_critical(self):
+        """Ueberfaellige Zahlungen haben kritische Dringlichkeit.
 
-        priority = service._get_payment_priority(days_overdue)
+        Echter Vertrag: Faelligkeitsdatum in der Vergangenheit -> days<=1
+        -> UrgencyLevel.CRITICAL (via _calculate_urgency).
+        """
+        overdue_due_date = datetime.now(timezone.utc) - timedelta(days=5)
 
-        assert priority == "critical"
+        assert _calculate_urgency(overdue_due_date) == UrgencyLevel.CRITICAL
 
-    @pytest.mark.asyncio
-    async def test_payment_soon_is_high(self, service):
-        """Bald faellige Zahlungen haben hohe Prioritaet."""
-        days_remaining = 3
+    def test_payment_soon_is_urgent(self):
+        """Bald faellige Zahlungen (<=3 Tage) haben URGENT-Dringlichkeit."""
+        soon_due_date = datetime.now(timezone.utc) + timedelta(days=3, hours=1)
 
-        priority = service._get_payment_priority(days_remaining)
-
-        assert priority == "high"
+        assert _calculate_urgency(soon_due_date) == UrgencyLevel.URGENT
 
 
 # =============================================================================
@@ -383,37 +407,51 @@ class TestCombinedDeadlineChecks:
         assert isinstance(insights, list)
 
     @pytest.mark.asyncio
-    async def test_results_sorted_by_priority(self, service):
-        """Ergebnisse sind nach Prioritaet sortiert."""
-        results = [
-            DeadlineCheckResult(
+    async def test_check_all_deadlines_sorts_insights_by_priority(
+        self, service, mock_db, sample_company_id
+    ):
+        """check_all_deadlines liefert Insights nach Prioritaet sortiert.
+
+        Echter Vertrag: check_all_deadlines sortiert die gesammelten
+        ProactiveInsights inline ueber priority_order
+        (CRITICAL < HIGH < MEDIUM < LOW). Wir patchen die einzelnen
+        Check-Methoden, damit sie Insights gemischter Prioritaet liefern.
+        """
+        from app.services.orchestration.proactive_insights_service import (
+            InsightPriority,
+        )
+
+        def _insight(priority: str) -> "DeadlineCheckResult":
+            return DeadlineCheckResult(
                 deadline_type=DeadlineType.SKONTO,
                 deadline_date=datetime.now(timezone.utc),
-                title="Low Priority",
+                title=priority,
                 message="Test",
-                priority="low",
-            ),
-            DeadlineCheckResult(
-                deadline_type=DeadlineType.PAYMENT_DUE,
-                deadline_date=datetime.now(timezone.utc),
-                title="Critical",
-                message="Test",
-                priority="critical",
-            ),
-            DeadlineCheckResult(
-                deadline_type=DeadlineType.CONTRACT_CANCELLATION,
-                deadline_date=datetime.now(timezone.utc),
-                title="High",
-                message="Test",
-                priority="high",
-            ),
+                priority=priority,
+            ).to_insight()
+
+        with patch.object(
+            service, "check_skonto_deadlines",
+            new=AsyncMock(return_value=[_insight("low")]),
+        ), patch.object(
+            service, "check_contract_deadlines",
+            new=AsyncMock(return_value=[_insight("critical")]),
+        ), patch.object(
+            service, "check_payment_deadlines",
+            new=AsyncMock(return_value=[_insight("high")]),
+        ), patch.object(
+            service, "check_retention_deadlines",
+            new=AsyncMock(return_value=[]),
+        ):
+            insights = await service.check_all_deadlines(
+                db=mock_db, company_id=sample_company_id,
+            )
+
+        assert [i.priority for i in insights] == [
+            InsightPriority.CRITICAL,
+            InsightPriority.HIGH,
+            InsightPriority.LOW,
         ]
-
-        sorted_results = service._sort_by_priority(results)
-
-        assert sorted_results[0].priority == "critical"
-        assert sorted_results[1].priority == "high"
-        assert sorted_results[2].priority == "low"
 
 
 # =============================================================================
@@ -452,15 +490,31 @@ class TestEdgeCases:
         assert insights == []
 
     @pytest.mark.asyncio
-    async def test_handles_none_values(self, service):
-        """Behandelt None-Werte korrekt."""
+    async def test_handles_none_values(self, service, mock_db, sample_company_id):
+        """Behandelt None-Werte in Skonto-Feldern graceful.
+
+        Echter Vertrag: check_skonto_deadlines ueberspringt Rechnungen ohne
+        skonto_deadline (continue) und faengt None bei Betrag/Prozent ueber
+        'or 0' ab -> keine Exception, kein Alert fuer die None-Rechnung.
+        """
         invoice = MagicMock(
+            id=uuid4(),
+            invoice_number="R-NONE",
+            supplier_name=None,
+            total_amount=None,
             skonto_percentage=None,
-            skonto_days=None,
             skonto_deadline=None,
         )
 
-        # Sollte keine Exception werfen
-        has_skonto = service._has_valid_skonto(invoice)
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(
+            return_value=[invoice]
+        )))
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
-        assert has_skonto is False
+        insights = await service.check_skonto_deadlines(
+            db=mock_db, company_id=sample_company_id,
+        )
+
+        # None-Deadline-Rechnung wird uebersprungen, keine Exception
+        assert insights == []

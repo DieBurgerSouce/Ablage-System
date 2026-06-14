@@ -245,6 +245,8 @@ class DeadlineCheckResult:
             title=self.title,
             message=self.message,
             detail=self.detail,
+            potential_value=self.potential_value,
+            action_url=self.action_url,
         )
 
 
