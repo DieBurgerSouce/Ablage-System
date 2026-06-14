@@ -15,6 +15,7 @@ The script is idempotent: running it repeatedly leaves the database unchanged.
 from __future__ import annotations
 
 import asyncio
+from datetime import date
 from uuid import uuid4
 
 from sqlalchemy import select, text
@@ -23,6 +24,7 @@ import app.db.all_models  # noqa: F401  # registers the full ORM model graph (co
 from app.core.security_auth import get_password_hash
 from app.db.models import User
 from app.db.models_cash_company import Company, UserCompany
+from app.db.models_datev import DATEVConfiguration
 from app.db.models_entity_business import BusinessEntity, EntityType
 from app.db.session import get_async_session_context
 
@@ -123,6 +125,37 @@ async def _ensure_business_entity(session, *, name: str, vat_id: str, entity_typ
     return True
 
 
+async def _ensure_datev_config(session, *, user) -> bool:
+    """Eine DATEV-Konfiguration fuer den Nutzer anlegen (user-scoped).
+
+    Ohne mindestens eine Konfiguration zeigt die Export-Seite den Leer-Zustand
+    "Keine Konfiguration vorhanden" statt des Export-Formulars -> der E2E-Test
+    fuer das F4-Validator-Gate (datev-export.spec.ts) findet "Neuen Export
+    erstellen"/Vorschau-Button nicht. `list_configs` filtert auf
+    user_id == current_user.id, daher dem Admin-Nutzer zuordnen.
+    """
+    existing = (
+        await session.execute(
+            select(DATEVConfiguration).where(DATEVConfiguration.user_id == user.id)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return False
+    session.add(
+        DATEVConfiguration(
+            id=uuid4(),
+            user_id=user.id,
+            berater_nr="1234567",
+            mandanten_nr="12345",
+            wj_beginn=date(2026, 1, 1),
+            kontenrahmen="SKR03",
+            is_default=True,
+            is_active=True,
+        )
+    )
+    return True
+
+
 async def main() -> None:
     async with get_async_session_context() as session:
         # Seed runs cross-tenant -> bypass RLS so inserts are not filtered.
@@ -169,6 +202,8 @@ async def main() -> None:
         await _ensure_business_entity(
             session, name="E2E Lieferant AG", vat_id="DE222222222", entity_type=EntityType.SUPPLIER.value
         )
+
+        await _ensure_datev_config(session, user=admin)
 
         print(
             f"[seed_e2e] admin={'created' if admin_new else 'exists'} "
