@@ -447,7 +447,7 @@ class DigitalTwinService:
         docs_avg_result = await db.execute(docs_avg_query)
         docs_avg = (docs_avg_result.scalar() or 0) / 7
 
-        if docs_avg > 5 and docs_today < docs_avg * 0.5:  # 50% weniger als normal
+        if docs_avg > 5 and docs_today <= docs_avg * 0.5:  # 50% oder mehr weniger als normal
             deviation = ((docs_today - docs_avg) / docs_avg) * 100 if docs_avg > 0 else 0
             anomalies.append(
                 Anomaly(
