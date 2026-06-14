@@ -168,7 +168,7 @@ class TestProcessInvoice:
             result = await service.process_invoice(document_id)
 
             assert result.status == PipelineStatus.FAILED
-            assert result.error_message == "Keine Berechtigung fuer dieses Dokument"
+            assert result.error_message == "Keine Berechtigung für dieses Dokument"
             assert result.confidence == 0.0
 
     @pytest.mark.asyncio
@@ -190,7 +190,7 @@ class TestProcessInvoice:
             assert result.status == PipelineStatus.NEEDS_REVIEW
             assert result.stage == PipelineStage.OCR_COMPLETE
             assert result.confidence < DEFAULT_OCR_CONFIDENCE_THRESHOLD
-            assert "OCR-Qualitaet zu niedrig" in result.actions_taken[0]
+            assert "OCR-Qualität zu niedrig" in result.actions_taken[0]
             assert result.next_action == "Manuelle OCR-Korrektur erforderlich"
 
     @pytest.mark.asyncio
@@ -218,7 +218,7 @@ class TestProcessInvoice:
                         assert result.confidence == mock_approval_result.confidence
                         assert "Automatisch genehmigt" in result.actions_taken[-2]
                         assert "Als zahlungsbereit markiert" in result.actions_taken[-1]
-                        assert result.next_action == "Zahlung kann durchgefuehrt werden"
+                        assert result.next_action == "Zahlung kann durchgeführt werden"
                         assert result.processing_time_ms > 0
 
     @pytest.mark.asyncio
@@ -242,7 +242,7 @@ class TestProcessInvoice:
 
                 assert result.status == PipelineStatus.NEEDS_REVIEW
                 assert result.stage == PipelineStage.APPROVED
-                assert "Manuelle Pruefung erforderlich" in result.actions_taken[-1]
+                assert "Manuelle Prüfung erforderlich" in result.actions_taken[-1]
                 assert result.next_action == "Manuelle Genehmigung durch Approver erforderlich"
                 assert "suggested_approvers" in result.metadata
                 assert len(result.metadata["suggested_approvers"]) == 2
@@ -300,7 +300,7 @@ class TestProcessInvoice:
                             # Pruefe dass Entity-Linking ausgefuehrt wurde
                             mock_linking.assert_called_once_with(mock_document)
                             # Pruefe dass in actions_taken erwahnt
-                            assert any("Entity automatisch verknuepft" in action for action in result.actions_taken)
+                            assert any("Entity automatisch verknüpft" in action for action in result.actions_taken)
 
     @pytest.mark.asyncio
     async def test_entity_linking_fails_gracefully(
@@ -352,7 +352,7 @@ class TestProcessInvoice:
 
                         # Mindestens 3 Actions: OCR validiert, Genehmigt, Zahlungsbereit
                         assert len(result.actions_taken) >= 3
-                        assert "OCR-Qualitaet validiert" in result.actions_taken[0]
+                        assert "OCR-Qualität validiert" in result.actions_taken[0]
                         assert isinstance(result.actions_taken, list)
                         # Alle actions sollten deutsche Strings sein
                         for action in result.actions_taken:
