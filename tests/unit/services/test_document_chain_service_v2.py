@@ -478,7 +478,7 @@ class TestMatchReasonGeneration:
 
         reason = service._generate_match_reason(feature_scores, doc_features, candidate)
 
-        assert "Geschaeftspartner" in reason
+        assert "Geschäftspartner" in reason
 
     def test_match_reason_ml_fallback(self, service):
         """Testet ML-Fallback Reason."""

@@ -524,7 +524,7 @@ Position 1: 100 EUR"""
         assert result is not None
         assert result[0] == InvoiceDirection.INCOMING
         assert result[1] >= 0.90
-        assert "Empfaenger" in result[2]
+        assert "Empfänger" in result[2]
 
     def test_find_company_in_sender_context_footer(self, service):
         """Findet Firmennamen nahe Footer-Keywords (Geschaeftsfuehrer)."""
