@@ -244,17 +244,17 @@ class TestSecurityValidation:
 
     def test_validate_tracking_number_too_short_raises(self):
         """Test that too short tracking number raises ValueError."""
-        with pytest.raises(ValueError, match="Ungueltige Tracking-Nummer"):
+        with pytest.raises(ValueError, match="Ungültige Tracking-Nummer"):
             validate_tracking_number("AB")
 
     def test_validate_tracking_number_too_long_raises(self):
         """Test that too long tracking number raises ValueError."""
-        with pytest.raises(ValueError, match="Ungueltige Tracking-Nummer"):
+        with pytest.raises(ValueError, match="Ungültige Tracking-Nummer"):
             validate_tracking_number("A" * 50)
 
     def test_validate_tracking_number_special_chars_raises(self):
         """Test that special characters raise ValueError."""
-        with pytest.raises(ValueError, match="Ungueltige Tracking-Nummer"):
+        with pytest.raises(ValueError, match="Ungültige Tracking-Nummer"):
             validate_tracking_number("ABC<script>alert(1)</script>")
 
     def test_safe_url_encode(self):
