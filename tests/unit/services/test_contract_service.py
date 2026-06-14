@@ -672,7 +672,7 @@ class TestRenewalManagement:
 
         # Assert
         assert option is None
-        assert error == "Verlaengerungsoption nicht gefunden"
+        assert error == "Verlängerungsoption nicht gefunden"
 
     @pytest.mark.asyncio
     async def test_exercise_renewal_option_not_available(
@@ -698,7 +698,7 @@ class TestRenewalManagement:
 
         # Assert
         assert option is None
-        assert "nicht verfuegbar" in error
+        assert "nicht verfügbar" in error
 
     @pytest.mark.asyncio
     async def test_exercise_renewal_option_expired(
@@ -776,7 +776,7 @@ class TestRenewalManagement:
 
         # Assert
         assert option is None
-        assert error == "Verlaengerungsoption nicht gefunden"
+        assert error == "Verlängerungsoption nicht gefunden"
 
 
 # =============================================================================
