@@ -5,45 +5,27 @@ Testet Feature-Flags, Quotas und Mandanten-Verwaltung.
 """
 
 import pytest
+import pytest_asyncio
 from uuid import uuid4
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Base
 from app.db.models_tenant_config import TenantConfig
 from app.services.tenant.tenant_config_service import TenantConfigService
 
 
-# Test Database Setup
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+@pytest_asyncio.fixture
+async def async_db(test_db) -> AsyncGenerator[AsyncSession, None]:
+    """Liefert die kanonische PostgreSQL-Async-Session aus conftest (``test_db``).
 
-
-@pytest.fixture
-async def async_db() -> AsyncGenerator[AsyncSession, None]:
-    """Erstellt eine Test-Datenbank Session."""
-    engine = create_async_engine(
-        TEST_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-
-    async with async_session() as session:
-        yield session
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-    await engine.dispose()
+    Vorher nutzte diese Datei ``sqlite+aiosqlite:///:memory:`` - aiosqlite ist
+    im Backend-Container nicht installiert (ModuleNotFoundError) und die Modelle
+    nutzen ohnehin PostgreSQL-spezifische Typen (JSONB, UUID). ``test_db``
+    ueberspringt sauber, wenn keine DB erreichbar ist (CI-only).
+    """
+    yield test_db
 
 
 @pytest.fixture
