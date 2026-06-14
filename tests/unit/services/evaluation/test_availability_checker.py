@@ -10,7 +10,52 @@ Tests verwenden Hypothesis für Property-Based Testing mit mindestens 100 Iterat
 """
 
 import pytest
-from hypothesis import given, strategies as st, settings, assume, Phase
+
+try:
+    from hypothesis import given, strategies as st, settings, assume, Phase
+
+    HAS_HYPOTHESIS = True
+except ImportError:  # hypothesis ist Dev-Only (requirements-dev.txt) und im
+    # Runtime-Container nicht installiert -> Property-Tests sauber skippen,
+    # Edge-Case-Unit-Tests bleiben aber lauffaehig.
+    HAS_HYPOTHESIS = False
+
+    class _StStub:
+        """Platzhalter, damit die @given/@st-Dekorationen importierbar bleiben.
+
+        ``composite`` wirkt als Identitaets-Dekorator, damit die als
+        ``@st.composite`` definierten Strategie-Funktionen aufrufbar bleiben
+        und nicht ``None`` werden (sonst TypeError bei Klassendefinition).
+        """
+
+        @staticmethod
+        def composite(func):  # noqa: ANN001
+            # Strategie-Aufrufe (z.B. simple_version_string()) liefern einen
+            # harmlosen Platzhalter; die eigentlichen Property-Tests werden
+            # ohnehin per skipif uebersprungen.
+            return lambda *a, **k: "0.0.0"
+
+        def __getattr__(self, _name):  # noqa: ANN001
+            return lambda *a, **k: None
+
+    st = _StStub()  # type: ignore[assignment]
+
+    def given(*args, **kwargs):  # type: ignore[no-redef]
+        def _decorator(func):
+            return func
+
+        return _decorator
+
+    def settings(*args, **kwargs):  # type: ignore[no-redef]
+        def _decorator(func):
+            return func
+
+        return _decorator
+
+    def assume(*args, **kwargs):  # type: ignore[no-redef]
+        return None
+
+    Phase = None  # type: ignore[assignment]
 
 from app.services.evaluation.availability_checker import (
     SemanticVersion,
@@ -68,6 +113,10 @@ def simple_version_string(draw):
 # Property Tests
 # =============================================================================
 
+@pytest.mark.skipif(
+    not HAS_HYPOTHESIS,
+    reason="hypothesis (requirements-dev.txt) im Runtime-Container nicht installiert",
+)
 class TestVersionComparisonCorrectness:
     """
     Property 1: Version Comparison Correctness

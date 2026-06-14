@@ -109,9 +109,10 @@ class MockDashboardSharingService:
         if existing:
             return existing
 
-        # Create new share
+        # Create new share (unique id per share, sonst ueberschreibt der
+        # zweite Share im _shares-Dict den ersten -> falsche list-Ergebnisse)
         share = MockDashboardShare(
-            id=TEST_SHARE_UUID,
+            id=uuid4(),
             dashboard_id=dashboard_id,
             shared_with_user_id=shared_with_user_id,
             permission=permission,

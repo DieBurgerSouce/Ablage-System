@@ -269,11 +269,11 @@ class TestDSOTrackerService:
         """Faelligkeitsverteilung korrekt berechnen."""
         # Mock db.execute fuer aging buckets query
         rows = [
-            ("nicht_faellig", 5, 2500.0),
+            ("nicht_fällig", 5, 2500.0),
             ("1_30_tage", 3, 1500.0),
             ("31_60_tage", 2, 1000.0),
             ("61_90_tage", 1, 500.0),
-            ("ueber_90_tage", 1, 500.0),
+            ("über_90_tage", 1, 500.0),
         ]
         mock_db.execute.return_value = _make_db_rows(rows)
 
@@ -284,7 +284,7 @@ class TestDSOTrackerService:
         )
 
         assert len(result) == 5
-        assert result[0].label == "Nicht faellig"
+        assert result[0].label == "Nicht fällig"
         assert result[0].count == 5
         assert result[0].amount == 2500.0
         assert result[0].percentage == pytest.approx(41.7, rel=0.1)
@@ -294,7 +294,7 @@ class TestDSOTrackerService:
         assert result[1].amount == 1500.0
         assert result[1].percentage == 25.0
 
-        assert result[4].label == "Ueber 90 Tage"
+        assert result[4].label == "Über 90 Tage"
         assert result[4].count == 1
         assert result[4].amount == 500.0
         assert result[4].percentage == pytest.approx(8.3, rel=0.1)

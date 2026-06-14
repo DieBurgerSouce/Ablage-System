@@ -37,11 +37,29 @@ def _make_mock_db(max_sequence: int = 0) -> AsyncMock:
     """Erstellt eine Mock-AsyncSession mit konfigurierbarer Max-Sequence."""
     db = AsyncMock()
 
-    # execute() -> result -> scalar() returns max_sequence
-    scalar_result = MagicMock()
-    scalar_result.scalar.return_value = max_sequence
+    # append() ruft execute() mehrfach auf:
+    #   1. Aufruf  -> max(sequence_number)  -> int (max_sequence)
+    #   Folgeaufrufe -> chain_hash des Vorgaenger-Events -> Hash-String
+    # Ein gemeinsames scalar_result wuerde fuer den Chain-Hash-Query faelschlich
+    # den int max_sequence liefern (-> TypeError int+str). Daher per Aufruf
+    # unterschiedliche Result-Mocks via stateful side_effect.
+    previous_chain_hash = "a" * 64  # gueltiger 64-stelliger Vorgaenger-Hash
 
-    db.execute.return_value = scalar_result
+    def _execute_side_effect(*_args: object, **_kwargs: object) -> MagicMock:
+        result = MagicMock()
+        if not getattr(_execute_side_effect, "_called", False):
+            _execute_side_effect._called = True  # type: ignore[attr-defined]
+            result.scalar.return_value = max_sequence
+        else:
+            result.scalar.return_value = previous_chain_hash
+        return result
+
+    db.execute.side_effect = _execute_side_effect
+    # Zusaetzlich return_value setzen: der Retry-Test referenziert
+    # db.execute.return_value direkt (ueberschreibt dort den side_effect).
+    _seq_result = MagicMock()
+    _seq_result.scalar.return_value = max_sequence
+    db.execute.return_value = _seq_result
     db.add = MagicMock()
 
     # flush + refresh als AsyncMock

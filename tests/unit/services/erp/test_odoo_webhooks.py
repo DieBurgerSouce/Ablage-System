@@ -251,7 +251,7 @@ class TestOdooWebhookPayloadSchema:
 
     def test_event_id_validation(self) -> None:
         """Test: Ungueltige Event-ID wird abgelehnt."""
-        with pytest.raises(ValueError, match="Ungueltige Event-ID"):
+        with pytest.raises(ValueError, match="Ungültiges Event-ID"):
             OdooWebhookPayload(
                 event_id="../../../etc/passwd",  # Path traversal attempt
                 event_type=OdooWebhookEventType.CUSTOMER,
