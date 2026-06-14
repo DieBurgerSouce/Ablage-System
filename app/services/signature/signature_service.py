@@ -113,19 +113,24 @@ class SignatureService:
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(days=expires_in_days)
 
+        # Hinweis: Das kanonische SignatureRequest-Modell (models_versioning)
+        # nutzt signature_type/requester_id/deadline und kennt KEINE Spalten
+        # provider/signing_order_required/requested_at/expires_at/deleted_at.
+        # Daher Mapping auf die echten Spalten; provider/signing_order_required
+        # werden im Audit-Log bzw. zur Laufzeit am Objekt gefuehrt.
         request = SignatureRequest(
             id=uuid4(),
             document_id=document_id,
             company_id=company_id,
             title=title,
-            signature_level=signature_level,
-            provider=provider,
+            signature_type=signature_level,
             status=SignatureStatus.PENDING.value,
-            requested_by=requested_by,
-            requested_at=now,
-            expires_at=expires_at,
-            signing_order_required=signing_order_required,
+            requester_id=requested_by,
+            deadline=expires_at,
+            total_signers=len(signers),
         )
+        # Laufzeit-Attribut fuer die Reihenfolge-Validierung (nicht persistiert).
+        request.signing_order_required = signing_order_required
         db.add(request)
         await db.flush()
 
@@ -198,7 +203,6 @@ class SignatureService:
                 and_(
                     SignatureRequest.id == request_id,
                     SignatureRequest.company_id == company_id,
-                    SignatureRequest.deleted_at.is_(None),
                 )
             )
         )
@@ -233,7 +237,6 @@ class SignatureService:
         """
         conditions = [
             SignatureRequest.company_id == company_id,
-            SignatureRequest.deleted_at.is_(None),
         ]
         if document_id is not None:
             conditions.append(SignatureRequest.document_id == document_id)
@@ -478,7 +481,6 @@ class SignatureService:
                 and_(
                     SignatureRequest.document_id == document_id,
                     SignatureRequest.company_id == company_id,
-                    SignatureRequest.deleted_at.is_(None),
                 )
             )
         )

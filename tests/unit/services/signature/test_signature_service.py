@@ -102,20 +102,21 @@ def service() -> SignatureService:
 @pytest.fixture
 def mock_signature_request(company_id, document_id, user_id):
     """Erstellt eine Mock-Signaturanfrage."""
-    request = Mock(spec=SignatureRequest)
+    # Mock ohne spec, da das kanonische SignatureRequest-Modell
+    # (models_versioning) andere Felder hat (signature_type/requester_id/
+    # deadline) und zur Laufzeit signing_order_required als Nicht-Spalten-
+    # Attribut traegt.
+    request = Mock()
     request.id = uuid4()
     request.document_id = document_id
     request.company_id = company_id
     request.title = "Vertrag Unterschrift"
-    request.signature_level = SignatureLevel.ADVANCED.value
-    request.provider = SignatureProvider.INTERNAL.value
+    request.signature_type = SignatureLevel.ADVANCED.value
     request.status = SignatureStatus.PENDING.value
-    request.requested_by = user_id
-    request.requested_at = datetime.now(timezone.utc)
+    request.requester_id = user_id
     request.completed_at = None
-    request.expires_at = None
+    request.deadline = None
     request.signing_order_required = False
-    request.deleted_at = None
     request.entries = []
     request.audit_logs = []
     return request
@@ -211,7 +212,8 @@ class TestCreateSignatureRequest:
         # Erstes add() ist der Request
         first_add_call = mock_db_session.add.call_args_list[0]
         request_obj = first_add_call[0][0]
-        assert request_obj.expires_at is not None
+        # Kanonisches Modell nutzt 'deadline' (nicht 'expires_at')
+        assert request_obj.deadline is not None
 
 
 class TestSignDocument:
