@@ -241,15 +241,17 @@ class GermanPatterns:
     # =========================================================================
     # SENDER / RECIPIENT LABELS (mit Word Boundaries!)
     # =========================================================================
+    # Umlaut-Varianten (ä/ae) werden BEIDE akzeptiert - OCR-Quellen sind
+    # inkonsistent (manche Dokumente schreiben "Empfaenger", andere "Empfänger").
     SENDER_LABELS = re.compile(
         r'\b(?:von|from|sender|absender|lieferant|supplier|vendor|'
-        r'rechnungssteller|verkäufer|seller|geliefert\s+von)\b',
+        r'rechnungssteller|verk(?:ä|ae)ufer|seller|geliefert\s+von)\b',
         re.IGNORECASE
     )
 
     RECIPIENT_LABELS = re.compile(
-        r'\b(?:an|to|recipient|empfänger|empfänger|kunde|customer|'
-        r'rechnungsempfänger|rechnungsempfänger|käufer|käufer|buyer|'
+        r'\b(?:an|to|recipient|empf(?:ä|ae)nger|kunde|customer|'
+        r'rechnungsempf(?:ä|ae)nger|k(?:ä|ae)ufer|buyer|'
         r'bill\s*to|ship\s*to|lieferadresse|rechnungsadresse)\b',
         re.IGNORECASE
     )
