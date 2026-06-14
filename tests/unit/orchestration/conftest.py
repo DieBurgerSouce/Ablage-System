@@ -2,6 +2,14 @@
 
 HINWEIS: Die Orchestration-Komponenten verwenden relative Imports,
 daher müssen wir sie als Package importieren.
+
+WICHTIG (Container vs. Host): Diese Tests prüfen das Claude-Flow-Team-Workflow-
+Tooling unter `.claude/orchestration` + `.claude/helpers` — NICHT die Ablage-
+Applikation. Im Backend-Container ist `.claude/` nicht gemountet (nur `tests/`
+und `pytest.ini`), daher sind die Tooling-Module dort nicht importierbar. Statt
+17 Collection-Errors zu erzeugen, werden die Test-Module dann sauber von der
+Sammlung ausgenommen (collect_ignore_glob). Auf dem Host (wo `.claude/`
+existiert) laufen sie normal. Siehe KNOWN_ISSUES.md.
 """
 
 import pytest
@@ -14,6 +22,12 @@ import importlib.util
 # Pfade für beide Orchestration-Verzeichnisse
 _claude_path = Path(__file__).parent.parent.parent.parent / ".claude"
 _mcp_server_path = _claude_path / "mcp-server"
+
+# Wenn das Tooling nicht auf der Platte liegt (z. B. im Backend-Container, in dem
+# `.claude/` nicht gemountet ist), die Orchestration-Tooling-Tests gar nicht erst
+# sammeln — sie testen nicht die App und würden sonst nur Collection-Errors werfen.
+if not (_claude_path / "orchestration" / "task_classifier.py").exists():
+    collect_ignore_glob = ["test_*.py"]
 
 # Füge beide zum Path hinzu (orchestration wird als Package unter .claude importiert)
 for p in [_claude_path, _mcp_server_path]:
