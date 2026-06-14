@@ -375,8 +375,9 @@ class WorkflowExecutionService:
         # Step-Execution erstellen
         step_execution = WorkflowStepExecution(
             id=uuid4(),
-            execution_id=context.execution_id,
-            step_id=step.id,
+            workflow_execution_id=context.execution_id,
+            workflow_step_id=step.id,
+            execution_order=step.step_order,
             status=ExecutionStatus.RUNNING.value,
             started_at=datetime.now(timezone.utc),
             input_data=context.data,
@@ -950,7 +951,7 @@ class WorkflowExecutionService:
 
         query = (
             select(WorkflowStepExecution)
-            .where(WorkflowStepExecution.execution_id == execution_id)
+            .where(WorkflowStepExecution.workflow_execution_id == execution_id)
             .order_by(WorkflowStepExecution.started_at)
         )
 
