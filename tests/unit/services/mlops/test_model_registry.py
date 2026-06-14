@@ -669,14 +669,23 @@ class TestRollback:
         mock_session: AsyncMock,
     ) -> None:
         """Test rollback to previous version."""
+        # Echte Registry-Dicts sind ModelMetadata.model_dump(mode="json") und
+        # enthalten daher IMMER model_type (Pflichtfeld ohne Default). Der Mock
+        # muss diese reale Form abbilden, sonst schlaegt ModelMetadata(**target)
+        # beim Rollback fehl.
         registry_data = {
             "ocr_confidence": [
                 {
+                    "model_type": "ocr_confidence",
                     "version": "1.0.0",
                     "status": "deprecated",
                     "deprecated_at": (datetime.utcnow() - timedelta(days=7)).isoformat(),
                 },
-                {"version": "1.1.0", "status": "active"},
+                {
+                    "model_type": "ocr_confidence",
+                    "version": "1.1.0",
+                    "status": "active",
+                },
             ]
         }
         mock_result = MagicMock()
