@@ -382,10 +382,17 @@ class TestStorageServiceDownload:
         """Download eines nicht existierenden Dokuments."""
         from app.services.storage_service import S3Error
 
+        # Echte minio-S3Error-Signatur erfordert code, message, resource,
+        # request_id, host_id, response (positional). Der frueher angenommene
+        # 3-Arg-Konstruktor galt nur fuer den MockS3Error-Fallback (minio nicht
+        # installiert). Im Container IST minio installiert -> echte Signatur.
         mock_minio_client.get_object.side_effect = S3Error(
-            "NoSuchKey",
-            "The specified key does not exist",
-            resource="test.pdf"
+            code="NoSuchKey",
+            message="The specified key does not exist",
+            resource="test.pdf",
+            request_id="req-123",
+            host_id="host-456",
+            response=MagicMock(),
         )
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
@@ -586,7 +593,11 @@ class TestStorageServiceHealthCheck:
                 result = await service.health_check()
 
                 assert result["status"] == "unhealthy"
-                assert "error" in result
+                # health_check nutzt im Fehlerfall safe_error_log (PII-frei):
+                # liefert error_type/error_id statt eines rohen 'error'-Strings,
+                # um keine Exception-Texte (CWE-532) durchzureichen.
+                assert "error_type" in result
+                assert "error_id" in result
 
 
 # ========================= Statistics Tests =========================
