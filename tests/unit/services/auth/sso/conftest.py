@@ -12,6 +12,7 @@ Feinpoliert und durchdacht - Enterprise SSO Test Configuration.
 
 import sys
 import importlib
+import importlib.util
 from unittest.mock import MagicMock, Mock, AsyncMock
 from typing import TYPE_CHECKING
 import os
@@ -126,17 +127,32 @@ if "numpy" not in sys.modules:
     _mocks["numpy"].array = MagicMock()
 
 # Optional dependencies
+# WICHTIG: 'surya' wurde aus dieser Liste ENTFERNT. surya ist im Backend-Image
+# echt installiert und wird vom sso_config_service NICHT gebraucht. Es hier am
+# Modul-Import (Collection) zu mocken leckte trotz package-scoped Teardown in
+# tests/unit/test_surya_agent.py (anderes Package, unzuverlaessiges Teardown-
+# Timing) -> 'surya' is not a package. Generell nur Module mocken, deren echte
+# Lib NICHT installiert ist (find_spec), damit reale Libs nicht fuer andere
+# Tests verfaelscht werden.
 for mod_name in [
     "redis", "redis.asyncio", "minio", "celery", "asyncpg", "PIL", "PIL.Image",
-    "httpx", "aiohttp", "surya", "openai", "anthropic", "langchain",
+    "httpx", "aiohttp", "openai", "anthropic", "langchain",
     "langchain.text_splitter", "langchain_core", "langchain_community",
     "pdf2image", "pypdf", "magic", "boto3", "botocore", "slack_sdk",
     "slack_sdk.web", "slack_sdk.webhook", "jwt", "aiosmtplib",
     "aioimaplib", "watchdog", "watchdog.observers", "watchdog.events"
 ]:
-    if mod_name not in sys.modules:
-        _remember_module_key(mod_name)
-        sys.modules[mod_name] = MagicMock()
+    if mod_name in sys.modules:
+        continue
+    # Echte Lib installiert? Dann NICHT mocken (verhindert Pollution realer Libs
+    # fuer Tests, die sie echt brauchen). Nur fehlende Deps werden gemockt.
+    try:
+        if importlib.util.find_spec(mod_name) is not None:
+            continue
+    except (ImportError, ValueError, ModuleNotFoundError):
+        pass
+    _remember_module_key(mod_name)
+    sys.modules[mod_name] = MagicMock()
 
 # ========================= Ende Mock Section =========================
 
