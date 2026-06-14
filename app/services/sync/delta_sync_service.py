@@ -65,24 +65,26 @@ class DeltaSyncService:
 
     # SECURITY FIX: Whitelist statt Blacklist für Mass Assignment
     # Nur diese Felder dürfen via Sync aktualisiert werden (CWE-915)
+    # WICHTIG: Keys MUESSEN den entity_type-Kuerzeln aus _get_model_class
+    # entsprechen (document/entity/invoice/alert), denn der Lookup erfolgt
+    # ueber change.entity_type. Frueher waren die Keys Klassennamen
+    # ("Document" ...), wodurch der Lookup IMMER [] lieferte und Push-Updates
+    # still gar nichts anwandten (Sicherheits-Whitelist lief ins Leere).
     SYNC_ALLOWED_FIELDS: Dict[str, List[str]] = {
-        "Document": [
+        "document": [
             "name", "description", "category_id", "folder_id", "tags",
             "retention_date", "document_metadata",
         ],
-        "InvoiceTracking": [
+        "invoice": [
             "status", "due_date", "notes", "paid_at", "paid_amount",
             "dunning_level", "skonto_used",
         ],
-        "BusinessEntity": [
+        "entity": [
             "display_name", "contact_email", "contact_phone", "address",
             "notes", "tags",
         ],
-        "Alert": [
+        "alert": [
             "status", "acknowledged_at", "resolved_at", "resolution_note",
-        ],
-        "SmartInboxItem": [
-            "status", "snoozed_until", "completed_at", "dismissed_at",
         ],
     }
 

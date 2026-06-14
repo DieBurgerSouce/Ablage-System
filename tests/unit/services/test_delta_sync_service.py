@@ -48,6 +48,14 @@ async def test_pull_delta_changes():
     mock_result.scalars.return_value = mock_scalars
     mock_db.execute = AsyncMock(return_value=mock_result)
 
+    # _item_to_change nutzt sqlalchemy.inspect() - auf MagicMock-Items nicht
+    # moeglich (NoInspectionAvailable). Fuer Mock-ORM-Objekte ersetzen.
+    service._item_to_change = lambda item: {
+        "id": str(item.id),
+        "filename": item.filename,
+        "updated_at": item.updated_at.isoformat(),
+    }
+
     # Act
     delta = await service.get_changes_since(
         entity_type="document",
@@ -149,11 +157,14 @@ async def test_push_sync_update_record():
     user_id = uuid4()
 
     doc_id = uuid4()
+    # Nur Felder aus SYNC_ALLOWED_FIELDS["document"] sind synchronisierbar
+    # (Sicherheits-Whitelist). status/ocr_text sind serverseitig und bewusst
+    # NICHT syncbar -> hier name/description verwenden.
     change = ChangeRecord(
         entity_type="document",
         entity_id=doc_id,
         operation="update",
-        data={"status": "completed", "ocr_text": "Test"},
+        data={"name": "Aktualisiert.pdf", "description": "Neue Beschreibung"},
         client_timestamp=datetime.now(timezone.utc),
     )
 
@@ -162,8 +173,8 @@ async def test_push_sync_update_record():
     # Mock: Existierendes Dokument
     mock_doc = MagicMock()
     mock_doc.id = doc_id
-    mock_doc.status = "processing"
-    mock_doc.ocr_text = None
+    mock_doc.name = "Original.pdf"
+    mock_doc.description = None
     mock_doc.company_id = company_id
 
     mock_result = MagicMock()
@@ -181,8 +192,8 @@ async def test_push_sync_update_record():
     # Assert
     assert sync_result.accepted == 1
     assert sync_result.rejected == 0
-    assert mock_doc.status == "completed"
-    assert mock_doc.ocr_text == "Test"
+    assert mock_doc.name == "Aktualisiert.pdf"
+    assert mock_doc.description == "Neue Beschreibung"
 
 
 @pytest.mark.asyncio
@@ -195,13 +206,13 @@ async def test_push_sync_conflict_last_write_wins():
 
     doc_id = uuid4()
 
-    # Client change (neuerer Timestamp)
+    # Client change (neuerer Timestamp). name ist whitelisted, status nicht.
     client_ts = datetime.now(timezone.utc)
     change = ChangeRecord(
         entity_type="document",
         entity_id=doc_id,
         operation="update",
-        data={"status": "completed", "updated_at": client_ts.isoformat()},
+        data={"name": "Client.pdf", "updated_at": client_ts.isoformat()},
         client_timestamp=client_ts,
         version=1,  # Erwartet Version 1
     )
@@ -211,7 +222,7 @@ async def test_push_sync_conflict_last_write_wins():
     # Mock: Server hat Version 2 (Konflikt!)
     mock_doc = MagicMock()
     mock_doc.id = doc_id
-    mock_doc.status = "failed"
+    mock_doc.name = "Server.pdf"
     mock_doc.version = 2  # Höhere Version
     mock_doc.updated_at = client_ts - timedelta(minutes=5)  # Älterer Timestamp
     mock_doc.company_id = company_id
@@ -220,7 +231,7 @@ async def test_push_sync_conflict_last_write_wins():
     def mock_item_to_change(item):
         return {
             "id": str(item.id),
-            "status": item.status,
+            "name": item.name,
             "updated_at": item.updated_at.isoformat() if hasattr(item.updated_at, 'isoformat') else str(item.updated_at),
             "version": item.version,
         }
@@ -245,7 +256,7 @@ async def test_push_sync_conflict_last_write_wins():
     assert len(sync_result.conflicts) == 1
     assert sync_result.conflicts[0]["reason"] == "version_mismatch"
     # Last write wins: Client hat neueren Timestamp -> Client gewinnt
-    assert mock_doc.status == "completed"
+    assert mock_doc.name == "Client.pdf"
 
 
 @pytest.mark.asyncio
@@ -475,6 +486,13 @@ async def test_delta_has_more_pagination():
     mock_scalars.all.return_value = mock_docs
     mock_result.scalars.return_value = mock_scalars
     mock_db.execute = AsyncMock(return_value=mock_result)
+
+    # _item_to_change (inspect()) auf MagicMock-Items ersetzen
+    service._item_to_change = lambda item: {
+        "id": str(item.id),
+        "filename": item.filename,
+        "updated_at": item.updated_at.isoformat(),
+    }
 
     # Act
     delta = await service.get_changes_since(
