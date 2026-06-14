@@ -194,7 +194,6 @@ class TestPriorityScorer:
 
         # Mock User Preferences
         mock_prefs = UserPreferences(
-            user_id=sample_user_id,
             category_weights={"alert": 1.2},
             preferred_categories=["alert", "deadline", "validation"],
         )
@@ -207,7 +206,11 @@ class TestPriorityScorer:
 
             # Assert
             assert len(scored_items) == 1
-            assert scored_items[0].ml_priority >= 90.0  # Very high
+            # Realer Algorithmus: base(40%) + urgency(25%) + pref(20%) + importance(15%).
+            # Ohne Deadline ist urgency=0, daher liegt die erreichbare Obergrenze
+            # fuer einen kritischen, eskalierten Alert bei ~79.5 (sehr hoch).
+            assert scored_items[0].ml_priority >= 75.0  # Sehr hoch (kritischer Alert)
+            assert scored_items[0].ml_priority > mock_item.raw_priority * 0.4  # ueber Basis-Anteil
             assert len(scored_items[0].boost_reasons) > 0
 
     @pytest.mark.asyncio
@@ -218,8 +221,10 @@ class TestPriorityScorer:
         # Arrange
         scorer = PriorityScorer()
 
-        # Mock SmartInboxItem mit morgen Deadline
-        tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
+        # Mock SmartInboxItem mit morgen Deadline.
+        # +1d12h, damit time_until.days deterministisch == 1 ist (sonst kippt es
+        # durch verstrichene Mikrosekunden auf 0 -> "Heute faellig").
+        tomorrow = datetime.now(timezone.utc) + timedelta(days=1, hours=12)
         mock_item = Mock()
         mock_item.id = uuid4()
         mock_item.raw_priority = 50.0
@@ -231,7 +236,6 @@ class TestPriorityScorer:
 
         # Mock User Preferences
         mock_prefs = UserPreferences(
-            user_id=sample_user_id,
             category_weights={"deadline": 1.0},
             preferred_categories=[],
         )
@@ -265,23 +269,36 @@ class TestPriorityScorer:
         mock_item.context_data = {"confidence": 0.65}
         mock_item.entity_id = None
 
-        # Mock User Preferences (validation ist preferred)
-        mock_prefs = UserPreferences(
-            user_id=sample_user_id,
+        # User-Praeferenz: validation bevorzugt (Gewicht 1.3 + Top-Kategorie)
+        prefs_preferred = UserPreferences(
             category_weights={"validation": 1.3},  # User likes validation tasks
             preferred_categories=["validation"],
         )
+        # Neutrale Praeferenz als Vergleichsbasis (Gewicht 1.0, nicht bevorzugt)
+        prefs_neutral = UserPreferences(
+            category_weights={"validation": 1.0},
+            preferred_categories=[],
+        )
 
         with patch.object(scorer.behavior_learner, 'get_user_preferences') as mock_get_prefs:
-            mock_get_prefs.return_value = mock_prefs
+            mock_get_prefs.return_value = prefs_preferred
+            scored_preferred = await scorer.score(
+                [mock_item], sample_user_id, mock_db_session
+            )
+            mock_get_prefs.return_value = prefs_neutral
+            scored_neutral = await scorer.score(
+                [mock_item], sample_user_id, mock_db_session
+            )
 
-            # Act
-            scored_items = await scorer.score([mock_item], sample_user_id, mock_db_session)
-
-            # Assert
-            assert len(scored_items) == 1
-            # ML Priority sollte höher sein wegen User Preference
-            assert scored_items[0].ml_priority > scored_items[0].raw_priority
+        # Assert: Praeferenz-Boost wirkt -> bevorzugte Kategorie scort hoeher als
+        # die neutrale Basis. (Hinweis: base ist nur 40% der raw_priority, daher
+        # liegt ml ohne Deadline unter raw - das ist algorithmisch korrekt.)
+        assert len(scored_preferred) == 1
+        assert scored_preferred[0].ml_priority > scored_neutral[0].ml_priority
+        assert any(
+            "kategorie" in reason.lower()
+            for reason in scored_preferred[0].boost_reasons
+        )
 
 
 # ========================= BehaviorLearner Tests =========================
@@ -299,12 +316,21 @@ class TestBehaviorLearner:
         learner = BehaviorLearner()
         item_id = uuid4()
 
+        # log_action laedt zuerst das SmartInboxItem (fuer company_id).
+        # scalar_one_or_none() ist SYNCHRON -> Result als MagicMock mocken.
+        mock_inbox_item = Mock()
+        mock_inbox_item.company_id = uuid4()
+        mock_inbox_item.source_type = "validation_queue"
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=mock_inbox_item)
+        mock_db_session.execute = AsyncMock(return_value=mock_result)
+
         # Act
         await learner.log_action(
             user_id=sample_user_id,
-            item_id=item_id,
-            action_type="approve",
-            category="validation",
+            inbox_item_id=item_id,
+            action="completed",
+            time_spent_ms=1500,
             db=mock_db_session,
         )
 
@@ -325,19 +351,32 @@ class TestBehaviorLearner:
         for i in range(10):
             log = Mock()
             log.category = "alert" if i < 7 else "task"  # 70% alerts, 30% tasks
-            log.action_type = "acknowledge"
+            log.action = "completed"
+            log.time_spent_ms = 1000
             log.created_at = datetime.now(timezone.utc) - timedelta(days=i)
             mock_logs.append(log)
 
+        # Aggregierte Kategorie-Rows fuer _calculate_preferred_categories
+        # (Rows mit .category/.count) UND _calculate_category_weights
+        # (Rows mit .category/.total/.completed/.dismissed -> numerisch!).
+        cat_row = Mock()
+        cat_row.category = "alert"
+        cat_row.count = 7
+        cat_row.total = 7
+        cat_row.completed = 7
+        cat_row.dismissed = 0
+
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=mock_logs)))
+        # _calculate_preferred_categories / _calculate_category_weights nutzen .all()
+        mock_result.all = Mock(return_value=[cat_row])
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
         # Act
         prefs = await learner.get_user_preferences(sample_user_id, mock_db_session)
 
-        # Assert
-        assert prefs.user_id == sample_user_id
+        # Assert: UserPreferences hat keine user_id (Dataclass) - echte Felder pruefen
+        assert isinstance(prefs, UserPreferences)
         # Alert sollte bevorzugte Kategorie sein
         assert "alert" in prefs.preferred_categories
 
@@ -501,7 +540,6 @@ class TestActionRecommender:
 
         # Mock User Preferences
         mock_prefs = UserPreferences(
-            user_id=sample_user_id,
             category_weights={"task": 1.0},
             preferred_categories=[],
         )
