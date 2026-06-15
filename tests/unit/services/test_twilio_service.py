@@ -523,7 +523,12 @@ class TestSMSSending:
             ),
         )
 
-        prefs = TwilioUserPreferences(phone_number=TEST_PHONE_DE, sms_opt_in=True)
+        # quiet_hours_enabled=False: Default ist True (22-07 Uhr). Dieser Test
+        # prueft die Sende-Mechanik (HTTP 201), nicht die Ruhezeiten -> sonst
+        # zeitabhaengiger Flake (schlaegt nachts mit "Ruhezeiten aktiv" fehl).
+        prefs = TwilioUserPreferences(
+            phone_number=TEST_PHONE_DE, sms_opt_in=True, quiet_hours_enabled=False
+        )
         message = TwilioMessage(
             to=TEST_PHONE_DE,
             body="Test-Nachricht fuer Unit-Test",
@@ -676,10 +681,13 @@ class TestWhatsAppSending:
         service = _make_enabled_service()
         client = _attach_mock_client(service)
 
+        # quiet_hours_enabled=False: testet die Sende-Mechanik, nicht Ruhezeiten
+        # (Default 22-07 Uhr -> sonst nachts "Ruhezeiten aktiv"-Flake).
         prefs = TwilioUserPreferences(
             phone_number=TEST_PHONE_DE,
             whatsapp_number=TEST_PHONE_DE,
             whatsapp_opt_in=True,
+            quiet_hours_enabled=False,
         )
         message = TwilioMessage(
             to=TEST_PHONE_DE,
