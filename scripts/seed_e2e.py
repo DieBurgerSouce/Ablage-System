@@ -134,11 +134,18 @@ async def _ensure_datev_config(session, *, user) -> bool:
     erstellen"/Vorschau-Button nicht. `list_configs` filtert auf
     user_id == current_user.id, daher dem Admin-Nutzer zuordnen.
     """
+    # .first() statt scalar_one_or_none(): DATEVConfiguration erlaubt LAUT MODELL
+    # mehrere Konfigurationen pro Nutzer ("Jeder Benutzer kann mehrere ... haben"),
+    # und reset-state leert datev_configurations NICHT -> bei >1 Bestands-Config
+    # wuerfe scalar_one_or_none() MultipleResultsFound und der Seed (und damit die
+    # up-/api-Stufe) braeche ab. Wir pruefen nur, OB schon eine existiert.
     existing = (
         await session.execute(
-            select(DATEVConfiguration).where(DATEVConfiguration.user_id == user.id)
+            select(DATEVConfiguration)
+            .where(DATEVConfiguration.user_id == user.id)
+            .limit(1)
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
     if existing is not None:
         return False
     session.add(
