@@ -100,3 +100,23 @@ Pro Modul: echte Nutzerreise via Browser (Playwright MCP) + API-Checks. Jeder Fe
 | K1 | Schemathesis | Fuzz-Lauf gesamt | 0 unique 5xx (war 23) | F-07 |
 
 Status pro Reise wird in den Iterations-Logs unten gefuehrt.
+
+### Iteration 2 (2026-06-18/19) - Live A-Z + Remediation
+**Stack live mit Worktree-Code** (Bind-Mount ./app zeigt jetzt auf Worktree -> alle App-Fixes aktiv; entscheidend: docker-compose bind-mountet ./app:/app/app:ro aus dem jeweiligen Compose-Projektverzeichnis - deshalb mussten die 4 App-Container ueber die Worktree-Compose laufen).
+
+LIVE VERIFIZIERT (alle 200/korrekt):
+- F-01 Worker: 0 ProcessDefinition-Fehler, 608 Tasks/60s verarbeitet (war Crashloop).
+- F-02 Invalid-Token /auth/me -> 401, 0 TypeError im Log (Doppel-kwarg weg).
+- F-04 /auth/users -> 200 (war 500 bei .local-Mails).
+- F-07 audit-chain/verify malformed -> 422 (war 500).
+- Backend bootet healthy (F-26-Kaskade komplett geloest: torch<2.12 / triton+cupy+HOME-Cache / bitsandbytes graceful).
+- Browser (Playwright): Login + Dashboard rendern voll (deutsche UI, E2E Test GmbH).
+
+NEUE FUNDE Welle 2:
+- F-27 (High, Security/Design): /auth/change-password nimmt UserCreate-Body + ruft Service mit hartkodiertem current_password="" -> Endpoint kann aktuelles Passwort nicht pruefen (kaputt oder Bypass). NICHT blind gefixt (API-Vertrag+Frontend). app/api/v1/auth.py:912,936-939.
+- F-28 (Med): Celery-Task ml_tasks.check_experiment_completion schreibt nach relativem ./data -> OSError read-only-Rootfs (isoliert, retryt nur).
+- F-29 (Info/Test-Gotcha): ~21s Latenz pro Request war Windows-localhost->IPv6(::1)-Timeout (Client-seitig); Backend selbst 7-15ms. 127.0.0.1 nutzen. Andere Session kaschierte das mit "Timeout 20s->60s" statt Root-Cause.
+- F-30 (UX): Beim ersten Login oeffnen 3 ueberlappende Onboarding-/Tour-Dialoge gleichzeitig.
+- F-31 (HIGH, SYSTEMISCH): A-Z-API-Sweep ueber 1071 parameterlose GET-Endpunkte -> 192 lieferten HTTP 500. Root-Cause-Familie "Company-Resolution": User-Modell hat kein company_id/current_company_id/default_company_id/is_admin; Company-Objekte werden mit .company_id statt .id angesprochen; + vereinzelt Call-Signatur-TypeError + Enum<->varchar-SQL (team_status). Latente Bugs, weil diese Feature-Endpunkte nie live aufgerufen wurden (bestaetigt DOC-MISMATCH "Production-Ready"). PROGRESS: 192 -> 171 (esg.py 11 Endpunkte; Codemod current/default_company_id+is_admin in 9 Modulen). Weiter im Loop.
+
+Commits Welle 2: F-26-Kaskade (5x), F-31 esg (797d3b0cf), F-31 codemod 9 Module (23e231d08).
