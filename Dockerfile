@@ -125,8 +125,11 @@ RUN chmod -R 755 /app && \
 # F-26: triton/bitsandbytes schreiben Caches beim Import. Auf beschreibbare Pfade
 # lenken, sonst OSError auf dem read-only-Rootfs (Default $HOME/.triton). .cache ist
 # ein gemountetes Volume; /tmp ist tmpfs.
-ENV TRITON_CACHE_DIR=/home/ablage/.cache/triton \
+ENV HOME=/home/ablage/.cache \
+    TRITON_CACHE_DIR=/home/ablage/.cache/triton \
     XDG_CACHE_HOME=/home/ablage/.cache \
+    CUPY_CACHE_DIR=/home/ablage/.cache/cupy \
+    NUMBA_CACHE_DIR=/home/ablage/.cache/numba \
     MPLCONFIGDIR=/tmp/mpl
 
 # Switch to non-root user
