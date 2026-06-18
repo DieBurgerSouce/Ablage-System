@@ -478,7 +478,7 @@ class HoldingKPIService:
 
             elif metric == "balance":
                 result = await self.db.execute(
-                    select(func.sum(BankAccount.balance))
+                    select(func.sum(BankAccount.current_balance))
                     .where(
                         BankAccount.company_id == company_id,
                         BankAccount.is_active == True,
