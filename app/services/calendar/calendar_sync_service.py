@@ -154,7 +154,7 @@ class CalendarSyncService:
     async def get_sync_config(self, company_id: UUID) -> Optional[SyncConfig]:
         """Laedt Sync-Konfiguration aus DB (company_settings JSONB)."""
         from app.db.models import CompanySettings
-        stmt = select(CompanySettings).where(CompanySettings.company_id == company_id)
+        stmt = select(CompanySettings).limit(1)
         result = await self.db.execute(stmt)
         settings_row = result.scalar_one_or_none()
         if not settings_row or not settings_row.calendar_sync:
@@ -172,7 +172,7 @@ class CalendarSyncService:
     async def save_sync_config(self, company_id: UUID, config: SyncConfig) -> None:
         """Speichert Sync-Konfiguration."""
         from app.db.models import CompanySettings
-        stmt = select(CompanySettings).where(CompanySettings.company_id == company_id)
+        stmt = select(CompanySettings).limit(1)
         result = await self.db.execute(stmt)
         settings_row = result.scalar_one_or_none()
         if settings_row:

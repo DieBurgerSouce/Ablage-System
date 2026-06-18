@@ -130,7 +130,7 @@ class Team(Base):
 
     # Status & Sichtbarkeit
     status = Column(
-        SQLAlchemyEnum(TeamStatus, name="team_status"),
+        SQLAlchemyEnum(TeamStatus, name="team_status", native_enum=False),
         nullable=False,
         default=TeamStatus.ACTIVE
     )
