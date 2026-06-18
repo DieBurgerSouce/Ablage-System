@@ -950,9 +950,9 @@ class GoBDComplianceService:
         # WICHTIG: Wir laden NUR die Rollen, KEINE User-Details (PII)!
         # Aggregierte Abfrage statt User-Objekte laden
         role_result = await db.execute(
-            select(User.role, func.count(User.id).label('count'))
+            select(User.is_superuser, func.count(User.id).label('count'))
             .where(User.company_id == company_id)
-            .group_by(User.role)
+            .group_by(User.is_superuser)
         )
         role_rows = role_result.all()
 
