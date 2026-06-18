@@ -19,6 +19,7 @@ from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_user_company_id  # F-31
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import Company, Document, User, UserCompany
 from app.db.schemas import (

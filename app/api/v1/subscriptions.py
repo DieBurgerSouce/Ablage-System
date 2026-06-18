@@ -25,6 +25,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_user_company_id  # F-31
 from app.db.models import User, Company, SubscriptionTierDefaults
 from app.services.tenant_rate_limit_service import DEFAULT_TIER_CONFIG
 

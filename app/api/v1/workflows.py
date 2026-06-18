@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, require_admin
+from app.api.dependencies import get_user_company_id  # F-31
 from app.core.jsonb_validators import validate_jsonb_payload
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail, safe_error_log

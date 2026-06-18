@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.db.models import User
 from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_user_company_id  # F-31
 from app.services.analytics.industry_benchmark_service import (
     IndustryBenchmarkService,
     get_benchmark_service,
