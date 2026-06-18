@@ -34,7 +34,9 @@ try:
     import bitsandbytes
     BitsAndBytesConfig = _BitsAndBytesConfig
     BITSANDBYTES_AVAILABLE = True
-except ImportError:
+except Exception:
+    # F-26: nicht nur ImportError - triton/bitsandbytes koennen beim Import
+    # OSError/RuntimeError werfen (read-only-FS, kein C-Compiler, keine GPU). Optional.
     pass
 
 # GPTQ quantization - works on Windows
@@ -42,7 +44,7 @@ GPTQ_AVAILABLE = False
 try:
     from auto_gptq import AutoGPTQForCausalLM
     GPTQ_AVAILABLE = True
-except ImportError:
+except Exception:  # F-26: GPU-Quant optional, eager CUDA-Init kann nicht-ImportError werfen
     AutoGPTQForCausalLM = None
 
 # AWQ quantization - works on Windows
@@ -50,7 +52,7 @@ AWQ_AVAILABLE = False
 try:
     from awq import AutoAWQForCausalLM
     AWQ_AVAILABLE = True
-except ImportError:
+except Exception:  # F-26: GPU-Quant optional, eager CUDA-Init kann nicht-ImportError werfen
     AutoAWQForCausalLM = None
 
 from app.agents.base import AgentResourceError, OCRAgent, OCRResult
