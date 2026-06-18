@@ -373,7 +373,7 @@ async def search_extracted_data(
             reference_number=ref_number,
             document_date=doc_date,
             gross_amount=Decimal(str(amount)) if amount else None,
-            preview_text=doc.ocr_text[:200] if doc.ocr_text else None,
+            preview_text=doc.extracted_text[:200] if doc.extracted_text else None,
             filename=doc.filename
         ))
 
