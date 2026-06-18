@@ -1727,7 +1727,7 @@ class SearchService:
         except Exception as e:
             # Log at WARNING for unexpected failures (schema issues, etc.)
             # SQLite limitation is expected and harmless, but other errors need visibility
-            logger.warning("text_suggest_failed", **safe_error_log(e), error_type=type(e).__name__)
+            logger.warning("text_suggest_failed", **safe_error_log(e))
 
         # Nach Score sortieren und limitieren
         suggestions.sort(key=lambda x: x.score, reverse=True)

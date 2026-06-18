@@ -739,7 +739,7 @@ async def get_invoice_skonto(
             invoice_date=invoice.invoice_date,
             skonto_percentage=invoice.skonto_percentage,
             skonto_days=invoice.skonto_days,
-            net_days=invoice.net_payment_days,
+            net_days=invoice.net_days,
         )
         return {
             "invoice_id": str(invoice_id),

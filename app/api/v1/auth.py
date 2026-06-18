@@ -667,7 +667,7 @@ async def refresh_token(
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("refresh_token_failed", **safe_error_log(e), error_type=type(e).__name__)
+        logger.warning("refresh_token_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültiger oder abgelaufener Refresh Token",  # Invalid or expired refresh token

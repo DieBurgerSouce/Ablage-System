@@ -137,7 +137,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("token_validation_failed", **safe_error_log(e), error_type=type(e).__name__)
+        logger.warning("token_validation_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentifizierung fehlgeschlagen",  # Authentication failed

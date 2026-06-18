@@ -214,6 +214,9 @@ class UserInDB(UserBase):
 
 class UserResponse(UserBase):
     """User response schema (public - no password)."""
+    # F-04: bestehende/Reserved-TLD-Mails (z.B. *.local) nicht an EmailStr
+    # scheitern lassen -> Response als plain str serialisieren.
+    email: str
     id: uuid.UUID
     is_active: bool
     is_superuser: bool

@@ -1984,7 +1984,7 @@ async def get_ab_testing_metrics(
             "fehler": str(ve)
         }
     except Exception as e:
-        logger.error("qdrant_status_error", **safe_error_log(e), error_type=type(e).__name__)
+        logger.error("qdrant_status_error", **safe_error_log(e))
         result["qdrant_status"] = {
             "verfügbar": False,
             "fehler": "Unerwarteter Fehler beim Qdrant-Statusabruf"
