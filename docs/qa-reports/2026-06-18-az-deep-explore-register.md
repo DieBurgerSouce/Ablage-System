@@ -59,3 +59,17 @@
 
 ## Remediation-Log (Welle 2)
 _(wird pro Iteration fortgeschrieben)_
+
+### Iteration 1 (2026-06-18)
+Backend-Batch (committed 0fe2bca14):
+- F-01 FIXED: celery_app importiert all_models + configure_mappers() (Modul-Level, laeuft nur im Worker; app.main importiert celery_app NICHT). LIVE bestaetigt: worker-cpu 0 ProcessDefinition-Fehler nach Recreate.
+- F-02 FIXED: error_type-Doppel-kwarg in 4 Handlern entfernt (dependencies.py:140, auth.py:670, metrics.py:1987, search_service.py:1730).
+- F-03 FIXED: invoice.net_payment_days -> invoice.net_days (skonto_service.py x3, invoices.py x1).
+- F-04 FIXED: UserResponse.email -> str (Reserved-TLD/.local).
+Build-Reproduzierbarkeit (committed 9c2ed38fe):
+- F-26 NEU+FIXED: Rebuild zog transformers 5.12.1 + torch 2.12.1 (ungepinnt) -> torch._dynamo "Duplicate dispatch"-Crash beim Backend-Start. Dockerfile installiert jetzt torch==2.1.2+cu121 / torchvision==0.16.2+cu121 explizit (war in requirements.txt dokumentiert, fehlte im Dockerfile); transformers>=4.45.0,<5.
+- F-06 FIXED: 4 Collection-Errors via pytest.importorskip (aiosqlite/orchestration_server/orchestration/post_plan_mode).
+Frontend (committed 5ee8c9599):
+- F-05 FIXED: OnboardingTour Rules-of-Hooks (useEffect vor early-return). tsc/eslint-Verifikation offen (Frontend-Batch).
+
+OFFEN/als Naechstes: Backend-Rebuild verifizieren (boot + F-01..F-04 live), dann F-07 (23 Schemathesis-5xx), F-08 (FinTS-Guard), F-09..F-25, Doku D-01/D-02. Live A-Z-Browser-Simulation nach Backend-Boot.
