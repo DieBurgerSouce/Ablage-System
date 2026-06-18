@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_user_company_id  # F-31 company-id resolution
 from app.db.models import User, EntityType
 from app.services.master_data_hygiene_service import (
     MasterDataHygieneService,
@@ -135,7 +136,7 @@ async def run_hygiene_scan(
     - Potentielle Duplikate
     """
     # Admin-Check
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Hygiene-Scans durchführen"
@@ -206,7 +207,7 @@ async def compare_lexware_data(
     - Kontaktdaten
     """
     # Admin-Check
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Lexware-Vergleiche durchführen"
@@ -319,7 +320,7 @@ async def apply_correction(
     """
     # Kritische Felder nur für Admins
     critical_fields = ["iban", "vat_id"]
-    if request.field_name in critical_fields and not current_user.is_admin:
+    if request.field_name in critical_fields and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Feld '{request.field_name}' kann nur von Administratoren geändert werden"
@@ -361,7 +362,7 @@ async def deactivate_entity(
     Markiert die Entity als inaktiv statt sie zu löschen.
     """
     # Admin-Check
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Entities deaktivieren"

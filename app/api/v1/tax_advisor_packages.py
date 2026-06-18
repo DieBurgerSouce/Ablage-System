@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.api.dependencies import get_db, get_current_user, get_current_superuser
+from app.api.dependencies import get_user_company_id  # F-31 company-id resolution
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.core.security_auth import build_content_disposition
 from app.db.models import User
@@ -495,7 +496,7 @@ async def get_package(
     # Berechtigungsprüfung
     if package.company_id != company_id:
         # Steuerberater können zugeordnete Pakete sehen
-        if not current_user.is_admin and not current_user.is_tax_advisor:
+        if not current_user.is_superuser and not current_user.is_tax_advisor:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Keine Berechtigung für dieses Paket"
@@ -648,7 +649,7 @@ async def download_package(
 
     # Berechtigungsprüfung
     if package.company_id != company_id:
-        if not current_user.is_admin and not current_user.is_tax_advisor:
+        if not current_user.is_superuser and not current_user.is_tax_advisor:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Keine Berechtigung für dieses Paket"

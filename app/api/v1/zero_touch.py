@@ -51,7 +51,7 @@ async def require_admin(
     Raises:
         HTTPException: Falls User kein Admin
     """
-    if not current_user.is_superuser and not current_user.is_admin:
+    if not current_user.is_superuser and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren duerfen diese Aktion ausführen"

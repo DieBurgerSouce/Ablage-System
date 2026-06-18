@@ -143,7 +143,7 @@ async def get_own_limits(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole Rate Limits für die Company des aktuellen Users."""
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt"
@@ -151,7 +151,7 @@ async def get_own_limits(
 
     service = TenantRateLimitService(db)
     try:
-        limits = await service.get_company_limits(current_user.current_company_id)
+        limits = await service.get_company_limits((await get_user_company_id(db, current_user)))
         return limits
     except ValueError as e:
         raise HTTPException(
@@ -172,7 +172,7 @@ async def get_company_limits(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole Rate Limits für eine spezifische Company (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können fremde Company-Limits einsehen"
@@ -202,7 +202,7 @@ async def update_company_limit(
     db: AsyncSession = Depends(get_db),
 ):
     """Erstelle oder aktualisiere Custom Rate Limit (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Rate Limits anpassen"
@@ -249,7 +249,7 @@ async def reset_company_limits(
     db: AsyncSession = Depends(get_db),
 ):
     """Setze alle Custom Limits auf Tier-Defaults zurück (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Limits zurücksetzen"
@@ -281,7 +281,7 @@ async def get_usage_metrics(
 ):
     """Hole Usage Metriken für eine Company."""
     # Permission Check: Eigene Company oder Admin
-    if not current_user.is_admin and current_user.current_company_id != company_id:
+    if not current_user.is_superuser and (await get_user_company_id(db, current_user)) != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff auf fremde Company-Metriken nicht erlaubt"
@@ -311,7 +311,7 @@ async def get_violations(
 ):
     """Hole Rate-Limit-Violations für eine Company."""
     # Permission Check: Eigene Company oder Admin
-    if not current_user.is_admin and current_user.current_company_id != company_id:
+    if not current_user.is_superuser and (await get_user_company_id(db, current_user)) != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff auf fremde Company-Violations nicht erlaubt"
@@ -339,7 +339,7 @@ async def check_rate_limit(
     db: AsyncSession = Depends(get_db),
 ):
     """Prüfe ob ein Request das Rate Limit überschreiten wuerde."""
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt"
@@ -347,7 +347,7 @@ async def check_rate_limit(
 
     service = TenantRateLimitService(db)
     result = await service.check_rate_limit(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         user_id=current_user.id,
         endpoint=endpoint,
         method=method,
