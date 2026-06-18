@@ -35,13 +35,13 @@ RUN python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel uv
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt requirements-gpu.txt ./
-# F-26: torch/torchvision explizit auf cu121 pinnen. Laut requirements.txt war das
-# "separately in Dockerfile" vorgesehen, fehlte aber -> transitiver Pull zog torch
-# 2.12.1 + transformers 5.x -> torch._dynamo "Duplicate dispatch"-Crash beim Start.
-RUN uv pip install --system torch==2.1.2+cu121 torchvision==0.16.2+cu121 \
-    --index-url https://download.pytorch.org/whl/cu121
 RUN uv pip install --system -r requirements.txt
 RUN uv pip install --system -r requirements-gpu.txt
+# F-26: torch/torchvision NACH den requirements explizit auf cu121 pinnen, damit
+# transitive Upgrades (transformers/doctr) torch NICHT auf eine kaputte Version
+# hochziehen (torch 2.12.1: torch._dynamo "Duplicate dispatch"-Crash beim Start).
+RUN uv pip install --system torch==2.1.2+cu121 torchvision==0.16.2+cu121 \
+    --index-url https://download.pytorch.org/whl/cu121
 
 # Sprint 0 / G02: Janus optional via Build-Arg (Skip bei RAM-Pressure oder Image-Failure)
 # Default: SKIP_JANUS=0 (Janus wird gebaut, gleich wie vorher)
