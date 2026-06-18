@@ -142,3 +142,15 @@ VERBLEIBENDER LONG-TAIL (~139, divers - Loop laeuft weiter):
 - ~10 Einzelbugs (Pydantic-validation-errors DashboardDataResponse/ValidationQueueResponse, Service-Signatur-TypeError, KeyError, UnboundLocalError entities/cross-company, Document.ocr_text, PaymentSchedule.period_days ...).
 
 Bewertung: Die grossen, systematischen Cluster (Company-Resolution) sind erledigt. Der Rest sind heterogene Einzel-/Service-Bugs in selten genutzten Enterprise-Feature-Endpunkten (nie live aufgerufen -> latent) - jeder einzeln zu fixen + verifizieren. Loop wird fortgesetzt.
+
+### F-31 Stand nach Iteration 3 (2026-06-19)
+GET-500: **192 -> 135** (57 Endpunkte gefixt; 200: 684 -> 741). Alle Fixes committed + live verifiziert via Re-Sweep.
+Zusaetzlich gefixt: BankAccount.balance -> current_balance (cashflow/holding).
+
+VERBLEIBEND ~135 = Design-abhaengiger Long-Tail (obskure Enterprise-Feature-Endpunkte, nie live genutzt -> latent). Erfordert per-case/Designentscheidungen, KEINE sicheren Codemods:
+- current_user.role (~8 Module): User hat kein role-Feld; Rolle ist berechnet (is_superuser/RBAC). AUTHZ-sensibel -> bewusste Rollenquellen-Entscheidung noetig.
+- Enum<->varchar (team_status/approvalstatus): T2-05-Drift; Fix = Modell native_enum=False ODER DB-Migration (Richtungsentscheidung).
+- CompanySettings.company_id (calendar): CompanySettings ist Singleton OHNE company_id -> calendar-Service-Annahme falsch (Design-Bug).
+- Diverse: User.role/subscriptable (privat), MissingGreenlet (sync-DB in async), Pydantic-Validation-Mismatches (DashboardDataResponse etc.), per-Service-Signatur-TypeError, Document.ocr_text, PaymentSchedule.period_days, ...
+
+NOCH NICHT begonnen (Phase-2-Restscope): POST/PUT/DELETE-Endpunkte systematisch, Voll-Browser-E2E je Modul, Schemathesis-Re-Run, Findings F-08 (FinTS-Guard)/F-27 (change-password)/F-28 (worker ./data)/F-30 (Onboarding-Overlays).
