@@ -8,11 +8,12 @@ uvicorn[standard]==0.27.0
 python-multipart==0.0.9
 
 # GPU/ML Processing
-# NOTE: torch and torchvision are installed separately in Dockerfile with --index-url
-# to get CUDA-enabled builds. Do NOT add them here or the build will fail.
-# torch==2.1.2+cu121 -> installed in Dockerfile
-# torchvision==0.16.2+cu121 -> installed in Dockerfile
-transformers>=4.45.0,<4.46  # Qwen2.5-VL braucht >=4.45.0; <4.46 (F-26): hoehere transformers ziehen torch>2.1.2 hoch -> torch._dynamo Duplicate-Dispatch-Crash
+# F-26: torch/torchvision HIER constrainen (Kommentar sagte "im Dockerfile" - existierte nicht).
+# torch 2.12.x hat kaputtes torch._dynamo (Duplicate dispatch / get_int_max_str_digits) -> Backend-Crash.
+# <2.12 => uv waehlt torch 2.7.x (funktioniert mit transformers 4.57 + surya-ocr 0.20).
+torch<2.12
+torchvision<0.23
+transformers>=4.45.0,<5  # Qwen2.5-VL braucht >=4.45.0; surya-ocr braucht >=4.56.1; <5 als Guard (F-26)
 accelerate>=0.25.0  # Relaxed version for newer transformers compatibility
 qwen-vl-utils>=0.0.2  # Qwen VL image processing utilities
 sentence-transformers>=2.2.2  # For multilingual-e5-large embeddings
