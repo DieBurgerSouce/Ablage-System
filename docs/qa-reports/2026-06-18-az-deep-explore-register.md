@@ -120,3 +120,25 @@ NEUE FUNDE Welle 2:
 - F-31 (HIGH, SYSTEMISCH): A-Z-API-Sweep ueber 1071 parameterlose GET-Endpunkte -> 192 lieferten HTTP 500. Root-Cause-Familie "Company-Resolution": User-Modell hat kein company_id/current_company_id/default_company_id/is_admin; Company-Objekte werden mit .company_id statt .id angesprochen; + vereinzelt Call-Signatur-TypeError + Enum<->varchar-SQL (team_status). Latente Bugs, weil diese Feature-Endpunkte nie live aufgerufen wurden (bestaetigt DOC-MISMATCH "Production-Ready"). PROGRESS: 192 -> 171 (esg.py 11 Endpunkte; Codemod current/default_company_id+is_admin in 9 Modulen). Weiter im Loop.
 
 Commits Welle 2: F-26-Kaskade (5x), F-31 esg (797d3b0cf), F-31 codemod 9 Module (23e231d08).
+
+### Iteration 3 (2026-06-19) - F-31 systematische Remediation
+500-Endpunkte (parameterlose GET): **192 -> 171 -> 139** (53 Endpunkte gefixt).
+Fix-Methode: edit im Worktree -> docker restart ablage-backend (Bind-Mount, KEIN Reboot) -> Re-Sweep.
+
+Behoben (committed):
+- esg.py (11) via await get_user_company_id(db, user).
+- Codemod current_company_id/default_company_id/is_admin in 9 Modulen (cashflow, holding, hygiene, industry_benchmarks, predictive_cashflow, subscriptions, tax_advisor_packages, tenant_rate_limits, zero_touch).
+- get_user_company_id-Import-Fix in 9 Modulen (Codemod-Bug: Import-Check vom Replacement-Text getaeuscht -> NameError; + pre-existing fehlende Imports in ai_autonomy/autonomous/trash/workflows).
+- Company-Objekt .company_id -> .id Codemod (135 Sites: contracts/process_mining/consent/document_templates/credit/classification).
+
+VERBLEIBENDER LONG-TAIL (~139, divers - Loop laeuft weiter):
+- ~22 SQL ProgrammingError/Error: Enum<->varchar (z.B. character varying = team_status) + fehlende Spalten -> deckt sich mit T2 (Modell<->DB-Drift). Per-Query-Fixes noetig.
+- 4 CompanySettings.company_id (calendar-sync) - Klassen-/Query-Attr.
+- 3 BankAccount.balance fehlt (cashflow) - Modell/Spalte.
+- 3 BinaryExpression/TDComparator (extracted_data export) - SQL-Expression.
+- 2 ArgumentError tax-advisor (Company-Objekt statt company_id.id in SQL).
+- 2 MissingGreenlet (bpmn/tasks, notification-preferences) - sync-DB-Call in async.
+- 2 User.role (activity), 2 User not subscriptable (privat/life-events).
+- ~10 Einzelbugs (Pydantic-validation-errors DashboardDataResponse/ValidationQueueResponse, Service-Signatur-TypeError, KeyError, UnboundLocalError entities/cross-company, Document.ocr_text, PaymentSchedule.period_days ...).
+
+Bewertung: Die grossen, systematischen Cluster (Company-Resolution) sind erledigt. Der Rest sind heterogene Einzel-/Service-Bugs in selten genutzten Enterprise-Feature-Endpunkten (nie live aufgerufen -> latent) - jeder einzeln zu fixen + verifizieren. Loop wird fortgesetzt.
