@@ -162,7 +162,7 @@ async def create_template(
     service = DocumentTemplateService(db)
 
     template = await service.create_template(
-        company_id=company.company_id,
+        company_id=company.id,
         user_id=current_user.id,
         name=data.name,
         code=data.code,
@@ -213,7 +213,7 @@ async def list_templates(
     service = DocumentTemplateService(db)
 
     templates, total = await service.list_templates(
-        company_id=company.company_id,
+        company_id=company.id,
         category=category,
         search=search,
         include_inactive=include_inactive,
@@ -241,7 +241,7 @@ async def get_category_summary(
     Liefert Anzahl und Default-Vorlage pro Kategorie.
     """
     service = DocumentTemplateService(db)
-    summary = await service.get_category_summary(company_id=company.company_id)
+    summary = await service.get_category_summary(company_id=company.id)
 
     return [
         CategorySummary(
@@ -269,7 +269,7 @@ async def list_templates_brief(
     service = DocumentTemplateService(db)
 
     templates, _ = await service.list_templates(
-        company_id=company.company_id,
+        company_id=company.id,
         category=category,
         include_inactive=False,
         offset=0,
@@ -292,7 +292,7 @@ async def get_template(
     service = DocumentTemplateService(db)
     template = await service.get_template(
         template_id=template_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not template:
@@ -330,7 +330,7 @@ async def update_template(
 
     template = await service.update_template(
         template_id=template_id,
-        company_id=company.company_id,
+        company_id=company.id,
         create_new_version=create_new_version,
         **updates,
     )
@@ -367,7 +367,7 @@ async def delete_template(
 
     success = await service.delete_template(
         template_id=template_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not success:
@@ -398,7 +398,7 @@ async def preview_template(
 
     template = await service.get_template(
         template_id=template_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not template:
@@ -441,7 +441,7 @@ async def validate_variables(
 
     template = await service.get_template(
         template_id=template_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not template:
@@ -482,7 +482,7 @@ async def generate_document(
 
     template = await service.get_template(
         template_id=data.template_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not template:
@@ -496,7 +496,7 @@ async def generate_document(
             template=template,
             title=data.title,
             variables=data.variables,
-            company_id=company.company_id,
+            company_id=company.id,
             user_id=current_user.id,
             linked_entity_id=data.linked_entity_id,
             linked_document_id=data.linked_document_id,
@@ -536,7 +536,7 @@ async def list_generated_documents(
     service = DocumentTemplateService(db)
 
     docs, total = await service.list_generated_documents(
-        company_id=company.company_id,
+        company_id=company.id,
         template_id=template_id,
         entity_id=entity_id,
         search=search,
@@ -565,7 +565,7 @@ async def get_generated_document(
     service = DocumentTemplateService(db)
     doc = await service.get_generated_document(
         document_id=document_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not doc:
@@ -590,7 +590,7 @@ async def download_generated_document(
     service = DocumentTemplateService(db)
     doc = await service.get_generated_document(
         document_id=document_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not doc:
@@ -653,7 +653,7 @@ async def create_snippet(
     service = DocumentTemplateService(db)
 
     snippet = await service.create_snippet(
-        company_id=company.company_id,
+        company_id=company.id,
         name=data.name,
         code=data.code,
         content=data.content,
@@ -684,7 +684,7 @@ async def list_snippets(
     service = DocumentTemplateService(db)
 
     snippets = await service.list_snippets(
-        company_id=company.company_id,
+        company_id=company.id,
         category=category,
         search=search,
     )
@@ -705,7 +705,7 @@ async def get_snippet(
     service = DocumentTemplateService(db)
     snippet = await service.get_snippet(
         snippet_id=snippet_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not snippet:
@@ -733,7 +733,7 @@ async def update_snippet(
     updates = data.model_dump(exclude_unset=True)
     snippet = await service.update_snippet(
         snippet_id=snippet_id,
-        company_id=company.company_id,
+        company_id=company.id,
         **updates,
     )
 
@@ -760,7 +760,7 @@ async def delete_snippet(
 
     success = await service.delete_snippet(
         snippet_id=snippet_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not success:

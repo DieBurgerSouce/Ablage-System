@@ -285,7 +285,7 @@ async def create_event(
     tracker = EventTracker(db)
 
     event = await tracker.track_event(
-        company_id=company.company_id,
+        company_id=company.id,
         event_type=data.event_type,
         document_id=data.document_id,
         entity_id=data.entity_id,
@@ -304,7 +304,7 @@ async def create_event(
         "Process event created",
         event_id=str(event.id),
         event_type=data.event_type,
-        company_id=str(company.company_id),
+        company_id=str(company.id),
     )
 
     return _event_to_response(event)
@@ -339,8 +339,8 @@ async def list_events(
     from sqlalchemy import select, and_, func, desc
 
     # Basisquery
-    query = select(ProcessEvent).where(ProcessEvent.company_id == company.company_id)
-    count_query = select(func.count(ProcessEvent.id)).where(ProcessEvent.company_id == company.company_id)
+    query = select(ProcessEvent).where(ProcessEvent.company_id == company.id)
+    count_query = select(func.count(ProcessEvent.id)).where(ProcessEvent.company_id == company.id)
 
     # Filter anwenden
     filters = []
@@ -397,7 +397,7 @@ async def get_event(
         select(ProcessEvent).where(
             and_(
                 ProcessEvent.id == event_id,
-                ProcessEvent.company_id == company.company_id,
+                ProcessEvent.company_id == company.id,
             )
         )
     )
@@ -431,7 +431,7 @@ async def get_document_timeline(
         .where(
             and_(
                 ProcessEvent.document_id == document_id,
-                ProcessEvent.company_id == company.company_id,
+                ProcessEvent.company_id == company.id,
             )
         )
         .order_by(asc(ProcessEvent.timestamp))
@@ -465,7 +465,7 @@ async def get_bottlenecks(
     """
     detector = BottleneckDetector(db)
     result = await detector.detect_bottlenecks(
-        company_id=company.company_id,
+        company_id=company.id,
         days=days,
     )
 
@@ -494,7 +494,7 @@ async def get_bottleneck_heatmap(
     """
     detector = BottleneckDetector(db)
     result = await detector.get_bottleneck_heatmap(
-        company_id=company.company_id,
+        company_id=company.id,
         days=days,
     )
 
@@ -523,7 +523,7 @@ async def get_process_health(
     """
     detector = BottleneckDetector(db)
     result = await detector.calculate_process_health(
-        company_id=company.company_id,
+        company_id=company.id,
         days=days,
     )
 
@@ -568,7 +568,7 @@ async def list_suggestions(
     from sqlalchemy import select, and_, desc
 
     query = select(AutomationSuggestion).where(
-        AutomationSuggestion.company_id == company.company_id
+        AutomationSuggestion.company_id == company.id
     )
 
     filters = []
@@ -617,13 +617,13 @@ async def generate_suggestions(
 
     # Generiere Vorschläge
     suggestions_data = await suggester.generate_suggestions(
-        company_id=company.company_id,
+        company_id=company.id,
         days=days,
     )
 
     if save and suggestions_data:
         saved = await suggester.save_suggestions(
-            company_id=company.company_id,
+            company_id=company.id,
             suggestions=suggestions_data,
         )
         await db.commit()
@@ -631,7 +631,7 @@ async def generate_suggestions(
         logger.info(
             "Generated automation suggestions",
             count=len(saved),
-            company_id=str(company.company_id),
+            company_id=str(company.id),
         )
 
         return SuggestionListResponse(
@@ -673,7 +673,7 @@ async def get_suggestion(
         select(AutomationSuggestion).where(
             and_(
                 AutomationSuggestion.id == suggestion_id,
-                AutomationSuggestion.company_id == company.company_id,
+                AutomationSuggestion.company_id == company.id,
             )
         )
     )
@@ -715,7 +715,7 @@ async def activate_suggestion(
         )
 
     # Verifiziere Company-Zugehoerigkeit
-    if suggestion.company_id != company.company_id:
+    if suggestion.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff verweigert",
@@ -758,7 +758,7 @@ async def reject_suggestion(
         )
 
     # Verifiziere Company-Zugehoerigkeit
-    if suggestion.company_id != company.company_id:
+    if suggestion.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff verweigert",
@@ -789,7 +789,7 @@ async def get_suggestion_statistics(
     - Realisierte Einsparungen
     """
     suggester = AutomationSuggester(db)
-    stats = await suggester.get_suggestion_statistics(company_id=company.company_id)
+    stats = await suggester.get_suggestion_statistics(company_id=company.id)
 
     return SuggestionStatsResponse(**stats)
 
@@ -816,7 +816,7 @@ async def list_metrics(
     """
     from sqlalchemy import select, and_, desc
 
-    query = select(ProcessMetric).where(ProcessMetric.company_id == company.company_id)
+    query = select(ProcessMetric).where(ProcessMetric.company_id == company.id)
 
     filters = []
     if metric_type:
@@ -870,7 +870,7 @@ async def get_metrics_summary(
         )
         .where(
             and_(
-                ProcessEvent.company_id == company.company_id,
+                ProcessEvent.company_id == company.id,
                 ProcessEvent.timestamp >= since,
             )
         )
@@ -889,7 +889,7 @@ async def get_metrics_summary(
         select(func.count(func.distinct(ProcessEvent.document_id)))
         .where(
             and_(
-                ProcessEvent.company_id == company.company_id,
+                ProcessEvent.company_id == company.id,
                 ProcessEvent.timestamp >= since,
                 ProcessEvent.document_id.isnot(None),
             )
@@ -933,7 +933,7 @@ async def get_flow_diagram(
     discovery_service = ProcessDiscoveryService(db)
 
     result = await discovery_service.discover_process(
-        company_id=company.company_id,
+        company_id=company.id,
         days=days,
         min_frequency=min_frequency,
     )
@@ -963,7 +963,7 @@ async def get_process_variants(
     discovery_service = ProcessDiscoveryService(db)
 
     variants = await discovery_service.get_variants(
-        company_id=company.company_id,
+        company_id=company.id,
         days=days,
         limit=limit,
     )
@@ -987,7 +987,7 @@ async def trigger_metric_calculation(
     Normalerweise automatisch per Celery-Task.
     """
     detector = BottleneckDetector(db)
-    await detector.save_daily_metrics(company_id=company.company_id)
+    await detector.save_daily_metrics(company_id=company.id)
     await db.commit()
 
     return {

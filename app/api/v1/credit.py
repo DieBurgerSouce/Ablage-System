@@ -253,7 +253,7 @@ async def check_entity_credit(
         select(BusinessEntity).where(
             and_(
                 BusinessEntity.id == entity_id,
-                BusinessEntity.company_id == company.company_id,
+                BusinessEntity.company_id == company.id,
             )
         )
     )
@@ -310,7 +310,7 @@ async def get_entity_score(
     try:
         result = await service.calculate_score(
             entity_id=entity_id,
-            company_id=company.company_id,
+            company_id=company.id,
             include_external=include_external,
         )
     except ValueError as e:
@@ -343,7 +343,7 @@ async def refresh_entity_score(
 
     result = await service.calculate_score(
         entity_id=entity_id,
-        company_id=company.company_id,
+        company_id=company.id,
         include_external=data.include_external,
     )
 
@@ -375,7 +375,7 @@ async def get_credit_limit(
     try:
         result = await manager.get_credit_limit(
             entity_id=entity_id,
-            company_id=company.company_id,
+            company_id=company.id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -405,7 +405,7 @@ async def update_credit_limit(
     try:
         result = await manager.calculate_and_update_limit(
             entity_id=entity_id,
-            company_id=company.company_id,
+            company_id=company.id,
             user_id=current_user.id,
             include_external=data.include_external,
         )
@@ -449,7 +449,7 @@ async def adjust_credit_limit(
     try:
         result = await manager.manual_adjust_limit(
             entity_id=entity_id,
-            company_id=company.company_id,
+            company_id=company.id,
             new_limit=Decimal(str(data.new_limit)),
             user_id=current_user.id,
             reason=data.reason,
@@ -487,7 +487,7 @@ async def get_limit_history(
 
     history = await manager.get_limit_history(
         entity_id=entity_id,
-        company_id=company.company_id,
+        company_id=company.id,
         limit=limit,
     )
 
@@ -515,7 +515,7 @@ async def get_entities_for_review(
     manager = CreditLimitManager(db)
 
     entities = await manager.get_entities_for_review(
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     return [EntityReviewItem(**e) for e in entities]
@@ -537,7 +537,7 @@ async def batch_update_limits(
     manager = CreditLimitManager(db)
 
     result = await manager.batch_update_limits(
-        company_id=company.company_id,
+        company_id=company.id,
         include_external=include_external,
     )
 
@@ -573,7 +573,7 @@ async def get_monitoring_events(
         select(BusinessEntity).where(
             and_(
                 BusinessEntity.id == entity_id,
-                BusinessEntity.company_id == company.company_id,
+                BusinessEntity.company_id == company.id,
             )
         )
     )
@@ -622,7 +622,7 @@ async def start_monitoring(
         select(BusinessEntity).where(
             and_(
                 BusinessEntity.id == entity_id,
-                BusinessEntity.company_id == company.company_id,
+                BusinessEntity.company_id == company.id,
             )
         )
     )
@@ -683,7 +683,7 @@ async def stop_monitoring(
         select(BusinessEntity).where(
             and_(
                 BusinessEntity.id == entity_id,
-                BusinessEntity.company_id == company.company_id,
+                BusinessEntity.company_id == company.id,
             )
         )
     )
@@ -726,7 +726,7 @@ async def get_credit_statistics(
 
     result = await db.execute(
         select(BusinessEntity)
-        .where(BusinessEntity.company_id == company.company_id)
+        .where(BusinessEntity.company_id == company.id)
     )
     entities = list(result.scalars().all())
 
