@@ -73,3 +73,30 @@ Frontend (committed 5ee8c9599):
 - F-05 FIXED: OnboardingTour Rules-of-Hooks (useEffect vor early-return). tsc/eslint-Verifikation offen (Frontend-Batch).
 
 OFFEN/als Naechstes: Backend-Rebuild verifizieren (boot + F-01..F-04 live), dann F-07 (23 Schemathesis-5xx), F-08 (FinTS-Guard), F-09..F-25, Doku D-01/D-02. Live A-Z-Browser-Simulation nach Backend-Boot.
+
+## A-Z Live-Test-Matrix (Welle 2)
+Pro Modul: echte Nutzerreise via Browser (Playwright MCP) + API-Checks. Jeder Fehler -> systematisches Debuggen -> Fix im Worktree -> schneller Rebuild -> LIVE nachweisen -> adversarial gegenpruefen -> dokumentieren. Login: admin@localhost.com / admin123 (Fallback admin@ablage-system.local / password123).
+
+| # | Reise | Schritte | Erfolgskriterium | Verknuepfte Findings |
+|---|-------|----------|------------------|----------------------|
+| A1 | Auth Login | /login -> admin-Creds -> Dashboard | 200, Token, Redirect | F-02, F-04 |
+| A2 | Auth Negativ | falsche Creds / leeres Formular | bleibt /login, 401 sauber (kein 500/TypeError) | F-02 |
+| A3 | 2FA | 2FA-User Login | TOTP erzwungen (kein DEBUG-Bypass) | (T1 positiv) |
+| B1 | Admin Users | GET /auth/users (admin) | 200 Liste (war 500 bei .local) | F-04 |
+| B2 | Companies/Multi-Tenant | /companies, /companies/current | 200, kein Leak | (T1 positiv) |
+| C1 | Upload | Dokument hochladen | Upload ok, Job angelegt | T6-E2E |
+| C2 | OCR/Review | OCR-Fortschritt -> Review-Modal | Text erkannt, Review oeffnet | F-21 |
+| C3 | Klassifizierung | Dokumenttyp/Entity-Link | korrekt zugeordnet | - |
+| D1 | Volltextsuche | Suche nach Begriff | Treffer (war tot: SQL-Bind) | T9 verify |
+| E1 | Banking/Skonto | Rechnung -> Skonto berechnen | due_date/Skonto korrekt, kein AttributeError | F-03 |
+| E2 | Invoice-Tracking | Tracking-Liste/Detail | laedt, Felder korrekt | F-03 |
+| F1 | DATEV Export | Export-Gate/Config | Export ok oder ehrliche Meldung | T3-08 |
+| F2 | Lexware | Import-Ansicht | laedt, kein PII-Log | T3-09 |
+| G1 | Alerts | Alert-Center | Alerts laden, SLA-Checks aktiv | F-01 |
+| H1 | Audit-Chain | /audit-chain/verify malformed | 422 statt 500 | F-07 |
+| H2 | Archive/Export | GDPdU/tax-authority malformed | 4xx statt 500 | F-07 |
+| I1 | Worker/Beat | Scheduled CPU-Tasks | SUCCESS (kein Crashloop) | F-01 |
+| J1 | GDPR | Loeschantrag/Audit | funktioniert | - |
+| K1 | Schemathesis | Fuzz-Lauf gesamt | 0 unique 5xx (war 23) | F-07 |
+
+Status pro Reise wird in den Iterations-Logs unten gefuehrt.
