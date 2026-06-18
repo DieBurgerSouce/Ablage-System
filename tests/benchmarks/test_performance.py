@@ -23,6 +23,9 @@ import sys
 # Add MCP server to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / ".claude" / "mcp-server"))
 
+# F-06: claude-flow MCP-Server ist nicht Teil des App-Test-Scopes -> Skip statt Error.
+pytest.importorskip("orchestration_server")
+
 from orchestration_server import (
     OrchestrationMCPServer,
     TaskRouting,

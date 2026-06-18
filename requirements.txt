@@ -12,7 +12,7 @@ python-multipart==0.0.9
 # to get CUDA-enabled builds. Do NOT add them here or the build will fail.
 # torch==2.1.2+cu121 -> installed in Dockerfile
 # torchvision==0.16.2+cu121 -> installed in Dockerfile
-transformers>=4.45.0  # Qwen2.5-VL support requires >=4.45.0 (upgraded from 4.41.0)
+transformers>=4.45.0,<5  # Qwen2.5-VL braucht >=4.45.0; <5 (F-26): transformers 5.x (deepgemm) loest torch._dynamo Duplicate-Dispatch-Crash aus
 accelerate>=0.25.0  # Relaxed version for newer transformers compatibility
 qwen-vl-utils>=0.0.2  # Qwen VL image processing utilities
 sentence-transformers>=2.2.2  # For multilingual-e5-large embeddings
