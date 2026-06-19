@@ -120,7 +120,7 @@ class Delegation(Base):
 
     # Delegations-Typ
     delegation_type = Column(
-        SQLAlchemyEnum(DelegationType, name="delegation_type"),
+        SQLAlchemyEnum(DelegationType, name="delegation_type", native_enum=False),
         nullable=False,
         default=DelegationType.PARTIAL
     )
@@ -149,14 +149,14 @@ class Delegation(Base):
 
     # Status
     status = Column(
-        SQLAlchemyEnum(DelegationStatus, name="delegation_status"),
+        SQLAlchemyEnum(DelegationStatus, name="delegation_status", native_enum=False),
         nullable=False,
         default=DelegationStatus.PENDING
     )
 
     # Grund & Beschreibung
     reason = Column(
-        SQLAlchemyEnum(DelegationReason, name="delegation_reason"),
+        SQLAlchemyEnum(DelegationReason, name="delegation_reason", native_enum=False),
         nullable=False,
         default=DelegationReason.OTHER
     )
@@ -359,7 +359,7 @@ class DelegationTemplate(Base):
 
     # Delegations-Einstellungen
     delegation_type = Column(
-        SQLAlchemyEnum(DelegationType, name="template_delegation_type"),
+        SQLAlchemyEnum(DelegationType, name="template_delegation_type", native_enum=False),
         nullable=False
     )
     permissions = Column(CrossDBJSON, default=list)

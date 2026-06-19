@@ -99,6 +99,11 @@ class RedisStateManager:
                 max_connections=settings.REDIS_POOL_MAX_SIZE,
             )
 
+    async def get_client(self):
+        "F-31: verbundenen Redis-Client liefern (nlq u.a.)."
+        await self.connect()
+        return self._redis
+
     async def disconnect(self) -> None:
         """Close Redis connection and cleanup subscriptions."""
         # Cleanup pubsub first
