@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_current_company_id, get_db
+from app.api.dependencies import get_current_active_user, get_user_company_id_dep, get_db
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_log
 from app.db.models import User
@@ -195,7 +195,7 @@ async def generate_cluster_suggestions(
     top_k: int = Query(3, ge=1, le=10, description="Anzahl Vorschlaege"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> ClusterSuggestionListResponse:
     """Generiert Cluster-Vorschlaege fuer ein Dokument."""
     if not company_id:
@@ -263,7 +263,7 @@ async def get_document_suggestions(
     document_id: UUID = Path(..., description="ID des Dokuments"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> ClusterSuggestionListResponse:
     """Gibt offene Vorschlaege fuer ein Dokument zurueck."""
     if not company_id:
@@ -379,7 +379,7 @@ async def list_clusters(
     offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> ClusterListResponse:
     """Listet Cluster auf."""
     if not company_id:
@@ -424,7 +424,7 @@ async def create_cluster(
     body: ClusterCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> ClusterResponse:
     """Erstellt einen manuellen Cluster."""
     if not company_id:
@@ -465,7 +465,7 @@ async def get_cluster_detail(
     cluster_id: UUID = Path(..., description="ID des Clusters"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> ClusterResponse:
     """Gibt Cluster-Details zurueck."""
     if not company_id:
@@ -498,7 +498,7 @@ async def get_cluster_graph(
     cluster_id: UUID = Path(..., description="ID des Clusters"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> ClusterGraphResponse:
     """Gibt Graph-Daten fuer Cluster-Visualisierung zurueck."""
     if not company_id:
@@ -545,7 +545,7 @@ async def auto_generate_clusters(
     body: AutoClusterRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> AutoClusterResponse:
     """Startet automatisches Clustering."""
     if not company_id:
@@ -600,7 +600,7 @@ async def merge_clusters(
     body: MergeClustersRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> ClusterResponse:
     """Fuehrt Cluster zusammen."""
     if not company_id:
@@ -650,7 +650,7 @@ async def get_cluster_stats(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> List[ClusterStatsResponse]:
     """Gibt Cluster-Statistiken zurueck."""
     if not company_id:

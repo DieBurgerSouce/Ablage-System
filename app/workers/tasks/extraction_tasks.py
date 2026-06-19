@@ -18,7 +18,8 @@ import asyncio
 
 import structlog
 from celery import states
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -142,7 +143,7 @@ async def _async_reprocess_all(
         # Optional: Dokumenttyp-Filter
         if document_type_filter:
             query = query.where(
-                Document.extracted_data["classification"]["document_type"].astext
+                cast(Document.extracted_data, JSONB)["classification"]["document_type"].astext
                 == document_type_filter
             )
 

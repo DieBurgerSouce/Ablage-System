@@ -274,10 +274,10 @@ class InventoryMovement(Base):
 
     # Bewegungstyp und Status
     movement_type: Mapped[MovementType] = mapped_column(
-        SQLEnum(MovementType), nullable=False
+        SQLEnum(MovementType, values_callable=lambda e: [m.value for m in e]), nullable=False
     )
     status: Mapped[MovementStatus] = mapped_column(
-        SQLEnum(MovementStatus), default=MovementStatus.CONFIRMED
+        SQLEnum(MovementStatus, values_callable=lambda e: [m.value for m in e]), default=MovementStatus.CONFIRMED
     )
 
     # Mengen

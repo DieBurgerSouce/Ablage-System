@@ -21,7 +21,8 @@ from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, and_, func, extract
+from sqlalchemy import select, and_, func, extract, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log
@@ -175,7 +176,7 @@ class PlausibilityService:
             conditions = [
                 Document.company_id == company_id,
                 Document.deleted_at.is_(None),
-                Document.extracted_data["invoice_number"].astext == invoice_number,
+                cast(Document.extracted_data, JSONB)["invoice_number"].astext == invoice_number,
             ]
 
             if entity_id is not None:
@@ -396,13 +397,13 @@ class PlausibilityService:
         try:
             # Historische Betraege laden
             result = await db.execute(
-                select(Document.extracted_data["gross_amount"].astext)
+                select(cast(Document.extracted_data, JSONB)["gross_amount"].astext)
                 .where(
                     and_(
                         Document.company_id == company_id,
                         Document.business_entity_id == entity_id,
                         Document.deleted_at.is_(None),
-                        Document.extracted_data["gross_amount"].astext.isnot(None),
+                        cast(Document.extracted_data, JSONB)["gross_amount"].astext.isnot(None),
                     )
                 )
                 .limit(100)

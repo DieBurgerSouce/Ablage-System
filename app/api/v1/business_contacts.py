@@ -17,7 +17,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, or_, desc, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import selectinload
 
 from app.db.models import User, Document, BusinessContact, DocumentContact, ContactType
@@ -238,7 +239,7 @@ async def list_contacts(
     if tags:
         # At least one tag must match
         for tag in tags:
-            query = query.where(BusinessContact.tags.contains([tag]))
+            query = query.where(cast(BusinessContact.tags, JSONB).contains([tag]))
 
     if search:
         search_term = f"%{search}%"

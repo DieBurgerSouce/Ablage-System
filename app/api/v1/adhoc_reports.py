@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db, get_current_company_id
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail
 from app.core.types import JSONValue
 from app.db.models import User
@@ -288,7 +288,7 @@ async def create_report(
     data: AdHocReportCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> AdHocReportResponse:
     """Erstellt einen neuen Ad-Hoc Report.
 
@@ -331,7 +331,7 @@ async def list_reports(
     per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> List[AdHocReportResponse]:
     """Listet alle Ad-Hoc Reports des aktuellen Benutzers (eigene + geteilte + öffentliche)."""
     service = _get_service()
@@ -351,7 +351,7 @@ async def get_report(
     report_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> AdHocReportResponse:
     """Lädt einen spezifischen Ad-Hoc Report."""
     service = _get_service()
@@ -368,7 +368,7 @@ async def update_report(
     data: AdHocReportUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> AdHocReportResponse:
     """Aktualisiert einen Ad-Hoc Report (nur Besitzer oder Bearbeitungsrecht)."""
     service = _get_service()
@@ -426,7 +426,7 @@ async def delete_report(
     report_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """Löscht einen Ad-Hoc Report (nur Besitzer)."""
     service = _get_service()
@@ -450,7 +450,7 @@ async def execute_report(
     data: Optional[ExecuteRequest] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> ExecutionResultResponse:
     """Führt einen Ad-Hoc Report aus und gibt die Daten zurück.
 
@@ -494,7 +494,7 @@ async def export_report(
     export_format: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """Exportiert einen Ad-Hoc Report als PDF, Excel oder CSV.
 
@@ -567,7 +567,7 @@ async def share_report(
     data: ShareRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> ShareResponse:
     """Teilt einen Report mit einem anderen Benutzer."""
     service = _get_service()
@@ -624,7 +624,7 @@ async def create_schedule(
     data: ScheduleCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> ScheduleResponse:
     """Erstellt einen Zeitplan für automatischen Report-Versand per E-Mail."""
     from app.db.models_adhoc_report import (
@@ -671,7 +671,7 @@ async def update_schedule(
     data: ScheduleUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> ScheduleResponse:
     """Aktualisiert einen Zeitplan."""
     service = _get_service()
@@ -696,7 +696,7 @@ async def delete_schedule(
     schedule_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> Response:
     """Löscht einen Zeitplan."""
     service = _get_service()
@@ -710,7 +710,7 @@ async def delete_schedule(
 async def list_schedules(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ) -> List[ScheduleResponse]:
     """Listet alle Zeitpläne des aktuellen Mandanten."""
     service = _get_service()

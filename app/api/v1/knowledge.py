@@ -20,7 +20,8 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy import select, and_, or_, func, desc, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -333,7 +334,7 @@ async def list_notes(
     if is_template is not None:
         query = query.where(KnowledgeNote.is_template == is_template)
     if tag:
-        query = query.where(KnowledgeNote.tags.contains([tag]))
+        query = query.where(cast(KnowledgeNote.tags, JSONB).contains([tag]))
     if search:
         search_filter = or_(
             KnowledgeNote.title.ilike(f"%{search}%"),

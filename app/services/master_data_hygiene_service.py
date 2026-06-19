@@ -19,7 +19,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import structlog
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -473,7 +474,7 @@ class MasterDataHygieneService:
         # PostgreSQL JSONB Query: lexware_ids->'company'->>'key' = 'number'
         # SQLAlchemy: BusinessEntity.lexware_ids[company][key] == number
         query = select(BusinessEntity).where(
-            BusinessEntity.lexware_ids[company][key].astext == number,
+            cast(BusinessEntity.lexware_ids, JSONB)[company][key].astext == number,
             BusinessEntity.entity_type == entity_type.value,
             BusinessEntity.deleted_at.is_(None),
         )

@@ -15,7 +15,8 @@ from uuid import UUID
 
 import structlog
 from croniter import croniter
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import and_, or_, select, update, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, Workflow
@@ -789,7 +790,7 @@ class WorkflowTriggerService:
                 ),
                 # Globale Workflows der eigenen Company
                 and_(
-                    Workflow.trigger_config["scope"].astext == "global",
+                    cast(Workflow.trigger_config, JSONB)["scope"].astext == "global",
                     Workflow.company_id == company_id,
                 ),
                 # Company-weite Workflows (Templates, aber company_id muss matchen)

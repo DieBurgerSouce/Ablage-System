@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db, require_admin
+from app.api.dependencies import get_current_user, get_db, require_admin, get_user_company_id
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, Document
 from app.services.dlp import (
@@ -146,7 +146,7 @@ async def list_policies(
 ) -> PolicyListResponse:
     """Listet alle DLP-Policies auf (Multi-Tenant isoliert)."""
     # SECURITY: company_id aus User für Multi-Tenant Isolation
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     dlp_service = get_dlp_service(db, company_id)
     policies = await dlp_service.get_policies()
     return PolicyListResponse(policies=policies, total=len(policies))
@@ -168,7 +168,7 @@ async def create_policy(
 ) -> DLPPolicy:
     """Erstellt eine neue DLP-Policy (Multi-Tenant isoliert, persistiert in DB)."""
     # SECURITY: company_id aus User für Multi-Tenant Isolation
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -202,7 +202,7 @@ async def get_policy(
     db: AsyncSession = Depends(get_db),
 ) -> DLPPolicy:
     """Ruft eine DLP-Policy ab (Multi-Tenant isoliert)."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     dlp_service = get_dlp_service(db, company_id)
     policies = await dlp_service.get_policies()
 
@@ -231,7 +231,7 @@ async def update_policy(
     db: AsyncSession = Depends(get_db),
 ) -> DLPPolicy:
     """Aktualisiert eine DLP-Policy (Multi-Tenant isoliert)."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -264,7 +264,7 @@ async def delete_policy(
     db: AsyncSession = Depends(get_db),
 ) -> SuccessResponse:
     """Löscht eine DLP-Policy (Multi-Tenant isoliert)."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -309,7 +309,7 @@ async def check_access(
     from app.db.models import Document
 
     # SECURITY: company_id aus User
-    user_company_id = getattr(current_user, 'company_id', None)
+    user_company_id = await get_user_company_id(db, current_user)
 
     # Dokument laden MIT company_id Validierung (Multi-Tenant Security!)
     query = select(Document).where(Document.id == body.document_id)
@@ -371,7 +371,7 @@ async def scan_sensitive_data(
     db: AsyncSession = Depends(get_db),
 ) -> ScanResponse:
     """Scannt Text auf sensible Daten (Multi-Tenant isoliert)."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     dlp_service = get_dlp_service(db, company_id)
 
     findings = dlp_service.detect_sensitive_data(
@@ -424,7 +424,7 @@ async def seed_default_policies(
     db: AsyncSession = Depends(get_db),
 ) -> SuccessResponse:
     """Erstellt Standard-Policies für die Company des Benutzers."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

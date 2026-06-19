@@ -24,7 +24,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, cast, func, or_, select
+# W2: Document hat document_metadata (NICHT metadata); JSONB-Operatoren via cast.
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log
@@ -659,7 +661,7 @@ class ExtendedAlertsService:
                     Document.retention_until.isnot(None),
                     Document.retention_until <= cutoff_date,
                     Document.retention_until >= today,
-                    Document.metadata.op("->")("gdpr_relevant").astext == "true",
+                    cast(Document.document_metadata, JSONB).op("->")("gdpr_relevant").astext == "true",
                 )
             )
         )
@@ -715,8 +717,8 @@ class ExtendedAlertsService:
                     Document.retention_until <= cutoff_date,
                     Document.retention_until >= today,
                     or_(
-                        Document.metadata.op("->")("gdpr_relevant").is_(None),
-                        Document.metadata.op("->")("gdpr_relevant").astext != "true",
+                        cast(Document.document_metadata, JSONB).op("->")("gdpr_relevant").is_(None),
+                        cast(Document.document_metadata, JSONB).op("->")("gdpr_relevant").astext != "true",
                     ),
                 )
             )

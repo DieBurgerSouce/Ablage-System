@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import (
     get_current_user,
     get_db,
-    get_company_id,
+    get_user_company_id_dep,
 )
 from app.db.models import User
 from app.db.models_alert import (
@@ -163,7 +163,7 @@ async def list_alerts(
     order_by: str = Query("created_at", description="Sortierfeld"),
     order_desc: bool = Query(True, description="Absteigend sortieren"),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertListResponse:
     """
@@ -224,7 +224,7 @@ async def list_alerts(
 @router.get("/stats", response_model=AlertStatsResponse)
 async def get_alert_stats(
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertStatsResponse:
     """
@@ -241,7 +241,7 @@ async def get_alert_stats(
 async def get_alert_counts(
     group_by: str = Query("category", pattern="^(category|severity|status)$"),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> Dict[str, int]:
     """
@@ -255,7 +255,7 @@ async def get_alert_counts(
 async def get_alert(
     alert_id: UUID,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertResponse:
     """
@@ -300,7 +300,7 @@ async def get_alert(
 async def create_alert(
     request: AlertCreateRequest,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertResponse:
     """
@@ -364,7 +364,7 @@ async def create_alert(
 async def acknowledge_alert(
     alert_id: UUID,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertResponse:
     """
@@ -412,7 +412,7 @@ async def dismiss_alert(
     alert_id: UUID,
     request: Optional[AlertActionRequest] = None,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertResponse:
     """
@@ -461,7 +461,7 @@ async def resolve_alert(
     alert_id: UUID,
     request: Optional[AlertActionRequest] = None,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertResponse:
     """
@@ -515,7 +515,7 @@ async def escalate_alert(
     alert_id: UUID,
     request: AlertEscalateRequest,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertResponse:
     """
@@ -570,7 +570,7 @@ async def assign_alert(
     alert_id: UUID,
     request: AlertAssignRequest,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> AlertResponse:
     """
@@ -618,7 +618,7 @@ async def assign_alert(
 async def bulk_action(
     request: BulkActionRequest,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> BulkActionResponse:
     """

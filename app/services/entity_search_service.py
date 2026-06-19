@@ -636,7 +636,7 @@ class EntitySearchService:
         # JSONB contains check (using validated company)
         stmt = select(BusinessEntity).where(
             and_(
-                BusinessEntity.company_presence.contains([validated_company]),
+                cast(BusinessEntity.company_presence, JSONB).contains([validated_company]),
                 BusinessEntity.deleted_at.is_(None),
             )
         )
@@ -670,7 +670,7 @@ class EntitySearchService:
         """
         stmt = select(BusinessEntity).where(
             and_(
-                func.jsonb_array_length(BusinessEntity.company_presence) >= min_companies,
+                func.jsonb_array_length(cast(BusinessEntity.company_presence, JSONB)) >= min_companies,
                 BusinessEntity.deleted_at.is_(None),
             )
         )

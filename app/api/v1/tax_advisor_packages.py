@@ -25,7 +25,7 @@ from app.api.dependencies import get_db, get_current_user, get_current_superuser
 from app.api.dependencies import get_user_company_id  # F-31 company-id resolution
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.core.security_auth import build_content_disposition
-from app.db.models import User
+from app.db.models import User, Company
 from app.middleware.company_context import require_company
 from app.services.tax_advisor_package_service import (
     TaxAdvisorPackageService,
@@ -276,7 +276,7 @@ _packages: dict[UUID, TaxAdvisorPackage] = {}
 )
 async def create_configuration(
     data: PackageConfigurationCreate,
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> PackageConfigurationResponse:
@@ -285,6 +285,7 @@ async def create_configuration(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     try:
         frequency = PackageFrequency(data.frequency)
     except ValueError:
@@ -329,7 +330,7 @@ async def create_configuration(
     description="Listet alle Paket-Konfigurationen für die aktuelle Firma"
 )
 async def list_configurations(
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> List[PackageConfigurationResponse]:
@@ -338,6 +339,7 @@ async def list_configurations(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     service = get_tax_advisor_package_service(db)
     configs = await service.get_configurations_for_company(company_id)
 
@@ -352,7 +354,7 @@ async def list_configurations(
 )
 async def get_configuration(
     config_id: UUID,
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> PackageConfigurationResponse:
@@ -361,6 +363,7 @@ async def get_configuration(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     service = get_tax_advisor_package_service(db)
     config = await service.get_configuration(config_id)
 
@@ -391,7 +394,7 @@ async def get_configuration(
 )
 async def create_package(
     data: PackageCreateRequest,
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> PackageResponse:
@@ -402,6 +405,7 @@ async def create_package(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     service = get_tax_advisor_package_service(db)
 
     try:
@@ -438,7 +442,7 @@ async def create_package(
 )
 async def list_packages(
     status_filter: Optional[str] = Query(None, description="Nach Status filtern"),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> List[PackageResponse]:
@@ -447,6 +451,7 @@ async def list_packages(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     packages = [
         p for p in _packages.values()
         if p.company_id == company_id
@@ -476,7 +481,7 @@ async def list_packages(
 )
 async def get_package(
     package_id: UUID,
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PackageResponse:
@@ -485,6 +490,7 @@ async def get_package(
 
     Zugaenglich für Administratoren und zugeordnete Steuerberater.
     """
+    company_id = company.id
     package = _packages.get(package_id)
 
     if not package:
@@ -513,7 +519,7 @@ async def get_package(
 )
 async def generate_package(
     package_id: UUID,
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> PackageResponse:
@@ -524,6 +530,7 @@ async def generate_package(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     package = _packages.get(package_id)
 
     if not package:
@@ -563,7 +570,7 @@ async def generate_package(
 async def send_package(
     package_id: UUID,
     data: SendPackageRequest,
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
@@ -574,6 +581,7 @@ async def send_package(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     package = _packages.get(package_id)
 
     if not package:
@@ -630,7 +638,7 @@ async def send_package(
 async def download_package(
     package_id: UUID,
     file_type: str = Query("all", description="Dateityp: all, datev, pdf, report"),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
@@ -639,6 +647,7 @@ async def download_package(
 
     Zugaenglich für Administratoren und zugeordnete Steuerberater.
     """
+    company_id = company.id
     package = _packages.get(package_id)
 
     if not package:
@@ -724,7 +733,7 @@ async def download_package(
 async def send_reminder(
     package_id: UUID,
     data: ReminderRequest,
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
@@ -733,6 +742,7 @@ async def send_reminder(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     package = _packages.get(package_id)
 
     if not package:
@@ -793,7 +803,7 @@ async def send_reminder(
     description="Zeigt Statistiken über erstellte Pakete"
 )
 async def get_package_statistics(
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -802,6 +812,7 @@ async def get_package_statistics(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     packages = [p for p in _packages.values() if p.company_id == company_id]
 
     # Statistiken berechnen
@@ -841,7 +852,7 @@ async def get_package_statistics(
 async def check_completeness(
     year: int = Query(..., ge=2020, le=2030, description="Jahr (z.B. 2026)"),
     quarter: Optional[int] = Query(None, ge=1, le=4, description="Quartal (1-4), None = ganzes Jahr"),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> CompletenessReportResponse:
@@ -866,6 +877,7 @@ async def check_completeness(
 
     Nur für Administratoren zugaenglich.
     """
+    company_id = company.id
     try:
         service = get_tax_advisor_package_service(db)
         report = await service.check_completeness(

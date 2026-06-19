@@ -23,7 +23,8 @@ from uuid import UUID
 from decimal import Decimal
 
 import structlog
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_, func, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -561,7 +562,7 @@ class DocumentHintsService:
                 Document.id != document.id,
                 Document.document_type == DocumentType.INVOICE.value,
                 Document.deleted_at.is_(None),
-                Document.extracted_data["invoice_number"].astext == str(invoice_number),
+                cast(Document.extracted_data, JSONB)["invoice_number"].astext == str(invoice_number),
             )
         ).limit(1)
 

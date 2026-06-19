@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
 
-from app.api.dependencies import get_current_user, get_db, get_company_id
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.db.models_ai_conversation import (
     AIConversation,
@@ -329,7 +329,7 @@ Der Assistent kann:
 async def chat(
     request: ChatRequest,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
     service: ConversationalAssistantService = Depends(get_service),
 ) -> ChatResponse:
@@ -496,7 +496,7 @@ async def list_sessions(
     per_page: int = Query(default=20, ge=1, le=100, description="Eintraege pro Seite"),
     active_only: bool = Query(default=True, description="Nur aktive Sessions"),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> SessionsListResponse:
     """Listet Chat-Sessions auf."""
