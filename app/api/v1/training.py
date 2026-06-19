@@ -2459,7 +2459,7 @@ async def get_coverage_status(
 
     for profile in profiles:
         target_samples = int(
-            profile.estimated_daily_volume * profile.target_coverage * 0.1
+            (profile.estimated_daily_volume or 0) * (profile.target_coverage or 0) * 0.1
         )
 
         coverage_data.append({
@@ -2471,7 +2471,7 @@ async def get_coverage_status(
             "verified_samples": profile.verified_sample_count,
             "auto_accepted_samples": profile.auto_accepted_count,
             "target_samples": target_samples,
-            "samples_needed": max(0, target_samples - profile.verified_sample_count),
+            "samples_needed": max(0, target_samples - (profile.verified_sample_count or 0)),
             "is_gap": profile.coverage_percentage < profile.target_coverage,
         })
 
