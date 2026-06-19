@@ -27,7 +27,8 @@ KNOWN_DUPLICATES = {
     ("app/db/schemas.py", "class", "RiskFactorsResponse"),
     ("app/db/schemas.py", "class", "TrendDataPoint"),
     ("app/db/schemas.py", "class", "ValidationQueueListResponse"),
-    ("app/services/banking/models.py", "class", "TransactionFilter"),
+    # TransactionFilter (banking/models.py) BEHOBEN: tote Basis-Def (mit
+    # bank_account_id) entfernt - war shadowed, kein Aufrufer nutzte sie.
 }
 
 
