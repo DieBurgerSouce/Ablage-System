@@ -226,13 +226,26 @@ class AutoFilingService:
                 message="Dokument nicht gefunden",
             )
 
-        # Kategorie setzen falls vorhanden
+        # Kategorie setzen: echte Spalte ist `data_category` (NICHT `category` -
+        # letzteres existiert nicht am Document-Modell und wurde stillschweigend
+        # ignoriert, d.h. die Auto-Ablage hatte bisher KEINE Wirkung).
         if suggestion.target_category:
-            document.category = suggestion.target_category
-
-        # Ordner setzen falls vorhanden
-        if suggestion.target_folder_id:
-            document.folder_id = suggestion.target_folder_id
+            document.data_category = suggestion.target_category
+        elif suggestion.target_folder_id:
+            # Document hat KEINE folder_id-Spalte (Folder-Modell deaktiviert, W1-030);
+            # `document.folder_id = ...` war ein stiller No-Op. Ohne Kategorie kann
+            # derzeit nicht real abgelegt werden -> ehrlich filed=False statt Schein-Erfolg.
+            logger.warning(
+                "auto_filing_folder_unsupported",
+                document_id=str(document_id),
+                target_folder_id=str(suggestion.target_folder_id),
+            )
+            return FilingResult(
+                document_id=document_id,
+                filed=False,
+                suggestion=suggestion,
+                message="Ordner-Ablage noch nicht unterstuetzt (kein Folder-Modell); kein Kategorie-Vorschlag vorhanden",
+            )
 
         await db.flush()
 
@@ -294,7 +307,7 @@ class AutoFilingService:
             doc_stmt = select(func.count(Document.id)).where(
                 and_(
                     Document.company_id == company_id,
-                    Document.category == rule.target_category,
+                    Document.data_category == rule.target_category,
                 )
             )
             doc_result = await db.execute(doc_stmt)
