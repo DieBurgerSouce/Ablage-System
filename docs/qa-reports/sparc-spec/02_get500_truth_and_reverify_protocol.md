@@ -62,3 +62,39 @@ Eine GET-Behebung gilt NUR als erledigt, wenn ALLE gelten:
 - [ ] /training/* + /health/startup nicht mehr 5xx (Live + Test).
 - [ ] Diskrepanz dokumentiert (warum frueher "0").
 - [ ] Regressionstest gruen nach Restart.
+---
+
+## RESOLUTION (2026-06-20) — Faktenluecke GESCHLOSSEN + Fix verifiziert
+
+### Beweis "warum 04:44 gruen, jetzt 6x 5xx" (hart belegt)
+- **Pre-existing, KEINE Session-Regression:** git blame zeigt die kaputten Imports (OCRCorrection,
+  VerificationStatus) stammen aus Commit 7e6bd9e7f ("feat(pilot): Pilot v0.1.0", 2026-05-20) — auf master und
+  allen Branches. Klasse OCRCorrection existierte NIE; VerificationStatus wurde NIE aus app.db.models exportiert
+  -> deterministischer ImportError seit 20.05.
+- **Mechanismus:** main.py importiert den training-Router modul-level (laedt sauber -> App startet -> Endpunkte
+  in openapi); die kaputten Imports stehen modul-level in den SERVICE-Dateien, die training.py LAZY in den
+  Handlern importiert -> ImportError erst beim Aufruf -> 500 pro Request.
+- **Warum "192 zu 0" sie nie abdeckte:** Der GET-Sweep hat die training-Endpunkte faktisch nie als 500 erfasst
+  (die "0" war unvollstaendig). Zusatzbefund: der Live-Backend ist seit 20:51 auf den repointed Worktree
+  az-remediation gemountet (docker inspect Mounts) -> Re-Messung trifft anderen Worktree; der Defekt ist in
+  beiden identisch (shared base). FAZIT: "GET-500 = 0" war fuer die training-Endpunkte schlicht NICHT wahr.
+
+### Fix (committet, verifiziert)
+- backend_quality_report_service: OCRCorrection -> OCRCorrectionFeedback (Quelle models_ocr_feedback) +
+  backend_used->backend, original_text->original_value, corrected_text->corrected_value.
+- training_dataset_export_service: VerificationStatus -> TrainingSampleStatus; verification_status -> status; VERIFIED.
+- training.py coverage-status: None-Guards.
+
+### Evidenz (reproduzierbar)
+1. Ephemerer Container (mein Worktree-Code): ALL_SERVICE_IMPORTS_OK (ImportError weg).
+2. Verify-Backend Port 8001 (mein Code, DB+Redis-Overrides, beide Netze, Preload aus): 5 training-Endpunkte
+   liefern 403 (Permission-Gate, kleiner 500) statt 500.
+3. Direkte DB-Query (am 403-Gate vorbei, im Verify-Container): QUERY_OK rows1=0 rows2=0 -> remappte Spalten
+   existieren, SQL laeuft (0 Zeilen mangels Seed-Daten, keine Spalten-/AttributeError).
+
+### Ehrliche Restpunkte
+- Voller HTTP-200-Durchlauf NICHT erzwungen (Endpunkte permission-gegated -> 403 fuer Test-Admin; keine
+  Seed-Daten). Der zuvor crashende Pfad (Import + Query) ist aber bewiesen funktionsfaehig.
+- None-Guard (coverage-status) ist code-/ast-verifiziert, nicht runtime-exerziert (403-Gate).
+- health-startup 503 bleibt SEPARAT offen (Infra/REDIS_URL, nicht Teil der training-Wurzel).
+- Fix liegt auf qa/az-deep-offensive-2026-06-18; Live-Stack laeuft az-remediation -> Uebernahme = Koordination.
