@@ -11,7 +11,7 @@ Verwaltet Teilzahlungen für Rechnungen:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID, uuid4
 import structlog
@@ -157,7 +157,7 @@ class PartialPaymentService:
                     id=uuid4(),
                     invoice_tracking_id=invoice_tracking_id,
                     transaction_date=payment_data.transaction_date or utc_now(),
-                    amount=float(payment_data.amount),
+                    amount=payment_data.amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
                     payment_reference=payment_data.payment_reference,
                     payment_method=payment_data.payment_method,
                     bank_transaction_id=payment_data.bank_transaction_id,
@@ -173,8 +173,8 @@ class PartialPaymentService:
                 db.add(transaction)
 
                 # Invoice aktualisieren
-                invoice.paid_amount = float(new_paid)
-                invoice.outstanding_amount = float(max(Decimal("0"), total_amount - new_paid))
+                invoice.paid_amount = new_paid.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                invoice.outstanding_amount = max(Decimal("0"), total_amount - new_paid).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 invoice.is_partial_payment = True
                 invoice.updated_at = utc_now()
 
@@ -381,8 +381,8 @@ class PartialPaymentService:
                     new_paid = await self._get_total_paid(db, invoice_tracking_id, company_id)
                     total_amount = Decimal(str(invoice.amount))
 
-                    invoice.paid_amount = float(new_paid)
-                    invoice.outstanding_amount = float(total_amount - new_paid)
+                    invoice.paid_amount = new_paid.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    invoice.outstanding_amount = (total_amount - new_paid).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                     invoice.updated_at = utc_now()
 
                     # Status anpassen

@@ -52,6 +52,9 @@ except ImportError:
 # Maximale Anhang-Größe (50 MB)
 MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024
 
+# W2-21b SSRF-Schutz: nur Standard-IMAP-Ports erlaubt (143=STARTTLS, 993=SSL)
+ALLOWED_IMAP_PORTS = {143, 993}
+
 # Erlaubte MIME-Types für Dokument-Import
 ALLOWED_MIME_TYPES = {
     "application/pdf",
@@ -154,6 +157,52 @@ class EmailImportService:
     # Connection Management
     # ========================================================================
 
+    def _validate_imap_target(self, server: str, port: int) -> None:
+        """Validiert IMAP-Ziel gegen SSRF (W2-21b).
+
+        Prueft Port-Whitelist und loest den Host auf; jede aufgeloeste IP wird
+        gegen private/loopback/link-local-Ranges geprueft. Fail-closed: bei
+        ungueltigem Host/Port oder blockierter IP wird die Verbindung verweigert.
+
+        Raises:
+            ConnectionError: Wenn Port oder Ziel-IP nicht erlaubt ist.
+        """
+        import socket
+
+        from app.core.security_auth import is_ip_blocked_for_ssrf
+
+        # 1. Port-Whitelist (143=STARTTLS, 993=SSL)
+        if port not in ALLOWED_IMAP_PORTS:
+            logger.warning("imap_ssrf_blocked_port", port=port)
+            raise ConnectionError(
+                f"IMAP-Port nicht erlaubt: {port} (erlaubt: 143, 993)"
+            )
+
+        # 2. Host muss gesetzt sein
+        host = (server or "").strip()
+        if not host:
+            logger.warning("imap_ssrf_empty_host")
+            raise ConnectionError("IMAP-Server-Host fehlt")
+
+        # 3. Alle aufgeloesten IPs gegen SSRF-Ranges pruefen (fail-closed)
+        try:
+            addr_infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+        except (socket.gaierror, OSError, UnicodeError) as exc:
+            logger.warning("imap_ssrf_dns_failed", server=host, error=str(exc))
+            raise ConnectionError(f"IMAP-Server-Host nicht aufloesbar: {host}")
+
+        resolved_ips = {info[4][0] for info in addr_infos}
+        if not resolved_ips:
+            logger.warning("imap_ssrf_no_ip", server=host)
+            raise ConnectionError(f"IMAP-Server-Host nicht aufloesbar: {host}")
+
+        for ip_str in resolved_ips:
+            if is_ip_blocked_for_ssrf(ip_str):
+                logger.warning("imap_ssrf_blocked_ip", server=host)
+                raise ConnectionError(
+                    "IMAP-Ziel verweist auf eine nicht erlaubte (interne) Adresse"
+                )
+
     def _create_imap_connection(
         self,
         server: str,
@@ -185,6 +234,11 @@ class EmailImportService:
                 "E-Mail-Import nicht verfügbar. "
                 "Bitte 'pip install imapclient' ausführen."
             )
+
+        # W2-21b SSRF-Schutz: user-gesetzter imap_server/imap_port wird gegen
+        # Port-Whitelist und private/link-local-IPs geprueft (fail-closed),
+        # bevor eine Verbindung aufgebaut wird.
+        self._validate_imap_target(server, port)
 
         try:
             client = IMAPClient(server, port=port, ssl=use_ssl)

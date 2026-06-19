@@ -625,6 +625,8 @@ def retry_import_task(log_id: str) -> RetryImportResult:
     bind=True,
     max_retries=2,
     default_retry_delay=60,
+    soft_time_limit=120,
+    time_limit=180,
 )
 def retry_single_email(
     self,

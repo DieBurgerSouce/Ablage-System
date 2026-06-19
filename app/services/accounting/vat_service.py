@@ -549,20 +549,25 @@ class VATService:
             vat_rate = self._detect_vat_rate(extracted, net, gross, vat)
 
             # Fehlende Werte berechnen
+            # GoBD: net zuerst quantisieren, vat als Rest (net + vat == gross exakt)
             if net == Decimal("0") and vat_rate != "0":
                 net = gross / (1 + Decimal(vat_rate) / 100)
+            net_q = net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            gross_q = gross.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if vat == Decimal("0") and vat_rate != "0":
-                vat = gross - net
+                vat_q = gross_q - net_q
+            else:
+                vat_q = vat.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
             item = VATLineItem(
                 document_id=doc.id,
                 invoice_number=extracted.get("invoice_number"),
                 invoice_date=doc.upload_date,
                 counterparty=extracted.get("customer_name") or extracted.get("recipient"),
-                net_amount=net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+                net_amount=net_q,
                 vat_rate=vat_rate,
-                vat_amount=vat.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
-                gross_amount=gross.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+                vat_amount=vat_q,
+                gross_amount=gross_q,
                 is_input=False,
                 vat_category=self._get_vat_category(vat_rate, False, extracted),
             )
@@ -605,20 +610,25 @@ class VATService:
 
             vat_rate = self._detect_vat_rate(extracted, net, gross, vat)
 
+            # GoBD: net zuerst quantisieren, vat als Rest (net + vat == gross exakt)
             if net == Decimal("0") and vat_rate != "0":
                 net = gross / (1 + Decimal(vat_rate) / 100)
+            net_q = net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            gross_q = gross.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if vat == Decimal("0") and vat_rate != "0":
-                vat = gross - net
+                vat_q = gross_q - net_q
+            else:
+                vat_q = vat.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
             item = VATLineItem(
                 document_id=doc.id,
                 invoice_number=extracted.get("invoice_number"),
                 invoice_date=doc.document_date,
                 counterparty=extracted.get("supplier_name") or extracted.get("creditor_name"),
-                net_amount=net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+                net_amount=net_q,
                 vat_rate=vat_rate,
-                vat_amount=vat.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
-                gross_amount=gross.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+                vat_amount=vat_q,
+                gross_amount=gross_q,
                 is_input=True,
                 vat_category=self._get_vat_category(vat_rate, True, extracted),
             )
@@ -670,7 +680,7 @@ class VATService:
 
         # Aus Betraegen berechnen
         if net > 0 and gross > 0:
-            calculated_rate = ((gross - net) / net * 100).quantize(Decimal("0.1"))
+            calculated_rate = ((gross - net) / net * 100).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
             if Decimal("18.5") <= calculated_rate <= Decimal("19.5"):
                 return "19"
             elif Decimal("6.5") <= calculated_rate <= Decimal("7.5"):
@@ -680,7 +690,7 @@ class VATService:
 
         # Aus VAT berechnen
         if vat > 0 and net > 0:
-            calculated_rate = (vat / net * 100).quantize(Decimal("0.1"))
+            calculated_rate = (vat / net * 100).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
             if Decimal("18.5") <= calculated_rate <= Decimal("19.5"):
                 return "19"
             elif Decimal("6.5") <= calculated_rate <= Decimal("7.5"):

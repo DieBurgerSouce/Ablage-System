@@ -14,6 +14,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.core.rate_limiting import limiter, RateLimitTier, get_ip_identifier
 from app.services.portal import (
     PortalAuthService,
     PortalAuthError,
@@ -135,6 +136,7 @@ async def get_current_portal_user(
 
 # === Endpoints ===
 
+@limiter.limit(RateLimitTier.LOGIN, key_func=get_ip_identifier)  # W2-21a: 5/15min
 @router.post("/login", response_model=PortalLoginResponse)
 async def portal_login(
     request: Request,
@@ -203,8 +205,10 @@ async def portal_login(
         )
 
 
+@limiter.limit("10/hour", key_func=get_ip_identifier)  # W2-21a: Account-Aktivierung rate-limiten
 @router.post("/activate", response_model=PortalActivateResponse)
 async def portal_activate(
+    request: Request,
     data: PortalActivateRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -310,8 +314,10 @@ async def portal_logout(
     return PortalSuccessResponse(success=True, message="Erfolgreich abgemeldet")
 
 
+@limiter.limit("5/15minutes", key_func=get_ip_identifier)  # W2-21a: Passwort-Aenderung rate-limiten
 @router.post("/change-password", response_model=PortalSuccessResponse)
 async def portal_change_password(
+    request: Request,
     data: PortalChangePasswordRequest,
     portal_user: PortalUser = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),

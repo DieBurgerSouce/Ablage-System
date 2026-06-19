@@ -17,6 +17,7 @@ SECURITY:
 
 import secrets
 import structlog
+from urllib.parse import quote
 from datetime import timedelta
 from typing import Dict, List, Optional
 from uuid import UUID
@@ -45,6 +46,21 @@ from app.services.auth.sso.sso_config_service import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/sso", tags=["SSO"])
+
+
+def _safe_redirect_param(value: Optional[str]) -> str:
+    """Sanitisiert IdP-/angreiferkontrollierte Werte fuer Redirect-URLs.
+
+    SECURITY (W2-20): Verhindert CRLF-/Header-/Redirect-Injection, indem
+    Zeilenumbrueche entfernt und der Wert URL-encoded wird, bevor er in den
+    Location-Header (RedirectResponse) interpoliert wird.
+    """
+    if not value:
+        return ""
+    # CRLF (und verwandte Steuerzeichen) strippen -> kein Header-Splitting
+    cleaned = value.replace("\r", "").replace("\n", "")
+    # URL-encode -> kein Ausbrechen aus dem Query-Parameter / Pfad
+    return quote(cleaned, safe="")
 
 
 # =============================================================================
@@ -581,7 +597,7 @@ async def oidc_callback(
         logger.warning("oidc_callback_error", error=error, description=error_description)
         # Redirect to login with error
         return RedirectResponse(
-            url=f"/login?error=sso_failed&message={error_description or error}",
+            url=f"/login?error=sso_failed&message={_safe_redirect_param(error_description or error)}",
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -655,7 +671,7 @@ async def oidc_callback(
     except ValueError as e:
         logger.error("oidc_callback_failed", error=str(e))
         return RedirectResponse(
-            url=f"/login?error=sso_failed&message={str(e)}",
+            url=f"/login?error=sso_failed&message={_safe_redirect_param(str(e))}",
             status_code=status.HTTP_302_FOUND,
         )
     finally:
@@ -803,7 +819,7 @@ async def saml_assertion_consumer_service(
     except ValueError as e:
         logger.error("saml_acs_failed", error=str(e))
         return RedirectResponse(
-            url=f"/login?error=sso_failed&message={str(e)}",
+            url=f"/login?error=sso_failed&message={_safe_redirect_param(str(e))}",
             status_code=status.HTTP_302_FOUND,
         )
 

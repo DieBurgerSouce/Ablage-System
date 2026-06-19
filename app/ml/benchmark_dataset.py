@@ -260,7 +260,7 @@ class BenchmarkDataset:
             base_path: Basis-Pfad für Benchmark-Daten
             auto_save: Automatisch speichern bei Änderungen
         """
-        self.base_path = base_path or Path("data/benchmarks")
+        self.base_path = base_path or Path("/tmp/ablage_ml/benchmarks")
         self.base_path.mkdir(parents=True, exist_ok=True)
         self.auto_save = auto_save
 
