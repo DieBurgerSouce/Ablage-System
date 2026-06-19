@@ -115,3 +115,28 @@ OFFEN (Folgearbeit, dokumentiert):
 - W2-17 Approval-Authz/State-Machine; W2-18 Feature-Stubs echt machen; W2-19/20/21 Security-P1 (NLQ-Bind, SSO-Redirect-Encode, Portal-Ratelimit, IMAP-SSRF); W2-23 Money-Rounding; W2-24 Worker-Durability; W2-25 Regressionstests; W2-27/28 Tracing/Alerts.
 - ~80 Frontend-Feature-Luecken (Frontend ruft Endpunkte ohne Backend) - Produktentscheidung noetig.
 - einvoice/receiver Company.settings (Schema-Entscheidung). Budget-Enum-UPPERCASE-Drift (separat).
+
+---
+
+## Haertungs-Welle + Verifikation (2026-06-19, Abschluss-Stand)
+ERLEDIGT zusaetzlich:
+- Security-P1: NLQ company_id UUID-validiert+fail-closed; SSO-Redirect error_description url-encoded+CRLF-stripped;
+  Portal-Auth Rate-Limiting (login/activate/change-password); IMAP-SSRF (Port-Whitelist+is_ip_blocked_for_ssrf).
+- Money: VAT net+vat==gross; skonto/partial_payment/datev/insolvency Decimal+ROUND_HALF_UP.
+- Worker-Durability: backup-Tasks autoretry/acks_late/backoff; ML data/-Pfade->/tmp; IMAP soft_time_limit.
+- Frontend-Auth: session-expired->setUser(null)+Guard-Redirect; Modal nicht-dismissbar; Portal-Listener.
+- Frontend-Drift: 13 Pfade gefixt (streckengeschaeft Umlaut x9, retention stats->statistics, verfahrensdok,
+  calendar-sync); audit-chain/statistics Route-Shadowing -> {sequence_number:int} (verifiziert 200).
+- REGRESSIONSTEST: tests/integration/test_get_endpoints_no_500.py PASSED (live, 92s) -> 192->0 eingefroren.
+- Frontend rebuilt+deployed. GET-Sweep nach allen Wellen = 0x500 (200: 882). Browser-E2E 14 Module sauber
+  (documents/search/approvals/inventory/finanzen/dashboard/compliance/banking/kunden/holding/recurring-invoices/
+  streckengeschaeft = 0 Konsolenfehler; /privat = 2 echte Feature-Gap-404 dokumentiert).
+
+OFFEN (braucht Nutzer-Input / Koordination / grosse Neu-Arbeit):
+- ~80 Frontend-Feature-Luecken (FE ruft Endpunkte ohne Backend: mlops, ocr-feedback, relationships,
+  estate-planning, automation-rules, privat/spaces+dashboard, dashboard-widget-summaries) -> Produktentscheidung.
+- W2-06 WS-Token-im-URL (koordinierter FE+BE-Umbau auf Subprotokoll).
+- W2-07/09 master-Merge der P0 (2FA-Bypass + SCAN-Cursor sind auf master noch OFFEN) -> mit Parallel-Session koordinieren.
+- W2-17 Approval-Authz/State-Machine; W2-18 Feature-Stubs echt; W2-27/28 Tracing(OTEL-Paket fehlt)/Alerts.
+- Geld-Spalten Float->Numeric (models_entity_business) Migration; Token-Ablauf-Redirect Real-401-Verifikation.
+- Budget-Enum-UPPERCASE-Drift (separat); einvoice Company.settings (Schema-Entscheidung).
