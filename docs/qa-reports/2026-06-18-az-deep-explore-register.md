@@ -154,3 +154,5 @@ VERBLEIBEND ~135 = Design-abhaengiger Long-Tail (obskure Enterprise-Feature-Endp
 - Diverse: User.role/subscriptable (privat), MissingGreenlet (sync-DB in async), Pydantic-Validation-Mismatches (DashboardDataResponse etc.), per-Service-Signatur-TypeError, Document.ocr_text, PaymentSchedule.period_days, ...
 
 NOCH NICHT begonnen (Phase-2-Restscope): POST/PUT/DELETE-Endpunkte systematisch, Voll-Browser-E2E je Modul, Schemathesis-Re-Run, Findings F-08 (FinTS-Guard)/F-27 (change-password)/F-28 (worker ./data)/F-30 (Onboarding-Overlays).
+
+### F-31 Meilenstein 2026-06-19: 500 von 192 -> 80 (112 Endpunkte gefixt; 200: 684 -> 796). Rest = Roadmap (siehe 2026-06-18-az-deep-F31-remaining-roadmap.md): ~40 konkret fixbar (C+D), ~25 Feature-Luecken/Reworks (A+B).
