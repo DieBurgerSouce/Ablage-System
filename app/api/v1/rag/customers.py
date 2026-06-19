@@ -97,6 +97,47 @@ def get_card_service() -> CustomerCardService:
 # =============================================================================
 
 @router.get(
+    "/search",
+    response_model=List[CustomerSearchResultResponse],
+    summary="Kunden suchen",
+    description="Fuzzy-Suche nach Kunden."
+)
+async def search_customers(
+    q: str = Query(..., min_length=1, max_length=255, description="Suchanfrage"),
+    limit: int = Query(10, ge=1, le=50, description="Max Ergebnisse"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    card_service: CustomerCardService = Depends(get_card_service)
+) -> List[CustomerSearchResultResponse]:
+    """
+    Fuzzy-Suche nach Kunden.
+
+    Verwendet pg_trgm für ähnlichkeitsbasierte Suche.
+    Gibt Kunden sortiert nach Ähnlichkeit zurück.
+    """
+    results = await card_service.search_customers(
+        db=db,
+        query=q,
+        limit=limit
+    )
+
+    return [
+        CustomerSearchResultResponse(
+            customer_id=r.customer_id,
+            customer_name=r.customer_name,
+            similarity=r.similarity,
+            document_count=r.document_count,
+            last_document_date=r.last_document_date
+        )
+        for r in results
+    ]
+
+
+# WICHTIG: Die statische /search-Route MUSS VOR der dynamischen /{customer_id}-Route
+# stehen. FastAPI matcht in Definitionsreihenfolge; vorher fing /{customer_id} den
+# Pfad "search" als customer_id ab -> teure get_card-Neu-Generierung (~15-40s) + 404,
+# d.h. die Kundensuche war komplett unerreichbar (vom Voll-GET-Sweep als Timeout erkannt).
+@router.get(
     "/{customer_id}",
     response_model=CustomerCardResponse,
     summary="Customer Card abrufen",
@@ -152,49 +193,12 @@ async def get_customer_card(
         flags=card.flags,
         payment_behavior=card.payment_behavior,
         priority_level=card.priority_level or 5,
-        last_sync_at=card.last_sync_at,
+        last_sync_at=card.last_full_sync_at,
         sync_status=card.sync_status or "pending",
         source_document_count=len(card.source_document_ids) if card.source_document_ids else 0,
         created_at=card.created_at,
         updated_at=card.updated_at
     )
-
-
-@router.get(
-    "/search",
-    response_model=List[CustomerSearchResultResponse],
-    summary="Kunden suchen",
-    description="Fuzzy-Suche nach Kunden."
-)
-async def search_customers(
-    q: str = Query(..., min_length=1, max_length=255, description="Suchanfrage"),
-    limit: int = Query(10, ge=1, le=50, description="Max Ergebnisse"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    card_service: CustomerCardService = Depends(get_card_service)
-) -> List[CustomerSearchResultResponse]:
-    """
-    Fuzzy-Suche nach Kunden.
-
-    Verwendet pg_trgm für ähnlichkeitsbasierte Suche.
-    Gibt Kunden sortiert nach Ähnlichkeit zurück.
-    """
-    results = await card_service.search_customers(
-        db=db,
-        query=q,
-        limit=limit
-    )
-
-    return [
-        CustomerSearchResultResponse(
-            customer_id=r.customer_id,
-            customer_name=r.customer_name,
-            similarity=r.similarity,
-            document_count=r.document_count,
-            last_document_date=r.last_document_date
-        )
-        for r in results
-    ]
 
 
 @router.get(
@@ -241,7 +245,7 @@ async def list_customer_cards(
                 flags=c.flags,
                 payment_behavior=c.payment_behavior,
                 priority_level=c.priority_level.value if c.priority_level else "normal",
-                last_sync_at=c.last_sync_at,
+                last_sync_at=c.last_full_sync_at,
                 sync_status=c.sync_status.value if c.sync_status else "pending",
                 source_document_count=len(c.source_document_ids) if c.source_document_ids else 0,
                 created_at=c.created_at,
@@ -304,7 +308,7 @@ async def refresh_customer_card(
         flags=card.flags,
         payment_behavior=card.payment_behavior,
         priority_level=card.priority_level or 5,
-        last_sync_at=card.last_sync_at,
+        last_sync_at=card.last_full_sync_at,
         sync_status=card.sync_status or "pending",
         source_document_count=len(card.source_document_ids) if card.source_document_ids else 0,
         created_at=card.created_at,
@@ -367,7 +371,7 @@ async def create_customer_card(
             flags=card.flags,
             payment_behavior=card.payment_behavior,
             priority_level=card.priority_level.value if card.priority_level else "normal",
-            last_sync_at=card.last_sync_at,
+            last_sync_at=card.last_full_sync_at,
             sync_status=card.sync_status.value if card.sync_status else "pending",
             source_document_count=len(card.source_document_ids) if card.source_document_ids else 0,
             created_at=card.created_at,
