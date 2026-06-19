@@ -17,7 +17,9 @@ from collections import Counter
 
 # Bekannte Alt-Lasten (Stand 2026-06-04). Format: (relpath, "class"|"func", name).
 KNOWN_DUPLICATES = {
-    ("app/api/v1/orchestration.py", "class", "SeasonalPatternResponse"),
+    # SeasonalPatternResponse (orchestration.py) BEHOBEN: die detaillierte Klasse
+    # wurde zu SeasonalPatternDetailResponse umbenannt (war Shadowing-Bug ->
+    # detect-patterns-Endpoint konstruierte die falsche Klasse -> 500).
     ("app/api/v1/training.py", "func", "create_quality_snapshot"),
     ("app/db/schemas.py", "class", "DocumentTypeStats"),
     ("app/db/schemas.py", "class", "EntityRiskResponse"),

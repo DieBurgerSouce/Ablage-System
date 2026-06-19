@@ -2660,8 +2660,14 @@ async def get_threshold_stats(
 # Seasonality Pydantic Models
 # ----------------------
 
-class SeasonalPatternResponse(BaseModel):
-    """Response für ein erkanntes saisonales Muster."""
+class SeasonalPatternDetailResponse(BaseModel):
+    """Response für ein erkanntes saisonales Muster (detailliert).
+
+    Umbenannt von SeasonalPatternResponse: es gab eine zweite, knappere Klasse
+    gleichen Namens weiter unten (Z.~3374), die diese hier im Modul-Namespace
+    ueberschattete -> der detect-patterns-Endpoint konstruierte faelschlich die
+    falsche (knappe) Klasse OHNE deren Pflichtfelder -> ValidationError/500.
+    """
     id: str
     category: str
     season_type: str
@@ -2781,7 +2787,7 @@ class SeasonalityStatisticsResponse(BaseModel):
 @limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/seasonality/detect-patterns",
-    response_model=List[SeasonalPatternResponse],
+    response_model=List[SeasonalPatternDetailResponse],
     summary="Saisonale Muster erkennen",
     description="""
     Analysiert historische Transaktionsdaten und erkennt saisonale Muster.
@@ -2801,7 +2807,7 @@ async def detect_seasonal_patterns(
     fastapi_request: Request,
     request: DetectPatternsRequest,
     current_user: User = Depends(get_current_active_user),
-) -> List[SeasonalPatternResponse]:
+) -> List[SeasonalPatternDetailResponse]:
     """Erkennt saisonale Muster aus historischen Daten."""
     from app.services.orchestration import get_seasonality_detection_service
 
@@ -2813,7 +2819,7 @@ async def detect_seasonal_patterns(
     )
 
     return [
-        SeasonalPatternResponse(
+        SeasonalPatternDetailResponse(
             id=str(p.id),
             category=p.category.value,
             season_type=p.season_type.value,
