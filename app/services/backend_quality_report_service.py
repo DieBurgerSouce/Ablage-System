@@ -26,7 +26,7 @@ import structlog
 from app.db.models import (
     OCRTrainingSample,
     OCRBackendBenchmark,
-    OCRCorrection,
+    OCRValidationCorrection,
     OCRDocumentOutput,
     TrainingSampleStatus,
 )
@@ -246,6 +246,9 @@ class BackendQualityReportService:
             Vergleichsbericht
         """
         backends = ["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"]
+        # Fix: _get_best_backend_for_tables(backends, since) braucht das Zeitfenster;
+        # 'since' war in dieser Methode nie definiert -> NameError (Endpoint 500).
+        since = datetime.now(timezone.utc) - timedelta(days=30)
         scores: Dict[str, float] = {}
         umlaut_scores: Dict[str, float] = {}
         speed_scores: Dict[str, float] = {}
@@ -590,10 +593,10 @@ class BackendQualityReportService:
         patterns: List[ErrorPattern] = []
 
         # Lade Korrekturen für dieses Backend
-        correction_query = select(OCRCorrection).where(
+        correction_query = select(OCRValidationCorrection).where(
             and_(
-                OCRCorrection.backend_used == backend_name,
-                OCRCorrection.created_at >= since,
+                OCRValidationCorrection.backend_used == backend_name,
+                OCRValidationCorrection.created_at >= since,
             )
         ).limit(1000)
 
