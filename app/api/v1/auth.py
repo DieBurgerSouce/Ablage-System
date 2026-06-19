@@ -26,6 +26,7 @@ from app.api.dependencies import (
 from app.db.models import User
 from app.db.schemas import (
     UserCreate,
+    UserChangePassword,
     UserResponse,
     LoginRequest,
     Token,
@@ -909,7 +910,7 @@ async def update_profile(
 @limiter.limit("5/hour", key_func=get_ip_identifier)  # Z.7 SECURITY FIX: Rate Limit
 async def change_password(
     request: Request,  # Z.7: Required for rate limiter
-    password_data: UserCreate,
+    password_data: UserChangePassword,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
@@ -929,19 +930,13 @@ async def change_password(
     }
     ```
     """
-    from app.db.schemas import UserChangePassword
-
-    # For this endpoint, we need to handle password change differently
-    # This is a simplified version - in production, use a dedicated schema
-    change_data = UserChangePassword(
-        current_password="",  # Will be validated by service
-        new_password=password_data.password
-    )
-
+    # F-27: current_password kommt jetzt aus dem Request-Body (UserChangePassword)
+    # und wird vom Service via verify_password geprüft. Vorher war es hartkodiert
+    # "" -> jede Passwortänderung lief OHNE Prüfung des aktuellen Passworts.
     await UserService.change_password(
         db,
         current_user.id,
-        change_data
+        password_data,
     )
 
     return MessageResponse(
