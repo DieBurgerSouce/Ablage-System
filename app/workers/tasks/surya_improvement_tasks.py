@@ -13,6 +13,7 @@ Feinpoliert und durchdacht - Surya Improvement für Enterprise.
 """
 
 import asyncio
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -430,7 +431,10 @@ def export_surya_training_dataset(
         async def export_dataset() -> Dict[str, Any]:
             async with get_async_session_context() as session:
                 config = SuryaExportConfig(
-                    output_dir=output_dir or "./datasets/surya",
+                    # F-28: absoluter, beschreibbarer Pfad. "./datasets/surya" ist
+                    # relativ zum (read-only) Container-CWD -> OSError beim Schreiben.
+                    # /tmp ist tmpfs und immer beschreibbar; via SURYA_DATASET_DIR override.
+                    output_dir=output_dir or os.environ.get("SURYA_DATASET_DIR", "/tmp/datasets/surya"),
                     umlaut_weight_multiplier=2.0 if umlaut_focused else 1.0,
                     verified_only=True,
                     backend_filter=["surya", "surya-gpu"],
