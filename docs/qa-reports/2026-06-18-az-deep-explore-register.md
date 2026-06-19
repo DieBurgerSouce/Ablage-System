@@ -156,3 +156,15 @@ VERBLEIBEND ~135 = Design-abhaengiger Long-Tail (obskure Enterprise-Feature-Endp
 NOCH NICHT begonnen (Phase-2-Restscope): POST/PUT/DELETE-Endpunkte systematisch, Voll-Browser-E2E je Modul, Schemathesis-Re-Run, Findings F-08 (FinTS-Guard)/F-27 (change-password)/F-28 (worker ./data)/F-30 (Onboarding-Overlays).
 
 ### F-31 Meilenstein 2026-06-19: 500 von 192 -> 80 (112 Endpunkte gefixt; 200: 684 -> 796). Rest = Roadmap (siehe 2026-06-18-az-deep-F31-remaining-roadmap.md): ~40 konkret fixbar (C+D), ~25 Feature-Luecken/Reworks (A+B).
+
+### F-31 GROSSER MEILENSTEIN (2026-06-19): 500 von 192 -> 13 (179 Endpunkte gefixt, ~93%; 200: 684 -> 860)
+Methode Schlussphase: 5 parallele Fix-Agents (disjunkte Modulgruppen) fixten ~60 Endpunkte konservativ
+(PowerShell-Edits, syntax-/DB-verifiziert, kein Restart - zentral durch Orchestrator), danach 1 Restart + Sweep.
+Backend bootet healthy mit allen 87 geaenderten Dateien (Pre-Restart Import-Gap-Check verhinderte NameError-Crashes).
+Wesentliche Fixes: company-id-Resolution (esg/codemods/role-Property), date_trunc-Bind-Param (16 Services),
+Company-Objekt .id, Enum-Drift (team/approval/delegation native_enum=False, contract values_callable),
+CrossDBJSON cast(JSONB) pro Endpoint, Phantom-Spalten (Document.extracted_text/document_metadata/owner_id,
+BankAccount.current_balance, ValidationQueueItem.validated_by_id ...), Service-Signatur-Drift, fehlende
+Service-Methoden als minimale Stubs (enhanced-FinTS/fraud/skonto/handelsregister/daily-insights/xai/zero-touch).
+Agent-Spec-Korrekturen verifiziert (z.B. ValidationQueueItem = validated_by_id, nicht reviewed_by_id).
+Verbleibend: 13 (Schluss-Push) + 4 streckengeschaeft (URL-Encoding-Artefakt im Sweep) + 1 health/startup-503.
