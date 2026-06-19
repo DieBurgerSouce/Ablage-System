@@ -31,10 +31,13 @@ from app.db.models import (
     Document,
     UserNotification,
     Notification,
-    NotificationType,
     NotificationPreference,
     DigestFrequency,
 )
+# F-31: NotificationType in app.db.models wird durch einen gleichnamigen
+# Activity-Typ ueberschrieben (MENTION/COMMENT_REPLY ohne ERROR/SYSTEM/...).
+# Hier explizit den fachlichen Enum aus models_entity_business importieren.
+from app.db.models_entity_business import NotificationType
 from app.api.dependencies import get_current_user, get_db
 from app.db.schemas import (
     NotificationResponse,

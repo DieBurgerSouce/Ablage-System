@@ -73,9 +73,14 @@ class CalendarSyncService:
         from app.services.calendar_service import get_calendar_service
         cal_service = get_calendar_service()
 
-        deadlines = await cal_service.get_deadlines(
-            db=self.db, user_id=user_id, company_id=company_id,
-            days_ahead=days_ahead
+        from datetime import date as _date, timedelta as _timedelta
+        start_date = _date.today()
+        end_date = start_date + _timedelta(days=days_ahead)
+        deadlines = await cal_service.get_all_deadlines(
+            db=self.db,
+            company_id=company_id,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         # Filter by categories if specified

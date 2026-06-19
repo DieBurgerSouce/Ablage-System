@@ -143,7 +143,7 @@ async def summarize_document(
         HTTPException 403: Keine Berechtigung
         HTTPException 500: Fehler bei der Generierung
     """
-    company_id = await get_user_company_id(db, current_user.id)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=403,
@@ -204,7 +204,7 @@ async def compare_documents(
         HTTPException 403: Keine Berechtigung
         HTTPException 500: Fehler beim Vergleich
     """
-    company_id = await get_user_company_id(db, current_user.id)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=403,
@@ -272,7 +272,7 @@ async def generate_briefing(
         HTTPException 403: Keine Berechtigung
         HTTPException 500: Fehler bei der Generierung
     """
-    company_id = await get_user_company_id(db, current_user.id)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=403,

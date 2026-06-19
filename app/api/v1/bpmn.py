@@ -597,10 +597,17 @@ async def get_my_tasks(
     """
     service = get_task_service(db)
 
-    # User-Gruppen aus User-Rollen ableiten
-    user_groups: list[str] = []
-    if current_user.roles:
-        user_groups = [role.name for role in current_user.roles]
+    # User-Gruppen aus User-Rollen ableiten (explizite Query statt Lazy-Load,
+    # da User.roles im Async-Kontext sonst MissingGreenlet ausloest).
+    from sqlalchemy import select as _select
+    from app.db.models import Role as _Role, user_roles as _user_roles
+    role_result = await db.execute(
+        _select(_Role.name)
+        .select_from(_user_roles)
+        .join(_Role, _Role.id == _user_roles.c.role_id)
+        .where(_user_roles.c.user_id == current_user.id)
+    )
+    user_groups: list[str] = [r for r in role_result.scalars().all() if r]
 
     tasks, total = await service.get_user_tasks(
         user_id=current_user.id,

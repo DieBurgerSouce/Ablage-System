@@ -1830,18 +1830,32 @@ async def get_insight_rules(
     service = get_proactive_insights_service()
     rules = service._rule_engine.get_all_rules()
 
-    return [
-        InsightRuleResponse(
-            rule_id=rule.rule_id,
-            name=rule.name,
-            description=rule.description,
-            entity_type=rule.entity_type.value,
-            insight_type=rule.insight_type.value,
-            priority=rule.priority.value,
-            is_enabled=rule.is_enabled,
+    responses: List[InsightRuleResponse] = []
+    for rule in rules:
+        # InsightRule-Dataclass besitzt nur rule_id/entity_types/condition/
+        # generate/priority. Restliche Felder defensiv ableiten.
+        entity_types = getattr(rule, "entity_types", []) or []
+        first_entity = entity_types[0] if entity_types else None
+        entity_type_value = (
+            getattr(first_entity, "value", str(first_entity))
+            if first_entity is not None
+            else "general"
         )
-        for rule in rules
-    ]
+        priority = getattr(rule, "priority", None)
+        priority_value = getattr(priority, "value", str(priority) if priority is not None else "medium")
+        rule_id = getattr(rule, "rule_id", "")
+        responses.append(
+            InsightRuleResponse(
+                rule_id=rule_id,
+                name=getattr(rule, "name", rule_id.replace("_", " ").title()),
+                description=getattr(rule, "description", ""),
+                entity_type=entity_type_value,
+                insight_type=getattr(rule, "insight_type", "unknown"),
+                priority=priority_value,
+                is_enabled=getattr(rule, "is_enabled", True),
+            )
+        )
+    return responses
 
 
 @limiter.limit("60/minute", key_func=get_user_identifier)

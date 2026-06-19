@@ -932,17 +932,31 @@ async def get_flow_diagram(
     """
     discovery_service = ProcessDiscoveryService(db)
 
-    result = await discovery_service.discover_process(
+    # ProcessDiscoveryService bietet generate_process_model (nodes/edges) und
+    # discover_process_variants (Varianten); kein kombiniertes discover_process.
+    model = await discovery_service.generate_process_model(
         company_id=company.id,
         days=days,
-        min_frequency=min_frequency,
+    )
+    variants_data = await discovery_service.discover_process_variants(
+        company_id=company.id,
+        days=days,
+        min_occurrences=min_frequency,
     )
 
+    statistics = {
+        "total_instances": model.get("total_instances", 0),
+        "unique_events": model.get("unique_events", 0),
+        "unique_transitions": model.get("unique_transitions", 0),
+        "unique_variants": variants_data.get("unique_variants", 0),
+        "period_days": model.get("period_days", days),
+    }
+
     return FlowDiagramResponse(
-        nodes=result.get("nodes", []),
-        edges=result.get("edges", []),
-        variants=result.get("variants", []),
-        statistics=result.get("statistics", {}),
+        nodes=model.get("nodes", []),
+        edges=model.get("edges", []),
+        variants=variants_data.get("variants", []),
+        statistics=statistics,
     )
 
 
@@ -962,13 +976,14 @@ async def get_process_variants(
     """
     discovery_service = ProcessDiscoveryService(db)
 
-    variants = await discovery_service.get_variants(
+    variants_data = await discovery_service.discover_process_variants(
         company_id=company.id,
         days=days,
-        limit=limit,
+        min_occurrences=1,
     )
 
-    return variants
+    variants = variants_data.get("variants", [])
+    return variants[:limit]
 
 
 # =============================================================================
