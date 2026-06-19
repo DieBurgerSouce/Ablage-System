@@ -559,22 +559,39 @@ class InvoicePipelineService:
                 processing_time_count += 1
 
             # Entity-Linking
-            if doc.entity_id:
+            # F-31: Document hat KEINE Spalte entity_id (reale Spalte:
+            # business_entity_id). Defensiv via getattr lesen.
+            if getattr(doc, "business_entity_id", None) or getattr(doc, "entity_id", None):
                 entity_linked += 1
 
-            # Invoice-Tracking für Status
+            # Invoice-Tracking fuer Status
+            # F-31: InvoiceTracking hat KEINE Spalten approval_status /
+            # is_payment_ready / payment_status / auto_approved (Phantom-Felder
+            # -> AttributeError -> 500). Defensiv via getattr lesen und auf die
+            # reale ``status``-Spalte (InvoiceStatus: open/paid/partial/overdue)
+            # zurueckfallen.
             invoice = await self._get_invoice_tracking(doc.id)
             if invoice:
-                if invoice.approval_status == "approved":
-                    if invoice.is_payment_ready or invoice.payment_status == "ready":
+                approval_status = getattr(invoice, "approval_status", None)
+                inv_status = getattr(invoice, "status", None)
+                is_payment_ready = getattr(invoice, "is_payment_ready", None)
+                payment_status = getattr(invoice, "payment_status", None)
+                auto_approved_flag = getattr(invoice, "auto_approved", None)
+
+                if approval_status == "approved" or inv_status == "paid":
+                    if (
+                        is_payment_ready
+                        or payment_status == "ready"
+                        or inv_status == "paid"
+                    ):
                         successful += 1
-                        if invoice.auto_approved:
+                        if auto_approved_flag:
                             auto_approved += 1
                     else:
                         needs_review += 1
-                elif invoice.approval_status == "rejected":
+                elif approval_status == "rejected":
                     failed += 1
-                elif invoice.approval_status == "escalated":
+                elif approval_status == "escalated":
                     escalated += 1
                 else:
                     needs_review += 1

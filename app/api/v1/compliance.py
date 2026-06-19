@@ -1054,7 +1054,42 @@ async def get_verfahrensdokumentation(
             
         )
 
-        return VerfahrensdokumentationResponse(**doc)
+        # F-31 minimal: Service liefert ein Dict mit deutschen Schluesseln
+        # (meta/rechtliche_grundlagen/system_beschreibung/...). Auf das
+        # VerfahrensdokumentationResponse-Schema (englische Felder) mappen.
+        meta = doc.get("meta", {})
+        legal_basis = doc.get("rechtliche_grundlagen")
+        legal_basis_list = (
+            legal_basis if isinstance(legal_basis, list)
+            else [legal_basis] if legal_basis else []
+        )
+        process_descriptions = doc.get("prozess_beschreibungen") or []
+        if not isinstance(process_descriptions, list):
+            process_descriptions = [process_descriptions]
+        user_roles = doc.get("benutzer_rollen")
+        user_roles_list = (
+            user_roles if isinstance(user_roles, list)
+            else [user_roles] if user_roles else []
+        )
+        change_history = doc.get("änderungshistorie")
+        change_history_list = (
+            change_history if isinstance(change_history, list)
+            else [change_history] if change_history else []
+        )
+
+        return VerfahrensdokumentationResponse(
+            document_id=str(meta.get("document_type", "Verfahrensdokumentation")),
+            company_id=str(meta.get("company_id", company_id)),
+            generated_at=meta.get("generated_at", ""),
+            valid_from=meta.get("valid_from", meta.get("generated_at", "")),
+            version=str(meta.get("version", "1.0")),
+            legal_basis=legal_basis_list,
+            system_description=doc.get("system_beschreibung") or {},
+            system_architecture=doc.get("system_architektur") or {},
+            process_descriptions=process_descriptions,
+            user_role_documentation=user_roles_list,
+            change_history=change_history_list,
+        )
 
     except Exception as e:
         logger.error("verfahrensdokumentation_generation_failed", **safe_error_log(e))
@@ -1242,17 +1277,17 @@ async def get_steuerberater_export(
 
         return {
             "export_type": "steuerberater",
-            "generated_at": doc["generated_at"],
+            "generated_at": doc.get("meta", {}).get("generated_at"),
             "zeitraum": {
                 "von": zeitraum_von.isoformat() if zeitraum_von else None,
                 "bis": zeitraum_bis.isoformat() if zeitraum_bis else None,
             },
             "verfahrensdokumentation": {
-                "document_id": doc["document_id"],
-                "version": doc["version"],
-                "valid_from": doc["valid_from"],
-                "legal_basis": doc["legal_basis"],
-                "system_description": doc["system_description"],
+                "document_id": doc.get("meta", {}).get("document_type", "Verfahrensdokumentation"),
+                "version": doc.get("meta", {}).get("version", "1.0"),
+                "valid_from": doc.get("meta", {}).get("valid_from", doc.get("meta", {}).get("generated_at")),
+                "legal_basis": doc.get("rechtliche_grundlagen", {}),
+                "system_description": doc.get("system_beschreibung", {}),
             },
             "compliance_status": {
                 "overall_score": report.get("overall_score"),

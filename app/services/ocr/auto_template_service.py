@@ -76,7 +76,7 @@ class AutoTemplateService:
                 and_(
                     Document.company_id == company_id,
                     Document.business_entity_id == entity_id,
-                    Document.ocr_status == "completed",
+                    Document.status == "completed",
                 )
             )
             .order_by(Document.created_at.desc())
@@ -225,7 +225,7 @@ class AutoTemplateService:
                 and_(
                     Document.company_id == company_id,
                     Document.business_entity_id.isnot(None),
-                    Document.ocr_status == "completed",
+                    Document.status == "completed",
                 )
             )
             .group_by(Document.business_entity_id)

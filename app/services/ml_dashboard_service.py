@@ -27,6 +27,19 @@ from app.core.safe_errors import safe_error_log
 logger = structlog.get_logger(__name__)
 
 
+def _as_naive_utc(dt: datetime) -> datetime:
+    """F-31: Gibt einen naiven UTC-datetime zurueck.
+
+    OCRCorrectionFeedback.created_at ist eine `TIMESTAMP WITHOUT TIME ZONE`-
+    Spalte (naive UTC). Der Vergleich mit einem tz-aware `period_start`
+    loest in asyncpg einen DataError aus (offset-naive vs offset-aware).
+    Diese Helferfunktion normalisiert auf naives UTC fuer genau diese Vergleiche.
+    """
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
 class MLDashboardService:
     """
     Service für ML Progress Dashboard.
@@ -110,7 +123,7 @@ class MLDashboardService:
             .where(
                 and_(
                     Document.company_id == company_id,
-                    OCRCorrectionFeedback.created_at >= period_start
+                    OCRCorrectionFeedback.created_at >= _as_naive_utc(period_start)
                 )
             )
             .group_by(func.date_trunc(literal_column("'month'"), OCRCorrectionFeedback.created_at))
@@ -253,7 +266,7 @@ class MLDashboardService:
             .where(
                 and_(
                     Document.company_id == company_id,
-                    OCRCorrectionFeedback.created_at >= period_start
+                    OCRCorrectionFeedback.created_at >= _as_naive_utc(period_start)
                 )
             )
         )
@@ -269,7 +282,7 @@ class MLDashboardService:
             .where(
                 and_(
                     Document.company_id == company_id,
-                    OCRCorrectionFeedback.created_at >= period_start
+                    OCRCorrectionFeedback.created_at >= _as_naive_utc(period_start)
                 )
             )
         )

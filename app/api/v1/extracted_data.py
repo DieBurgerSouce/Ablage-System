@@ -716,6 +716,14 @@ async def _get_documents_for_export(
     max_amount: Optional[Decimal],
 ) -> List[JSONDict]:
     """Holt Dokumente für Export mit Filtern."""
+    # F-31: extracted_data ist CrossDBJSON (impl=JSON) -> kein .astext.
+    # Pro-Endpoint cast(col, JSONB) + jsonb_extract_path_text (wie /invoices).
+    def jsonb_text(*pathparts: str) -> ColumnElement[str]:
+        return func.jsonb_extract_path_text(
+            cast(models.Document.extracted_data, JSONB),
+            *pathparts
+        )
+
     query = select(models.Document).where(
         and_(
             models.Document.owner_id == user_id,
@@ -728,35 +736,35 @@ async def _get_documents_for_export(
 
     if document_type:
         filters.append(
-            models.Document.extracted_data["classification"]["document_type"].astext == document_type
+            jsonb_text("classification", "document_type") == document_type
         )
 
     if date_from:
         filters.append(
             or_(
-                cast(models.Document.extracted_data["invoice"]["invoice_date"].astext, String) >= date_from.isoformat(),
-                cast(models.Document.extracted_data["order"]["order_date"].astext, String) >= date_from.isoformat(),
-                cast(models.Document.extracted_data["contract"]["contract_date"].astext, String) >= date_from.isoformat()
+                jsonb_text("invoice", "invoice_date") >= date_from.isoformat(),
+                jsonb_text("order", "order_date") >= date_from.isoformat(),
+                jsonb_text("contract", "contract_date") >= date_from.isoformat()
             )
         )
 
     if date_to:
         filters.append(
             or_(
-                cast(models.Document.extracted_data["invoice"]["invoice_date"].astext, String) <= date_to.isoformat(),
-                cast(models.Document.extracted_data["order"]["order_date"].astext, String) <= date_to.isoformat(),
-                cast(models.Document.extracted_data["contract"]["contract_date"].astext, String) <= date_to.isoformat()
+                jsonb_text("invoice", "invoice_date") <= date_to.isoformat(),
+                jsonb_text("order", "order_date") <= date_to.isoformat(),
+                jsonb_text("contract", "contract_date") <= date_to.isoformat()
             )
         )
 
     if min_amount is not None:
         filters.append(
-            cast(models.Document.extracted_data["invoice"]["gross_amount"].astext, Decimal) >= min_amount
+            cast(jsonb_text("invoice", "gross_amount"), Decimal) >= min_amount
         )
 
     if max_amount is not None:
         filters.append(
-            cast(models.Document.extracted_data["invoice"]["gross_amount"].astext, Decimal) <= max_amount
+            cast(jsonb_text("invoice", "gross_amount"), Decimal) <= max_amount
         )
 
     if filters:

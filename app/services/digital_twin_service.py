@@ -20,7 +20,8 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, or_, desc, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -434,7 +435,7 @@ class DigitalTwinService:
                 BusinessEntity.company_id == company_id,
                 BusinessEntity.is_active == True,
                 BusinessEntity.deleted_at.is_(None),
-                BusinessEntity.risk_factors.contains({"payment_trend": "WORSENING"}),
+                cast(BusinessEntity.risk_factors, JSONB).contains({"payment_trend": "WORSENING"}),
             )
         )
         result = await self.db.execute(worsening_query)
@@ -654,7 +655,7 @@ class DigitalTwinService:
                 Alert.company_id == company_id,
                 Alert.category == "deadline",
                 Alert.status.in_([AlertStatus.NEW.value, AlertStatus.ACKNOWLEDGED.value]),
-                Alert.metadata.contains({"deadline_date": None}),  # Placeholder
+                cast(Alert.alert_metadata, JSONB).contains({"deadline_date": None}),  # Placeholder (F-31: alert_metadata, JSONB-cast)
             )
         )
         result = await self.db.execute(deadline_query)

@@ -16,7 +16,7 @@ Vision: "Warum wurde dieses Dokument als Betrug markiert?"
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, TypedDict, Union
@@ -28,7 +28,7 @@ JSONDict = Dict[str, JSONValue]
 
 import structlog
 from prometheus_client import Counter, Histogram
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AIDecision
@@ -682,6 +682,60 @@ class DecisionExplainer:
             summary="Entscheidung nicht gefunden.",
             detailed_explanation="Die angeforderte KI-Entscheidung konnte nicht in der Datenbank gefunden werden.",
         )
+
+    async def get_stats(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        days: int = 30,
+    ) -> Dict[str, "JSONValue"]:
+        """F-31 minimal: XAI-Nutzungsstatistiken (company-scoped).
+
+        Liefert reale Werte fuer Gesamtzahl und Aufschluesselung nach
+        Entscheidungstyp aus der ai_decisions-Tabelle. Metriken, die nicht
+        persistiert werden (Kontrafaktische, aehnliche Faelle, User-Feedback,
+        haeufigste Faktoren), werden mit sinnvollen Defaults (0 / leer)
+        zurueckgegeben, bis ein dediziertes Explanation-Log existiert.
+        """
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+
+        total_result = await db.execute(
+            select(func.count(AIDecision.id)).where(
+                and_(
+                    AIDecision.company_id == company_id,
+                    AIDecision.created_at >= since,
+                )
+            )
+        )
+        total_requests = int(total_result.scalar() or 0)
+
+        by_type_result = await db.execute(
+            select(
+                AIDecision.decision_type,
+                func.count(AIDecision.id),
+            )
+            .where(
+                and_(
+                    AIDecision.company_id == company_id,
+                    AIDecision.created_at >= since,
+                )
+            )
+            .group_by(AIDecision.decision_type)
+        )
+        by_type: Dict[str, int] = {
+            str(row[0]): int(row[1]) for row in by_type_result.all()
+        }
+
+        return {
+            "total_requests": total_requests,
+            "by_type": by_type,
+            "avg_factors": 0,
+            "counterfactuals": 0,
+            "similar_cases": 0,
+            "feedback_helpful": 0,
+            "feedback_not_helpful": 0,
+            "common_factors": [],
+        }
 
 
 # =============================================================================

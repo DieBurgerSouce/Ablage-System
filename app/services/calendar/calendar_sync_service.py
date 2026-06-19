@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.safe_errors import safe_error_log
+from sqlalchemy.dialects.postgresql import JSONB  # F-31
 
 logger = structlog.get_logger(__name__)
 

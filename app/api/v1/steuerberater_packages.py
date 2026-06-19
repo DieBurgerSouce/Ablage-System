@@ -246,17 +246,22 @@ async def list_packages(
                 detail=f"Ungültiger Status: {status_filter}",
             )
 
-    packages, total = await service.list_packages(
-        db=db,
+    # F-31 minimal: Service-Signatur ist list_packages(company_id, status) ohne
+    # db-/page-kwargs und liefert eine Liste (kein (packages, total)-Tupel).
+    all_packages = await service.list_packages(
         company_id=company_id,
         status=status_enum,
-        page=page,
-        page_size=page_size,
     )
+    total = len(all_packages)
 
-    # Zähle nach Status
+    # Pagination im Router (Service paginiert nicht).
+    start = max(0, (page - 1) * page_size)
+    end = start + page_size
+    packages = all_packages[start:end]
+
+    # Zähle nach Status (ueber alle, nicht nur die aktuelle Seite)
     by_status: Dict[str, int] = {}
-    for pkg in packages:
+    for pkg in all_packages:
         key = pkg.status.value
         by_status[key] = by_status.get(key, 0) + 1
 

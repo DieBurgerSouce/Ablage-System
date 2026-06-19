@@ -44,6 +44,7 @@ from app.services.entity_extraction_service import (
     EntityExtractionResult,
 )
 from app.services.company_service import get_company_service
+from sqlalchemy.dialects.postgresql import JSONB  # F-31
 
 
 logger = structlog.get_logger(__name__)
@@ -553,6 +554,9 @@ async def get_cross_company_entities(
     entities = result.scalars().all()
 
     # Sammle Statistiken pro Entity und Firma
+    # F-31: all_companies VOR die Schleife (UnboundLocalError bei leerer entities-Liste)
+    company_service = get_company_service()
+    all_companies = await company_service.get_company_short_names(db)
     items = []
     for entity in entities:
         company_presence = entity.company_presence or []
@@ -592,8 +596,6 @@ async def get_cross_company_entities(
         }
 
         # Baue Firmendaten auf - MULTI-TENANT: Dynamisch statt hardcoded
-        company_service = get_company_service()
-        all_companies = await company_service.get_company_short_names(db)
         company_stats = {}
         for company in all_companies:
             company_data = lexware_ids.get(company, {})

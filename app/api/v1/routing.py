@@ -471,15 +471,25 @@ async def get_model_info(
     """
     predictor = RoutingPredictor(db)
 
+    # F-31: RoutingPredictor besitzt keine Felder model_version/last_trained/
+    # training_samples/accuracy_by_target/model. Antwort konservativ aus den
+    # real vorhandenen Attributen/Methoden aufbauen (frisch konstruierter
+    # Predictor laedt Modelle lazy -> i. d. R. Rules-only).
+    stats = predictor.get_statistics()
+    is_ml_model = bool(stats.get("has_ml_model", False))
+    model_version = (
+        predictor.MODEL_VERSION_PREFIX
+        if is_ml_model
+        else f"{predictor.MODEL_VERSION_PREFIX}-rules-only"
+    )
+
     return ModelInfoResponse(
-        model_version=predictor.model_version,
+        model_version=model_version,
         targets_available=[t.value for t in RoutingTarget],
-        last_trained=predictor.last_trained.isoformat()
-        if predictor.last_trained
-        else None,
-        training_samples=predictor.training_samples,
-        accuracy=predictor.accuracy_by_target,
-        is_ml_model=predictor.model is not None,
+        last_trained=None,
+        training_samples=int(stats.get("predictions_count", 0)),
+        accuracy={"overall": float(stats.get("accuracy", 0.0))},
+        is_ml_model=is_ml_model,
     )
 
 

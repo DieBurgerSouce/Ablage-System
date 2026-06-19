@@ -141,7 +141,7 @@ class DunningStageConfigService:
         """
         query = (
             select(DunningStageConfig)
-            .where(DunningStageConfig.company_id == company_id)
+            .where(DunningStageConfig.user_id == company_id)
             .order_by(DunningStageConfig.sort_order.asc())
         )
 
@@ -173,7 +173,7 @@ class DunningStageConfigService:
         query = select(DunningStageConfig).where(
             and_(
                 DunningStageConfig.id == stage_id,
-                DunningStageConfig.company_id == company_id,
+                DunningStageConfig.user_id == company_id,
             )
         )
         result = await db.execute(query)
@@ -209,7 +209,7 @@ class DunningStageConfigService:
         max_query = select(
             func.max(DunningStageConfig.stage_number),
             func.max(DunningStageConfig.sort_order)
-        ).where(DunningStageConfig.company_id == company_id)
+        ).where(DunningStageConfig.user_id == company_id)
 
         max_result = await db.execute(max_query)
         max_values = max_result.one()
@@ -218,7 +218,7 @@ class DunningStageConfigService:
 
         stage = DunningStageConfig(
             id=uuid4(),
-            company_id=company_id,
+            user_id=company_id,
             stage_number=next_stage,
             stage_name=stage_name,
             trigger_days_after_due=trigger_days_after_due,
@@ -349,7 +349,7 @@ class DunningStageConfigService:
         """
         # Alle Stufen laden
         query = select(DunningStageConfig).where(
-            DunningStageConfig.company_id == company_id
+            DunningStageConfig.user_id == company_id
         )
         result = await db.execute(query)
         stages = {s.id: s for s in result.scalars().all()}
@@ -389,7 +389,7 @@ class DunningStageConfigService:
         # Alle bestehenden Stufen löschen
         await db.execute(
             delete(DunningStageConfig).where(
-                DunningStageConfig.company_id == company_id
+                DunningStageConfig.user_id == company_id
             )
         )
 
@@ -700,7 +700,7 @@ class DunningStageConfigService:
         query = select(DunningStageConfig).where(
             and_(
                 DunningStageConfig.id == stage_id,
-                DunningStageConfig.company_id == company_id,
+                DunningStageConfig.user_id == company_id,
             )
         )
         result = await db.execute(query)
@@ -717,7 +717,7 @@ class DunningStageConfigService:
         for default in DEFAULT_STAGES:
             stage = DunningStageConfig(
                 id=uuid4(),
-                company_id=company_id,
+                user_id=company_id,
                 stage_number=default.stage_number,
                 stage_name=default.stage_name,
                 trigger_days_after_due=default.trigger_days_after_due,
@@ -749,7 +749,7 @@ class DunningStageConfigService:
         """Konvertiere Mahnstufe zu Dictionary."""
         return {
             "id": str(stage.id),
-            "company_id": str(stage.company_id),
+            "company_id": str(stage.user_id),
             "stage_number": stage.stage_number,
             "stage_name": stage.stage_name,
             "trigger_days_after_due": stage.trigger_days_after_due,

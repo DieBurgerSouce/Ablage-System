@@ -517,31 +517,51 @@ class LogAnalyticsService:
         """
         report = self.get_health_report()
 
+        # F-31: Keys exakt an DashboardDataResponse-Schema angleichen
+        by_level = report.metrics.by_level or {}
+        error_count = by_level.get("error", 0) + by_level.get("critical", 0)
+        warning_count = by_level.get("warning", 0)
+
         return {
             "timestamp": report.timestamp.isoformat(),
             "period_minutes": report.period_minutes,
             "summary": {
                 "total_entries": report.metrics.total_entries,
+                "error_count": error_count,
+                "warning_count": warning_count,
                 "error_rate_percent": report.metrics.error_rate_percent,
-                "warning_rate_percent": report.metrics.warning_rate_percent,
                 "entries_per_minute": report.metrics.entries_per_minute,
             },
-            "by_level": report.metrics.by_level,
+            "by_level": by_level,
             "trends": [
                 {
-                    "metric": t.metric_name,
+                    "metric_name": t.metric_name,
                     "direction": t.direction.value,
-                    "current": t.current_value,
-                    "previous": t.previous_value,
+                    "current_value": t.current_value,
+                    "previous_value": t.previous_value,
                     "change_percent": t.change_percent,
                     "is_anomaly": t.is_anomaly,
+                    "anomaly_reason": t.anomaly_reason,
                 }
                 for t in report.trends
             ],
-            "alerts": report.alerts,
+            "alerts": [
+                {
+                    "severity": a.get("severity", "info"),
+                    "type": a.get("type", "unknown"),
+                    "message": a.get("message") or "",
+                }
+                for a in report.alerts
+            ],
             "recommendations": report.recommendations,
             "top_errors": self.get_top_errors(5),
-            "volume_timeline": self.get_log_volume_by_time(),
+            "volume_timeline": [
+                {
+                    "timestamp": v["timestamp"],
+                    "count": v.get("total", 0),
+                }
+                for v in self.get_log_volume_by_time()
+            ],
             "source_stats": self.get_source_statistics()[:10],
         }
 

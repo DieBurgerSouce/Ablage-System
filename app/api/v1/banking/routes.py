@@ -2761,9 +2761,20 @@ async def get_mahn_task_summary(
     company_id: UUID = Depends(get_user_company_id_dep),
 ) -> MahnTaskSummary:
     """Hole Aufgaben-Zusammenfassung."""
-    return await mahn_task_service.get_pending_tasks_summary(
+    # F-31: Service liefert ein Dict mit anderen Keys als das MahnTaskSummary-
+    # Schema (due_today/overdue/snoozed/total_pending/by_type). Hier auf die
+    # Schema-Felder mappen statt das Dict roh zurueckzugeben (Response-500).
+    data = await mahn_task_service.get_pending_tasks_summary(
         db=db,
         company_id=company_id,
+    )
+    return MahnTaskSummary(
+        pending_count=data.get("total_pending", 0),
+        overdue_count=data.get("overdue", 0),
+        due_today_count=data.get("due_today", 0),
+        snoozed_count=data.get("snoozed", 0),
+        by_type=data.get("by_type", {}) or {},
+        by_priority=data.get("by_priority", {}) or {},
     )
 
 
@@ -2973,9 +2984,12 @@ async def get_dunning_stages(
 ) -> DunningStagesListResponse:
     """Hole konfigurierte Mahnstufen."""
     try:
+        # F-31: DunningStageConfig/Auto-Dunning sind USER-scoped (Model hat
+        # user_id, KEINE company_id-Spalte; settings liegen in User.preferences).
+        # Daher die User-ID statt der Company-ID an den Service uebergeben.
         stages = await dunning_stage_service.get_stages(
             db=db,
-            company_id=company_id,
+            company_id=current_user.id,
         )
 
         return DunningStagesListResponse(
@@ -3118,9 +3132,10 @@ async def get_auto_dunning_settings(
 ) -> AutoDunningSettingsResponse:
     """Hole Auto-Mahnlauf-Einstellungen."""
     try:
+        # F-31: USER-scoped (siehe get_dunning_stages) -> User-ID uebergeben.
         return await dunning_stage_service.get_auto_dunning_settings(
             db=db,
-            company_id=company_id,
+            company_id=current_user.id,
         )
     except Exception as e:
         logger.error(
@@ -3945,22 +3960,27 @@ async def get_payment_schedule(
         strategy=strategy,
     )
 
+    # F-31: create_payment_schedule() liefert die PaymentSchedule-Dataclass mit
+    # Feldern entries/total_amount/total_skonto_savings (KEIN period_days/strategy/
+    # total_payments/daily_schedule). Response aus den realen Feldern aufbauen;
+    # period_days/strategy stammen aus den Request-Parametern.
+    daily_schedule = [
+        PaymentScheduleEntryResponse(
+            payment_date=entry["date"],
+            total_amount=float(entry.get("total_amount", 0)),
+            payment_count=entry.get("payment_count", 0),
+            skonto_savings=float(entry.get("skonto_savings", 0)),
+            invoices=entry.get("payments", []),
+        )
+        for entry in schedule.entries
+    ]
     return PaymentScheduleResponse(
-        period_days=schedule.period_days,
-        strategy=schedule.strategy.value,
-        total_payments=schedule.total_payments,
+        period_days=period_days,
+        strategy=strategy.value,
+        total_payments=sum(e.payment_count for e in daily_schedule),
         total_amount=float(schedule.total_amount),
         total_skonto_savings=float(schedule.total_skonto_savings),
-        daily_schedule=[
-            PaymentScheduleEntryResponse(
-                payment_date=entry["payment_date"],
-                total_amount=float(entry["total_amount"]),
-                payment_count=entry["payment_count"],
-                skonto_savings=float(entry["skonto_savings"]),
-                invoices=entry["invoices"],
-            )
-            for entry in schedule.daily_schedule
-        ],
+        daily_schedule=daily_schedule,
     )
 
 
@@ -3983,16 +4003,19 @@ async def get_automation_statistics(
         days=days,
     )
 
+    # F-31: get_automation_statistics() liefert ein Dict mit invoices_paid/
+    # total_paid/skonto_savings/... (KEINE batch-Kennzahlen). Auf die realen
+    # Keys mappen; nicht vorhandene Batch-Felder defaulten auf 0 statt KeyError.
     return AutomationStatisticsResponse(
-        period_days=stats["period_days"],
-        batches_created=stats["batches_created"],
-        batches_approved=stats["batches_approved"],
-        batches_executed=stats["batches_executed"],
-        total_payments=stats["total_payments"],
-        total_amount=float(stats["total_amount"]),
-        skonto_savings=float(stats["skonto_savings"]),
-        average_batch_size=stats["average_batch_size"],
-        approval_rate=stats["approval_rate"],
+        period_days=stats.get("period_days", days),
+        batches_created=stats.get("batches_created", 0),
+        batches_approved=stats.get("batches_approved", 0),
+        batches_executed=stats.get("batches_executed", 0),
+        total_payments=stats.get("invoices_paid", 0),
+        total_amount=float(stats.get("total_paid", 0)),
+        skonto_savings=float(stats.get("skonto_savings", 0)),
+        average_batch_size=float(stats.get("average_batch_size", 0)),
+        approval_rate=float(stats.get("approval_rate", 0)),
     )
 
 

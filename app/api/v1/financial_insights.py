@@ -271,6 +271,119 @@ class SkontoOptimizationResponse(BaseModel):
 
 
 # =============================================================================
+# Dataclass -> Response Mapping Helpers (F-31)
+# =============================================================================
+#
+# Die Insights-Services liefern Dataclasses (CashflowPrediction / FraudScanResult
+# / OptimizationResult), nicht dicts. Frueher subskribierte der Router dict-artig
+# mit veralteten Keys -> TypeError/KeyError -> HTTP 500. Diese Helfer bilden die
+# realen Dataclass-Felder auf die Response-Schemas ab.
+
+
+def _cashflow_prediction_to_response(prediction) -> CashflowPredictionResponse:
+    """Mappt CashflowPrediction-Dataclass auf CashflowPredictionResponse."""
+    high_risk = {CashflowRiskLevel.CRITICAL.value, CashflowRiskLevel.HIGH.value} \
+        if hasattr(CashflowRiskLevel, "CRITICAL") else {"critical", "high"}
+
+    data_points = []
+    for dp in prediction.daily_predictions:
+        balance = float(dp.predicted_balance)
+        data_points.append(
+            CashflowDataPointResponse(
+                date=dp.date.isoformat(),
+                predicted_balance=balance,
+                confidence_low=balance,
+                confidence_high=balance,
+                expected_inflows=float(dp.incoming),
+                expected_outflows=float(dp.outgoing),
+                is_warning=dp.risk_level.value in high_risk,
+            )
+        )
+
+    risk_level = prediction.overall_risk.value
+    return CashflowPredictionResponse(
+        company_id=str(prediction.company_id) if prediction.company_id else "",
+        prediction_date=prediction.generated_at.isoformat(),
+        horizon_days=prediction.horizon_days,
+        current_balance=float(prediction.current_balance),
+        data_points=data_points,
+        trend=prediction.trend.value,
+        risk_level=risk_level,
+        risk_date=(
+            prediction.lowest_balance_date.isoformat()
+            if prediction.lowest_balance_date and risk_level in high_risk
+            else None
+        ),
+        minimum_balance=float(prediction.lowest_balance),
+        minimum_balance_date=(
+            prediction.lowest_balance_date.isoformat()
+            if prediction.lowest_balance_date else ""
+        ),
+        recurring_payments=[],
+        pending_invoices=[],
+        confidence_score=prediction.confidence,
+        recommendations=prediction.recommendations,
+    )
+
+
+def _fraud_alert_to_response(alert) -> FraudAlertResponse:
+    """Mappt FraudAlert-Dataclass auf FraudAlertResponse."""
+    return FraudAlertResponse(
+        id=str(alert.id),
+        alert_type=alert.alert_type.value,
+        severity=alert.severity.value,
+        title=alert.title,
+        description=alert.summary or alert.detail,
+        document_id=str(alert.document_id) if alert.document_id else None,
+        entity_id=str(alert.entity_id) if alert.entity_id else None,
+        entity_name=None,
+        risk_score=float(alert.risk_score),
+        indicators=[
+            FraudIndicatorResponse(
+                indicator_type=ind.indicator_type,
+                description=ind.description,
+                value="",
+                expected_value=None,
+                contribution=ind.weight,
+            )
+            for ind in alert.indicators
+        ],
+        recommendation=(
+            alert.recommended_actions[0]
+            if alert.recommended_actions else ""
+        ),
+        created_at=alert.created_at.isoformat(),
+        is_dismissed=False,
+    )
+
+
+def _payment_recommendation_to_response(rec) -> PaymentRecommendationResponse:
+    """Mappt PaymentRecommendation-Dataclass (erste Rechnung) auf das Schema."""
+    priority_map = {
+        "critical": 1,
+        "high": 2,
+        "medium": 3,
+        "low": 4,
+    }
+    inv = rec.invoices[0]
+    return PaymentRecommendationResponse(
+        invoice_id=str(inv.invoice_id),
+        invoice_number="",
+        supplier_name=inv.entity_name,
+        amount=float(inv.amount),
+        skonto_percentage=float(inv.skonto_percentage),
+        skonto_amount=float(inv.skonto_amount),
+        skonto_deadline=inv.skonto_deadline.isoformat(),
+        days_until_deadline=inv.days_until_skonto,
+        payment_deadline=inv.due_date.isoformat(),
+        recommendation=rec.recommendation_type.value,
+        reason=rec.summary,
+        roi_annualized=rec.roi_percent,
+        priority=priority_map.get(rec.priority.value, 3),
+    )
+
+
+# =============================================================================
 # Cashflow Endpoints
 # =============================================================================
 
@@ -311,39 +424,9 @@ async def predict_cashflow(
             include_scenarios=include_scenarios,
         )
 
-        return CashflowPredictionResponse(
-            company_id=str(prediction["company_id"]),
-            prediction_date=prediction["prediction_date"],
-            horizon_days=prediction["horizon_days"],
-            current_balance=prediction["current_balance"],
-            data_points=[
-                CashflowDataPointResponse(
-                    date=dp["date"],
-                    predicted_balance=dp["predicted_balance"],
-                    confidence_low=dp["confidence_low"],
-                    confidence_high=dp["confidence_high"],
-                    expected_inflows=dp["expected_inflows"],
-                    expected_outflows=dp["expected_outflows"],
-                    is_warning=dp["is_warning"],
-                )
-                for dp in prediction.get("data_points", [])
-            ],
-            trend=prediction["trend"],
-            risk_level=prediction["risk_level"],
-            risk_date=prediction.get("risk_date"),
-            minimum_balance=prediction["minimum_balance"],
-            minimum_balance_date=prediction["minimum_balance_date"],
-            recurring_payments=[
-                RecurringPaymentResponse(**rp)
-                for rp in prediction.get("recurring_payments", [])
-            ],
-            pending_invoices=[
-                PendingInvoiceResponse(**pi)
-                for pi in prediction.get("pending_invoices", [])
-            ],
-            confidence_score=prediction["confidence_score"],
-            recommendations=prediction.get("recommendations", []),
-        )
+        # F-31: predict() liefert die CashflowPrediction-Dataclass (nicht dict).
+        # Response wird direkt aus den realen Dataclass-Feldern aufgebaut.
+        return _cashflow_prediction_to_response(prediction)
     except Exception as e:
         logger.error("cashflow_prediction_failed", **safe_error_log(e))
         raise HTTPException(
@@ -396,23 +479,8 @@ async def analyze_scenario(
             scenario_adjustments=scenario_adjustments,
         )
 
-        return CashflowPredictionResponse(
-            company_id=str(prediction["company_id"]),
-            prediction_date=prediction["prediction_date"],
-            horizon_days=prediction["horizon_days"],
-            current_balance=prediction["current_balance"],
-            data_points=[
-                CashflowDataPointResponse(**dp)
-                for dp in prediction.get("data_points", [])
-            ],
-            trend=prediction["trend"],
-            risk_level=prediction["risk_level"],
-            risk_date=prediction.get("risk_date"),
-            minimum_balance=prediction["minimum_balance"],
-            minimum_balance_date=prediction["minimum_balance_date"],
-            confidence_score=prediction["confidence_score"],
-            recommendations=prediction.get("recommendations", []),
-        )
+        # F-31: predict() liefert die CashflowPrediction-Dataclass (nicht dict).
+        return _cashflow_prediction_to_response(prediction)
     except Exception as e:
         logger.error("scenario_analysis_failed", **safe_error_log(e))
         raise HTTPException(
@@ -462,36 +530,17 @@ async def scan_for_fraud(
             scan_days=scan_days,
         )
 
+        # F-31: scan() liefert die FraudScanResult-Dataclass (nicht dict).
         return FraudScanResultResponse(
-            scan_id=result["scan_id"],
-            scan_date=result["scan_date"],
-            company_id=str(result["company_id"]),
-            documents_scanned=result["documents_scanned"],
-            alerts_found=result["alerts_found"],
-            alerts=[
-                FraudAlertResponse(
-                    id=alert["id"],
-                    alert_type=alert["alert_type"],
-                    severity=alert["severity"],
-                    title=alert["title"],
-                    description=alert["description"],
-                    document_id=alert.get("document_id"),
-                    entity_id=alert.get("entity_id"),
-                    entity_name=alert.get("entity_name"),
-                    risk_score=alert["risk_score"],
-                    indicators=[
-                        FraudIndicatorResponse(**ind)
-                        for ind in alert.get("indicators", [])
-                    ],
-                    recommendation=alert["recommendation"],
-                    created_at=alert["created_at"],
-                    is_dismissed=alert.get("is_dismissed", False),
-                )
-                for alert in result.get("alerts", [])
-            ],
-            by_severity=result.get("by_severity", {}),
-            by_type=result.get("by_type", {}),
-            scan_duration_ms=result["scan_duration_ms"],
+            scan_id=str(result.company_id),
+            scan_date=result.scan_completed_at.isoformat(),
+            company_id=str(result.company_id),
+            documents_scanned=0,
+            alerts_found=result.total_alerts,
+            alerts=[_fraud_alert_to_response(a) for a in result.alerts],
+            by_severity=result.alerts_by_severity,
+            by_type=result.alerts_by_type,
+            scan_duration_ms=int(result.scan_duration_seconds * 1000),
         )
     except Exception as e:
         logger.error("fraud_scan_failed", **safe_error_log(e))
@@ -647,38 +696,40 @@ async def optimize_skonto(
             db=db,
             company_id=company_id,
             days_ahead=days_ahead,
-            min_savings=min_savings,
+            min_savings=Decimal(str(min_savings)),
+        )
+
+        # F-31: optimize() liefert die OptimizationResult-Dataclass (nicht dict).
+        # Jede PaymentRecommendation wird auf ihre erste Rechnung abgebildet.
+        recommendations = [
+            _payment_recommendation_to_response(rec)
+            for rec in result.optimal_payment_schedule
+            if rec.invoices
+        ]
+        recommended_savings = float(
+            sum(
+                (r.total_savings for r in result.optimal_payment_schedule
+                 if r.recommendation_type == RecommendationType.PAY_NOW),
+                Decimal("0"),
+            )
+        )
+        cash_buffer_warning = any(
+            r.liquidity_impact.value in ("negative", "critical")
+            for r in result.optimal_payment_schedule
         )
 
         return SkontoOptimizationResponse(
-            company_id=str(result["company_id"]),
-            analysis_date=result["analysis_date"],
-            days_analyzed=result["days_analyzed"],
-            current_balance=result["current_balance"],
-            total_invoices=result["total_invoices"],
-            total_skonto_available=result["total_skonto_available"],
-            recommended_savings=result["recommended_savings"],
-            recommendations=[
-                PaymentRecommendationResponse(
-                    invoice_id=rec["invoice_id"],
-                    invoice_number=rec["invoice_number"],
-                    supplier_name=rec["supplier_name"],
-                    amount=rec["amount"],
-                    skonto_percentage=rec["skonto_percentage"],
-                    skonto_amount=rec["skonto_amount"],
-                    skonto_deadline=rec["skonto_deadline"],
-                    days_until_deadline=rec["days_until_deadline"],
-                    payment_deadline=rec["payment_deadline"],
-                    recommendation=rec["recommendation"],
-                    reason=rec["reason"],
-                    roi_annualized=rec["roi_annualized"],
-                    priority=rec["priority"],
-                )
-                for rec in result.get("recommendations", [])
-            ],
-            liquidity_impact=result["liquidity_impact"],
-            cash_buffer_warning=result["cash_buffer_warning"],
-            optimal_payment_date=result.get("optimal_payment_date"),
+            company_id=str(result.company_id),
+            analysis_date=result.generated_at.isoformat(),
+            days_analyzed=days_ahead,
+            current_balance=float(result.current_balance),
+            total_invoices=result.total_skonto_eligible,
+            total_skonto_available=float(result.total_potential_savings),
+            recommended_savings=recommended_savings,
+            recommendations=recommendations,
+            liquidity_impact="neutral",
+            cash_buffer_warning=cash_buffer_warning,
+            optimal_payment_date=None,
         )
     except Exception as e:
         logger.error("skonto_optimization_failed", **safe_error_log(e))
@@ -785,12 +836,16 @@ async def get_financial_insights_summary(
             company_id=company_id,
             horizon_days=30,
         )
+        # F-31: CashflowPrediction-Dataclass (nicht dict).
         summary["cashflow"] = {
-            "current_balance": cashflow["current_balance"],
-            "trend": cashflow["trend"],
-            "risk_level": cashflow["risk_level"],
-            "minimum_balance": cashflow["minimum_balance"],
-            "minimum_balance_date": cashflow["minimum_balance_date"],
+            "current_balance": float(cashflow.current_balance),
+            "trend": cashflow.trend.value,
+            "risk_level": cashflow.overall_risk.value,
+            "minimum_balance": float(cashflow.lowest_balance),
+            "minimum_balance_date": (
+                cashflow.lowest_balance_date.isoformat()
+                if cashflow.lowest_balance_date else None
+            ),
         }
     except Exception:
         summary["cashflow"] = {"error": "Nicht verfügbar"}
@@ -802,9 +857,10 @@ async def get_financial_insights_summary(
             company_id=company_id,
             scan_days=30,
         )
+        # F-31: FraudScanResult-Dataclass (nicht dict).
         summary["fraud"] = {
-            "alerts_count": fraud_result["alerts_found"],
-            "by_severity": fraud_result.get("by_severity", {}),
+            "alerts_count": fraud_result.total_alerts,
+            "by_severity": fraud_result.alerts_by_severity,
         }
     except Exception:
         summary["fraud"] = {"error": "Nicht verfügbar"}
@@ -816,11 +872,18 @@ async def get_financial_insights_summary(
             company_id=company_id,
             days_ahead=14,
         )
+        # F-31: OptimizationResult-Dataclass (nicht dict).
         summary["skonto"] = {
-            "available_savings": skonto["total_skonto_available"],
-            "recommended_savings": skonto["recommended_savings"],
-            "invoices_with_skonto": skonto["total_invoices"],
-            "liquidity_impact": skonto["liquidity_impact"],
+            "available_savings": float(skonto.total_potential_savings),
+            "recommended_savings": float(
+                sum(
+                    (r.total_savings for r in skonto.optimal_payment_schedule
+                     if r.recommendation_type == RecommendationType.PAY_NOW),
+                    Decimal("0"),
+                )
+            ),
+            "invoices_with_skonto": skonto.total_skonto_eligible,
+            "liquidity_impact": "neutral",
         }
     except Exception:
         summary["skonto"] = {"error": "Nicht verfügbar"}

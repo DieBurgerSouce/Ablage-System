@@ -13,6 +13,7 @@ Feinpoliert und durchdacht - Enterprise Risk Scoring.
 
 from typing import Optional, List
 from app.api.dependencies import get_user_company_id_dep  # F-31
+from app.api.dependencies import get_user_company_id  # F-31
 from uuid import UUID
 from datetime import datetime, timezone
 

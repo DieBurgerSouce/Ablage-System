@@ -28,6 +28,7 @@ from app.db.schemas import (
     DocumentGroupCreate,
     DocumentGroupUpdate,
     DocumentGroupResponse,
+    DocumentGroupSummary,
     DocumentGroupListResponse,
     DocumentGroupDetailResponse,
     DocumentGroupType,
@@ -37,6 +38,7 @@ from app.db.schemas import (
     GroupSplitRequest,
     GroupMergeRequest,
     ValidationQueueResponse,
+    ValidationQueueItem,
     MessageResponse,
     SortOrder,
 )
@@ -142,11 +144,29 @@ async def list_groups(
     offset = (page - 1) * per_page
     query = query.offset(offset).limit(per_page)
 
+    query = query.options(selectinload(DocumentGroup.documents))
     result = await db.execute(query)
     groups = result.scalars().all()
 
+    # F-31: DocumentGroupListResponse erwartet `groups` (List[DocumentGroupSummary]),
+    # document_count aus eager-geladenen Dokumenten.
+    group_summaries = [
+        DocumentGroupSummary(
+            id=g.id,
+            name=g.name,
+            group_type=g.group_type,
+            total_pages=g.total_pages or 1,
+            document_count=len(g.documents),
+            detection_confidence=g.detection_confidence or 0.0,
+            user_confirmed=g.user_confirmed or False,
+            needs_review=g.needs_review or False,
+            created_at=g.created_at,
+        )
+        for g in groups
+    ]
+
     return DocumentGroupListResponse(
-        items=[DocumentGroupResponse.model_validate(g) for g in groups],
+        groups=group_summaries,
         total=total,
         page=page,
         per_page=per_page,
@@ -866,21 +886,29 @@ async def get_review_queue(
         limit=limit
     )
 
+    # F-31: ValidationQueueResponse erwartet total_pending/groups_pending/
+    # relationships_pending + items als ValidationQueueItem. Diese Queue liefert
+    # ausschliesslich Gruppen.
+    items = [
+        ValidationQueueItem(
+            id=g.id,
+            item_type="group",
+            item_id=g.id,
+            confidence=g.detection_confidence or 0.0,
+            detection_method=g.detection_method or "unknown",
+            detection_details=g.detection_details or {},
+            priority=g.review_priority or 5,
+            created_at=g.created_at,
+            group_name=g.name,
+        )
+        for g in groups
+    ]
+
     return ValidationQueueResponse(
-        items=[
-            {
-                "id": str(g.id),
-                "name": g.name,
-                "group_type": g.group_type,
-                "detection_confidence": g.detection_confidence,
-                "detection_method": g.detection_method,
-                "total_pages": g.total_pages,
-                "review_priority": g.review_priority,
-                "created_at": g.created_at.isoformat() if g.created_at else None,
-            }
-            for g in groups
-        ],
-        total=len(groups),
+        total_pending=len(items),
+        groups_pending=len(items),
+        relationships_pending=0,
+        items=items,
     )
 
 

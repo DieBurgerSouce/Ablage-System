@@ -35,6 +35,16 @@ from app.db.models_comments import CommentThread
 
 logger = structlog.get_logger(__name__)
 
+# F-31: Mapping der deutschen API-Status-Werte auf die realen DB-Status-Werte
+# des comment_tasks-Modells (models_annotations.CommentTaskStatus:
+# open/in_progress/resolved/closed). Vermeidet stillen Leerfilter.
+_DB_STATUS_OPEN = "open"
+_DE_TO_DB_STATUS: Dict[str, str] = {
+    "offen": "open",
+    "in_bearbeitung": "in_progress",
+    "erledigt": "resolved",
+}
+
 
 class ExtendedAnnotationService:
     """Service für erweiterte Dokument-Annotationen.
@@ -622,16 +632,21 @@ class ExtendedAnnotationService:
         Returns:
             Liste von CommentTask-Objekten
         """
+        # F-31: Reales DB-Modell (comment_tasks) nutzt `assigned_to` (nicht
+        # `assigned_to_user_id`); der Status-Filter kommt deutsch herein
+        # (offen/in_bearbeitung/erledigt), die DB speichert open/in_progress/
+        # resolved. Mapping konservativ ueber _DE_TO_DB_STATUS.
         query = select(CommentTask).where(
-            CommentTask.assigned_to_user_id == user_id
+            CommentTask.assigned_to == user_id
         )
 
         if status is not None:
-            query = query.where(CommentTask.status == status)
+            db_status = _DE_TO_DB_STATUS.get(status, status)
+            query = query.where(CommentTask.status == db_status)
 
         query = query.order_by(
             # Offene Aufgaben zuerst, dann nach Fälligkeitsdatum
-            desc(CommentTask.status == CommentTaskStatus.OFFEN.value),
+            desc(CommentTask.status == _DB_STATUS_OPEN),
             CommentTask.due_date.asc().nullslast(),
             CommentTask.created_at.desc(),
         ).limit(limit)

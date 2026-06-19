@@ -1158,15 +1158,15 @@ class DashboardService:
         """
         from sqlalchemy import text
 
-        # Get user role
-        user_query = text("SELECT role FROM users WHERE id = :user_id")
+        # Get user role (F-31: keine role-Spalte; aus is_superuser ableiten)
+        user_query = text("SELECT is_superuser FROM users WHERE id = :user_id")
         result = await self.db.execute(user_query, {"user_id": user_id})
         user_row = result.fetchone()
 
         if not user_row:
             return []
 
-        user_role = user_row[0] or "viewer"
+        user_role = "admin" if user_row[0] else "viewer"
 
         # Get dashboards shared with user's role
         query = text("""
@@ -1212,15 +1212,15 @@ class DashboardService:
         """
         from sqlalchemy import text
 
-        # Get user role
-        user_query = text("SELECT role FROM users WHERE id = :user_id")
+        # Get user role (F-31: keine role-Spalte; aus is_superuser ableiten)
+        user_query = text("SELECT is_superuser FROM users WHERE id = :user_id")
         result = await self.db.execute(user_query, {"user_id": user_id})
         user_row = result.fetchone()
 
         if not user_row:
             return None
 
-        user_role = user_row[0] or "viewer"
+        user_role = "admin" if user_row[0] else "viewer"
 
         # Get dashboard if shared with user's role
         query = text("""

@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_superuser, get_current_user
+from app.api.dependencies import get_db, get_current_superuser, get_current_user, get_user_company_id
 from app.core.german_messages import HTTPErrors
 from app.core.security import build_content_disposition
 from app.db.models import User
@@ -385,7 +385,8 @@ async def get_permission_audit(
 
     **Tenant-isoliert** - Nur Daten der eigenen Company.
     """
-    if not admin.company_id:
+    company_id = await get_user_company_id(db, admin)
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company-Zuordnung gefunden",
@@ -396,7 +397,7 @@ async def get_permission_audit(
     change_types = [change_type] if change_type else None
 
     return await service.get_company_permission_audit(
-        company_id=str(admin.company_id),
+        company_id=str(company_id),
         start_date=start_date,
         end_date=end_date,
         change_types=change_types,
@@ -430,7 +431,8 @@ async def get_user_permission_history(
 
     **Tenant-isoliert** - Nur für Benutzer der eigenen Company.
     """
-    if not admin.company_id:
+    company_id = await get_user_company_id(db, admin)
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company-Zuordnung gefunden",
@@ -440,7 +442,7 @@ async def get_user_permission_history(
 
     return await service.get_user_permission_history(
         user_id=str(user_id),
-        company_id=str(admin.company_id),
+        company_id=str(company_id),
         start_date=start_date,
         end_date=end_date,
         limit=per_page,
@@ -471,7 +473,8 @@ async def export_permission_audit(
 
     **Limit**: Maximal 10.000 Einträge pro Export.
     """
-    if not admin.company_id:
+    company_id = await get_user_company_id(db, admin)
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company-Zuordnung gefunden",
@@ -487,14 +490,14 @@ async def export_permission_audit(
 
     if format == "csv":
         content = await service.export_csv(
-            company_id=str(admin.company_id),
+            company_id=str(company_id),
             start_date=start_date,
             end_date=end_date,
         )
         media_type = "text/csv; charset=utf-8"
     else:
         content = await service.export_json(
-            company_id=str(admin.company_id),
+            company_id=str(company_id),
             start_date=start_date,
             end_date=end_date,
         )
@@ -536,7 +539,8 @@ async def get_permission_audit_summary(
     - Audit-Vorbereitung
     - Security-Reviews
     """
-    if not admin.company_id:
+    company_id = await get_user_company_id(db, admin)
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company-Zuordnung gefunden",
@@ -545,6 +549,6 @@ async def get_permission_audit_summary(
     service = PermissionAuditService(db)
 
     return await service.get_compliance_summary(
-        company_id=str(admin.company_id),
+        company_id=str(company_id),
         period_days=days,
     )

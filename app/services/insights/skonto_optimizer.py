@@ -761,6 +761,58 @@ class SkontoOptimizer:
         return forecast
 
 
+    async def get_recommendations(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        days_ahead: int = 14,
+        only_urgent: bool = False,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Hole priorisierte Zahlungsempfehlungen.
+
+        F-31 minimal: Leitet aus ``optimize`` ab und flacht die
+        Empfehlungen auf einzelne Rechnungen ab (jede Empfehlung ->
+        ein Eintrag). Liefert Dicts, die der Router auf
+        PaymentRecommendationResponse mappt.
+        """
+        result = await self.optimize(db=db, company_id=company_id, days_ahead=days_ahead)
+
+        urgent_priorities = {Priority.CRITICAL, Priority.HIGH}
+        items: List[Dict[str, Any]] = []
+        for rec in result.optimal_payment_schedule:
+            if only_urgent and rec.priority not in urgent_priorities:
+                continue
+            if not rec.invoices:
+                continue
+            inv = rec.invoices[0]
+            priority_map = {
+                Priority.CRITICAL: 1,
+                Priority.HIGH: 2,
+                Priority.MEDIUM: 3,
+                Priority.LOW: 4,
+            }
+            items.append({
+                "invoice_id": str(inv.invoice_id),
+                "invoice_number": "",
+                "supplier_name": inv.entity_name,
+                "amount": float(inv.amount),
+                "skonto_percentage": float(inv.skonto_percentage),
+                "skonto_amount": float(inv.skonto_amount),
+                "skonto_deadline": inv.skonto_deadline.isoformat(),
+                "days_until_deadline": inv.days_until_skonto,
+                "payment_deadline": inv.due_date.isoformat(),
+                "recommendation": rec.recommendation_type.value,
+                "reason": rec.summary,
+                "roi_annualized": rec.roi_percent,
+                "priority": priority_map.get(rec.priority, 3),
+            })
+            if len(items) >= limit:
+                break
+
+        return items
+
+
 # =============================================================================
 # Singleton
 # =============================================================================

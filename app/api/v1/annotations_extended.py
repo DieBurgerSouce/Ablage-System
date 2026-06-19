@@ -210,8 +210,10 @@ def _task_to_response(task: CommentTask) -> TaskResponse:
     """Konvertiert CommentTask zu Response-Schema."""
     return TaskResponse(
         id=task.id,
-        thread_id=task.thread_id,
-        assigned_to_user_id=task.assigned_to_user_id,
+        # F-31: Reales comment_tasks-Modell nutzt comment_thread_id/assigned_to/
+        # created_by (nicht thread_id/assigned_to_user_id/created_by_user_id).
+        thread_id=task.comment_thread_id,
+        assigned_to_user_id=task.assigned_to,
         title=task.title,
         description=task.description,
         status=task.status,
@@ -225,7 +227,7 @@ def _task_to_response(task: CommentTask) -> TaskResponse:
             if task.completed_at
             else None
         ),
-        created_by_user_id=task.created_by_user_id,
+        created_by_user_id=task.created_by,
         created_at=(
             task.created_at.isoformat()
             if task.created_at

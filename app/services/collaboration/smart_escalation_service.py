@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.datetime_utils import utc_now
+from sqlalchemy.dialects.postgresql import JSONB  # F-31
 from app.db.models import (
     BusinessEntity,
     Company,
