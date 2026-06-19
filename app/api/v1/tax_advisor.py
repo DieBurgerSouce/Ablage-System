@@ -13,6 +13,7 @@ GoBD-Konformität:
 """
 
 from datetime import datetime, timezone
+from app.api.dependencies import get_user_company_id_dep  # F-31
 from typing import Optional, List
 from uuid import UUID
 
