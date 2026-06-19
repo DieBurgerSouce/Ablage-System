@@ -639,7 +639,10 @@ services:
       - backups:/var/backups/ablage
       - model_cache:/home/ablage/.cache  # Persistent HuggingFace/Surya Model Cache
     ports:
-      - "8000:8000"
+      # F-24: nur an Localhost binden (vorher 0.0.0.0) - die API wird intern ueber
+      # das Docker-Netz (frontend/nginx) erreicht; direkter Host-Zugriff nur lokal
+      # bzw. via Reverse-Proxy. Verhindert ungewollte Exposition auf allen Interfaces.
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
