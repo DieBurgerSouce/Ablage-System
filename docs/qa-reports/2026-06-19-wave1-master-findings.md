@@ -91,3 +91,27 @@ smart_inbox/workflow_engine.
 6. A-Z-Simulation: Mutations-Sweep (POST/PUT/DELETE) + Browser-E2E kritischer Flows im Loop, fix+dokumentiert.
 7. Security-P1 (W2-19/20/21) + Money (W2-23) + Worker-Durability (W2-24).
 8. Regressionstests (W2-25). 9. Doku/Git konsolidieren + Tracing/Alerts.
+---
+
+## Welle-2 AUSFUEHRUNG (2026-06-19) - Status
+
+ERLEDIGT:
+- W2-01 Beat-Crash-Loop: Cache-tmpfs (/home/ablage/.cache) -> Beat healthy R=0. Scheduled Tasks laufen wieder.
+- W2-02/03 GPU-Worker-Wedge + SMTP: smtplib.SMTP(timeout=10) -> Worker entkeilt nach Restart.
+- W2-04 /health/startup 503: _check_redis() nutzt settings.REDIS_URL (inkl. AUTH).
+- W2-05 SSO-Login-Crash: User(company_id=,role=) entfernt, is_superuser-Mapping + UserCompany-Tenancy, Token-company_id=None.
+- W2-10/11/12 Mutations-Tenancy (Agent A, 24 Router): require_company->company.id (19 EP); bare getter->get_user_company_id_dep (16 Dateien); getattr(user,company_id)->get_user_company_id (dlp/calendar/magic_buttons).
+- W2-13/14 Phantom-Spalten (Agent B, 5 Dateien): ai_action_service user.company_id x15, smart_inbox/workflow_engine UserCompany-Join, extended_alerts/template_tasks Document.document_metadata.
+- W2-15 Enum values_callable (Agent C): 14 Spalten gefixt; 5 Budget-Spalten korrekt UEBERSPRUNGEN (DB UPPERCASE).
+- W2-16 CrossDBJSON cast(JSONB) (Agent D, 25 Dateien): Dokumentsuche-Filter (21 Subscripts) + 24 weitere Stellen.
+- Frontend-Drift (W2-31): 13 Pfade/6 Dateien gefixt (streckengeschaeft Umlaut x9, retention stats->statistics, verfahrensdokumentation, calendar-sync); audit-chain/statistics 422 via {sequence_number:int}-Converter (Route-Shadowing).
+- VERIFIKATION: GET-Sweep nach Welle 2 = 0x500 (stabil; 200: 873->881). app.main importiert sauber. Browser-E2E:
+  documents/smart-search/approvals/inventory/finanzen/dashboard = 0 Konsolenfehler.
+
+OFFEN (Folgearbeit, dokumentiert):
+- W2-06 WS-Token-im-URL (braucht koordinierten FE+BE-Umbau auf Subprotokoll).
+- W2-07/09 2FA-Bypass + SCAN-Cursor: nur offensive-Branch, muessen nach master (mit Parallel-Session koordinieren).
+- W2-08/22 Frontend Token-Ablauf (in-app kein Redirect, Portal session-expired ohne Listener) - braucht FE-Rebuild.
+- W2-17 Approval-Authz/State-Machine; W2-18 Feature-Stubs echt machen; W2-19/20/21 Security-P1 (NLQ-Bind, SSO-Redirect-Encode, Portal-Ratelimit, IMAP-SSRF); W2-23 Money-Rounding; W2-24 Worker-Durability; W2-25 Regressionstests; W2-27/28 Tracing/Alerts.
+- ~80 Frontend-Feature-Luecken (Frontend ruft Endpunkte ohne Backend) - Produktentscheidung noetig.
+- einvoice/receiver Company.settings (Schema-Entscheidung). Budget-Enum-UPPERCASE-Drift (separat).
