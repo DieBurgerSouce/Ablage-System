@@ -296,29 +296,45 @@ class BackendQualityReportService:
         backends: List[str],
         since: datetime,
     ) -> Optional[str]:
-        """Ermittelt das beste Backend für Tabellen-Erkennung."""
+        """Ermittelt das beste Backend für Tabellen-Erkennung.
+
+        Es gibt KEINE eigene table_accuracy-Spalte am Benchmark (Referenz darauf
+        liess den Report mit 500 abbrechen). Als sinnvoller Proxy dient die niedrigste
+        durchschnittliche CER auf Benchmarks von Tabellen-Dokumenten
+        (OCRTrainingSample.has_tables) — niedrigere CER = besser. Ohne passende Daten
+        liefert die Methode None, woraufhin der Aufrufer auf best_overall zurueckfaellt.
+        """
         best_backend = None
-        best_score = -1.0
+        best_cer: Optional[float] = None  # niedrigste durchschnittliche CER gewinnt
 
         for backend in backends:
-            # Suche nach Tabellen-spezifischen Benchmarks
-            table_query = select(
-                func.avg(OCRBackendBenchmark.table_accuracy).label("avg_table"),
-                func.count(OCRBackendBenchmark.id).label("count"),
-            ).where(
-                and_(
-                    OCRBackendBenchmark.backend_name == backend,
-                    OCRBackendBenchmark.processed_at >= since,
-                    OCRBackendBenchmark.table_accuracy.isnot(None),
+            # CER auf Tabellen-Dokumenten (join Benchmark -> Training-Sample mit has_tables)
+            table_query = (
+                select(
+                    func.avg(OCRBackendBenchmark.cer).label("avg_cer"),
+                    func.count(OCRBackendBenchmark.id).label("count"),
+                )
+                .select_from(OCRBackendBenchmark)
+                .join(
+                    OCRTrainingSample,
+                    OCRBackendBenchmark.training_sample_id == OCRTrainingSample.id,
+                )
+                .where(
+                    and_(
+                        OCRBackendBenchmark.backend_name == backend,
+                        OCRBackendBenchmark.processed_at >= since,
+                        OCRBackendBenchmark.cer.isnot(None),
+                        OCRTrainingSample.has_tables.is_(True),
+                    )
                 )
             )
             result = await self.db.execute(table_query)
             row = result.first()
 
-            if row and row.count and row.count > 0 and row.avg_table:
-                avg_score = float(row.avg_table)
-                if avg_score > best_score:
-                    best_score = avg_score
+            if row and row.count and row.count > 0 and row.avg_cer is not None:
+                avg_cer = float(row.avg_cer)
+                if best_cer is None or avg_cer < best_cer:
+                    best_cer = avg_cer
                     best_backend = backend
 
         return best_backend
