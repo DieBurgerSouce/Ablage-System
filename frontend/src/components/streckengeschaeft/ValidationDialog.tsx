@@ -82,7 +82,7 @@ export function ValidationDialog({
 
   const validateMutation = useMutation({
     mutationFn: () =>
-      apiClient.patch(`/streckengeschaeft/classifications/${classification.id}/validate`, {
+      apiClient.patch(`/streckengeschäft/classifications/${classification.id}/validate`, {
         is_valid: true,
         override_transaction_type: isOverride ? transactionType : undefined,
         override_vat_category: isOverride ? vatCategory : undefined,
