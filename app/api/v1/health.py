@@ -180,7 +180,7 @@ async def _check_redis() -> KomponentenStatus:
 
         start = time.perf_counter()
         client = redis.from_url(
-            f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
+            settings.REDIS_URL,  # W2-04: volle URL inkl. AUTH statt Host/Port ohne Passwort
             decode_responses=True,
         )
         await client.ping()

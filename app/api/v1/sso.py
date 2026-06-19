@@ -35,6 +35,7 @@ from app.core.safe_errors import safe_error_detail
 from app.core.security_auth import create_access_token, get_password_hash
 from app.db.models import User
 from app.services.auth.sso import OIDCService, SAMLService, SSOConfigService
+from app.db.models_cash_company import UserCompany  # W2-05
 from app.services.auth.sso.sso_config_service import (
     SSOProviderConfig,
     SSOProviderPreset,
@@ -921,7 +922,7 @@ async def _provision_sso_user(
 
         # Update role if group mapping changed it
         if provider.group_mapping and groups:
-            user.role = role
+            user.is_superuser = (role == "admin")  # W2-05: User.role ist read-only property
 
         user.is_active = True
         await db.commit()
@@ -970,16 +971,24 @@ async def _provision_sso_user(
         username=username,
         hashed_password=get_password_hash(random_password),
         full_name=full_name,
-        company_id=provider.company_id,
-        role=role,
         is_active=True,
-        is_superuser=False,
+        is_superuser=(role == "admin"),  # W2-05: User hat keine company_id/role-Spalte
         # Mark as SSO user (optional: add sso_provider_id column to User model)
     )
 
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    # W2-05: Tenancy ueber UserCompany (User-Modell hat keine company_id-Spalte)
+    if provider.company_id:
+        db.add(UserCompany(
+            user_id=new_user.id,
+            company_id=provider.company_id,
+            role=role if role in ("owner", "admin", "member", "viewer") else "member",
+            is_current=True,
+        ))
+        await db.commit()
 
     logger.info(
         "sso_user_created",
@@ -1004,7 +1013,7 @@ def _generate_sso_session_token(user: User) -> str:
     token_data = {
         "sub": str(user.id),
         "email": user.email,
-        "company_id": str(user.company_id) if user.company_id else None,
+        "company_id": None,  # W2-05: User hat keine company_id (Tenancy via UserCompany)
         "role": getattr(user, "role", "viewer"),
         "sso_login": True,
     }
