@@ -441,14 +441,7 @@ class LiquidityForecastService:
 
         for account in accounts:
             # Neueste Transaktion für Saldo
-            tx_query = (
-                select(BankTransaction.running_balance)
-                .where(BankTransaction.bank_account_id == account.id)
-                .order_by(BankTransaction.booking_date.desc())
-                .limit(1)
-            )
-            tx_result = await db.execute(tx_query)
-            balance = tx_result.scalar()
+            balance = account.current_balance  # F-31: BankTransaction hat keine running_balance-Spalte
 
             if balance is not None:
                 total_balance += Decimal(str(balance))

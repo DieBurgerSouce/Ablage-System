@@ -2996,7 +2996,7 @@ async def get_dunning_stages(
             stages=stages or [],  # Handle None/empty list
             interest_rate_b2b=dunning_stage_service.get_interest_rate(is_b2b=True),
             interest_rate_b2c=dunning_stage_service.get_interest_rate(is_b2b=False),
-            b2b_pauschale=dunning_stage_service.B2B_PAUSCHALE,
+            b2b_pauschale=dunning_stage_service.get_b2b_pauschale(),
         )
     except Exception as e:
         logger.error(

@@ -665,7 +665,7 @@ Alle Änderungen am System werden dokumentiert:
         user_result = await db.execute(
             select(func.count())
             .select_from(User)
-            .where(User.company_id == company_id, User.is_active == True)
+            .where(User.is_active == True)  # F-31: User hat kein company_id (Tenancy via UserCompany)
         )
         total_users = user_result.scalar() or 0
 

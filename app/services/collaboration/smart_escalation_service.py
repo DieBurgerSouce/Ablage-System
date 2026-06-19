@@ -749,8 +749,8 @@ class SmartEscalationService:
         is_available = True
         details: Dict[str, Any] = {"is_active": True}
 
-        if row.last_login_at:
-            days_since_login = (utc_now() - row.last_login_at).days
+        if row.last_login:
+            days_since_login = (utc_now() - row.last_login).days
             details["last_login_days_ago"] = days_since_login
 
             if days_since_login > 30:
