@@ -1225,7 +1225,7 @@ async def get_quality_snapshots(
 
 
 @router.post("/bulk-processing/quality-snapshots/create")
-async def create_quality_snapshot(
+async def create_quality_snapshot_bulk(
     current_user: User = Depends(require_any_role("admin")),
     db: AsyncSession = Depends(get_db)
 ):

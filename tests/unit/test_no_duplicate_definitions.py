@@ -20,14 +20,14 @@ KNOWN_DUPLICATES = {
     # SeasonalPatternResponse (orchestration.py) BEHOBEN: die detaillierte Klasse
     # wurde zu SeasonalPatternDetailResponse umbenannt (war Shadowing-Bug ->
     # detect-patterns-Endpoint konstruierte die falsche Klasse -> 500).
-    ("app/api/v1/training.py", "func", "create_quality_snapshot"),
-    ("app/db/schemas.py", "class", "DocumentTypeStats"),
+    # EntityType -> BusinessPartnerType; create_quality_snapshot -> _bulk umbenannt;
+    # DocumentTypeStats/TrendDataPoint/ValidationQueueListResponse tote 1.-Defs
+    # entfernt (alle agent-verifiziert KOSMETISCH, 0 Runtime-Bug).
+    # VERBLEIBEND (bewusst belassen, agent-verifiziert kosmetisch): das inter-
+    # referenzierende RiskFactorsResponse/EntityRiskResponse-Cluster (1. Defs tot,
+    # Konstruktionen nutzen die 2. Defs; intricate Cluster-Refactor lohnt nicht).
     ("app/db/schemas.py", "class", "EntityRiskResponse"),
-    # EntityType (schemas.py) BEHOBEN: shadowte Geschäftspartner-Enum -> BusinessPartnerType
-    # umbenannt (Navigation-EntityType bleibt kanonisch; Sondermember unbenutzt).
     ("app/db/schemas.py", "class", "RiskFactorsResponse"),
-    ("app/db/schemas.py", "class", "TrendDataPoint"),
-    ("app/db/schemas.py", "class", "ValidationQueueListResponse"),
     # TransactionFilter (banking/models.py) BEHOBEN: tote Basis-Def (mit
     # bank_account_id) entfernt - war shadowed, kein Aufrufer nutzte sie.
 }
