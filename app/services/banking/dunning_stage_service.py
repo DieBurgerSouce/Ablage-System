@@ -749,7 +749,7 @@ class DunningStageConfigService:
         """Konvertiere Mahnstufe zu Dictionary."""
         return {
             "id": str(stage.id),
-            "company_id": str(stage.user_id),
+            "user_id": str(stage.user_id),  # F-31: Schema erwartet user_id
             "stage_number": stage.stage_number,
             "stage_name": stage.stage_name,
             "trigger_days_after_due": stage.trigger_days_after_due,
