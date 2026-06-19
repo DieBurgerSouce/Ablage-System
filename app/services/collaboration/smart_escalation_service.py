@@ -721,7 +721,7 @@ class SmartEscalationService:
         result = await self.db.execute(
             select(
                 User.is_active,
-                User.last_login_at,
+                User.last_login,
                 # Hier könnten weitere Felder wie absence_until geprüft werden
             )
             .where(User.id == user_id)

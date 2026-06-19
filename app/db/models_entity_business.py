@@ -1380,7 +1380,7 @@ class ContractRenewalOption(Base):
 
     # Status
     status: Mapped[RenewalOptionStatus] = mapped_column(
-        SQLAlchemyEnum(RenewalOptionStatus), default=RenewalOptionStatus.AVAILABLE
+        SQLAlchemyEnum(RenewalOptionStatus, values_callable=lambda e: [m.value for m in e]), default=RenewalOptionStatus.AVAILABLE
     )
     exercised_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     exercised_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(

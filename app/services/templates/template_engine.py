@@ -286,7 +286,10 @@ class TemplateEngineService:
         """Initialisiert Template-Engine mit Jinja2."""
         # Templates-Verzeichnis (erstelle bei Bedarf)
         self.templates_dir = Path(__file__).parent / "templates"
-        self.templates_dir.mkdir(exist_ok=True)
+        try:
+            self.templates_dir.mkdir(exist_ok=True)
+        except OSError:
+            pass  # F-31: read-only FS
 
         # Jinja2-Environment
         self.jinja_env = Environment(
