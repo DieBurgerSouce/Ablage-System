@@ -166,3 +166,13 @@ holidays>=0.40  # German/Austrian/Swiss holidays for scheduled Mahnlauf
 # Export Scheduling
 croniter>=2.0.0  # Cron expression parsing for scheduled exports
 pytz>=2024.1  # Timezone support for scheduled exports
+
+# OpenTelemetry Tracing (F-15)
+# Das SDK fehlte komplett -> app/core/telemetry.py loggte beim Start
+# "opentelemetry_not_installed" und init_telemetry lief ins Leere; Tracing war
+# tot trotz deployten Jaeger/OTEL-Collector. Diese 3 Pakete decken ALLE Imports
+# in telemetry.py ab (api, sdk, OTLP-gRPC-Exporter -> OTLP_ENDPOINT=jaeger:4317).
+# Laufzeit-Verifikation erfolgt beim Image-Rebuild (A-Z).
+opentelemetry-api>=1.27.0,<1.30.0
+opentelemetry-sdk>=1.27.0,<1.30.0
+opentelemetry-exporter-otlp-proto-grpc>=1.27.0,<1.30.0
