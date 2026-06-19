@@ -191,7 +191,7 @@ class CollaborationService:
         if not user:
             raise ValueError("Benutzer nicht gefunden")
 
-        user_name = f"{user.first_name} {user.last_name}".strip() or user.email
+        user_name = (user.full_name or user.username or user.email)
 
         # Erstelle Lock in Redis
         now = utc_now()
@@ -647,7 +647,7 @@ class CollaborationService:
         if not user:
             raise ValueError("Benutzer nicht gefunden")
 
-        user_name = f"{user.first_name} {user.last_name}".strip() or user.email
+        user_name = (user.full_name or user.username or user.email)
 
         activity = DocumentActivity(
             id=uuid.uuid4(),
@@ -713,7 +713,7 @@ class CollaborationService:
         for activity in activities:
             user = users.get(activity.user_id)
             user_name = (
-                f"{user.first_name} {user.last_name}".strip() or user.email
+                (user.full_name or user.username or user.email)
                 if user
                 else "Unbekannter Benutzer"
             )
@@ -763,7 +763,7 @@ class CollaborationService:
         # Hole Benutzername
         user = await db.get(User, user_id)
         user_name = (
-            f"{user.first_name} {user.last_name}".strip() or user.email if user else "Unbekannt"
+            (user.full_name or user.username or user.email) if user else "Unbekannt"
         )
 
         return [
@@ -819,7 +819,7 @@ class CollaborationService:
         for activity in activities:
             user = users.get(activity.user_id)
             user_name = (
-                f"{user.first_name} {user.last_name}".strip() or user.email
+                (user.full_name or user.username or user.email)
                 if user
                 else "Unbekannter Benutzer"
             )

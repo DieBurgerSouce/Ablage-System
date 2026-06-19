@@ -784,7 +784,7 @@ async def get_consent_status(
             consent_given=result.consent_given,
             consent_version=result.consent_version,
             granted_at=result.granted_at,
-            valid_until=result.valid_until,
+            valid_until=None,
         ))
 
         if result.consent_given:

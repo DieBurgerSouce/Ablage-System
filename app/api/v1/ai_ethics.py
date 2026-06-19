@@ -274,8 +274,8 @@ async def get_fairness_metrics(
         # Get historical fairness scores from last 7 days
         history_query = select(BiasReportModel.overall_fairness).where(
             BiasReportModel.company_id == company_id,
-            BiasReportModel.created_at >= seven_days_ago,
-        ).order_by(BiasReportModel.created_at.asc())
+            BiasReportModel.generated_at >= seven_days_ago,
+        ).order_by(BiasReportModel.generated_at.asc())
 
         history_result = await db.execute(history_query)
         historical_scores = [row[0] for row in history_result.fetchall()]

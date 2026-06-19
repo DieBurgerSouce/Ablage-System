@@ -199,7 +199,7 @@ class DriftDetector:
         self.reference_window_days = reference_window_days
         self.drift_threshold = drift_threshold
         self.min_samples = min_samples
-        self.storage_path = storage_path or Path("data/drift_reports")
+        self.storage_path = storage_path or Path("/tmp/ablage_ml/drift_reports")
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
         # Reference und Current Data Windows
@@ -759,7 +759,7 @@ class DriftAlertManager:
         """
         self._drift_detector = drift_detector
         self._alert_callbacks = alert_callbacks or []
-        self.storage_path = storage_path or Path("data/drift_reports")
+        self.storage_path = storage_path or Path("/tmp/ablage_ml/drift_reports")
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
         # Track created experiments

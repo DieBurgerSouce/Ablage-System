@@ -13,6 +13,7 @@ Phase 2.2 der Feature-Roadmap (Februar 2026).
 """
 
 from __future__ import annotations
+from sqlalchemy import union  # F-31
 
 import uuid
 from dataclasses import dataclass, field
@@ -491,7 +492,7 @@ class POMatchingService:
         )
 
         # Alle gematchten IDs zusammenfassen
-        all_matched = matched_po_ids.union(matched_dn_ids).union(matched_inv_ids)
+        all_matched = union(matched_po_ids, matched_dn_ids, matched_inv_ids)
 
         # Dokumente suchen die NICHT gematcht sind
         query = select(Document).where(

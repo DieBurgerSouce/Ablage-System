@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Tuple
 from uuid import UUID
 
-from sqlalchemy import func, select, cast, Float, case, and_
+from sqlalchemy import func, select, cast, Float, case, and_, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -156,11 +156,11 @@ class ExecutiveDashboardService:
             cost_per_doc = (proc_current / 1000.0) * 0.10 if proc_current > 0 else 0.0
 
             # Aktive Benutzer (mindestens 1 Dokument hochgeladen im aktuellen Monat)
-            stmt_users = select(func.count(func.distinct(Document.uploaded_by))).where(
+            stmt_users = select(func.count(func.distinct(Document.owner_id))).where(
                 and_(
                     Document.company_id == self.company_id,
                     Document.created_at >= current_month_start,
-                    Document.uploaded_by.isnot(None),
+                    Document.owner_id.isnot(None),
                     Document.deleted_at.is_(None),
                 )
             )
@@ -276,7 +276,7 @@ class ExecutiveDashboardService:
             if metric == "documents":
                 # Anzahl Dokumente pro Tag
                 stmt = select(
-                    func.date_trunc("day", Document.created_at).label("date"),
+                    func.date_trunc(literal_column("'day'"), Document.created_at).label("date"),
                     func.count(Document.id).label("value"),
                 ).where(
                     and_(
@@ -285,14 +285,14 @@ class ExecutiveDashboardService:
                         Document.deleted_at.is_(None),
                     )
                 ).group_by(
-                    func.date_trunc("day", Document.created_at)
+                    func.date_trunc(literal_column("'day'"), Document.created_at)
                 ).order_by(
-                    func.date_trunc("day", Document.created_at)
+                    func.date_trunc(literal_column("'day'"), Document.created_at)
                 )
             elif metric == "processing_time":
                 # Durchschnittliche Verarbeitungszeit pro Tag
                 stmt = select(
-                    func.date_trunc("day", Document.created_at).label("date"),
+                    func.date_trunc(literal_column("'day'"), Document.created_at).label("date"),
                     func.coalesce(func.avg(Document.processing_duration_ms), 0.0).label("value"),
                 ).where(
                     and_(
@@ -302,14 +302,14 @@ class ExecutiveDashboardService:
                         Document.deleted_at.is_(None),
                     )
                 ).group_by(
-                    func.date_trunc("day", Document.created_at)
+                    func.date_trunc(literal_column("'day'"), Document.created_at)
                 ).order_by(
-                    func.date_trunc("day", Document.created_at)
+                    func.date_trunc(literal_column("'day'"), Document.created_at)
                 )
             elif metric == "accuracy":
                 # Durchschnittliche OCR-Genauigkeit pro Tag
                 stmt = select(
-                    func.date_trunc("day", Document.created_at).label("date"),
+                    func.date_trunc(literal_column("'day'"), Document.created_at).label("date"),
                     func.coalesce(func.avg(Document.ocr_confidence), 0.0).label("value"),
                 ).where(
                     and_(
@@ -319,9 +319,9 @@ class ExecutiveDashboardService:
                         Document.deleted_at.is_(None),
                     )
                 ).group_by(
-                    func.date_trunc("day", Document.created_at)
+                    func.date_trunc(literal_column("'day'"), Document.created_at)
                 ).order_by(
-                    func.date_trunc("day", Document.created_at)
+                    func.date_trunc(literal_column("'day'"), Document.created_at)
                 )
             else:
                 raise ValueError(f"Unbekannte Metrik: {metric}")

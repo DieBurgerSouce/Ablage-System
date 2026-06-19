@@ -19,7 +19,7 @@ from uuid import UUID
 from enum import Enum
 import structlog
 
-from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy import select, and_, or_, func, desc, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, Field, ConfigDict
@@ -530,15 +530,15 @@ class ActivityTimelineService:
         # Activities by Day
         daily_query = (
             select(
-                func.date_trunc('day', DocumentActivity.created_at).label("day"),
+                func.date_trunc(literal_column("'day'"), DocumentActivity.created_at).label("day"),
                 func.count(DocumentActivity.id).label("count")
             )
             .where(
                 DocumentActivity.created_at >= date_from,
                 DocumentActivity.created_at <= date_until,
             )
-            .group_by(func.date_trunc('day', DocumentActivity.created_at))
-            .order_by(func.date_trunc('day', DocumentActivity.created_at))
+            .group_by(func.date_trunc(literal_column("'day'"), DocumentActivity.created_at))
+            .order_by(func.date_trunc(literal_column("'day'"), DocumentActivity.created_at))
         )
 
         if user_id:

@@ -23,7 +23,7 @@ from uuid import UUID
 
 import structlog
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import and_, func, select, text, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, Document, User
@@ -287,7 +287,7 @@ class AccessAnalyticsService:
         # Fehlgeschlagene Logins pro Tag
         failed_logins_query = (
             select(
-                func.date_trunc("day", AuditLog.created_at).label("day"),
+                func.date_trunc(literal_column("'day'"), AuditLog.created_at).label("day"),
                 func.count(AuditLog.id).label("count"),
             )
             .where(
@@ -298,8 +298,8 @@ class AccessAnalyticsService:
                     AuditLog.action.in_(list(self.FAILED_LOGIN_ACTIONS)),
                 )
             )
-            .group_by(func.date_trunc("day", AuditLog.created_at))
-            .order_by(func.date_trunc("day", AuditLog.created_at))
+            .group_by(func.date_trunc(literal_column("'day'"), AuditLog.created_at))
+            .order_by(func.date_trunc(literal_column("'day'"), AuditLog.created_at))
         )
         failed_logins_result = await db.execute(failed_logins_query)
         failed_login_rows = failed_logins_result.fetchall()
@@ -502,7 +502,7 @@ class AccessAnalyticsService:
         mass_download_query = (
             select(
                 AuditLog.user_id,
-                func.date_trunc("hour", AuditLog.created_at).label("hour_bucket"),
+                func.date_trunc(literal_column("'hour'"), AuditLog.created_at).label("hour_bucket"),
                 func.count(AuditLog.id).label("count"),
             )
             .where(
@@ -516,7 +516,7 @@ class AccessAnalyticsService:
             )
             .group_by(
                 AuditLog.user_id,
-                func.date_trunc("hour", AuditLog.created_at),
+                func.date_trunc(literal_column("'hour'"), AuditLog.created_at),
             )
             .having(func.count(AuditLog.id) > self.MASS_DOWNLOAD_THRESHOLD)
         )
@@ -541,7 +541,7 @@ class AccessAnalyticsService:
         brute_force_query = (
             select(
                 AuditLog.ip_address,
-                func.date_trunc("hour", AuditLog.created_at).label("hour_bucket"),
+                func.date_trunc(literal_column("'hour'"), AuditLog.created_at).label("hour_bucket"),
                 func.count(AuditLog.id).label("count"),
             )
             .where(
@@ -555,7 +555,7 @@ class AccessAnalyticsService:
             )
             .group_by(
                 AuditLog.ip_address,
-                func.date_trunc("hour", AuditLog.created_at),
+                func.date_trunc(literal_column("'hour'"), AuditLog.created_at),
             )
             .having(func.count(AuditLog.id) > self.BRUTE_FORCE_THRESHOLD)
         )

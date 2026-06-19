@@ -12,6 +12,7 @@ Nutzt models_approval_extended für AutoMatchResult.
 """
 
 from __future__ import annotations
+from sqlalchemy import union  # F-31
 
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -320,9 +321,9 @@ class AutoMatchingService:
             unmatched.append(
                 {
                     "document_id": str(doc.id),
-                    "title": doc.title,
+                    "title": doc.original_filename,
                     "document_type": getattr(doc, "document_type", None),
-                    "category": doc.category,
+                    "category": doc.data_category,
                     "created_at": (
                         doc.created_at.isoformat()
                         if doc.created_at

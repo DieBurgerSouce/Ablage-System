@@ -23,7 +23,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
-from sqlalchemy import select, and_, func, case, or_
+from sqlalchemy import select, and_, func, case, or_, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
@@ -658,7 +658,7 @@ Dies könnte auf:
         # Monatliche Umsätze der letzten 6 Monate
         stmt = (
             select(
-                func.date_trunc('month', InvoiceTracking.created_at).label('month'),
+                func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at).label('month'),
                 func.sum(InvoiceTracking.amount).label('total'),
             )
             .where(

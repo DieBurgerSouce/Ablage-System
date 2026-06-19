@@ -18,7 +18,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 import structlog
 
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, or_, desc, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
@@ -473,7 +473,7 @@ class CustomerLTVService:
         cutoff_date = date.today() - timedelta(days=period_days)
 
         query = select(
-            func.date_trunc("month", InvoiceTracking.created_at).label("month"),
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at).label("month"),
             func.sum(InvoiceTracking.amount).label("total_revenue"),
             func.count(func.distinct(InvoiceTracking.entity_id)).label("customer_count"),
             func.avg(InvoiceTracking.amount).label("avg_order"),
@@ -485,9 +485,9 @@ class CustomerLTVService:
                 InvoiceTracking.amount.isnot(None),
             )
         ).group_by(
-            func.date_trunc("month", InvoiceTracking.created_at)
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at)
         ).order_by(
-            func.date_trunc("month", InvoiceTracking.created_at)
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at)
         )
 
         result = await db.execute(query)

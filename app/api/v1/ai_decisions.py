@@ -251,13 +251,13 @@ async def get_decision_stats(
 
     # Feedback counts
     correct_stmt = select(func.count()).select_from(AIDecision).where(
-        and_(base_condition, AIDecision.user_feedback == "correct")
+        and_(base_condition, AIDecision.review_action == "approved")
     )
     correct_result = await db.execute(correct_stmt)
     correct_feedback = correct_result.scalar() or 0
 
     incorrect_stmt = select(func.count()).select_from(AIDecision).where(
-        and_(base_condition, AIDecision.user_feedback == "incorrect")
+        and_(base_condition, AIDecision.review_action == "rejected")
     )
     incorrect_result = await db.execute(incorrect_stmt)
     incorrect_feedback = incorrect_result.scalar() or 0

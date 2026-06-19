@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.orchestration.proactive_insights_service import (
@@ -418,7 +418,7 @@ class AnomalyInsightsService:
             # Monatliche Volumina pro Lieferant aggregieren
             volume_query = select(
                 Document.linked_entity_id,
-                func.date_trunc('month', Document.created_at).label('month'),
+                func.date_trunc(literal_column("'month'"), Document.created_at).label('month'),
                 func.sum(Document.total_amount).label('volume'),
                 func.count().label('count'),
             ).where(
@@ -431,7 +431,7 @@ class AnomalyInsightsService:
                 )
             ).group_by(
                 Document.linked_entity_id,
-                func.date_trunc('month', Document.created_at),
+                func.date_trunc(literal_column("'month'"), Document.created_at),
             )
 
             result = await db.execute(volume_query)

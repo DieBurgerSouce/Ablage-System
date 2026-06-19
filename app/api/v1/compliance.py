@@ -1050,8 +1050,8 @@ async def get_verfahrensdokumentation(
         doc = await gobd_compliance_service.generate_verfahrensdokumentation(
             db=db,
             company_id=company_id,
-            include_full_history=include_full_history,
-            history_limit=history_limit,
+            include_change_history=include_full_history,
+            
         )
 
         return VerfahrensdokumentationResponse(**doc)
@@ -1211,8 +1211,8 @@ async def get_steuerberater_export(
         doc = await gobd_compliance_service.generate_verfahrensdokumentation(
             db=db,
             company_id=company_id,
-            include_full_history=False,
-            history_limit=20,
+            include_change_history=False,
+            
         )
 
         # Compliance-Report

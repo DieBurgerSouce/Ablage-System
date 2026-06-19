@@ -27,7 +27,7 @@ from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Union
 
 import structlog
-from sqlalchemy import select, and_, func, or_, case
+from sqlalchemy import select, and_, func, or_, case, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -1670,7 +1670,7 @@ BEGRÜNDUNG: [Kurze Erklärung]"""
         # Historische Daten für Trend
         stmt = (
             select(
-                func.date_trunc('month', InvoiceTracking.created_at).label('month'),
+                func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at).label('month'),
                 func.sum(
                     case(
                         (is_outgoing_invoice(), InvoiceTracking.amount),

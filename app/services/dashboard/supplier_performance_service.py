@@ -18,7 +18,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 import structlog
 
-from sqlalchemy import select, func, and_, or_, case, desc
+from sqlalchemy import select, func, and_, or_, case, desc, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
@@ -350,7 +350,7 @@ class SupplierPerformanceService:
 
         # Gruppiere nach Monat
         query = select(
-            func.date_trunc("month", InvoiceTracking.created_at).label("month"),
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at).label("month"),
             func.avg(InvoiceTracking.amount).label("avg_amount"),
             func.count(InvoiceTracking.id).label("order_count"),
         ).where(
@@ -361,9 +361,9 @@ class SupplierPerformanceService:
                 InvoiceTracking.amount.isnot(None),
             )
         ).group_by(
-            func.date_trunc("month", InvoiceTracking.created_at)
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at)
         ).order_by(
-            func.date_trunc("month", InvoiceTracking.created_at)
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at)
         )
 
         result = await db.execute(query)

@@ -15,7 +15,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, and_, select
+from sqlalchemy import case, func, and_, select, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, AuditLog, User, ProcessingStatus
@@ -513,7 +513,7 @@ async def get_finance(
             thirty_days_ago = now - timedelta(days=30)
             trend_result = await db.execute(
                 select(
-                    func.date_trunc("day", InvoiceTracking.paid_at).label("pay_date"),
+                    func.date_trunc(literal_column("'day'"), InvoiceTracking.paid_at).label("pay_date"),
                     func.coalesce(func.sum(InvoiceTracking.paid_amount), 0.0).label("amount"),
                 )
                 .join(Document, InvoiceTracking.document_id == Document.id)
@@ -525,8 +525,8 @@ async def get_finance(
                         InvoiceTracking.status == InvoiceStatus.PAID.value,
                     )
                 )
-                .group_by(func.date_trunc("day", InvoiceTracking.paid_at))
-                .order_by(func.date_trunc("day", InvoiceTracking.paid_at))
+                .group_by(func.date_trunc(literal_column("'day'"), InvoiceTracking.paid_at))
+                .order_by(func.date_trunc(literal_column("'day'"), InvoiceTracking.paid_at))
             )
             for row in trend_result.all():
                 if row.pay_date:

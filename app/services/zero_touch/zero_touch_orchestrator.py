@@ -400,7 +400,7 @@ class ZeroTouchOrchestrator:
             and_(
                 Document.company_id == company_id,
                 Document.status == ProcessingStatus.COMPLETED.value,
-                Document.document_metadata.op("?")("zero_touch_result"),  # Hat zero_touch_result key
+                Document.document_metadata.has_key("zero_touch_result"),  # Hat zero_touch_result key
             )
         )
 

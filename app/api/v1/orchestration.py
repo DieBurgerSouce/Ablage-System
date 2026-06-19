@@ -1828,7 +1828,7 @@ async def get_insight_rules(
     from app.services.orchestration import get_proactive_insights_service
 
     service = get_proactive_insights_service()
-    rules = service.rule_engine.get_all_rules()
+    rules = service._rule_engine.get_all_rules()
 
     return [
         InsightRuleResponse(
@@ -3730,7 +3730,7 @@ async def get_seasonal_analysis(
         analysis = await service.analyze_company_seasonality(
             db=db,
             company_id=company_id,
-            months_history=months_history,
+            
         )
 
         if not analysis:

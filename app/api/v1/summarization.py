@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_user_company_id  # F-31
 from app.db.models import User
 from app.middleware.company_context import get_current_company_id
 from app.services.ai.summarization_service import get_summarization_service
@@ -142,7 +143,7 @@ async def summarize_document(
         HTTPException 403: Keine Berechtigung
         HTTPException 500: Fehler bei der Generierung
     """
-    company_id = await get_current_company_id(db, current_user.id)
+    company_id = await get_user_company_id(db, current_user.id)
     if not company_id:
         raise HTTPException(
             status_code=403,
@@ -203,7 +204,7 @@ async def compare_documents(
         HTTPException 403: Keine Berechtigung
         HTTPException 500: Fehler beim Vergleich
     """
-    company_id = await get_current_company_id(db, current_user.id)
+    company_id = await get_user_company_id(db, current_user.id)
     if not company_id:
         raise HTTPException(
             status_code=403,
@@ -271,7 +272,7 @@ async def generate_briefing(
         HTTPException 403: Keine Berechtigung
         HTTPException 500: Fehler bei der Generierung
     """
-    company_id = await get_current_company_id(db, current_user.id)
+    company_id = await get_user_company_id(db, current_user.id)
     if not company_id:
         raise HTTPException(
             status_code=403,

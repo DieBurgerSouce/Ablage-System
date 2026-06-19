@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func, and_, or_, desc, case
+from sqlalchemy import select, func, and_, or_, desc, case, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, DocumentType
@@ -101,7 +101,7 @@ class MLDashboardService:
         # Aggregiere Korrekturen pro Monat
         query = (
             select(
-                func.date_trunc('month', OCRCorrectionFeedback.created_at).label('month'),
+                func.date_trunc(literal_column("'month'"), OCRCorrectionFeedback.created_at).label('month'),
                 func.count(OCRCorrectionFeedback.id).label('correction_count'),
                 func.avg(OCRCorrectionFeedback.confidence_before).label('avg_conf_before'),
                 func.avg(OCRCorrectionFeedback.confidence_after).label('avg_conf_after')
@@ -113,8 +113,8 @@ class MLDashboardService:
                     OCRCorrectionFeedback.created_at >= period_start
                 )
             )
-            .group_by(func.date_trunc('month', OCRCorrectionFeedback.created_at))
-            .order_by(func.date_trunc('month', OCRCorrectionFeedback.created_at))
+            .group_by(func.date_trunc(literal_column("'month'"), OCRCorrectionFeedback.created_at))
+            .order_by(func.date_trunc(literal_column("'month'"), OCRCorrectionFeedback.created_at))
         )
 
         result = await self.session.execute(query)
@@ -123,7 +123,7 @@ class MLDashboardService:
         # Berechne Gesamt-Dokumente pro Monat
         doc_query = (
             select(
-                func.date_trunc('month', Document.created_at).label('month'),
+                func.date_trunc(literal_column("'month'"), Document.created_at).label('month'),
                 func.count(Document.id).label('doc_count')
             )
             .where(
@@ -133,7 +133,7 @@ class MLDashboardService:
                     Document.status == "completed"
                 )
             )
-            .group_by(func.date_trunc('month', Document.created_at))
+            .group_by(func.date_trunc(literal_column("'month'"), Document.created_at))
         )
 
         doc_result = await self.session.execute(doc_query)

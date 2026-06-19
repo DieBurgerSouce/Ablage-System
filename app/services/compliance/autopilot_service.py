@@ -237,7 +237,7 @@ class ComplianceAutopilotService:
                 expiring_soon_ids.append(doc.id)
 
             # Statistik nach Typ
-            type_key = doc_type.value
+            type_key = doc_type.value if hasattr(doc_type, "value") else doc_type
             if type_key not in retention_by_type:
                 retention_by_type[type_key] = {
                     "total": 0,

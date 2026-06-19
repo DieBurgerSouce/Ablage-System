@@ -10,7 +10,7 @@ from uuid import UUID
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, literal_column
 import structlog
 
 from app.db.models_esg import (
@@ -154,16 +154,16 @@ class ESGService:
         """
         result = await self.db.execute(
             select(
-                func.date_trunc('month', ESGCarbonFootprint.period_start).label('month'),
+                func.date_trunc(literal_column("'month'"), ESGCarbonFootprint.period_start).label('month'),
                 ESGCarbonFootprint.scope,
                 func.sum(ESGCarbonFootprint.co2_equivalent_kg).label('total')
             ).where(
                 ESGCarbonFootprint.company_id == company_id
             ).group_by(
-                func.date_trunc('month', ESGCarbonFootprint.period_start),
+                func.date_trunc(literal_column("'month'"), ESGCarbonFootprint.period_start),
                 ESGCarbonFootprint.scope
             ).order_by(
-                func.date_trunc('month', ESGCarbonFootprint.period_start)
+                func.date_trunc(literal_column("'month'"), ESGCarbonFootprint.period_start)
             ).limit(months * 3)  # 3 Scopes
         )
 

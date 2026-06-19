@@ -125,7 +125,7 @@ class ProcedureDocumentationService:
             company_name=company.name if company else "Unbekannt",
             company_id=company_id,
             generated_at=datetime.now(timezone.utc),
-            generated_by=f"{user.first_name} {user.last_name}" if user else "System",
+            generated_by=user.full_name if user else "System",
             version=self.DOCUMENT_VERSION,
             valid_from=datetime.now(timezone.utc),
         )

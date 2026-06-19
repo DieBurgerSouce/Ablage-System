@@ -188,7 +188,7 @@ async def get_processing_stats(
     - Statistiken nach Backend
     - Statistiken nach Tag
     """
-    return await SystemStatusService.get_processing_stats(db, days=days)
+    return await SystemStatusService.get_processing_stats(db, hours=days * 24)
 
 
 # ==================== Backend Status ====================
@@ -244,8 +244,8 @@ async def get_backends_status(
             },
         },
         "gpu_available": dashboard.available,
-        "gpu_memory_used_gb": dashboard.memory_used_gb,
-        "gpu_memory_total_gb": dashboard.memory_total_gb,
+        "gpu_memory_used_gb": dashboard.allocated_gb,
+        "gpu_memory_total_gb": dashboard.total_gb,
     }
 
 

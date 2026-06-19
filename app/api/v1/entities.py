@@ -20,7 +20,7 @@ import re
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, and_
+from sqlalchemy import select, or_, func, and_, literal_column
 from sqlalchemy.orm import selectinload
 
 from app.db.models import User, BusinessEntity, Document
@@ -767,7 +767,7 @@ async def get_relationship_dashboard(
     # Trend-Daten: Dokumente pro Tag (letzte N Tage)
     trend_query = (
         select(
-            func.date_trunc('day', Document.created_at).label("date"),
+            func.date_trunc(literal_column("'day'"), Document.created_at).label("date"),
             func.count(Document.id).label("count")
         )
         .where(
@@ -775,8 +775,8 @@ async def get_relationship_dashboard(
             Document.created_at >= start_date,
             Document.business_entity_id.isnot(None),
         )
-        .group_by(func.date_trunc('day', Document.created_at))
-        .order_by(func.date_trunc('day', Document.created_at))
+        .group_by(func.date_trunc(literal_column("'day'"), Document.created_at))
+        .order_by(func.date_trunc(literal_column("'day'"), Document.created_at))
     )
     trend_result = await db.execute(trend_query)
     trend_data = [

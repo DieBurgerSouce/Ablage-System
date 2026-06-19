@@ -215,7 +215,7 @@ async def get_correction_impact(
 
     # Calculate period start
     from datetime import datetime, timezone, timedelta
-    period_start = datetime.now(timezone.utc) - timedelta(days=months * 30)
+    period_start = datetime.utcnow() - timedelta(days=months * 30)
 
     correction_impact = await service.get_correction_impact(
         company_id,

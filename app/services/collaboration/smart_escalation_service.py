@@ -547,7 +547,7 @@ class SmartEscalationService:
             .join(Document, Document.id == ValidationQueueItem.document_id)
             .where(
                 and_(
-                    ValidationQueueItem.reviewer_id == user_id,
+                    ValidationQueueItem.reviewed_by_id == user_id,
                     ValidationQueueItem.company_id == company_id,
                     ValidationQueueItem.reviewed_at >= cutoff_date,
                     ValidationQueueItem.status.in_([
@@ -645,7 +645,7 @@ class SmartEscalationService:
             select(func.count(ValidationQueueItem.id))
             .where(
                 and_(
-                    ValidationQueueItem.reviewer_id == user_id,
+                    ValidationQueueItem.reviewed_by_id == user_id,
                     ValidationQueueItem.company_id == company_id,
                     ValidationQueueItem.status == ValidationStatus.PENDING.value,
                 )
@@ -895,7 +895,7 @@ class SmartEscalationService:
             .join(Document, Document.id == ValidationQueueItem.document_id)
             .where(
                 and_(
-                    ValidationQueueItem.reviewer_id == user_id,
+                    ValidationQueueItem.reviewed_by_id == user_id,
                     ValidationQueueItem.company_id == company_id,
                     Document.entity_id == entity_id,
                     ValidationQueueItem.reviewed_at >= cutoff_date,

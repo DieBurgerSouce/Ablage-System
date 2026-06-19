@@ -256,7 +256,7 @@ async def list_connections(
 ) -> List[BankConnectionResponse]:
     """Listet alle Bankverbindungen auf."""
     service = get_enhanced_fints_service()
-    connections = await service.list_connections(db, company_id, current_user.id)
+    connections = service.list_connections(company_id)
 
     return [_connection_to_response(c) for c in connections]
 

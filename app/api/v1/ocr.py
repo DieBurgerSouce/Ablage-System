@@ -2989,8 +2989,8 @@ async def get_consistency_statistics(
     third_backend_triggers = 0
 
     for doc in documents:
-        if doc.metadata and doc.metadata.get("consistency_report"):
-            report = doc.metadata["consistency_report"]
+        if doc.document_metadata and doc.document_metadata.get("consistency_report"):
+            report = doc.document_metadata["consistency_report"]
             total_checks += 1
             agreement_scores.append(report.get("overall_agreement", 0))
 
