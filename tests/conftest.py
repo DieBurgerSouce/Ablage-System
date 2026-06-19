@@ -184,6 +184,10 @@ async def test_db():
         )
 
         async with engine.begin() as conn:
+            # Modelle nutzen pgvector/pg_trgm-Typen -> Extensions sicherstellen,
+            # bevor create_all die Tabellen baut (idempotent).
+            await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
+            await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS pg_trgm")
             await conn.run_sync(Base.metadata.create_all)
 
         async_session_maker = async_sessionmaker(
@@ -193,9 +197,14 @@ async def test_db():
         async with async_session_maker() as session:
             yield session
 
-        # Cleanup
+        # Cleanup: DROP SCHEMA ... CASCADE statt metadata.drop_all - letzteres
+        # scheitert an zyklischen FK-Abhaengigkeiten ohne benannte Constraints
+        # (cash_entries/document_groups/documents/expense_reports) mit
+        # "Can't sort tables for DROP". CASCADE loest alle Abhaengigkeiten sauber;
+        # die Extensions werden im naechsten Setup via IF NOT EXISTS neu angelegt.
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+            await conn.exec_driver_sql("DROP SCHEMA public CASCADE")
+            await conn.exec_driver_sql("CREATE SCHEMA public")
 
         await engine.dispose()
     except Exception as e:
