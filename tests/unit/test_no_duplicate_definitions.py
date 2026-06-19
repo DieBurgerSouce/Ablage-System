@@ -17,19 +17,26 @@ from collections import Counter
 
 # Bekannte Alt-Lasten (Stand 2026-06-04). Format: (relpath, "class"|"func", name).
 KNOWN_DUPLICATES = {
-    # SeasonalPatternResponse (orchestration.py) BEHOBEN: die detaillierte Klasse
-    # wurde zu SeasonalPatternDetailResponse umbenannt (war Shadowing-Bug ->
-    # detect-patterns-Endpoint konstruierte die falsche Klasse -> 500).
-    # EntityType -> BusinessPartnerType; create_quality_snapshot -> _bulk umbenannt;
-    # DocumentTypeStats/TrendDataPoint/ValidationQueueListResponse tote 1.-Defs
-    # entfernt (alle agent-verifiziert KOSMETISCH, 0 Runtime-Bug).
-    # VERBLEIBEND (bewusst belassen, agent-verifiziert kosmetisch): das inter-
-    # referenzierende RiskFactorsResponse/EntityRiskResponse-Cluster (1. Defs tot,
-    # Konstruktionen nutzen die 2. Defs; intricate Cluster-Refactor lohnt nicht).
+    # AUFGELOEST (aus KNOWN entfernt):
+    #  - SeasonalPatternResponse (orchestration.py): ECHTER Shadowing-Bug -> detect-
+    #    patterns konstruierte die falsche Klasse -> 500; detaillierte Klasse zu
+    #    SeasonalPatternDetailResponse umbenannt + Endpoint umgestellt.
+    #  - TransactionFilter (banking/models.py): tote Basis-Def entfernt (kein Aufrufer).
+    #  - create_quality_snapshot (training.py): 1. Route-Handler -> _bulk umbenannt.
+    #
+    # VERBLEIBEND - die 6 schemas.py-Duplikate sind agent-verifiziert KOSMETISCH
+    # (Konstruktionen treffen die ueberschattende 2. Def), aber NICHT trivial
+    # entfernbar: schemas.py hat KEINE deferred annotations, und Klassen ZWISCHEN den
+    # beiden Defs nutzen die 1. Def (z.B. BusinessEntityBase -> EntityType.SUPPLIER;
+    # TrendResponse -> List[TrendDataPoint]). Loeschen/Umbenennen der 1. Def -> NameError
+    # beim Import (gelernt: AST/ratchet maskiert das, nur ein Import-Check faengt es).
+    # Sauberer Fix braucht Umverdrahtung der Zwischen-Nutzer -> separater Task.
+    ("app/db/schemas.py", "class", "EntityType"),
+    ("app/db/schemas.py", "class", "DocumentTypeStats"),
     ("app/db/schemas.py", "class", "EntityRiskResponse"),
     ("app/db/schemas.py", "class", "RiskFactorsResponse"),
-    # TransactionFilter (banking/models.py) BEHOBEN: tote Basis-Def (mit
-    # bank_account_id) entfernt - war shadowed, kein Aufrufer nutzte sie.
+    ("app/db/schemas.py", "class", "TrendDataPoint"),
+    ("app/db/schemas.py", "class", "ValidationQueueListResponse"),
 }
 
 

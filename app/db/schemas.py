@@ -2491,15 +2491,8 @@ class APIKeyDeleteResponse(BaseModel):
 # BUSINESS ENTITY SCHEMAS (Kunden/Lieferanten)
 # ============================================================================
 
-class BusinessPartnerType(str, Enum):
-    """Geschäftspartner-Typ.
-
-    Umbenannt von EntityType: es gab eine zweite, gleichnamige EntityType-Enum
-    weiter unten (Ablage-Navigation, mit FINANCE), die diese im Modul-Namespace
-    ueberschattete (Shadowing). Sondermember BOTH/INTERNAL werden app-weit nicht
-    genutzt; die Umbenennung loest die Kollision OHNE Verhaltensaenderung, da
-    'EntityType' weiterhin auf die zweite (Navigations-)Definition zeigt.
-    """
+class EntityType(str, Enum):
+    """Geschäftspartner-Typ."""
     CUSTOMER = "customer"      # Kunde
     SUPPLIER = "supplier"      # Lieferant
     BOTH = "both"             # Kann beides sein
@@ -2977,9 +2970,10 @@ class ValidationQueueItem(BaseModel):
     relationship_type: Optional[str] = None
 
 
-# ValidationQueueListResponse (Basis: total/items) ENTFERNT: shadowed Duplikat der
-# paginierten Def weiter unten (items/total/page/per_page/total_pages); die Aufrufer
-# (validation.py:162/216) nutzen die paginierte 2. Def -> 1. war tot. Dedup.
+class ValidationQueueListResponse(BaseModel):
+    """Liste der Validierungs-Warteschlange."""
+    total: int
+    items: List[ValidationQueueItem]
 
 
 class ValidationQueueResponse(BaseModel):
@@ -3572,9 +3566,12 @@ class LanguageStats(BaseModel):
     per_backend: Dict[str, float] = {}
 
 
-# DocumentTypeStats (Basis: sample_count/avg_cer/per_backend) ENTFERNT: shadowed
-# Duplikat der validierungs-orientierten Def (total_validated/approved/rejected/...);
-# Konstruktion (validation_analytics_service.py:446) nutzt die 2. Def -> 1. war tot. Dedup.
+class DocumentTypeStats(BaseModel):
+    """Dokumenttyp-Statistiken."""
+    document_type: str
+    sample_count: int
+    avg_cer: float
+    per_backend: Dict[str, float] = {}
 
 
 class TrainingOverviewStats(BaseModel):
@@ -3617,9 +3614,10 @@ class DailyStatsResponse(BaseModel):
     corrections_count: int = 0
 
 
-# TrendDataPoint (Basis: date/value) ENTFERNT: shadowed Duplikat der validierungs-
-# orientierten Def (date/validated/approved/rejected/avg_time_seconds); schemas.TrendDataPoint
-# wird ueber die 2. Def genutzt (validation_analytics) -> 1. war tot. Dedup.
+class TrendDataPoint(BaseModel):
+    """Datenpunkt für Trend-Analyse."""
+    date: datetime
+    value: float
 
 
 class TrendResponse(BaseModel):
