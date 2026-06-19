@@ -782,7 +782,7 @@ async def get_consent_status(
             scope=scope.value,
             scope_description=scope_descriptions.get(scope, scope.value),
             consent_given=result.consent_given,
-            consent_version=result.consent_version,
+            consent_version=None,
             granted_at=result.granted_at,
             valid_until=None,
         ))
@@ -891,7 +891,7 @@ async def grant_consent(
             consent_id=result.consent_scope_id,
             scope=scope.value,
             consent_given=True,
-            consent_version=result.consent_version,
+            consent_version=None,
             granted_at=result.granted_at,
             nachricht=nachricht
         )

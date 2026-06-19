@@ -508,7 +508,7 @@ class PermissionService:
         Returns:
             Liste aller Rollen
         """
-        stmt = select(Role).options(selectinload(Role.permissions))
+        stmt = select(Role).options(selectinload(Role.permissions), selectinload(Role.users))
 
         if not include_inactive:
             stmt = stmt.where(Role.is_active == True)
