@@ -23,7 +23,8 @@ KNOWN_DUPLICATES = {
     ("app/api/v1/training.py", "func", "create_quality_snapshot"),
     ("app/db/schemas.py", "class", "DocumentTypeStats"),
     ("app/db/schemas.py", "class", "EntityRiskResponse"),
-    ("app/db/schemas.py", "class", "EntityType"),
+    # EntityType (schemas.py) BEHOBEN: shadowte Geschäftspartner-Enum -> BusinessPartnerType
+    # umbenannt (Navigation-EntityType bleibt kanonisch; Sondermember unbenutzt).
     ("app/db/schemas.py", "class", "RiskFactorsResponse"),
     ("app/db/schemas.py", "class", "TrendDataPoint"),
     ("app/db/schemas.py", "class", "ValidationQueueListResponse"),

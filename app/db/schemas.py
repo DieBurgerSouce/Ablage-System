@@ -2491,8 +2491,15 @@ class APIKeyDeleteResponse(BaseModel):
 # BUSINESS ENTITY SCHEMAS (Kunden/Lieferanten)
 # ============================================================================
 
-class EntityType(str, Enum):
-    """Geschäftspartner-Typ."""
+class BusinessPartnerType(str, Enum):
+    """Geschäftspartner-Typ.
+
+    Umbenannt von EntityType: es gab eine zweite, gleichnamige EntityType-Enum
+    weiter unten (Ablage-Navigation, mit FINANCE), die diese im Modul-Namespace
+    ueberschattete (Shadowing). Sondermember BOTH/INTERNAL werden app-weit nicht
+    genutzt; die Umbenennung loest die Kollision OHNE Verhaltensaenderung, da
+    'EntityType' weiterhin auf die zweite (Navigations-)Definition zeigt.
+    """
     CUSTOMER = "customer"      # Kunde
     SUPPLIER = "supplier"      # Lieferant
     BOTH = "both"             # Kann beides sein
