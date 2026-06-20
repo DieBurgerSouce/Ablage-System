@@ -32,6 +32,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.config import settings
 from app.core.security import decode_token, verify_token_type
 from app.core.business_metrics import (
     record_security_header_violation,
@@ -392,6 +393,17 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
         db: Datenbank-Session
         company_id: Company-ID für RLS-Filter
     """
+    # RLS_ENFORCE_DEFAULT (opt-in, Default AUS): fehlender Tenant-Kontext = harte
+    # Verweigerung (fail-closed) statt stillem Skip. AUS -> keine Verhaltensaenderung.
+    if not company_id:
+        if settings.RLS_ENFORCE_DEFAULT:
+            record_security_rls_event("context_denied_no_company")
+            raise PermissionError(
+                "RLS_ENFORCE_DEFAULT aktiv: Tenant-Kontext (company_id) fehlt - "
+                "Zugriff verweigert (fail-closed)"
+            )
+        return
+
     try:
         # I.7 CRITICAL: Strenge UUID-Validierung gegen SQL-Injection
         company_id_str = str(company_id)
@@ -416,6 +428,14 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
             attempted_value=str(company_id)[:50],  # Trunkiert für Sicherheit
             error_type="ValueError"
         )
+        # RLS_ENFORCE_DEFAULT (opt-in): ungueltiger Kontext darf NICHT still
+        # durchgehen (sonst Query ohne Tenant-Filter) -> fail-closed.
+        if settings.RLS_ENFORCE_DEFAULT:
+            record_security_rls_event("context_denied_invalid_uuid")
+            raise PermissionError(
+                "RLS_ENFORCE_DEFAULT aktiv: ungueltiger Tenant-Kontext - "
+                "Zugriff verweigert (fail-closed)"
+            ) from e
     except sa.exc.SQLAlchemyError as e:
         # CWE-390/391 FIX: Spezifische Exception, RLS-Failure ist KRITISCH
         record_security_rls_event("context_failed")
