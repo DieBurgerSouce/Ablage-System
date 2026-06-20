@@ -147,7 +147,7 @@ class CustomerCardService:
         db: AsyncSession,
         customer_id: str,
         customer_name: str
-    ) -> RAGCustomerCard:
+    ) -> Optional[RAGCustomerCard]:
         """
         Generiert eine neue Customer Card mit LLM.
 
@@ -183,6 +183,18 @@ class CustomerCardService:
                 source_document_ids.append(doc_id)
 
         context = "\n\n---\n\n".join(context_texts) if context_texts else ""
+
+        # Fast-Path: keine relevanten Dokumente fuer diesen Kunden gefunden -> KEINE
+        # teure LLM-Generierung und KEINE leere Junk-Card persistieren. get_card liefert
+        # dann None (schnelles 404 statt ~15-40s pro Aufruf). Behebt zugleich Daten-
+        # Verschmutzung: vorher wurde fuer nicht-existente Kunden eine leere Card angelegt.
+        if not source_document_ids:
+            logger.info(
+                "customer_card_skip_no_documents",
+                customer_id=customer_id,
+                customer_name=customer_name,
+            )
+            return None
 
         # 3. Quick Facts aus Dokumenten extrahieren
         quick_facts = await self._extract_quick_facts(db, source_document_ids)
