@@ -80,7 +80,14 @@ class PermissionService:
             try:
                 from app.core.redis_state import get_redis
 
-                self._redis_client = await get_redis()
+                # FIX (permission-cache war dauerhaft tot): get_redis() liefert den
+                # RedisStateManager, NICHT den rohen aioredis-Client. Die Cache-Helfer
+                # rufen .get/.setex/.delete/.scan_iter direkt auf -> die existieren am
+                # Manager nicht (kein __getattr__) -> jede Redis-Op warf still
+                # AttributeError (vom except verschluckt) -> NUR In-Memory-Fallback,
+                # kein Multi-Worker-Sync. get_client() liefert den verbundenen Client.
+                manager = await get_redis()
+                self._redis_client = await manager.get_client()
                 # Redis ist verfügbar - Fallback-Modus zurücksetzen
                 if self._redis_fallback_mode:
                     logger.info(
