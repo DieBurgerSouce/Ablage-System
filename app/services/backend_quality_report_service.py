@@ -273,6 +273,7 @@ class BackendQualityReportService:
         )
 
         # Bestimme besten Backend für Tabellen (falls Daten vorhanden)
+        since = datetime.now(timezone.utc) - timedelta(days=30)  # Fix: war undefiniert in generate_comparison_report
         best_for_tables = await self._get_best_backend_for_tables(backends, since)
         if not best_for_tables:
             best_for_tables = best_overall  # Fallback auf Overall
@@ -300,20 +301,23 @@ class BackendQualityReportService:
         for backend in backends:
             # Suche nach Tabellen-spezifischen Benchmarks
             table_query = select(
-                func.avg(OCRBackendBenchmark.table_accuracy).label("avg_table"),
+                func.avg(OCRBackendBenchmark.cer).label("avg_cer"),
                 func.count(OCRBackendBenchmark.id).label("count"),
+            ).join(
+                OCRTrainingSample, OCRBackendBenchmark.training_sample_id == OCRTrainingSample.id
             ).where(
                 and_(
                     OCRBackendBenchmark.backend_name == backend,
                     OCRBackendBenchmark.processed_at >= since,
-                    OCRBackendBenchmark.table_accuracy.isnot(None),
+                    OCRTrainingSample.has_tables.is_(True),
+                    OCRBackendBenchmark.cer.isnot(None),
                 )
             )
             result = await self.db.execute(table_query)
             row = result.first()
 
-            if row and row.count and row.count > 0 and row.avg_table:
-                avg_score = float(row.avg_table)
+            if row and row.count and row.count > 0 and row.avg_cer is not None:
+                avg_score = 1.0 - float(row.avg_cer)  # niedrigere CER = besser fuer Tabellen
                 if avg_score > best_score:
                     best_score = avg_score
                     best_backend = backend

@@ -2472,7 +2472,7 @@ async def get_coverage_status(
             "auto_accepted_samples": profile.auto_accepted_count,
             "target_samples": target_samples,
             "samples_needed": max(0, target_samples - (profile.verified_sample_count or 0)),
-            "is_gap": profile.coverage_percentage < profile.target_coverage,
+            "is_gap": (profile.coverage_percentage or 0) < (profile.target_coverage or 0),
         })
 
         weight = profile.training_weight or 1.0
