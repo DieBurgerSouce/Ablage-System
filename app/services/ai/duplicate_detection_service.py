@@ -449,7 +449,9 @@ class DuplicateDetectionService:
             img = Image.open(io.BytesIO(image_bytes))
             phash = imagehash.phash(img, hash_size=16)
             return str(phash)
-        except Exception:
+        except Exception as e:
+            # OPEN-46: pHash-Berechnung fehlgeschlagen sichtbar machen (Fallback bleibt None)
+            logger.warning("phash_computation_failed", error_type=type(e).__name__)
             return None
 
     async def _find_visual_duplicates(
@@ -475,7 +477,9 @@ class DuplicateDetectionService:
 
         try:
             doc_phash = imagehash.hex_to_hash(doc_phash_str)
-        except Exception:
+        except (ValueError, TypeError) as e:
+            # OPEN-46: defekter pHash-String sichtbar machen (Fallback bleibt leer)
+            logger.warning("phash_decode_failed", error_type=type(e).__name__)
             return []
 
         # Lade Kandidaten mit pHash aus dem gleichen Zeitraum

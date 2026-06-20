@@ -496,8 +496,9 @@ class AutoCategorizationV2Service:
             if json_match:
                 try:
                     return json.loads(json_match.group())
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    # OPEN-46: ungültiges LLM-Kategorisierungs-JSON sichtbar machen (Fallback bleibt None)
+                    logger.warning("llm_categorization_json_invalid", error_type=type(e).__name__)
 
         return None
 

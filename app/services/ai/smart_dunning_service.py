@@ -1012,8 +1012,9 @@ class SmartDunningService:
             if json_match:
                 try:
                     return json.loads(json_match.group())
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    # OPEN-46: ungültiges Dunning-Strategie-JSON sichtbar machen (Fallback bleibt None)
+                    logger.error("dunning_strategy_json_invalid", error_type=type(e).__name__)
         return None
 
     def _determine_tone(

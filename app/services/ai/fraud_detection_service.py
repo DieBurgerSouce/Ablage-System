@@ -1098,7 +1098,13 @@ class EnhancedFraudDetectionService:
             if isinstance(value, Decimal):
                 return value
             return Decimal(str(value))
-        except Exception:
+        except Exception as e:
+            # OPEN-46: Betrags-Parse-Fehler sichtbar machen (Fallback bleibt None)
+            logger.warning(
+                "fraud_amount_parse_failed",
+                value_type=type(value).__name__,
+                **safe_error_log(e),
+            )
             return None
 
     def _empty_result(
