@@ -253,7 +253,7 @@ async def handle_submit_to_bank(
 
         result = await payment_service.submit_payment(
             db=db,
-            user_id=UUID(user_id),
+            company_id=UUID(company_id),
             payment_id=UUID(payment_id),
         )
 
@@ -445,7 +445,7 @@ async def compensate_request_bank_cancellation(
         try:
             await payment_service.cancel_payment(
                 db=db,
-                user_id=UUID(str(context_data.get("user_id", "00000000-0000-0000-0000-000000000000"))),
+                company_id=UUID(str(context_data.get("company_id", "00000000-0000-0000-0000-000000000000"))),
                 payment_id=UUID(payment_id),
                 reason="Saga-Compensation: Automatische Stornierung",
             )

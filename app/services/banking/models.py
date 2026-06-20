@@ -479,7 +479,8 @@ class PaymentOrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    user_id: UUID
+    # company-scoped Zahlungen haben keinen User (Migration 269); user_id nur Audit
+    user_id: Optional[UUID] = None
     bank_account_id: UUID
     document_id: Optional[UUID]
     invoice_number: Optional[str]

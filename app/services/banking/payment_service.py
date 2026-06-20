@@ -84,9 +84,10 @@ class PaymentService:
     async def create_payment(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: UUID,
         data: PaymentOrderCreate,
+        acting_user_id: Optional[UUID] = None,
     ) -> PaymentOrderResponse:
         """Erstelle neuen Zahlungsauftrag.
 
@@ -101,11 +102,11 @@ class PaymentService:
         """
         from app.db.models import BankAccount, PaymentOrder
 
-        # Verifiziere Bankkonto gehoert User
+        # Verifiziere Bankkonto gehoert zur Firma (company-scoped, Migration 269)
         account_query = select(BankAccount).where(
             and_(
                 BankAccount.id == bank_account_id,
-                BankAccount.user_id == user_id,
+                BankAccount.company_id == company_id,
                 BankAccount.deleted_at.is_(None),
             )
         )
@@ -121,7 +122,7 @@ class PaymentService:
             doc_query = select(Document).where(
                 and_(
                     Document.id == data.linked_document_id,
-                    Document.owner_id == user_id,
+                    Document.company_id == company_id,
                     Document.deleted_at.is_(None),
                 )
             )
@@ -130,7 +131,7 @@ class PaymentService:
                 logger.warning(
                     "payment_unauthorized_document_link",
                     document_id=str(data.linked_document_id),
-                    user_id=str(user_id),
+                    company_id=str(company_id),
                 )
                 raise ValueError("Verknüpftes Dokument nicht gefunden oder keine Berechtigung")
 
@@ -143,7 +144,7 @@ class PaymentService:
                 .where(
                     and_(
                         BankTransaction.id == data.linked_transaction_id,
-                        BA.user_id == user_id,
+                        BA.company_id == company_id,
                     )
                 )
             )
@@ -152,7 +153,7 @@ class PaymentService:
                 logger.warning(
                     "payment_unauthorized_transaction_link",
                     transaction_id=str(data.linked_transaction_id),
-                    user_id=str(user_id),
+                    company_id=str(company_id),
                 )
                 raise ValueError("Verknüpfte Transaktion nicht gefunden oder keine Berechtigung")
 
@@ -161,13 +162,16 @@ class PaymentService:
         if not validation.valid:
             raise ValueError(f"Validierungsfehler: {', '.join(validation.errors)}")
 
-        # Generiere End-to-End-ID falls nicht vorhanden
-        end_to_end_id = data.end_to_end_id or self._generate_end_to_end_id()
+        # Generiere End-to-End-ID falls nicht vorhanden.
+        # FIX: PaymentOrderCreate hat KEIN end_to_end_id-Feld -> data.end_to_end_id
+        # warf AttributeError (pre-existing; bisher nie erreicht, weil create_payment
+        # vorher am user-scoped Konto-Lookup scheiterte). getattr -> generieren.
+        end_to_end_id = getattr(data, "end_to_end_id", None) or self._generate_end_to_end_id()
 
         # Erstelle Zahlungsauftrag
         payment = PaymentOrder(
             id=uuid4(),
-            user_id=user_id,
+            user_id=acting_user_id,  # nur Audit; Scope ist company_id
             company_id=account.company_id,
             bank_account_id=bank_account_id,
             batch_id=None,
@@ -200,7 +204,7 @@ class PaymentService:
     async def get_payment(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         payment_id: UUID,
     ) -> Optional[PaymentOrderResponse]:
         """Hole Zahlungsauftrag.
@@ -221,7 +225,7 @@ class PaymentService:
             .where(
                 and_(
                     PaymentOrder.id == payment_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -237,7 +241,7 @@ class PaymentService:
     async def list_payments(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         status: Optional[PaymentStatus] = None,
         offset: int = 0,
@@ -260,7 +264,7 @@ class PaymentService:
 
         # Basis-Query
         base_conditions = [
-            BankAccount.user_id == user_id,
+            BankAccount.company_id == company_id,
         ]
 
         if bank_account_id:
@@ -297,7 +301,7 @@ class PaymentService:
     async def approve_payment(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         payment_id: UUID,
     ) -> PaymentOrderResponse:
         """Genehmige Zahlungsauftrag.
@@ -320,7 +324,7 @@ class PaymentService:
             .where(
                 and_(
                     PaymentOrder.id == payment_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -343,7 +347,7 @@ class PaymentService:
         logger.info(
             "payment_approved",
             payment_id=str(payment_id),
-            user_id=str(user_id),
+            company_id=str(company_id),
         )
 
         return self._to_response(payment)
@@ -351,7 +355,7 @@ class PaymentService:
     async def cancel_payment(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         payment_id: UUID,
         reason: Optional[str] = None,
     ) -> PaymentOrderResponse:
@@ -374,7 +378,7 @@ class PaymentService:
             .where(
                 and_(
                     PaymentOrder.id == payment_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -412,7 +416,7 @@ class PaymentService:
     async def submit_payment(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         payment_id: UUID,
     ) -> Dict[str, Any]:
         """Sende Zahlung an Bank (initiiert TAN-Challenge).
@@ -433,7 +437,7 @@ class PaymentService:
             .where(
                 and_(
                     PaymentOrder.id == payment_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -474,7 +478,7 @@ class PaymentService:
     async def confirm_with_tan(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         payment_id: UUID,
         tan: str,
     ) -> PaymentOrderResponse:
@@ -497,7 +501,7 @@ class PaymentService:
             .where(
                 and_(
                     PaymentOrder.id == payment_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -543,7 +547,7 @@ class PaymentService:
     async def get_pending_payments(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> List[PaymentOrderResponse]:
         """Hole alle ausstehenden Zahlungen.
 
@@ -567,7 +571,7 @@ class PaymentService:
             .join(BankAccount)
             .where(
                 and_(
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                     PaymentOrder.status.in_(pending_statuses),
                 )
             )
@@ -667,10 +671,11 @@ class PaymentService:
     async def create_batch(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: UUID,
         name: str,
         payments: List[PaymentOrderCreate],
+        acting_user_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """Erstelle Sammelzahlung.
 
@@ -690,7 +695,7 @@ class PaymentService:
         account_query = select(BankAccount).where(
             and_(
                 BankAccount.id == bank_account_id,
-                BankAccount.user_id == user_id,
+                BankAccount.company_id == company_id,
                 BankAccount.deleted_at.is_(None),
             )
         )
@@ -725,7 +730,7 @@ class PaymentService:
             async with db.begin_nested():
                 batch = PaymentBatch(
                     id=uuid4(),
-                    user_id=user_id,
+                    user_id=acting_user_id,  # nur Audit; Scope ist company_id
                     company_id=account.company_id,
                     bank_account_id=bank_account_id,
                     batch_name=name,
@@ -734,8 +739,8 @@ class PaymentService:
                     payment_count=len(payments),
                     total_amount=total_amount,
                     created_at=utc_now(),
-                    created_by_id=user_id,
-                    updated_by_id=user_id,
+                    created_by_id=acting_user_id,
+                    updated_by_id=acting_user_id,
                 )
 
                 db.add(batch)
@@ -744,7 +749,7 @@ class PaymentService:
                 for payment_data in payments:
                     payment = PaymentOrder(
                         id=uuid4(),
-                        user_id=user_id,
+                        user_id=acting_user_id,  # nur Audit; Scope ist company_id
                         company_id=account.company_id,
                         bank_account_id=bank_account_id,
                         batch_id=batch.id,

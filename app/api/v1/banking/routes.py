@@ -1279,6 +1279,7 @@ async def create_payment(
     data: PaymentOrderCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentOrderResponse:
     """
     Erstelle neuen Zahlungsauftrag.
@@ -1289,9 +1290,10 @@ async def create_payment(
     try:
         return await payment_service.create_payment(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             bank_account_id=data.bank_account_id,
             data=data,
+            acting_user_id=current_user.id,
         )
     except ValueError as e:
         logger.warning(
@@ -1319,11 +1321,12 @@ async def list_payments(
     per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """Liste Zahlungsaufträge."""
     payments, total = await payment_service.list_payments(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         bank_account_id=bank_account_id,
         status=status_filter,
         offset=(page - 1) * per_page,
@@ -1347,11 +1350,12 @@ async def list_payments(
 async def get_pending_payments(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[PaymentOrderResponse]:
     """Hole alle ausstehenden Zahlungen."""
     return await payment_service.get_pending_payments(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
     )
 
 
@@ -1388,11 +1392,12 @@ async def get_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentOrderResponse:
     """Hole Zahlungsauftrag."""
     payment = await payment_service.get_payment(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         payment_id=payment_id,
     )
 
@@ -1414,6 +1419,7 @@ async def approve_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentOrderResponse:
     """
     Genehmige Zahlungsauftrag.
@@ -1423,8 +1429,9 @@ async def approve_payment(
     try:
         return await payment_service.approve_payment(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             payment_id=payment_id,
+            acting_user_id=current_user.id,
         )
     except ValueError as e:
         logger.warning(
@@ -1453,12 +1460,13 @@ async def cancel_payment(
     reason: Optional[str] = Query(None, description="Stornierungsgrund"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentOrderResponse:
     """Storniere Zahlungsauftrag."""
     try:
         return await payment_service.cancel_payment(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             payment_id=payment_id,
             reason=reason,
         )
@@ -1489,6 +1497,7 @@ async def submit_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Sende Zahlung an Bank.
@@ -1498,7 +1507,7 @@ async def submit_payment(
     try:
         return await payment_service.submit_payment(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             payment_id=payment_id,
         )
     except ValueError as e:
@@ -1529,6 +1538,7 @@ async def confirm_payment_tan(
     tan: str = Query(..., min_length=6, max_length=6, description="TAN-Eingabe"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> PaymentOrderResponse:
     """
     Bestätige Zahlung mit TAN.
@@ -1538,7 +1548,7 @@ async def confirm_payment_tan(
     try:
         return await payment_service.confirm_with_tan(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             payment_id=payment_id,
             tan=tan,
         )

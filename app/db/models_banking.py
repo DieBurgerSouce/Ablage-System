@@ -363,7 +363,8 @@ class PaymentBatch(Base):
     __tablename__ = "payment_batches"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Migration 269: company-scoped Batches haben user_id=NULL (nur Audit) -> nullable.
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     # Multi-Tenant (Migration 232)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
 
@@ -426,7 +427,8 @@ class PaymentOrder(Base):
     __tablename__ = "payment_orders"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Migration 269: company-scoped Zahlungen haben user_id=NULL (nur Audit) -> nullable.
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     # Multi-Tenant (Migration 232)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
 

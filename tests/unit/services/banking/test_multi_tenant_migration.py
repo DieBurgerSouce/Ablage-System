@@ -295,16 +295,6 @@ class TestBankingMultiTenantMigration:
     # Test 8-12: Payment Service Multi-Tenancy
     # =========================================================================
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=ValueError,
-        reason=(
-            "PaymentService ist noch user-scoped (Migration 232 unvollstaendig): "
-            "create_payment prueft BankAccount.user_id == user_id, company-scoped "
-            "angelegte Konten haben aber user_id=NULL -> 'Bankkonto nicht gefunden'. "
-            "Follow-up: PaymentService auf company_id migrieren (siehe KNOWN_ISSUES)."
-        ),
-    )
     async def test_payment_service_uses_company_id(
         self,
         db: AsyncSession,
@@ -319,7 +309,7 @@ class TestBankingMultiTenantMigration:
             bank_account_id=bank_account_company_a.id,
             payment_type=PaymentType.TRANSFER,
             beneficiary_name="Test Beneficiary",
-            beneficiary_iban="DE89370400440532013003",
+            beneficiary_iban="DE02120300000000202051",
             amount=Decimal("100.00"),
             reference="Test Payment",
             currency="EUR",
@@ -329,19 +319,13 @@ class TestBankingMultiTenantMigration:
             db, company_a.id, bank_account_company_a.id, payment_data
         )
 
-        # Verify via BankAccount relationship
+        # Verify die Zahlung ist company_a zugeordnet. PaymentOrder hat KEINE
+        # bank_account-Relationship (nur bank_account_id) -> direkt auf der
+        # company_id-Spalte pruefen (das ist das eigentliche Scope-Feld).
         stmt = select(PaymentOrder).where(PaymentOrder.id == result.id)
         db_payment = (await db.execute(stmt)).scalar_one()
-        assert db_payment.bank_account.company_id == company_a.id
+        assert db_payment.company_id == company_a.id
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=ValueError,
-        reason=(
-            "PaymentService ist noch user-scoped (Migration 232 unvollstaendig), "
-            "siehe test_payment_service_uses_company_id."
-        ),
-    )
     async def test_payment_list_isolation(
         self,
         db: AsyncSession,
@@ -360,7 +344,7 @@ class TestBankingMultiTenantMigration:
             bank_account_id=bank_account_company_a.id,
             payment_type=PaymentType.TRANSFER,
             beneficiary_name="A Beneficiary",
-            beneficiary_iban="DE89370400440532013003",
+            beneficiary_iban="DE02120300000000202051",
             amount=Decimal("100.00"),
             reference="Payment A",
             currency="EUR",
@@ -374,7 +358,7 @@ class TestBankingMultiTenantMigration:
             bank_account_id=bank_account_company_b.id,
             payment_type=PaymentType.TRANSFER,
             beneficiary_name="B Beneficiary",
-            beneficiary_iban="DE89370400440532013004",
+            beneficiary_iban="DE75512108001245126199",
             amount=Decimal("200.00"),
             reference="Payment B",
             currency="EUR",
