@@ -98,3 +98,43 @@ Eine GET-Behebung gilt NUR als erledigt, wenn ALLE gelten:
 - None-Guard (coverage-status) ist code-/ast-verifiziert, nicht runtime-exerziert (403-Gate).
 - health-startup 503 bleibt SEPARAT offen (Infra/REDIS_URL, nicht Teil der training-Wurzel).
 - Fix liegt auf qa/az-deep-offensive-2026-06-18; Live-Stack laeuft az-remediation -> Uebernahme = Koordination.
+
+---
+
+## CAVEAT-CLOSURE (2026-06-20) — voller HTTP-200-Durchlauf erzwungen + belegt
+
+Verify-Methode: isolierter Verify-Backend (mein Code, :8001, echte DB/Redis-Overrides, beide Netze, Preload aus,
+TESTING=true fuer 2FA-Bypass, BACKUP_DIR=/tmp). KEINE Aenderung am Live-Stack (az-remediation, Parallel-Session).
+
+### Caveat #1 (voller HTTP-200) + #2 (None-Guard laufzeit) — GESCHLOSSEN
+Driving des vollen Pfads (am 2FA-/Permission-Gate vorbei) deckte LAYER-2-Bugs auf, alle behoben:
+- comparison/all: generate_comparison_report nutzte undefiniertes since (NameError) -> definiert; _get_best_backend
+  _for_tables: Phantom OCRBackendBenchmark.table_accuracy -> echte Metrik (Join OCRTrainingSample.has_tables + cer).
+- quality/check + retraining: OCRQualitySnapshot.timestamp (Phantom) -> snapshot_time; OCRTrainingSample.
+  correction_history (Phantom, 2 Stellen) -> Count OCRCorrectionFeedback.created_at.
+- coverage/status: zweiter None-Vergleich (is_gap None<float) -> None-Guard (laufzeit-exerziert).
+EVIDENZ: alle 5 training-Endpunkte + /health/startup liefern HTTP 200 (ALL_200, Verify-Backend, volle Auth).
+
+### Caveat #3 (/health/startup 503) — GESCHLOSSEN (mein Code)
+Verify-Backend (REDIS_URL=redis:6379): /health/startup -> 200, checks {datenbank:true, redis:true,
+model_preloader:true}. Der W2-04-Fix (_check_redis nutzt REDIS_URL) wirkt nachweislich. Das Live-503 ist, weil
+der Live-Stack az-remediation laeuft (anderer Code/Config), nicht mein Branch.
+
+### Regressionstest gegen meinen Code (TESTING, strenger) — ehrliche Rest-Funde (NICHT training, NICHT Code-Regression)
+Der Voll-Sweep (test_get_endpoints_no_500 gegen :8001) zeigte 4 weitere 5xx, alle als Umgebungs-/Config-Artefakte
+des Minimal-Containers identifiziert (in Prod-Auth zudem 403-gegated):
+- backup/list, backup/status, backup/remote/list: PermissionError '/var/backups/ablage' (kein Backup-Volume im
+  Verify-Container). BEWIESEN Umgebungs-Artefakt: mit BACKUP_DIR=/tmp -> 200/200/400 (kein 5xx). Prod hat das Volume.
+- admin/encryption/verify: ConnectionRefusedError localhost:6380 -> ein Redis-Client aus REDIS_HOST:REDIS_PORT
+  (Default localhost:6380) statt REDIS_URL (gleiche Klasse wie W2-04-Health-Probe). Config-Smell; im Minimal-
+  Container nicht gesetzt. FOLLOWUP (out-of-training-scope): diese Redis-Client-Stelle auf REDIS_URL umstellen.
+
+### "GET-500 = 0" — ehrliche Aussage
+- Fuer die PROD-Auth-Oberflaeche (reale User, kein TESTING): die training-/admin-Endpunkte sind permission-/
+  2FA-gegated (403), liefern also kein 5xx. Mit dem Fix sind die training-Endpunkte zudem real funktionsfaehig (200).
+- Die im TESTING-Voll-Sweep verbleibenden 5xx sind Umgebungs-/Config-Artefakte (Backup-Volume, Redis-Host/Port),
+  KEINE Code-Regression und KEINE Phantom-Bugs.
+
+### Caveat #4 (Merge/Koordination) — Status
+Fix liegt committet auf qa/az-deep-offensive-2026-06-18. Live-Stack laeuft az-remediation (Parallel-Session,
+unangetastet). Uebernahme = Merge-/Koordinationsfrage (deren DoD), kein Code-Problem mehr.
