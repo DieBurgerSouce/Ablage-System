@@ -1343,6 +1343,7 @@ def run_finance_analytics(
     soft_time_limit=7200,  # 2 Stunden
     time_limit=7500,
 )
+@idempotent_task(date_scoped=True, ttl=86400)  # OPEN-14: kein Doppel-Lauf am selben Tag
 def daily_kpi_recalculation(self) -> Dict[str, Any]:
     """
     Tägliche Neuberechnung aller KPIs.
