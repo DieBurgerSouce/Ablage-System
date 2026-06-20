@@ -202,6 +202,16 @@ async def test_db():
         # (cash_entries/document_groups/documents/expense_reports) mit
         # "Can't sort tables for DROP". CASCADE loest alle Abhaengigkeiten sauber;
         # die Extensions werden im naechsten Setup via IF NOT EXISTS neu angelegt.
+        #
+        # NACHHALTIGKEITS-HINWEIS: DROP SCHEMA CASCADE nimmt ALLE Objekt-Locks in EINER
+        # Transaktion. Bei ~480 Modell-Tabellen kann das max_locks_per_transaction
+        # (PG-Default 64) ueberschreiten -> "out of shared memory / increase
+        # max_locks_per_transaction" -> die db-Fixture skippt ("Database not available").
+        # Ein frischer CI-Lauf (leere Test-DB) ist nicht betroffen; nur wiederholte
+        # lokale Laeufe auf einer schon befuellten Test-DB. Dauerhafte Abhilfe: Postgres
+        # mit `-c max_locks_per_transaction=256` starten (docker-compose). Lokaler
+        # Workaround ohne DB-Reconfig: `DROP DATABASE ablage_test; CREATE DATABASE
+        # ablage_test OWNER ablage_admin;` vor dem erneuten Lauf.
         async with engine.begin() as conn:
             await conn.exec_driver_sql("DROP SCHEMA public CASCADE")
             await conn.exec_driver_sql("CREATE SCHEMA public")
