@@ -49,7 +49,12 @@ const ROLES: Role[] = [
 function cacheIsFresh(cacheFile: string): boolean {
   if (!fs.existsSync(cacheFile)) return false;
   const ageMinutes = (Date.now() - fs.statSync(cacheFile).mtimeMs) / (1000 * 60);
-  return ageMinutes < 10;
+  // 2 statt 10 Minuten: Access-Tokens laufen nach 15 min ab. Ein voller
+  // chromium-Lauf dauert mehrere Minuten — startet er mit einem 10 min alten
+  // Token, liefern API-Tests am Ende 401 statt 403 (beobachtet 2026-06-12).
+  // Gegen den Test-Stack (RATE_LIMIT_ENABLED=false) ist Re-Login billig;
+  // bei 429 greift weiterhin der Cache-Fallback unten.
+  return ageMinutes < 2;
 }
 
 async function cacheAuth(role: Role): Promise<void> {

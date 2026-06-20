@@ -388,35 +388,38 @@ class IntercompanyReconciliationService:
         if not company_ibans:
             return ic_transactions
 
-        # Finde Transaktionen die eine unserer IBANs als Gegenkonto haben
+        # Finde Transaktionen die eine unserer IBANs als Gegenkonto haben.
+        # BankTransaction hat KEINE company_id-Spalte — Firmenzuordnung und
+        # Company-Scope via BankAccount-JOIN.
         result = await self.db.execute(
-            select(BankTransaction)
+            select(BankTransaction, BankAccount.company_id)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
             .where(
-                BankTransaction.company_id.in_(company_ids),
+                BankAccount.company_id.in_(company_ids),
                 BankTransaction.counterparty_iban.in_(list(company_ibans.keys())),
                 BankTransaction.booking_date >= start_date,
                 BankTransaction.booking_date <= end_date,
             )
         )
-        transactions = result.scalars().all()
+        transactions = result.all()
 
-        for txn in transactions:
+        for txn, txn_company_id in transactions:
             counterpart_company = company_ibans.get(txn.counterparty_iban)
-            if not counterpart_company or counterpart_company == txn.company_id:
+            if not counterpart_company or counterpart_company == txn_company_id:
                 continue
 
             # Bestimme Richtung basierend auf Betrag
             if txn.amount > 0:
                 # Eingehende Zahlung - von Gegenseite zu uns
                 from_id = counterpart_company
-                to_id = txn.company_id
+                to_id = txn_company_id
             else:
                 # Ausgehende Zahlung - von uns zu Gegenseite
-                from_id = txn.company_id
+                from_id = txn_company_id
                 to_id = counterpart_company
 
-            # Bestimme Transaktionstyp
-            txn_type = self._classify_bank_transaction(txn.purpose or "")
+            # Bestimme Transaktionstyp (Verwendungszweck = reference_text)
+            txn_type = self._classify_bank_transaction(txn.reference_text or "")
 
             ic_transactions.append(
                 ICTransaction(
@@ -428,12 +431,12 @@ class IntercompanyReconciliationService:
                     transaction_type=txn_type,
                     amount=abs(Decimal(str(txn.amount))),
                     currency="EUR",
-                    reference=txn.reference or "",
+                    reference=txn.reference_text or "",
                     document_id=txn.matched_document_id,
                     invoice_id=None,
                     transaction_date=txn.booking_date,
                     due_date=None,
-                    description=txn.purpose,
+                    description=txn.reference_text,
                     status=ReconciliationStatus.PENDING,
                 )
             )

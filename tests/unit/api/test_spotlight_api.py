@@ -333,6 +333,7 @@ class TestSpotlightEndpoint:
                 limit=5,
                 db=AsyncMock(),
                 current_user=mock_user,
+                company_id=company_id,
             )
 
         call_kwargs = mock_service.search.call_args[1]

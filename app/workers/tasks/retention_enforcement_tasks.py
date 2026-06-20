@@ -305,7 +305,7 @@ async def _process_post_retention_reviews(db: AsyncSession) -> Dict[str, Any]:
             slack = SlackService()
             if slack.is_enabled:
                 await slack.send_notification(
-                    notification_type=SlackNotificationType.COMPLIANCE_ALERT,
+                    notification_type=SlackNotificationType.SYSTEM_ALERT,
                     title="Aufbewahrungsfrist abgelaufen",
                     message=(
                         f"Archiv {archive.id} kann nun gelöscht werden. "

@@ -157,6 +157,14 @@ HANDELSREGISTER_TIMEOUT_SECONDS = 30
 HANDELSREGISTER_RATE_LIMIT_PER_HOUR = 60
 HANDELSREGISTER_CACHE_TTL_HOURS = 24
 
+# W1-011: Verfuegbarkeits-Status der Datenquelle (nutzersichtbar, deutsch)
+SOURCE_STATUS_LIVE = "live"
+SOURCE_STATUS_MOCK = "mock"
+SOURCE_STATUS_MOCK_FALLBACK = "mock_fallback"
+
+# W1-011: Einmaliges WARN-Log pro Prozess, wenn der Mock-Modus aktiv ist.
+_MOCK_MODE_WARNED = False
+
 
 # ============================================================================
 # DATA CLASSES
@@ -176,6 +184,10 @@ class CompanyRecord:
     capital: Optional[str] = None  # z.B. "25.000 EUR"
     managing_directors: Optional[List[str]] = None
     status: str = "active"  # active, dissolved, in_liquidation
+    # W1-011 (additiv): Herkunft des Eintrags - "live", "mock" (Mock-Modus
+    # explizit aktiviert) oder "mock_fallback" (Portal-Fehler/Rate-Limit).
+    # Das UI kann damit ehrlich anzeigen, ob Daten simuliert sind.
+    source_status: str = SOURCE_STATUS_LIVE
 
 
 @dataclass
@@ -213,12 +225,26 @@ class HandelsregisterService:
 
     def __init__(self) -> None:
         """Initialisiert Service."""
+        global _MOCK_MODE_WARNED
+
         # Rate Limiting: Sliding Window
         self._request_times: Deque[float] = deque(maxlen=HANDELSREGISTER_RATE_LIMIT_PER_HOUR)
         self._lock = asyncio.Lock()
 
         # Mock-Modus (Fallback oder explizit aktiviert)
         self.mock_enabled = getattr(settings, "HANDELSREGISTER_MOCK_ENABLED", False)
+
+        # W1-011: Einmaliges WARN pro Prozess - Mock-Daten sind SIMULIERT.
+        if self.mock_enabled and not _MOCK_MODE_WARNED:
+            _MOCK_MODE_WARNED = True
+            logger.warning(
+                "handelsregister_mock_modus_aktiv",
+                message=(
+                    "Handelsregister laeuft im Mock-Modus - Registerdaten "
+                    "sind SIMULIERT. Fuer echte Daten "
+                    "HANDELSREGISTER_MOCK_ENABLED=false setzen."
+                ),
+            )
 
         # Redis Cache Key Prefix
         self._cache_prefix = "handelsregister:"
@@ -380,8 +406,10 @@ class HandelsregisterService:
                     "handelsregister_rate_limited",
                     wait_seconds=wait_time,
                 )
-                # Fallback auf Mock bei Rate Limit
-                return self._mock_search(name, location)
+                # Fallback auf Mock bei Rate Limit (W1-011: gekennzeichnet)
+                return self._mock_search(
+                    name, location, source_status=SOURCE_STATUS_MOCK_FALLBACK
+                )
 
             self._record_request()
 
@@ -404,8 +432,10 @@ class HandelsregisterService:
                 **safe_error_log(e),
                 name_length=len(name),
             )
-            # Fallback auf Mock bei Fehler
-            return self._mock_search(name, location)
+            # Fallback auf Mock bei Fehler (W1-011: gekennzeichnet)
+            return self._mock_search(
+                name, location, source_status=SOURCE_STATUS_MOCK_FALLBACK
+            )
 
     async def get_company_details(self, register_id: str) -> Optional[CompanyDetails]:
         """Ruft detaillierte Firmendaten ab.
@@ -416,6 +446,11 @@ class HandelsregisterService:
         Returns:
             CompanyDetails oder None
         """
+        # SECURITY: Registernummer IMMER zuerst validieren (CWE-918).
+        # Vorher wurde erst tief im Portal-Fetch validiert — Mock-/Cache-/
+        # Rate-Limit-Pfade akzeptierten beliebige (manipulierte) IDs.
+        _validate_register_id(register_id)
+
         # SECURITY: Keine PII (register_id) in Logs - nur Typ loggen
         register_type = register_id.split()[0] if " " in register_id else "unknown"
         logger.info(
@@ -437,7 +472,9 @@ class HandelsregisterService:
         async with self._lock:
             if not self._can_make_request():
                 logger.warning("handelsregister_rate_limited_details")
-                return self._mock_details(register_id)
+                return self._mock_details(
+                    register_id, source_status=SOURCE_STATUS_MOCK_FALLBACK
+                )
 
             self._record_request()
 
@@ -454,7 +491,9 @@ class HandelsregisterService:
                 **safe_error_log(e),
                 register_type=register_type,
             )
-            return self._mock_details(register_id)
+            return self._mock_details(
+                register_id, source_status=SOURCE_STATUS_MOCK_FALLBACK
+            )
 
     # ========================================================================
     # PORTAL FETCHING
@@ -758,6 +797,8 @@ class HandelsregisterService:
             "capital": record.capital,
             "managing_directors": record.managing_directors,
             "status": record.status,
+            # W1-011: Herkunft mit-serialisieren (Cache)
+            "source_status": record.source_status,
         }
 
     def _dict_to_record(self, data: Dict[str, object]) -> CompanyRecord:
@@ -775,6 +816,8 @@ class HandelsregisterService:
             capital=str(data.get("capital")) if data.get("capital") else None,
             managing_directors=managing_directors,
             status=str(data.get("status", "active")),
+            # W1-011: Cache enthaelt nur Live-Ergebnisse -> Default "live"
+            source_status=str(data.get("source_status", SOURCE_STATUS_LIVE)),
         )
 
     def _details_to_dict(self, details: CompanyDetails) -> Dict[str, object]:
@@ -821,9 +864,17 @@ class HandelsregisterService:
     # ========================================================================
 
     def _mock_search(
-        self, name: str, location: Optional[str] = None
+        self,
+        name: str,
+        location: Optional[str] = None,
+        source_status: str = SOURCE_STATUS_MOCK,
     ) -> List[CompanyRecord]:
-        """Mock-Suche für Entwicklung/Tests und Fallback."""
+        """Mock-Suche für Entwicklung/Tests und Fallback.
+
+        W1-011: ``source_status`` kennzeichnet die Herkunft ("mock" bei
+        explizit aktiviertem Mock-Modus, "mock_fallback" bei Portal-Fehler
+        oder Rate-Limit), damit Consumer/UI simulierte Daten erkennen.
+        """
         mock_results: List[CompanyRecord] = []
         name_lower = name.lower()
 
@@ -891,6 +942,10 @@ class HandelsregisterService:
                 )
             )
 
+        # W1-011: Herkunft auf allen Mock-Ergebnissen kennzeichnen
+        for record in mock_results:
+            record.source_status = source_status
+
         logger.debug(
             "handelsregister_mock_search_completed",
             results_count=len(mock_results),
@@ -898,7 +953,11 @@ class HandelsregisterService:
 
         return mock_results
 
-    def _mock_details(self, register_id: str) -> Optional[CompanyDetails]:
+    def _mock_details(
+        self,
+        register_id: str,
+        source_status: str = SOURCE_STATUS_MOCK,
+    ) -> Optional[CompanyDetails]:
         """Mock-Details für Entwicklung/Tests und Fallback."""
         record = CompanyRecord(
             name="Muster GmbH",
@@ -910,6 +969,7 @@ class HandelsregisterService:
             capital="25.000 EUR",
             managing_directors=["Max Mustermann", "Erika Musterfrau"],
             status="active",
+            source_status=source_status,
         )
 
         details = CompanyDetails(

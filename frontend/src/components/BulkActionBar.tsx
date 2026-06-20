@@ -14,13 +14,7 @@ import { useCallback, useEffect } from "react"
 import { X, FolderInput, Tag, Download, Trash2, MoreHorizontal, CheckSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
   TooltipContent,
@@ -246,7 +240,7 @@ export function BulkActionBar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {moreActions.map((action, index) => (
+              {moreActions.map((action, _index) => (
                 <DropdownMenuItem
                   key={action.id}
                   onClick={() => handleAction(action.id)}

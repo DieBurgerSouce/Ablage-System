@@ -58,7 +58,7 @@ from app.db.schemas import (
     FinanceDocumentHistoryItem,
     FinanceHistoryAction,
 )
-from app.api.dependencies import get_db, get_current_active_user, check_rate_limit
+from app.api.dependencies import get_db, get_current_active_user, check_rate_limit, get_user_company_id_dep
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.rbac import (
     require_finance_read,
@@ -1857,6 +1857,7 @@ async def get_liquidity_forecast(
     bank_account_id: Optional[UUID] = Query(None, description="Bankkonto-ID (optional)"),
     starting_balance: Optional[float] = Query(None, description="Anfangssaldo (optional)"),
     current_user: User = Depends(require_finance_read),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> LiquidityForecastResponse:
     """
@@ -1887,10 +1888,9 @@ async def get_liquidity_forecast(
 
         result = await service.get_liquidity_forecast(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             bank_account_id=bank_account_id,
             starting_balance=start_bal,
-            company_id=getattr(current_user, 'company_id', None),
         )
 
         # Konvertiere zu Response-Schema
@@ -2001,6 +2001,7 @@ async def predict_bottlenecks(
     days_ahead: int = Query(90, ge=7, le=365, description="Prognosezeitraum in Tagen"),
     starting_balance: Optional[float] = Query(None, description="Anfangssaldo (optional)"),
     current_user: User = Depends(require_finance_read),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> BottleneckPredictionResponse:
     """
@@ -2027,7 +2028,7 @@ async def predict_bottlenecks(
 
         bottlenecks = await service.get_bottleneck_prediction(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             bank_account_id=bank_account_id,
             days_ahead=days_ahead,
             starting_balance=start_bal,
@@ -2092,6 +2093,7 @@ async def get_waterfall_data(
     period_days: int = Query(30, ge=7, le=90, description="Prognosezeitraum"),
     starting_balance: Optional[float] = Query(None, description="Anfangssaldo (optional)"),
     current_user: User = Depends(require_finance_read),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> WaterfallChartResponse:
     """
@@ -2119,7 +2121,7 @@ async def get_waterfall_data(
 
         waterfall_data = await service.get_waterfall_chart_data(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             bank_account_id=bank_account_id,
             period_days=period_days,
             starting_balance=start_bal,
@@ -2174,6 +2176,7 @@ async def detect_payment_anomalies(
     bank_account_id: Optional[UUID] = Query(None, description="Bankkonto-ID (optional)"),
     lookback_days: int = Query(90, ge=30, le=365, description="Analysezeitraum"),
     current_user: User = Depends(require_finance_read),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> AnomalyDetectionResponse:
     """
@@ -2200,9 +2203,8 @@ async def detect_payment_anomalies(
     try:
         anomalies = await service.detect_anomalies(
             db=db,
-            user_id=current_user.id,
+            company_id=company_id,
             bank_account_id=bank_account_id,
-            company_id=getattr(current_user, 'company_id', None),
             lookback_days=lookback_days,
         )
 

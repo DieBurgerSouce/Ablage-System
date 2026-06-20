@@ -482,3 +482,49 @@ class TestCSRFErrorMessages:
         # Geändert zu 'fehler_code' nach deutscher Feldnamen-Refactoring
         assert "fehler_code" in data
         assert data["fehler_code"] == "CSRF_VALIDATION_FAILED"
+
+
+class TestCSRFTestHarnessExemption:
+    """W1-Harness: /api/v1/test/-Prefix ist NUR im TESTING-Betrieb CSRF-befreit.
+
+    Der Test-Harness-Router ist ausschliesslich unter TESTING gemountet;
+    cookie-lose Agent-Aufrufe (curl POST /test/reset-state) duerfen dann
+    nicht am Double-Submit-Pattern scheitern. In Produktion: keine Ausnahme.
+    """
+
+    def _build_app(self) -> FastAPI:
+        app = FastAPI()
+        app.add_middleware(
+            CSRFMiddleware,
+            enabled=True,
+            cookie_secure=False,
+            cookie_samesite="lax",
+            bearer_token_bypass=True,
+        )
+
+        @app.post("/api/v1/test/reset-state")
+        async def reset_state():
+            return {"status": "ok"}
+
+        return app
+
+    def test_testing_betrieb_befreit_test_harness(self):
+        with patch("app.middleware.csrf.settings.TESTING", True), \
+             patch("app.middleware.csrf.settings.ENVIRONMENT", "development"):
+            client = TestClient(self._build_app())
+            response = client.post("/api/v1/test/reset-state")
+        assert response.status_code == 200
+
+    def test_ohne_testing_bleibt_csrf_aktiv(self):
+        with patch("app.middleware.csrf.settings.TESTING", False), \
+             patch("app.middleware.csrf.settings.ENVIRONMENT", "development"):
+            client = TestClient(self._build_app())
+            response = client.post("/api/v1/test/reset-state")
+        assert response.status_code == 403
+
+    def test_produktion_befreit_nie(self):
+        with patch("app.middleware.csrf.settings.TESTING", True), \
+             patch("app.middleware.csrf.settings.ENVIRONMENT", "production"):
+            client = TestClient(self._build_app())
+            response = client.post("/api/v1/test/reset-state")
+        assert response.status_code == 403

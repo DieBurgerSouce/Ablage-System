@@ -449,7 +449,13 @@ async def reset_profiling_stats(
         slow_requests_cleared=result["gelöschte_langsame_requests"],
     )
 
-    return ResetResponse(**result)
+    # Service liefert Umlaut-Keys; das Response-Modell nutzt ASCII-Feldnamen.
+    return ResetResponse(
+        status=result["status"],
+        geloeschte_endpoints=result["gelöschte_endpoints"],
+        geloeschte_langsame_requests=result["gelöschte_langsame_requests"],
+        geloeschte_snapshots=result["gelöschte_snapshots"],
+    )
 
 
 # =============================================================================

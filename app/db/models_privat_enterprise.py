@@ -960,7 +960,7 @@ class ApprovalRequest(Base):
     currency = Column(String(3), default="EUR", nullable=False)
 
     # Status
-    status = Column(SQLAlchemyEnum(ApprovalStatus), default=ApprovalStatus.PENDING, nullable=False)
+    status = Column(SQLAlchemyEnum(ApprovalStatus, native_enum=False), default=ApprovalStatus.PENDING, nullable=False)
     priority = Column(SQLAlchemyEnum(ApprovalPriority), default=ApprovalPriority.NORMAL, nullable=False, index=True)
 
     # Approval Chain Fortschritt
@@ -1024,7 +1024,7 @@ class ApprovalStep(Base):
     assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Status dieses Schritts
-    status = Column(SQLAlchemyEnum(ApprovalStatus), default=ApprovalStatus.PENDING, nullable=False, index=True)
+    status = Column(SQLAlchemyEnum(ApprovalStatus, native_enum=False), default=ApprovalStatus.PENDING, nullable=False, index=True)
     is_required = Column(Boolean, default=True, nullable=False)
 
     # Entscheidung

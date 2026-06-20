@@ -346,8 +346,12 @@ class OIDCService:
                     key = k
                     break
 
-            if not key:
-                # Try without kid matching
+            if not key and kid is None:
+                # Fallback auf ersten Key NUR, wenn das Token keinen kid-Header
+                # traegt (IdPs mit Single-Key-JWKS ohne kid). Traegt das Token
+                # einen kid, der zu KEINEM JWKS-Key passt, ist das ein harter
+                # Fehler (CWE-347 / Key-Confusion-Schutz) - frueher wurde hier
+                # stillschweigend gegen den ersten Key validiert.
                 if jwks.get("keys"):
                     key = jwks["keys"][0]
 

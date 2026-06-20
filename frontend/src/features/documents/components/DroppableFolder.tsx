@@ -64,7 +64,6 @@ export const DroppableFolder = forwardRef<HTMLDivElement, DroppableFolderProps>(
       accepts = ["document"],
       disabled = false,
       isActive = false,
-      isOpen = false,
       onClick,
       onDoubleClick,
       className,

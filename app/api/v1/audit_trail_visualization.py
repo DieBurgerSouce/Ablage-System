@@ -25,7 +25,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user
@@ -736,7 +736,7 @@ async def get_audit_trail_stats(
     # Events by Day
     day_result = await db.execute(
         select(
-            func.date_trunc('day', AuditLog.created_at).label('day'),
+            func.date_trunc(literal_column("'day'"), AuditLog.created_at).label('day'),
             func.count()
         )
         .where(and_(*base_conditions))

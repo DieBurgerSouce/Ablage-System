@@ -586,9 +586,7 @@ class CalendarOAuthService:
         """
         from app.db.models import CompanySettings
 
-        stmt = select(CompanySettings).where(
-            CompanySettings.company_id == company_id
-        )
+        stmt = select(CompanySettings).limit(1)
         result = await db.execute(stmt)
         settings = result.scalar_one_or_none()
 
@@ -639,9 +637,7 @@ class CalendarOAuthService:
         """
         from app.db.models import CompanySettings
 
-        stmt = select(CompanySettings).where(
-            CompanySettings.company_id == company_id
-        )
+        stmt = select(CompanySettings).limit(1)
         result = await db.execute(stmt)
         settings = result.scalar_one_or_none()
 
@@ -685,9 +681,7 @@ class CalendarOAuthService:
         """Löscht OAuth-Tokens für einen Provider aus CompanySettings."""
         from app.db.models import CompanySettings
 
-        stmt = select(CompanySettings).where(
-            CompanySettings.company_id == company_id
-        )
+        stmt = select(CompanySettings).limit(1)
         result = await db.execute(stmt)
         settings = result.scalar_one_or_none()
 

@@ -25,10 +25,28 @@ vi.mock('@/lib/logger', () => ({
 // WEBSOCKET MOCK
 // ============================================================================
 
+/**
+ * happy-dom setzt CloseEvent.code aus den Optionen NICHT (bleibt undefined),
+ * daher wird der Code hier explizit als Property gesetzt.
+ */
+function makeCloseEvent(code: number): CloseEvent {
+  const ev = new CloseEvent('close');
+  Object.defineProperty(ev, 'code', { value: code });
+  return ev;
+}
+
 class MockWebSocket {
+  // Statische Zustands-Konstanten wie beim echten WebSocket — noetig, weil
+  // global.WebSocket durch diese Klasse ersetzt wird und Hook + Mock
+  // WebSocket.OPEN/CLOSED referenzieren (sonst undefined).
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
+
   static instances: MockWebSocket[] = [];
   url: string;
-  readyState = WebSocket.CONNECTING;
+  readyState: number = MockWebSocket.CONNECTING;
   onopen: ((event: Event) => void) | null = null;
   onclose: ((event: CloseEvent) => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
@@ -41,15 +59,15 @@ class MockWebSocket {
 
   send = vi.fn();
   close = vi.fn((code?: number) => {
-    this.readyState = WebSocket.CLOSED;
+    this.readyState = MockWebSocket.CLOSED;
     // onclose direkt aufrufen damit Tests es sofort sehen
     const closeCode = code ?? 1000;
-    this.onclose?.(new CloseEvent('close', { code: closeCode }));
+    this.onclose?.(makeCloseEvent(closeCode));
   });
 
   /** Simuliert erfolgreiche Serververbindung */
   simulateOpen() {
-    this.readyState = WebSocket.OPEN;
+    this.readyState = MockWebSocket.OPEN;
     this.onopen?.(new Event('open'));
   }
 
@@ -60,8 +78,8 @@ class MockWebSocket {
 
   /** Simuliert Verbindungsabbruch */
   simulateClose(code = 1000) {
-    this.readyState = WebSocket.CLOSED;
-    this.onclose?.(new CloseEvent('close', { code }));
+    this.readyState = MockWebSocket.CLOSED;
+    this.onclose?.(makeCloseEvent(code));
   }
 
   /** Simuliert Fehler-Event */
@@ -736,7 +754,7 @@ describe('useChatWebSocket', () => {
       act(() => {
         // readyState direkt setzen und onclose aufrufen ohne close() zu verwenden
         ws.readyState = WebSocket.CLOSED;
-        ws.onclose?.(new CloseEvent('close', { code: 1000 }));
+        ws.onclose?.(makeCloseEvent(1000));
       });
 
       // Timer voranschreiten lassen
@@ -765,7 +783,7 @@ describe('useChatWebSocket', () => {
 
       act(() => {
         ws.readyState = WebSocket.CLOSED;
-        ws.onclose?.(new CloseEvent('close', { code: 4001 }));
+        ws.onclose?.(makeCloseEvent(4001));
       });
 
       await act(async () => {
@@ -792,7 +810,7 @@ describe('useChatWebSocket', () => {
 
       act(() => {
         ws.readyState = WebSocket.CLOSED;
-        ws.onclose?.(new CloseEvent('close', { code: 4003 }));
+        ws.onclose?.(makeCloseEvent(4003));
       });
 
       await act(async () => {
@@ -824,7 +842,7 @@ describe('useChatWebSocket', () => {
           const ws = MockWebSocket.instances[attempt];
           act(() => {
             ws.readyState = WebSocket.CLOSED;
-            ws.onclose?.(new CloseEvent('close', { code: 1006 }));
+            ws.onclose?.(makeCloseEvent(1006));
           });
         }
 
@@ -854,7 +872,7 @@ describe('useChatWebSocket', () => {
       // Verbindung trennen und reconnecten
       act(() => {
         MockWebSocket.instances[0].readyState = WebSocket.CLOSED;
-        MockWebSocket.instances[0].onclose?.(new CloseEvent('close', { code: 1006 }));
+        MockWebSocket.instances[0].onclose?.(makeCloseEvent(1006));
       });
 
       await act(async () => {
@@ -920,12 +938,11 @@ describe('useChatWebSocket', () => {
       expect(MockWebSocket.instances).toHaveLength(1);
 
       currentSessionId = 'neue-session-456';
+      // rerender laeuft in act -> Effekt (cleanup + reconnect) synchron;
+      // waitFor wuerde unter fake timers nie voranschreiten (Timeout)
       rerender();
 
-      // Nach Rerender sollte eine neue Verbindung aufgebaut worden sein
-      await waitFor(() => {
-        expect(MockWebSocket.instances.length).toBeGreaterThanOrEqual(2);
-      });
+      expect(MockWebSocket.instances.length).toBeGreaterThanOrEqual(2);
     });
   });
 });

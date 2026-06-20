@@ -19,19 +19,20 @@ import {
   transformCategoryDistribution,
 } from '../types/payment-behavior-types';
 
-const BASE_URL = '/api/v1/payment-behavior';
+const BASE_URL = '/payment-behavior';
 
 /**
  * Payment Behavior API Error
  */
 export class PaymentBehaviorApiError extends Error {
-  constructor(
-    message: string,
-    public statusCode?: number,
-    public details?: unknown
-  ) {
+  statusCode?: number;
+  details?: unknown;
+
+  constructor(message: string, statusCode?: number, details?: unknown) {
     super(message);
     this.name = 'PaymentBehaviorApiError';
+    this.statusCode = statusCode;
+    this.details = details;
   }
 }
 

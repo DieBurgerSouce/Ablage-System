@@ -16,7 +16,7 @@ import {
   useTabData,
   useInvalidateSmartDashboard,
 } from '../hooks/use-smart-dashboard-queries';
-import { DashboardTabKey, UI_LABELS } from '../types/smart-dashboard-types';
+import { type DashboardTabKey, UI_LABELS } from '../types/smart-dashboard-types';
 
 export function SmartDashboardPage() {
   const [activeTab, setActiveTab] = useState<DashboardTabKey>('uebersicht');

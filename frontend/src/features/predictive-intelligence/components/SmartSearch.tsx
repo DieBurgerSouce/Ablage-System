@@ -19,15 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
@@ -49,7 +41,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useDebounce } from '@/hooks/use-debounce';
 
 export type EntityType =
   | 'document'

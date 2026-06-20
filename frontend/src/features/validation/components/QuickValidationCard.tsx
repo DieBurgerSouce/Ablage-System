@@ -196,13 +196,13 @@ export function QuickValidationCard({
                     </Badge>
                   )}
 
-                  {item.avg_field_confidence !== undefined && (
+                  {item.avg_field_confidence != null && (
                     <span className={cn('text-xs font-mono', confidenceColor)}>
                       {Math.round(item.avg_field_confidence * 100)}%
                     </span>
                   )}
 
-                  {item.assigned_to && (
+                  {item.assigned_at && (
                     <span className="flex items-center gap-1 text-xs">
                       <User className="w-3 h-3" />
                       Zugewiesen

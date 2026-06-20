@@ -102,11 +102,13 @@ class TestDocumentClassificationServiceExtended:
         """
         result = service.classify(text)
 
-        # "Angebot" sollte erkannt werden - kann Invoice, Unknown oder andere sein
-        # Das Wichtige ist, dass "Angebot" als Keyword erkannt wird
-        # oder dass niedrigere Konfidenz vorliegt
+        # "Angebot" sollte erkannt werden - korrekt ist OFFER (Angebot),
+        # kann aber je nach Signalen auch Order/Invoice/Unknown sein.
+        # Das Wichtige ist, dass "Angebot" als Keyword erkannt wird.
+        assert "angebot" in result.matched_keywords
         assert result.document_type in [
             ExtractedDocumentType.UNKNOWN,
+            ExtractedDocumentType.OFFER,  # Angebot = Offer (korrekte Klassifizierung)
             ExtractedDocumentType.ORDER,  # Angebot kann als Order klassifiziert werden
             ExtractedDocumentType.INVOICE,
         ]

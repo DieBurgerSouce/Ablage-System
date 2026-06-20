@@ -337,9 +337,21 @@ def _cleanup_fallback_blacklist() -> int:
 
 # ==================== Password Hashing ====================
 
+# bcrypt verarbeitet maximal 72 Bytes; bcrypt >= 4.1 wirft bei laengeren
+# Eingaben ValueError (hashpw UND checkpw). Ohne Guards fuehrte das beim
+# Login/Registrieren mit ueberlangen Passwoertern zu HTTP 500.
+# KEIN Truncating (Entscheidung 2026-06-11).
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain password against a hashed password.
+
+    Passwoerter > 72 Bytes (UTF-8) ergeben False statt ValueError:
+    Da get_password_hash solche Passwoerter ablehnt, kann kein gueltiger
+    Hash dazu existieren - False ist die korrekte Semantik und verhindert
+    einen 500er beim Login (bcrypt.checkpw wirft sonst ValueError).
 
     Args:
         plain_password: Plain text password
@@ -349,6 +361,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         True if password matches, False otherwise
     """
     password_bytes = plain_password.encode("utf-8")
+    if len(password_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+        return False
     hash_bytes = hashed_password.encode("utf-8")
     return bcrypt.checkpw(password_bytes, hash_bytes)
 
@@ -362,8 +376,20 @@ def get_password_hash(password: str) -> str:
 
     Returns:
         Bcrypt hashed password
+
+    Raises:
+        ValueError: Wenn das Passwort UTF-8-kodiert laenger als 72 Bytes
+            ist (bcrypt-Limit). Eintrittspfade (Registrierung, Passwort-
+            Aenderung/-Reset) validieren das bereits im Schema (422);
+            dieser Guard liefert eine klare deutsche Meldung statt der
+            generischen bcrypt-Exception.
     """
     password_bytes = password.encode("utf-8")
+    if len(password_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError(
+            "Passwort darf maximal 72 Bytes (UTF-8) lang sein "
+            "(Umlaute und Sonderzeichen zaehlen mehrfach)"
+        )
     salt = bcrypt.gensalt(rounds=BCRYPT_COST_FACTOR)
     hashed = bcrypt.hashpw(password_bytes, salt)
     return hashed.decode("utf-8")
@@ -1237,6 +1263,23 @@ async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
         return False  # Erstmalige Verwendung
 
 
+async def check_totp_replay(user_id: str, code: str) -> bool:
+    """DEPRECATED: Nutze check_and_mark_totp_used (atomar, race-frei).
+
+    Diese Funktion existierte im alten check-then-mark-Muster und ist nur noch
+    aus Kompatibilitaetsgruenden vorhanden. Sie delegiert an die atomare
+    Variante.
+    """
+    return await check_and_mark_totp_used(user_id, code)
+
+
+async def mark_totp_used(user_id: str, code: str) -> None:
+    """DEPRECATED: Nutze check_and_mark_totp_used (atomar, race-frei).
+
+    Das separate Markieren ist Teil der atomaren Operation; dieser Wrapper ist
+    nur noch aus Kompatibilitaetsgruenden vorhanden.
+    """
+    await check_and_mark_totp_used(user_id, code)
 
 
 def _cleanup_totp_fallback() -> None:

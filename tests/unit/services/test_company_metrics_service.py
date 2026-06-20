@@ -703,7 +703,7 @@ class TestApiHelperFunctions:
         alerts = _generate_dashboard_alerts([metrics])
 
         overdue_alert = next(
-            (a for a in alerts if "Ueberfaellige Rechnungen" in a["message"]), None
+            (a for a in alerts if "Überfällige Rechnungen" in a["message"]), None
         )
         assert overdue_alert is not None
         assert overdue_alert["type"] == "critical"
@@ -784,9 +784,9 @@ class TestApiHelperFunctions:
 
         assert _get_metric_label("invoices") == "Rechnungsvolumen"
         assert _get_metric_label("documents") == "Dokumente"
-        assert _get_metric_label("entities") == "Geschaeftspartner"
+        assert _get_metric_label("entities") == "Geschäftspartner"
         assert _get_metric_label("dunning") == "Mahnbetraege"
         assert _get_metric_label("outstanding") == "Offene Forderungen"
-        assert _get_metric_label("overdue") == "Ueberfaellige Forderungen"
+        assert _get_metric_label("overdue") == "Überfällige Forderungen"
         assert _get_metric_label("health") == "Health Score"
         assert _get_metric_label("unknown") == "unknown"

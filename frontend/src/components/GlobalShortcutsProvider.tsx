@@ -76,16 +76,15 @@ function useDefaultShortcuts(): { shortcuts: KeyboardShortcut[]; sequences: KeyS
         }
       },
     },
-    {
-      id: 'nav-command',
-      description: 'Befehlspalette öffnen',
-      keys: 'ctrl+k',
-      category: 'navigation',
-      scope: 'global',
-      handler: () => {
-        window.dispatchEvent(new CustomEvent('open-command-dialog'));
-      },
-    },
+    // B8 (2026-06-13): KEIN zweiter ctrl+k-Handler mehr hier.
+    // GlobalCommandDialog (gemountet in __root.tsx) besitzt einen eigenen
+    // ctrl+k-Listener und ist der EINZIGE Strg+K-Owner. Die fruehere
+    // 'nav-command'-Registrierung feuerte zusaetzlich ein
+    // 'open-command-dialog'-Event, das im gemounteten Baum gar keinen
+    // Listener hat (der einzige Listener sitzt in der NICHT gemounteten
+    // features/shortcuts/CommandPalette) - also ein redundanter,
+    // konkurrierender Handler auf demselben Tastendruck. Entfernt, damit nur
+    // EINE Palette auf Strg+K reagiert.
     {
       id: 'nav-upload',
       description: 'Neuer Upload',

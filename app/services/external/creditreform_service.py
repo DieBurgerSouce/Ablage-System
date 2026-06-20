@@ -28,6 +28,16 @@ from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
+# W1-011: Verfuegbarkeits-Status der Datenquelle (nutzersichtbar, deutsch)
+SOURCE_STATUS_LIVE = "live"
+SOURCE_STATUS_MOCK = "mock"
+SOURCE_STATUS_FEHLER = "fehler"
+# Fuer Alt-Cache-Eintraege ohne source_status-Feld (Herkunft unbekannt)
+SOURCE_STATUS_UNBEKANNT = "unbekannt"
+
+# W1-011: Einmaliges WARN-Log pro Prozess, wenn der Mock-Modus aktiv ist.
+_MOCK_MODE_WARNED = False
+
 
 class CreditRating(str, Enum):
     """Creditreform Bonitaetsindex."""
@@ -68,6 +78,12 @@ class CreditCheckResult(BaseModel):
     # Warnungen
     warnings: List[str] = Field(default_factory=list)
     negative_features: List[str] = Field(default_factory=list)
+
+    # W1-011 (additiv): Herkunft des Ergebnisses - "live", "mock", "fehler"
+    # oder "unbekannt" (Alt-Cache). Mock-Modus greift automatisch, wenn keine
+    # Credentials konfiguriert sind - das UI kann simulierte Bonitaetsdaten
+    # damit ehrlich kennzeichnen.
+    source_status: str = SOURCE_STATUS_UNBEKANNT
 
 
 class CreditMonitoringEvent(BaseModel):
@@ -111,8 +127,18 @@ class CreditreformService:
         # Mock-Modus wenn keine Credentials
         self.mock_mode = not (self.api_key and self.api_secret)
 
-        if self.mock_mode:
-            logger.warning("Creditreform: Running in MOCK mode (no credentials)")
+        # W1-011: Einmaliges WARN pro Prozess - Bonitaetsdaten sind SIMULIERT.
+        global _MOCK_MODE_WARNED
+        if self.mock_mode and not _MOCK_MODE_WARNED:
+            _MOCK_MODE_WARNED = True
+            logger.warning(
+                "creditreform_mock_modus_aktiv",
+                message=(
+                    "Creditreform laeuft im Mock-Modus (keine Credentials) - "
+                    "Bonitaetsdaten sind SIMULIERT. Fuer echte Daten "
+                    "CREDITREFORM_API_KEY und CREDITREFORM_API_SECRET setzen."
+                ),
+            )
 
     async def check_credit(
         self,
@@ -185,6 +211,8 @@ class CreditreformService:
                 "insolvency_date": None,
                 "insolvency_court": None,
                 "is_active": True,
+                # W1-011: Mock-Daten ehrlich kennzeichnen (additiv)
+                "source_status": SOURCE_STATUS_MOCK,
             }
 
         # Echte API-Abfrage
@@ -479,6 +507,8 @@ class CreditreformService:
             response.raise_for_status()
 
             data = response.json()
+            # W1-011: Herkunft kennzeichnen (echte API-Antwort)
+            data.setdefault("source_status", SOURCE_STATUS_LIVE)
             return CreditCheckResult(**data)
 
     def _generate_mock_result(
@@ -546,6 +576,8 @@ class CreditreformService:
             last_updated=datetime.utcnow(),
             warnings=warnings,
             negative_features=negative,
+            # W1-011: Mock-Daten ehrlich kennzeichnen
+            source_status=SOURCE_STATUS_MOCK,
         )
 
     def _generate_error_result(
@@ -565,4 +597,6 @@ class CreditreformService:
             # SECURITY: Keine Exception-Details in User-Facing Responses (CWE-209)
             warnings=["Abfrage fehlgeschlagen"],
             negative_features=["Keine Bonitaetsdaten verfügbar"],
+            # W1-011: Fehler-Ergebnis kennzeichnen
+            source_status=SOURCE_STATUS_FEHLER,
         )

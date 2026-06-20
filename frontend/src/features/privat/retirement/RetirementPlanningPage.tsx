@@ -9,29 +9,30 @@
  */
 
 import { useState } from 'react';
-import {
-  PiggyBank,
-  Calculator,
-  BarChart3,
-  Target,
-  TrendingUp,
-  Coins,
-  AlertCircle,
-  ChevronRight,
-  Info,
-} from 'lucide-react';
+import { PiggyBank, Calculator, BarChart3, TrendingUp, Coins, AlertCircle, ChevronRight, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
 import { PensionGapCalculator } from './components/PensionGapCalculator';
 import { MonteCarloSimulation } from './components/MonteCarloSimulation';
 import { useDefaultSpace } from '../hooks/use-privat-queries';
 import { useRetirementSummary, useRiesterOptimization as useRiesterOptimizationQuery } from './hooks';
+import type {
+  RetirementSummaryRequest,
+  RiesterOptimizationRequest,
+} from '@/lib/api/services/retirement';
+
+// Standard-Annahme für die Übersichts-Berechnung: Alter 35 (ISO-Datum,
+// stabil pro Seitenaufruf — individuelle Werte über den Rechner-Tab)
+const DEFAULT_BIRTH_DATE = new Date(
+  new Date().getFullYear() - 35,
+  0,
+  1
+).toISOString().slice(0, 10);
 
 // Formatierung
 const formatCurrency = (value: number): string =>
@@ -265,8 +266,15 @@ export function RetirementPlanningPage() {
   const { defaultSpaceId, isLoading: spacesLoading, hasSpaces } = useDefaultSpace();
   const spaceId = defaultSpaceId;
 
-  // Verwende RetirementSummary mit Default-Request
-  const defaultRequest = { includeProjections: true };
+  // Verwende RetirementSummary mit Default-Request.
+  // Backend-Vertrag (POST .../retirement/summary): birth_date +
+  // current_gross_annual_income sind PFLICHT. Die Seite hat (noch) keine
+  // Eingabemaske dafür — Standard-Annahmen wie bisher (50.000 € Einkommen,
+  // Alter 35); individuelle Berechnung läuft über den Rentenlücken-Rechner-Tab.
+  const defaultRequest: RetirementSummaryRequest = {
+    birthDate: DEFAULT_BIRTH_DATE,
+    currentGrossAnnualIncome: 50000,
+  };
   const {
     data: retirementData,
     isLoading: summaryLoading,
@@ -275,8 +283,13 @@ export function RetirementPlanningPage() {
     enabled: !!spaceId,
   });
 
-  // Riester-Optimierung mit Default-Request
-  const riesterRequest = { grossIncome: 50000, numChildren: 0 };
+  // Riester-Optimierung mit Default-Request (Backend-Vertrag:
+  // gross_annual_income + marginal_tax_rate sind Pflicht)
+  const riesterRequest: RiesterOptimizationRequest = {
+    grossAnnualIncome: 50000,
+    marginalTaxRate: 0.35,
+    childrenBornAfter2007: 0,
+  };
   const { data: riesterOptimization, isLoading: riesterLoading } = useRiesterOptimizationQuery(
     spaceId ?? '',
     spaceId ? riesterRequest : null,
@@ -294,15 +307,21 @@ export function RetirementPlanningPage() {
 
   const isLoading = spacesLoading || summaryLoading;
 
-  // Erstelle overview-Objekt aus retirementData
-  const overview = retirementData ? {
+  // Erstelle overview-Objekt aus retirementData (echter Backend-Vertrag:
+  // die Kennzahlen liegen in pensionGapAnalysis, nicht flach auf der Summary)
+  const gap = retirementData?.pensionGapAnalysis;
+  const overview = retirementData && gap ? {
     summary: {
-      currentPensionPoints: retirementData.currentPensionPoints ?? 25,
-      projectedPensionPoints: retirementData.projectedPensionPoints ?? 45,
-      expectedStatutoryPension: retirementData.expectedStatutoryPension ?? 1500,
-      totalPrivatePension: retirementData.totalPrivatePension ?? 500,
-      pensionGapCoverage: retirementData.pensionGapCoverage ?? 75,
-      retirementAge: retirementData.retirementAge ?? 67,
+      currentPensionPoints: gap.currentPensionPoints,
+      projectedPensionPoints: gap.projectedPensionPoints,
+      expectedStatutoryPension: gap.expectedStatutoryPension,
+      totalPrivatePension:
+        gap.expectedRiester + gap.expectedRuerup + gap.expectedBav + gap.expectedPrivate,
+      pensionGapCoverage:
+        gap.targetMonthlyIncome > 0
+          ? (gap.totalExpectedPension / gap.targetMonthlyIncome) * 100
+          : 0,
+      retirementAge: gap.retirementAge,
     },
   } : null;
 
@@ -428,10 +447,13 @@ export function RetirementPlanningPage() {
             <div className="grid gap-6 md:grid-cols-2">
               <SubsidyCard
                 type="riester"
-                currentContribution={riesterOptimization?.currentContribution ?? 0}
-                maxContribution={riesterOptimization?.maxContribution ?? 2100}
-                expectedSubsidy={riesterOptimization?.expectedSubsidy ?? 0}
-                taxSaving={riesterOptimization?.taxSaving ?? 0}
+                // Backend-Vertrag (RiesterOptimization): optimaler Eigenbeitrag,
+                // Zulagen-Summe und Steuervorteil; ein Bestandsbeitrag ist im
+                // Ergebnis nicht enthalten (Request ohne currentRiesterContribution -> 0).
+                currentContribution={0}
+                maxContribution={riesterOptimization?.optimalEigenbeitrag ?? 2100}
+                expectedSubsidy={riesterOptimization?.totalZulagen ?? 0}
+                taxSaving={riesterOptimization?.taxBenefit ?? 0}
                 recommendations={riesterOptimization?.recommendations ?? []}
                 isLoading={riesterLoading}
               />

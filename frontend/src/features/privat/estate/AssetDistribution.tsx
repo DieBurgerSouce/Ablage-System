@@ -7,30 +7,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Wallet, Users } from 'lucide-react';
-
-interface EstateSummary {
-  netEstate: number;
-  totalAssets: number;
-  totalLiabilities: number;
-  beneficiaries: Array<{
-    id: string;
-    name: string;
-    relationship: string;
-    share: number;
-  }>;
-}
-
-interface GiftPlan {
-  id: string;
-  beneficiaryName: string;
-  amount: number;
-  scheduledDate: string;
-  status: 'planned' | 'completed';
-}
+// Echte Service-Typen statt lokaler Drift-Duplikate
+import type { EstateSummary, TenYearGiftPlan } from '@/lib/api/services/estate-planning';
 
 interface AssetDistributionProps {
   summary: EstateSummary | null;
-  giftPlans: GiftPlan[];
+  giftPlans: TenYearGiftPlan[];
 }
 
 const formatCurrency = (value: number): string =>
@@ -94,7 +76,7 @@ export function AssetDistribution({ summary, giftPlans }: AssetDistributionProps
           ) : (
             <div className="space-y-2">
               {summary.beneficiaries.map((ben, idx) => {
-                const amount = (summary.netEstate * ben.share) / 100;
+                const amount = (summary.netEstate * ben.sharePercent) / 100;
                 return (
                   <div
                     key={ben.id}
@@ -110,7 +92,7 @@ export function AssetDistribution({ summary, giftPlans }: AssetDistributionProps
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">{ben.share}%</p>
+                      <p className="font-medium">{ben.sharePercent}%</p>
                       <p className="text-xs text-muted-foreground">
                         {formatCurrency(amount)}
                       </p>
@@ -132,16 +114,16 @@ export function AssetDistribution({ summary, giftPlans }: AssetDistributionProps
             <div className="space-y-2">
               {giftPlans.slice(0, 3).map((plan) => (
                 <div
-                  key={plan.id}
+                  key={plan.beneficiaryId}
                   className="flex items-center justify-between text-sm"
                 >
                   <span>{plan.beneficiaryName}</span>
                   <div className="text-right">
                     <span className="font-medium">
-                      {formatCurrency(plan.amount)}
+                      {formatCurrency(plan.remainingAllowance)}
                     </span>
                     <span className="text-xs text-muted-foreground ml-2">
-                      {new Date(plan.scheduledDate).toLocaleDateString('de-DE')}
+                      frei bis {new Date(plan.periodEnd).toLocaleDateString('de-DE')}
                     </span>
                   </div>
                 </div>

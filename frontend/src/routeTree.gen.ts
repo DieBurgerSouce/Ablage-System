@@ -65,6 +65,7 @@ import { Route as ExecutiveRouteImport } from './app/routes/executive'
 import { Route as EmailImportRouteImport } from './app/routes/email-import'
 import { Route as DocumentHintsRouteImport } from './app/routes/document-hints'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
+import { Route as DocumentGraphRouteImport } from './app/routes/document-graph'
 import { Route as DocumentChainsRouteImport } from './app/routes/document-chains'
 import { Route as DigitalTwinRouteImport } from './app/routes/digital-twin'
 import { Route as DeveloperRouteImport } from './app/routes/developer'
@@ -98,6 +99,7 @@ import { Route as LieferantenIndexRouteImport } from './app/routes/lieferanten.i
 import { Route as KundenIndexRouteImport } from './app/routes/kunden.index'
 import { Route as KasseIndexRouteImport } from './app/routes/kasse.index'
 import { Route as FinanzenIndexRouteImport } from './app/routes/finanzen.index'
+import { Route as DashboardsIndexRouteImport } from './app/routes/dashboards.index'
 import { Route as BerichteIndexRouteImport } from './app/routes/berichte.index'
 import { Route as AdminIndexRouteImport } from './app/routes/admin.index'
 import { Route as WorkflowsNewRouteImport } from './app/routes/workflows.new'
@@ -159,6 +161,8 @@ import { Route as DocumentsCompareRouteImport } from './app/routes/documents.com
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
 import { Route as DocumentChainsChainIdRouteImport } from './app/routes/document-chains.$chainId'
+import { Route as DashboardsNewRouteImport } from './app/routes/dashboards.new'
+import { Route as DashboardsDashboardIdRouteImport } from './app/routes/dashboards.$dashboardId'
 import { Route as DashboardCeoRouteImport } from './app/routes/dashboard.ceo'
 import { Route as ContractsDashboardRouteImport } from './app/routes/contracts.dashboard'
 import { Route as BerichteBuilderRouteImport } from './app/routes/berichte.builder'
@@ -587,6 +591,11 @@ const DocumentGroupsRoute = DocumentGroupsRouteImport.update({
   path: '/document-groups',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentGraphRoute = DocumentGraphRouteImport.update({
+  id: '/document-graph',
+  path: '/document-graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocumentChainsRoute = DocumentChainsRouteImport.update({
   id: '/document-chains',
   path: '/document-chains',
@@ -751,6 +760,11 @@ const FinanzenIndexRoute = FinanzenIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FinanzenRoute,
+} as any)
+const DashboardsIndexRoute = DashboardsIndexRouteImport.update({
+  id: '/dashboards/',
+  path: '/dashboards/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BerichteIndexRoute = BerichteIndexRouteImport.update({
   id: '/',
@@ -1062,6 +1076,16 @@ const DocumentChainsChainIdRoute = DocumentChainsChainIdRouteImport.update({
   id: '/$chainId',
   path: '/$chainId',
   getParentRoute: () => DocumentChainsRoute,
+} as any)
+const DashboardsNewRoute = DashboardsNewRouteImport.update({
+  id: '/dashboards/new',
+  path: '/dashboards/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardsDashboardIdRoute = DashboardsDashboardIdRouteImport.update({
+  id: '/dashboards/$dashboardId',
+  path: '/dashboards/$dashboardId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardCeoRoute = DashboardCeoRouteImport.update({
   id: '/dashboard/ceo',
@@ -1849,6 +1873,7 @@ export interface FileRoutesByFullPath {
   '/developer': typeof DeveloperRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
+  '/document-graph': typeof DocumentGraphRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
@@ -1975,6 +2000,8 @@ export interface FileRoutesByFullPath {
   '/berichte/builder': typeof BerichteBuilderRoute
   '/contracts/dashboard': typeof ContractsDashboardRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
+  '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/dashboards/new': typeof DashboardsNewRoute
   '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -2036,6 +2063,7 @@ export interface FileRoutesByFullPath {
   '/workflows/new': typeof WorkflowsNewRoute
   '/admin/': typeof AdminIndexRoute
   '/berichte/': typeof BerichteIndexRoute
+  '/dashboards': typeof DashboardsIndexRoute
   '/finanzen/': typeof FinanzenIndexRoute
   '/kasse/': typeof KasseIndexRoute
   '/kunden/': typeof KundenIndexRoute
@@ -2146,6 +2174,7 @@ export interface FileRoutesByTo {
   '/developer': typeof DeveloperRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
+  '/document-graph': typeof DocumentGraphRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
@@ -2250,6 +2279,8 @@ export interface FileRoutesByTo {
   '/berichte/builder': typeof BerichteBuilderRoute
   '/contracts/dashboard': typeof ContractsDashboardRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
+  '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/dashboards/new': typeof DashboardsNewRoute
   '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -2307,6 +2338,7 @@ export interface FileRoutesByTo {
   '/workflows/new': typeof WorkflowsNewRoute
   '/admin': typeof AdminIndexRoute
   '/berichte': typeof BerichteIndexRoute
+  '/dashboards': typeof DashboardsIndexRoute
   '/finanzen': typeof FinanzenIndexRoute
   '/kasse': typeof KasseIndexRoute
   '/kunden': typeof KundenIndexRoute
@@ -2418,6 +2450,7 @@ export interface FileRoutesById {
   '/developer': typeof DeveloperRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
+  '/document-graph': typeof DocumentGraphRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
@@ -2544,6 +2577,8 @@ export interface FileRoutesById {
   '/berichte/builder': typeof BerichteBuilderRoute
   '/contracts/dashboard': typeof ContractsDashboardRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
+  '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/dashboards/new': typeof DashboardsNewRoute
   '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -2605,6 +2640,7 @@ export interface FileRoutesById {
   '/workflows/new': typeof WorkflowsNewRoute
   '/admin/': typeof AdminIndexRoute
   '/berichte/': typeof BerichteIndexRoute
+  '/dashboards/': typeof DashboardsIndexRoute
   '/finanzen/': typeof FinanzenIndexRoute
   '/kasse/': typeof KasseIndexRoute
   '/kunden/': typeof KundenIndexRoute
@@ -2719,6 +2755,7 @@ export interface FileRouteTypes {
     | '/developer'
     | '/digital-twin'
     | '/document-chains'
+    | '/document-graph'
     | '/document-groups'
     | '/document-hints'
     | '/email-import'
@@ -2845,6 +2882,8 @@ export interface FileRouteTypes {
     | '/berichte/builder'
     | '/contracts/dashboard'
     | '/dashboard/ceo'
+    | '/dashboards/$dashboardId'
+    | '/dashboards/new'
     | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -2906,6 +2945,7 @@ export interface FileRouteTypes {
     | '/workflows/new'
     | '/admin/'
     | '/berichte/'
+    | '/dashboards'
     | '/finanzen/'
     | '/kasse/'
     | '/kunden/'
@@ -3016,6 +3056,7 @@ export interface FileRouteTypes {
     | '/developer'
     | '/digital-twin'
     | '/document-chains'
+    | '/document-graph'
     | '/document-groups'
     | '/document-hints'
     | '/email-import'
@@ -3120,6 +3161,8 @@ export interface FileRouteTypes {
     | '/berichte/builder'
     | '/contracts/dashboard'
     | '/dashboard/ceo'
+    | '/dashboards/$dashboardId'
+    | '/dashboards/new'
     | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -3177,6 +3220,7 @@ export interface FileRouteTypes {
     | '/workflows/new'
     | '/admin'
     | '/berichte'
+    | '/dashboards'
     | '/finanzen'
     | '/kasse'
     | '/kunden'
@@ -3287,6 +3331,7 @@ export interface FileRouteTypes {
     | '/developer'
     | '/digital-twin'
     | '/document-chains'
+    | '/document-graph'
     | '/document-groups'
     | '/document-hints'
     | '/email-import'
@@ -3413,6 +3458,8 @@ export interface FileRouteTypes {
     | '/berichte/builder'
     | '/contracts/dashboard'
     | '/dashboard/ceo'
+    | '/dashboards/$dashboardId'
+    | '/dashboards/new'
     | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -3474,6 +3521,7 @@ export interface FileRouteTypes {
     | '/workflows/new'
     | '/admin/'
     | '/berichte/'
+    | '/dashboards/'
     | '/finanzen/'
     | '/kasse/'
     | '/kunden/'
@@ -3587,6 +3635,7 @@ export interface RootRouteChildren {
   DeveloperRoute: typeof DeveloperRoute
   DigitalTwinRoute: typeof DigitalTwinRoute
   DocumentChainsRoute: typeof DocumentChainsRouteWithChildren
+  DocumentGraphRoute: typeof DocumentGraphRoute
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   DocumentHintsRoute: typeof DocumentHintsRoute
   EmailImportRoute: typeof EmailImportRoute
@@ -3647,12 +3696,15 @@ export interface RootRouteChildren {
   BankingMissedSkontoRoute: typeof BankingMissedSkontoRoute
   BankingPaymentAutomationRoute: typeof BankingPaymentAutomationRoute
   DashboardCeoRoute: typeof DashboardCeoRoute
+  DashboardsDashboardIdRoute: typeof DashboardsDashboardIdRoute
+  DashboardsNewRoute: typeof DashboardsNewRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRouteWithChildren
   DocumentsCompareRoute: typeof DocumentsCompareRoute
   ReportsCashflowForecastRoute: typeof ReportsCashflowForecastRoute
   ReportsCostAnalysisRoute: typeof ReportsCostAnalysisRoute
   ReportsDocumentVolumeRoute: typeof ReportsDocumentVolumeRoute
   ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
+  DashboardsIndexRoute: typeof DashboardsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -4049,6 +4101,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentGroupsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/document-graph': {
+      id: '/document-graph'
+      path: '/document-graph'
+      fullPath: '/document-graph'
+      preLoaderRoute: typeof DocumentGraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/document-chains': {
       id: '/document-chains'
       path: '/document-chains'
@@ -4279,6 +4338,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/finanzen/'
       preLoaderRoute: typeof FinanzenIndexRouteImport
       parentRoute: typeof FinanzenRoute
+    }
+    '/dashboards/': {
+      id: '/dashboards/'
+      path: '/dashboards'
+      fullPath: '/dashboards'
+      preLoaderRoute: typeof DashboardsIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/berichte/': {
       id: '/berichte/'
@@ -4706,6 +4772,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/document-chains/$chainId'
       preLoaderRoute: typeof DocumentChainsChainIdRouteImport
       parentRoute: typeof DocumentChainsRoute
+    }
+    '/dashboards/new': {
+      id: '/dashboards/new'
+      path: '/dashboards/new'
+      fullPath: '/dashboards/new'
+      preLoaderRoute: typeof DashboardsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboards/$dashboardId': {
+      id: '/dashboards/$dashboardId'
+      path: '/dashboards/$dashboardId'
+      fullPath: '/dashboards/$dashboardId'
+      preLoaderRoute: typeof DashboardsDashboardIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/ceo': {
       id: '/dashboard/ceo'
@@ -6684,6 +6764,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeveloperRoute: DeveloperRoute,
   DigitalTwinRoute: DigitalTwinRoute,
   DocumentChainsRoute: DocumentChainsRouteWithChildren,
+  DocumentGraphRoute: DocumentGraphRoute,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   DocumentHintsRoute: DocumentHintsRoute,
   EmailImportRoute: EmailImportRoute,
@@ -6744,12 +6825,15 @@ const rootRouteChildren: RootRouteChildren = {
   BankingMissedSkontoRoute: BankingMissedSkontoRoute,
   BankingPaymentAutomationRoute: BankingPaymentAutomationRoute,
   DashboardCeoRoute: DashboardCeoRoute,
+  DashboardsDashboardIdRoute: DashboardsDashboardIdRoute,
+  DashboardsNewRoute: DashboardsNewRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRouteWithChildren,
   DocumentsCompareRoute: DocumentsCompareRoute,
   ReportsCashflowForecastRoute: ReportsCashflowForecastRoute,
   ReportsCostAnalysisRoute: ReportsCostAnalysisRoute,
   ReportsDocumentVolumeRoute: ReportsDocumentVolumeRoute,
   ResetPasswordTokenRoute: ResetPasswordTokenRoute,
+  DashboardsIndexRoute: DashboardsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

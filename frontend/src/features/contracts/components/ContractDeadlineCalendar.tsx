@@ -123,31 +123,6 @@ export function ContractDeadlineCalendar({
   // Day names
   const dayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-  const _renderDeadlineDots = (day: Date) => {
-    const dateKey = format(day, 'yyyy-MM-dd');
-    const dayDeadlines = deadlinesByDate.get(dateKey) || [];
-
-    if (dayDeadlines.length === 0) return null;
-
-    // Group by urgency
-    const criticalCount = dayDeadlines.filter((d) => d.urgency === 'critical').length;
-    const warningCount = dayDeadlines.filter((d) => d.urgency === 'warning').length;
-    const upcomingCount = dayDeadlines.filter((d) => d.urgency === 'upcoming').length;
-
-    return (
-      <div className="flex gap-0.5 justify-center mt-1">
-        {criticalCount > 0 && (
-          <div className={`w-1.5 h-1.5 rounded-full ${urgencyConfig.critical.dot}`} />
-        )}
-        {warningCount > 0 && (
-          <div className={`w-1.5 h-1.5 rounded-full ${urgencyConfig.warning.dot}`} />
-        )}
-        {upcomingCount > 0 && (
-          <div className={`w-1.5 h-1.5 rounded-full ${urgencyConfig.upcoming.dot}`} />
-        )}
-      </div>
-    );
-  };
 
   const renderDayCell = (day: Date) => {
     const dateKey = format(day, 'yyyy-MM-dd');

@@ -39,40 +39,10 @@ import {
 } from "recharts"
 import { KPICard } from "@/features/dashboard/components/kpi"
 
-// Types
-export interface PortfolioSnapshot {
-    id: string
-    snapshotDate: string
-    totalRealEstate: number
-    totalVehicles: number
-    totalInvestments: number
-    totalCash: number
-    totalOtherAssets: number
-    totalMortgages: number
-    totalLoans: number
-    totalOtherLiabilities: number
-    totalAssets: number
-    totalLiabilities: number
-    netWorth: number
-    netWorthChangeAbsolute?: number
-    netWorthChangePercent?: number
-    debtToAssetsRatio: number
-    liquidityRatio: number
-}
+// Kanonische Typen aus der Privat-API (frueher hier doppelt definiert)
+import type { FinancialGoal, PortfolioSnapshot } from "../api/privat-api"
 
-export interface FinancialGoal {
-    id: string
-    name: string
-    goalType: "retirement" | "education" | "property" | "debt_free" | "emergency_fund" | "custom"
-    targetValue: number
-    currentValue: number
-    targetDate: string
-    progressPercent: number
-    monthlySavingsRequired?: number
-    isOnTrack: boolean
-    status: "active" | "paused" | "completed" | "cancelled"
-    priority: number
-}
+export type { FinancialGoal, PortfolioSnapshot }
 
 export interface PortfolioDashboardProps {
     snapshot: PortfolioSnapshot | null

@@ -52,12 +52,12 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/features/banking/utils/format';
 import { useUnmatchedTransactionsEnhanced, useAccounts } from '@/features/banking/hooks/use-banking-queries';
-import type { BankTransaction } from '@/lib/api/services/banking';
+import type { ReconcilableTransaction } from './MatchSuggestions';
 import { cn } from '@/lib/utils';
 
 interface UnmatchedListProps {
     selectedAccountId?: string;
-    onSelectTransaction: (transaction: BankTransaction) => void;
+    onSelectTransaction: (transaction: ReconcilableTransaction) => void;
     onBulkMatch?: (transactionIds: string[]) => void;
     selectedTransactionIds?: string[];
     onSelectionChange?: (ids: string[]) => void;
@@ -146,7 +146,8 @@ export function UnmatchedList({
     const [showFilters, setShowFilters] = useState(false);
 
     // Data Fetching
-    const { data: accounts } = useAccounts();
+    // Hook beibehalten (vorgeladene Kontenliste im Cache), Binding ungenutzt
+    useAccounts();
     const {
         data: unmatchedTx,
         isLoading,

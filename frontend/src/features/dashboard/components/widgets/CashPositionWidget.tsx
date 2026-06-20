@@ -33,7 +33,6 @@ import { DashboardSectionError } from '../shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useWidgetSubscription } from '@/hooks/use-widget-subscription';
@@ -84,7 +83,7 @@ function useCashPosition() {
     return useQuery({
         queryKey: ['banking', 'cash-position'],
         queryFn: async (): Promise<CashPositionSummary> => {
-            const response = await api.get('/api/v1/banking/cash-position');
+            const response = await api.get('/banking/cash-position');
             return response.data;
         },
         staleTime: 60 * 1000, // 1 minute
@@ -370,7 +369,7 @@ function CashPositionWidgetContent() {
 
             {/* Link to banking */}
             <Link
-                to="/banking"
+                to="/admin/banking"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Banking-Übersicht

@@ -5,8 +5,7 @@
  * Ermöglicht Verbindungstest und zeigt Fehlermeldungen an.
  */
 
-import { useState } from 'react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   CheckCircle,

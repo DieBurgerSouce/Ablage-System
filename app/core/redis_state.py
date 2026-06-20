@@ -99,6 +99,11 @@ class RedisStateManager:
                 max_connections=settings.REDIS_POOL_MAX_SIZE,
             )
 
+    async def get_client(self):
+        "F-31: verbundenen Redis-Client liefern (nlq u.a.)."
+        await self.connect()
+        return self._redis
+
     async def disconnect(self) -> None:
         """Close Redis connection and cleanup subscriptions."""
         # Cleanup pubsub first
@@ -452,7 +457,12 @@ class RedisStateManager:
 
         full_pattern = f"cache:{pattern}"
         deleted_count = 0
-        cursor = "0"
+        # W4b: redis-py liefert den SCAN-Cursor als int (0 bei Abschluss),
+        # NICHT als String. Der frühere Abbruch-Vergleich `cursor == "0"`
+        # war daher IMMER False -> Endlosschleife: jede Such-Cache-
+        # Invalidierung (Dokument anlegen/ändern/löschen) hing dauerhaft und
+        # blockierte den Request bis zum Timeout. int-Cursor durchgehend.
+        cursor = 0
 
         try:
             while True:
@@ -472,8 +482,9 @@ class RedisStateManager:
                         batch_deleted=deleted
                     )
 
-                # cursor returns to "0" when iteration is complete
-                if cursor == "0":
+                # Cursor kehrt zu 0 zurück, wenn die Iteration abgeschlossen ist
+                # (int aus redis-py; defensiv gegen bytes/str normalisiert).
+                if int(cursor) == 0:
                     break
 
         except Exception as e:

@@ -116,7 +116,7 @@ class TestEnforceRetentionDailyScan:
         doc_result.scalars.return_value.all.return_value = []
 
         # Mock Archive query - no archives
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalars.return_value.all.return_value = []
 
         mock_async_session.execute = AsyncMock(
@@ -149,60 +149,66 @@ class TestEnforceRetentionDailyScan:
     def test_scan_finds_inconsistency(self, mock_async_session, mock_company, mock_document):
         """is_archived=True ohne archive entry sollte violation finden."""
         # Mock Company query
-        company_result = AsyncMock()
+        company_result = MagicMock()
         company_result.scalars.return_value.all.return_value = [mock_company]
 
         # Mock Document query - one orphaned doc
-        doc_result = AsyncMock()
+        doc_result = MagicMock()
         doc_result.scalars.return_value.all.return_value = [mock_document]
 
         # Mock Archive query - no archive for doc
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalar_one_or_none.return_value = None
 
         # Mock Archive list query - empty
-        archive_list_result = AsyncMock()
+        archive_list_result = MagicMock()
         archive_list_result.scalars.return_value.all.return_value = []
 
+        # Mock pending-reviews count query (final gauge update)
+        count_result = MagicMock()
+        count_result.scalar.return_value = 0
+
         mock_async_session.execute = AsyncMock(
-            side_effect=[company_result, doc_result, archive_result, archive_list_result]
+            side_effect=[company_result, doc_result, archive_result, archive_list_result, count_result]
         )
 
         with patch('app.workers.tasks.retention_enforcement_tasks.async_session_factory') as mock_factory:
             mock_factory.return_value.__aenter__.return_value = mock_async_session
 
-            with patch('asyncio.get_event_loop') as mock_loop:
-                # Simulate actual execution
-                async def _run_scan():
-                    from app.workers.tasks.retention_enforcement_tasks import _daily_enforcement_scan
-                    return await _daily_enforcement_scan(mock_async_session)
+            async def _run_scan():
+                from app.workers.tasks.retention_enforcement_tasks import _daily_enforcement_scan
+                return await _daily_enforcement_scan(mock_async_session)
 
-                import asyncio
-                result = asyncio.get_event_loop().run_until_complete(_run_scan())
+            import asyncio
+            result = asyncio.get_event_loop().run_until_complete(_run_scan())
 
-                assert result["violations_found"] == 1
-                assert result["companies_scanned"] == 1
+            assert result["violations_found"] == 1
+            assert result["companies_scanned"] == 1
 
     def test_scan_fixes_inconsistency(self, mock_async_session, mock_company, mock_document):
         """Sollte is_archived=False setzen bei orphaned doc."""
         # Mock Company query
-        company_result = AsyncMock()
+        company_result = MagicMock()
         company_result.scalars.return_value.all.return_value = [mock_company]
 
         # Mock Document query - one orphaned doc
-        doc_result = AsyncMock()
+        doc_result = MagicMock()
         doc_result.scalars.return_value.all.return_value = [mock_document]
 
         # Mock Archive query - no archive
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalar_one_or_none.return_value = None
 
         # Mock Archive list query
-        archive_list_result = AsyncMock()
+        archive_list_result = MagicMock()
         archive_list_result.scalars.return_value.all.return_value = []
 
+        # Mock pending-reviews count query (final gauge update)
+        count_result = MagicMock()
+        count_result.scalar.return_value = 0
+
         mock_async_session.execute = AsyncMock(
-            side_effect=[company_result, doc_result, archive_result, archive_list_result]
+            side_effect=[company_result, doc_result, archive_result, archive_list_result, count_result]
         )
 
         with patch('app.workers.tasks.retention_enforcement_tasks.async_session_factory') as mock_factory:
@@ -222,23 +228,27 @@ class TestEnforceRetentionDailyScan:
     def test_scan_counts_archives(self, mock_async_session, mock_company, mock_archive):
         """Sollte alle Archives zaehlen."""
         # Mock Company query
-        company_result = AsyncMock()
+        company_result = MagicMock()
         company_result.scalars.return_value.all.return_value = [mock_company]
 
         # Mock Document query - no orphaned
-        doc_result = AsyncMock()
+        doc_result = MagicMock()
         doc_result.scalars.return_value.all.return_value = []
 
         # Mock Archive query - 3 archives
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalars.return_value.all.return_value = [
             mock_archive,
             mock_archive,
             mock_archive,
         ]
 
+        # Mock pending-reviews count query (final gauge update)
+        count_result = MagicMock()
+        count_result.scalar.return_value = 0
+
         mock_async_session.execute = AsyncMock(
-            side_effect=[company_result, doc_result, archive_result]
+            side_effect=[company_result, doc_result, archive_result, count_result]
         )
 
         with patch('app.workers.tasks.retention_enforcement_tasks.async_session_factory') as mock_factory:
@@ -266,23 +276,27 @@ class TestEnforceRetentionDailyScan:
         company2.is_active = True
 
         # Mock Company query - 2 companies
-        company_result = AsyncMock()
+        company_result = MagicMock()
         company_result.scalars.return_value.all.return_value = [company1, company2]
 
         # Mock Document queries - empty for both
-        doc_result1 = AsyncMock()
+        doc_result1 = MagicMock()
         doc_result1.scalars.return_value.all.return_value = []
-        doc_result2 = AsyncMock()
+        doc_result2 = MagicMock()
         doc_result2.scalars.return_value.all.return_value = []
 
         # Mock Archive queries - empty for both
-        archive_result1 = AsyncMock()
+        archive_result1 = MagicMock()
         archive_result1.scalars.return_value.all.return_value = []
-        archive_result2 = AsyncMock()
+        archive_result2 = MagicMock()
         archive_result2.scalars.return_value.all.return_value = []
 
+        # Mock pending-reviews count query (final gauge update)
+        count_result = MagicMock()
+        count_result.scalar.return_value = 0
+
         mock_async_session.execute = AsyncMock(
-            side_effect=[company_result, doc_result1, archive_result1, doc_result2, archive_result2]
+            side_effect=[company_result, doc_result1, archive_result1, doc_result2, archive_result2, count_result]
         )
 
         with patch('app.workers.tasks.retention_enforcement_tasks.async_session_factory') as mock_factory:
@@ -328,7 +342,7 @@ class TestProcessPostRetentionReviews:
     def test_reviews_processes_expired(self, mock_async_session, mock_expired_archive):
         """Sollte abgelaufene Archives finden und verarbeiten."""
         # Mock Archive query - one expired
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalars.return_value.all.return_value = [mock_expired_archive]
 
         mock_async_session.execute = AsyncMock(return_value=archive_result)
@@ -356,7 +370,7 @@ class TestProcessPostRetentionReviews:
     def test_reviews_creates_audit_log(self, mock_async_session, mock_expired_archive):
         """Sollte Audit-Log fuer jede Review erstellen."""
         # Mock Archive query
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalars.return_value.all.return_value = [mock_expired_archive]
 
         mock_async_session.execute = AsyncMock(return_value=archive_result)
@@ -389,7 +403,7 @@ class TestProcessPostRetentionReviews:
     def test_reviews_sends_notification(self, mock_async_session, mock_expired_archive):
         """Sollte Slack-Notification senden."""
         # Mock Archive query
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalars.return_value.all.return_value = [mock_expired_archive]
 
         mock_async_session.execute = AsyncMock(return_value=archive_result)
@@ -419,7 +433,7 @@ class TestProcessPostRetentionReviews:
     def test_reviews_notification_failure_continues(self, mock_async_session, mock_expired_archive):
         """Sollte bei Slack-Fehler weitermachen."""
         # Mock Archive query
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalars.return_value.all.return_value = [mock_expired_archive]
 
         mock_async_session.execute = AsyncMock(return_value=archive_result)
@@ -450,7 +464,7 @@ class TestProcessPostRetentionReviews:
     def test_reviews_empty_no_expired(self, mock_async_session):
         """Keine abgelaufenen Archives sollte 0 zurueckgeben."""
         # Mock Archive query - empty
-        archive_result = AsyncMock()
+        archive_result = MagicMock()
         archive_result.scalars.return_value.all.return_value = []
 
         mock_async_session.execute = AsyncMock(return_value=archive_result)
@@ -480,7 +494,7 @@ class TestGenerateComplianceReport:
         with patch('app.workers.tasks.retention_enforcement_tasks.async_session_factory') as mock_factory:
             mock_factory.return_value.__aenter__.return_value = mock_async_session
 
-            with patch('app.services.compliance.retention_enforcement_service.retention_enforcement_service') as mock_service:
+            with patch('app.workers.tasks.retention_enforcement_tasks.retention_enforcement_service') as mock_service:
                 mock_service.get_compliance_dashboard = AsyncMock(return_value=mock_compliance_dashboard)
 
                 async def _run_generate():
@@ -507,7 +521,7 @@ class TestGenerateComplianceReport:
         company2.is_active = True
 
         # Mock Company query
-        company_result = AsyncMock()
+        company_result = MagicMock()
         company_result.scalars.return_value.all.return_value = [company1, company2]
 
         mock_async_session.execute = AsyncMock(return_value=company_result)
@@ -515,7 +529,7 @@ class TestGenerateComplianceReport:
         with patch('app.workers.tasks.retention_enforcement_tasks.async_session_factory') as mock_factory:
             mock_factory.return_value.__aenter__.return_value = mock_async_session
 
-            with patch('app.services.compliance.retention_enforcement_service.retention_enforcement_service') as mock_service:
+            with patch('app.workers.tasks.retention_enforcement_tasks.retention_enforcement_service') as mock_service:
                 mock_service.get_compliance_dashboard = AsyncMock(return_value=mock_compliance_dashboard)
 
                 async def _run_generate():
@@ -534,7 +548,7 @@ class TestGenerateComplianceReport:
         with patch('app.workers.tasks.retention_enforcement_tasks.async_session_factory') as mock_factory:
             mock_factory.return_value.__aenter__.return_value = mock_async_session
 
-            with patch('app.services.compliance.retention_enforcement_service.retention_enforcement_service') as mock_service:
+            with patch('app.workers.tasks.retention_enforcement_tasks.retention_enforcement_service') as mock_service:
                 mock_service.get_compliance_dashboard = AsyncMock(return_value=mock_compliance_dashboard)
 
                 async def _run_generate():

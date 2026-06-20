@@ -593,12 +593,16 @@ class TestSuryaErrorHandling:
 
     @pytest.fixture
     def agent_with_model_error(self):
-        """Create agent that will fail on model loading."""
-        with patch('surya.detection.DetectionPredictor') as mock_det:
-            mock_det.side_effect = RuntimeError("Model loading failed")
+        """Create agent that will fail on model loading.
 
-            from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
-            yield SuryaDoclingAgent()
+        _load_models_sync laedt zuerst FoundationPredictor -> dort den Fehler
+        injizieren (DetectionPredictor wuerde sonst nie erreicht).
+        """
+        from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
+        agent = SuryaDoclingAgent()
+        with patch('surya.foundation.FoundationPredictor',
+                   side_effect=RuntimeError("Model loading failed")):
+            yield agent
 
     @pytest.mark.unit
     def test_model_loading_error_propagates(self, agent_with_model_error):
@@ -621,9 +625,11 @@ class TestSuryaErrorHandling:
             "language": "de"
         })
 
+        # Fehler wird PII-frei aufbereitet (safe_error_detail), daher kein
+        # roher Exception-Text - aber success=False + deutsche Fehlermeldung.
         assert result["success"] == False
         assert "error" in result
-        assert "Model loading failed" in result["error"]
+        assert "fehlgeschlagen" in result["error"].lower()
 
 
 if __name__ == "__main__":

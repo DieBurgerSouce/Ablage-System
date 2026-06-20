@@ -27,8 +27,6 @@ interface OrderDataSectionProps {
 export function OrderDataSection({ data, onFieldEdit }: OrderDataSectionProps) {
   // Group fields by category
   const orderInfoFields = ['order_number', 'order_date', 'customer_number', 'supplier'];
-  const deliveryFields = ['delivery_date', 'delivery_address', 'billing_address'];
-  const paymentFields = ['payment_method', 'subtotal', 'shipping_cost', 'total'];
 
   const getField = (key: string): ExtractedField | undefined => {
     return data[key as keyof OrderData] as ExtractedField | undefined;

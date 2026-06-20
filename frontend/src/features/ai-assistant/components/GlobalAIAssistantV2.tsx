@@ -18,33 +18,7 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Bot,
-  X,
-  Minimize2,
-  Maximize2,
-  Sparkles,
-  Loader2,
-  Send,
-  FileText,
-  AlertCircle,
-  Wifi,
-  WifiOff,
-  Zap,
-  Shield,
-  Eye,
-  Edit3,
-  CheckCircle,
-  XCircle,
-  Calculator,
-  Lightbulb,
-  MessageSquare,
-  ToggleLeft,
-  ToggleRight,
-  HelpCircle,
-  Trash2,
-  History,
-} from 'lucide-react';
+import { Bot, X, Minimize2, Maximize2, Sparkles, Loader2, Send, FileText, AlertCircle, Wifi, WifiOff, Shield, Eye, Edit3, Calculator, Lightbulb, MessageSquare, Trash2, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,20 +36,8 @@ import { useToast } from '@/hooks/use-toast';
 
 import { useAIAssistantStore } from '../stores/ai-assistant-store';
 import { usePageContext, getContextSuggestions, getContextPlaceholder } from '../hooks/use-page-context';
-import {
-  useContextAwareAction,
-  AIActionType,
-  AIActionAutonomyLevel,
-  AIActionStatus,
-  ACTION_METADATA,
-  type AIActionSuggestion,
-} from '../hooks/use-ai-actions';
-import {
-  useFinanceAssistant,
-  usePersistentConversation,
-  ChatMessage,
-  ConversationSummary,
-} from '../hooks/use-finance-assistant';
+import { useContextAwareAction, AIActionAutonomyLevel } from '../hooks/use-ai-actions';
+import { useFinanceAssistant, usePersistentConversation, type ChatMessage, type ConversationSummary } from '../hooks/use-finance-assistant';
 import { ConversationHistory } from './ConversationHistory';
 import { QuickFeedback, FeedbackDialog } from './FeedbackDialog';
 import { useChatWebSocket } from '@/features/rag/hooks/use-chat-websocket';
@@ -83,15 +45,8 @@ import { ChatMessage as RAGChatMessage } from '@/features/rag/components/ChatMes
 import type { ConnectionStatus } from '@/features/rag/types/chat-types';
 import { ActionProposalCard } from './ActionProposalCard';
 import { BookingSuggestionCard } from './BookingSuggestionCard';
-import { InsightCard, InsightsList } from './InsightCard';
-import {
-  INTENT_METADATA,
-  AssistantIntent,
-  ActionData,
-  BookingSuggestionData,
-  InsightResponse,
-  ExecuteActionResponse,
-} from '@/lib/api/services/finance-assistant';
+import { InsightsList } from './InsightCard';
+import { INTENT_METADATA, AssistantIntent, type ActionData, type BookingSuggestionData, type ExecuteActionResponse } from '@/lib/api/services/finance-assistant';
 import type { ChatMessage as RAGMessage, ContextDocument } from '@/features/rag/types/chat-types';
 
 // ==================== Constants ====================
@@ -313,7 +268,7 @@ function FinanceChatMessage({ message, onDetailedFeedback }: FinanceChatMessageP
         {message.response?.follow_up_suggestions &&
           message.response.follow_up_suggestions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {message.response.follow_up_suggestions.slice(0, 3).map((suggestion, index) => (
+              {message.response.follow_up_suggestions.slice(0, 3).map((suggestion, _index) => (
                 <Badge
                   key={suggestion}
                   variant="secondary"
@@ -365,26 +320,21 @@ export function GlobalAIAssistantV2() {
     setView,
     setSessionId,
     incrementUnread,
-    markAsRead,
+    markAsRead: _markAsRead,
   } = useAIAssistantStore();
 
   // Page context detection
   usePageContext();
 
   // Persistent conversation for database storage
-  const {
-    conversation: persistentConversation,
-    createConversation,
-    updateTitle,
-    isCreating: isCreatingConversation,
-  } = usePersistentConversation({
+  const { conversation: persistentConversation } = usePersistentConversation({
     sessionId: storedSessionId || undefined,
     contextPage: pageContext.type,
     autoCreate: mode === 'finance' && isOpen,
   });
 
   // AI Actions - context-aware
-  const { contextInfo, autonomyLevel } = useContextAwareAction(
+  const { contextInfo: _contextInfo, autonomyLevel } = useContextAwareAction(
     pageContext.type,
     pageContext.documentId,
     pageContext.entityId
@@ -427,7 +377,7 @@ export function GlobalAIAssistantV2() {
   // RAG Chat WebSocket
   const {
     status: ragStatus,
-    sessionId,
+    sessionId: _sessionId,
     error: ragError,
     messages: ragMessages,
     isStreaming,
@@ -645,6 +595,10 @@ export function GlobalAIAssistantV2() {
                   <Button
                     onClick={open}
                     size="lg"
+                    // a11y: Der Button enthaelt nur aria-hidden-SVGs (Bot/Lightbulb)
+                    // und ein Tooltip - axe (button-name) braucht einen echten
+                    // accessible name am Button selbst.
+                    aria-label="AI-Assistent öffnen"
                     className={cn(
                       'h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all',
                       'bg-primary hover:bg-primary/90'
@@ -899,12 +853,12 @@ interface ChatAreaProps {
   capabilities: AssistantCapability[];
   // RefObject<T> is already nullable by design (current can be T | null)
   // Adding "| null" to the generic parameter is semantically incorrect
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   statusMessage?: string;
   contextDocuments?: ContextDocument[];
   onSuggestionClick: (suggestion: string) => void;
   onExecuteAction: (actionType: string, params: Record<string, unknown>) => Promise<ExecuteActionResponse>;
-  onRollbackAction: (actionId: string) => Promise<void>;
+  onRollbackAction: (actionId: string) => Promise<unknown>;
   onDismissAction: (actionType: string) => void;
   onDismissBooking: (index: number) => void;
   onDetailedFeedback?: (messageId: string, content: string) => void;
@@ -918,12 +872,12 @@ function ChatArea({
   pendingBookings,
   suggestions,
   showEmpty,
-  isLoading,
+  isLoading: _isLoading,
   error,
   capabilities,
   messagesEndRef,
   statusMessage,
-  contextDocuments,
+  contextDocuments: _contextDocuments,
   onSuggestionClick,
   onExecuteAction,
   onRollbackAction,
@@ -947,7 +901,7 @@ function ChatArea({
             {/* Capability Cards (Finance mode) */}
             {mode === 'finance' && capabilities.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-4 px-4">
-                {capabilities.slice(0, 4).map((cap, index) => (
+                {capabilities.slice(0, 4).map((cap, _index) => (
                   <button
                     key={cap.name}
                     className="rounded-lg border p-2 text-left hover:bg-muted/50 transition-colors"
@@ -964,7 +918,7 @@ function ChatArea({
 
             {/* Quick Suggestions */}
             <div className="flex flex-wrap justify-center gap-2">
-              {suggestions.slice(0, 4).map((suggestion, i) => (
+              {suggestions.slice(0, 4).map((suggestion, _i) => (
                 <QuickSuggestion
                   key={suggestion}
                   suggestion={suggestion}
@@ -1065,7 +1019,7 @@ interface RAGChatAreaProps {
   showEmpty: boolean;
   isLoading: boolean;
   error?: string | null;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   statusMessage?: string;
   contextDocuments?: ContextDocument[];
   onSuggestionClick: (suggestion: string) => void;
@@ -1076,13 +1030,13 @@ function RAGChatArea({
   ragMessages,
   suggestions,
   showEmpty,
-  isLoading,
+  isLoading: _isLoading,
   error,
   messagesEndRef,
   statusMessage,
-  contextDocuments,
+  contextDocuments: _contextDocuments,
   onSuggestionClick,
-  onDetailedFeedback,
+  onDetailedFeedback: _onDetailedFeedback,
 }: RAGChatAreaProps) {
   return (
     <ScrollArea className="flex-1">
@@ -1097,7 +1051,7 @@ function RAGChatArea({
 
             {/* Quick Suggestions */}
             <div className="flex flex-wrap justify-center gap-2">
-              {suggestions.slice(0, 4).map((suggestion, i) => (
+              {suggestions.slice(0, 4).map((suggestion, _i) => (
                 <QuickSuggestion
                   key={suggestion}
                   suggestion={suggestion}

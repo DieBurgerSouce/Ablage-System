@@ -51,11 +51,13 @@ class TestOCRRouterTrainingPipeline:
         for i in range(100):
             result = MagicMock()
             result.id = i
-            result.backend_used = backends[i % len(backends)]
+            # Echte OCRResult-Spalte heisst 'backend' (nicht 'backend_used')
+            result.backend = backends[i % len(backends)]
             result.confidence_score = 0.85 + (i % 10) * 0.01
             result.processing_time_ms = 1000 + (i % 500)
             result.created_at = datetime.now(timezone.utc) - timedelta(days=i % 30)
-            result.document_metadata = {
+            # document_metadata liegt am verknuepften Document, nicht am OCRResult
+            result.document.document_metadata = {
                 "document_type": "invoice" if i % 3 == 0 else "other",
                 "complexity": "high" if i % 4 == 0 else "medium",
                 "quality_score": 0.8,
@@ -235,7 +237,7 @@ class TestABTestRouting:
     @pytest.mark.asyncio
     async def test_ab_test_selection_active(self) -> None:
         """Test A/B-Test Selection wenn Test aktiv."""
-        with patch("app.agents.orchestration.unified_router.get_ab_test_manager") as mock_ab:
+        with patch("app.ml.ab_testing.get_ab_test_manager") as mock_ab:
             from app.agents.orchestration.unified_router import (
                 UnifiedOCRRouter,
                 DocumentAnalysis,
@@ -369,7 +371,8 @@ class TestConfidenceFallback:
         result = await router._ml_selection(
             analysis,
             SLARequirements(),
-            {"gpu_available": True},
+            # DeepSeek braucht GPU + ausreichend VRAM, sonst Fallback auf got_ocr
+            {"gpu_available": True, "gpu_memory_available_gb": 16.0},
         )
 
         # Should keep ML routing but add alternatives
@@ -404,7 +407,8 @@ class TestConfidenceFallback:
         result = await router._ml_selection(
             analysis,
             SLARequirements(),
-            {"gpu_available": True},
+            # DeepSeek braucht GPU + ausreichend VRAM, sonst Fallback auf got_ocr
+            {"gpu_available": True, "gpu_memory_available_gb": 16.0},
         )
 
         # Should trust ML fully
@@ -482,7 +486,11 @@ class TestModelTraining:
             date_range_days=30,
         )
 
-        result = await pipeline.train_model(dataset, force=False)
+        # XGBOOST_AVAILABLE wird in ocr_router_trainer importiert und zuerst
+        # geprueft; fuer den "zu wenig Daten"-Pfad muss es True sein (im Image
+        # ist xgboost nicht installiert).
+        with patch("app.ml.ocr_router_trainer.XGBOOST_AVAILABLE", True):
+            result = await pipeline.train_model(dataset, force=False)
 
         assert not result.success
         assert "genug" in result.error_message.lower()
@@ -491,28 +499,29 @@ class TestModelTraining:
 class TestModelVersioning:
     """Tests für Modell-Versionierung."""
 
-    def test_get_model_version(self) -> None:
+    def test_get_model_version(self, tmp_path: Path) -> None:
         """Test Modell-Versionierung."""
-        with patch("app.agents.orchestration.ml_router_model.XGBOOST_AVAILABLE", False):
-            from app.agents.orchestration.ml_router_model import OCRRouterModel
+        # OCRRouterModel funktioniert auch ohne XGBoost (graceful, _xgb=None);
+        # kein modul-lokales XGBOOST_AVAILABLE-Flag noetig.
+        # registry_path auf tmp_path: Default 'models/ocr_router' ist read-only.
+        from app.agents.orchestration.ml_router_model import OCRRouterModel
 
-            model = OCRRouterModel()
-            version = model.get_model_version()
+        model = OCRRouterModel(registry_path=tmp_path / "registry")
+        version = model.get_model_version()
 
-            # Untrainiertes Modell hat unversioned string
-            assert "unversioned" in version or "v" in version
+        # Untrainiertes Modell hat unversioned string
+        assert "unversioned" in version or "v" in version
 
-    def test_get_model_metrics(self) -> None:
+    def test_get_model_metrics(self, tmp_path: Path) -> None:
         """Test Modell-Metriken."""
-        with patch("app.agents.orchestration.ml_router_model.XGBOOST_AVAILABLE", False):
-            from app.agents.orchestration.ml_router_model import OCRRouterModel
+        from app.agents.orchestration.ml_router_model import OCRRouterModel
 
-            model = OCRRouterModel()
-            metrics = model.get_model_metrics()
+        model = OCRRouterModel(registry_path=tmp_path / "registry")
+        metrics = model.get_model_metrics()
 
-            assert isinstance(metrics, dict)
-            assert "training_samples" in metrics
-            assert "validation_accuracy" in metrics
+        assert isinstance(metrics, dict)
+        assert "training_samples" in metrics
+        assert "validation_accuracy" in metrics
 
 
 if __name__ == "__main__":

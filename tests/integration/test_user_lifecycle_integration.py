@@ -296,7 +296,7 @@ class TestJWTTokenValidation:
         user_data = {"sub": user_id, "email": "test@example.de"}
         token = create_access_token(data=user_data)
 
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             payload = await decode_token(token, expected_type="access")
 
         assert payload["sub"] == user_id
@@ -311,7 +311,7 @@ class TestJWTTokenValidation:
         user_data = {"sub": str(uuid4())}
         token = create_access_token(data=user_data)
 
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             with pytest.raises(HTTPException) as exc_info:
                 await decode_token(token, expected_type="refresh")
 
@@ -324,7 +324,7 @@ class TestJWTTokenValidation:
         user_id = str(uuid4())
         token = create_2fa_temp_token(user_id)
 
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             verified_user_id = await verify_2fa_temp_token(token)
 
         assert verified_user_id == user_id
@@ -343,8 +343,8 @@ class TestTokenBlacklisting:
         jti = secrets.token_urlsafe(32)
         expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
-        with patch("app.core.security._get_redis_client", return_value=None):
-            with patch("app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED", False):
+        with patch("app.core.security_auth._get_redis_client", return_value=None):
+            with patch("app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED", False):
                 await blacklist_token(jti, expires_at)
                 is_blacklisted = await is_token_blacklisted(jti)
 
@@ -359,7 +359,7 @@ class TestTokenBlacklisting:
         token = create_access_token(data=user_data)
 
         # First, blacklist the token
-        with patch("app.core.security.is_token_blacklisted", return_value=True):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=True):
             with pytest.raises(HTTPException) as exc_info:
                 await decode_token(token)
 
@@ -786,7 +786,7 @@ class TestMultiDeviceSession:
         mobile_tokens = create_token_pair(user_data)
 
         # Both should be valid
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             desktop_payload = await decode_token(desktop_tokens["access_token"])
             mobile_payload = await decode_token(mobile_tokens["access_token"])
 
@@ -806,8 +806,8 @@ class TestMultiDeviceSession:
         mobile_tokens = create_token_pair(user_data)
 
         # Blacklist desktop token
-        with patch("app.core.security._get_redis_client", return_value=None):
-            with patch("app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED", False):
+        with patch("app.core.security_auth._get_redis_client", return_value=None):
+            with patch("app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED", False):
                 desktop_payload = await decode_token(desktop_tokens["access_token"])
                 await blacklist_token(
                     desktop_payload["jti"],
@@ -912,7 +912,7 @@ class TestEmailChangeFlow:
             expires_delta=timedelta(hours=24)
         )
 
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             payload = await decode_token(token)
 
         assert payload["sub"] == user_id
@@ -1008,14 +1008,28 @@ class TestEdgeCases:
         assert verify_password(password, hashed)
 
     def test_very_long_password(self):
-        """Test: Very long password is handled."""
-        password = "Aa1!" * 250  # 1000 chars
+        """Vertrag: Ueberlange Passwoerter werden DEUTSCH abgelehnt.
+
+        2026-06-13: Der frueher als ECHTER BUG markierte unbehandelte
+        bcrypt-ValueError (>72 Bytes -> 500er) ist behoben — get_password_hash
+        lehnt Passwoerter ueber dem bcrypt-Limit jetzt explizit mit deutscher
+        72-Bytes-Meldung ab (app/core/security_auth.py, BCRYPT_MAX_PASSWORD_BYTES;
+        kein stilles Truncating). Der stale `xfail(strict=True)` wurde entfernt;
+        dieser Test bewacht jetzt aktiv das korrekte Ablehn-Verhalten.
+        Byte-Limit-Details: tests/unit/core/test_password_byte_limit.py
+        """
+        password = "Aa1!" * 250  # 1000 Zeichen >> 72 Bytes
+        # Der Staerke-Check kennt bewusst kein Byte-Limit (separater Layer)
         is_valid, _ = validate_password_strength(password)
         assert is_valid
 
-        # bcrypt truncates at 72 bytes but should still work
-        hashed = get_password_hash(password)
-        assert verify_password(password, hashed)
+        with pytest.raises(ValueError, match="72 Bytes"):
+            get_password_hash(password)
+
+        # Bis exakt 72 Bytes funktioniert Hashing + Verify regulaer
+        boundary_password = "Aa1!" * 18  # genau 72 Bytes
+        hashed = get_password_hash(boundary_password)
+        assert verify_password(boundary_password, hashed)
 
     @pytest.mark.asyncio
     async def test_expired_token_rejected(self):
@@ -1074,8 +1088,13 @@ class TestRoleManagement:
         """Test: Role can be assigned to user."""
         service = PermissionService(mock_db_session)
 
-        # Mock no existing assignment
-        mock_db_session.execute.return_value.fetchone.return_value = None
+        # Mock no existing assignment.
+        # W3: execute muss ein SYNCHRONES Result liefern — bei AsyncMock-
+        # Default ist fetchone() eine Coroutine (truthy) und assign_role
+        # haelt die Rolle faelschlich fuer bereits zugewiesen.
+        existing_result = MagicMock()
+        existing_result.fetchone.return_value = None
+        mock_db_session.execute.return_value = existing_result
 
         with patch.object(service, '_clear_user_cache_async', new_callable=AsyncMock):
             result = await service.assign_role(mock_user, mock_role)
@@ -1144,7 +1163,7 @@ class TestUserDeactivation:
         token = create_access_token(data=token_data)
 
         # Token is technically valid, but user is not active
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             payload = await decode_token(token)
             assert payload["sub"] == str(deactivated_user.id)
 
@@ -1405,8 +1424,12 @@ class TestSessionManagement:
         created = mock_session["created_at"]
         expires = mock_session["expires_at"]
 
-        # Should expire in 24 hours
-        assert (expires - created).total_seconds() == 24 * 3600
+        # Should expire in 24 hours.
+        # 2026-06-13: Die mock_session-Fixture ruft datetime.now() zweimal auf
+        # (created_at vs. expires_at), daher liegen die Zeitstempel ~1 µs
+        # auseinander -> exakte Gleichheit war flaky (86400.000001 != 86400).
+        # Toleranz statt exakter Gleichheit.
+        assert (expires - created).total_seconds() == pytest.approx(24 * 3600, abs=1.0)
 
         # Check if session is expired
         def is_session_expired(session: Dict) -> bool:
@@ -1455,8 +1478,8 @@ class TestTokenRefreshFlow:
         user_data = {"sub": str(uuid4())}
         tokens = create_token_pair(user_data)
 
-        with patch("app.core.security._get_redis_client", return_value=None):
-            with patch("app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED", False):
+        with patch("app.core.security_auth._get_redis_client", return_value=None):
+            with patch("app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED", False):
                 # Decode refresh token to get JTI
                 payload = await decode_token(tokens["refresh_token"])
                 old_jti = payload["jti"]
@@ -1494,7 +1517,7 @@ class TestTokenRefreshFlow:
         user_data = {"sub": str(uuid4())}
         tokens = create_token_pair(user_data)
 
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             with pytest.raises(HTTPException) as exc_info:
                 # Try to use access token as refresh token
                 await decode_token(tokens["access_token"], expected_type="refresh")
@@ -1545,7 +1568,7 @@ class TestComplete2FAFlow:
         temp_token = create_2fa_temp_token(str(user_with_2fa.id))
 
         # Step 2: Verify temp token
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             verified_user_id = await verify_2fa_temp_token(temp_token)
         assert verified_user_id == str(user_with_2fa.id)
 
@@ -1630,13 +1653,13 @@ class TestComplete2FAFlow:
 
         user_id = str(uuid4())
 
-        # Create expired 2FA temp token (by patching creation time)
-        with patch("app.core.security.settings") as mock_settings:
-            mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = 5
-            temp_token = create_2fa_temp_token(user_id)
+        # W3: settings NICHT als Ganzes patchen — jwt.encode braucht den
+        # echten SECRET_KEY (MagicMock ist nicht JSON-serialisierbar).
+        # Die Ablaufzeit des Temp-Tokens ist im Token-Helper gekapselt.
+        temp_token = create_2fa_temp_token(user_id)
 
         # Token should still be valid immediately
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             verified = await verify_2fa_temp_token(temp_token)
             assert verified == user_id
 
@@ -1677,11 +1700,17 @@ class TestEmailVerificationWorkflow:
 
     @pytest.mark.asyncio
     async def test_verify_email_with_token(self, unverified_user):
-        """Test: Email can be verified with valid token."""
+        """Test: Email-Claim bleibt erhalten, Token-Typ wird erzwungen.
+
+        W3 (2026-06-12): Echter Vertrag — create_access_token ERZWINGT
+        type='access' (Hardening: eigene type-Claims koennen nicht
+        eingeschmuggelt werden). Dedizierte Verifizierungs-Tokens kommen
+        aus dem EmailVerificationService, nicht aus create_access_token.
+        """
         token_data = {
             "sub": str(unverified_user.id),
             "email": unverified_user.email,
-            "type": "email_verification"
+            "type": "email_verification",  # wird vom Hardening ueberschrieben
         }
 
         token = create_access_token(
@@ -1689,11 +1718,12 @@ class TestEmailVerificationWorkflow:
             expires_delta=timedelta(hours=24)
         )
 
-        with patch("app.core.security.is_token_blacklisted", return_value=False):
+        with patch("app.core.security_auth.is_token_blacklisted", return_value=False):
             payload = await decode_token(token)
 
         assert payload["email"] == unverified_user.email
-        assert payload["type"] == "email_verification"
+        # Hardening: type-Claim wird IMMER auf 'access' gesetzt
+        assert payload["type"] == "access"
 
         # Mark email as verified
         unverified_user.email_verified = True

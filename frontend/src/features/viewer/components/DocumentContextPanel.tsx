@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { getDocumentContext } from '../api/document-context-api'
-import type { DocumentContextData, EntityContext, ChainContext, PaymentContext, PendingAction, RelatedDocument } from '../types/document-context-types'
+import type { EntityContext, ChainContext, PaymentContext, PendingAction, RelatedDocument } from '../types/document-context-types'
 
 interface DocumentContextPanelProps {
   documentId: string

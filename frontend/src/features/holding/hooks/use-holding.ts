@@ -3,15 +3,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  getHoldingOverview,
-  getHoldingCompanies,
-  compareCompanies,
-  getIntercompanyMetrics,
-  getCashFlowOverview,
-  ComparisonMetric,
-  CashFlowPeriod,
-} from '../api/holding-api';
+import { getHoldingOverview, getHoldingCompanies, compareCompanies, getIntercompanyMetrics, getCashFlowOverview, type ComparisonMetric, type CashFlowPeriod } from '../api/holding-api';
 
 // ==================== Query Keys ====================
 

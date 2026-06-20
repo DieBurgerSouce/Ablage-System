@@ -5,7 +5,6 @@
  * SHAP Erklärungen und A/B Testing.
  */
 
-import { logger } from '@/lib/logger';
 import type {
   DriftStatus,
   DriftReport,
@@ -197,7 +196,8 @@ export async function getAIDecisions(
     calibrated_confidence: d.calibrated_confidence || d.confidence,
     confidence_level: d.confidence_level as AIDecision['confidence_level'],
     quality_decision: d.auto_applied ? 'accept' : d.requires_review ? 'request_review' : 'accept',
-    explanation: d.explanation,
+    // Backend liefert die RoutingExplanation als JSONB-Objekt
+    explanation: d.explanation as AIDecision['explanation'],
     needs_review: d.requires_review,
     reviewed_at: d.reviewed_at,
     reviewed_by: d.reviewed_by_id,

@@ -40,7 +40,7 @@ export {
 // Types
 export type {
   Notification,
-  NotificationSettings,
+  NotificationSettings as NotificationSettingsData,
   NotificationSettingsUpdate,
   NotificationsResponse,
   UnreadCountResponse,

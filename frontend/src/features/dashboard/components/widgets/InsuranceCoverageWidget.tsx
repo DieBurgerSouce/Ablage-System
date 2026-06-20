@@ -15,17 +15,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-    ShieldCheck,
-    ShieldAlert,
-    ShieldX,
-    ChevronRight,
-    AlertTriangle,
-    Clock,
-    Euro,
-    Calendar,
-    CheckCircle2,
-} from 'lucide-react';
+import { ShieldCheck, ShieldAlert, ShieldX, ChevronRight, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardSectionError } from '../shared';
@@ -68,7 +58,7 @@ function useInsuranceSummary() {
     return useQuery({
         queryKey: ['insurance', 'summary'],
         queryFn: async (): Promise<InsuranceSummary> => {
-            const response = await api.get('/api/v1/insurance/summary');
+            const response = await api.get('/insurance/summary');
             return response.data;
         },
         staleTime: 10 * 60 * 1000, // 10 minutes
@@ -235,7 +225,6 @@ function InsuranceCoverageWidgetContent() {
 
     const ScoreIcon = getCoverageScoreIcon(summary.coverage_score);
     const hasGaps = summary.coverage_gaps.length > 0;
-    const hasUrgentDeadlines = summary.upcoming_deadlines.some(d => d.days_remaining <= 14);
 
     return (
         <div className="space-y-4">
@@ -323,7 +312,7 @@ function InsuranceCoverageWidgetContent() {
 
             {/* Link to insurance page */}
             <Link
-                to="/portfolio/insurance"
+                to="/privat/versicherungen"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
                 Alle Versicherungen anzeigen

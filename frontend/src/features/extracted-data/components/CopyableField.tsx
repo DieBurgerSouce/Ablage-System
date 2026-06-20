@@ -32,7 +32,7 @@ export function CopyableField({
 }: CopyableFieldProps) {
     const [copied, setCopied] = useState(false);
     // SECURITY FIX Phase 11.3: Timer ref for proper cleanup to prevent memory leaks
-    const timerRef = useRef<ReturnType<typeof setTimeout>>();
+    const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     // Cleanup timer on unmount
     useEffect(() => {

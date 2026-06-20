@@ -85,8 +85,8 @@ class CustomerCardService:
         if not force_refresh and customer_id in self._cache:
             card = self._cache[customer_id]
             # Prüfen ob Card noch aktuell (max 1h alt)
-            if card.last_sync_at:
-                age_hours = (datetime.now(timezone.utc) - card.last_sync_at).total_seconds() / 3600
+            if card.last_full_sync_at:
+                age_hours = (datetime.now(timezone.utc) - card.last_full_sync_at).total_seconds() / 3600
                 if age_hours < 1:
                     return CustomerCardResult(card=card, from_cache=True)
 
@@ -147,7 +147,7 @@ class CustomerCardService:
         db: AsyncSession,
         customer_id: str,
         customer_name: str
-    ) -> RAGCustomerCard:
+    ) -> Optional[RAGCustomerCard]:
         """
         Generiert eine neue Customer Card mit LLM.
 
@@ -183,6 +183,18 @@ class CustomerCardService:
                 source_document_ids.append(doc_id)
 
         context = "\n\n---\n\n".join(context_texts) if context_texts else ""
+
+        # Fast-Path: keine relevanten Dokumente fuer diesen Kunden gefunden -> KEINE
+        # teure LLM-Generierung und KEINE leere Junk-Card persistieren. get_card liefert
+        # dann None (schnelles 404 statt ~15-40s pro Aufruf). Behebt zugleich Daten-
+        # Verschmutzung: vorher wurde fuer nicht-existente Kunden eine leere Card angelegt.
+        if not source_document_ids:
+            logger.info(
+                "customer_card_skip_no_documents",
+                customer_id=customer_id,
+                customer_name=customer_name,
+            )
+            return None
 
         # 3. Quick Facts aus Dokumenten extrahieren
         quick_facts = await self._extract_quick_facts(db, source_document_ids)
@@ -282,7 +294,7 @@ class CustomerCardService:
                         customer_name,
                         similarity(customer_name, :query) as sim,
                         COALESCE(array_length(source_document_ids, 1), 0) as doc_count,
-                        last_sync_at
+                        last_full_sync_at AS last_sync_at
                     FROM rag_customer_cards
                     WHERE customer_name % :query
                        OR customer_name ILIKE :like_query
@@ -311,6 +323,9 @@ class CustomerCardService:
         except Exception as e:
             # Fallback ohne pg_trgm
             logger.warning("pg_trgm_not_available", **safe_error_log(e))
+            # Die fehlgeschlagene Query hat die Transaktion abgebrochen -> ohne Rollback
+            # scheitert auch der Fallback mit InFailedSQLTransactionError.
+            await db.rollback()
 
             result = await db.execute(
                 select(RAGCustomerCard)
@@ -325,7 +340,7 @@ class CustomerCardService:
                     customer_name=c.customer_name,
                     similarity=0.5,  # Default similarity
                     document_count=len(c.source_document_ids) if c.source_document_ids else 0,
-                    last_document_date=c.last_sync_at
+                    last_document_date=c.last_full_sync_at
                 )
                 for c in cards
             ]

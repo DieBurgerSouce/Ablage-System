@@ -7,14 +7,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
-  Receipt,
-  Scale,
-  TrendingUp,
-} from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, Receipt, TrendingUp } from 'lucide-react';
 import { useCashSummary } from '../hooks/use-cash-queries';
 import { formatCurrency } from '../utils/format';
 import { cn } from '@/lib/utils';
@@ -83,7 +76,7 @@ export function CashBookSummary({ registerId, startDate, endDate, className }: C
   const totalExpense = summary?.total_expense ?? 0;
   const netChange = totalIncome - totalExpense;
   const entryCount = summary?.entry_count ?? 0;
-  const currentBalance = summary?.current_balance ?? 0;
+  const currentBalance = summary?.closing_balance ?? 0;
 
   // Balance-Status ermitteln
   const balanceStatus = currentBalance < 0

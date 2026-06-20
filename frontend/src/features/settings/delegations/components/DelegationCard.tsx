@@ -85,7 +85,7 @@ function getDaysRemaining(endDate: string): number {
 export function DelegationCard({
   delegation,
   direction,
-  currentUserId,
+  currentUserId: _currentUserId,
   onAccept,
   onDecline,
   onRevoke,

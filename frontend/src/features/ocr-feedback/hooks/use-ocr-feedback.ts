@@ -5,19 +5,10 @@
  */
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
-import {
-  getLeaderboard,
-  getUserStats,
-  getUserStatsById,
-  getCorrectionQueue,
-  claimQueueItem,
-  submitCorrection,
-  submitBatchCorrections,
-  getAchievements,
-  LeaderboardPeriod,
-  QueuePriority,
-  CorrectionRequest,
-} from '../api/ocr-feedback-api';
+import { getLeaderboard, getUserStats, getUserStatsById, getCorrectionQueue, claimQueueItem, submitCorrection, submitBatchCorrections, getAchievements, type LeaderboardPeriod, type QueuePriority, type CorrectionRequest } from '../api/ocr-feedback-api';
+
+// Re-Export fuer Konsumenten (z. B. LeaderboardTable)
+export type { LeaderboardPeriod } from '../api/ocr-feedback-api';
 
 // ==================== Query Keys ====================
 

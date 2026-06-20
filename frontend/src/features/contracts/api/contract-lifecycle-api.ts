@@ -10,7 +10,7 @@ import type { UseQueryOptions } from '@tanstack/react-query';
 import { fetchWithAuth } from '@/lib/api';
 import { contractKeys } from './contracts-api';
 
-const API_BASE = '/api/v1/contracts';
+const API_BASE = '/contracts';
 
 // =============================================================================
 // Types

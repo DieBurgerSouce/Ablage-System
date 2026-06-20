@@ -11,20 +11,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-    AlertTriangle,
-    BarChart3,
-    CheckCircle2,
-    Filter,
-    Link2,
-    Loader2,
-    RefreshCw,
-    Settings2,
-    Sparkles,
-    TrendingUp,
-    Unlink,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart3, CheckCircle2, Filter, Link2, Loader2, RefreshCw, Sparkles, TrendingUp, Unlink } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -48,8 +36,8 @@ import {
 } from '@/features/banking/hooks/use-banking-queries';
 import { ManualMatchDialog } from './ManualMatchDialog';
 import { UnmatchedList } from './UnmatchedList';
-import { MatchSuggestions } from './MatchSuggestions';
-import type { BankTransaction } from '@/lib/api/services/banking';
+import { MatchSuggestions, type ReconcilableTransaction } from './MatchSuggestions';
+
 import { formatCurrency } from '@/features/banking/utils/format';
 import { cn } from '@/lib/utils';
 
@@ -112,7 +100,7 @@ export function ReconciliationPage() {
 
     // State
     const [selectedAccount, setSelectedAccount] = useState<string>('all');
-    const [selectedTransaction, setSelectedTransaction] = useState<BankTransaction | null>(null);
+    const [selectedTransaction, setSelectedTransaction] = useState<ReconcilableTransaction | null>(null);
     const [manualMatchOpen, setManualMatchOpen] = useState(false);
     const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState<string>('list');
@@ -175,7 +163,7 @@ export function ReconciliationPage() {
         }
     };
 
-    const handleSelectTransaction = useCallback((tx: BankTransaction) => {
+    const handleSelectTransaction = useCallback((tx: ReconcilableTransaction) => {
         setSelectedTransaction(tx);
         // Bei Auswahl direkt zur Vorschläge-Ansicht wechseln (auf Mobile)
         if (window.innerWidth < 1024) {
@@ -192,11 +180,6 @@ export function ReconciliationPage() {
         refetch();
     }, [toast, refetch]);
 
-    const openManualMatch = () => {
-        if (selectedTransaction) {
-            setManualMatchOpen(true);
-        }
-    };
 
     const handleBulkMatch = async (_transactionIds: string[]) => {
         try {
@@ -340,11 +323,7 @@ export function ReconciliationPage() {
                                     {accounts?.map((account) => (
                                         <SelectItem key={account.id} value={account.id}>
                                             {account.account_name}
-                                            {account.unmatched_count > 0 && (
-                                                <Badge variant="secondary" className="ml-2">
-                                                    {account.unmatched_count}
-                                                </Badge>
-                                            )}
+                                            {/* BankAccount liefert keinen unmatched_count — Badge entfernt */}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

@@ -37,7 +37,7 @@ function AdminEmailImportsPage() {
       <div className="p-8">
         <EmailConfigForm
           configId={editId ?? undefined}
-          onSave={handleBack}
+          onSuccess={handleBack}
           onCancel={handleBack}
         />
       </div>

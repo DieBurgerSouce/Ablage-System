@@ -12,20 +12,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  History,
-  Star,
-  StarOff,
-  Trash2,
-  Search,
-  MessageSquare,
-  Zap,
-  Calendar,
-  Loader2,
-  ChevronRight,
-  Archive,
-  Filter,
-} from 'lucide-react';
+import { History, Star, StarOff, Trash2, Search, MessageSquare, Zap, Calendar, Loader2, ChevronRight, Archive } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -56,10 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import {
-  useConversations,
-  ConversationSummary,
-} from '../hooks/use-finance-assistant';
+import { useConversations, type ConversationSummary } from '../hooks/use-finance-assistant';
 import {
   updateConversation,
   deleteConversation,

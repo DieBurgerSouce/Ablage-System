@@ -5,25 +5,10 @@
  */
 
 import { useState } from 'react';
-import {
-  AlertTriangle,
-  ArrowDownToLine,
-  BarChart3,
-  CheckCircle2,
-  ChevronRight,
-  Gauge,
-  Layers,
-  ListOrdered,
-  Loader2,
-  RefreshCw,
-  Trash2,
-  XCircle,
-  Zap,
-} from 'lucide-react';
+import { AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Gauge, Layers, ListOrdered, Loader2, RefreshCw, Trash2, XCircle, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog,
@@ -40,7 +25,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { useQueuesList, useQueueStats } from '../../hooks/use-jobs-query';
 import { useClearQueue } from '../../hooks/use-job-mutations';

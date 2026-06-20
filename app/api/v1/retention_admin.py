@@ -138,9 +138,7 @@ async def get_retention_config(
     """
     try:
         # Alle RetentionSettings für die Company des Users laden
-        stmt = select(RetentionSetting).where(
-            RetentionSetting.company_id == company_id
-        ).order_by(RetentionSetting.category)
+        stmt = select(RetentionSetting).order_by(RetentionSetting.category)
 
         result = await db.execute(stmt)
         settings = result.scalars().all()

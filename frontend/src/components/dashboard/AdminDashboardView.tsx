@@ -11,7 +11,6 @@
  */
 
 import { useNavigate } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
 import { Calendar, Upload } from 'lucide-react'
 import { DashboardGridEnhanced } from '@/features/dashboard/components/DashboardGridEnhanced'
 import { ContinueWhereYouLeftOff } from '@/components/dashboard/ContinueWhereYouLeftOff'

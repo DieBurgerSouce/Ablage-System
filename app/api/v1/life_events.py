@@ -12,7 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_user_company_id_dep
+from app.db.models import User
 from app.db.session import get_async_session
 from app.services.privat.life_events.life_event_engine import LifeEventEngine
 
@@ -81,14 +82,15 @@ async def create_life_event(
 @router.get("", response_model=list[LifeEventResponse])
 async def list_life_events(
     status_filter: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_async_session),
 ) -> list[LifeEventResponse]:
     """Listet alle Lebensereignisse des Benutzers."""
     service = LifeEventEngine(db)
     events = await service.get_life_events(
-        user_id=current_user["id"],
-        company_id=current_user["company_id"],
+        user_id=current_user.id,
+        company_id=company_id,
         status_filter=status_filter,
     )
     return events
@@ -161,13 +163,14 @@ async def complete_life_event(
 
 @router.get("/stats/active-count")
 async def get_active_count(
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, int]:
     """Zaehlt aktive Lebensereignisse."""
     service = LifeEventEngine(db)
     count = await service.get_active_events_count(
-        user_id=current_user["id"],
-        company_id=current_user["company_id"],
+        user_id=current_user.id,
+        company_id=company_id,
     )
     return {"active_count": count}

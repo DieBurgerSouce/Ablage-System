@@ -4,19 +4,7 @@
 
 import { apiClient } from '@/lib/api/client';
 import { logger } from '@/lib/logger';
-import {
-  ConditionalRuleBackend,
-  EscalationRuleBackend,
-  SubstitutionRuleBackend,
-  SLAMetricsBackend,
-  SLAReportBackend,
-  AutoFileStatsBackend,
-  AutoMatchResultBackend,
-  CreateConditionalRuleDTO,
-  UpdateConditionalRuleDTO,
-  CreateEscalationRuleDTO,
-  CreateSubstitutionRuleDTO,
-} from '../types/approval-enhanced-types';
+import type { ConditionalRuleBackend, EscalationRuleBackend, SubstitutionRuleBackend, SLAMetricsBackend, SLAReportBackend, AutoFileStatsBackend, AutoMatchResultBackend, CreateConditionalRuleDTO, UpdateConditionalRuleDTO, CreateEscalationRuleDTO, CreateSubstitutionRuleDTO } from '../types/approval-enhanced-types';
 
 const BASE_PATH = '/approval-enhanced';
 

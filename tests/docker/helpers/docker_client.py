@@ -83,10 +83,15 @@ class DockerClient:
         timeout: int = 30,
     ) -> subprocess.CompletedProcess[str]:
         """Run a docker command and return the result."""
+        # encoding="utf-8" + errors="replace": Container-Logs enthalten UTF-8
+        # (Umlaute, Tracebacks). Ohne explizites Encoding dekodiert Python auf
+        # Windows mit cp1252 (charmap) -> UnicodeDecodeError bei Bytes wie 0x9d.
         return subprocess.run(
             ["docker", *args],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             check=False,
         )
@@ -194,11 +199,15 @@ class DockerClient:
 
         result = self._run_command(args, timeout=60)
 
+        # stdout/stderr koennen None sein (z. B. wenn capture leer/abgebrochen)
+        # -> str + None waere ein TypeError. Defensive auf "" defaulten.
+        out = result.stdout or ""
+        err = result.stderr or ""
         return ContainerLogs(
             container_name=actual_name,
-            stdout=result.stdout,
-            stderr=result.stderr,
-            combined=result.stdout + result.stderr,
+            stdout=out,
+            stderr=err,
+            combined=out + err,
         )
 
     def exec_in_container(

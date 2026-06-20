@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -22,7 +21,7 @@ interface CommentReplyThreadProps {
 }
 
 export function CommentReplyThread({
-  commentId,
+  commentId: _commentId,
   originalComment,
   replies,
   onReply,

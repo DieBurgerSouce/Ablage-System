@@ -6,26 +6,7 @@
 
 import * as React from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
-import {
-  User,
-  ArrowLeft,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Building2,
-  Briefcase,
-  CreditCard,
-  FileText,
-  Clock,
-  GraduationCap,
-  Star,
-  Edit,
-  Loader2,
-  AlertCircle,
-  Heart,
-  Trash2,
-} from 'lucide-react';
+import { User, ArrowLeft, Mail, MapPin, Calendar, Building2, Briefcase, CreditCard, FileText, Clock, GraduationCap, Star, Edit, Loader2, AlertCircle, Heart, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { useEmployee } from '../hooks/use-personal-queries';
 import { EmployeeForm, DeleteEmployeeDialog } from '../components/employee';
 import { EMPLOYEE_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS } from '../types';
-import type { EmployeeStatus, EmploymentType, EmployeeDetail } from '../types';
+import type { EmployeeStatus, EmploymentType } from '../types';
 
 export function EmployeeDetailPage() {
   const params = useParams({ from: '/personal/$employeeId/' });

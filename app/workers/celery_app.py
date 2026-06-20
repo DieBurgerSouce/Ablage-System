@@ -26,6 +26,16 @@ from app.workers.celery_metrics import (
     set_gpu_lock_status, update_gpu_metrics
 )
 
+# --- A-Z-Deep F-01 Fix: ProcessDefinition-Mapper-Crashloop (prefork) ---
+# CPU-Worker (prefork) importierte die BPMN-Modelle nie -> SQLAlchemy konnte
+# 'ProcessDefinition' beim Mapper-Init nicht aufloesen, JEDER Task scheiterte
+# (SLA/Fraud/Cashflow ...). all_models registriert ALLE ORM-Klassen;
+# configure_mappers() faellt frueh am Boot statt erst beim ersten Query.
+import app.db.all_models  # noqa: F401,E402
+from sqlalchemy.orm import configure_mappers as _configure_mappers  # noqa: E402
+
+_configure_mappers()
+
 logger = structlog.get_logger(__name__)
 
 # Redis client for distributed GPU lock

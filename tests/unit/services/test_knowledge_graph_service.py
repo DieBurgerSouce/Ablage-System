@@ -279,19 +279,30 @@ async def test_shortest_path_found():
     to_entity.company_id = company_id
     to_entity.name = "Schmitt AG"
 
-    # Mock gemeinsames Dokument
-    from_docs_result = MagicMock()
-    from_docs_result.scalars.return_value.all.return_value = [doc_id]
-
-    to_docs_result = MagicMock()
-    to_docs_result.scalars.return_value.all.return_value = [doc_id]
-
     mock_document = MagicMock(spec=Document)
     mock_document.id = doc_id
     mock_document.filename = "shared.pdf"
 
-    mock_db.get.side_effect = [from_entity, to_entity, mock_document]
-    mock_db.execute.side_effect = [from_docs_result, to_docs_result]
+    # get_shortest_path nutzt zuerst _bfs_shortest_path (BFS ueber
+    # DocumentEntityLinks). BFS-Ablauf fuer den 2-Hop-Pfad from -> doc -> to:
+    #   execute #1: from-Entity -> Dokument-Links (document_id == doc_id)
+    #   execute #2: doc-Dokument -> Entity-Links (enthaelt to_id -> Treffer)
+    # Danach _build_path_data([from, doc, to]) -> 3x db.get.
+    from_doc_links = MagicMock()
+    from_doc_links.scalars.return_value.all.return_value = [doc_id]
+
+    doc_entity_links = MagicMock()
+    doc_entity_links.scalars.return_value.all.return_value = [to_id]
+
+    # 2 initiale get() (Existenz-/Company-Pruefung) + 3 get() in _build_path_data
+    mock_db.get.side_effect = [
+        from_entity,  # get_shortest_path: from_entity
+        to_entity,    # get_shortest_path: to_entity
+        from_entity,  # _build_path_data: i=0 Entity
+        mock_document,  # _build_path_data: i=1 Document
+        to_entity,    # _build_path_data: i=2 Entity
+    ]
+    mock_db.execute.side_effect = [from_doc_links, doc_entity_links]
 
     service = KnowledgeGraphService()
     result = await service.get_shortest_path(from_id, to_id, company_id, mock_db)
@@ -323,15 +334,31 @@ async def test_shortest_path_not_found():
     to_entity.company_id = company_id
     to_entity.name = "Schmitt AG"
 
-    # Mock KEINE gemeinsamen Dokumente
-    from_docs_result = MagicMock()
-    from_docs_result.scalars.return_value.all.return_value = [uuid4()]
+    # get_shortest_path: zuerst BFS (execute #1/#2), dann direkter Fallback
+    # (execute #3/#4). Kein gemeinsames Dokument -> kein Pfad.
+    doc_a = uuid4()
+    doc_b = uuid4()
 
+    # BFS execute #1: from-Entity -> Dokument-Links
+    bfs_from_doc_links = MagicMock()
+    bfs_from_doc_links.scalars.return_value.all.return_value = [doc_a]
+    # BFS execute #2: doc_a -> Entity-Links (LEER -> kein to_id-Treffer)
+    bfs_doc_entity_links = MagicMock()
+    bfs_doc_entity_links.scalars.return_value.all.return_value = []
+
+    # Fallback execute #3/#4: disjunkte Dokumentmengen -> common_docs leer
+    from_docs_result = MagicMock()
+    from_docs_result.scalars.return_value.all.return_value = [doc_a]
     to_docs_result = MagicMock()
-    to_docs_result.scalars.return_value.all.return_value = [uuid4()]  # Anderes Doc
+    to_docs_result.scalars.return_value.all.return_value = [doc_b]  # Anderes Doc
 
     mock_db.get.side_effect = [from_entity, to_entity]
-    mock_db.execute.side_effect = [from_docs_result, to_docs_result]
+    mock_db.execute.side_effect = [
+        bfs_from_doc_links,
+        bfs_doc_entity_links,
+        from_docs_result,
+        to_docs_result,
+    ]
 
     service = KnowledgeGraphService()
     result = await service.get_shortest_path(from_id, to_id, company_id, mock_db)

@@ -126,7 +126,8 @@ class TestDuplicateDetectionService:
         """Test: Identische Texte = 1.0 Aehnlichkeit."""
         text = "Dies ist ein Testdokument."
         similarity = service._calculate_text_similarity(text, text)
-        assert similarity == 1.0
+        # Cosine-Similarity kann minimal ueber 1.0 liegen (Float-Arithmetik)
+        assert similarity == pytest.approx(1.0)
 
     def test_calculate_text_similarity_similar(
         self,

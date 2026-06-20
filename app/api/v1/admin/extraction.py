@@ -237,17 +237,11 @@ async def get_extraction_statistics(
         task = generate_extraction_stats.delay()
         result = task.get(timeout=60)
     else:
-        # Direkt ausführen (schneller für Dashboard)
-        import asyncio
+        # F-31: Direkt awaiten statt eigene Event-Loop (Handler ist bereits async;
+        # asyncio.new_event_loop() crasht im laufenden Loop -> RuntimeError).
+        from app.workers.tasks.extraction_tasks import _async_generate_stats
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            from app.workers.tasks.extraction_tasks import _async_generate_stats
-
-            result = loop.run_until_complete(_async_generate_stats())
-        finally:
-            loop.close()
+        result = await _async_generate_stats()
 
     return ExtractionStatsResponse(
         total_documents=result["total_documents"],

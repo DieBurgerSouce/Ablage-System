@@ -40,13 +40,6 @@ class TestBPMNRegistrationLock:
         """is_registration_locked function should exist."""
         assert callable(is_registration_locked)
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_registration_starts_unlocked(self) -> None:
-        """Registration should start in unlocked state (before main.py runs)."""
-        # Note: This test may fail if run after main.py has initialized
-        # In integration tests, the lock will already be set
-        pass
-
     def test_lock_prevents_new_registrations(self) -> None:
         """After locking, new module registrations should fail."""
         # This test uses mocking to avoid affecting global state

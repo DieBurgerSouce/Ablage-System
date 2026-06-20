@@ -260,16 +260,46 @@ class TestGetInvoiceSummary:
         company_id: uuid.UUID,
     ) -> None:
         """Berechnet Rechnungssummen korrekt."""
-        # Mock Invoice-Statistiken
+        # Quelle iteriert ueber einzelne InvoiceTracking-Objekte
+        # (result.scalars().all()), nicht ueber eine aggregierte .one()-Zeile.
+        now = datetime.now(timezone.utc)
+        past_due = (now - timedelta(days=10)).date()
+        future_due = (now + timedelta(days=10)).date()
+        inv_date = (now - timedelta(days=20)).date()
+
+        invoices = []
+        # 1 ueberfaellige offene Rechnung (open + ueberfaellig)
+        inv_overdue = MagicMock()
+        inv_overdue.amount = Decimal("1000.00")
+        inv_overdue.status = "open"
+        inv_overdue.due_date = past_due
+        inv_overdue.invoice_date = inv_date
+        inv_overdue.dunning_level = 0
+        inv_overdue.paid_at = None
+        invoices.append(inv_overdue)
+        # 2 weitere offene, nicht ueberfaellige
+        for _ in range(2):
+            inv = MagicMock()
+            inv.amount = Decimal("1000.00")
+            inv.status = "open"
+            inv.due_date = future_due
+            inv.invoice_date = inv_date
+            inv.dunning_level = 0
+            inv.paid_at = None
+            invoices.append(inv)
+        # 7 bezahlte
+        for _ in range(7):
+            inv = MagicMock()
+            inv.amount = Decimal("1000.00")
+            inv.status = "paid"
+            inv.due_date = past_due
+            inv.invoice_date = inv_date
+            inv.dunning_level = 0
+            inv.paid_at = now
+            invoices.append(inv)
+
         mock_result = MagicMock()
-        mock_result.one.return_value = MagicMock(
-            total=10,
-            open=3,
-            overdue=1,
-            total_amount=Decimal("10000.00"),
-            open_amount=Decimal("3000.00"),
-            overdue_amount=Decimal("1000.00"),
-        )
+        mock_result.scalars.return_value.all.return_value = invoices
         mock_db.execute.return_value = mock_result
 
         result = await service._get_invoice_summary(entity_id, company_id)
@@ -300,15 +330,20 @@ class TestGetRiskTrend:
         # Mock Entity mit Risk Score
         mock_entity = MagicMock()
         mock_entity.risk_score = 45.0
+        mock_entity.risk_factors = None
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_entity
+        # Folge-Queries (Zahlungsverzoegerung) nutzen .scalar(); None -> 0,
+        # sonst MagicMock-Arithmetik (TypeError) in der Trend-Berechnung.
+        mock_result.scalar.return_value = None
         mock_db.execute.return_value = mock_result
 
         result = await service._get_risk_trend(entity_id, company_id)
 
         assert isinstance(result, RiskTrend)
         assert result.current_score == 45.0
+        assert result.risk_level == "medium"  # 45.0 -> medium
 
 
 # =============================================================================

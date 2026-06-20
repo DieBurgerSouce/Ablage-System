@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, Document, InvoiceTracking, BusinessEntity
 from app.services.privacy.differential_privacy_service import (
@@ -166,14 +166,15 @@ def validate_table_access(table: str, operation: str, column: Optional[str] = No
             )
 
 
-async def get_company_id(user: User) -> UUID:
-    """Extrahiert Company-ID aus User."""
-    if not user.company_id:
+async def get_company_id(db: AsyncSession, user: User) -> UUID:
+    """Ermittelt die aktive Company-ID des Users via UserCompany-Tabelle."""
+    company_id = await get_user_company_id(db, user)
+    if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Benutzer hat keine zugewiesene Firma."
         )
-    return user.company_id
+    return company_id
 
 
 # ============================================================================
@@ -182,6 +183,7 @@ async def get_company_id(user: User) -> UUID:
 
 @router.get("/budget", response_model=BudgetStatusResponse)
 async def get_privacy_budget(
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BudgetStatusResponse:
     """
@@ -189,7 +191,7 @@ async def get_privacy_budget(
 
     Das Budget wird täglich um Mitternacht zurückgesetzt.
     """
-    company_id = await get_company_id(current_user)
+    company_id = await get_company_id(db, current_user)
     tracker = await get_budget_tracker()
     status_obj = await tracker.get_status(company_id)
 
@@ -217,7 +219,7 @@ async def dp_count_query(
     Verwendet Laplace-Mechanismus mit Sensitivitaet 1.
     Gruppen unter K-Schwelle (default: 5) werden als 0 gemeldet.
     """
-    company_id = await get_company_id(current_user)
+    company_id = await get_company_id(db, current_user)
 
     # Validiere Tabellen-Zugriff
     validate_table_access(request.table, "count")
@@ -296,7 +298,7 @@ async def dp_sum_query(
 
     Benötigt max_contribution um Sensitivitaet zu begrenzen.
     """
-    company_id = await get_company_id(current_user)
+    company_id = await get_company_id(db, current_user)
 
     # Validiere Zugriff
     validate_table_access(request.table, "sum", request.column)
@@ -398,7 +400,7 @@ async def reset_privacy_budget(
             detail="Nur Administratoren können das Budget zurücksetzen."
         )
 
-    company_id = await get_company_id(current_user)
+    company_id = await get_company_id(db, current_user)
     tracker = await get_budget_tracker()
     await tracker.reset_budget(company_id)
 

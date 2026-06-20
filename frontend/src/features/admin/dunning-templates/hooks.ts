@@ -13,7 +13,7 @@ import {
   downloadBatchLetters,
 } from './api';
 import { QUERY_SEMI_STATIC, QUERY_STATIC } from '@/lib/api/query-config';
-import type { LetterPreviewParams, BatchGenerateParams } from './types';
+import type { LetterPreviewParams } from './types';
 
 // Query Keys
 export const dunningTemplateKeys = {

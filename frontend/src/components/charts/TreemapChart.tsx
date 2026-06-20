@@ -7,13 +7,14 @@ import {
     Tooltip,
 } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
 
 export interface TreemapDataNode {
     name: string
     value?: number
     children?: TreemapDataNode[]
     color?: string
+    // recharts TreemapDataType verlangt eine Index-Signatur
+    [key: string]: unknown
 }
 
 export interface TreemapChartProps {
@@ -63,7 +64,7 @@ interface CustomizedContentProps {
 }
 
 const CustomizedContent: React.FC<CustomizedContentProps> = ({
-    depth,
+    depth: _depth,
     x = 0,
     y = 0,
     width = 0,

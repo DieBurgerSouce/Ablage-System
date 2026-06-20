@@ -8,23 +8,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import {
-  AlertTriangle,
-  ArrowRight,
-  Bot,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Database,
-  FileText,
-  Info,
-  Loader2,
-  Send,
-  TrendingDown,
-  TrendingUp,
-  Upload,
-  Zap,
-} from 'lucide-react'
+import { AlertTriangle, ArrowRight, Bot, CheckCircle2, ChevronRight, Clock, Database, FileText, Info, Send, TrendingDown, TrendingUp, Upload, Zap } from 'lucide-react'
 
 import { apiClient } from '@/lib/api/client'
 import { Badge } from '@/components/ui/badge'
@@ -117,11 +101,6 @@ const SEVERITY_STYLES = {
   critical: 'border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800',
 } as const
 
-const SEVERITY_BADGE = {
-  info: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-  critical: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-} as const
 
 const VARIANT_STYLES = {
   default: '',

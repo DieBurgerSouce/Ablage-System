@@ -10,16 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Plus,
-  Play,
-  Pause,
-  GitBranch,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  BarChart3,
-} from 'lucide-react';
+import { Plus, Play, Pause, GitBranch, Clock, BarChart3 } from 'lucide-react';
 import type { ProcessDefinition } from '@/features/bpmn';
 
 export const Route = createFileRoute('/prozesse/')({

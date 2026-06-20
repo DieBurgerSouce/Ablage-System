@@ -814,7 +814,12 @@ class MagicButtonsService:
             doc = doc_result.scalar_one_or_none()
 
             if not doc:
-                raise ValueError("Dokument nicht gefunden")
+                # Kontrollfluss-Fall (kein PII): aussagekraeftige deutsche Meldung
+                # konsistent zur Vorschau, statt generischem safe_error_detail.
+                result.status = MagicButtonStatus.FAILED
+                result.message = "Dokument nicht gefunden"
+                result.duration_ms = int((time.time() - start_time) * 1000)
+                return result
 
             extracted = doc.extracted_data or {}
 
@@ -826,7 +831,11 @@ class MagicButtonsService:
             )
 
             if not name:
-                raise ValueError("Kein Firmenname gefunden")
+                # Kontrollfluss-Fall (kein PII): aussagekraeftige deutsche Meldung.
+                result.status = MagicButtonStatus.FAILED
+                result.message = "Kein Firmenname im Dokument gefunden"
+                result.duration_ms = int((time.time() - start_time) * 1000)
+                return result
 
             # Entity erstellen
             import uuid as uuid_module

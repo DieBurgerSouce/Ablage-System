@@ -12,7 +12,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
 COPY . .
-RUN npm run build
+# build:strict erzwingt `tsc -b` vor dem Vite-Build (F-14): das Image baut nicht
+# mehr mit TypeScript-Fehlern. Vorher lief hier `npm run build` (non-strict).
+RUN npm run build:strict
 
 # Stage 2: Production
 # Pin base image digest for reproducible builds

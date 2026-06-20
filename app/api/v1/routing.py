@@ -243,10 +243,13 @@ async def predict_routing(
                 )
 
             elif target == RoutingTarget.PRIORITY:
+                priority_value = prediction.prediction
+                if hasattr(priority_value, "value"):
+                    priority_value = priority_value.value
                 predictions["priority_prediction"] = PriorityPredictionResponse(
-                    priority=prediction.predicted_value or "normal",
+                    priority=str(priority_value) if priority_value else "normal",
                     confidence=prediction.confidence,
-                    reasoning=prediction.reasoning,
+                    reasoning=prediction.explanation,
                 )
 
             elif target == RoutingTarget.TAGS:
@@ -276,7 +279,7 @@ async def predict_routing(
             confidences.append(prediction.confidence)
 
         except Exception as e:
-            logger.debug("prediction_failed", target=target, error_type=type(e).__name__, **safe_error_log(e))
+            logger.debug("prediction_failed", target=target, **safe_error_log(e))
             continue
 
     overall_confidence = sum(confidences) / len(confidences) if confidences else 0.0
@@ -375,7 +378,7 @@ async def train_routing_model(
             .where(Document.company_id == company_id)
             .where(Document.created_at >= cutoff_date)
             .where(Document.deleted_at.is_(None))
-            .where(Document.assigned_to_id.isnot(None))  # Nur zugewiesene Dokumente
+            .where(Document.owner_id.isnot(None))  # Nur zugewiesene Dokumente
         )
         result = await db.execute(stmt)
         documents = result.scalars().all()
@@ -383,7 +386,7 @@ async def train_routing_model(
         for doc in documents:
             history = RoutingHistory(
                 document_id=doc.id,
-                routed_to=str(doc.assigned_to_id) if doc.assigned_to_id else None,
+                routed_to=str(doc.owner_id) if doc.owner_id else None,
                 routed_at=doc.updated_at or doc.created_at,
                 was_correct=True,  # Annahme: manuelle Zuweisungen waren korrekt
                 time_to_process=None,
@@ -468,15 +471,25 @@ async def get_model_info(
     """
     predictor = RoutingPredictor(db)
 
+    # F-31: RoutingPredictor besitzt keine Felder model_version/last_trained/
+    # training_samples/accuracy_by_target/model. Antwort konservativ aus den
+    # real vorhandenen Attributen/Methoden aufbauen (frisch konstruierter
+    # Predictor laedt Modelle lazy -> i. d. R. Rules-only).
+    stats = predictor.get_statistics()
+    is_ml_model = bool(stats.get("has_ml_model", False))
+    model_version = (
+        predictor.MODEL_VERSION_PREFIX
+        if is_ml_model
+        else f"{predictor.MODEL_VERSION_PREFIX}-rules-only"
+    )
+
     return ModelInfoResponse(
-        model_version=predictor.model_version,
+        model_version=model_version,
         targets_available=[t.value for t in RoutingTarget],
-        last_trained=predictor.last_trained.isoformat()
-        if predictor.last_trained
-        else None,
-        training_samples=predictor.training_samples,
-        accuracy=predictor.accuracy_by_target,
-        is_ml_model=predictor.model is not None,
+        last_trained=None,
+        training_samples=int(stats.get("predictions_count", 0)),
+        accuracy={"overall": float(stats.get("accuracy", 0.0))},
+        is_ml_model=is_ml_model,
     )
 
 
@@ -545,7 +558,7 @@ async def get_quick_suggestions(
 
             user_stmt = (
                 select(UserModel.id, UserModel.username, func.count().label("count"))
-                .join(Document, Document.assigned_to_id == UserModel.id)
+                .join(Document, Document.owner_id == UserModel.id)
                 .where(Document.business_entity_id == entity.id)
                 .where(Document.deleted_at.is_(None))
                 .group_by(UserModel.id, UserModel.username)

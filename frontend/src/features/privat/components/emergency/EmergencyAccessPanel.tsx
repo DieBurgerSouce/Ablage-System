@@ -20,17 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -226,7 +216,8 @@ export function EmergencyAccessPanel({
                 <DialogContent>
                   <AddContactForm
                     onSubmit={(contact) => {
-                      onAddContact(contact);
+                      // Neue Kontakte sind aktiv (isActive gehoert nicht zum Formular)
+                      onAddContact({ ...contact, isActive: true });
                       setIsAddDialogOpen(false);
                     }}
                     onCancel={() => setIsAddDialogOpen(false)}

@@ -7,6 +7,12 @@ Tests correctness properties for PaddleOCR-VL experimental agent.
 """
 
 import pytest
+
+# Optionale Test-Abhaengigkeit: property-based Tests benoetigen 'hypothesis'.
+# Ist sie im Image nicht installiert, wird das gesamte Modul sauber geskippt
+# (statt eines Collection-Errors).
+pytest.importorskip("hypothesis")
+
 from hypothesis import given, strategies as st, settings, HealthCheck
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any

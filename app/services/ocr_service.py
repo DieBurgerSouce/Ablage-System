@@ -113,7 +113,21 @@ class OCRService:
             # Check if backends are available
             available_backends = self.backend_manager.get_available_backends()
             if not available_backends:
-                raise RuntimeError("No OCR backends available. Please check installation.")
+                # Bekannte, nicht-sensible Betriebsbedingung: explizit zurückgeben
+                # statt durch safe_error_detail zu generalisieren (sonst geht die
+                # umsetzbare Ursache verloren). Enthält keine PII.
+                self.processing_stats["total_errors"] += 1
+                logger.error("ocr_no_backends_available")
+                return {
+                    "success": False,
+                    "error": "No OCR backends available. Please check installation.",
+                    "metadata": {
+                        "processing_time_seconds": (
+                            datetime.now(timezone.utc) - start_time
+                        ).total_seconds(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                }
 
             # Select backend (auto-selection if not specified)
             if backend == "auto" or backend is None:
@@ -201,7 +215,6 @@ class OCRService:
 
                     logger.warning(
                         "german_correction_failed",
-                        error_type=type(e).__name__,
                         **safe_error_log(e),
                         text_length=len(result.get("text", "")),
                         total_correction_errors=self.processing_stats["total_correction_errors"],

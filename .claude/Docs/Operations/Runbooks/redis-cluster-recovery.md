@@ -111,8 +111,8 @@ docker compose up -d redis
 docker network inspect ablage_backend-network
 
 # Container neu verbinden
-docker network disconnect ablage_backend-network ablage-redis-1
-docker network connect ablage_backend-network ablage-redis-1
+docker network disconnect ablage_backend-network ablage-redis
+docker network connect ablage_backend-network ablage-redis
 
 # Neustart
 docker compose restart redis backend worker

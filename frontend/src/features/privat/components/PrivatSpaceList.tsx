@@ -4,11 +4,9 @@
  * Zeigt persönliche und geteilte Bereiche des Nutzers
  */
 
-import * as React from 'react';
 import { Link } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
@@ -28,7 +26,7 @@ import {
   Trash2,
   HardDrive,
 } from 'lucide-react';
-import type { PrivatSpaceWithStats, PrivatSpaceType } from '@/types/privat';
+import type { PrivatSpaceWithStats } from '@/types/privat';
 import { cn } from '@/lib/utils';
 
 interface PrivatSpaceListProps {
@@ -296,13 +294,7 @@ function SpaceCard({ space, onEdit, onDelete, onSettings }: SpaceCardProps) {
             <dt className="sr-only">Speichergröße</dt>
             <dd>{formatBytes(space.totalSizeBytes)}</dd>
           </div>
-          {!isPersonal && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Users className="h-4 w-4" aria-hidden="true" />
-              <dt className="sr-only">Anzahl Nutzer</dt>
-              <dd>{space.accessCount ?? 0} Nutzer</dd>
-            </div>
-          )}
+          {/* Nutzer-Anzeige entfernt: PrivatSpaceWithStats liefert keinen accessCount */}
         </dl>
         <div className="mt-4">
           <Link to="/privat/spaces/$spaceId" params={{ spaceId: space.id }}>

@@ -40,7 +40,7 @@ export function SimplifiedDashboardView({ userName }: SimplifiedDashboardViewPro
 
     // Document click handler
     const handleDocumentClick = (docId: string) => {
-        navigate({ to: '/documents/$id', params: { id: docId } })
+        navigate({ to: '/documents/$documentId', params: { documentId: docId } })
     }
 
     const greeting = getGreeting()

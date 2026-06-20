@@ -6,7 +6,7 @@
  */
 
 import { memo, useMemo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { formatDateTimeDE, formatNumberDE } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +37,7 @@ import type { LineageEventType } from '@/lib/api/services/lineage';
 // Types
 // =============================================================================
 
-export interface LineageNodeData {
+export type LineageNodeData = {
   id: string;
   eventType: LineageEventType;
   eventData: Record<string, unknown>;
@@ -48,7 +48,9 @@ export interface LineageNodeData {
   sourceService: string | null;
   label: string;
   selected?: boolean;
-}
+};
+
+export type LineageFlowNode = Node<LineageNodeData, 'lineageEvent'>;
 
 // =============================================================================
 // Event Configuration
@@ -250,7 +252,7 @@ function formatConfidence(confidence: number | null): string {
 export const LineageNode = memo(function LineageNode({
   data,
   selected,
-}: NodeProps<LineageNodeData>) {
+}: NodeProps<LineageFlowNode>) {
   const config = useMemo(
     () => EVENT_CONFIG[data.eventType] || EVENT_CONFIG.modification,
     [data.eventType]
@@ -378,13 +380,13 @@ function renderEventDataPreview(
     case 'import':
       return (
         <div className="text-xs space-y-0.5">
-          {eventData.source_type && (
+          {Boolean(eventData.source_type) && (
             <p>
               <span className="text-muted-foreground">Quelle: </span>
               <span className="font-medium">{String(eventData.source_type)}</span>
             </p>
           )}
-          {eventData.filename && (
+          {Boolean(eventData.filename) && (
             <p className="truncate">
               <span className="text-muted-foreground">Datei: </span>
               <span className="font-medium">{String(eventData.filename)}</span>
@@ -397,13 +399,13 @@ function renderEventDataPreview(
     case 'ocr_failed':
       return (
         <div className="text-xs space-y-0.5">
-          {eventData.backend && (
+          {Boolean(eventData.backend) && (
             <p>
               <span className="text-muted-foreground">Backend: </span>
               <span className="font-medium">{String(eventData.backend)}</span>
             </p>
           )}
-          {eventData.pages !== undefined && (
+          {eventData.pages !== undefined && eventData.pages !== null && (
             <p>
               <span className="text-muted-foreground">Seiten: </span>
               <span className="font-medium">{String(eventData.pages)}</span>
@@ -415,7 +417,7 @@ function renderEventDataPreview(
     case 'classification':
       return (
         <div className="text-xs space-y-0.5">
-          {eventData.document_type && (
+          {Boolean(eventData.document_type) && (
             <p>
               <span className="text-muted-foreground">Typ: </span>
               <span className="font-medium">{String(eventData.document_type)}</span>
@@ -427,13 +429,13 @@ function renderEventDataPreview(
     case 'entity_link':
       return (
         <div className="text-xs space-y-0.5">
-          {eventData.entity_name && (
+          {Boolean(eventData.entity_name) && (
             <p className="truncate">
               <span className="text-muted-foreground">Partner: </span>
               <span className="font-medium">{String(eventData.entity_name)}</span>
             </p>
           )}
-          {eventData.match_type && (
+          {Boolean(eventData.match_type) && (
             <p>
               <span className="text-muted-foreground">Match: </span>
               <span className="font-medium">{String(eventData.match_type)}</span>
@@ -445,13 +447,13 @@ function renderEventDataPreview(
     case 'export':
       return (
         <div className="text-xs space-y-0.5">
-          {eventData.format && (
+          {Boolean(eventData.format) && (
             <p>
               <span className="text-muted-foreground">Format: </span>
               <span className="font-medium">{String(eventData.format)}</span>
             </p>
           )}
-          {eventData.destination && (
+          {Boolean(eventData.destination) && (
             <p className="truncate">
               <span className="text-muted-foreground">Ziel: </span>
               <span className="font-medium">{String(eventData.destination)}</span>
@@ -464,13 +466,13 @@ function renderEventDataPreview(
     case 'metadata_update':
       return (
         <div className="text-xs space-y-0.5">
-          {eventData.field && (
+          {Boolean(eventData.field) && (
             <p>
               <span className="text-muted-foreground">Feld: </span>
               <span className="font-medium">{String(eventData.field)}</span>
             </p>
           )}
-          {eventData.reason && (
+          {Boolean(eventData.reason) && (
             <p className="truncate">
               <span className="text-muted-foreground">Grund: </span>
               <span className="font-medium">{String(eventData.reason)}</span>

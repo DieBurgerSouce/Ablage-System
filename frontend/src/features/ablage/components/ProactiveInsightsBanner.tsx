@@ -11,19 +11,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import {
-  Lightbulb,
-  AlertTriangle,
-  TrendingUp,
-  Bell,
-  X,
-  ChevronRight,
-  Sparkles,
-  FileWarning,
-  Clock,
-  CheckCircle2,
-  Loader2,
-} from 'lucide-react';
+import { Lightbulb, AlertTriangle, TrendingUp, Bell, X, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -326,7 +314,7 @@ export function ProactiveInsightsBanner({
   onFilterDocuments,
 }: ProactiveInsightsBannerProps) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-  const [isExecuting, setIsExecuting] = useState(false);
+  const [isExecuting, _setIsExecuting] = useState(false);
 
   // Generiere Insights
   const insights = useMemo(

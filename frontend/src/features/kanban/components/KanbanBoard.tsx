@@ -14,7 +14,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw, LayoutGrid, AlertCircle } from 'lucide-react';
@@ -96,7 +96,12 @@ export function KanbanBoard({ workflowType = 'document' }: KanbanBoardProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div
+        role="group"
+        aria-label="Kanban-Board wird geladen"
+        tabIndex={0}
+        className="flex gap-4 overflow-x-auto pb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
+      >
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="min-w-[280px]">
             <Skeleton className="h-[600px] w-full rounded-lg" />
@@ -170,7 +175,16 @@ export function KanbanBoard({ workflowType = 'document' }: KanbanBoardProps) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '600px' }}>
+        {/* a11y (WCAG 2.1 AA scrollable-region-focusable): Die horizontal
+            scrollbare Board-Leiste muss per Tastatur fokussierbar sein und
+            einen sprechenden Namen tragen. */}
+        <div
+          role="group"
+          aria-label="Kanban-Board mit Workflow-Phasen"
+          tabIndex={0}
+          className="flex gap-4 overflow-x-auto pb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
+          style={{ minHeight: '600px' }}
+        >
           {board.stages
             .sort((a, b) => a.stage_order - b.stage_order)
             .map((stage) => (

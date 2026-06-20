@@ -132,11 +132,12 @@ def mock_profiling_service():
     }
 
     # Mock Reset
+    # Service liefert Umlaut-Keys (echter Vertrag, profiling_service.reset_stats)
     service.reset_stats.return_value = {
         "status": "erfolg",
-        "geloeschte_endpoints": 5,
-        "geloeschte_langsame_requests": 3,
-        "geloeschte_snapshots": 10,
+        "gelöschte_endpoints": 5,
+        "gelöschte_langsame_requests": 3,
+        "gelöschte_snapshots": 10,
     }
 
     # Mock profiling_level property

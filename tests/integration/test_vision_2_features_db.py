@@ -1,40 +1,68 @@
 # -*- coding: utf-8 -*-
 """
-Integration Tests: Vision 2.0 Features - Database Operations.
+Integration Tests: Vision 2.0 Features - Database Operations (gemockt).
 
-Tests reale Datenbankoperationen mit Rollback.
-Verifiziert korrekte SQL-Queries und Transaktionsverhalten.
-
-Features getestet:
-- Communication Hub
-- Industry Benchmarks
-- AI Mentor
-- Liquidity Scenarios
+W3 (2026-06-12): Komplett auf die ECHTEN Service-Vertraege modernisiert
+(15 Drift-Failures). Die alte Fassung testete erfundene APIs
+(``CommunicationHubService()`` ohne db, ``get_timeline``,
+``get_company_metrics``, ``get_user_preferences``, ``run_scenario``).
+Reale Vertraege (G1 company_id-Rollout: db kommt in den Konstruktor):
+- CommunicationHubService(db).get_communication_hub(entity_id, company_id, ...)
+- IndustryBenchmarkService(db).get_company_benchmark(company_id, ...)
+- AIMentorService(db).get_mentor_preferences/dismiss_tip/analyze_behavior_patterns
+- LiquidityScenarioService(db).run_monte_carlo(company_id, ...)
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, List, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    pass
 
 
 # =============================================================================
-# Test Fixtures
+# Test Fixtures / Helpers
 # =============================================================================
+
+def _empty_result() -> MagicMock:
+    """DB-Result-Mock: alle Konsum-Pfade liefern 'leer'.
+
+    2026-06-13: `.one()`/`.first()` liefern jetzt eine Aggregat-Zeile, deren
+    numerische Felder 0 sind (statt eines nackten MagicMock). Sonst lieferte
+    `row.total or 0` den MagicMock und `if total > 0` warf TypeError —
+    `_calculate_company_metrics` (IndustryBenchmarkService) konsumiert
+    `result.one().total/paid/dunned/...`. Damit bildet der Mock den echten
+    Vertrag einer leeren Aggregat-Query ab.
+    """
+    zero_row = MagicMock()
+    for _field in (
+        "total", "paid", "dunned", "cancelled", "skonto_used",
+        "total_amount", "outstanding",
+    ):
+        setattr(zero_row, _field, 0)
+
+    res = MagicMock()
+    res.scalar.return_value = 0
+    res.scalar_one_or_none.return_value = None
+    res.scalars.return_value.all.return_value = []
+    res.all.return_value = []
+    res.first.return_value = zero_row
+    res.one.return_value = zero_row
+    res.one_or_none.return_value = None
+    return res
+
 
 @pytest.fixture
 def mock_db_session() -> AsyncMock:
-    """Creates a mock async database session."""
+    """Mock async database session (alle Queries leer)."""
     session = AsyncMock()
-    session.execute = AsyncMock()
+    session.execute = AsyncMock(return_value=_empty_result())
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
     session.close = AsyncMock()
@@ -67,94 +95,106 @@ class TestCommunicationHubDB:
     """Database tests for CommunicationHubService."""
 
     @pytest.mark.asyncio
-    async def test_get_timeline_query_includes_company_filter(
+    async def test_entity_access_check_filters_by_company(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
         sample_entity_id: uuid.UUID,
-    ):
-        """Verify get_timeline query includes company_id filter."""
+    ) -> None:
+        """Multi-Tenant: Access-Check-Query filtert auf company_id."""
         from app.services.communication_hub_service import CommunicationHubService
 
-        service = CommunicationHubService()
+        service = CommunicationHubService(mock_db_session)
 
-        # Setup mock to return empty results
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db_session.execute.return_value = mock_result
-
-        await service.get_timeline(
-            db=mock_db_session,
+        hub = await service.get_communication_hub(
             entity_id=sample_entity_id,
             company_id=sample_company_id,
-            days_back=30,
+            include_sections=["entity"],
         )
 
-        # Verify execute was called (query was made)
-        assert mock_db_session.execute.called
+        # Kein Dokument der Company verknuepft -> Entity bleibt leer
+        assert hub.entity == {}
+        # Die Access-Check-Query enthaelt den company_id-Filter
+        first_stmt = mock_db_session.execute.call_args_list[0].args[0]
+        assert "company_id" in str(first_stmt)
 
     @pytest.mark.asyncio
-    async def test_get_timeline_with_documents(
+    async def test_get_communication_hub_loads_entity(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
         sample_entity_id: uuid.UUID,
-    ):
-        """Test timeline with document data."""
+    ) -> None:
+        """Hub laedt Entity-Daten wenn Zugriff erlaubt."""
         from app.services.communication_hub_service import CommunicationHubService
 
-        service = CommunicationHubService()
+        service = CommunicationHubService(mock_db_session)
 
-        # Mock document results
-        mock_doc = MagicMock()
-        mock_doc.id = uuid.uuid4()
-        mock_doc.created_at = datetime.now()
-        mock_doc.document_type = "invoice"
-        mock_doc.ocr_status = "completed"
+        # Access-Check liefert 1 Dokument, Entity-Query die Entity
+        access_result = _empty_result()
+        access_result.scalar.return_value = 1
 
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = [mock_doc]
-        mock_result.scalar_one_or_none.return_value = MagicMock(
-            id=sample_entity_id,
-            name="Test Entity",
-            company_id=sample_company_id,
-        )
-        mock_db_session.execute.return_value = mock_result
+        entity = MagicMock()
+        entity.id = sample_entity_id
+        entity.name = "Test Entity"
+        entity.display_name = "Test Entity GmbH"
+        entity.short_name = "TE"
+        entity.entity_type = "customer"
+        entity.vat_id = None
+        entity.iban = None
+        entity.email = "info@test-entity.de"
+        entity.phone = None
+        entity.full_address = "Teststr. 1, 80331 München"
+        entity.is_active = True
+        entity.verified = True
+        entity.risk_score = 10
+        entity.payment_behavior_score = 90
+        entity.document_count = 3
+        entity.total_invoice_amount = 1500.0
+        entity.first_document_date = None
+        entity.last_document_date = None
+        entity.lexware_ids = {}
+        entity.notes = None
 
-        timeline = await service.get_timeline(
-            db=mock_db_session,
+        entity_result = _empty_result()
+        entity_result.scalar_one_or_none.return_value = entity
+
+        mock_db_session.execute.side_effect = [access_result, entity_result]
+
+        hub = await service.get_communication_hub(
             entity_id=sample_entity_id,
             company_id=sample_company_id,
-            days_back=30,
+            include_sections=["entity"],
         )
 
-        assert timeline is not None
+        assert hub.entity["name"] == "Test Entity"
+        assert hub.entity["display_name"] == "Test Entity GmbH"
+        assert hub.entity["is_active"] is True
 
     @pytest.mark.asyncio
-    async def test_get_communication_stats(
+    async def test_get_communication_hub_all_sections_empty_db(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
         sample_entity_id: uuid.UUID,
-    ):
-        """Test communication statistics calculation."""
-        from app.services.communication_hub_service import CommunicationHubService
+    ) -> None:
+        """Alle Sektionen mit leerer DB: kein Crash, leere Strukturen."""
+        from app.services.communication_hub_service import (
+            CommunicationHubData,
+            CommunicationHubService,
+        )
 
-        service = CommunicationHubService()
+        service = CommunicationHubService(mock_db_session)
 
-        # Mock count results
-        mock_result = AsyncMock()
-        mock_result.scalar.return_value = 5
-        mock_db_session.execute.return_value = mock_result
-
-        stats = await service.get_communication_stats(
-            db=mock_db_session,
+        hub = await service.get_communication_hub(
             entity_id=sample_entity_id,
             company_id=sample_company_id,
         )
 
-        assert stats is not None
+        assert isinstance(hub, CommunicationHubData)
+        assert hub.timeline == []
+        assert hub.recent_documents == []
+        assert hub.phone_notes == []
 
 
 # =============================================================================
@@ -165,87 +205,101 @@ class TestIndustryBenchmarkDB:
     """Database tests for IndustryBenchmarkService."""
 
     @pytest.mark.asyncio
-    async def test_get_company_metrics_calculates_dso(
+    async def test_unknown_company_raises_german_error(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
-    ):
-        """Test DSO calculation from invoice data."""
+    ) -> None:
+        """Unbekannte Firma -> deutscher ValueError."""
         from app.services.analytics.industry_benchmark_service import (
             IndustryBenchmarkService,
         )
 
-        service = IndustryBenchmarkService()
+        service = IndustryBenchmarkService(mock_db_session)
 
-        # Mock invoice data
-        mock_result = AsyncMock()
-        mock_result.scalar.return_value = Decimal("15000.00")  # Total amount
-        mock_result.scalar_one_or_none.return_value = Decimal("5000.00")  # Outstanding
-        mock_db_session.execute.return_value = mock_result
-
-        metrics = await service.get_company_metrics(
-            db=mock_db_session,
-            company_id=sample_company_id,
-            industry="manufacturing",
-        )
-
-        assert metrics is not None
-        # DSO should be calculated from outstanding/total * period
+        with pytest.raises(ValueError, match="Firma nicht gefunden"):
+            await service.get_company_benchmark(company_id=sample_company_id)
 
     @pytest.mark.asyncio
-    async def test_get_company_metrics_handles_zero_invoices(
+    async def test_get_company_benchmark_handles_zero_invoices(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
-    ):
-        """Test metrics calculation when no invoices exist."""
+    ) -> None:
+        """Keine Rechnungen -> Fallback-Metriken statt Crash."""
         from app.services.analytics.industry_benchmark_service import (
+            CompanyBenchmarkReport,
+            Industry,
             IndustryBenchmarkService,
         )
 
-        service = IndustryBenchmarkService()
+        company = MagicMock()
+        company.id = sample_company_id
+        company.name = "Test GmbH"
 
-        # Mock empty results
-        mock_result = AsyncMock()
-        mock_result.scalar.return_value = None
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db_session.execute.return_value = mock_result
+        company_result = _empty_result()
+        company_result.scalar_one_or_none.return_value = company
 
-        metrics = await service.get_company_metrics(
-            db=mock_db_session,
+        def execute_side_effect(*args, **kwargs):  # noqa: ANN002, ANN003
+            # Erste Query: Company; alle weiteren: leere Aggregate
+            if mock_db_session.execute.call_count == 1:
+                return company_result
+            return _empty_result()
+
+        mock_db_session.execute.side_effect = None
+        mock_db_session.execute = AsyncMock(side_effect=execute_side_effect)
+
+        service = IndustryBenchmarkService(mock_db_session)
+        report = await service.get_company_benchmark(
             company_id=sample_company_id,
-            industry="manufacturing",
+            industry=Industry.MANUFACTURING,
         )
 
-        # Should return default/zero metrics, not crash
-        assert metrics is not None
+        assert isinstance(report, CompanyBenchmarkReport)
+        assert report.company_name == "Test GmbH"
+        assert report.industry == Industry.MANUFACTURING
+        assert 0.0 <= report.overall_score <= 100.0
+        assert 0 <= report.overall_percentile <= 100
 
     @pytest.mark.asyncio
-    async def test_percentile_calculation(
+    async def test_benchmark_report_structure(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
-    ):
-        """Test percentile ranking calculation."""
+    ) -> None:
+        """Report enthaelt Metriken, Level und Empfehlungen."""
         from app.services.analytics.industry_benchmark_service import (
+            Industry,
             IndustryBenchmarkService,
+            PerformanceLevel,
         )
 
-        service = IndustryBenchmarkService()
+        company = MagicMock()
+        company.id = sample_company_id
+        company.name = "Test GmbH"
 
-        mock_result = AsyncMock()
-        mock_result.scalar.return_value = Decimal("10000.00")
-        mock_db_session.execute.return_value = mock_result
+        company_result = _empty_result()
+        company_result.scalar_one_or_none.return_value = company
 
-        ranking = await service.get_percentile_ranking(
-            db=mock_db_session,
+        results = [company_result]
+
+        def execute_side_effect(*args, **kwargs):  # noqa: ANN002, ANN003
+            if results:
+                return results.pop(0)
+            return _empty_result()
+
+        mock_db_session.execute = AsyncMock(side_effect=execute_side_effect)
+
+        service = IndustryBenchmarkService(mock_db_session)
+        report = await service.get_company_benchmark(
             company_id=sample_company_id,
-            industry="manufacturing",
-            metric="dso",
+            industry=Industry.OTHER,
         )
 
-        assert ranking is not None
-        assert "percentile" in ranking
+        assert isinstance(report.metrics, list)
+        assert len(report.metrics) > 0
+        assert isinstance(report.overall_level, PerformanceLevel)
+        assert isinstance(report.recommendations, list)
 
 
 # =============================================================================
@@ -256,219 +310,224 @@ class TestAIMentorDB:
     """Database tests for AIMentorService."""
 
     @pytest.mark.asyncio
-    async def test_get_user_preferences_from_db(
+    async def test_get_mentor_preferences_defaults_without_user(
         self,
         mock_db_session: AsyncMock,
         sample_user_id: uuid.UUID,
-    ):
-        """Test fetching user preferences."""
-        from app.services.ai.mentor_service import AIMentorService
-
-        service = AIMentorService()
-
-        # Mock user with preferences
-        mock_user = MagicMock()
-        mock_user.id = sample_user_id
-        mock_user.preferences = {
-            "mentor_enabled": True,
-            "experience_level": "intermediate",
-            "dismissed_tips": ["tip_001"],
-        }
-
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none.return_value = mock_user
-        mock_db_session.execute.return_value = mock_result
-
-        prefs = await service.get_user_preferences(
-            db=mock_db_session,
-            user_id=sample_user_id,
+    ) -> None:
+        """Kein User/keine Preferences -> Default-Praeferenzen."""
+        from app.services.ai.mentor_service import (
+            AIMentorService,
+            MentorPreferences,
+            UserExperience,
         )
 
-        assert prefs is not None
-        assert prefs["experience_level"] == "intermediate"
+        service = AIMentorService(mock_db_session)
+
+        prefs = await service.get_mentor_preferences(user_id=sample_user_id)
+
+        assert isinstance(prefs, MentorPreferences)
+        assert prefs.enabled is True
+        assert prefs.experience_level == UserExperience.BEGINNER
 
     @pytest.mark.asyncio
-    async def test_save_dismissed_tip(
+    async def test_dismiss_tip_persists_in_preferences(
         self,
         mock_db_session: AsyncMock,
         sample_user_id: uuid.UUID,
-    ):
-        """Test saving dismissed tip to user preferences."""
+    ) -> None:
+        """Verworfener Tipp landet in User.preferences['mentor']."""
         from app.services.ai.mentor_service import AIMentorService
 
-        service = AIMentorService()
+        user = MagicMock()
+        user.id = sample_user_id
+        user.preferences = {}
 
-        # Mock user
-        mock_user = MagicMock()
-        mock_user.id = sample_user_id
-        mock_user.preferences = {"dismissed_tips": []}
+        user_result = _empty_result()
+        user_result.scalar_one_or_none.return_value = user
+        mock_db_session.execute.return_value = user_result
 
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none.return_value = mock_user
-        mock_db_session.execute.return_value = mock_result
-
+        service = AIMentorService(mock_db_session)
         success = await service.dismiss_tip(
-            db=mock_db_session,
             user_id=sample_user_id,
             tip_id="tip_shortcut_001",
         )
 
         assert success is True
+        assert "tip_shortcut_001" in user.preferences["mentor"]["dismissed_tips"]
+        mock_db_session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_get_behavior_patterns_aggregates_correctly(
+    async def test_dismiss_tip_rejects_invalid_tip_id(
+        self,
+        mock_db_session: AsyncMock,
+        sample_user_id: uuid.UUID,
+    ) -> None:
+        """Ungueltiges tip_id-Format wird ohne DB-Zugriff abgelehnt."""
+        from app.services.ai.mentor_service import AIMentorService
+
+        service = AIMentorService(mock_db_session)
+        success = await service.dismiss_tip(
+            user_id=sample_user_id,
+            tip_id="'; DROP TABLE users; --",
+        )
+
+        assert success is False
+        mock_db_session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_analyze_behavior_patterns_empty_log(
         self,
         mock_db_session: AsyncMock,
         sample_user_id: uuid.UUID,
         sample_company_id: uuid.UUID,
-    ):
-        """Test behavior pattern aggregation."""
+    ) -> None:
+        """Leeres Behavior-Log -> leere Musterliste, kein Crash."""
         from app.services.ai.mentor_service import AIMentorService
 
-        service = AIMentorService()
-
-        # Mock behavior log entries
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db_session.execute.return_value = mock_result
-
-        patterns = await service.get_behavior_patterns(
-            db=mock_db_session,
+        service = AIMentorService(mock_db_session)
+        patterns = await service.analyze_behavior_patterns(
             user_id=sample_user_id,
             company_id=sample_company_id,
         )
 
-        assert patterns is not None
+        assert isinstance(patterns, list)
+        assert patterns == []
 
 
 # =============================================================================
 # Liquidity Scenario Database Tests
 # =============================================================================
 
+def _forecast(
+    current_balance: float,
+    days: int,
+    inflows: float,
+    outflows: float,
+) -> dict:
+    """Baut eine Basis-Prognose wie PredictiveCashFlowService sie liefert."""
+    return {
+        "current_balance": current_balance,
+        "forecast": [
+            {
+                "date": f"2026-07-{day + 1:02d}",
+                "inflows": inflows,
+                "outflows": outflows,
+            }
+            for day in range(days)
+        ],
+    }
+
+
 class TestLiquidityScenarioDB:
     """Database tests for LiquidityScenarioService."""
-
-    @pytest.mark.asyncio
-    async def test_get_open_invoices_for_scenario(
-        self,
-        mock_db_session: AsyncMock,
-        sample_company_id: uuid.UUID,
-    ):
-        """Test fetching open invoices for scenario calculation."""
-        from app.services.finanzki.liquidity_scenario_service import (
-            LiquidityScenarioService,
-        )
-
-        service = LiquidityScenarioService()
-
-        # Mock invoice data
-        mock_invoice = MagicMock()
-        mock_invoice.id = uuid.uuid4()
-        mock_invoice.amount = Decimal("5000.00")
-        mock_invoice.due_date = datetime.now() + timedelta(days=15)
-        mock_invoice.is_outgoing = False
-
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = [mock_invoice]
-        mock_result.scalar.return_value = Decimal("25000.00")  # Current balance
-        mock_db_session.execute.return_value = mock_result
-
-        scenario = await service.run_scenario(
-            db=mock_db_session,
-            company_id=sample_company_id,
-            scenario_name="expected",
-            days_forward=30,
-        )
-
-        assert scenario is not None
 
     @pytest.mark.asyncio
     async def test_monte_carlo_simulation_bounds(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
-    ):
-        """Test Monte Carlo simulation stays within bounds."""
+    ) -> None:
+        """Monte Carlo: Perzentile sind geordnet (P5 <= P50 <= P95)."""
+        from app.services.finanzki.liquidity_scenario_service import (
+            LiquidityScenarioService,
+            MonteCarloResult,
+        )
+
+        service = LiquidityScenarioService(mock_db_session)
+        service.cashflow_service.forecast_with_seasonality = AsyncMock(
+            return_value=_forecast(50000.0, days=5, inflows=1000.0, outflows=800.0)
+        )
+
+        result = await service.run_monte_carlo(
+            company_id=sample_company_id,
+            forecast_days=5,
+            iterations=100,  # Reduced for test
+        )
+
+        assert isinstance(result, MonteCarloResult)
+        assert result.iterations == 100
+        assert result.percentiles["p5"] <= result.percentiles["p50"]
+        assert result.percentiles["p50"] <= result.percentiles["p95"]
+        assert 0.0 <= result.probability_negative <= 1.0
+
+    @pytest.mark.asyncio
+    async def test_monte_carlo_detects_certain_shortfall(
+        self,
+        mock_db_session: AsyncMock,
+        sample_company_id: uuid.UUID,
+    ) -> None:
+        """Nur Abfluesse ohne Startguthaben -> Unterdeckung sicher."""
         from app.services.finanzki.liquidity_scenario_service import (
             LiquidityScenarioService,
         )
 
-        service = LiquidityScenarioService()
-
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_result.scalar.return_value = Decimal("50000.00")
-        mock_db_session.execute.return_value = mock_result
-
-        scenario = await service.run_monte_carlo(
-            db=mock_db_session,
-            company_id=sample_company_id,
-            days_forward=30,
-            iterations=100,  # Reduced for test
+        service = LiquidityScenarioService(mock_db_session)
+        service.cashflow_service.forecast_with_seasonality = AsyncMock(
+            return_value=_forecast(0.0, days=5, inflows=0.0, outflows=1000.0)
         )
 
-        assert scenario is not None
-        # Verify P5 <= P50 <= P95
-        if hasattr(scenario, "percentiles"):
-            assert scenario.percentiles.get("p5", 0) <= scenario.percentiles.get("p50", 0)
-            assert scenario.percentiles.get("p50", 0) <= scenario.percentiles.get("p95", 0)
+        result = await service.run_monte_carlo(
+            company_id=sample_company_id,
+            forecast_days=5,
+            iterations=50,
+        )
+
+        assert result.probability_negative == 1.0
+        assert result.percentiles["p95"] < 0
 
 
 # =============================================================================
-# Transaction Rollback Tests
+# Transaction / Error Handling Tests
 # =============================================================================
 
 class TestTransactionRollback:
-    """Tests for proper transaction rollback on errors."""
+    """Tests for error handling without unintended commits."""
 
     @pytest.mark.asyncio
-    async def test_communication_hub_rollback_on_error(
+    async def test_communication_hub_tolerates_db_error(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
         sample_entity_id: uuid.UUID,
-    ):
-        """Verify transaction rolls back on error."""
-        from app.services.communication_hub_service import CommunicationHubService
+    ) -> None:
+        """Hub faengt Sektions-Fehler ab und committet NICHT."""
+        from app.services.communication_hub_service import (
+            CommunicationHubData,
+            CommunicationHubService,
+        )
 
-        service = CommunicationHubService()
-
-        # Make execute raise an exception
+        service = CommunicationHubService(mock_db_session)
         mock_db_session.execute.side_effect = Exception("DB Error")
 
-        with pytest.raises(Exception, match="DB Error"):
-            await service.get_timeline(
-                db=mock_db_session,
-                entity_id=sample_entity_id,
-                company_id=sample_company_id,
-                days_back=30,
-            )
+        # Realer Vertrag: Sektions-Fehler werden gesammelt, kein Raise
+        hub = await service.get_communication_hub(
+            entity_id=sample_entity_id,
+            company_id=sample_company_id,
+        )
 
-        # Transaction should not be committed
+        assert isinstance(hub, CommunicationHubData)
+        assert hub.entity.get("error") is not None  # Entity-Fehler markiert
         mock_db_session.commit.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_benchmark_rollback_on_calculation_error(
+    async def test_benchmark_propagates_db_error_without_commit(
         self,
         mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
-    ):
-        """Verify rollback when calculation fails."""
+    ) -> None:
+        """Company-Load-Fehler propagiert, nichts wird committet."""
         from app.services.analytics.industry_benchmark_service import (
             IndustryBenchmarkService,
         )
 
-        service = IndustryBenchmarkService()
+        service = IndustryBenchmarkService(mock_db_session)
+        mock_db_session.execute.side_effect = Exception("DB Error")
 
-        # Make execute raise an exception
-        mock_db_session.execute.side_effect = ZeroDivisionError("Division by zero")
+        with pytest.raises(Exception, match="DB Error"):
+            await service.get_company_benchmark(company_id=sample_company_id)
 
-        with pytest.raises(ZeroDivisionError):
-            await service.get_company_metrics(
-                db=mock_db_session,
-                company_id=sample_company_id,
-                industry="manufacturing",
-            )
+        mock_db_session.commit.assert_not_called()
 
 
 # =============================================================================
@@ -479,39 +538,33 @@ class TestConcurrentAccess:
     """Tests for concurrent database access handling."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_timeline_requests(
+    async def test_concurrent_hub_requests(
         self,
-        mock_db_session: AsyncMock,
         sample_company_id: uuid.UUID,
-    ):
-        """Test handling of concurrent timeline requests."""
+    ) -> None:
+        """Mehrere parallele Hub-Anfragen laufen fehlerfrei durch."""
         import asyncio
 
         from app.services.communication_hub_service import CommunicationHubService
 
-        service = CommunicationHubService()
-
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db_session.execute.return_value = mock_result
-
         entity_ids = [uuid.uuid4() for _ in range(5)]
 
-        # Run concurrent requests
-        tasks = [
-            service.get_timeline(
-                db=mock_db_session,
+        async def _one_request(eid: uuid.UUID):
+            session = AsyncMock()
+            session.execute = AsyncMock(return_value=_empty_result())
+            session.commit = AsyncMock()
+            service = CommunicationHubService(session)
+            return await service.get_communication_hub(
                 entity_id=eid,
                 company_id=sample_company_id,
-                days_back=30,
+                include_sections=["entity", "timeline"],
             )
-            for eid in entity_ids
-        ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(
+            *[_one_request(eid) for eid in entity_ids],
+            return_exceptions=True,
+        )
 
-        # All should complete without errors
         for result in results:
             assert not isinstance(result, Exception)
 
@@ -524,70 +577,26 @@ class TestDataIntegrity:
     """Tests for data integrity in database operations."""
 
     @pytest.mark.asyncio
-    async def test_invoice_amount_not_modified_by_query(
+    async def test_tip_history_returns_dismissed_tips_limited(
         self,
         mock_db_session: AsyncMock,
-        sample_company_id: uuid.UUID,
-    ):
-        """Verify invoice amounts aren't modified during queries."""
-        from app.services.analytics.industry_benchmark_service import (
-            IndustryBenchmarkService,
-        )
+        sample_user_id: uuid.UUID,
+    ) -> None:
+        """get_tip_history liefert dismissed_tips und respektiert limit."""
+        from app.services.ai.mentor_service import AIMentorService
 
-        service = IndustryBenchmarkService()
+        user = MagicMock()
+        user.id = sample_user_id
+        user.preferences = {
+            "mentor": {"dismissed_tips": [f"tip_{i:03d}" for i in range(10)]},
+        }
 
-        original_amount = Decimal("12345.67")
+        user_result = _empty_result()
+        user_result.scalar_one_or_none.return_value = user
+        mock_db_session.execute.return_value = user_result
 
-        mock_result = AsyncMock()
-        mock_result.scalar.return_value = original_amount
-        mock_db_session.execute.return_value = mock_result
+        service = AIMentorService(mock_db_session)
+        history = await service.get_tip_history(user_id=sample_user_id, limit=3)
 
-        await service.get_company_metrics(
-            db=mock_db_session,
-            company_id=sample_company_id,
-            industry="manufacturing",
-        )
-
-        # Amount should not be modified
-        assert mock_result.scalar.return_value == original_amount
-
-
-# =============================================================================
-# Test Summary
-# =============================================================================
-
-"""
-Vision 2.0 Database Integration Tests:
-
-Communication Hub:
-✅ Timeline query includes company_id filter
-✅ Timeline with document data
-✅ Communication stats calculation
-
-Industry Benchmarks:
-✅ DSO calculation from invoice data
-✅ Handles zero invoices gracefully
-✅ Percentile calculation
-
-AI Mentor:
-✅ User preferences from database
-✅ Save dismissed tips
-✅ Behavior pattern aggregation
-
-Liquidity Scenarios:
-✅ Open invoices for scenario
-✅ Monte Carlo bounds validation
-
-Transaction Handling:
-✅ Rollback on communication hub error
-✅ Rollback on calculation error
-
-Concurrency:
-✅ Concurrent timeline requests
-
-Data Integrity:
-✅ Invoice amounts not modified
-
-Test Count: 15 tests
-Coverage: Database operations for Vision 2.0 services
-"""
+        assert len(history) == 3
+        assert history == ["tip_000", "tip_001", "tip_002"]

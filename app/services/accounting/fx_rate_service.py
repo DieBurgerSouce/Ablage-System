@@ -302,9 +302,14 @@ class FXRateService:
             if not currency or currency == "EUR":
                 continue
 
-            outstanding = Decimal(str(inv.outstanding_amount or inv.amount or 0))
             paid = Decimal(str(inv.paid_amount or 0))
-            if inv.outstanding_amount is None:
+            # BUGFIX: outstanding_amount kann legitim 0 sein (vollstaendig
+            # bezahlt). `x or y` wuerde die falsy-Null verwerfen und auf den
+            # vollen Betrag zurueckfallen -> bezahlte Positionen wuerden
+            # faelschlich neu bewertet. Daher explizit gegen None pruefen.
+            if inv.outstanding_amount is not None:
+                outstanding = Decimal(str(inv.outstanding_amount))
+            else:
                 outstanding = Decimal(str(inv.amount or 0)) - paid
             if outstanding <= Decimal("0"):
                 continue
@@ -456,9 +461,11 @@ class FXRateService:
         exposure_map: Dict[str, Decimal] = {}
         for inv in positions:
             currency = inv.currency
-            outstanding = Decimal(str(inv.outstanding_amount or inv.amount or 0))
             paid = Decimal(str(inv.paid_amount or 0))
-            if inv.outstanding_amount is None:
+            # BUGFIX: siehe month_end_revaluation - falsy-Null nicht verwerfen.
+            if inv.outstanding_amount is not None:
+                outstanding = Decimal(str(inv.outstanding_amount))
+            else:
                 outstanding = Decimal(str(inv.amount or 0)) - paid
             if outstanding <= Decimal("0"):
                 continue

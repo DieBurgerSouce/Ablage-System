@@ -18,16 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  CheckCircle2,
-  XCircle,
-  Shield,
-  RefreshCw,
-  AlertTriangle,
-  FileCheck,
-  Lock,
-  Calendar,
-} from 'lucide-react';
+import { CheckCircle2, XCircle, Shield, RefreshCw, AlertTriangle, FileCheck, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { Backup } from '../api';

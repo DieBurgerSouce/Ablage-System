@@ -1,3 +1,6 @@
+> **Status (W1-048, 2026-06-11)**: TEILWEISE umgesetzt — Pagination-Zentralisierung `02569ce4`, Audit-Trail-Endpoint-Fix `b7c05897`; Pagination-Limits projektweit aber weiterhin inkonsistent (W1-019 im Welle-1-Register).
+> Rest (Audit-Felder-Vervollständigung, Error-Code-Standardisierung) offen; bei Wiederaufnahme gegen W1-019 konsolidieren.
+
 # Phase 3: Model & API Polish - Implementation Plan
 
 ## Context

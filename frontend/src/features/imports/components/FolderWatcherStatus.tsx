@@ -5,7 +5,7 @@
  * Ermöglicht Starten/Stoppen des Watchers und zeigt Statistiken an.
  */
 
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   PlayCircle,

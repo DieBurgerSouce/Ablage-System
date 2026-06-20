@@ -9,6 +9,7 @@ Tests fuer:
 """
 
 import pytest
+import pytest_asyncio
 from decimal import Decimal
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -22,6 +23,18 @@ from app.db.models_approval_matrix import (
     ApprovalGroupMember,
 )
 from app.db.models import ApprovalStatus, ApprovalRequest, ApprovalStep, Company, User
+
+
+@pytest_asyncio.fixture
+async def async_db_session(test_db):
+    """Liefert die kanonische PostgreSQL-Async-Session aus conftest (``test_db``).
+
+    Diese Tests schreiben echte ORM-Objekte (Company, User, ApprovalMatrix ...)
+    und brauchen daher eine echte DB-Session. ``test_db`` ueberspringt sauber,
+    wenn keine Datenbank erreichbar ist (CI-only). Frueher referenzierte diese
+    Datei einen nirgends definierten Fixture-Namen -> 13 Setup-Errors.
+    """
+    yield test_db
 
 
 @pytest.mark.asyncio

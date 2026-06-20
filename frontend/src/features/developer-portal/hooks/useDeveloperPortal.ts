@@ -8,7 +8,6 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { logger } from '@/lib/logger';
 import { api } from '@/lib/api';
 
 // ============================================================================
@@ -278,8 +277,8 @@ export function useWebhooks() {
   return useQuery({
     queryKey: developerPortalKeys.webhooks(),
     queryFn: async () => {
-      const response = await api.get<{ items: WebhookSubscription[] }>('/api/v1/webhooks');
-      return response.items;
+      const response = await api.get<{ items: WebhookSubscription[] }>('/webhooks');
+      return response.data.items;
     },
   });
 }
@@ -291,7 +290,7 @@ export function useWebhook(id: string) {
   return useQuery({
     queryKey: developerPortalKeys.webhook(id),
     queryFn: async () => {
-      const response = await api.get<WebhookSubscription>(`/api/v1/webhooks/${id}`);
+      const response = await api.get<WebhookSubscription>(`/webhooks/${id}`);
       return response;
     },
     enabled: !!id,
@@ -312,7 +311,7 @@ export function useTestWebhook() {
       webhookId: string;
       request: WebhookTestRequest;
     }): Promise<WebhookTestResponse> => {
-      return api.post(`/api/v1/webhooks/${webhookId}/test`, request);
+      return api.post(`/webhooks/${webhookId}/test`, request);
     },
     onSuccess: (_, { webhookId }) => {
       queryClient.invalidateQueries({ queryKey: developerPortalKeys.webhook(webhookId) });
@@ -329,9 +328,9 @@ export function useWebhookDeliveries(webhookId: string) {
     queryKey: developerPortalKeys.webhookDeliveries(webhookId),
     queryFn: async () => {
       const response = await api.get<{ items: WebhookDelivery[] }>(
-        `/api/v1/webhooks/${webhookId}/deliveries`
+        `/webhooks/${webhookId}/deliveries`
       );
-      return response.items;
+      return response.data.items;
     },
     enabled: !!webhookId,
   });
@@ -350,7 +349,12 @@ export function useCreateWebhook() {
       description?: string;
       event_types: string[];
     }) => {
-      return api.post<WebhookSubscription & { secret: string }>('/api/v1/webhooks', data);
+      return (
+        await api.post<WebhookSubscription & { secret: string }>(
+          '/webhooks',
+          data
+        )
+      ).data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: developerPortalKeys.webhooks() });
@@ -366,7 +370,7 @@ export function useDeleteWebhook() {
 
   return useMutation({
     mutationFn: async (webhookId: string) => {
-      await api.delete(`/api/v1/webhooks/${webhookId}`);
+      await api.delete(`/webhooks/${webhookId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: developerPortalKeys.webhooks() });
@@ -382,7 +386,12 @@ export function useRotateWebhookSecret() {
 
   return useMutation({
     mutationFn: async (webhookId: string) => {
-      return api.post<{ secret: string }>(`/api/v1/webhooks/${webhookId}/rotate-secret`, {});
+      return (
+        await api.post<{ secret: string }>(
+          `/webhooks/${webhookId}/rotate-secret`,
+          {}
+        )
+      ).data;
     },
     onSuccess: (_, webhookId) => {
       queryClient.invalidateQueries({ queryKey: developerPortalKeys.webhook(webhookId) });
@@ -548,8 +557,8 @@ export function useApiStats() {
     queryKey: developerPortalKeys.stats(),
     queryFn: async (): Promise<ApiStats> => {
       try {
-        const response = await api.get<ApiStats>('/api/v1/metrics/api-usage');
-        return response;
+        const response = await api.get<ApiStats>('/metrics/api-usage');
+        return response.data;
       } catch {
         // Return mock data if endpoint doesn't exist
         return {

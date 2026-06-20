@@ -286,7 +286,10 @@ class TemplateEngineService:
         """Initialisiert Template-Engine mit Jinja2."""
         # Templates-Verzeichnis (erstelle bei Bedarf)
         self.templates_dir = Path(__file__).parent / "templates"
-        self.templates_dir.mkdir(exist_ok=True)
+        try:
+            self.templates_dir.mkdir(exist_ok=True)
+        except OSError:
+            pass  # F-31: read-only FS
 
         # Jinja2-Environment
         self.jinja_env = Environment(
@@ -714,8 +717,35 @@ class TemplateEngineService:
             </div>
 
             <div class="content">
-                <!-- Template-spezifischer Content -->
-                {% block content %}{% endblock %}
+                <!-- Dokument-Kennfelder (nur gerendert, wenn vorhanden) -->
+                {% if rechnungsnummer %}<p>Rechnungsnummer: {{ rechnungsnummer }}</p>{% endif %}
+                {% if rechnungsdatum %}<p>Rechnungsdatum: {{ rechnungsdatum }}</p>{% endif %}
+                {% if angebotsnummer %}<p>Angebotsnummer: {{ angebotsnummer }}</p>{% endif %}
+                {% if angebotsdatum %}<p>Angebotsdatum: {{ angebotsdatum }}</p>{% endif %}
+                {% if gutschriftsnummer %}<p>Gutschriftsnummer: {{ gutschriftsnummer }}</p>{% endif %}
+                {% if ursprungsrechnung %}<p>Ursprungsrechnung: {{ ursprungsrechnung }}</p>{% endif %}
+                {% if mahnstufe %}<p>Mahnstufe: {{ mahnstufe }}</p>{% endif %}
+
+                {% if positionen %}
+                <table>
+                    <thead>
+                        <tr><th>Bezeichnung</th><th>Menge</th><th>Betrag</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for pos in positionen %}
+                        <tr>
+                            <td>{{ pos.bezeichnung }}</td>
+                            <td>{{ pos.menge }}</td>
+                            <td>{{ pos.betrag }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+
+                {% if nettobetrag is defined %}<p>Nettobetrag: {{ nettobetrag }}</p>{% endif %}
+                {% if umsatzsteuer is defined %}<p>Umsatzsteuer: {{ umsatzsteuer }}</p>{% endif %}
+                {% if bruttobetrag is defined %}<p class="total">Bruttobetrag: {{ bruttobetrag }}</p>{% endif %}
             </div>
         </body>
         </html>

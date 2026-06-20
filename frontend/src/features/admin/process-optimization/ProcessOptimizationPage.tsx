@@ -11,7 +11,7 @@
  * - ROI-Tracking und Impact-Metriken
  */
 
-import { Activity, Settings, RefreshCw } from 'lucide-react';
+import { Activity, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {

@@ -93,7 +93,6 @@ function findSkontoOpportunities(documents: CategoryDocumentResponse[]): SkontoO
         if (deadline < today) return false;
       } else if (doc.skontoDays && doc.dueDate) {
         // Fallback: Berechne Skonto-Deadline aus skontoDays
-        const dueDate = new Date(doc.dueDate);
         const invoiceDate = doc.documentDate ? new Date(doc.documentDate) : new Date(doc.createdAt);
         const skontoDeadline = new Date(invoiceDate);
         skontoDeadline.setDate(skontoDeadline.getDate() + doc.skontoDays);

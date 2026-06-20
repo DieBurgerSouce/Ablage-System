@@ -84,10 +84,10 @@ export function RuleFormDialog({
 
       // Parse conditions
       const cond = initialData.conditions || {};
-      if (cond.threshold) setConfidenceThreshold(cond.threshold * 100);
-      if (cond.document_type) setDocumentType(cond.document_type);
-      if (cond.field_pattern) setFieldPattern(cond.field_pattern);
-      if (cond.error_pattern) setErrorPattern(cond.error_pattern);
+      if (typeof cond.threshold === 'number') setConfidenceThreshold(cond.threshold * 100);
+      if (typeof cond.document_type === 'string') setDocumentType(cond.document_type);
+      if (typeof cond.field_pattern === 'string') setFieldPattern(cond.field_pattern);
+      if (typeof cond.error_pattern === 'string') setErrorPattern(cond.error_pattern);
     } else {
       // Reset form
       setName('');

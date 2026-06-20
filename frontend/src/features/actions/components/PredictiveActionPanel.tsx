@@ -10,12 +10,11 @@
  * Phase 2.2 der Feature-Roadmap (Januar 2026)
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -44,34 +43,8 @@ import {
   useRejectAction,
   useSnoozeAction,
 } from '../hooks/use-predictive-actions';
-import type {
-  PredictiveAction,
-  ActionPriority,
-  ActionsSummary,
-  ActionStatistics,
-} from '@/lib/api/services/predictive-actions';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  RefreshCw,
-  ChevronRight,
-  Bell,
-  Percent,
-  Receipt,
-  Phone,
-  Calendar,
-  X,
-  Pause,
-  Check,
-  Info,
-  Sparkles,
-  Target,
-  CircleDollarSign,
-} from 'lucide-react';
+import type { PredictiveAction, ActionPriority, ActionStatistics } from '@/lib/api/services/predictive-actions';
+import { AlertTriangle, CheckCircle2, AlertCircle, Clock, TrendingUp, RefreshCw, ChevronRight, Percent, Receipt, Phone, Calendar, X, Pause, Check, Info, Sparkles, Target, CircleDollarSign } from 'lucide-react';
 
 // ==================== Utility Functions ====================
 
@@ -526,12 +499,6 @@ function ActionsList({
 // ==================== Statistics Panel Component ====================
 
 function StatisticsPanel({ stats }: { stats: ActionStatistics }) {
-  const acceptanceRateColor =
-    stats.acceptanceRate >= 70
-      ? 'text-green-600'
-      : stats.acceptanceRate >= 50
-        ? 'text-yellow-600'
-        : 'text-red-600';
 
   return (
     <div className="space-y-6">

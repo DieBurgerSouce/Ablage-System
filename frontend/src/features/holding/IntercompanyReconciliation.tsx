@@ -10,7 +10,7 @@
  * Feature 15: Intercompany Reconciliation UI
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -45,39 +45,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Icons
-import {
-    ArrowLeftRight,
-    Building2,
-    RefreshCw,
-    AlertTriangle,
-    CheckCircle2,
-    XCircle,
-    FileText,
-    Download,
-    TrendingUp,
-    TrendingDown,
-    Minus,
-    Info,
-    Calculator,
-    Scale,
-} from 'lucide-react';
+import { ArrowLeftRight, Building2, RefreshCw, AlertTriangle, CheckCircle2, FileText, Download, TrendingUp, TrendingDown, Minus, Info, Calculator, Scale } from 'lucide-react';
 
 // API
-import {
-    getICSummary,
-    getICTransactions,
-    getICBalances,
-    performReconciliation,
-    getEliminations,
-    getReconciliationReport,
-    type ICTransaction,
-    type ICBalance,
-    type ReconciliationDifference,
-    type EliminationEntry,
-    type ICTransactionStatus,
-    type DifferenceType,
-} from './api/reconciliation-api';
-import { getHoldingCompanies, type CompanySummary } from './api/holding-api';
+import { getICSummary, getICTransactions, getICBalances, performReconciliation, getEliminations, type ICTransaction, type ICBalance, type ReconciliationDifference, type EliminationEntry, type ICTransactionStatus, type DifferenceType } from './api/reconciliation-api';
+import { getHoldingCompanies } from './api/holding-api';
 
 // ==================== Types ====================
 

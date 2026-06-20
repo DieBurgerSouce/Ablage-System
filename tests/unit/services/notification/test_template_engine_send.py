@@ -94,7 +94,7 @@ async def test_send_with_template_success(
     """Test: Erfolgreicher Versand ueber alle Channels."""
     # Mock get_template
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -131,7 +131,7 @@ async def test_send_with_template_not_found(
     """Test: Template nicht gefunden gibt Fehler zurueck."""
     # Mock get_template returning None
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_result.scalar_one_or_none = MagicMock(return_value=None)
     mock_db.execute.return_value = mock_result
 
     result = await template_engine.send_with_template(
@@ -170,7 +170,7 @@ async def test_send_with_template_render_failure(
     )
 
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=template)
     mock_db.execute.return_value = mock_result
 
     # Sende mit fehlenden Variablen -> Rendering schlaegt fehl
@@ -194,7 +194,7 @@ async def test_send_with_template_channel_failure(
 ):
     """Test: hub.send() wirft Exception -> Channel ergibt False."""
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -228,7 +228,7 @@ async def test_send_with_template_partial_success(
 ):
     """Test: 2 Channels, 1 erfolgreich, 1 fehlgeschlagen."""
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -279,7 +279,7 @@ async def test_send_with_template_default_channels(
     )
 
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -314,7 +314,7 @@ async def test_send_with_template_invalid_severity(
 ):
     """Test: Ungueltiger Severity-Wert gibt Fehler zurueck."""
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -332,7 +332,7 @@ async def test_send_with_template_invalid_severity(
         )
 
     assert result["success"] is False
-    assert result["message"] == "Ungueltiger Severity- oder Kategorie-Wert"
+    assert result["message"] == "Ungültiger Severity- oder Kategorie-Wert"
     assert result["results"] == {}
     mock_hub_instance.send.assert_not_called()
 
@@ -358,7 +358,7 @@ async def test_send_with_template_invalid_category(
     )
 
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -376,7 +376,7 @@ async def test_send_with_template_invalid_category(
         )
 
     assert result["success"] is False
-    assert result["message"] == "Ungueltiger Severity- oder Kategorie-Wert"
+    assert result["message"] == "Ungültiger Severity- oder Kategorie-Wert"
     assert result["results"] == {}
     mock_hub_instance.send.assert_not_called()
 
@@ -387,7 +387,7 @@ async def test_send_with_template_none_severity(
 ):
     """Test: severity=None loest TypeError aus -> Fehler zurueck."""
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -405,7 +405,7 @@ async def test_send_with_template_none_severity(
         )
 
     assert result["success"] is False
-    assert result["message"] == "Ungueltiger Severity- oder Kategorie-Wert"
+    assert result["message"] == "Ungültiger Severity- oder Kategorie-Wert"
     assert result["results"] == {}
     mock_hub_instance.send.assert_not_called()
 
@@ -434,7 +434,7 @@ async def test_send_with_template_inactive_template(
     )
 
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=template)
     mock_db.execute.return_value = mock_result
 
     result = await template_engine.send_with_template(
@@ -457,7 +457,7 @@ async def test_send_with_template_empty_delivery(
 ):
     """Test: hub.send() gibt leere Liste zurueck -> Channel False."""
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with patch(
@@ -489,7 +489,7 @@ async def test_send_with_template_delivery_failure(
 ):
     """Test: hub.send() gibt result mit success=False zurueck."""
     mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=sample_template)
+    mock_result.scalar_one_or_none = MagicMock(return_value=sample_template)
     mock_db.execute.return_value = mock_result
 
     with patch(

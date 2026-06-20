@@ -540,10 +540,17 @@ class PredictivePaymentService:
         elif features.paid_invoices >= 5:
             confidence += 0.1
 
-        # Niedrigere Standardabweichung = konsistenteres Verhalten = höhere Konfidenz
-        if features.payment_history_std_delay < 3:
-            confidence += 0.15
+        # Niedrigere Standardabweichung = konsistenteres Verhalten = höhere Konfidenz.
+        # Der Varianz-Bonus setzt aber ausreichend Historie voraus: bei sehr wenigen
+        # bezahlten Rechnungen ist eine Standardabweichung von ~0 kein echtes Signal
+        # fuer konsistentes Verhalten, sondern schlicht Datenmangel.
+        if features.paid_invoices >= 5:
+            if features.payment_history_std_delay < 3:
+                confidence += 0.15
+            elif features.payment_history_std_delay > 10:
+                confidence -= 0.1
         elif features.payment_history_std_delay > 10:
+            # Hohe Varianz senkt die Konfidenz unabhaengig von der Datenmenge.
             confidence -= 0.1
 
         # Längere Beziehung = mehr Vertrauen

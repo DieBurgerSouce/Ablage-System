@@ -98,7 +98,7 @@ function DocumentInfoCard({
                   {info.documentType}
                 </Badge>
               )}
-              <span className="text-xs text-muted-foreground">{formatDate(info.createdAt)}</span>
+              <span className="text-xs text-muted-foreground">{formatDate(info.createdAt ?? null)}</span>
             </div>
           </div>
         </div>

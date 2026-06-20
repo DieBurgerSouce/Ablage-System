@@ -182,7 +182,8 @@ class TestCategorizationV2Basics:
         long_text = "A" * 5000
         result = service._truncate_text(long_text, max_length=1000)
         assert len(result) <= 1000 + 50  # Etwas Spielraum fuer Marker
-        assert "[...Text gekuerzt...]" in result
+        # Echter Marker nutzt UTF-8-Umlaut: "[...Text gekürzt...]"
+        assert "[...Text gekürzt...]" in result
 
 
 # =============================================================================
@@ -526,7 +527,8 @@ class TestCalibration:
 
         calibrated = service._apply_calibration(result)
 
-        assert calibrated.calibrated_confidence == 0.90  # 0.95 - 0.05
+        # Float-Arithmetik: 0.95 - 0.05 == 0.8999999999999999 -> approx
+        assert calibrated.calibrated_confidence == pytest.approx(0.90)  # 0.95 - 0.05
 
     def test_calibration_clipping(
         self,

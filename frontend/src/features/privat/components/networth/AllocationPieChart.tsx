@@ -10,15 +10,7 @@
  */
 
 import * as React from 'react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-  Sector,
-} from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from 'recharts';
 import {
   Card,
   CardContent,
@@ -130,11 +122,9 @@ interface ActiveShapeProps {
 }
 
 function renderActiveShape(props: ActiveShapeProps) {
-  const RADIAN = Math.PI / 180;
   const {
     cx,
     cy,
-    midAngle,
     innerRadius,
     outerRadius,
     startAngle,
@@ -142,10 +132,6 @@ function renderActiveShape(props: ActiveShapeProps) {
     fill,
     payload,
   } = props;
-  const sin = Math.sin(-RADIAN * midAngle);
-  const cos = Math.cos(-RADIAN * midAngle);
-  const mx = cx + (outerRadius + 20) * cos;
-  const my = cy + (outerRadius + 20) * sin;
 
   return (
     <g>
@@ -244,21 +230,8 @@ export function AllocationPieChart({
   onCategoryClick,
   className,
 }: AllocationPieChartProps) {
-  const [activeIndex, setActiveIndex] = React.useState<number | undefined>(
-    undefined
-  );
-
-  const handlePieEnter = React.useCallback(
-    (_: unknown, index: number) => {
-      setActiveIndex(index);
-    },
-    []
-  );
-
-  const handlePieLeave = React.useCallback(() => {
-    setActiveIndex(undefined);
-  }, []);
-
+  // recharts v3: activeIndex-Prop wurde entfernt — der aktive Sektor wird
+  // ueber den Tooltip-Hover (activeShape) gesteuert, kein eigener State noetig.
   const handleClick = React.useCallback(
     (data: { category: string }) => {
       if (onCategoryClick) {
@@ -314,8 +287,7 @@ export function AllocationPieChart({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                activeIndex={activeIndex}
-                activeShape={renderActiveShape as unknown as (props: unknown) => JSX.Element}
+                activeShape={renderActiveShape as unknown as (props: unknown) => React.JSX.Element}
                 data={chartData}
                 cx="50%"
                 cy="50%"
@@ -323,8 +295,6 @@ export function AllocationPieChart({
                 outerRadius={90}
                 paddingAngle={2}
                 dataKey="value"
-                onMouseEnter={handlePieEnter}
-                onMouseLeave={handlePieLeave}
                 onClick={handleClick}
                 className="cursor-pointer"
               >

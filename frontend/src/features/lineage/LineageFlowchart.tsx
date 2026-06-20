@@ -38,18 +38,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, FileText } from 'lucide-react';
 import { isWithinInterval, parseISO } from 'date-fns';
 
-import { useLineageData, useEventTypes } from './hooks/useLineageData';
+import { useLineageData } from './hooks/useLineageData';
 import {
   LineageNode,
   type LineageNodeData,
 } from './components/LineageNode';
 import { LineageEdge, LineageEdgeMarkerDefs, type LineageEdgeData } from './components/LineageEdge';
-import {
-  LineageControls,
-  type LineageFilters,
-  type LayoutDirection,
-  type DateRange,
-} from './components/LineageControls';
+import { LineageControls, type LineageFilters, type LayoutDirection } from './components/LineageControls';
 import { EventDetailPanel } from './components/EventDetailPanel';
 import type { TimelineEntry, LineageEventType, EventTypeLabels } from '@/lib/api/services/lineage';
 import { lineageService } from '@/lib/api/services/lineage';
@@ -135,7 +130,6 @@ function calculateLayout(
 
   let currentX = 0;
   let currentY = 0;
-  let maxRowHeight = 0;
   const eventsPerRow = direction === 'horizontal' ? 1 : 3;
   let eventIndex = 0;
 

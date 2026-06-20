@@ -13,6 +13,7 @@ GoBD-Konformität:
 """
 
 from datetime import datetime, timezone
+from app.api.dependencies import get_user_company_id_dep  # F-31
 from typing import Optional, List
 from uuid import UUID
 
@@ -138,7 +139,7 @@ class MessageResponse(BaseModel):
 async def create_invite(
     data: TaxAdvisorInviteCreate,
     request: Request,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> TaxAdvisorInviteCreateResponse:
@@ -203,7 +204,7 @@ async def create_invite(
 )
 async def list_invites(
     include_expired: bool = Query(False, description="Abgelaufene Einladungen einbeziehen"),
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> List[TaxAdvisorInviteResponse]:
@@ -234,7 +235,7 @@ async def list_invites(
 )
 async def revoke_invite(
     invite_id: UUID,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
@@ -279,7 +280,7 @@ async def revoke_invite(
     description="Listet alle aktiven Steuerberater für die aktuelle Firma auf"
 )
 async def list_tax_advisors(
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> List[TaxAdvisorUserResponse]:
@@ -301,7 +302,7 @@ async def list_tax_advisors(
 async def extend_access(
     user_id: UUID,
     data: TaxAdvisorExtendRequest,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> TaxAdvisorUserResponse:
@@ -336,7 +337,7 @@ async def extend_access(
 async def revoke_access(
     user_id: UUID,
     data: TaxAdvisorRevokeRequest,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
@@ -378,7 +379,7 @@ async def get_access_logs(
     to_date: Optional[datetime] = Query(None, description="End-Datum"),
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(100, ge=1, le=1000, description="Eintraege pro Seite"),
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> List[TaxAdvisorAccessLogResponse]:

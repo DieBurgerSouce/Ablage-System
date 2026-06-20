@@ -4,16 +4,8 @@
  * Felder für Bewirtungskosten-Dokumentation (steuerlich absetzbar zu 70%).
  */
 
-import * as React from 'react';
-import { type Control, useFieldArray, type UseFormReturn } from 'react-hook-form';
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { useFieldArray, type UseFormReturn } from 'react-hook-form';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';

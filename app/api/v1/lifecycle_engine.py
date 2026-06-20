@@ -315,24 +315,31 @@ async def create_destruction_protocol(
 
     Nur Dokumente mit abgelaufener Frist werden zur Vernichtung freigegeben.
     """
-    try:
-        # Multi-Tenant: Nur Dokumente der eigenen Firma zulassen
-        from sqlalchemy import select
-        from app.db.models import Document
+    # Multi-Tenant: Nur Dokumente der eigenen Firma zulassen.
+    # Schemathesis-Fix (W1-004 #10): Der Check lief vorher als ArchiveError
+    # in den generischen except-Block -> 500. Jetzt 404 (identische Antwort
+    # fuer nicht existente und fremde Dokumente - kein Tenant-Oracle).
+    from sqlalchemy import select
+    from app.db.models import Document
 
-        owned_result = await db.execute(
-            select(Document.id).where(
-                Document.id.in_(body.document_ids),
-                Document.company_id == company_id,
-            )
+    owned_result = await db.execute(
+        select(Document.id).where(
+            Document.id.in_(body.document_ids),
+            Document.company_id == company_id,
         )
-        owned_ids = {row[0] for row in owned_result.all()}
-        unauthorized_ids = set(body.document_ids) - owned_ids
-        if unauthorized_ids:
-            raise ArchiveError(
-                f"{len(unauthorized_ids)} Dokument(e) nicht gefunden oder keine Berechtigung"
-            )
+    )
+    owned_ids = {row[0] for row in owned_result.all()}
+    unauthorized_ids = set(body.document_ids) - owned_ids
+    if unauthorized_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"{len(unauthorized_ids)} Dokument(e) nicht gefunden "
+                "oder keine Berechtigung"
+            ),
+        )
 
+    try:
         protocol = await document_lifecycle_engine.generate_destruction_protocol(
             db,
             document_ids=body.document_ids,
@@ -360,6 +367,11 @@ async def create_destruction_protocol(
             rejected=int(protocol.get("rejected", 0)),
             items=items,
             errors=errors,
+        )
+    except ArchiveError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Lebenszyklus"),
         )
     except Exception as e:
         logger.error(

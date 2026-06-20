@@ -2,7 +2,6 @@ import { useState } from "react";
 import { CheckSquare, Filter, User, Clock, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -61,7 +60,7 @@ export function AnnotationTasksPage() {
 
   // Get unique assignees for filter
   const uniqueAssignees = Array.from(
-    new Set(tasks.map((t) => t.assignee).filter(Boolean))
+    new Set(tasks.map((t) => t.assignee).filter((a): a is string => Boolean(a)))
   );
 
   return (

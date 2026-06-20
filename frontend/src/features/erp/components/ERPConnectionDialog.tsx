@@ -62,6 +62,7 @@ const connectionSchema = z.object({
 });
 
 type ConnectionFormValues = z.infer<typeof connectionSchema>;
+type ConnectionFormValuesInput = z.input<typeof connectionSchema>;
 
 // =============================================================================
 // Entity Options
@@ -98,7 +99,7 @@ export function ERPConnectionDialog({
   const isEditing = !!connection;
   const isLoading = createConnection.isPending || updateConnection.isPending;
 
-  const form = useForm<ConnectionFormValues>({
+  const form = useForm<ConnectionFormValuesInput, unknown, ConnectionFormValues>({
     resolver: zodResolver(connectionSchema),
     defaultValues: {
       name: '',

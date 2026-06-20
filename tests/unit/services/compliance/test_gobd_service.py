@@ -456,6 +456,81 @@ class TestGoBDComplianceService:
         assert result.details["unarchived_documents"] == 20
         assert any("unarchived" in str(issue).lower() for issue in result.details.get("issues", []))
 
+    @pytest.mark.asyncio
+    async def test_unveraenderbarkeit_niemals_passed_ohne_hash_pruefung(
+        self,
+        service: GoBDComplianceService,
+        mock_db: AsyncMock,
+        company_id: uuid.UUID,
+    ) -> None:
+        """M15-Ehrlichkeit: ohne echte Hash-Verifikation max. WARNING.
+
+        Auch im Bestcase (alle Archive verifiziert markiert, nichts
+        unarchiviert) darf der Check NICHT PASSED melden, weil die
+        Datei-Hash-Pruefung nicht implementiert ist (teilgeprueft).
+        """
+        mock_archive = MagicMock()
+        mock_archive.is_verified = True
+        mock_archive.document_id = uuid.uuid4()
+
+        call_count = [0]
+
+        def execute_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            mock_result = MagicMock()
+            if call_count[0] == 1:  # Archives query
+                mock_result.scalars.return_value.all.return_value = [mock_archive]
+            else:  # Unarchived docs count
+                mock_result.scalar.return_value = 0
+            return mock_result
+
+        mock_db.execute.side_effect = execute_side_effect
+
+        result = await service._check_unveraenderbarkeit(mock_db, company_id)
+
+        assert result.score == 100
+        assert result.status == ComplianceStatus.WARNING.value
+        assert result.status != ComplianceStatus.PASSED.value
+        assert result.details["teilgeprueft"] is True
+        assert "nicht implementiert" in result.details["hash_verification"]
+        assert any(
+            issue.get("type") == "hash_verification_not_implemented"
+            for issue in result.details["issues"]
+        )
+        assert any("teilgeprueft" in step for step in result.remediation_steps)
+
+    @pytest.mark.asyncio
+    async def test_unveraenderbarkeit_failed_bei_niedrigem_score(
+        self,
+        service: GoBDComplianceService,
+        mock_db: AsyncMock,
+        company_id: uuid.UUID,
+    ) -> None:
+        """Score < 70 (unverifizierte Archive + viele Unarchivierte) -> FAILED."""
+        mock_archive = MagicMock()
+        mock_archive.is_verified = False
+        mock_archive.document_id = uuid.uuid4()
+
+        call_count = [0]
+
+        def execute_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            mock_result = MagicMock()
+            if call_count[0] == 1:  # Archives query
+                mock_result.scalars.return_value.all.return_value = [mock_archive]
+            else:  # Unarchived docs count
+                mock_result.scalar.return_value = 100
+            return mock_result
+
+        mock_db.execute.side_effect = execute_side_effect
+
+        result = await service._check_unveraenderbarkeit(mock_db, company_id)
+
+        # 100 - 30 (0% verifiziert) - 20 (Unarchiviert, gedeckelt) = 50
+        assert result.score == 50
+        assert result.status == ComplianceStatus.FAILED.value
+        assert result.details["teilgeprueft"] is True
+
     # -------------------------------------------------------------------------
     # Aufbewahrung (Retention) Tests
     # -------------------------------------------------------------------------

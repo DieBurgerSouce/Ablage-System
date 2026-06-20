@@ -35,6 +35,8 @@ import {
   useToggleChannel,
   useTestNotification,
   useUpdateNotificationPreferences,
+  useUpdateSeverityMatrix,
+  useUpdateQuietHours,
 } from './hooks';
 import type { NotificationChannel, ChannelConfig } from './types';
 
@@ -44,7 +46,9 @@ export function NotificationPreferencesPage() {
   const [pendingGdprChannel, setPendingGdprChannel] = useState<NotificationChannel | null>(null);
 
   // Queries
-  const { data: preferences, isLoading: prefsLoading } = useNotificationPreferences();
+  const { data: preferencesResponse, isLoading: prefsLoading } = useNotificationPreferences();
+  // Backend-Vertrag: Response kapselt { preferences, channelStatus, escalationChain }
+  const prefs = preferencesResponse?.preferences;
   const { data: channelStatus, isLoading: channelsLoading } = useChannelStatus();
   const { data: escalationChain, isLoading: escalationLoading } = useEscalationChain();
 
@@ -52,6 +56,8 @@ export function NotificationPreferencesPage() {
   const toggleChannel = useToggleChannel();
   const testNotification = useTestNotification();
   const updatePreferences = useUpdateNotificationPreferences();
+  const updateSeverityMatrix = useUpdateSeverityMatrix();
+  const updateQuietHours = useUpdateQuietHours();
 
   const isLoading = prefsLoading || channelsLoading || escalationLoading;
 
@@ -79,8 +85,8 @@ export function NotificationPreferencesPage() {
   };
 
   // Handler für Test-Benachrichtigung
-  const handleTestNotification = (channel: NotificationChannel) => {
-    testNotification.mutate({ channel });
+  const handleTestNotification = async (channel: NotificationChannel, message?: string) => {
+    await testNotification.mutateAsync({ channel, message });
   };
 
   // Handler für globales Aktivieren/Deaktivieren
@@ -121,7 +127,7 @@ export function NotificationPreferencesPage() {
             </Label>
             <Switch
               id="global-toggle"
-              checked={preferences?.enabled ?? true}
+              checked={prefs?.enabled ?? true}
               onCheckedChange={handleGlobalToggle}
               disabled={updatePreferences.isPending}
             />
@@ -132,11 +138,9 @@ export function NotificationPreferencesPage() {
         {showGdprBanner && (
           <GdprConsentBanner
             channel={pendingGdprChannel!}
-            onConsent={handleGdprConsent}
-            onDismiss={() => {
-              setShowGdprBanner(false);
-              setPendingGdprChannel(null);
-            }}
+            onAccept={() => handleGdprConsent(true)}
+            onDecline={() => handleGdprConsent(false)}
+            isLoading={toggleChannel.isPending}
           />
         )}
 
@@ -179,7 +183,7 @@ export function NotificationPreferencesPage() {
                     onToggle={handleChannelToggle}
                     onTest={handleTestNotification}
                     isLoading={toggleChannel.isPending || testNotification.isPending}
-                    disabled={!preferences?.enabled}
+                    disabled={!prefs?.enabled}
                   />
                 ))}
               </CardContent>
@@ -205,7 +209,7 @@ export function NotificationPreferencesPage() {
                         key={channel.channel}
                         channel={channel.channel}
                         onTest={handleTestNotification}
-                        isLoading={testNotification.isPending}
+                        disabled={testNotification.isPending}
                       />
                     ))}
                   {channelStatus?.filter((c: ChannelConfig) => c.enabled && c.configured).length === 0 && (
@@ -232,11 +236,16 @@ export function NotificationPreferencesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SeverityMatrix
-                  preferences={preferences}
-                  channelStatus={channelStatus ?? []}
-                  disabled={!preferences?.enabled}
-                />
+                {prefs ? (
+                  <SeverityMatrix
+                    preferences={prefs}
+                    onUpdate={(severity, channels) =>
+                      updateSeverityMatrix.mutate({ severity, channels })
+                    }
+                    isLoading={updateSeverityMatrix.isPending}
+                    disabled={!prefs.enabled}
+                  />
+                ) : null}
               </CardContent>
             </Card>
           </TabsContent>
@@ -252,10 +261,14 @@ export function NotificationPreferencesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <QuietHoursForm
-                  preferences={preferences}
-                  disabled={!preferences?.enabled}
-                />
+                {prefs ? (
+                  <QuietHoursForm
+                    config={prefs.quietHours}
+                    onUpdate={(config) => updateQuietHours.mutate(config)}
+                    isLoading={updateQuietHours.isPending}
+                    disabled={!prefs.enabled}
+                  />
+                ) : null}
               </CardContent>
             </Card>
           </TabsContent>
@@ -273,8 +286,8 @@ export function NotificationPreferencesPage() {
               <CardContent>
                 <EscalationChainView
                   escalationChain={escalationChain ?? []}
-                  preferences={preferences}
-                  disabled={!preferences?.enabled}
+                  preferences={prefs}
+                  disabled={!prefs?.enabled}
                 />
               </CardContent>
             </Card>

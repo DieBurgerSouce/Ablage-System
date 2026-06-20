@@ -13,25 +13,12 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import type { SSOProviderResponse } from '../types/sso-schemas';
-import {
-  Loader2,
-  Shield,
-  Key,
-  Users,
-  Settings,
-  CheckCircle2,
-  XCircle,
-  Eye,
-  EyeOff,
-  Plus,
-  X,
-  RefreshCw,
-} from 'lucide-react';
+import { Loader2, Shield, Key, Users, Settings, CheckCircle2, XCircle, Eye, EyeOff, RefreshCw } from 'lucide-react';
 
 import {
   Dialog,
@@ -54,7 +41,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -368,7 +354,7 @@ export function EditProviderDialog({
 
     try {
       // Call test endpoint
-      await api.post(`/api/v1/sso/providers/${provider.id}/test`);
+      await api.post(`/sso/providers/${provider.id}/test`);
       setTestResult('success');
       toast({
         title: 'Verbindung erfolgreich',

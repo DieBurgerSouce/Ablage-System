@@ -196,13 +196,14 @@ class TestGetUserFromRequestOptional:
         mock_request = create_mock_request(authorization="Bearer valid.jwt.token")
         mock_db = AsyncMock()
 
-        # Patch at the source modules since inline imports are used
+        # decode_token/verify_token_type werden im company_context-Namespace
+        # importiert -> dort patchen (Usage-Site), nicht am Definitionsort.
         with patch(
-            "app.core.security.decode_token",
+            "app.middleware.company_context.decode_token",
             new_callable=AsyncMock,
             return_value={"sub": str(user_id), "type": "access"}
         ) as mock_decode, patch(
-            "app.core.security.verify_token_type"
+            "app.middleware.company_context.verify_token_type"
         ) as mock_verify, patch(
             "app.services.user_service.UserService.get_user_by_id",
             new_callable=AsyncMock,
@@ -238,9 +239,9 @@ class TestGetUserFromRequestOptional:
         mock_db = AsyncMock()
 
         # CWE-390 FIX: Now only catches specific exceptions (ValueError, jwt.PyJWTError)
-        # Mock decode_token to raise a JWT error
+        # Mock decode_token to raise a JWT error (Usage-Site patchen)
         with patch(
-            "app.core.security.decode_token",
+            "app.middleware.company_context.decode_token",
             new_callable=AsyncMock,
             side_effect=jwt.PyJWTError("Token expired")
         ):
@@ -275,11 +276,11 @@ class TestGetUserFromRequestOptional:
         mock_db = AsyncMock()
 
         with patch(
-            "app.core.security.decode_token",
+            "app.middleware.company_context.decode_token",
             new_callable=AsyncMock,
             return_value={"sub": str(user_id), "type": "access"}
         ), patch(
-            "app.core.security.verify_token_type"
+            "app.middleware.company_context.verify_token_type"
         ), patch(
             "app.services.user_service.UserService.get_user_by_id",
             new_callable=AsyncMock,
@@ -305,11 +306,11 @@ class TestGetUserFromRequestRequired:
         mock_db = AsyncMock()
 
         with patch(
-            "app.core.security.decode_token",
+            "app.middleware.company_context.decode_token",
             new_callable=AsyncMock,
             return_value={"sub": str(user_id), "type": "access"}
         ), patch(
-            "app.core.security.verify_token_type"
+            "app.middleware.company_context.verify_token_type"
         ), patch(
             "app.services.user_service.UserService.get_user_by_id",
             new_callable=AsyncMock,
@@ -345,7 +346,7 @@ class TestGetUserFromRequestRequired:
 
         # CWE-390 FIX: Now only catches specific exceptions (ValueError, jwt.PyJWTError)
         with patch(
-            "app.core.security.decode_token",
+            "app.middleware.company_context.decode_token",
             new_callable=AsyncMock,
             side_effect=jwt.PyJWTError("Token invalid")
         ):
@@ -380,11 +381,11 @@ class TestGetUserFromRequestRequired:
         mock_db = AsyncMock()
 
         with patch(
-            "app.core.security.decode_token",
+            "app.middleware.company_context.decode_token",
             new_callable=AsyncMock,
             return_value={"sub": str(user_id), "type": "access"}
         ), patch(
-            "app.core.security.verify_token_type"
+            "app.middleware.company_context.verify_token_type"
         ), patch(
             "app.services.user_service.UserService.get_user_by_id",
             new_callable=AsyncMock,
@@ -600,21 +601,27 @@ class TestSetRLSCompanyContext:
     @pytest.mark.asyncio
     async def test_db_error_propagates_exception(self):
         """CWE-391 FIX: Database errors should propagate to prevent silent RLS bypass."""
+        import sqlalchemy as sa
         from app.middleware.company_context import set_rls_company_context
 
         company_id = uuid4()
         mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(side_effect=Exception("Database connection failed"))
+        # Quelle faengt gezielt sa.exc.SQLAlchemyError (CWE-390 spezifisch) ->
+        # realistischer DB-Fehler ist ein SQLAlchemyError, kein nacktes Exception.
+        db_error = sa.exc.OperationalError(
+            "Database connection failed", None, Exception("conn")
+        )
+        mock_db.execute = AsyncMock(side_effect=db_error)
         mock_db.rollback = AsyncMock()
 
         # CWE-391: Exception should be raised, not silently ignored
         with patch("app.middleware.company_context.logger") as mock_logger:
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(sa.exc.SQLAlchemyError):
                 await set_rls_company_context(mock_db, company_id)
 
-            assert "Database connection failed" in str(exc_info.value)
-            # Should log error (not just debug)
+            # Should log error (not just debug) + Rollback ausgefuehrt
             mock_logger.error.assert_called()
+            mock_db.rollback.assert_awaited_once()
 
 
 class TestSwitchCompanyAtomic:

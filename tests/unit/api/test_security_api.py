@@ -648,7 +648,7 @@ class TestSecurityRecommendationsEndpoint:
 
             assert "total_empfehlungen" in data
             assert "empfehlungen" in data
-            assert "naechste_aktion" in data
+            assert "nächste_aktion" in data
 
             # Should have 2 recommendations (2 failed findings)
             assert data["total_empfehlungen"] == 2
@@ -738,7 +738,7 @@ class TestSecurityRecommendationsEndpoint:
             data = response.json()
 
             assert data["total_empfehlungen"] == 0
-            assert data["naechste_aktion"] is None
+            assert data["nächste_aktion"] is None
 
 
 # ========================= Authentication Tests =========================
@@ -847,7 +847,7 @@ class TestGermanResponses:
 
             # Check German field names
             assert "total_empfehlungen" in data
-            assert "naechste_aktion" in data
+            assert "nächste_aktion" in data
 
             if data["empfehlungen"]:
                 rec = data["empfehlungen"][0]

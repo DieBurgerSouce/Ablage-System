@@ -15,7 +15,7 @@ import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
 from app.ml.metrics import get_ml_metrics
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -367,9 +367,9 @@ class SuryaDoclingAgent(OCRAgent):
         except Exception as e:
             logger.error("surya_ocr_processing_error", **safe_error_log(e), exc_info=True)
 
-            # Erstelle standardisiertes Fehler-Result
+            # Erstelle standardisiertes Fehler-Result (PII-frei)
             result = self.create_error_result(
-                **safe_error_log(e),
+                error=safe_error_detail(e, "Surya-Docling-OCR"),
                 error_code="SURYA_DOCLING_ERROR",
             )
             return result.to_dict()

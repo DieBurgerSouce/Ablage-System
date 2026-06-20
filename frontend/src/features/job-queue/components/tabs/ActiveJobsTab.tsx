@@ -12,26 +12,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import {
-  AlertCircle,
-  Ban,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  FileText,
-  Filter,
-  Loader2,
-  MoreHorizontal,
-  Pause,
-  Play,
-  RefreshCw,
-  Search,
-  Skull,
-  Trash2,
-  XCircle,
-  Zap,
-} from 'lucide-react';
+import { Ban, CheckCircle2, ChevronDown, ChevronUp, Clock, FileText, Loader2, MoreHorizontal, Pause, Play, RefreshCw, Search, Skull, XCircle, Zap } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -40,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -62,16 +43,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { useJobsList } from '../../hooks/use-jobs-query';
@@ -158,7 +129,7 @@ export function ActiveJobsTab() {
 
   // Mutations
   const cancelJob = useCancelJob();
-  const retryJob = useRetryJob();
+  void useRetryJob();
   const pauseJob = usePauseJob();
   const resumeJob = useResumeJob();
   const forceKillJob = useForceKillJob();
@@ -224,7 +195,7 @@ export function ActiveJobsTab() {
         {
           onSuccess: (data) => {
             setSelectedJobs([]);
-            resolve({ success: data?.cancelledCount ?? selectedJobs.length, failed: 0 });
+            resolve({ success: data?.successCount ?? selectedJobs.length, failed: 0 });
           },
           onError: (error) => {
             reject(error);
@@ -261,7 +232,6 @@ export function ActiveJobsTab() {
   };
 
   const isAllSelected = activeJobs.length > 0 && selectedJobs.length === activeJobs.length;
-  const isSomeSelected = selectedJobs.length > 0 && selectedJobs.length < activeJobs.length;
 
   // Keyboard navigation handler for table rows
   const handleRowKeyDown = useCallback(

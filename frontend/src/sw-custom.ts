@@ -42,7 +42,6 @@ import { registerRoute } from 'workbox-routing';
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
-import { BackgroundSyncPlugin } from 'workbox-background-sync';
 
 // ============================================
 // Basic Setup
@@ -63,24 +62,6 @@ precacheAndRoute(self.__WB_MANIFEST || []);
 // ============================================
 
 // Create a queue for offline mutations
-const offlineMutationsQueue = new BackgroundSyncPlugin('offline-mutations', {
-  maxRetentionTime: 24 * 60, // Retry for 24 hours
-  onSync: async ({ queue }) => {
-    let entry;
-    while ((entry = await queue.shiftRequest())) {
-      try {
-        await fetch(entry.request);
-        swLog.debug('Background sync successful:', entry.request.url);
-      } catch (error) {
-        swLog.error('Background sync failed:', entry.request.url, error);
-        // Put the request back in the queue
-        await queue.unshiftRequest(entry);
-        throw error;
-      }
-    }
-    swLog.debug('Queue replay complete');
-  },
-});
 
 // ============================================
 // API Caching with Background Sync
@@ -110,7 +91,7 @@ registerRoute(
   ({ url, request }) =>
     url.pathname.startsWith('/api/v1/') &&
     ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method),
-  async ({ request, event }) => {
+  async ({ request, event: _event }) => {
     try {
       // Try to make the request
       const response = await fetch(request.clone());

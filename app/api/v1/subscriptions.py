@@ -25,6 +25,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_user_company_id  # F-31
 from app.db.models import User, Company, SubscriptionTierDefaults
 from app.services.tenant_rate_limit_service import DEFAULT_TIER_CONFIG
 
@@ -154,14 +155,14 @@ async def get_own_subscription(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole Subscription für die Company des aktuellen Users."""
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt"
         )
 
     result = await db.execute(
-        select(Company).where(Company.id == current_user.current_company_id)
+        select(Company).where(Company.id == (await get_user_company_id(db, current_user)))
     )
     company = result.scalar_one_or_none()
 
@@ -237,7 +238,7 @@ async def get_subscription_statistics(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole globale Subscription-Statistiken (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Statistiken einsehen"
@@ -311,7 +312,7 @@ async def get_company_subscription(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole Subscription für eine spezifische Company (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können fremde Subscriptions einsehen"
@@ -344,7 +345,7 @@ async def change_subscription_tier(
     db: AsyncSession = Depends(get_db),
 ):
     """Ändere den Subscription-Tier (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Tiers ändern"
@@ -396,7 +397,7 @@ async def update_billing_info(
     db: AsyncSession = Depends(get_db),
 ):
     """Aktualisiere Billing-Informationen (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Billing-Infos ändern"
@@ -441,7 +442,7 @@ async def extend_subscription(
     db: AsyncSession = Depends(get_db),
 ):
     """Verlängere Subscription (Admin only)."""
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren können Subscriptions verlängern"

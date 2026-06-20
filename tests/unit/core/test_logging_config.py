@@ -135,96 +135,108 @@ class TestSensitiveDataFilter:
         """SensitiveDataFilter Instanz."""
         return SensitiveDataFilter()
 
+    @staticmethod
+    def _expected_mask(value: str) -> str:
+        """Spiegelt den partiellen Maskierungs-Vertrag von _mask_value wider.
+
+        Vertrag (app/core/logging_config.py): erste 2 + last 2 Zeichen bleiben,
+        Rest wird mit '*' ersetzt; Werte <= 4 Zeichen werden komplett '****'.
+        """
+        if len(value) <= 4:
+            return "****"
+        return f"{value[:2]}{'*' * (len(value) - 4)}{value[-2:]}"
+
     def test_redacts_password(self, filter):
-        """password wird zensiert."""
+        """password wird (partiell) maskiert."""
         event_dict = {"event": "test", "password": "geheim123"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["password"] == "***ZENSIERT***"
+        assert result["password"] == self._expected_mask("geheim123")
+        assert "geheim123" != result["password"]
 
     def test_redacts_passwort(self, filter):
-        """passwort (deutsch) wird zensiert."""
+        """passwort (deutsch) wird (partiell) maskiert."""
         event_dict = {"event": "test", "passwort": "geheim123"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["passwort"] == "***ZENSIERT***"
+        assert result["passwort"] == self._expected_mask("geheim123")
 
     def test_redacts_token(self, filter):
-        """token wird zensiert."""
+        """token wird (partiell) maskiert."""
         event_dict = {"event": "test", "token": "eyJhbG..."}
 
         result = filter(None, "info", event_dict)
 
-        assert result["token"] == "***ZENSIERT***"
+        assert result["token"] == self._expected_mask("eyJhbG...")
 
     def test_redacts_access_token(self, filter):
-        """access_token wird zensiert."""
+        """access_token wird (partiell) maskiert."""
         event_dict = {"event": "test", "access_token": "abc123"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["access_token"] == "***ZENSIERT***"
+        assert result["access_token"] == self._expected_mask("abc123")
 
     def test_redacts_refresh_token(self, filter):
-        """refresh_token wird zensiert."""
+        """refresh_token wird (partiell) maskiert."""
         event_dict = {"event": "test", "refresh_token": "refresh123"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["refresh_token"] == "***ZENSIERT***"
+        assert result["refresh_token"] == self._expected_mask("refresh123")
 
     def test_redacts_api_key(self, filter):
-        """api_key wird zensiert."""
+        """api_key wird (partiell) maskiert."""
         event_dict = {"event": "test", "api_key": "sk-123abc"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["api_key"] == "***ZENSIERT***"
+        assert result["api_key"] == self._expected_mask("sk-123abc")
 
     def test_redacts_secret(self, filter):
-        """secret wird zensiert."""
+        """secret wird (partiell) maskiert."""
         event_dict = {"event": "test", "client_secret": "supersecret"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["client_secret"] == "***ZENSIERT***"
+        assert result["client_secret"] == self._expected_mask("supersecret")
 
     def test_redacts_email(self, filter):
-        """email wird zensiert."""
+        """email wird (partiell) maskiert."""
         event_dict = {"event": "test", "email": "test@example.com"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["email"] == "***ZENSIERT***"
+        assert result["email"] == self._expected_mask("test@example.com")
 
     def test_redacts_iban(self, filter):
-        """iban wird zensiert."""
+        """iban wird (partiell) maskiert."""
         event_dict = {"event": "test", "iban": "DE89370400440532013000"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["iban"] == "***ZENSIERT***"
+        assert result["iban"] == self._expected_mask("DE89370400440532013000")
 
     def test_redacts_credit_card(self, filter):
-        """credit_card wird zensiert."""
+        """credit_card wird (partiell) maskiert."""
         event_dict = {"event": "test", "credit_card": "4111111111111111"}
 
         result = filter(None, "info", event_dict)
 
-        assert result["credit_card"] == "***ZENSIERT***"
+        assert result["credit_card"] == self._expected_mask("4111111111111111")
 
     def test_redacts_authorization_header(self, filter):
-        """authorization Header wird zensiert."""
+        """authorization Header wird (partiell) maskiert."""
         event_dict = {"event": "test", "authorization": "Bearer eyJhbG..."}
 
         result = filter(None, "info", event_dict)
 
-        assert result["authorization"] == "***ZENSIERT***"
+        assert result["authorization"] == self._expected_mask("Bearer eyJhbG...")
 
     def test_redacts_case_insensitive(self, filter):
-        """Erkennung ist case-insensitive."""
+        """Erkennung ist case-insensitive (partielle Maskierung)."""
         event_dict = {
             "event": "test",
             "PASSWORD": "secret",
@@ -234,9 +246,9 @@ class TestSensitiveDataFilter:
 
         result = filter(None, "info", event_dict)
 
-        assert result["PASSWORD"] == "***ZENSIERT***"
-        assert result["Api_Key"] == "***ZENSIERT***"
-        assert result["EMAIL_address"] == "***ZENSIERT***"
+        assert result["PASSWORD"] == self._expected_mask("secret")
+        assert result["Api_Key"] == self._expected_mask("key123")
+        assert result["EMAIL_address"] == self._expected_mask("test@test.de")
 
     def test_preserves_non_sensitive_fields(self, filter):
         """Nicht-sensitive Felder bleiben erhalten."""
@@ -309,7 +321,9 @@ class TestPerformanceProcessor:
         result = processor(None, "info", event_dict)
 
         assert "gpu" in result
-        assert result["gpu"]["verfuegbar"] is True
+        # Quelle nutzt korrekt den deutschen Umlaut-Schluessel "verfügbar"
+        # (CLAUDE.md Regel 2 - UTF-8 fuer Umlaute).
+        assert result["gpu"]["verfügbar"] is True
         assert result["gpu"]["speicher_verwendet"] == 4.0  # 4GB
         assert result["gpu"]["speicher_gesamt"] == 16.0  # 16GB
 
@@ -562,4 +576,9 @@ class TestSensitiveFieldsList:
         for field in sensitive_fields:
             event_dict = {field: "sensitive_value"}
             result = filter(None, "info", event_dict)
-            assert result[field] == "***ZENSIERT***", f"{field} sollte zensiert werden"
+            # Partielle Maskierung: erste 2 + last 2 bleiben, Rest wird '*'.
+            masked = result[field]
+            value = "sensitive_value"
+            expected = f"{value[:2]}{'*' * (len(value) - 4)}{value[-2:]}"
+            assert masked != value, f"{field} sollte maskiert werden"
+            assert masked == expected, f"{field} sollte partiell maskiert werden"

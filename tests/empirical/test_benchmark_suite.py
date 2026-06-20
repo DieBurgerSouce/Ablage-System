@@ -17,6 +17,9 @@ import json
 orchestration_path = Path(__file__).parent.parent.parent / ".claude"
 sys.path.insert(0, str(orchestration_path))
 
+# F-06: claude-flow orchestration-Paket ist nicht Teil des App-Test-Scopes -> Skip.
+pytest.importorskip("orchestration")
+
 # Import orchestration package (not individual modules)
 from orchestration import (
     Orchestrator,

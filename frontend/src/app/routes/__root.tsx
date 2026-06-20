@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createRootRoute, Outlet, useLocation, Navigate } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal'
@@ -92,11 +92,25 @@ function RootComponent() {
                         <GlobalCommandDialog />
                         <OfflineIndicator />
                         <AppLayout id="main-content">
-                            <AnimatePresence mode="wait">
-                                <motion.div key={location.pathname} {...pageTransition}>
-                                    <Outlet />
-                                </motion.div>
-                            </AnimatePresence>
+                            {/*
+                              B7 (2026-06-12): BEWUSST KEIN <AnimatePresence mode="wait">
+                              mehr um den Outlet. <Outlet/> ist ein Context-Consumer:
+                              Der von AnimatePresence fuer die Exit-Animation festgehaltene
+                              Klon (alter key) rendert nach der Navigation bereits die
+                              NEUE Route - bei React.lazy-Routen suspendiert also der
+                              Exit-Klon (zeigt den Suspense-Spinner der Zielroute statt
+                              der alten Seite). In Kombination mit der mode="wait"-
+                              Buchhaltung blieben 25 Lazy-Routen (/upload,
+                              /admin/banking/* u.a.) im Browser im Dauer-Spinner haengen.
+                              Die keyed motion.div erhaelt die Enter-Animation
+                              (Einblenden) je Route; nur die 150ms-Exit-Animation
+                              entfaellt - sie konnte den alten Seiteninhalt ohnehin nie
+                              korrekt zeigen. Mechanik-Nachweis + Regressionstests:
+                              src/app/__tests__/lazy-route-transition.test.tsx
+                            */}
+                            <motion.div key={location.pathname} {...pageTransition}>
+                                <Outlet />
+                            </motion.div>
                             {import.meta.env.DEV && <TanStackRouterDevtools />}
                         </AppLayout>
                         <OnboardingWizard />

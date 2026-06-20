@@ -5,6 +5,11 @@ Tests user registration, login, token refresh, and logout functionality.
 """
 
 import pytest
+
+# F-06: aiosqlite-Treiber fuer das In-Memory-SQLite dieses Tests ist im Runtime-
+# Container nicht installiert -> sauberer Skip statt Collection-Error.
+pytest.importorskip("aiosqlite")
+
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool

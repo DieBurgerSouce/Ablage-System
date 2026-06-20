@@ -524,10 +524,24 @@ class TestQualityTrend:
         data_quality_service,
         company_id,
     ):
-        """Test: get_quality_trend gibt Liste zurueck."""
+        """Test: get_quality_trend aggregiert History-Zeilen pro Monat."""
+        # result.scalars().all() ist SYNCHRON -> scalars() muss MagicMock sein,
+        # nicht die per-default async Child eines AsyncMock (sonst Coroutine).
+        # Zwei Zeilen im selben Monat -> Durchschnitt + data_points=2.
+        month_dt = datetime(2026, 5, 15, tzinfo=timezone.utc)
+        row_a = MagicMock(overall_score=80.0, checked_at=month_dt, issue_counts={"duplicates": 2})
+        row_b = MagicMock(overall_score=90.0, checked_at=month_dt, issue_counts={"duplicates": 5})
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [row_a, row_b]
+        data_quality_service.db.execute = AsyncMock(return_value=result_mock)
+
         trend = await data_quality_service.get_quality_trend(company_id, months=6)
 
         assert isinstance(trend, list)
+        assert len(trend) == 1
+        assert trend[0]["month"] == "2026-05"
+        assert trend[0]["score"] == "85.0"  # (80 + 90) / 2
+        assert trend[0]["data_points"] == "2"
 
     @pytest.mark.asyncio
     async def test_get_quality_trend_with_custom_months(
@@ -536,6 +550,11 @@ class TestQualityTrend:
         company_id,
     ):
         """Test: get_quality_trend mit benutzerdefinierter Monatsanzahl."""
+        # result.scalars().all() ist SYNCHRON -> scalars() muss MagicMock sein.
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = []
+        data_quality_service.db.execute = AsyncMock(return_value=result_mock)
+
         trend = await data_quality_service.get_quality_trend(company_id, months=12)
 
         assert isinstance(trend, list)

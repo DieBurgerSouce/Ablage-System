@@ -202,7 +202,7 @@ class TestDocumentGDPRService:
                 user_id=mock_deleted_document.owner_id
             )
 
-        assert "nicht mehr moeglich" in str(exc.value)
+        assert "nicht mehr möglich" in str(exc.value)
         assert "35 Tagen" in str(exc.value)
 
     # Tests für list_deleted_documents

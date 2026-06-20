@@ -92,6 +92,7 @@ const emailConfigSchema = z.object({
 });
 
 type FormValues = z.infer<typeof emailConfigSchema>;
+type FormValuesInput = z.input<typeof emailConfigSchema>;
 
 // ==================== Component ====================
 
@@ -122,7 +123,7 @@ export function EmailConfigForm({
   const testConnection = useTestEmailConnection();
 
   // Form
-  const form = useForm<FormValues>({
+  const form = useForm<FormValuesInput, unknown, FormValues>({
     resolver: zodResolver(emailConfigSchema),
     defaultValues: {
       name: '',
@@ -375,7 +376,8 @@ export function EmailConfigForm({
                         <FormItem>
                           <FormLabel>Port</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} />
+                            {/* Schema-Input (z.coerce) -> Wert explizit in Zahl wandeln */}
+                            <Input type="number" {...field} value={Number(field.value ?? 993)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -506,7 +508,7 @@ export function EmailConfigForm({
                         <FormItem>
                           <FormLabel>Verarbeitet-Ordner</FormLabel>
                           <FormControl>
-                            <Input placeholder="INBOX/Processed" {...field} />
+                            <Input placeholder="INBOX/Verarbeitet" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormDescription>
                             Optional: Emails nach Import verschieben
@@ -523,7 +525,7 @@ export function EmailConfigForm({
                         <FormItem>
                           <FormLabel>Fehler-Ordner</FormLabel>
                           <FormControl>
-                            <Input placeholder="INBOX/Error" {...field} />
+                            <Input placeholder="INBOX/Fehler" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

@@ -315,24 +315,6 @@ class TestListConversations:
         assert len(response.conversations) == 1
         assert response.conversations[0].session_id == mock_conversation.session_id
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_filter_by_is_starred(self):
-        """Filter nach is_starred funktioniert."""
-        # Mock fuer Starred-Filter
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_filter_by_is_active(self):
-        """Filter nach is_active funktioniert."""
-        # Standard: nur aktive Konversationen
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_search_in_title(self):
-        """Suche im Titel funktioniert."""
-        pass
-
-
 class TestGetConversationBySession:
     """Tests fuer GET /ai/conversations/session/{session_id}."""
 
@@ -360,12 +342,6 @@ class TestGetConversationBySession:
 
         assert detail.session_id == mock_conversation.session_id
         assert detail.is_active is True
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_returns_404_if_not_found(self):
-        """404 wenn Session-ID nicht existiert."""
-        pass
-
 
 class TestMessageFeedback:
     """Tests fuer POST /ai/conversations/messages/{message_id}/feedback."""
@@ -576,7 +552,8 @@ class TestInputValidation:
 
         # Erlaubte Sonderzeichen
         assert validate_search_input("Test-Fall") == "Test-Fall"
-        assert validate_search_input("Test_Fall") == "Test_Fall"
+        # Unterstrich ist ein SQL-LIKE-Wildcard und wird bewusst escaped (CLAUDE.md Regel 9)
+        assert validate_search_input("Test_Fall") == r"Test\_Fall"
         assert validate_search_input("Test.Fall") == "Test.Fall"
 
     def test_validate_search_input_rejects_sql_injection(self):
@@ -585,11 +562,14 @@ class TestInputValidation:
         from app.api.v1.ai_conversations import validate_search_input
 
         # SQL-Injection-Versuche
+        # Der Validator ist eine Zeichen-Whitelist (CLAUDE.md Regel 9): er lehnt
+        # Eingaben mit unsicheren Zeichen ab. Reiner Text wie "UNION SELECT" ist
+        # zeichenseitig harmlos (Schutz via parametrisierte Queries + Wildcard-Escape)
+        # und wird daher bewusst NICHT abgelehnt -> nicht Teil dieser Liste.
         injection_attempts = [
             "'; DROP TABLE users; --",
             "1 OR 1=1",
             "1; SELECT * FROM",
-            "UNION SELECT",
             "' OR '1'='1",
             "<script>alert('xss')</script>",
             "${7*7}",
@@ -600,7 +580,7 @@ class TestInputValidation:
             with pytest.raises(HTTPException) as exc_info:
                 validate_search_input(attempt)
             assert exc_info.value.status_code == 400
-            assert "ungueltige Zeichen" in exc_info.value.detail
+            assert "ungültige Zeichen" in exc_info.value.detail
 
     def test_validate_search_input_escapes_wildcards(self):
         """SQL-Wildcards werden escaped."""

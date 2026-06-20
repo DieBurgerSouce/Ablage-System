@@ -20,13 +20,14 @@ import {
 
 // Error class for Supplier Ranking API
 export class SupplierRankingApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public code?: string
-  ) {
+  status?: number;
+  code?: string;
+
+  constructor(message: string, status?: number, code?: string) {
     super(message);
     this.name = 'SupplierRankingApiError';
+    this.status = status;
+    this.code = code;
   }
 }
 
@@ -42,7 +43,7 @@ export const supplierRankingService = {
     periodDays = 365
   ): Promise<SupplierRanking> {
     try {
-      const response = await apiClient.get<SupplierRankingResponse>(
+      const { data: response } = await apiClient.get<SupplierRankingResponse>(
         `/supplier-ranking/${entityId}?period_days=${periodDays}`
       );
       return transformSupplierRanking(response);
@@ -62,7 +63,7 @@ export const supplierRankingService = {
     topN = 10
   ): Promise<SupplierRankingReport> {
     try {
-      const response = await apiClient.get<SupplierRankingReportResponse>(
+      const { data: response } = await apiClient.get<SupplierRankingReportResponse>(
         `/supplier-ranking?period_days=${periodDays}&top_n=${topN}`
       );
       return transformSupplierRankingReport(response);
@@ -82,7 +83,7 @@ export const supplierRankingService = {
     periodDays = 365
   ): Promise<SupplierRanking[]> {
     try {
-      const response = await apiClient.post<SupplierRankingResponse[]>(
+      const { data: response } = await apiClient.post<SupplierRankingResponse[]>(
         '/supplier-ranking/compare',
         {
           entity_ids: entityIds,
@@ -103,7 +104,7 @@ export const supplierRankingService = {
    */
   async getTierDistribution(periodDays = 365): Promise<TierDistribution> {
     try {
-      const response = await apiClient.get<TierDistributionResponse>(
+      const { data: response } = await apiClient.get<TierDistributionResponse>(
         `/supplier-ranking/tiers/distribution?period_days=${periodDays}`
       );
       return response;

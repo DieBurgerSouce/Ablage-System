@@ -366,8 +366,12 @@ class TestDedupServiceRedis:
         mock_redis: AsyncMock,
     ) -> None:
         """Bei Redis-Fehler sollte auf Local Cache gefallen werden."""
-        # Redis exists wirft Exception
+        # Sowohl Lese- als auch Schreib-Operationen auf Redis schlagen fehl,
+        # damit BEIDE Pfade (is_duplicate + mark_sent) in den Local-Cache-Fallback
+        # gehen. Wenn nur exists faellt, schriebe mark_sent erfolgreich in Redis
+        # und der Local Cache bliebe leer.
         mock_redis.exists.side_effect = Exception("Redis connection error")
+        mock_redis.setex.side_effect = Exception("Redis connection error")
 
         # Sollte trotzdem funktionieren (Fallback)
         is_dup = await service.is_duplicate(
@@ -407,8 +411,19 @@ class TestDedupFactory:
 
     def test_get_dedup_service_with_redis(self) -> None:
         """Factory mit Redis sollte funktionieren."""
+        # Die Factory cached eine Singleton-Instanz und uebernimmt den Redis-Client
+        # nur bei der ERSTEN Erzeugung. Da ein vorheriger Test die Instanz bereits
+        # ohne Redis angelegt haben kann, das Modul-Singleton vorher zuruecksetzen.
+        import app.services.notification.dedup_service as dedup_module
+
+        dedup_module._dedup_service = None
+
         mock_redis = MagicMock()
         service = get_dedup_service(mock_redis)
 
         assert service.redis is mock_redis
         assert service._use_redis is True
+
+        # Aufraeumen: Singleton wieder freigeben, damit andere Tests nicht
+        # die Redis-gebundene Instanz erben.
+        dedup_module._dedup_service = None

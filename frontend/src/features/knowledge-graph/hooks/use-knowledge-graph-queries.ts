@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { knowledgeGraphApi } from '../api';
 import type { GraphData, SearchResult, GraphCommunity, FinancialChainData, RiskNetworkData, DocumentFamilyData, TimelineData } from '../types';
 

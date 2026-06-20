@@ -31,8 +31,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     InvoiceTracking,
+    BankAccount,
     BankTransaction,
     BusinessEntity,
+)
+from app.services.invoice_direction import (
+    is_incoming_invoice,
+    is_open_invoice,
+    is_outgoing_invoice,
 )
 from app.core.safe_errors import safe_error_log
 
@@ -370,8 +376,13 @@ class SkontoOptimizer:
         company_id: UUID,
     ) -> Decimal:
         """Laedt aktuellen Kontostand."""
-        query = select(func.coalesce(func.sum(BankTransaction.amount), 0)).where(
-            BankTransaction.company_id == company_id
+        # Company-Scope via BankAccount-JOIN (BankTransaction hat KEINE
+        # company_id-Spalte)
+        query = (
+            select(func.coalesce(func.sum(BankTransaction.amount), 0))
+            .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(BankAccount.company_id == company_id)
         )
 
         result = await db.execute(query)
@@ -390,7 +401,9 @@ class SkontoOptimizer:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.status.in_(["pending", "partial"]),
+                # "pending" existiert nicht in InvoiceStatus — offene
+                # Rechnungen via Status-Allowlist (invoice_direction.py)
+                is_open_invoice(),
                 InvoiceTracking.skonto_percentage.isnot(None),
                 InvoiceTracking.skonto_percentage >= self.MIN_SKONTO_PERCENTAGE,
                 InvoiceTracking.skonto_deadline.isnot(None),
@@ -449,8 +462,10 @@ class SkontoOptimizer:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "incoming",  # Forderung
-                InvoiceTracking.status.in_(["pending", "partial"]),
+                # Richtungs-Kommentar war vertauscht: Forderung = Kunde
+                # = Ausgangsrechnung (siehe app/services/invoice_direction.py)
+                is_outgoing_invoice(),  # Forderung
+                is_open_invoice(),
                 InvoiceTracking.due_date.isnot(None),
                 InvoiceTracking.due_date <= cutoff,
             )
@@ -486,8 +501,10 @@ class SkontoOptimizer:
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
-                InvoiceTracking.invoice_type == "outgoing",  # Verbindlichkeit
-                InvoiceTracking.status.in_(["pending", "partial"]),
+                # Richtungs-Kommentar war vertauscht: Verbindlichkeit =
+                # Lieferant = Eingangsrechnung
+                is_incoming_invoice(),  # Verbindlichkeit
+                is_open_invoice(),
                 InvoiceTracking.due_date.isnot(None),
                 InvoiceTracking.due_date <= cutoff,
                 or_(
@@ -742,6 +759,58 @@ class SkontoOptimizer:
             forecast[date_key] = balance
 
         return forecast
+
+
+    async def get_recommendations(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        days_ahead: int = 14,
+        only_urgent: bool = False,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Hole priorisierte Zahlungsempfehlungen.
+
+        F-31 minimal: Leitet aus ``optimize`` ab und flacht die
+        Empfehlungen auf einzelne Rechnungen ab (jede Empfehlung ->
+        ein Eintrag). Liefert Dicts, die der Router auf
+        PaymentRecommendationResponse mappt.
+        """
+        result = await self.optimize(db=db, company_id=company_id, days_ahead=days_ahead)
+
+        urgent_priorities = {Priority.CRITICAL, Priority.HIGH}
+        items: List[Dict[str, Any]] = []
+        for rec in result.optimal_payment_schedule:
+            if only_urgent and rec.priority not in urgent_priorities:
+                continue
+            if not rec.invoices:
+                continue
+            inv = rec.invoices[0]
+            priority_map = {
+                Priority.CRITICAL: 1,
+                Priority.HIGH: 2,
+                Priority.MEDIUM: 3,
+                Priority.LOW: 4,
+            }
+            items.append({
+                "invoice_id": str(inv.invoice_id),
+                "invoice_number": "",
+                "supplier_name": inv.entity_name,
+                "amount": float(inv.amount),
+                "skonto_percentage": float(inv.skonto_percentage),
+                "skonto_amount": float(inv.skonto_amount),
+                "skonto_deadline": inv.skonto_deadline.isoformat(),
+                "days_until_deadline": inv.days_until_skonto,
+                "payment_deadline": inv.due_date.isoformat(),
+                "recommendation": rec.recommendation_type.value,
+                "reason": rec.summary,
+                "roi_annualized": rec.roi_percent,
+                "priority": priority_map.get(rec.priority, 3),
+            })
+            if len(items) >= limit:
+                break
+
+        return items
 
 
 # =============================================================================

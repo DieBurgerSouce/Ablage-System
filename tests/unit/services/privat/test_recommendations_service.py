@@ -161,8 +161,14 @@ class TestInsuranceGaps:
         """Keine Luecke bei vorhandener Versicherung."""
         db_mock = AsyncMock()
         result_mock = MagicMock()
-        # Haftpflicht vorhanden
-        result_mock.all.return_value = [("haftpflicht",), ("hausrat",), ("berufsunfaehigkeit",)]
+        # Alle essentiellen Versicherungen vorhanden. Der Service-Schluessel ist
+        # "berufsunfähigkeit" (UTF-8-Umlaut); das Substring-Matching findet die
+        # ASCII-Schreibweise "berufsunfaehigkeit" NICHT -> hier echte Schreibweise.
+        result_mock.all.return_value = [
+            ("haftpflicht",),
+            ("hausrat",),
+            ("berufsunfähigkeit",),
+        ]
         db_mock.execute.return_value = result_mock
 
         result = await service._check_insurance_gaps(db_mock, uuid4())
@@ -338,7 +344,8 @@ class TestVehicleMaintenance:
 
         assert len(result) == 1
         assert result[0].priority == RecommendationPriority.CRITICAL
-        assert "ueberfaellig" in result[0].title.lower()
+        # Echter Titel nutzt UTF-8-Umlaut: "TÜV überfällig: ..."
+        assert "überfällig" in result[0].title.lower()
 
     @pytest.mark.asyncio
     async def test_tuev_upcoming(

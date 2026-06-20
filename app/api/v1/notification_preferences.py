@@ -258,7 +258,7 @@ async def get_available_channels(
         NotificationChannelStatus(
             channel="push",
             available=True,
-            configured=bool(getattr(current_user, "push_subscriptions", None)),
+            configured=("push_subscriptions" in current_user.__dict__ and bool(current_user.__dict__["push_subscriptions"])),
             description="Push-Benachrichtigungen (Browser/PWA)"
         ),
         NotificationChannelStatus(

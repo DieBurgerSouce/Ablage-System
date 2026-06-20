@@ -156,10 +156,15 @@ class TestListDocuments:
     async def test_list_ohne_filter(self, mock_get_filter_service):
         """list_documents liefert paginierten Response ohne Filter."""
         from app.services.document_services.crud_service import DocumentCRUDService
+        from app.db.models import Document
 
         mock_filter_service = MagicMock()
         mock_filter_service.build_filter_conditions.return_value = []
-        mock_filter_service.get_sort_column.return_value = MagicMock()
+        # get_sort_column liefert real eine SQLAlchemy-Spalte (vgl.
+        # DocumentFilterService.get_sort_column -> Document.created_at).
+        # Ein MagicMock laesst query.order_by(...) mit "ORDER BY expression
+        # expected" scheitern, daher echte Spalte mocken.
+        mock_filter_service.get_sort_column.return_value = Document.created_at
         mock_get_filter_service.return_value = mock_filter_service
 
         service = DocumentCRUDService()

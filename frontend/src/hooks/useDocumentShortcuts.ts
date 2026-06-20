@@ -28,7 +28,7 @@
  * ```
  */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useShortcutScope, useRegisterShortcuts, type KeyboardShortcut } from './useKeyboardShortcuts';
 
 // ==================== Types ====================
@@ -93,7 +93,7 @@ export function useDocumentShortcuts(options: UseDocumentShortcutsOptions): UseD
     onClearSelection,
     onOpen,
     onToggleSelect,
-    onRangeSelect,
+    onRangeSelect: _onRangeSelect,
     focusedIndex: externalFocusedIndex = -1,
     onFocusChange,
     columnCount = 1,

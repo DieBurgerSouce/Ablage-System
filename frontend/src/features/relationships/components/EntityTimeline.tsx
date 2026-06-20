@@ -8,13 +8,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import {
-    Clock,
-    FileText,
-    Filter,
-    Loader2,
-    RefreshCw,
-} from 'lucide-react';
+import { Clock, FileText, Filter, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -128,7 +122,7 @@ export function EntityTimeline({
     // Handle document click
     const handleEventClick = (documentId: string | undefined) => {
         if (documentId) {
-            navigate({ to: '/viewer/$documentId', params: { documentId } });
+            navigate({ to: '/documents/$documentId', params: { documentId } });
         }
     };
 
@@ -144,7 +138,7 @@ export function EntityTimeline({
             return acc;
         },
         {} as Record<TimelineEventType, number>
-    ) ?? {};
+    ) ?? ({} as Record<TimelineEventType, number>);
 
     return (
         <Card className={compact ? 'border-0 shadow-none' : undefined}>

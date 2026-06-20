@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useHotkeys as useHotkeysHook, Options } from 'react-hotkeys-hook';
+import { useHotkeys as useHotkeysHook, type Options } from 'react-hotkeys-hook';
 import type { KeyboardShortcut, KeySequence, ShortcutScope } from '../types/shortcut-types';
 import { DEFAULT_SEQUENCE_TIMEOUT, PROTECTED_SHORTCUTS } from '../types/shortcut-types';
 

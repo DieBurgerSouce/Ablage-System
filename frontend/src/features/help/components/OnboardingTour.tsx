@@ -55,10 +55,6 @@ export function OnboardingTour({ autoStart = true }: OnboardingTourProps) {
     }
   }, [autoStart, status, isLoading]);
 
-  if (isLoading || !status || status.completed || !isActive) {
-    return null;
-  }
-
   const steps = [
     {
       id: 'welcome',
@@ -107,6 +103,31 @@ export function OnboardingTour({ autoStart = true }: OnboardingTourProps) {
   const currentStep = steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
+  // Spotlight-Effekt aktuelles Element (Hook MUSS vor early-return stehen, rules-of-hooks)
+  useEffect(() => {
+    if (!isActive || !currentStep?.targetElement) {
+      return;
+    }
+    const element = document.querySelector(currentStep.targetElement);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('tour-spotlight');
+    }
+    return () => {
+      if (currentStep?.targetElement) {
+        const el = document.querySelector(currentStep.targetElement);
+        if (el) {
+          el.classList.remove('tour-spotlight');
+        }
+      }
+    };
+  }, [currentStep, isActive]);
+
+  // F-05: early-return NACH allen Hooks (vorher folgte ein useEffect dahinter -> rules-of-hooks)
+  if (isLoading || !status || status.completed || !isActive) {
+    return null;
+  }
+
   const handleNext = async () => {
     // Schritt als abgeschlossen markieren
     await completeStep.mutateAsync(currentStep.id);
@@ -128,27 +149,6 @@ export function OnboardingTour({ autoStart = true }: OnboardingTourProps) {
     await skipOnboarding.mutateAsync();
     setIsActive(false);
   };
-
-  // Spotlight-Effekt für aktuelles Element
-  useEffect(() => {
-    if (currentStep.targetElement) {
-      const element = document.querySelector(currentStep.targetElement);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('tour-spotlight');
-      }
-    }
-
-    return () => {
-      // Cleanup
-      if (currentStep.targetElement) {
-        const element = document.querySelector(currentStep.targetElement);
-        if (element) {
-          element.classList.remove('tour-spotlight');
-        }
-      }
-    };
-  }, [currentStep]);
 
   return (
     <>

@@ -13,6 +13,7 @@ Feinpoliert und durchdacht - Stabile Integration Test Infrastruktur.
 
 import pytest
 import tempfile
+import os
 from pathlib import Path
 from typing import Generator
 import asyncio
@@ -20,6 +21,48 @@ import sys
 
 # Ensure app is in path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+# Einheitliche Test-DB-URL fuer Integrationstests:
+# TEST_DATABASE_URL hat Vorrang (Docker/CI), sonst lokaler Fallback.
+INTEGRATION_DB_FALLBACK_URL = (
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test"
+)
+
+
+def integration_db_url() -> str:
+    """Liefert die Test-Datenbank-URL (env-gesteuert mit lokalem Fallback)."""
+    return os.environ.get("TEST_DATABASE_URL", INTEGRATION_DB_FALLBACK_URL)
+
+
+@pytest.fixture
+def db_session() -> Generator:
+    """Synchrone DB-Session fuer Schema-Verifikationstests.
+
+    ``test_index_verification.py`` prueft Indizes/Constraints mit synchronen
+    ``execute(...)``-Aufrufen, definierte aber keine eigene Fixture
+    (17 Tests endeten als ERROR "fixture 'db_session' not found").
+    Die asyncpg-URL wird fuer den synchronen Treiber umgeschrieben.
+    Ohne erreichbares PostgreSQL wird sauber geskippt.
+    """
+    try:
+        from sqlalchemy import create_engine
+    except ImportError:
+        pytest.skip("SQLAlchemy nicht verfuegbar")
+
+    sync_url = integration_db_url().replace("+asyncpg", "+psycopg2")
+    engine = None
+    try:
+        engine = create_engine(sync_url, pool_pre_ping=True)
+        connection = engine.connect()
+    except Exception as exc:
+        if engine is not None:
+            engine.dispose()
+        pytest.skip(f"PostgreSQL-Testdatenbank nicht erreichbar: {exc}")
+    try:
+        yield connection
+    finally:
+        connection.close()
+        engine.dispose()
 
 
 @pytest.fixture(scope="session")

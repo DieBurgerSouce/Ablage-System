@@ -437,8 +437,14 @@ class TestLexwareInputValidation:
     ])
     def test_customer_number_validated(self, invalid_kd_nr: str, test_client, auth_headers) -> None:
         """Test that customer numbers are validated against injection."""
+        from urllib.parse import quote
+
+        # URL-encodieren (z.B. Nullbytes als %00): httpx verweigert rohe
+        # non-printable Zeichen in der URL clientseitig (httpx.InvalidURL) -
+        # so erreicht die Payload den Server und die Validierung wird
+        # tatsaechlich geprueft.
         response = test_client.get(
-            f"/api/v1/entities/search?customer_number={invalid_kd_nr}",
+            f"/api/v1/entities/search?customer_number={quote(invalid_kd_nr)}",
             headers=auth_headers,
         )
 
@@ -522,8 +528,14 @@ class TestLexwareBatchOperationSanitization:
 
 
 @pytest.fixture
-def log_capture(mocker):
-    """Capture log output for testing."""
+def log_capture():
+    """Capture log output for testing.
+
+    HINWEIS (2026-06-12): Der fruehere ``mocker``-Parameter (pytest-mock)
+    wurde nie benutzt und pytest-mock ist im Backend-Container nicht
+    installiert -> "fixture 'mocker' not found" liess alle 5
+    Log-Sanitization-Tests als ERROR durchfallen.
+    """
     import io
     import logging
 

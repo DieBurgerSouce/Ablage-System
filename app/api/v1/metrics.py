@@ -1913,7 +1913,7 @@ async def get_ab_testing_metrics(
         logger.warning("ab_testing_router_runtime_error", error=str(re))
         result["konfiguration"]["fehler"] = f"Router-Initialisierung fehlgeschlagen: {re}"
     except Exception as e:
-        logger.error("ab_testing_router_error", **safe_error_log(e), error_type=type(e).__name__)
+        logger.error("ab_testing_router_error", **safe_error_log(e))
         result["konfiguration"]["fehler"] = "Unerwarteter Fehler beim Abrufen des A/B Testing Status"
 
     # Get Qdrant Status
@@ -1984,7 +1984,7 @@ async def get_ab_testing_metrics(
             "fehler": str(ve)
         }
     except Exception as e:
-        logger.error("qdrant_status_error", **safe_error_log(e), error_type=type(e).__name__)
+        logger.error("qdrant_status_error", **safe_error_log(e))
         result["qdrant_status"] = {
             "verfügbar": False,
             "fehler": "Unerwarteter Fehler beim Qdrant-Statusabruf"

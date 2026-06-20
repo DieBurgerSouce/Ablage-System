@@ -46,6 +46,7 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select, func, and_, cast, Date
+from sqlalchemy import literal_column  # F-31
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload

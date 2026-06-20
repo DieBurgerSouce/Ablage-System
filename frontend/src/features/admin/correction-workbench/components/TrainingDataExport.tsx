@@ -4,17 +4,7 @@
  */
 
 import { useState } from 'react';
-import {
-  Download,
-  Settings2,
-  FileJson,
-  FileSpreadsheet,
-  Trash2,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  FolderOpen,
-} from 'lucide-react';
+import { Download, FileJson, FileSpreadsheet, Trash2, RefreshCw, CheckCircle2, AlertCircle, FolderOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -197,7 +187,6 @@ export function TrainingDataExport() {
     }
   };
 
-  const selectedFormat = EXPORT_FORMATS.find((f) => f.value === config.format);
 
   return (
     <Card className="h-full flex flex-col">

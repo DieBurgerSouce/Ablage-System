@@ -55,6 +55,7 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+type FormDataInput = z.input<typeof formSchema>;
 
 const DIRECTION_OPTIONS: Array<{ value: ShipmentDirection; label: string }> = [
   { value: 'inbound', label: UI_LABELS.directionInbound },
@@ -71,7 +72,7 @@ function NeueSendungPage() {
     confidence: 'high' | 'medium' | 'low';
   } | null>(null);
 
-  const form = useForm<FormData>({
+  const form = useForm<FormDataInput, unknown, FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       trackingNumber: '',

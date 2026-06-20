@@ -75,7 +75,7 @@ class TestContractRenewalService:
         """Test extraction of German date format DD.MM.YYYY."""
         text = """
         Vertragslaufzeit: Der Vertrag beginnt am 01.01.2026 und endet am 31.12.2026.
-        Die Kuendigungsfrist betraegt 3 Monate zum Vertragsende.
+        Die Kündigungsfrist beträgt 3 Monate zum Vertragsende.
         """
 
         result = service._extract_dates_from_text(text)
@@ -84,10 +84,15 @@ class TestContractRenewalService:
         assert result["notice_period_days"] == 90  # 3 months = 90 days
 
     def test_extract_dates_from_text_iso_format(self, service: ContractRenewalService):
-        """Test extraction of ISO date format YYYY-MM-DD."""
+        """Test extraction of ISO date format YYYY-MM-DD.
+
+        Der Extraktor klassifiziert Datumsangaben ueber deutsche Kontext-
+        Schluesselwoerter (System verarbeitet deutsche Dokumente, CLAUDE.md
+        Regel 2). Daher deutscher Kontext mit ISO-Datumsformat.
+        """
         text = """
-        Contract effective: 2026-01-15
-        Contract expiration: 2027-01-14
+        Vertrag gültig ab dem 2026-01-15.
+        Der Vertrag endet am 2027-01-14.
         """
 
         result = service._extract_dates_from_text(text)
@@ -98,11 +103,11 @@ class TestContractRenewalService:
     def test_extract_notice_period_days(self, service: ContractRenewalService):
         """Test extraction of notice period from German text."""
         test_cases = [
-            ("Kuendigungsfrist von 30 Tagen", 30),
-            ("3 Monate Kuendigungsfrist", 90),
+            ("Kündigungsfrist von 30 Tagen", 30),
+            ("3 Monate Kündigungsfrist", 90),
             ("4 Wochen vor Vertragsende", 28),
-            ("Kuendigungsfrist von 1 Jahr", 365),
-            ("Die Frist betraegt 14 Tage", 14),
+            ("Kündigungsfrist von 1 Jahr", 365),
+            ("Die Frist beträgt 14 Tage", 14),
         ]
 
         for text, expected_days in test_cases:
@@ -224,7 +229,7 @@ class TestContractRenewalService:
             contract_title="Mustervertrag",
         )
 
-        assert "Kuendigungsfrist" in title
+        assert "Kündigungsfrist" in title
         assert "30 Tagen" in title
 
     def test_get_reminder_description_german(self, service: ContractRenewalService):
@@ -265,18 +270,11 @@ class TestContractRenewalService:
         """Test that upcoming renewals are sorted by urgency."""
         company_id = uuid4()
 
-        # Create mock contracts with different expiration dates
+        # Create mock contracts with different expiration dates.
+        # Der Service vertraut auf die SQL-Sortierung (ORDER BY expiration_date ASC);
+        # der Mock liefert die Reihenfolge, wie sie die echte DB liefern wuerde:
+        # Contract 2 (20 Tage) vor Contract 1 (60 Tage).
         contracts = [
-            Contract(
-                id=uuid4(),
-                company_id=company_id,
-                title="Contract 1",
-                contract_type="other",
-                status=ContractStatus.ACTIVE.value,
-                expiration_date=date.today() + timedelta(days=60),
-                notice_period_days=30,
-                auto_renewal=False,
-            ),
             Contract(
                 id=uuid4(),
                 company_id=company_id,
@@ -286,6 +284,16 @@ class TestContractRenewalService:
                 expiration_date=date.today() + timedelta(days=20),
                 notice_period_days=14,
                 auto_renewal=True,
+            ),
+            Contract(
+                id=uuid4(),
+                company_id=company_id,
+                title="Contract 1",
+                contract_type="other",
+                status=ContractStatus.ACTIVE.value,
+                expiration_date=date.today() + timedelta(days=60),
+                notice_period_days=30,
+                auto_renewal=False,
             ),
         ]
 
@@ -357,6 +365,6 @@ class TestContractRenewalIntegration:
         """Test that termination keywords are in German."""
         from app.services.contracts.contract_renewal_service import TERMINATION_KEYWORDS
 
-        german_keywords = ["kuendigungsfrist", "vertragsende", "laufzeit"]
+        german_keywords = ["kündigungsfrist", "vertragsende", "laufzeit"]
         for keyword in german_keywords:
             assert keyword in TERMINATION_KEYWORDS

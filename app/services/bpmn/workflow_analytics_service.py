@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from uuid import UUID
 import structlog
 
-from sqlalchemy import select, and_, or_, func, text, case
+from sqlalchemy import select, and_, or_, func, text, case, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -262,9 +262,9 @@ class WorkflowAnalyticsService:
 
         # Gruppierungs-Funktion basierend auf Parameter
         if group_by == "week":
-            date_trunc = func.date_trunc("week", ProcessInstance.ended_at)
+            date_trunc = func.date_trunc(literal_column("'week'"), ProcessInstance.ended_at)
         elif group_by == "month":
-            date_trunc = func.date_trunc("month", ProcessInstance.ended_at)
+            date_trunc = func.date_trunc(literal_column("'month'"), ProcessInstance.ended_at)
         else:
             date_trunc = func.date(ProcessInstance.ended_at)
 

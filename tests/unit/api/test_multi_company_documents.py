@@ -262,13 +262,17 @@ class TestCompanySwitch:
         )
         mock_result_first.scalar_one_or_none.return_value = mock_user_company
 
-        # Mock: Alle UserCompany-Eintraege (zweite execute: scalars().all())
-        mock_result_second = MagicMock()
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = [mock_user_company]
-        mock_result_second.scalars.return_value = mock_scalars
-
-        mock_db.execute.side_effect = [mock_result_first, mock_result_second]
+        # switch_company fuehrt 5 db.execute aus (echter Vertrag):
+        # 1) Zugriffs-Check (scalar_one_or_none)
+        # 2) SET LOCAL lock_timeout, 3) SELECT FOR UPDATE,
+        # 4) UPDATE is_current=False, 5) UPDATE is_current=True
+        mock_db.execute.side_effect = [
+            mock_result_first,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        ]
 
         result = await switch_company(test_user_id, test_company_id, mock_db)
 

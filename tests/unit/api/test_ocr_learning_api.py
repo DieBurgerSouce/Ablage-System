@@ -62,7 +62,7 @@ class TestCorrectionFeedbackRequestValidation:
                 original_confidence=0.85,
             )
 
-        assert "Ungueltiges OCR-Backend" in str(exc_info.value)
+        assert "Ungültiges OCR-Backend" in str(exc_info.value)
 
     def test_backend_case_insensitive(self) -> None:
         """Backend-Validierung ist case-insensitive."""
@@ -153,7 +153,7 @@ class TestCorrectionFeedbackRequestValidation:
                 correction_type="invalid_type",  # INVALID
             )
 
-        assert "Ungueltiger Korrektur-Typ" in str(exc_info.value)
+        assert "Ungültiger Korrektur-Typ" in str(exc_info.value)
 
     def test_correction_type_case_insensitive(self) -> None:
         """Korrektur-Typ Validierung ist case-insensitive."""
@@ -230,7 +230,7 @@ class TestCalibratedConfidenceRequestValidation:
                 raw_confidence=0.85,
             )
 
-        assert "Ungueltiges OCR-Backend" in str(exc_info.value)
+        assert "Ungültiges OCR-Backend" in str(exc_info.value)
 
     def test_invalid_field_rejected(self) -> None:
         """Ungueltiges Feld wird abgelehnt."""

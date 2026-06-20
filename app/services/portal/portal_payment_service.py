@@ -7,7 +7,7 @@ Kunden können Zahlungsbestätigungen einreichen.
 from datetime import datetime, timezone, date
 from typing import Optional, List
 from uuid import UUID
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
@@ -45,6 +45,17 @@ class PortalPaymentService:
         """
         Reiche eine Zahlungsbestätigung ein.
         """
+        # Validiere Zahlungsbetrag (muss positiv sein).
+        # payment_amount kommt als String vom API-Layer (kein Pydantic-gt=0),
+        # daher hier die Plausibilitaetspruefung gegen negative/Null-Betraege.
+        try:
+            amount_decimal = Decimal(str(payment_amount))
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError("Ungueltiger Zahlungsbetrag")
+
+        if amount_decimal <= 0:
+            raise ValueError("Zahlungsbetrag muss positiv sein")
+
         # Validiere dass Rechnung existiert und zum Entity gehoert
         result = await self.db.execute(
             select(InvoiceTracking).where(

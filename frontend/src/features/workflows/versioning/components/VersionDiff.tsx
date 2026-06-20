@@ -203,7 +203,7 @@ interface VisualDiffProps {
   versionB: WorkflowVersion;
 }
 
-function VisualDiff({ diff, versionA, versionB }: VisualDiffProps) {
+function VisualDiff({ diff: _diff, versionA, versionB }: VisualDiffProps) {
   const changes = [
     {
       key: 'name',

@@ -14,9 +14,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { FileInput, Upload, CheckCircle2, XCircle, FileText, AlertCircle } from 'lucide-react'
-import { useDocumentUpload } from '@/features/ablage/hooks/use-document-upload'
+import { apiClient } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
 import { toast } from 'sonner'
+
+/**
+ * Laedt Dateien ueber den generischen Upload-Endpoint hoch.
+ * Hinweis: useDocumentUpload (Ablage-Workflow) ist hier ungeeignet,
+ * da PWA-Dateioeffnungen keinen Entity-/Ordner-Kontext haben.
+ */
+async function uploadDocuments(files: File[]): Promise<void> {
+  for (const file of files) {
+    const formData = new FormData()
+    formData.append('file', file)
+    await apiClient.post('/documents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    })
+  }
+}
 
 export const Route = createFileRoute('/open-file')({
   component: OpenFilePage,
@@ -54,10 +70,12 @@ function OpenFilePage() {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const { uploadDocuments, isUploading } = useDocumentUpload()
+  const isUploading = uploadStatus === 'uploading'
 
   // Handle files from File Handling API on mount
   useEffect(() => {
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+
     const handleLaunchQueue = async () => {
       setIsLoading(true)
       const files: File[] = []
@@ -65,7 +83,21 @@ function OpenFilePage() {
       try {
         // Check if launchQueue is available (File Handling API)
         if (window.launchQueue) {
+          // FIX Endlos-Spinner: Der setConsumer-Callback feuert NUR, wenn die
+          // Seite tatsaechlich ueber einen Datei-Launch geoeffnet wurde. Bei
+          // direkter Navigation auf /open-file blieb isLoading sonst fuer
+          // immer true ("Datei wird geladen..."). Nach 3s ohne Uebergabe auf
+          // die manuelle Auswahl umschalten.
+          fallbackTimer = setTimeout(() => {
+            logger.info('[OpenFile] Keine Datei-Übergabe innerhalb von 3s - manuelle Auswahl anzeigen')
+            setIsLoading(false)
+          }, 3000)
+
           window.launchQueue.setConsumer(async (launchParams: LaunchParams) => {
+            if (fallbackTimer) {
+              clearTimeout(fallbackTimer)
+              fallbackTimer = null
+            }
             if (!launchParams.files || launchParams.files.length === 0) {
               logger.info('[OpenFile] Keine Dateien in launchQueue')
               setIsLoading(false)
@@ -128,6 +160,12 @@ function OpenFilePage() {
     }
 
     handleLaunchQueue()
+
+    return () => {
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer)
+      }
+    }
   }, [])
 
   // Handle file upload

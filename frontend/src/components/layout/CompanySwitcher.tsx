@@ -52,7 +52,9 @@ export function CompanySwitcher({ className, compact = false }: CompanySwitcherP
             <div
                 className={cn(
                     'flex items-center gap-2 px-3 py-1.5 rounded-md',
-                    'text-sm text-muted-foreground',
+                    // a11y: nur im Sidebar (dunkel) verwendet -> sidebar-scoped
+                    // Muted-Token fuer >=4.5:1 statt globalem text-muted-foreground.
+                    'text-sm text-sidebar-muted-foreground',
                     className
                 )}
             >

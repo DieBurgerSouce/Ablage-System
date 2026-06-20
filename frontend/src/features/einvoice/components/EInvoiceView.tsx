@@ -8,21 +8,7 @@
  */
 
 import { useState } from "react";
-import {
-    FileCode,
-    CheckCircle2,
-    AlertTriangle,
-    Heart,
-    XCircle,
-    Loader2,
-    FileText,
-    Upload,
-    ListChecks,
-    Shield,
-    Info,
-    ExternalLink,
-    RefreshCw,
-} from "lucide-react";
+import { FileCode, CheckCircle2, AlertTriangle, Heart, XCircle, FileText, Upload, ListChecks, Shield, Info, ExternalLink, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

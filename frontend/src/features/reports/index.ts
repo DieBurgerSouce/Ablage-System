@@ -16,3 +16,7 @@ export * from './hooks/useReports';
 
 // Components
 export * from './components';
+
+// Explizit: Komponenten gewinnen gegen gleichnamige Typen (Mehrdeutigkeit)
+export { ReportPreview } from './components/ReportPreview';
+export { ScheduleConfig } from './components/ScheduleConfig';

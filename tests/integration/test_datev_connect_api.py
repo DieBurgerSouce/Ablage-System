@@ -687,9 +687,15 @@ class TestDATEVConnectSecurity:
 
     @pytest.mark.asyncio
     async def test_unauthorized_access(self, async_client: AsyncClient):
-        """Test that endpoints require authentication."""
+        """Test that endpoints require authentication.
+
+        Nutzer-Entscheidung (2026-06-11, W3): Bei fehlender Authentifizierung
+        antwortet das Backend mit 403 (FastAPI-HTTPBearer auto_error-Default).
+        Diese Konvention BLEIBT bestehen - der Test wurde von 401 auf 403
+        angepasst statt das Backend umzustellen.
+        """
         response = await async_client.get("/api/v1/datev-connect/connections")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_cross_company_access_denied(

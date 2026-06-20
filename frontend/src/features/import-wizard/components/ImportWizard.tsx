@@ -107,7 +107,7 @@ export function ImportWizard() {
             onBack={handleBack}
           />
         )}
-        {state.currentStep === 3 && state.selectedConfigId && state.selectedSource && (
+        {state.currentStep === 3 && state.selectedConfigId && state.selectedSource && state.selectedSource !== 'csv' && (
           <Step3Preview
             sourceType={state.selectedSource}
             configId={state.selectedConfigId}
@@ -123,7 +123,7 @@ export function ImportWizard() {
             onBack={handleBack}
           />
         )}
-        {state.currentStep === 5 && state.selectedConfigId && state.selectedSource && (
+        {state.currentStep === 5 && state.selectedConfigId && state.selectedSource && state.selectedSource !== 'csv' && (
           <Step5Execute
             sourceType={state.selectedSource}
             configId={state.selectedConfigId}
@@ -313,6 +313,10 @@ function Step2Configuration({ sourceType, onSelect, onBack }: Step2Props) {
         </div>
       </div>
     );
+  }
+
+  if (!sourceType) {
+    return null;
   }
 
   return (

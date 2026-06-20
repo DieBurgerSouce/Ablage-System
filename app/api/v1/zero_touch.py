@@ -51,7 +51,7 @@ async def require_admin(
     Raises:
         HTTPException: Falls User kein Admin
     """
-    if not current_user.is_superuser and not current_user.is_admin:
+    if not current_user.is_superuser and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren duerfen diese Aktion ausführen"
@@ -467,7 +467,15 @@ async def get_stats(
 
         stats = await orchestrator.get_stats(company_id=company_id, db=db)
 
-        return ZeroTouchStatsResponse(**stats)
+        # stats ist ein ZeroTouchStats-Dataclass ohne manual_review-Feld;
+        # defensiv in Dict konvertieren und abgeleitete Felder ergaenzen.
+        from dataclasses import asdict as _asdict
+        stats_dict = _asdict(stats) if not isinstance(stats, dict) else dict(stats)
+        stats_dict.setdefault(
+            "manual_review",
+            stats_dict.get("total_processed", 0) - stats_dict.get("auto_processed", 0),
+        )
+        return ZeroTouchStatsResponse(**stats_dict)
 
     except Exception as e:
         logger.error(

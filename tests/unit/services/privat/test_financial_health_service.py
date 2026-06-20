@@ -48,7 +48,7 @@ class TestHealthRatingEnum:
         assert HealthRating.EXCELLENT.value == "exzellent"
         assert HealthRating.GOOD.value == "gut"
         assert HealthRating.MODERATE.value == "moderat"
-        assert HealthRating.NEEDS_ATTENTION.value == "verbesserungsbeduerftig"
+        assert HealthRating.NEEDS_ATTENTION.value == "verbesserungsbedürftig"
         assert HealthRating.CRITICAL.value == "kritisch"
 
     def test_health_rating_count(self) -> None:

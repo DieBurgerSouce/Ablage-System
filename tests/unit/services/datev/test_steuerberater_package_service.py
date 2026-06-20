@@ -8,11 +8,7 @@ Vision 2026 Q4: Tests fuer DATEV-Paket mit Steuerberater-Freigabe-Workflow.
 import pytest
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-
-import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.datev.steuerberater_package_service import (
     SteuerberaterPackageService,
@@ -53,28 +49,36 @@ class TestPackageDocument:
         """Test: PackageDocument kann erstellt werden."""
         doc = PackageDocument(
             document_id=uuid4(),
+            document_number="RE-2026-001",
+            document_date=date.today(),
             document_type="invoice",
-            belegdatum=date.today(),
-            belegnummer="RE-2026-001",
-            betrag=Decimal("1234.56"),
-            lieferant_kunde="Muster GmbH",
-            buchungstext="Wareneingang",
-            konto_soll="3400",
-            konto_haben="70000",
-            has_belegbild=True,
-            validation_errors=[],
+            amount=Decimal("1234.56"),
+            tax_amount=Decimal("197.30"),
+            tax_rate=Decimal("19"),
+            account_debit="3400",
+            account_credit="70000",
+            description="Wareneingang",
+            entity_name="Muster GmbH",
         )
 
         assert doc.document_type == "invoice"
-        assert doc.betrag == Decimal("1234.56")
-        assert doc.has_belegbild is True
-        assert len(doc.validation_errors) == 0
+        assert doc.amount == Decimal("1234.56")
+        assert doc.entity_name == "Muster GmbH"
+        assert doc.validation_errors == []
 
     def test_document_with_validation_errors(self) -> None:
         """Test: Dokument mit Validierungsfehlern."""
         doc = PackageDocument(
             document_id=uuid4(),
+            document_number="RE-2026-002",
+            document_date=date.today(),
             document_type="invoice",
+            amount=Decimal("100.00"),
+            tax_amount=Decimal("19.00"),
+            tax_rate=Decimal("19"),
+            account_debit="3400",
+            account_credit="70000",
+            description="Test",
             validation_errors=[
                 "Belegdatum fehlt",
                 "Konto-Soll ungueltig",
@@ -92,31 +96,26 @@ class TestSteuerberaterPackage:
         """Test: Package kann erstellt werden."""
         pkg = SteuerberaterPackage(
             id=uuid4(),
-            name="Januar 2026",
-            description="Monatsabschluss",
             status=PackageStatus.DRAFT,
             period_from=date(2026, 1, 1),
             period_to=date(2026, 1, 31),
-            document_count=42,
+            total_documents=42,
             total_amount=Decimal("15234.50"),
             created_by_id=uuid4(),
-            created_by_name="Max Mustermann",
             created_at=datetime.now(timezone.utc),
-            is_valid=True,
-            validation_error_count=0,
+            validation_passed=True,
         )
 
-        assert pkg.name == "Januar 2026"
         assert pkg.status == PackageStatus.DRAFT
-        assert pkg.document_count == 42
-        assert pkg.is_valid is True
+        assert pkg.total_documents == 42
+        assert pkg.total_amount == Decimal("15234.50")
+        assert pkg.validation_passed is True
 
     def test_package_period_validation(self) -> None:
         """Test: Periode muss valide sein."""
         # Valid: from < to
         pkg = SteuerberaterPackage(
             id=uuid4(),
-            name="Test",
             status=PackageStatus.DRAFT,
             period_from=date(2026, 1, 1),
             period_to=date(2026, 1, 31),
@@ -131,36 +130,43 @@ class TestValidationResult:
     def test_validation_result_valid(self) -> None:
         """Test: Validierungsergebnis fuer valides Paket."""
         result = ValidationResult(
-            is_valid=True,
-            total_documents=10,
-            valid_documents=10,
-            invalid_documents=0,
+            passed=True,
             errors=[],
             warnings=[],
+            document_errors={},
+            summary={
+                "total_documents": 10,
+                "valid_documents": 10,
+                "total_amount": "1000.00",
+                "total_tax": "190.00",
+            },
         )
 
-        assert result.is_valid is True
-        assert result.total_documents == result.valid_documents
+        assert result.passed is True
+        assert result.document_errors == {}
+        assert result.summary["total_documents"] == result.summary["valid_documents"]
 
     def test_validation_result_invalid(self) -> None:
         """Test: Validierungsergebnis fuer invalides Paket."""
         result = ValidationResult(
-            is_valid=False,
-            total_documents=10,
-            valid_documents=8,
-            invalid_documents=2,
-            errors=[
-                {"document_id": "doc1", "error": "Belegdatum fehlt"},
-                {"document_id": "doc2", "error": "Betrag ungueltig"},
-            ],
-            warnings=[
-                {"document_id": "doc3", "warning": "Kostenstelle fehlt"},
-            ],
+            passed=False,
+            errors=["Keine Dokumente im Paket"],
+            warnings=["Dokument RE-3 ausserhalb Zeitraum"],
+            document_errors={
+                "doc1": ["Belegdatum fehlt"],
+                "doc2": ["Betrag ist 0"],
+            },
+            summary={
+                "total_documents": 10,
+                "valid_documents": 8,
+                "total_amount": "1000.00",
+                "total_tax": "190.00",
+            },
         )
 
-        assert result.is_valid is False
-        assert result.invalid_documents == 2
-        assert len(result.errors) == 2
+        assert result.passed is False
+        assert len(result.document_errors) == 2
+        assert len(result.errors) == 1
         assert len(result.warnings) == 1
 
 
@@ -169,18 +175,23 @@ class TestSteuerberaterPackageService:
 
     @pytest.fixture
     def service(self) -> SteuerberaterPackageService:
-        """Erstellt Service-Instanz fuer Tests."""
+        """Erstellt Service-Instanz fuer Tests (In-Memory-Store)."""
         return SteuerberaterPackageService()
 
-    @pytest.fixture
-    def mock_db(self) -> AsyncMock:
-        """Erstellt Mock-Datenbanksession."""
-        db = AsyncMock(spec=AsyncSession)
-        db.execute = AsyncMock()
-        db.add = MagicMock()
-        db.commit = AsyncMock()
-        db.refresh = AsyncMock()
-        return db
+    def _make_valid_document(self) -> PackageDocument:
+        """Erstellt ein DATEV-valides Dokument im Zeitraum 2026-02."""
+        return PackageDocument(
+            document_id=uuid4(),
+            document_number="RE-2026-100",
+            document_date=date(2026, 2, 15),
+            document_type="invoice",
+            amount=Decimal("119.00"),
+            tax_amount=Decimal("19.00"),
+            tax_rate=Decimal("19"),
+            account_debit="3400",
+            account_credit="70000",
+            description="Wareneingang Februar",
+        )
 
     def test_service_initialization(
         self, service: SteuerberaterPackageService
@@ -190,158 +201,165 @@ class TestSteuerberaterPackageService:
 
     @pytest.mark.asyncio
     async def test_create_package(
-        self, service: SteuerberaterPackageService, mock_db: AsyncMock
+        self, service: SteuerberaterPackageService
     ) -> None:
-        """Test: Neues Paket erstellen."""
+        """Test: Neues Paket erstellen (In-Memory-Store)."""
         company_id = uuid4()
         user_id = uuid4()
 
-        # Mock: Keine Dokumente gefunden
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute.return_value = mock_result
-
-        package, doc_count = await service.create_package(
-            db=mock_db,
+        package = await service.create_package(
             company_id=company_id,
-            user_id=user_id,
-            user_name="Test User",
-            name="Februar 2026",
-            description="Testpaket",
             period_from=date(2026, 2, 1),
             period_to=date(2026, 2, 28),
-            auto_populate=False,
+            created_by_id=user_id,
         )
 
         assert package is not None
-        assert package.name == "Februar 2026"
+        assert package.company_id == company_id
+        assert package.created_by_id == user_id
         assert package.status == PackageStatus.DRAFT
-        assert doc_count == 0
+        assert package.total_documents == 0
+        # Paket wird im Store abgelegt und ist abrufbar
+        assert await service.get_package(package.id) is package
 
     @pytest.mark.asyncio
     async def test_list_packages(
-        self, service: SteuerberaterPackageService, mock_db: AsyncMock
+        self, service: SteuerberaterPackageService
     ) -> None:
-        """Test: Pakete auflisten."""
+        """Test: Pakete fuer eine Company auflisten (company-gescoped)."""
         company_id = uuid4()
+        other_company = uuid4()
 
-        # Mock: Ein Paket gefunden
-        mock_package = MagicMock()
-        mock_package.id = uuid4()
-        mock_package.name = "Test Package"
-        mock_package.status = PackageStatus.DRAFT
-        mock_package.period_from = date(2026, 1, 1)
-        mock_package.period_to = date(2026, 1, 31)
-        mock_package.document_count = 5
-        mock_package.total_amount = Decimal("1000.00")
-        mock_package.created_at = datetime.now(timezone.utc)
-        mock_package.created_by_name = "Test User"
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [mock_package]
-        mock_db.execute.return_value = mock_result
-
-        packages, total = await service.list_packages(
-            db=mock_db,
+        await service.create_package(
             company_id=company_id,
-            page=1,
-            page_size=20,
+            period_from=date(2026, 1, 1),
+            period_to=date(2026, 1, 31),
+            created_by_id=uuid4(),
+        )
+        await service.create_package(
+            company_id=other_company,
+            period_from=date(2026, 1, 1),
+            period_to=date(2026, 1, 31),
+            created_by_id=uuid4(),
         )
 
-        assert len(packages) >= 0  # Could be empty in mock
+        packages = await service.list_packages(company_id=company_id)
+
+        # Nur das Paket der eigenen Company darf zurueckkommen (Mandantentrennung)
+        assert len(packages) == 1
+        assert packages[0].company_id == company_id
 
     @pytest.mark.asyncio
     async def test_submit_for_review_draft_only(
-        self, service: SteuerberaterPackageService, mock_db: AsyncMock
+        self, service: SteuerberaterPackageService
     ) -> None:
-        """Test: Nur Entwuerfe koennen eingereicht werden."""
-        package_id = uuid4()
-
-        # Mock: Paket im Status APPROVED (nicht DRAFT)
-        mock_package = MagicMock()
-        mock_package.status = PackageStatus.APPROVED
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_package
-        mock_db.execute.return_value = mock_result
-
-        success, error = await service.submit_for_review(
-            db=mock_db,
-            package_id=package_id,
-            submitter_name="Test User",
+        """Test: Nur validierte Entwuerfe koennen eingereicht werden."""
+        package = await service.create_package(
+            company_id=uuid4(),
+            period_from=date(2026, 2, 1),
+            period_to=date(2026, 2, 28),
+            created_by_id=uuid4(),
         )
+        await service.add_documents(package.id, [self._make_valid_document()])
+        await service.validate_package(package.id)
 
-        # Sollte fehlschlagen, da Paket nicht im DRAFT-Status
-        # (Implementierung koennte variieren)
-        assert isinstance(success, bool)
+        submitted = await service.submit_for_review(package.id)
+        assert submitted.status == PackageStatus.PENDING_REVIEW
+
+        # Erneutes Einreichen (nicht mehr DRAFT) muss fehlschlagen
+        with pytest.raises(ValueError):
+            await service.submit_for_review(package.id)
 
     @pytest.mark.asyncio
     async def test_approve_package_requires_pending(
-        self, service: SteuerberaterPackageService, mock_db: AsyncMock
+        self, service: SteuerberaterPackageService
     ) -> None:
         """Test: Nur Pakete im Review koennen genehmigt werden."""
-        package_id = uuid4()
         approver_id = uuid4()
-
-        # Mock: Paket im Status PENDING_REVIEW
-        mock_package = MagicMock()
-        mock_package.status = PackageStatus.PENDING_REVIEW
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_package
-        mock_db.execute.return_value = mock_result
-
-        success, error = await service.approve_package(
-            db=mock_db,
-            package_id=package_id,
-            approver_id=approver_id,
-            approver_name="Admin User",
+        package = await service.create_package(
+            company_id=uuid4(),
+            period_from=date(2026, 2, 1),
+            period_to=date(2026, 2, 28),
+            created_by_id=uuid4(),
         )
 
-        assert isinstance(success, bool)
+        # Im DRAFT-Status darf nicht genehmigt werden
+        with pytest.raises(ValueError):
+            await service.approve_package(package.id, approver_id)
+
+        await service.add_documents(package.id, [self._make_valid_document()])
+        await service.validate_package(package.id)
+        await service.submit_for_review(package.id)
+
+        approved = await service.approve_package(
+            package.id, approver_id, comment="Freigegeben"
+        )
+        assert approved.status == PackageStatus.APPROVED
+        assert approved.approved_by_id == approver_id
+        assert approved.approval_comment == "Freigegeben"
 
     @pytest.mark.asyncio
-    async def test_reject_package_requires_reason(
-        self, service: SteuerberaterPackageService, mock_db: AsyncMock
+    async def test_reject_package_requires_pending(
+        self, service: SteuerberaterPackageService
     ) -> None:
-        """Test: Ablehnung benoetigt Grund."""
-        package_id = uuid4()
+        """Test: Ablehnung speichert den Grund und nur aus PENDING_REVIEW."""
+        rejector_id = uuid4()
+        package = await service.create_package(
+            company_id=uuid4(),
+            period_from=date(2026, 2, 1),
+            period_to=date(2026, 2, 28),
+            created_by_id=uuid4(),
+        )
+        await service.add_documents(package.id, [self._make_valid_document()])
+        await service.validate_package(package.id)
+        await service.submit_for_review(package.id)
 
-        # Mock: Paket gefunden
-        mock_package = MagicMock()
-        mock_package.status = PackageStatus.PENDING_REVIEW
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_package
-        mock_db.execute.return_value = mock_result
-
-        # Mit Grund
-        success, error = await service.reject_package(
-            db=mock_db,
-            package_id=package_id,
-            rejector_name="Admin User",
+        rejected = await service.reject_package(
+            package.id,
+            rejector_id,
             reason="Belegdatum fehlt bei Dokument 3",
         )
-
-        assert isinstance(success, bool)
+        assert rejected.status == PackageStatus.REJECTED
+        assert rejected.rejection_reason == "Belegdatum fehlt bei Dokument 3"
 
     @pytest.mark.asyncio
     async def test_validate_package(
-        self, service: SteuerberaterPackageService, mock_db: AsyncMock
+        self, service: SteuerberaterPackageService
     ) -> None:
-        """Test: Paket validieren."""
-        package_id = uuid4()
+        """Test: Leeres Paket schlaegt die Validierung fehl."""
+        package = await service.create_package(
+            company_id=uuid4(),
+            period_from=date(2026, 2, 1),
+            period_to=date(2026, 2, 28),
+            created_by_id=uuid4(),
+        )
 
-        # Mock: Paket mit Dokumenten
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute.return_value = mock_result
-
-        result = await service.validate_package(mock_db, package_id)
+        result = await service.validate_package(package.id)
 
         assert result is not None
-        assert isinstance(result.is_valid, bool)
-        assert result.total_documents >= 0
+        assert isinstance(result.passed, bool)
+        # Ein Paket ohne Dokumente ist nicht valide
+        assert result.passed is False
+        assert "Keine Dokumente im Paket" in result.errors
+
+    @pytest.mark.asyncio
+    async def test_validate_package_with_valid_document(
+        self, service: SteuerberaterPackageService
+    ) -> None:
+        """Test: Paket mit DATEV-validem Dokument besteht die Validierung."""
+        package = await service.create_package(
+            company_id=uuid4(),
+            period_from=date(2026, 2, 1),
+            period_to=date(2026, 2, 28),
+            created_by_id=uuid4(),
+        )
+        await service.add_documents(package.id, [self._make_valid_document()])
+
+        result = await service.validate_package(package.id)
+
+        assert result.passed is True
+        assert result.document_errors == {}
+        assert result.summary["total_documents"] == 1
 
 
 class TestGetSteuerberaterPackageService:

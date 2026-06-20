@@ -225,16 +225,16 @@ class QualityMonitoringService:
         query = select(OCRQualitySnapshot).where(
             and_(
                 OCRQualitySnapshot.backend_name == backend_name,
-                OCRQualitySnapshot.timestamp >= since
+                OCRQualitySnapshot.snapshot_time >= since
             )
-        ).order_by(desc(OCRQualitySnapshot.timestamp)).limit(1)
+        ).order_by(desc(OCRQualitySnapshot.snapshot_time)).limit(1)
 
         result = await self.db.execute(query)
         snapshot = result.scalar_one_or_none()
 
         if snapshot:
             return QualitySnapshot(
-                timestamp=snapshot.timestamp.isoformat(),
+                timestamp=snapshot.snapshot_time.isoformat(),
                 backend_name=snapshot.backend_name,
                 avg_cer=snapshot.avg_cer or 0.0,
                 avg_wer=snapshot.avg_wer or 0.0,
@@ -268,7 +268,7 @@ class QualityMonitoringService:
         ).where(
             and_(
                 OCRQualitySnapshot.backend_name == backend_name,
-                OCRQualitySnapshot.timestamp >= recent_start
+                OCRQualitySnapshot.snapshot_time >= recent_start
             )
         )
 
@@ -277,8 +277,8 @@ class QualityMonitoringService:
         ).where(
             and_(
                 OCRQualitySnapshot.backend_name == backend_name,
-                OCRQualitySnapshot.timestamp >= previous_start,
-                OCRQualitySnapshot.timestamp < recent_start
+                OCRQualitySnapshot.snapshot_time >= previous_start,
+                OCRQualitySnapshot.snapshot_time < recent_start
             )
         )
 
@@ -315,7 +315,7 @@ class QualityMonitoringService:
 
         query = select(func.count()).select_from(OCRTrainingSample).where(
             and_(
-                OCRTrainingSample.correction_history.isnot(None),
+                OCRTrainingSample.source == "correction",
                 OCRTrainingSample.updated_at >= since
             )
         )
@@ -377,7 +377,7 @@ class QualityMonitoringService:
         since = datetime.now() - timedelta(days=30)
         query = select(func.count()).select_from(OCRTrainingSample).where(
             and_(
-                OCRTrainingSample.correction_history.isnot(None),
+                OCRTrainingSample.source == "correction",
                 OCRTrainingSample.updated_at >= since
             )
         )
@@ -604,7 +604,7 @@ class QualityMonitoringService:
         await self.db.refresh(db_snapshot)
 
         return QualitySnapshot(
-            timestamp=db_snapshot.timestamp.isoformat(),
+            timestamp=db_snapshot.snapshot_time.isoformat(),
             backend_name=backend_name,
             avg_cer=avg_cer,
             avg_wer=avg_wer,

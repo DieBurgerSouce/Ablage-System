@@ -9,9 +9,18 @@ from unittest.mock import Mock, patch
 # G5 (2026-06-03): Import ueber das Paket `orchestration` (relative Imports in den Modulen).
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude"))
 
-from orchestration.orchestrator import Orchestrator, OrchestrationResult
-from orchestration.task_classifier import ModelTier
-from orchestration.quality_gate import QualityResult, QualityLevel
+# Diese Suite testet das claude-flow-Orchestrierungs-Tooling unter
+# `.claude/orchestration/`, NICHT die Ablage-App. Dieses Verzeichnis ist im
+# Backend-Container nicht gemountet (nur `app/` + `tests/`), daher ist das Paket
+# dort nicht importierbar. Sauber ueberspringen statt Collection-Error.
+pytest.importorskip(
+    "orchestration.orchestrator",
+    reason="claude-flow-Orchestrierungs-Tooling (.claude/orchestration) im App-Container nicht verfuegbar",
+)
+
+from orchestration.orchestrator import Orchestrator, OrchestrationResult  # noqa: E402
+from orchestration.task_classifier import ModelTier  # noqa: E402
+from orchestration.quality_gate import QualityResult, QualityLevel  # noqa: E402
 
 
 @pytest.mark.integration

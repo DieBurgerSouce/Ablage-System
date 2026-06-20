@@ -521,7 +521,7 @@ class TestIntegration:
         company_id = uuid4()
 
         # Mock DB responses fuer Self-Learning Import
-        with patch("app.services.ocr.feedback_service.get_self_learning_service") as mock_sl:
+        with patch("app.services.ocr.self_learning_service.get_self_learning_service") as mock_sl:
             mock_sl.return_value.process_correction = AsyncMock(return_value={"processed": True})
 
             # Mock fuer _update_user_stats

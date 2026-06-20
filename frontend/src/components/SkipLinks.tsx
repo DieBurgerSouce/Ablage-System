@@ -70,7 +70,10 @@ export function SkipLinks({ targets = DEFAULT_TARGETS, className }: SkipLinksPro
         className
       )}
     >
-      <ul className="flex flex-col gap-1" role="list">
+      {/* a11y: explizites aria-label, damit die globale Skip-Link-Liste
+          (role="list") auch bei Selektoren, die alle role="list" pruefen,
+          einen sprechenden Namen traegt. */}
+      <ul className="flex flex-col gap-1" role="list" aria-label="Schnellnavigation-Links">
         {targets.map((target, index) => (
           <li key={target.id}>
             <a

@@ -84,7 +84,7 @@ export function SupplierRatingsPage() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold text-green-600">
-                {riskSummary?.low_risk_count ?? 0}
+                {riskSummary?.by_risk_level.low ?? 0}
               </div>
             )}
           </CardContent>
@@ -102,7 +102,7 @@ export function SupplierRatingsPage() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold text-amber-600">
-                {riskSummary?.medium_risk_count ?? 0}
+                {riskSummary?.by_risk_level.medium ?? 0}
               </div>
             )}
           </CardContent>
@@ -120,7 +120,7 @@ export function SupplierRatingsPage() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold text-red-600">
-                {(riskSummary?.high_risk_count ?? 0) + (riskSummary?.critical_risk_count ?? 0)}
+                {riskSummary?.high_risk_count ?? 0}
               </div>
             )}
           </CardContent>
@@ -143,34 +143,34 @@ export function SupplierRatingsPage() {
               <div className="flex flex-col items-center">
                 <div
                   className="w-16 bg-green-500 rounded-t transition-all"
-                  style={{ height: `${Math.max((riskSummary.low_risk_count / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
+                  style={{ height: `${Math.max((riskSummary.by_risk_level.low / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
                 />
                 <span className="text-sm font-medium mt-2">Niedrig</span>
-                <span className="text-xs text-muted-foreground">{riskSummary.low_risk_count}</span>
+                <span className="text-xs text-muted-foreground">{riskSummary.by_risk_level.low}</span>
               </div>
               <div className="flex flex-col items-center">
                 <div
                   className="w-16 bg-amber-500 rounded-t transition-all"
-                  style={{ height: `${Math.max((riskSummary.medium_risk_count / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
+                  style={{ height: `${Math.max((riskSummary.by_risk_level.medium / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
                 />
                 <span className="text-sm font-medium mt-2">Mittel</span>
-                <span className="text-xs text-muted-foreground">{riskSummary.medium_risk_count}</span>
+                <span className="text-xs text-muted-foreground">{riskSummary.by_risk_level.medium}</span>
               </div>
               <div className="flex flex-col items-center">
                 <div
                   className="w-16 bg-orange-500 rounded-t transition-all"
-                  style={{ height: `${Math.max((riskSummary.high_risk_count / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
+                  style={{ height: `${Math.max((riskSummary.by_risk_level.high / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
                 />
                 <span className="text-sm font-medium mt-2">Hoch</span>
-                <span className="text-xs text-muted-foreground">{riskSummary.high_risk_count}</span>
+                <span className="text-xs text-muted-foreground">{riskSummary.by_risk_level.high}</span>
               </div>
               <div className="flex flex-col items-center">
                 <div
                   className="w-16 bg-red-500 rounded-t transition-all"
-                  style={{ height: `${Math.max((riskSummary.critical_risk_count / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
+                  style={{ height: `${Math.max((riskSummary.by_risk_level.critical / Math.max(riskSummary.total_suppliers, 1)) * 150, 10)}px` }}
                 />
                 <span className="text-sm font-medium mt-2">Kritisch</span>
-                <span className="text-xs text-muted-foreground">{riskSummary.critical_risk_count}</span>
+                <span className="text-xs text-muted-foreground">{riskSummary.by_risk_level.critical}</span>
               </div>
             </div>
           ) : (

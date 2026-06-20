@@ -27,8 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -37,7 +36,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
-import { cn } from '@/lib/utils';
 import { DocumentListSkeleton } from '@/components/ui/skeletons/DocumentListSkeleton';
 import { TransactionListItem } from './TransactionTimeline';
 import { transactionsService } from '@/lib/api/services/transactions';
@@ -60,12 +58,6 @@ type SortOrder = 'asc' | 'desc';
 
 // ==================== Helper Functions ====================
 
-const STATUS_LABELS: Record<TransactionStatus, string> = {
-  draft: 'Entwurf',
-  pending: 'In Bearbeitung',
-  completed: 'Abgeschlossen',
-  cancelled: 'Abgebrochen',
-};
 
 // ==================== Sub-Components ====================
 
@@ -307,7 +299,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'all'>('all');
   const [sortField, setSortField] = useState<SortField>('lastActivityAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [page, setPage] = useState(1);
+  const [page, _setPage] = useState(1);
 
   // Debounce search
   useEffect(() => {
@@ -342,7 +334,6 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
   });
 
   const transactions = data?.items || [];
-  const totalCount = data?.total || 0;
 
   // Filter and sort - API handles primary filtering, client-side as backup
   const filteredTransactions = useMemo(() => {

@@ -53,7 +53,6 @@ export function CompanySelector({
     onSelectionChange([]);
   };
 
-  const selectedCompanies = companies.filter((c) => selectedIds.includes(c.id));
   const allSelected = selectedIds.length === companies.length;
 
   return (

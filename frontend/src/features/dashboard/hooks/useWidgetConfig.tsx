@@ -139,7 +139,7 @@ export function useWidgetConfig(options: UseWidgetConfigOptions = {}) {
   const { autoSync = true, debounceMs = 1000, loadOnMount = true } = options;
 
   const queryClient = useQueryClient();
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialLoadRef = useRef(true);
 
   // Get store state and actions

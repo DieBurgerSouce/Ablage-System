@@ -7,7 +7,7 @@
  * - Kombinierte Suche
  */
 
-import { FileText, Layers, Combine, Info } from 'lucide-react';
+import { FileText, Layers, Combine } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
     Tooltip,

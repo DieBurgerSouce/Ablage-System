@@ -56,9 +56,18 @@ class EntityExtractionResponse(BaseModel):
 
 
 class ContractAnalysisRequest(BaseModel):
-    """Anfrage für Vertragsanalyse."""
+    """Anfrage für Vertragsanalyse.
 
-    text: str = Field(..., min_length=1, max_length=50000)
+    Schemathesis-Fix (W1-004 #8): Minimal-Texte wie "00" sind kein
+    analysierbarer Vertrag -> 422 statt Durchreichen an Ollama.
+    """
+
+    text: str = Field(
+        ...,
+        min_length=10,
+        max_length=50000,
+        description="Vertragstext (mindestens 10 Zeichen)",
+    )
 
 
 class ContractAnalysisResponse(BaseModel):

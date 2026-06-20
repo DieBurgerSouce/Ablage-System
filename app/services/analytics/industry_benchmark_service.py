@@ -457,8 +457,8 @@ class IndustryBenchmarkService:
                     func.count(InvoiceTracking.id).filter(
                         InvoiceTracking.skonto_used == True
                     ).label("skonto_used"),
-                    func.sum(InvoiceTracking.total_amount).label("total_amount"),
-                    func.sum(InvoiceTracking.total_amount).filter(
+                    func.sum(InvoiceTracking.amount).label("total_amount"),
+                    func.sum(InvoiceTracking.amount).filter(
                         InvoiceTracking.status != "paid"
                     ).label("outstanding"),
                 )

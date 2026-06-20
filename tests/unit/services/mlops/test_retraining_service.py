@@ -271,7 +271,8 @@ class TestRetrainingJob:
         assert job.status == RetrainingStatus.COMPLETED
         assert job.new_version == "1.1.0"
         improvement = job.accuracy_after - job.accuracy_before
-        assert improvement == 0.03  # 3% improvement
+        # Float-Subtraktion (0.95-0.92) ist nicht exakt 0.03 -> approx
+        assert improvement == pytest.approx(0.03)  # 3% improvement
 
     def test_failed_job(self) -> None:
         """Test failed job with error message."""
@@ -931,8 +932,8 @@ class TestRetrainingStats:
 
         stats = await retraining_service.get_retraining_stats()
 
-        # Average of 3% and 2% = 2.5%
-        assert stats["avg_improvement"] == 0.025
+        # Average of 3% and 2% = 2.5% (Float-Arithmetik -> approx)
+        assert stats["avg_improvement"] == pytest.approx(0.025)
 
 
 # =============================================================================

@@ -340,7 +340,8 @@ class TestGenerateComplianceReport:
 
             with patch('app.core.gdpr.get_gdpr_manager') as mock_gdpr:
                 gdpr = Mock()
-                gdpr.check_retention_compliance.return_value = {"status": "ok"}
+                # Quelle ruft die ASYNC-Variante auf und awaitet sie.
+                gdpr.check_retention_compliance_async = AsyncMock(return_value={"status": "ok"})
                 mock_gdpr.return_value = gdpr
 
                 from app.workers.tasks.gdpr_tasks import _generate_compliance_report_async
@@ -363,10 +364,11 @@ class TestGenerateComplianceReport:
 
             with patch('app.core.gdpr.get_gdpr_manager') as mock_gdpr:
                 gdpr = Mock()
-                gdpr.check_retention_compliance.return_value = {
+                # Quelle ruft die ASYNC-Variante auf und awaitet sie.
+                gdpr.check_retention_compliance_async = AsyncMock(return_value={
                     "compliant": True,
                     "expired_documents": 0,
-                }
+                })
                 mock_gdpr.return_value = gdpr
 
                 from app.workers.tasks.gdpr_tasks import _generate_compliance_report_async

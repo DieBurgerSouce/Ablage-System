@@ -4,15 +4,9 @@
  * Zeigt Warnungen für bald ablaufende Skonto-Fristen.
  */
 
-import {
-  AlertTriangle,
-  Banknote,
-  Clock,
-  ChevronRight,
-} from 'lucide-react';
+import { AlertTriangle, Banknote, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSkontoAlerts, type SkontoAlert } from '../hooks/usePaymentAutomation';
 
@@ -20,10 +14,6 @@ function formatCurrency(amount: number): string {
   return amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
 
-function formatDate(dateString: string | null): string {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('de-DE');
-}
 
 function AlertItem({ alert }: { alert: SkontoAlert }) {
   const urgencyConfig = {

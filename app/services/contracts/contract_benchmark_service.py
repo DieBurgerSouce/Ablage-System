@@ -195,6 +195,13 @@ class ContractBenchmarkService:
     # Main Benchmark Methods
     # =========================================================================
 
+    async def get_available_categories(self) -> List[str]:
+        """F-31 minimal: Liefert die verfuegbaren Benchmark-Kategorien.
+
+        Basiert auf den hinterlegten DEFAULT_BENCHMARKS-Kategorien.
+        """
+        return sorted(DEFAULT_BENCHMARKS.keys())
+
     async def compare_contract_to_benchmark(
         self,
         contract_id: UUID,

@@ -373,11 +373,15 @@ class TestDuplicateConfigSchemas:
             min_similarity_semantic=0.70,
             max_candidates=50,
             max_text_length=10000,
+            visual_exact_threshold=5,
+            visual_near_threshold=10,
         )
         assert resp.min_similarity_near == 0.85
         assert resp.min_similarity_semantic == 0.70
         assert resp.max_candidates == 50
         assert resp.max_text_length == 10000
+        assert resp.visual_exact_threshold == 5
+        assert resp.visual_near_threshold == 10
 
 
 # =============================================================================
@@ -610,11 +614,14 @@ class TestDuplicateDetectionEndpoints:
             mock_db = AsyncMock()
             mock_user = MagicMock()
 
-            request = DuplicateCheckRequest(document_id=uuid.uuid4())
+            # Endpoint-Signatur: (request: Request, check_request, db, current_user, company_id)
+            check_request = DuplicateCheckRequest(document_id=uuid.uuid4())
             response = await check_document_for_duplicates(
-                request=request,
+                request=MagicMock(),
+                check_request=check_request,
                 db=mock_db,
                 current_user=mock_user,
+                company_id=uuid.uuid4(),
             )
 
             assert response.has_duplicates is False
@@ -659,11 +666,13 @@ class TestDuplicateDetectionEndpoints:
             mock_db = AsyncMock()
             mock_user = MagicMock()
 
-            request = DuplicateCheckRequest(document_id=uuid.uuid4())
+            check_request = DuplicateCheckRequest(document_id=uuid.uuid4())
             response = await check_document_for_duplicates(
-                request=request,
+                request=MagicMock(),
+                check_request=check_request,
                 db=mock_db,
                 current_user=mock_user,
+                company_id=uuid.uuid4(),
             )
 
             assert response.has_duplicates is True
@@ -758,6 +767,9 @@ class TestDuplicateDetectionEndpoints:
             mock_svc.MIN_SIMILARITY_SEMANTIC = 0.70
             mock_svc.MAX_CANDIDATES = 50
             mock_svc.MAX_TEXT_LENGTH = 10000
+            # Response liest auch die visuellen Schwellwerte vom Service
+            mock_svc.VISUAL_EXACT_THRESHOLD = 5
+            mock_svc.VISUAL_NEAR_THRESHOLD = 10
             mock_get.return_value = mock_svc
 
             from app.api.v1.duplicate_detection import update_duplicate_config
@@ -770,7 +782,9 @@ class TestDuplicateDetectionEndpoints:
                 max_candidates=100,
             )
 
+            # Endpoint-Signatur: (request: Request, config_update, db, current_user)
             response = await update_duplicate_config(
+                request=MagicMock(),
                 config_update=config_update,
                 db=mock_db,
                 current_user=mock_user,
@@ -868,7 +882,7 @@ class TestDuplicateDetectionTasks:
         """Test: _batch_scan_async mit leerer Firma."""
         from app.workers.tasks.duplicate_detection_tasks import _batch_scan_async
 
-        with patch("app.workers.tasks.duplicate_detection_tasks.async_session_factory") as mock_factory:
+        with patch("app.db.session.async_session_factory") as mock_factory:
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock(return_value=None)
@@ -881,7 +895,7 @@ class TestDuplicateDetectionTasks:
             mock_factory.return_value = mock_session
 
             with patch(
-                "app.workers.tasks.duplicate_detection_tasks.get_duplicate_detection_service"
+                "app.services.ai.duplicate_detection_service.get_duplicate_detection_service"
             ) as mock_get_svc:
                 mock_get_svc.return_value = MagicMock()
 
@@ -905,14 +919,14 @@ class TestDuplicateDetectionTasks:
             processing_time_ms=8,
         )
 
-        with patch("app.workers.tasks.duplicate_detection_tasks.async_session_factory") as mock_factory:
+        with patch("app.db.session.async_session_factory") as mock_factory:
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock(return_value=None)
             mock_factory.return_value = mock_session
 
             with patch(
-                "app.workers.tasks.duplicate_detection_tasks.get_duplicate_detection_service"
+                "app.services.ai.duplicate_detection_service.get_duplicate_detection_service"
             ) as mock_get_svc:
                 mock_svc = MagicMock()
                 mock_svc.check_document = AsyncMock(return_value=mock_result)

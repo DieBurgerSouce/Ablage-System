@@ -1,0 +1,18 @@
+# Docker Compose override: OCR ohne GPU (Surya-CPU) fuer den A-Z-Test-Loop.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml -f docker-compose.cpu-ocr.yml up -d
+#
+# Zweck: Die RTX 4080 wird waehrend des Simulations-Loops NICHT belastet.
+#   - CUDA_VISIBLE_DEVICES="" am Worker -> torch.cuda.is_available() == False
+#     -> kein Modell-Preload (celery_app.py preloadet nur bei verfuegbarer GPU)
+#     -> Backend-Auswahl faellt auf Surya-CPU zurueck
+#   - DEFAULT_OCR_BACKEND=surya macht die Wahl explizit statt "auto"
+#   - Das Backend bleibt UNVERAENDERT, damit /api/v1/health/gpu und
+#     /api/v1/ocr/status weiterhin echte GPU-Health-Checks liefern.
+#
+# NICHT in Produktion verwenden.
+services:
+  worker:
+    environment:
+      CUDA_VISIBLE_DEVICES: ""
+      DEFAULT_OCR_BACKEND: "surya"

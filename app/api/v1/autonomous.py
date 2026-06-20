@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_user_company_id  # F-31
 from app.core.rbac import require_permission
 from app.db.models import User, UserCompany, Company
 from app.services.ai.trust_level_service import (

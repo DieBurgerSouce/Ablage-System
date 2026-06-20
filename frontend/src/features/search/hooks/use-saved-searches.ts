@@ -19,7 +19,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { apiClient } from '@/lib/api/client';
@@ -138,6 +138,9 @@ function mapBackendToSavedSearch(item: BackendSavedSearch): SavedSearch {
     params: {
       q: item.query,
       mode: (item.search_type as SearchParams['mode']) || 'hybrid',
+      // Pflichtfelder des SearchParams-Vertrags (Backend speichert nur Query+Modus)
+      type: [],
+      ocrStatus: [],
     },
     createdAt: item.created_at,
     accessCount: item.use_count,
@@ -225,7 +228,7 @@ export function useSavedSearches(): UseSavedSearchesReturn {
 
     // TypeScript Safety: Wir wissen dass newSearch hier nicht null sein kann
     // weil wasLimitReached false ist und setState synchron den Wert gesetzt hat
-    return newSearch as SavedSearch;
+    return newSearch as unknown as SavedSearch;
   }, []); // Keine Dependencies - funktionales Update Pattern
 
   const deleteSearch = useCallback((id: string) => {

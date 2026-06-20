@@ -599,6 +599,137 @@ async def generate_procedure_documentation(
     return ProcedureDocVersionResponse.model_validate(version)
 
 
+class SignedPdfResponse(BaseModel):
+    """Metadaten eines signierten, persistierten Verfahrensdokumentations-PDF."""
+
+    id: uuid.UUID
+    version: str
+    pdf_object_key: Optional[str] = None
+    pdf_sha256: Optional[str] = None
+    pdf_signature_alg: Optional[str] = None
+    pdf_signing_cert_serial: Optional[str] = None
+    pdf_signed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PdfVerifyResponse(BaseModel):
+    """Ergebnis der Signatur-/Integritaetspruefung des persistierten PDF."""
+
+    valid: bool
+    version: str
+    pdf_sha256_matches: bool
+    signature_valid: bool
+    detail: str
+
+
+async def _load_company_scoped_version(db, version_id, company):
+    """Laedt eine Verfahrensdokumentations-Version company-scoped (404 sonst)."""
+    from app.db.models import ProcedureDocumentationVersion
+
+    version = await db.get(ProcedureDocumentationVersion, version_id)
+    if version is None or (
+        version.company_id is not None and version.company_id != company.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Verfahrensdokumentation nicht gefunden",
+        )
+    return version
+
+
+@router.post(
+    "/procedure-documentation/sign-pdf",
+    response_model=SignedPdfResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Verfahrensdokumentation signiert als PDF persistieren",
+    description=(
+        "Rendert die neueste GoBD-Verfahrensdokumentation als PDF, signiert sie intern "
+        "(RSA-PSS, on-premises) und legt sie persistent in MinIO ab (Signatur-Metadaten "
+        "werden versioniert gespeichert)."
+    ),
+)
+async def sign_procedure_documentation_pdf(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+    company: Company = Depends(require_company),
+) -> SignedPdfResponse:
+    """Erzeugt + signiert + persistiert das Verfahrensdokumentations-PDF (nur Admin)."""
+    version = await procedure_doc_service.generate_signed_pdf(db=db, company_id=company.id)
+    return SignedPdfResponse.model_validate(version)
+
+
+@router.get(
+    "/procedure-documentation/{version_id}/pdf",
+    summary="Signiertes Verfahrensdokumentations-PDF herunterladen",
+    description="Laedt das persistierte, signierte PDF einer Version aus MinIO.",
+)
+async def download_procedure_documentation_pdf(
+    version_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    from fastapi.responses import StreamingResponse
+    from app.services.storage_service import get_storage_service
+
+    version = await _load_company_scoped_version(db, version_id, company)
+    if not version.pdf_object_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fuer diese Version existiert kein signiertes PDF (zuerst sign-pdf aufrufen)",
+        )
+    pdf_bytes = await get_storage_service().download_document(version.pdf_object_key)
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="verfahrensdokumentation_v{version.version}.pdf"'
+            )
+        },
+    )
+
+
+@router.get(
+    "/procedure-documentation/{version_id}/verify",
+    response_model=PdfVerifyResponse,
+    summary="Signatur + Integritaet des persistierten PDF pruefen",
+    description="Laedt das PDF, prueft SHA-256 gegen den gespeicherten Wert und verifiziert die interne Signatur.",
+)
+async def verify_procedure_documentation_pdf(
+    version_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+) -> PdfVerifyResponse:
+    import hashlib as _hashlib
+    from app.services.storage_service import get_storage_service
+    from app.services.compliance.document_signer import DocumentSigner
+
+    version = await _load_company_scoped_version(db, version_id, company)
+    if not (version.pdf_object_key and version.pdf_signature):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fuer diese Version existiert kein signiertes PDF",
+        )
+    pdf_bytes = await get_storage_service().download_document(version.pdf_object_key)
+    sha_ok = _hashlib.sha256(pdf_bytes).hexdigest() == version.pdf_sha256
+    sig_ok = DocumentSigner().verify(pdf_bytes, version.pdf_signature)
+    valid = bool(sha_ok and sig_ok)
+    return PdfVerifyResponse(
+        valid=valid,
+        version=version.version,
+        pdf_sha256_matches=bool(sha_ok),
+        signature_valid=bool(sig_ok),
+        detail=(
+            "Signatur gueltig und Hash stimmt ueberein"
+            if valid
+            else "Signatur/Hash ungueltig - moegliche Manipulation"
+        ),
+    )
+
+
 @router.get(
     "/procedure-documentation",
     response_model=ProcedureDocDetailResponse,

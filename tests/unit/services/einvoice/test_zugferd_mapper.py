@@ -235,7 +235,7 @@ class TestXmlToInvoiceData:
 
     def test_parse_invalid_xml_raises_error(self, mapper: ZUGFeRDMapper) -> None:
         """Testet dass ungültiges XML einen Fehler wirft."""
-        with pytest.raises(ValueError, match="Ungueltiges XML"):
+        with pytest.raises(ValueError, match="Ungültiges XML"):
             mapper.xml_to_invoice_data("<invalid>xml<unclosed")
 
 

@@ -486,7 +486,7 @@ function AuditLogVirtualizedTable({
   containerRef,
 }: {
   logs: AuditLogView[];
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const rowVirtualizer = useVirtualizer({
     count: logs.length,

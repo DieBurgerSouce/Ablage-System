@@ -162,7 +162,7 @@ async def get_user_company_ids(
         Liste der erlaubten Company-IDs
     """
     # Admins sehen alle aktiven Companies
-    if user.is_admin:
+    if user.is_superuser:
         query = select(Company.id).where(
             Company.deleted_at.is_(None),
             Company.is_active == True,

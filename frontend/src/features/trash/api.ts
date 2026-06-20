@@ -25,7 +25,7 @@ export function useTrashList() {
     return useQuery({
         queryKey: TRASH_KEYS.list(),
         queryFn: async () => {
-            const response = await api.get<DeletedDocumentsListResponse>('/api/v1/trash')
+            const response = await api.get<DeletedDocumentsListResponse>('/trash')
             return response.data
         },
         staleTime: 30_000, // 30 Sekunden
@@ -39,7 +39,7 @@ export function useTrashStats() {
     return useQuery({
         queryKey: TRASH_KEYS.stats(),
         queryFn: async () => {
-            const response = await api.get<TrashStatsResponse>('/api/v1/trash/stats')
+            const response = await api.get<TrashStatsResponse>('/trash/stats')
             return response.data
         },
         staleTime: 30_000,
@@ -55,7 +55,7 @@ export function useRestoreDocument() {
     return useMutation({
         mutationFn: async (documentId: string) => {
             const response = await api.post<RestoreDocumentResponse>(
-                `/api/v1/trash/${documentId}/restore`
+                `/trash/${documentId}/restore`
             )
             return response.data
         },
@@ -75,7 +75,7 @@ export function usePermanentDelete() {
     return useMutation({
         mutationFn: async (documentId: string) => {
             const response = await api.delete<PermanentDeleteResponse>(
-                `/api/v1/trash/${documentId}`
+                `/trash/${documentId}`
             )
             return response.data
         },
@@ -93,7 +93,7 @@ export function useEmptyTrash() {
 
     return useMutation({
         mutationFn: async (onlyExpired: boolean = false) => {
-            const response = await api.delete<EmptyTrashResponse>('/api/v1/trash', {
+            const response = await api.delete<EmptyTrashResponse>('/trash', {
                 params: { only_expired: onlyExpired },
             })
             return response.data

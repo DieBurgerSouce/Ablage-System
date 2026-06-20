@@ -141,13 +141,8 @@ function QueueItemRow({ item }: { item: QueueItem }) {
           <FileText className="h-4 w-4 text-muted-foreground" />
           <div>
             <Link
-              to="/ablage/$category/$entityId/$folderId/$documentId"
-              params={{
-                category: 'kunden',
-                entityId: 'unknown',
-                folderId: 'unknown',
-                documentId: item.document_id,
-              }}
+              to="/documents/$documentId"
+              params={{ documentId: item.document_id }}
               className="font-medium hover:underline"
             >
               {item.document_name}
@@ -262,13 +257,8 @@ function QueueItemRow({ item }: { item: QueueItem }) {
             )}
             <DropdownMenuItem asChild>
               <Link
-                to="/ablage/$category/$entityId/$folderId/$documentId"
-                params={{
-                  category: 'kunden',
-                  entityId: 'unknown',
-                  folderId: 'unknown',
-                  documentId: item.document_id,
-                }}
+                to="/documents/$documentId"
+                params={{ documentId: item.document_id }}
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Dokument anzeigen

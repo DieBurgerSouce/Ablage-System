@@ -53,15 +53,7 @@ import {
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardSectionError } from '../shared';
 import { useWidgetSubscription } from '@/hooks/use-widget-subscription';
-import {
-  getCustomerLTV,
-  dashboardWidgetKeys,
-  formatChurnRiskLabel,
-  formatTrendLabel,
-  type CustomerLTVData,
-  type CustomerMetrics,
-  type AtRiskCustomer,
-} from '../../api/dashboard-widgets';
+import { getCustomerLTV, dashboardWidgetKeys, formatChurnRiskLabel, type CustomerLTVData, type CustomerMetrics, type AtRiskCustomer } from '../../api/dashboard-widgets';
 
 /**
  * Formatiere Währung
@@ -75,14 +67,6 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-/**
- * Formatiere kompakte Zahl
- */
-function formatCompact(value: number): string {
-  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-  return value.toFixed(0);
-}
 
 /**
  * Hole Churn-Risiko Badge-Variante

@@ -558,7 +558,6 @@ class OCRPipeline:
             logger.error(
                 "ocr_pipeline_processing_error",
                 document_id=document_id,
-                error_type=type(e).__name__,
                 **safe_error_log(e)
             )
             return OCRPipelineResult(
@@ -572,14 +571,13 @@ class OCRPipeline:
                 corrections_applied=0,
                 processing_time_ms=int((time.perf_counter() - start_time) * 1000),
                 german_correction_applied=False,
-                **safe_error_log(e)
+                error=str(e)
             )
         except Exception as e:
             # Unexpected error - log with full context
             logger.error(
                 "ocr_pipeline_unexpected_error",
                 document_id=document_id,
-                error_type=type(e).__name__,
                 **safe_error_log(e),
                 exc_info=True
             )
@@ -594,7 +592,7 @@ class OCRPipeline:
                 corrections_applied=0,
                 processing_time_ms=int((time.perf_counter() - start_time) * 1000),
                 german_correction_applied=False,
-                **safe_error_log(e)
+                error=str(e)
             )
 
         if not fallback_result.success:

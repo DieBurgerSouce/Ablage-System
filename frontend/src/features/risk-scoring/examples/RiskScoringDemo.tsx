@@ -9,22 +9,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import {
-  RiskScoreGauge,
-  RiskScoreBadge,
-  RiskIndicator,
-  RiskFactorBreakdown,
-  FactorContributionChart,
-  RiskAlertBanner,
-  RiskAlertBadge,
-  RiskTrendChart,
-  RiskDistributionChart,
-  EntityRiskMiniChart,
-  HighRiskEntitiesTable,
-  RiskEntityList,
-  RiskDashboard,
-  RiskProfilePage,
-} from '../index';
+import { RiskScoreGauge, RiskScoreBadge, RiskIndicator, RiskFactorBreakdown, FactorContributionChart, RiskAlertBanner, RiskAlertBadge, RiskTrendChart, RiskDistributionChart, EntityRiskMiniChart, HighRiskEntitiesTable, RiskEntityList, RiskDashboard } from '../index';
 
 // Mock Data
 const mockEntityRisk = {

@@ -168,7 +168,6 @@ class ModelPreloader:
                 logger.error(
                     "model_preload_failed",
                     model=model_name,
-                    error_type=type(e).__name__,
                     **safe_error_log(e),
                     exc_info=True  # Include traceback for debugging
                 )
@@ -288,7 +287,7 @@ class ModelPreloader:
             # torch not available
             return False
         except Exception as e:
-            logger.debug("vram_check_failed", error_type=type(e).__name__, **safe_error_log(e))
+            logger.debug("vram_check_failed", **safe_error_log(e))
             return False
 
     def get_status(self) -> Dict[str, Any]:

@@ -32,14 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -63,11 +56,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-import {
-  getAllWidgets,
-  getWidgetsByCategory,
-  type WidgetRegistryEntry,
-} from '@/features/dashboard/registry';
+import { getAllWidgets, type WidgetRegistryEntry } from '@/features/dashboard/registry';
 import {
   DASHBOARD_PRESETS,
   type UserRole,

@@ -20,7 +20,7 @@ import re
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, and_
+from sqlalchemy import select, or_, func, and_, literal_column
 from sqlalchemy.orm import selectinload
 
 from app.db.models import User, BusinessEntity, Document
@@ -44,6 +44,7 @@ from app.services.entity_extraction_service import (
     EntityExtractionResult,
 )
 from app.services.company_service import get_company_service
+from sqlalchemy.dialects.postgresql import JSONB  # F-31
 
 
 logger = structlog.get_logger(__name__)
@@ -553,6 +554,9 @@ async def get_cross_company_entities(
     entities = result.scalars().all()
 
     # Sammle Statistiken pro Entity und Firma
+    # F-31: all_companies VOR die Schleife (UnboundLocalError bei leerer entities-Liste)
+    company_service = get_company_service()
+    all_companies = await company_service.get_company_short_names(db)
     items = []
     for entity in entities:
         company_presence = entity.company_presence or []
@@ -592,8 +596,6 @@ async def get_cross_company_entities(
         }
 
         # Baue Firmendaten auf - MULTI-TENANT: Dynamisch statt hardcoded
-        company_service = get_company_service()
-        all_companies = await company_service.get_company_short_names(db)
         company_stats = {}
         for company in all_companies:
             company_data = lexware_ids.get(company, {})
@@ -767,7 +769,7 @@ async def get_relationship_dashboard(
     # Trend-Daten: Dokumente pro Tag (letzte N Tage)
     trend_query = (
         select(
-            func.date_trunc('day', Document.created_at).label("date"),
+            func.date_trunc(literal_column("'day'"), Document.created_at).label("date"),
             func.count(Document.id).label("count")
         )
         .where(
@@ -775,8 +777,8 @@ async def get_relationship_dashboard(
             Document.created_at >= start_date,
             Document.business_entity_id.isnot(None),
         )
-        .group_by(func.date_trunc('day', Document.created_at))
-        .order_by(func.date_trunc('day', Document.created_at))
+        .group_by(func.date_trunc(literal_column("'day'"), Document.created_at))
+        .order_by(func.date_trunc(literal_column("'day'"), Document.created_at))
     )
     trend_result = await db.execute(trend_query)
     trend_data = [
@@ -1908,10 +1910,9 @@ async def get_folder_documents(
             detail="Geschäftspartner nicht gefunden"
         )
 
-    # Normalize folder_id
-    normalized_folder = folder_id.lower()
-    if normalized_folder == "spargelmesser":
-        normalized_folder = "messer"
+    # Normalize folder_id via CompanyService (W1-029: kein Hardcode mehr;
+    # Legacy-Aliasse wie "spargelmesser" -> "messer" zentral gepflegt)
+    normalized_folder = get_company_service().normalize_company_short_name(folder_id)
 
     # Query aufbauen
     query = select(Document).where(

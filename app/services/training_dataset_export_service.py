@@ -30,8 +30,11 @@ import structlog
 from app.db.models import (
     OCRDocumentOutput,
     OCRTrainingSample,
-    VerificationStatus,
 )
+# F-31-Luecke: VerificationStatus liegt NICHT in app.db.models, sondern in
+# models_integrity (Member VERIFIED, vom Export-Filter Z.344 genutzt) -> der
+# ImportError liess GET /api/v1/training/exports mit 500 abbrechen. Korrektes Modul.
+from app.db.models_integrity import VerificationStatus
 
 logger = structlog.get_logger(__name__)
 

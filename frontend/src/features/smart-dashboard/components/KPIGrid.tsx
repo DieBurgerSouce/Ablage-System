@@ -1,7 +1,7 @@
 // KPI Grid Component
 // Responsive grid of KPI cards (2 cols mobile, 4 cols desktop)
 
-import { KPIData } from '../types/smart-dashboard-types';
+import type { KPIData } from '../types/smart-dashboard-types';
 import { KPICard } from './KPICard';
 import { cn } from '@/lib/utils';
 

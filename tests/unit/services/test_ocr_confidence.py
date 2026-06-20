@@ -12,7 +12,7 @@ Testet:
 """
 
 from typing import Dict, List, Optional
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -149,7 +149,6 @@ class MockOCRConfidenceService:
     ) -> Dict[str, object]:
         """Extrahiert Confidence-Daten aus Document.metadata."""
         # Simulate DB query
-        mock_result = AsyncMock()
         doc = await self._get_document(document_id)
 
         if not doc:
@@ -162,7 +161,7 @@ class MockOCRConfidenceService:
             return {
                 "document_id": document_id,
                 "has_confidence_data": False,
-                "message": "Keine OCR Confidence-Daten verfuegbar"
+                "message": "Keine OCR Confidence-Daten verfügbar"
             }
 
         # Backend handling
@@ -230,10 +229,9 @@ class MockOCRConfidenceService:
 
     async def _get_document(self, document_id: str) -> Optional[Document]:
         """Laedt Dokument aus DB."""
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = AsyncMock()
-        self.db.execute.return_value = mock_result
-        return mock_result.scalar_one_or_none.return_value
+        # db.execute ist async (AsyncMock), scalar_one_or_none ist synchron.
+        result = await self.db.execute(None)
+        return result.scalar_one_or_none()
 
 
 # =============================================================================
@@ -249,7 +247,7 @@ class TestOCRConfidenceExtraction:
         service = MockOCRConfidenceService(mock_db_session)
 
         # Mock document query
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_confidence_data
         mock_db_session.execute.return_value = mock_result
 
@@ -266,7 +264,7 @@ class TestOCRConfidenceExtraction:
         """Confidence-Daten fuer spezifische Seite werden gefiltert."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_confidence_data
         mock_db_session.execute.return_value = mock_result
 
@@ -285,7 +283,7 @@ class TestOCRConfidenceExtraction:
         """Word-Level Confidence-Daten werden korrekt extrahiert."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_confidence_data
         mock_db_session.execute.return_value = mock_result
 
@@ -314,21 +312,21 @@ class TestOCRConfidenceGracefulDegradation:
         """Dokument ohne Confidence-Daten gibt sinnvolle Antwort."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_without_confidence_data
         mock_db_session.execute.return_value = mock_result
 
         result = await service.get_confidence_data(str(document_without_confidence_data.id))
 
         assert result["has_confidence_data"] is False
-        assert "Keine OCR Confidence-Daten verfuegbar" in result["message"]
+        assert "Keine OCR Confidence-Daten verfügbar" in result["message"]
 
     @pytest.mark.asyncio
     async def test_document_with_partial_confidence(self, mock_db_session, document_with_partial_confidence):
         """Dokument mit unvollstaendigen Daten wird korrekt behandelt."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_partial_confidence
         mock_db_session.execute.return_value = mock_result
 
@@ -344,7 +342,7 @@ class TestOCRConfidenceGracefulDegradation:
         """Nicht existierende Seite gibt Fehlermeldung."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_confidence_data
         mock_db_session.execute.return_value = mock_result
 
@@ -369,7 +367,7 @@ class TestOCRConfidenceSummary:
         """Summary enthaelt keine Word-Level Daten."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_confidence_data
         mock_db_session.execute.return_value = mock_result
 
@@ -388,7 +386,7 @@ class TestOCRConfidenceSummary:
         """Summary enthaelt Page-Level Statistiken."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_confidence_data
         mock_db_session.execute.return_value = mock_result
 
@@ -406,14 +404,14 @@ class TestOCRConfidenceSummary:
         """Summary fuer Dokument ohne Daten gibt Fehlermeldung."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_without_confidence_data
         mock_db_session.execute.return_value = mock_result
 
         summary = await service.get_confidence_summary(str(document_without_confidence_data.id))
 
         assert summary["has_confidence_data"] is False
-        assert "Keine OCR Confidence-Daten verfuegbar" in summary["message"]
+        assert "Keine OCR Confidence-Daten verfügbar" in summary["message"]
 
 
 # =============================================================================
@@ -428,7 +426,7 @@ class TestOCRConfidenceMultipleBackends:
         """Confidence-Daten fuer spezifisches Backend werden extrahiert."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_multiple_backends
         mock_db_session.execute.return_value = mock_result
 
@@ -446,7 +444,7 @@ class TestOCRConfidenceMultipleBackends:
         """Verschiedene Backends koennen verglichen werden."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_multiple_backends
         mock_db_session.execute.return_value = mock_result
 
@@ -479,7 +477,7 @@ class TestOCRConfidenceErrorHandling:
         """Nicht existierendes Dokument wirft ValueError."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db_session.execute.return_value = mock_result
 
@@ -493,7 +491,7 @@ class TestOCRConfidenceErrorHandling:
         """Nicht existierendes Backend gibt leere Antwort."""
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = document_with_multiple_backends
         mock_db_session.execute.return_value = mock_result
 
@@ -537,7 +535,7 @@ class TestOCRConfidencePerformance:
 
         service = MockOCRConfidenceService(mock_db_session)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = doc
         mock_db_session.execute.return_value = mock_result
 

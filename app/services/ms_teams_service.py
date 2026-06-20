@@ -553,7 +553,7 @@ class TeamsService:
                 logger.error(
                     "teams_webhook_error",
                     status_code=response.status_code,
-                    response_text=response.text[:200] if response.text else None,
+                    response_text=(str(response.text)[:200] if response.text else None),
                 )
 
             except httpx.TimeoutException:

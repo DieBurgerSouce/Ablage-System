@@ -6,22 +6,7 @@
  */
 
 import { useState } from 'react';
-import {
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  Bell,
-  CheckCircle2,
-  Clock,
-  Cpu,
-  ListOrdered,
-  RefreshCw,
-  Server,
-  Settings,
-  Wifi,
-  WifiOff,
-  Zap,
-} from 'lucide-react';
+import { BarChart3, Bell, Clock, ListOrdered, RefreshCw, Server, Wifi, WifiOff, Zap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,16 +31,17 @@ export function JobQueueDashboard() {
 
   // Queries für Tab-Badges
   const { data: stats } = useJobStats();
-  const { data: activeJobsData } = useActiveJobs();
+  // Hook beibehalten (Live-Badge-Cache), Binding ungenutzt
+  useActiveJobs();
   const { data: dlqStats } = useDLQStats();
 
   // WebSocket für Live-Updates
   const { isConnected, isPolling, lastUpdate, reconnect } = useJobWebSocket({
     enabled: permissions.canView,
-    onJobCompleted: (jobId) => {
+    onJobCompleted: (_jobId) => {
       // Toast wird bereits im Mutation Hook gezeigt
     },
-    onJobFailed: (jobId, error) => {
+    onJobFailed: (_jobId, _error) => {
       // Toast wird bereits im Mutation Hook gezeigt
     },
   });

@@ -170,15 +170,6 @@ class TestGetInvoiceSkonto:
         if not invoice.skonto_used:
             assert invoice.skonto_amount == 200.00
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_get_skonto_not_found_raises_404(self):
-        """GET /skonto sollte 404 werfen wenn nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-        #                     detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
-
 # ========================= PATCH Skonto Tests =========================
 
 
@@ -239,15 +230,6 @@ class TestSetInvoiceSkonto:
         expected_due = invoice.invoice_date + timedelta(days=invoice.net_payment_days)
         assert expected_due is not None
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_set_skonto_not_found_raises_404(self):
-        """PATCH /skonto sollte 404 werfen wenn nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-        #                     detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
-
 # ========================= Apply Skonto Tests =========================
 
 
@@ -268,14 +250,6 @@ class TestApplyInvoiceSkonto:
         assert is_expired is True
         # Should raise 400 unless force_apply=true
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_apply_skonto_with_force_apply(self, sample_invoice_expired_skonto):
-        """apply-skonto sollte mit force_apply auch nach Fristablauf funktionieren."""
-        # Verified by code:
-        # force_apply: bool = Query(False)
-        # With force_apply=true, skonto can be applied even after deadline
-        pass
-
     def test_apply_skonto_validates_payment_amount(self, sample_invoice_with_skonto):
         """apply-skonto sollte Zahlungsbetrag validieren."""
         invoice = sample_invoice_with_skonto
@@ -283,48 +257,11 @@ class TestApplyInvoiceSkonto:
         expected_payment = invoice.amount - invoice.skonto_amount
         assert expected_payment == 9800.00  # 10000 - 200
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_apply_skonto_sets_skonto_used(self, sample_invoice_with_skonto):
-        """apply-skonto sollte skonto_used=true setzen."""
-        # After successful apply:
-        # invoice.skonto_used = True
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_apply_skonto_sets_status_paid(self, sample_invoice_with_skonto):
-        """apply-skonto sollte Status auf PAID setzen."""
-        # After successful apply:
-        # invoice.status = InvoiceStatus.PAID.value
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_apply_skonto_triggers_risk_recalc(self, sample_invoice_with_skonto):
-        """apply-skonto sollte Risk-Neuberechnung triggern."""
-        # Verified by code:
-        # on_invoice_updated_recalculate.delay(str(invoice.document_id))
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_apply_skonto_not_found_raises_404(self):
-        """apply-skonto sollte 404 werfen wenn nicht gefunden."""
-        # Verified by code:
-        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-        #                     detail="Rechnungsverfolgung nicht gefunden")
-        pass
-
-
 # ========================= Upcoming Skonto Deadlines Tests =========================
 
 
 class TestUpcomingSkontoDeadlines:
     """Tests for GET /skonto/upcoming endpoint."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_upcoming_returns_sorted_by_urgency(self):
-        """/skonto/upcoming sollte nach Dringlichkeit sortiert sein."""
-        # Urgency levels: critical (<1 day), warning (<3 days), normal
-        # Sorted by skonto_deadline ascending
-        pass
 
     def test_upcoming_respects_days_ahead_param(self):
         """/skonto/upcoming sollte days_ahead Parameter respektieren."""
@@ -379,27 +316,6 @@ class TestUpcomingSkontoDeadlines:
 
 class TestSkontoMultiTenantSecurity:
     """Tests for Multi-Tenant Row Level Security in Skonto endpoints."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_get_skonto_checks_document_owner(self):
-        """GET /skonto sollte Document Owner pruefen."""
-        # Verified by SQL query:
-        # Document.owner_id == current_user.id
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_set_skonto_checks_document_owner(self):
-        """PATCH /skonto sollte Document Owner pruefen."""
-        # Verified by SQL query:
-        # Document.owner_id == current_user.id
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_apply_skonto_checks_document_owner(self):
-        """apply-skonto sollte Document Owner pruefen."""
-        # Verified by SQL query:
-        # Document.owner_id == current_user.id
-        pass
 
     def test_upcoming_filters_by_company_id(self, sample_user):
         """upcoming sollte nach company_id filtern."""

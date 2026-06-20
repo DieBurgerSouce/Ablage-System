@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_user_company_id  # F-31
 from app.db.models import User
 from app.services.finanzki.predictive_cashflow_service import PredictiveCashFlowService
 
@@ -126,7 +127,7 @@ async def get_liquidity_forecast(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole Liquiditaetsprognose."""
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt"
@@ -134,7 +135,7 @@ async def get_liquidity_forecast(
 
     service = PredictiveCashFlowService(db)
     forecast = await service.forecast_liquidity(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         days=days,
     )
 
@@ -187,7 +188,7 @@ async def get_payment_recommendations(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole Zahlungsempfehlungen."""
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt"
@@ -195,7 +196,7 @@ async def get_payment_recommendations(
 
     service = PredictiveCashFlowService(db)
     recommendations = await service.get_payment_recommendations(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
     )
 
     return [PaymentRecommendationResponse(**r) for r in recommendations]
@@ -213,7 +214,7 @@ async def run_scenario(
     db: AsyncSession = Depends(get_db),
 ):
     """Führe What-If Szenario aus."""
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt"
@@ -221,7 +222,7 @@ async def run_scenario(
 
     service = PredictiveCashFlowService(db)
     result = await service.run_scenario(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         scenario_type=request.scenario_type,
         parameters=request.parameters,
     )
@@ -252,7 +253,7 @@ async def get_cashflow_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """Hole Cashflow-Zusammenfassung."""
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt"
@@ -262,17 +263,17 @@ async def get_cashflow_summary(
 
     # 7-Tage und 30-Tage Prognose
     forecast_7 = await service.forecast_liquidity(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         days=7,
     )
     forecast_30 = await service.forecast_liquidity(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         days=30,
     )
 
     # Zahlungsempfehlungen
     recommendations = await service.get_payment_recommendations(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
     )
 
     # Dringende Empfehlungen zaehlen

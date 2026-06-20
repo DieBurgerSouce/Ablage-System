@@ -12,7 +12,7 @@ import type {
   BatchGenerateParams,
 } from './types';
 
-const API_BASE = '/api/v1/banking/dunning';
+const API_BASE = '/banking/dunning';
 
 /**
  * Offene Mahnvorgaenge abrufen

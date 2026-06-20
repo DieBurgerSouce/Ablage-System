@@ -13,26 +13,7 @@ import {
   type ListQueueParams,
 } from '../api/validation-queue-api';
 import { QUERY_VOLATILE, QUERY_STANDARD } from '@/lib/api/query-config';
-import type {
-  ValidationQueueItem,
-  ValidationQueueItemDetail,
-  ValidationQueueItemCreate,
-  ValidationQueueItemUpdate,
-  ValidationQueueItemAssign,
-  ValidationQueueItemApprove,
-  ValidationQueueItemReject,
-  ValidationFieldReview,
-  ValidationFieldUpdate,
-  ValidationRule,
-  ValidationRuleCreate,
-  ValidationRuleUpdate,
-  ValidationSampleConfig,
-  ValidationSampleConfigUpdate,
-  BatchApproveRequest,
-  BatchRejectRequest,
-  BatchAssignRequest,
-  ValidationStatus,
-} from '../types/validation-queue.types';
+import type { ValidationQueueItem, ValidationQueueItemCreate, ValidationQueueItemUpdate, ValidationQueueItemAssign, ValidationQueueItemApprove, ValidationQueueItemReject, ValidationFieldUpdate, ValidationRuleCreate, ValidationRuleUpdate, ValidationSampleConfigUpdate, BatchApproveRequest, BatchRejectRequest, BatchAssignRequest, ValidationStatus } from '../types/validation-queue.types';
 
 // ==================== Queue Queries ====================
 

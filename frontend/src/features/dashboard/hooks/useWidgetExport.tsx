@@ -9,7 +9,7 @@
  * Phase 3.3 Feature 13: Dashboard Widget Export
  */
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 // =============================================================================

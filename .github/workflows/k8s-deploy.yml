@@ -36,9 +36,6 @@ on:
       - 'infrastructure/kubernetes/**'
       - 'infrastructure/helm/**'
 
-env:
-  KUBECONFIG_SECRET: ${{ secrets.KUBECONFIG }}
-
 jobs:
   # ===========================================================================
   # Validate Kubernetes Manifests

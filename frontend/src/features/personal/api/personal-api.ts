@@ -4,28 +4,7 @@
  * API-Aufrufe für Mitarbeiter, Abteilungen, Positionen.
  */
 
-import type {
-  Employee,
-  EmployeeDetail,
-  EmployeeCreate,
-  EmployeeUpdate,
-  EmployeeListResponse,
-  EmployeeFilters,
-  Department,
-  DepartmentDetail,
-  DepartmentCreate,
-  DepartmentUpdate,
-  DepartmentListResponse,
-  DepartmentTreeItem,
-  DepartmentFilters,
-  Position,
-  PositionDetail,
-  PositionCreate,
-  PositionUpdate,
-  PositionListResponse,
-  PositionFilters,
-  JobFamilyStats,
-} from '../types';
+import type { EmployeeDetail, EmployeeCreate, EmployeeUpdate, EmployeeListResponse, EmployeeFilters, Department, DepartmentDetail, DepartmentCreate, DepartmentUpdate, DepartmentListResponse, DepartmentTreeItem, DepartmentFilters, Position, PositionDetail, PositionCreate, PositionUpdate, PositionListResponse, PositionFilters, JobFamilyStats } from '../types';
 
 const API_BASE = '/api/v1/personal';
 

@@ -138,7 +138,7 @@ function DocumentActivityPage() {
           <div>
             <h1 className="text-2xl font-bold">Aktivitätshistorie</h1>
             <p className="text-muted-foreground truncate max-w-md">
-              {document.title || document.original_filename}
+              {document.title || document.name}
             </p>
           </div>
         </div>

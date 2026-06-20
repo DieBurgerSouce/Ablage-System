@@ -94,7 +94,7 @@ async def get_review_queue(
     """
     Holt alle Dokumente die Review brauchen.
 
-    Filtert nach ai_metadata->pipeline_result->requires_review = true.
+    Filtert nach document_metadata->pipeline_result->requires_review = true.
     """
 
     try:
@@ -105,12 +105,12 @@ async def get_review_queue(
             .where(
                 and_(
                     Document.company_id == company_id,
-                    Document.ai_metadata.isnot(None),
+                    Document.document_metadata.isnot(None),
                     text(
-                        "ai_metadata->'pipeline_result'->>'requires_review' = 'true'"
+                        "document_metadata->'pipeline_result'->>'requires_review' = 'true'"
                     ),
                     text(
-                        "COALESCE(ai_metadata->'pipeline_result'->>'review_confirmed', 'false') = 'false'"
+                        "COALESCE(document_metadata->'pipeline_result'->>'review_confirmed', 'false') = 'false'"
                     ),
                 )
             )
@@ -125,12 +125,12 @@ async def get_review_queue(
             .where(
                 and_(
                     Document.company_id == company_id,
-                    Document.ai_metadata.isnot(None),
+                    Document.document_metadata.isnot(None),
                     text(
-                        "ai_metadata->'pipeline_result'->>'requires_review' = 'true'"
+                        "document_metadata->'pipeline_result'->>'requires_review' = 'true'"
                     ),
                     text(
-                        "COALESCE(ai_metadata->'pipeline_result'->>'review_confirmed', 'false') = 'false'"
+                        "COALESCE(document_metadata->'pipeline_result'->>'review_confirmed', 'false') = 'false'"
                     ),
                 )
             )
@@ -145,7 +145,7 @@ async def get_review_queue(
         items: List[ReviewQueueItem] = []
         for doc in documents:
             pipeline_result: Dict[str, object] = (
-                (doc.ai_metadata or {}).get("pipeline_result") or {}
+                (doc.document_metadata or {}).get("pipeline_result") or {}
             )
             category_info: Dict[str, object] = (
                 pipeline_result.get("category") or {}

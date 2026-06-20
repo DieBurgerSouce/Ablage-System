@@ -170,7 +170,8 @@ class TestEventTypeLabels:
         assert EVENT_TYPE_LABELS["import"] == "Import"
         assert EVENT_TYPE_LABELS["ocr_complete"] == "OCR abgeschlossen"
         assert EVENT_TYPE_LABELS["modification"] == "Bearbeitung"
-        assert EVENT_TYPE_LABELS["entity_link"] == "Geschaeftspartner verknuepft"
+        # Echte Umlaute sind korrekt (Critical Rule 2: UTF-8 fuer Umlaute)
+        assert EVENT_TYPE_LABELS["entity_link"] == "Geschäftspartner verknüpft"
 
 
 # =============================================================================

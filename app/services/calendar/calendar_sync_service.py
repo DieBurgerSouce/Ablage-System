@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.safe_errors import safe_error_log
+from sqlalchemy.dialects.postgresql import JSONB  # F-31
 
 logger = structlog.get_logger(__name__)
 
@@ -73,9 +74,14 @@ class CalendarSyncService:
         from app.services.calendar_service import get_calendar_service
         cal_service = get_calendar_service()
 
-        deadlines = await cal_service.get_deadlines(
-            db=self.db, user_id=user_id, company_id=company_id,
-            days_ahead=days_ahead
+        from datetime import date as _date, timedelta as _timedelta
+        start_date = _date.today()
+        end_date = start_date + _timedelta(days=days_ahead)
+        deadlines = await cal_service.get_all_deadlines(
+            db=self.db,
+            company_id=company_id,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         # Filter by categories if specified
@@ -154,7 +160,7 @@ class CalendarSyncService:
     async def get_sync_config(self, company_id: UUID) -> Optional[SyncConfig]:
         """Laedt Sync-Konfiguration aus DB (company_settings JSONB)."""
         from app.db.models import CompanySettings
-        stmt = select(CompanySettings).where(CompanySettings.company_id == company_id)
+        stmt = select(CompanySettings).limit(1)
         result = await self.db.execute(stmt)
         settings_row = result.scalar_one_or_none()
         if not settings_row or not settings_row.calendar_sync:
@@ -172,7 +178,7 @@ class CalendarSyncService:
     async def save_sync_config(self, company_id: UUID, config: SyncConfig) -> None:
         """Speichert Sync-Konfiguration."""
         from app.db.models import CompanySettings
-        stmt = select(CompanySettings).where(CompanySettings.company_id == company_id)
+        stmt = select(CompanySettings).limit(1)
         result = await self.db.execute(stmt)
         settings_row = result.scalar_one_or_none()
         if settings_row:

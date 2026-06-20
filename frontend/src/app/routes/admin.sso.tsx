@@ -17,37 +17,11 @@ import { useState } from 'react';
 import { logger } from '@/lib/logger';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-    Shield,
-    Plus,
-    Settings,
-    Trash2,
-    Power,
-    PowerOff,
-    Star,
-    ExternalLink,
-    AlertTriangle,
-    CheckCircle2,
-    Loader2,
-    Copy,
-    Key,
-} from 'lucide-react';
+import { Shield, Plus, Settings, Trash2, Power, PowerOff, Star, AlertTriangle, Key } from 'lucide-react';
 
 import { EditProviderDialog, type SSOProviderUpdate } from '@/features/admin/sso/components/EditProviderDialog';
 import { z } from 'zod';
-import {
-    ssoProviderCreateSchema,
-    providerPresetSchema,
-    type SSOProviderCreateRequest,
-    type SSOProviderListItem,
-    type ProviderPreset,
-    type SSOProviderResponse,
-    getPresetLabel,
-    getPresetIcon,
-    validateCreateRequest,
-    validateProviderResponse,
-    validateProviderListResponse,
-} from '@/features/admin/sso/types/sso-schemas';
+import { providerPresetSchema, type SSOProviderCreateRequest, type SSOProviderListItem, type ProviderPreset, type SSOProviderResponse, getPresetLabel, getPresetIcon, validateCreateRequest, validateProviderResponse, validateProviderListResponse } from '@/features/admin/sso/types/sso-schemas';
 
 // SSOProviderResponse is the validated API type - use directly instead of unsafe casts
 
@@ -75,7 +49,6 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -93,7 +66,7 @@ function useProviders() {
     return useQuery({
         queryKey: ['sso', 'providers'],
         queryFn: async (): Promise<SSOProviderListItem[]> => {
-            const response = await api.get('/api/v1/sso/providers');
+            const response = await api.get('/sso/providers');
             // Runtime validation of API response - filters invalid items
             return validateProviderListResponse(response.data);
         },
@@ -104,7 +77,7 @@ function useProviderDetails(providerId: string | null) {
     return useQuery({
         queryKey: ['sso', 'provider', providerId],
         queryFn: async (): Promise<SSOProviderResponse | null> => {
-            const response = await api.get(`/api/v1/sso/providers/${providerId}`);
+            const response = await api.get(`/sso/providers/${providerId}`);
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {
@@ -125,7 +98,7 @@ function usePresets() {
     return useQuery({
         queryKey: ['sso', 'presets'],
         queryFn: async (): Promise<ProviderPreset[]> => {
-            const response = await api.get('/api/v1/sso/presets');
+            const response = await api.get('/sso/presets');
             // Runtime validation of API response
             const result = presetsResponseSchema.safeParse(response.data);
             if (!result.success) {
@@ -443,7 +416,7 @@ function SSOAdminPage() {
     // Mutations - all use SSOProviderResponse (validated Zod type)
     const createMutation = useMutation({
         mutationFn: async (data: SSOProviderCreateRequest): Promise<SSOProviderResponse> => {
-            const response = await api.post('/api/v1/sso/providers', data);
+            const response = await api.post('/sso/providers', data);
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {
@@ -463,7 +436,7 @@ function SSOAdminPage() {
 
     const updateMutation = useMutation({
         mutationFn: async ({ id, data }: { id: string; data: SSOProviderUpdate }): Promise<SSOProviderResponse> => {
-            const response = await api.patch(`/api/v1/sso/providers/${id}`, data);
+            const response = await api.patch(`/sso/providers/${id}`, data);
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {
@@ -480,7 +453,7 @@ function SSOAdminPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            await api.delete(`/api/v1/sso/providers/${id}`);
+            await api.delete(`/sso/providers/${id}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sso', 'providers'] });
@@ -490,7 +463,7 @@ function SSOAdminPage() {
 
     const setPrimaryMutation = useMutation({
         mutationFn: async (id: string): Promise<SSOProviderResponse> => {
-            const response = await api.post(`/api/v1/sso/providers/${id}/set-primary`);
+            const response = await api.post(`/sso/providers/${id}/set-primary`);
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {

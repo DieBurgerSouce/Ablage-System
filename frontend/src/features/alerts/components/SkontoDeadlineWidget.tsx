@@ -11,7 +11,6 @@
  * - Link zu Skonto-Übersicht
  */
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -180,8 +179,8 @@ function DeadlineItem({ deadline }: DeadlineItemProps) {
 
       {/* Link */}
       <Link
-        to="/invoices/$invoiceId"
-        params={{ invoiceId: deadline.invoice_id }}
+        to="/admin/rechnungen/liste"
+        search={{ invoiceId: deadline.invoice_id }}
         className="shrink-0"
       >
         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -308,7 +307,7 @@ export function SkontoDeadlineWidget({
         ))}
 
         {hasMore && (
-          <Link to="/invoices" search={{ skonto_pending: true }}>
+          <Link to="/admin/banking/skonto">
             <Button variant="ghost" className="w-full text-sm gap-2">
               <Calendar className="h-4 w-4" />
               Alle {data.total} Fristen anzeigen
@@ -345,7 +344,7 @@ export function SkontoDeadlineCompact() {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link to="/invoices" search={{ skonto_pending: true }}>
+          <Link to="/admin/banking/skonto">
             <Button
               variant="ghost"
               size="sm"

@@ -23,32 +23,51 @@ class TestTunesApiIntegration:
     """Integration Tests für Tunes API."""
 
     @pytest.mark.asyncio
+    async def test_tunes_requires_auth(self, async_client):
+        """Ohne Auth-Header antwortet die Tunes-Liste mit 403.
+
+        W3 (2026-06-12): Repo-Konvention (Nutzer-Entscheidung W3): 403 bei
+        fehlender Auth BLEIBT (HTTPBearer auto_error-Default).
+        """
+        response = await async_client.get("/api/v1/tunes/")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_tunes_crud_workflow(self, async_client):
-        """Vollständiger CRUD Workflow für Tunes."""
-        # Dieser Test simuliert den kompletten Admin-Workflow:
-        # 1. Alle Tunes auflisten
-        # 2. Neuen Tune erstellen (als Admin)
-        # 3. Tune aktualisieren
-        # 4. Tune löschen
+        """Tunes-Liste mit Auth liefert 200 + leere Liste.
 
-        with patch("app.api.v1.tunes.dependencies.get_db") as mock_db, \
-             patch("app.api.v1.tunes.dependencies.get_current_superuser") as mock_auth:
+        W3 (2026-06-12): Echter Vertrag — FastAPI-Dependencies lassen sich
+        nicht via patch() auf Modul-Attribute mocken (Depends-Referenzen
+        sind beim Import gebunden). Korrekt: app.dependency_overrides.
+        GET / verlangt get_current_active_user (nicht superuser).
+        """
+        from app.api import dependencies
+        from app.main import app
 
-            # Admin User Mock
-            admin_user = Mock(id=uuid4(), is_superuser=True, email="admin@test.de")
-            mock_auth.return_value = admin_user
+        admin_user = Mock(id=uuid4(), is_superuser=True, email="admin@test.de")
 
-            # DB Session Mock
-            mock_session = AsyncMock()
-            mock_db.return_value.__aenter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute.return_value = mock_result
 
-            # Step 1: List Tunes
-            mock_result = MagicMock()
-            mock_result.scalars.return_value.all.return_value = []
-            mock_session.execute.return_value = mock_result
+        async def _override_db():
+            yield mock_session
 
+        app.dependency_overrides[dependencies.get_db] = _override_db
+        app.dependency_overrides[dependencies.get_current_active_user] = (
+            lambda: admin_user
+        )
+        try:
             response = await async_client.get("/api/v1/tunes/")
-            assert response.status_code in [200, 500]
+        finally:
+            app.dependency_overrides.pop(dependencies.get_db, None)
+            app.dependency_overrides.pop(
+                dependencies.get_current_active_user, None
+            )
+
+        assert response.status_code == 200
+        assert response.json() == []
 
     @pytest.mark.asyncio
     async def test_tune_affects_document_processing(self, async_client):

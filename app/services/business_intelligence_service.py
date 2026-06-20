@@ -19,7 +19,7 @@ from uuid import UUID
 from enum import Enum
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, extract, case, desc, asc, text
+from sqlalchemy import select, func, and_, or_, extract, case, desc, asc, text, literal_column
 from sqlalchemy.orm import selectinload
 
 import structlog
@@ -409,11 +409,11 @@ class BusinessIntelligenceService:
 
         # Monthly breakdown
         monthly_query = select(
-            func.date_trunc('month', Invoice.invoice_date).label("month"),
+            func.date_trunc(literal_column("'month'"), Invoice.invoice_date).label("month"),
             func.count(Invoice.id).label("count"),
             func.coalesce(func.sum(Invoice.total_amount), 0).label("amount"),
         ).where(base_filter).group_by(
-            func.date_trunc('month', Invoice.invoice_date)
+            func.date_trunc(literal_column("'month'"), Invoice.invoice_date)
         ).order_by(text("month"))
 
         monthly_result = await db.execute(monthly_query)
@@ -793,11 +793,11 @@ class BusinessIntelligenceService:
 
         # Determine grouping function
         if group_by == "quarter":
-            group_func = func.date_trunc('quarter', Invoice.invoice_date)
+            group_func = func.date_trunc(literal_column("'quarter'"), Invoice.invoice_date)
         elif group_by == "year":
-            group_func = func.date_trunc('year', Invoice.invoice_date)
+            group_func = func.date_trunc(literal_column("'year'"), Invoice.invoice_date)
         else:
-            group_func = func.date_trunc('month', Invoice.invoice_date)
+            group_func = func.date_trunc(literal_column("'month'"), Invoice.invoice_date)
 
         # Query based on metric
         query = select(

@@ -5,7 +5,6 @@
  * Gruppiert Touren nach Kategorie, zeigt Abzeichen und geschätzte Dauer.
  */
 
-import * as React from 'react'
 import { useState } from 'react'
 import {
   HelpCircle,

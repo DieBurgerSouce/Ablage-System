@@ -1274,6 +1274,99 @@ class EnhancedFinTSService:
 
 
 # =============================================================================
+# F-31 minimal result objects + service methods
+# =============================================================================
+#
+# Der Router (api/v1/enhanced_banking.py) ruft list_connections /
+# get_pending_reconciliations / get_aggregated_balance /
+# get_aggregated_transactions auf. Diese Methoden fehlten -> AttributeError ->
+# HTTP 500. Die Enhanced-FinTS-Verbindungen werden derzeit NICHT persistiert
+# (nur In-Memory _connections), daher liefern die Methoden leere/0-Defaults.
+# Keine erfundenen Geldwerte.
+
+
+@dataclass
+class PendingReconciliationsResult:
+    """F-31 minimal: offene Abgleiche (leer bis Persistenz existiert)."""
+    total: int = 0
+    total_amount: Decimal = Decimal("0")
+    by_bank: Dict[str, int] = field(default_factory=dict)
+    transactions: List[dict] = field(default_factory=list)
+
+
+@dataclass
+class AggregatedBalanceResult:
+    """F-31 minimal: aggregierter Kontostand."""
+    total_balance: Decimal = Decimal("0")
+    total_available: Decimal = Decimal("0")
+    currency: str = "EUR"
+    connection_count: int = 0
+    by_bank: List[dict] = field(default_factory=list)
+    as_of: datetime = field(default_factory=utc_now)
+
+
+@dataclass
+class AggregatedTransactionsResult:
+    """F-31 minimal: aggregierte Transaktionen."""
+    transactions: List[dict] = field(default_factory=list)
+    total: int = 0
+    total_inflow: Decimal = Decimal("0")
+    total_outflow: Decimal = Decimal("0")
+
+
+def _enhanced_list_connections(self, company_id: UUID) -> List[BankConnection]:
+    """F-31 minimal: Bankverbindungen einer Company.
+
+    Verbindungen werden derzeit nicht persistiert; nur die In-Memory-Map wird
+    gefiltert (im Normalfall leer).
+    """
+    return [c for c in self._connections.values() if c.company_id == company_id]
+
+
+async def _enhanced_get_pending_reconciliations(
+    self,
+    db: AsyncSession,
+    company_id: UUID,
+    user_id: UUID,
+    connection_id: Optional[UUID] = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> "PendingReconciliationsResult":
+    """F-31 minimal: offene Abgleiche (leer)."""
+    return PendingReconciliationsResult()
+
+
+async def _enhanced_get_aggregated_balance(
+    self,
+    db: AsyncSession,
+    company_id: UUID,
+    user_id: UUID,
+) -> "AggregatedBalanceResult":
+    """F-31 minimal: aggregierter Kontostand (0)."""
+    return AggregatedBalanceResult()
+
+
+async def _enhanced_get_aggregated_transactions(
+    self,
+    db: AsyncSession,
+    company_id: UUID,
+    user_id: UUID,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> "AggregatedTransactionsResult":
+    """F-31 minimal: aggregierte Transaktionen (leer)."""
+    return AggregatedTransactionsResult()
+
+
+EnhancedFinTSService.list_connections = _enhanced_list_connections
+EnhancedFinTSService.get_pending_reconciliations = _enhanced_get_pending_reconciliations
+EnhancedFinTSService.get_aggregated_balance = _enhanced_get_aggregated_balance
+EnhancedFinTSService.get_aggregated_transactions = _enhanced_get_aggregated_transactions
+
+
+# =============================================================================
 # Factory
 # =============================================================================
 

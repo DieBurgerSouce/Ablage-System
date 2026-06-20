@@ -248,7 +248,7 @@ def test_summary_text_generation(diff_service, minor_changes_text):
     assert result.summary is not None
     assert len(result.summary) > 0
     # Should contain German text
-    assert "Aenderung" in result.summary or "Keine Aenderungen" in result.summary
+    assert "Änderung" in result.summary or "Keine Änderungen" in result.summary
 
 
 def test_key_changes_extraction(diff_service, minor_changes_text):

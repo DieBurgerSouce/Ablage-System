@@ -153,9 +153,14 @@ class TestVaultConfigurationDetection:
 
         assert client.is_configured() is True
 
-    def test_is_configured_without_credentials(self):
+    def test_is_configured_without_credentials(self, monkeypatch):
         """is_configured sollte False ohne Credentials zurückgeben."""
         from app.core.config import VaultClient
+
+        # __init__ faellt bei leeren Args auf os.getenv zurueck; im Container sind
+        # VAULT_* gesetzt -> fuer den "ohne Credentials"-Fall Env-Leak ausschliessen.
+        for var in ("VAULT_TOKEN", "VAULT_ROLE_ID", "VAULT_SECRET_ID"):
+            monkeypatch.delenv(var, raising=False)
 
         VaultClient._instance = None
         client = VaultClient(
@@ -167,9 +172,12 @@ class TestVaultConfigurationDetection:
 
         assert client.is_configured() is False
 
-    def test_is_configured_without_addr(self, vault_test_config):
+    def test_is_configured_without_addr(self, vault_test_config, monkeypatch):
         """is_configured sollte False ohne Vault-Adresse zurückgeben."""
         from app.core.config import VaultClient
+
+        # Env-Fallback fuer VAULT_ADDR ausschliessen (im Container gesetzt).
+        monkeypatch.delenv("VAULT_ADDR", raising=False)
 
         VaultClient._instance = None
         client = VaultClient(

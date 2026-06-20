@@ -782,9 +782,9 @@ async def get_consent_status(
             scope=scope.value,
             scope_description=scope_descriptions.get(scope, scope.value),
             consent_given=result.consent_given,
-            consent_version=result.consent_version,
+            consent_version=None,
             granted_at=result.granted_at,
-            valid_until=result.valid_until,
+            valid_until=None,
         ))
 
         if result.consent_given:
@@ -891,7 +891,7 @@ async def grant_consent(
             consent_id=result.consent_scope_id,
             scope=scope.value,
             consent_given=True,
-            consent_version=result.consent_version,
+            consent_version=None,
             granted_at=result.granted_at,
             nachricht=nachricht
         )
@@ -1033,22 +1033,21 @@ async def get_consent_history(
     history = await consent_service.get_consent_history(
         db=db,
         user_id=current_user.id,
-        company_id=company_id,
         scope=consent_scope,
-        limit=limit
+        limit=limit,
     )
 
     history_entries = [
         ConsentHistoryEntryResponse(
             id=entry.id,
-            action=entry.action.value if hasattr(entry.action, 'value') else entry.action,
-            scope=entry.scope.value if hasattr(entry.scope, 'value') else entry.scope,
+            action=entry.action.value if hasattr(entry.action, 'value') else str(entry.action),
+            scope=str(entry.consent_scope_id),
             previous_value=entry.previous_value,
             new_value=entry.new_value,
-            consent_version=entry.consent_version,
+            consent_version=str(entry.consent_version_id) if entry.consent_version_id else None,
             ip_address=entry.ip_address,
             reason=entry.reason,
-            created_at=entry.created_at
+            created_at=entry.created_at,
         )
         for entry in history
     ]

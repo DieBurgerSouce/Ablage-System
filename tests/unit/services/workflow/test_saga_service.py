@@ -397,6 +397,7 @@ class TestCompensation:
         step.timeout_seconds = 300
         step.max_retries = 1
         step.compensation_retry_count = 0
+        step.retry_delay_seconds = 60  # echtes int fuer Exponential-Backoff-min()
 
         async def failing_compensation(**kwargs):
             raise Exception("Compensation fehlgeschlagen")

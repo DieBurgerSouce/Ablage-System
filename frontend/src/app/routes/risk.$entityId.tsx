@@ -108,10 +108,6 @@ function RiskEntityDetailPage() {
   }
 
   const colors = RISK_LEVEL_COLORS[entityRisk.riskLevel];
-  const entityDetailPath =
-    entityRisk.entityType === 'customer'
-      ? '/kunden/$entityId'
-      : '/lieferanten/$entityId';
 
   return (
     <div className="container mx-auto py-8">
@@ -154,10 +150,20 @@ function RiskEntityDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
-            <Link to={entityDetailPath} params={{ entityId }}>
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Zur Entity
-            </Link>
+            {entityRisk.entityType === 'customer' ? (
+              <Link to="/kunden/$customerId" params={{ customerId: entityId }}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Zur Entity
+              </Link>
+            ) : (
+              <Link
+                to="/lieferanten/$supplierId"
+                params={{ supplierId: entityId }}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Zur Entity
+              </Link>
+            )}
           </Button>
           <Button
             onClick={handleRecalculate}

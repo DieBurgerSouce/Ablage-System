@@ -122,6 +122,16 @@ COPY --chown=ablage:ablage *.py ./
 RUN chmod -R 755 /app && \
     chmod -R 775 /app/uploads /app/outputs /app/logs /app/cache
 
+# F-26: triton/bitsandbytes schreiben Caches beim Import. Auf beschreibbare Pfade
+# lenken, sonst OSError auf dem read-only-Rootfs (Default $HOME/.triton). .cache ist
+# ein gemountetes Volume; /tmp ist tmpfs.
+ENV HOME=/home/ablage/.cache \
+    TRITON_CACHE_DIR=/home/ablage/.cache/triton \
+    XDG_CACHE_HOME=/home/ablage/.cache \
+    CUPY_CACHE_DIR=/home/ablage/.cache/cupy \
+    NUMBA_CACHE_DIR=/home/ablage/.cache/numba \
+    MPLCONFIGDIR=/tmp/mpl
+
 # Switch to non-root user
 USER ablage
 

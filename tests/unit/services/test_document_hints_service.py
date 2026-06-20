@@ -398,7 +398,7 @@ class TestGetHintsForDocument:
         assert len(overdue_hints) > 0
         hint = overdue_hints[0]
         assert hint.severity == HintSeverity.WARNING
-        assert "ueberfaellig" in hint.title
+        assert "überfällig" in hint.title
         assert hint.confidence == 1.0
 
     @pytest.mark.asyncio

@@ -20,3 +20,10 @@ services:
     environment:
       TESTING: "true"
       MALWARE_SCAN_ENABLED: "false"
+
+  # worker-cpu bedient die Queues validation/metadata/.../privat und braucht
+  # im Test-Lauf dieselben deterministischen Flags wie worker (2026-06-11).
+  worker-cpu:
+    environment:
+      TESTING: "true"
+      MALWARE_SCAN_ENABLED: "false"

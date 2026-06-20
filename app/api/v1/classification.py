@@ -163,7 +163,7 @@ async def classify_multi_label(
 
     logger.info(
         "document_classified",
-        company_id=str(company.company_id),
+        company_id=str(company.id),
         user_id=str(current_user.id),
         document_type=result.document_type.value,
         urgency=result.urgency_level.value,
@@ -232,7 +232,7 @@ async def classify_batch(
 
     logger.info(
         "batch_classification_complete",
-        company_id=str(company.company_id),
+        company_id=str(company.id),
         document_count=len(results),
     )
 

@@ -19,23 +19,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import {
-    Search,
-    Sparkles,
-    FileText,
-    Filter,
-    X,
-    ChevronDown,
-    ChevronUp,
-    Calendar,
-    Building2,
-    DollarSign,
-    FileType,
-    CheckCircle2,
-    TrendingUp,
-    Lightbulb,
-    Target,
-} from 'lucide-react';
+import { Search, Sparkles, FileText, Filter, X, ChevronDown, ChevronUp, Calendar, Building2, FileType, CheckCircle2, TrendingUp, Lightbulb, Target } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

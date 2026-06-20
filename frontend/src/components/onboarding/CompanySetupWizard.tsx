@@ -191,7 +191,7 @@ export function CompanySetupWizard({
 
         const setupComplete = checkSetupComplete()
         const setupSkipped = isCompanySetupSkipped()
-        const hasCompanies = companiesData?.companies && companiesData.companies.length > 0
+        const hasCompanies = companiesData?.items && companiesData.items.length > 0
 
         // Zeige Wizard wenn:
         // 1. forceShow ist true ODER
@@ -243,19 +243,21 @@ export function CompanySetupWizard({
 
     const handleComplete = async () => {
         // Firma erstellen
+        // Backend-Vertrag CompanyCreate (app/db/schemas.py): street/city/
+        // postal_code/country/kontenrahmen/fiscal_year_start
         const companyData: CompanyCreate = {
             name: data.name,
             vat_id: data.vat_id || undefined,
             tax_number: data.tax_number || undefined,
-            address_street: data.address_street || undefined,
-            address_city: data.address_city || undefined,
-            address_postal_code: data.address_postal_code || undefined,
-            address_country: data.address_country || 'DE',
+            street: data.address_street || undefined,
+            city: data.address_city || undefined,
+            postal_code: data.address_postal_code || undefined,
+            country: data.address_country || 'DE',
             email: data.email || undefined,
             phone: data.phone || undefined,
             website: data.website || undefined,
-            account_chart: data.account_chart,
-            fiscal_year_start_month: data.fiscal_year_start_month,
+            kontenrahmen: data.account_chart,
+            fiscal_year_start: data.fiscal_year_start_month,
         }
 
         createCompanyMutation.mutate(companyData)

@@ -28,11 +28,15 @@ async def test_bias_detection_entity_type():
     company_id = uuid4()
 
     # Mock Entities: Customers haben hohen Risk Score, Suppliers niedrigen
+    # created_at MUSS gesetzt sein: _check_relationship_bias rechnet
+    # (now - entity.created_at).days -> sonst MagicMock-Vergleich (TypeError).
+    base_created = datetime.now(timezone.utc) - timedelta(days=200)
     customers = []
     for i in range(10):
         entity = MagicMock(spec=BusinessEntity)
         entity.entity_type = "customer"
         entity.risk_score = 80.0  # Hoch
+        entity.created_at = base_created - timedelta(days=30 * i)
         customers.append(entity)
 
     suppliers = []
@@ -40,6 +44,7 @@ async def test_bias_detection_entity_type():
         entity = MagicMock(spec=BusinessEntity)
         entity.entity_type = "supplier"
         entity.risk_score = 20.0  # Niedrig
+        entity.created_at = base_created - timedelta(days=30 * i)
         suppliers.append(entity)
 
     all_entities = customers + suppliers
@@ -53,13 +58,16 @@ async def test_bias_detection_entity_type():
     report = await detector.detect_bias(company_id, mock_db)
 
     assert isinstance(report, BiasReport)
-    assert report.overall_fairness < 0.8  # Sollte Bias erkennen
+    # overall_fairness ist der Mittel der 3 Dimensionen. Hier ist NUR die
+    # Entity-Typ-Achse verzerrt (Δ=60 -> 0.60), die anderen beiden fair (1.0),
+    # also overall ~0.87 (<1.0 = Bias vorhanden, aber nicht auf allen Achsen).
+    assert report.overall_fairness < 1.0  # Bias vorhanden
     assert len(report.dimensions) >= 3
 
-    # Finde Entity-Typ Dimension
+    # Kern-Signal: Entity-Typ-Dimension MUSS den Bias flaggen.
     type_dim = next((d for d in report.dimensions if d.name == "Entity-Typ"), None)
     assert type_dim is not None
-    assert type_dim.fairness_score < 0.8  # 60 Punkte Differenz
+    assert type_dim.fairness_score < 0.8  # 60 Punkte Differenz -> 0.60
 
 
 @pytest.mark.asyncio
@@ -182,10 +190,16 @@ async def test_explainability_auto_approval():
     mock_db = AsyncMock()
     invoice_id = uuid4()
 
-    # Mock Invoice
+    # Mock Invoice - InvoiceTracking-Spalte heisst 'amount' (nicht total_amount);
+    # _explain_auto_approval liest invoice.amount. Restliche genutzte Felder
+    # konkret setzen, damit spec-MagicMock keine ungesetzten Mock-Attribute
+    # in Vergleiche einschleust (entity_id=None -> kein BusinessEntity-Lookup).
     invoice = MagicMock(spec=InvoiceTracking)
     invoice.id = invoice_id
-    invoice.total_amount = 500.0
+    invoice.amount = 500.0
+    invoice.entity_id = None
+    invoice.invoice_number = "RE-2026-001"
+    invoice.due_date = datetime.now(timezone.utc) + timedelta(days=14)
 
     mock_db.get.return_value = invoice
 

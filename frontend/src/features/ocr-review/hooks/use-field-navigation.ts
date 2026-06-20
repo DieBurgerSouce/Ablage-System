@@ -14,7 +14,7 @@ const FIELD_SELECTOR = '[data-field-nav]'
 
 export interface UseFieldNavigationOptions {
     /** Container-Referenz für Feldsuche */
-    containerRef: React.RefObject<HTMLElement>
+    containerRef: React.RefObject<HTMLElement | null>
     /** Callback wenn Feld fokussiert wird */
     onFieldFocus?: (fieldPath: string | null) => void
     /** Ob Navigation aktiv ist */

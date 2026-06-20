@@ -386,6 +386,11 @@ class User(Base):
     # User settings
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
+
+    @property
+    def role(self) -> str:
+        "F-31: keine role-Spalte; Rolle aus is_superuser (admin/viewer), matcht UserResponse.role. Nur Instanz-Zugriff; in SQL is_superuser nutzen."
+        return "admin" if self.is_superuser else "viewer"
     preferred_language = Column(String(10), default="de")
     preferred_ocr_backend = Column(String(50), default=OCRBackend.AUTO)
 

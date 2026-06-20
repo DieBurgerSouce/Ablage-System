@@ -599,7 +599,7 @@ def einvoice_validate_task(
                 for m in validation_result.messages
                 if m.severity.value in ("fatal", "error")
             ]
-            einvoice_doc.last_validated_at = datetime.now(timezone.utc)
+            einvoice_doc.validation_timestamp = datetime.now(timezone.utc)
             await db.commit()
 
             return {
@@ -1305,7 +1305,7 @@ def generate_xrechnung_task(
     async def _do_generate():
         async with get_async_session_context() as db:
             from app.services.einvoice import get_generator_service
-            from app.services.einvoice.xrechnung_generator import XRechnungSyntax
+            from app.api.schemas.einvoice import XRechnungSyntax
             from app.services.storage_service import get_storage_service
 
             generator = get_generator_service()
@@ -1476,8 +1476,8 @@ def batch_validate_einvoices_task(self, company_id: str) -> dict:
 
             # Query: EInvoiceDocuments die validiert werden sollen
             query = select(EInvoiceDocument).where(
-                (EInvoiceDocument.last_validated_at.is_(None)) |
-                (EInvoiceDocument.last_validated_at < cutoff)
+                (EInvoiceDocument.validation_timestamp.is_(None)) |
+                (EInvoiceDocument.validation_timestamp < cutoff)
             )
 
             # Company-Filter wenn nicht "all"
@@ -1524,7 +1524,7 @@ def batch_validate_einvoices_task(self, company_id: str) -> dict:
                         for m in validation_result.messages
                         if m.severity.value in ("fatal", "error")
                     ]
-                    einvoice.last_validated_at = datetime.now(timezone.utc)
+                    einvoice.validation_timestamp = datetime.now(timezone.utc)
 
                     einvoice_result["valid"] = validation_result.valid
                     einvoice_result["error_count_detail"] = validation_result.error_count

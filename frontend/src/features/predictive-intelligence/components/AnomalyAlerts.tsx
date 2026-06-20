@@ -32,17 +32,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  CheckCircle,
-  XCircle,
-  Eye,
-  ThumbsUp,
-  ThumbsDown,
-  ChevronRight,
-} from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, CheckCircle, XCircle, Eye, ThumbsDown, ChevronRight } from 'lucide-react';
 
 export type AnomalySeverity = 'info' | 'warning' | 'error' | 'critical';
 export type AnomalyStatus = 'new' | 'acknowledged' | 'resolved' | 'false_positive';
@@ -324,7 +314,7 @@ export const AnomalyAlerts: React.FC<AnomalyAlertsProps> = ({
   onMarkFalsePositive,
   isLoading = false,
 }) => {
-  const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
+  const [_selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
 
   // Gruppiere nach Status
   const newAnomalies = anomalies.filter((a) => a.status === 'new');

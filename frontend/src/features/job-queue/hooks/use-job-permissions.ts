@@ -86,7 +86,6 @@ export function useJobPermissions(): JobQueuePermissions {
 
     const isSuperuser = user.is_superuser;
     const isAdmin = user.role === 'admin' || isSuperuser;
-    const isEditor = user.role === 'editor';
 
     return {
       // Nur Admins und Superuser können die Job Queue sehen

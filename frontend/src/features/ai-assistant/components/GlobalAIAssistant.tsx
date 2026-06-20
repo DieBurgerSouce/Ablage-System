@@ -41,11 +41,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 
@@ -68,7 +63,6 @@ import type { ConnectionStatus } from '@/features/rag/types/chat-types';
 const KEYBOARD_SHORTCUT = 'k';
 const WIDGET_WIDTH = 420;
 const WIDGET_HEIGHT = 600;
-const MINIMIZED_SIZE = 56;
 
 // ==================== Sub-Components ====================
 
@@ -171,7 +165,6 @@ function ActionSuggestionCard({
   onReject,
   isLoading,
 }: ActionSuggestionCardProps) {
-  const meta = ACTION_METADATA[suggestion.action_type];
 
   return (
     <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
@@ -296,7 +289,7 @@ export function GlobalAIAssistant() {
     setView,
     setSessionId,
     incrementUnread,
-    markAsRead,
+    markAsRead: _markAsRead,
   } = useAIAssistantStore();
 
   // Page context detection
@@ -305,9 +298,9 @@ export function GlobalAIAssistant() {
   // AI Actions - context-aware
   const {
     contextInfo,
-    availableActions,
+    availableActions: _availableActions,
     autonomyLevel,
-    pendingSuggestions,
+    pendingSuggestions: _pendingSuggestions,
     isExecuting,
     isConfirming,
     executeWithContext,
@@ -329,7 +322,7 @@ export function GlobalAIAssistant() {
   // Chat WebSocket
   const {
     status,
-    sessionId,
+    sessionId: _sessionId,
     error,
     messages,
     isStreaming,

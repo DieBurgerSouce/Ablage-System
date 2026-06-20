@@ -255,6 +255,8 @@ async def resolve_annotation(
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
     summary="Annotation löschen",
+    # Eindeutige operation_id: kollidierte mit annotations.py/_extended.py
+    operation_id="enhanced_delete_annotation",
 )
 async def delete_annotation(
     annotation_id: UUID,

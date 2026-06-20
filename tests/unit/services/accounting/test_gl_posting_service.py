@@ -447,9 +447,14 @@ async def test_get_account_ledger_returns_entries(gl_service, company_id, mock_d
     )
 
     assert len(entries) == 2
-    assert entries[0].account_number == "1200"
+    # LedgerEntry traegt keine account_number (das Kontoblatt gilt fuer EIN
+    # Konto = der Query-Parameter). Geprueft werden die echten Felder.
+    assert entries[0].entry_number == "JE-2024-00001"
     assert entries[0].debit_amount == Decimal("1000.00")
+    assert entries[0].running_balance == Decimal("1000.00")
     assert entries[1].credit_amount == Decimal("500.00")
+    # Laufender Saldo nach Ausgang: 1000 - 500 = 500
+    assert entries[1].running_balance == Decimal("500.00")
 
 
 @pytest.mark.asyncio
@@ -533,7 +538,7 @@ async def test_post_from_invoice_creates_entry(gl_service, company_id, user_id, 
     entry = await gl_service.post_from_invoice(
         company_id=company_id,
         document_id=document_id,
-        created_by=user_id,
+        posted_by=user_id,
     )
 
     assert entry is not None
@@ -577,10 +582,16 @@ async def test_post_from_invoice_with_datev(gl_service, company_id, user_id, moc
     mock_entry_result = MagicMock()
     mock_entry_result.scalar_one_or_none = MagicMock(return_value=mock_entry)
 
+    # Vendor-Mapping-Query (_map_via_datev ruft _get_vendor_mapping, da
+    # supplier_name vorhanden ist) -> kein Mapping (None) = gueltiger Fallback.
+    mock_vendor_result = MagicMock()
+    mock_vendor_result.scalar_one_or_none = MagicMock(return_value=None)
+
     mock_db.execute = AsyncMock(side_effect=[
-        mock_doc_result,
-        mock_datev_result,
-        mock_entry_result,
+        mock_doc_result,       # Dokument laden
+        mock_datev_result,     # _get_datev_config
+        mock_vendor_result,    # _get_vendor_mapping
+        mock_entry_result,     # post_journal_entry: Entry laden
     ])
 
     gl_service._generate_entry_number = AsyncMock(return_value="JE-2024-00001")
@@ -588,7 +599,7 @@ async def test_post_from_invoice_with_datev(gl_service, company_id, user_id, moc
     entry = await gl_service.post_from_invoice(
         company_id=company_id,
         document_id=document_id,
-        created_by=user_id,
+        posted_by=user_id,
     )
 
     assert entry is not None
@@ -604,11 +615,11 @@ async def test_post_from_invoice_no_document_raises(gl_service, company_id, user
     mock_doc_result.scalar_one_or_none = MagicMock(return_value=None)
     mock_db.execute = AsyncMock(return_value=mock_doc_result)
 
-    with pytest.raises(ValueError, match="Dokument nicht gefunden"):
+    with pytest.raises(ValueError, match="Dokument .* nicht gefunden"):
         await gl_service.post_from_invoice(
             company_id=company_id,
             document_id=document_id,
-            created_by=user_id,
+            posted_by=user_id,
         )
 
 
@@ -629,11 +640,11 @@ async def test_post_from_invoice_no_amount_raises(gl_service, company_id, user_i
     mock_doc_result.scalar_one_or_none = MagicMock(return_value=mock_doc)
     mock_db.execute = AsyncMock(return_value=mock_doc_result)
 
-    with pytest.raises(ValueError, match="Kein Betrag im Dokument gefunden"):
+    with pytest.raises(ValueError, match="keine extrahierte Rechnungssumme"):
         await gl_service.post_from_invoice(
             company_id=company_id,
             document_id=document_id,
-            created_by=user_id,
+            posted_by=user_id,
         )
 
 
@@ -646,8 +657,10 @@ async def test_post_from_invoice_no_amount_raises(gl_service, company_id, user_i
 async def test_simple_expense_lines_structure(gl_service):
     """Test: _simple_expense_lines returns 3 lines (4400, 1576, 1600)."""
     lines = gl_service._simple_expense_lines(
-        total_amount=Decimal("119.00"),
+        extracted={"invoice_number": "RE-1", "supplier_name": "Lieferant"},
+        invoice_total=Decimal("119.00"),
         tax_amount=Decimal("19.00"),
+        net_amount=Decimal("100.00"),
     )
 
     assert len(lines) == 3
@@ -660,8 +673,10 @@ async def test_simple_expense_lines_structure(gl_service):
 async def test_simple_expense_lines_balanced(gl_service):
     """Test: _simple_expense_lines total debit equals total credit."""
     lines = gl_service._simple_expense_lines(
-        total_amount=Decimal("119.00"),
+        extracted={"invoice_number": "RE-1", "supplier_name": "Lieferant"},
+        invoice_total=Decimal("119.00"),
         tax_amount=Decimal("19.00"),
+        net_amount=Decimal("100.00"),
     )
 
     total_debit = sum(line.debit_amount for line in lines)
@@ -674,8 +689,10 @@ async def test_simple_expense_lines_balanced(gl_service):
 async def test_simple_expense_lines_tax_handling(gl_service):
     """Test: _simple_expense_lines handles tax_amount correctly."""
     lines = gl_service._simple_expense_lines(
-        total_amount=Decimal("238.00"),
+        extracted={"invoice_number": "RE-2", "supplier_name": "Lieferant"},
+        invoice_total=Decimal("238.00"),
         tax_amount=Decimal("38.00"),
+        net_amount=Decimal("200.00"),
     )
 
     # Wareneingang = total - tax = 200.00

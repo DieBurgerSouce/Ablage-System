@@ -923,13 +923,20 @@ class BPMNExporter:
             BPMN 2.0 XML String
         """
         # Root: definitions
+        # Namespace-Deklarationen (xmlns:*) werden von ElementTree automatisch
+        # aus den via ET.register_namespace() registrierten Prefixes erzeugt.
+        # Ein manuelles set("xmlns:bpmn", ...) wuerde die Deklarationen doppeln
+        # und beim Re-Import zu "duplicate attribute" fuehren.
         definitions = ET.Element(f"{{{BPMN_NS}}}definitions")
-        definitions.set("xmlns:bpmn", BPMN_NS)
-        definitions.set("xmlns:bpmndi", BPMNDI_NS)
-        definitions.set("xmlns:dc", DC_NS)
-        definitions.set("xmlns:di", DI_NS)
-        definitions.set("xmlns:camunda", CAMUNDA_NS)
-        definitions.set("id", f"Definitions_{workflow.id}")
+        # Idempotente Definitions-ID: nur prefixen, wenn noch nicht praefixiert.
+        # Verhindert doppeltes "Definitions_Definitions_..." beim Roundtrip
+        # (Import -> Export -> Import muss die ID stabil halten).
+        definitions_id = (
+            workflow.id
+            if workflow.id.startswith("Definitions_")
+            else f"Definitions_{workflow.id}"
+        )
+        definitions.set("id", definitions_id)
         definitions.set("targetNamespace", ABLAGE_NS)
         definitions.set("exporter", "Ablage-System BPMN Converter")
         definitions.set("exporterVersion", "1.0")

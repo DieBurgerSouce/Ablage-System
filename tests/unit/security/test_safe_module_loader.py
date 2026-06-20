@@ -112,7 +112,7 @@ class TestFunctionLoading:
         loader = SafeModuleLoader()
         with pytest.raises(ModuleLoadingError) as exc_info:
             loader.load_function("no_dot_in_path")
-        assert "Ungueltig" in str(exc_info.value) or "ungueltig" in str(exc_info.value).lower()
+        assert "Ungültig" in str(exc_info.value) or "ungültig" in str(exc_info.value).lower()
 
     def test_load_function_invalid_path_empty(self) -> None:
         """Empty path should raise."""

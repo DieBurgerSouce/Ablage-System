@@ -177,7 +177,6 @@ export function DeadlineList({
 
   // Count by status
   const overdueCount = deadlines.filter((d) => d.isOverdue && !d.isCompleted).length;
-  const upcomingCount = deadlines.filter((d) => !d.isOverdue && !d.isCompleted).length;
 
   if (error) {
     return (

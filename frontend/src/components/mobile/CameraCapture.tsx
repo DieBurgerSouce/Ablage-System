@@ -15,23 +15,8 @@
  */
 
 import * as React from 'react';
-import {
-  Camera,
-  X,
-  RotateCcw,
-  RotateCw,
-  Check,
-  Plus,
-  Trash2,
-  Upload,
-  Image as ImageIcon,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  ScanLine,
-} from 'lucide-react';
+import { Camera, RotateCcw, RotateCw, Plus, Trash2, Upload, Loader2, ChevronLeft, ChevronRight, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -212,7 +197,7 @@ export function CameraCapture({
   onCapture,
   maxPages = 20,
   maxFileSize = 15 * 1024 * 1024,
-  endpoint = '/api/v1/documents/upload',
+  endpoint = '/documents/upload',
   metadata = {},
   multiPage = true,
   autoUpload = false,
@@ -463,8 +448,6 @@ export function CameraCapture({
       onCapture?.(results);
 
       // Show result summary
-      const succeeded = results.filter((r) => r.success && !r.queued).length;
-      const queued = results.filter((r) => r.queued).length;
       const failed = results.filter((r) => !r.success).length;
 
       if (failed > 0) {

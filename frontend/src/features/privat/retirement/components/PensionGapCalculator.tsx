@@ -48,12 +48,6 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 0,
   }).format(value);
 
-const formatPercent = (value: number): string =>
-  new Intl.NumberFormat('de-DE', {
-    style: 'percent',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 
 export function PensionGapCalculator({
   spaceId,

@@ -9,15 +9,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Sparkles,
-  Loader2,
-  ChevronRight,
-  Check,
-  AlertCircle,
-  Lightbulb,
-  Wand2,
-} from 'lucide-react'
+import { Sparkles, Loader2, Check, AlertCircle, Lightbulb, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'

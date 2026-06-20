@@ -3,24 +3,42 @@
 Unit Tests fuer DailyInsightsEngine.
 
 Vision 2026 Q4: Tests fuer die proaktive Insight-Generierung.
+
+W3 (2026-06-12): Komplett auf den ECHTEN Service-Vertrag modernisiert.
+Die alte Fassung testete eine nie implementierte API
+(`DailyInsight(message=..., explanation=..., impact_value=...)`,
+`engine.get_generator_configs()`, `InsightGeneratorConfig(name=...)`).
+Realer Vertrag (app/services/insights/daily_insights_engine.py):
+- DailyInsight: dataclass mit title/summary/detail/recommendation,
+  predicted_date/predicted_amount, factors als List[InsightFactorDict]
+- InsightGeneratorConfig: Schwellenwert-Konfiguration (cashflow_warning_days, ...)
+- Engine: generate_daily_insights(company_id, data_providers) + register_generator
+- DB-Convenience: generate_all_insights_from_db / generate_insights_by_type_from_db
 """
 
-import pytest
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from typing import Dict, List, Union
+from uuid import UUID, uuid4
 
-import pytest_asyncio
+import pytest
+from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.insights.daily_insights_engine import (
-    DailyInsightsEngine,
+    BaseInsightGenerator,
+    CashflowWarningGenerator,
+    ContractExpiringGenerator,
     DailyInsight,
+    DailyInsightsEngine,
     DailyInsightType as InsightType,
-    InsightSeverity,
+    DataProvidersResult,
     InsightFactorDict as InsightFactor,
     InsightGeneratorConfig,
+    InsightSeverity,
+    InsightStatus,
+    generate_all_insights_from_db,
+    generate_insights_by_type_from_db,
     get_daily_insights_engine,
 )
 
@@ -51,35 +69,35 @@ class TestInsightSeverity:
 
 
 class TestInsightFactor:
-    """Tests fuer InsightFactor."""
+    """Tests fuer InsightFactorDict (TypedDict, KEINE Klasse mit Attributen)."""
 
     def test_factor_creation(self) -> None:
-        """Test: InsightFactor kann erstellt werden."""
+        """Test: InsightFactor ist ein TypedDict mit Key-Zugriff."""
         factor = InsightFactor(
             name="Zahlungshistorie",
             contribution=0.45,
             value="15 Tage Durchschnitt",
             explanation="Kunde zahlt durchschnittlich 15 Tage nach Faelligkeit",
         )
-        assert factor.name == "Zahlungshistorie"
-        assert factor.contribution == 0.45
-        assert factor.value == "15 Tage Durchschnitt"
-        assert "15 Tage" in factor.explanation
+        assert factor["name"] == "Zahlungshistorie"
+        assert factor["contribution"] == 0.45
+        assert factor["value"] == "15 Tage Durchschnitt"
+        assert "15 Tage" in factor["explanation"]
 
 
 class TestDailyInsight:
-    """Tests fuer DailyInsight."""
+    """Tests fuer DailyInsight (echter dataclass-Vertrag)."""
 
     def test_daily_insight_creation(self) -> None:
-        """Test: DailyInsight kann erstellt werden."""
+        """Test: DailyInsight kann mit echten Feldern erstellt werden."""
+        deadline = datetime.now(timezone.utc) + timedelta(days=14)
         insight = DailyInsight(
-            id="insight-001",
             insight_type=InsightType.CASHFLOW_WARNING,
             severity=InsightSeverity.HIGH,
-            title="Liquiditaetsengpass moeglich",
-            message="In 14 Tagen koennte der Kontostand negativ werden.",
-            explanation="Basierend auf offenen Rechnungen und Zahlungen.",
-            recommendation="Zahlungseingaenge beschleunigen.",
+            title="Liquiditätsengpass möglich",
+            summary="In 14 Tagen könnte der Kontostand negativ werden.",
+            detail="Basierend auf offenen Rechnungen und Zahlungen.",
+            recommendation="Zahlungseingänge beschleunigen.",
             factors=[
                 InsightFactor(
                     name="Kontostand",
@@ -89,185 +107,275 @@ class TestDailyInsight:
                 )
             ],
             confidence=0.85,
-            impact_value=Decimal("2500.00"),
-            deadline=date.today() + timedelta(days=14),
-            created_at=datetime.now(timezone.utc),
+            predicted_amount=Decimal("2500.00"),
+            predicted_date=deadline,
         )
 
-        assert insight.id == "insight-001"
+        assert isinstance(insight.id, UUID)  # auto-generiert
         assert insight.insight_type == InsightType.CASHFLOW_WARNING
         assert insight.severity == InsightSeverity.HIGH
+        assert insight.status == InsightStatus.NEW  # Default
         assert insight.confidence == 0.85
-        assert insight.impact_value == Decimal("2500.00")
+        assert insight.predicted_amount == Decimal("2500.00")
+        assert insight.predicted_date == deadline
         assert len(insight.factors) == 1
+        assert insight.factors[0]["name"] == "Kontostand"
+
+    def test_daily_insight_to_dict(self) -> None:
+        """Test: to_dict() serialisiert UUIDs/Datetimes/Decimals korrekt."""
+        company_id = uuid4()
+        deadline = datetime.now(timezone.utc) + timedelta(days=3)
+        insight = DailyInsight(
+            insight_type=InsightType.SKONTO_DEADLINE,
+            severity=InsightSeverity.CRITICAL,
+            company_id=company_id,
+            title="Skonto-Frist",
+            summary="Skonto verfällt morgen.",
+            predicted_amount=Decimal("42.50"),
+            predicted_date=deadline,
+        )
+
+        d = insight.to_dict()
+        assert d["id"] == str(insight.id)
+        assert d["insight_type"] == "skonto_deadline"
+        assert d["severity"] == "critical"
+        assert d["status"] == "new"
+        assert d["company_id"] == str(company_id)
+        assert d["predicted_amount"] == 42.5
+        assert d["predicted_date"] == deadline.isoformat()
+        assert d["created_at"] == insight.created_at.isoformat()
 
 
 class TestInsightGeneratorConfig:
-    """Tests fuer InsightGeneratorConfig."""
+    """Tests fuer InsightGeneratorConfig (Schwellenwert-Konfiguration)."""
 
     def test_config_creation_with_defaults(self) -> None:
         """Test: Config mit Standardwerten erstellen."""
-        config = InsightGeneratorConfig(
-            name="cashflow",
-            description="Cashflow-Warnungen",
-        )
-        assert config.name == "cashflow"
-        assert config.enabled is True
-        assert config.priority == 1
-        assert config.max_insights == 10
+        config = InsightGeneratorConfig()
+        assert config.cashflow_warning_days == 14
+        assert config.cashflow_critical_threshold == Decimal("0")
+        assert config.cashflow_warning_threshold == Decimal("5000")
+        assert config.contract_warning_days == 30
+        assert config.contract_critical_days == 7
+        assert config.skonto_warning_days == 3
+        assert config.skonto_critical_days == 1
+        assert config.risk_score_high_threshold == 75
+        assert config.risk_score_critical_threshold == 90
 
     def test_config_creation_with_custom_values(self) -> None:
-        """Test: Config mit benutzerdefinierten Werten."""
+        """Test: Config mit benutzerdefinierten Schwellenwerten."""
         config = InsightGeneratorConfig(
-            name="contracts",
-            description="Vertragsablauf",
-            enabled=False,
-            priority=5,
-            max_insights=20,
+            cashflow_warning_days=7,
+            contract_warning_days=60,
+            skonto_warning_days=5,
+            unusual_pattern_threshold=0.5,
         )
-        assert config.enabled is False
-        assert config.priority == 5
-        assert config.max_insights == 20
+        assert config.cashflow_warning_days == 7
+        assert config.contract_warning_days == 60
+        assert config.skonto_warning_days == 5
+        assert config.unusual_pattern_threshold == 0.5
+
+
+class _FixedInsightGenerator(BaseInsightGenerator):
+    """Test-Generator der genau einen festen Insight liefert."""
+
+    insight_type = InsightType.MISSING_DOCUMENT
+
+    async def generate(
+        self,
+        company_id: UUID,
+        data: DataProvidersResult,
+    ) -> List[DailyInsight]:
+        return [
+            DailyInsight(
+                insight_type=self.insight_type,
+                severity=InsightSeverity.MEDIUM,
+                company_id=company_id,
+                title="Test-Insight",
+                summary="Vom Test-Generator erzeugt.",
+            )
+        ]
 
 
 class TestDailyInsightsEngine:
-    """Tests fuer DailyInsightsEngine."""
+    """Tests fuer DailyInsightsEngine (echter Vertrag: data_providers)."""
 
     @pytest.fixture
     def engine(self) -> DailyInsightsEngine:
         """Erstellt Engine-Instanz fuer Tests."""
         return DailyInsightsEngine()
 
+    async def test_generate_with_empty_providers(
+        self, engine: DailyInsightsEngine
+    ) -> None:
+        """Test: Ohne Daten werden keine Insights generiert."""
+        company_id = uuid4()
+        result = await engine.generate_daily_insights(company_id, {})
+
+        assert result.company_id == company_id
+        assert result.total_insights == 0
+        assert result.insights == []
+        assert result.generation_time_seconds >= 0
+
+    async def test_generate_mixed_severities_sorted(
+        self, engine: DailyInsightsEngine
+    ) -> None:
+        """Test: Insights aus mehreren Generatoren, sortiert nach Severity."""
+        company_id = uuid4()
+        now = datetime.now(timezone.utc)
+
+        def cashflow_provider() -> List[Dict[str, Union[str, int, float]]]:
+            # Negativer Saldo -> CRITICAL
+            return [{
+                "date": (now + timedelta(days=10)).isoformat(),
+                "predicted_balance": -1000.0,
+                "confidence": 0.9,
+            }]
+
+        async def skonto_provider() -> List[Dict[str, Union[str, int, float]]]:
+            # 2-3 Tage Restfrist -> HIGH (warning_days=3, critical_days=1)
+            return [{
+                "invoice_id": str(uuid4()),
+                "invoice_number": "RE-2026-001",
+                "skonto_deadline": (now + timedelta(days=3)).isoformat(),
+                "skonto_amount": 51.30,
+                "supplier_name": "Muster GmbH",
+            }]
+
+        def pattern_provider() -> List[Dict[str, Union[str, int, float]]]:
+            # Negative Abweichung -> LOW
+            return [{
+                "category": "Bürobedarf",
+                "current_amount": 300.0,
+                "avg_amount": 500.0,
+                "deviation_percent": -40.0,
+            }]
+
+        result = await engine.generate_daily_insights(
+            company_id,
+            {
+                "cashflow_predictions": cashflow_provider,
+                "upcoming_skonto": skonto_provider,  # async Provider
+                "spending_patterns": pattern_provider,
+            },
+        )
+
+        assert result.total_insights == 3
+        severities = [i.severity for i in result.insights]
+        assert severities == [
+            InsightSeverity.CRITICAL,
+            InsightSeverity.HIGH,
+            InsightSeverity.LOW,
+        ]
+        assert result.insights_by_severity == {
+            "critical": 1, "high": 1, "low": 1,
+        }
+        assert result.insights_by_type["cashflow_warning"] == 1
+        assert result.insights_by_type["skonto_deadline"] == 1
+        assert result.insights_by_type["unusual_pattern"] == 1
+        # Alle Insights gehoeren zur Company
+        assert all(i.company_id == company_id for i in result.insights)
+
+    async def test_failing_provider_is_tolerated(
+        self, engine: DailyInsightsEngine
+    ) -> None:
+        """Test: Ein crashender Data Provider bricht die Generierung NICHT ab."""
+        company_id = uuid4()
+
+        def broken_provider() -> List[Dict[str, Union[str, int, float]]]:
+            raise ValueError("Provider kaputt")
+
+        def cashflow_provider() -> List[Dict[str, Union[str, int, float]]]:
+            return [{
+                "date": datetime.now(timezone.utc).isoformat(),
+                "predicted_balance": -1.0,
+                "confidence": 0.9,
+            }]
+
+        result = await engine.generate_daily_insights(
+            company_id,
+            {
+                "spending_patterns": broken_provider,
+                "cashflow_predictions": cashflow_provider,
+            },
+        )
+
+        # Der intakte Provider liefert weiterhin seinen Insight
+        assert result.total_insights == 1
+        assert result.insights[0].insight_type == InsightType.CASHFLOW_WARNING
+
+    async def test_register_custom_generator(
+        self, engine: DailyInsightsEngine
+    ) -> None:
+        """Test: Zusaetzliche Generatoren koennen registriert werden."""
+        company_id = uuid4()
+        engine.register_generator(_FixedInsightGenerator(engine.config))
+
+        result = await engine.generate_daily_insights(company_id, {})
+
+        assert result.total_insights == 1
+        assert result.insights[0].title == "Test-Insight"
+        assert result.insights_by_type["missing_document"] == 1
+
+    async def test_get_critical_insights_limits(
+        self, engine: DailyInsightsEngine
+    ) -> None:
+        """Test: get_critical_insights respektiert max_insights."""
+        company_id = uuid4()
+
+        def cashflow_provider() -> List[Dict[str, Union[str, int, float]]]:
+            return [
+                {
+                    "date": datetime.now(timezone.utc).isoformat(),
+                    "predicted_balance": -100.0 * (n + 1),
+                    "confidence": 0.9,
+                }
+                for n in range(5)
+            ]
+
+        insights = await engine.get_critical_insights(
+            company_id,
+            {"cashflow_predictions": cashflow_provider},
+            max_insights=2,
+        )
+        assert len(insights) == 2
+
+
+class TestDbConvenienceFunctions:
+    """Tests fuer die DB-Convenience-Funktionen (gemockte AsyncSession)."""
+
+    @pytest.fixture
+    def engine(self) -> DailyInsightsEngine:
+        return DailyInsightsEngine()
+
     @pytest.fixture
     def mock_db(self) -> AsyncMock:
-        """Erstellt Mock-Datenbanksession."""
+        """Mock-Session: alle Queries liefern leere Ergebnisse."""
         db = AsyncMock(spec=AsyncSession)
-        db.execute = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        mock_result.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(return_value=mock_result)
         return db
 
-    def test_engine_initialization(self, engine: DailyInsightsEngine) -> None:
-        """Test: Engine wird korrekt initialisiert."""
-        assert engine is not None
-        configs = engine.get_generator_configs()
-        assert len(configs) > 0
-
-    def test_get_generator_configs(self, engine: DailyInsightsEngine) -> None:
-        """Test: Generator-Konfigurationen abrufen."""
-        configs = engine.get_generator_configs()
-
-        # Mindestens die Standard-Generatoren sollten vorhanden sein
-        config_names = [c.name for c in configs]
-        assert "cashflow" in config_names or len(configs) >= 1
-
-    def test_update_generator_config_enable_disable(
-        self, engine: DailyInsightsEngine
-    ) -> None:
-        """Test: Generator aktivieren/deaktivieren."""
-        configs = engine.get_generator_configs()
-        if not configs:
-            pytest.skip("Keine Generatoren konfiguriert")
-
-        first_config = configs[0]
-        original_enabled = first_config.enabled
-
-        # Deaktivieren
-        success = engine.update_generator_config(
-            first_config.name, enabled=not original_enabled
-        )
-        assert success is True
-
-        # Pruefen
-        updated_configs = engine.get_generator_configs()
-        updated_config = next(c for c in updated_configs if c.name == first_config.name)
-        assert updated_config.enabled == (not original_enabled)
-
-        # Zuruecksetzen
-        engine.update_generator_config(first_config.name, enabled=original_enabled)
-
-    def test_update_generator_config_priority(
-        self, engine: DailyInsightsEngine
-    ) -> None:
-        """Test: Generator-Prioritaet aendern."""
-        configs = engine.get_generator_configs()
-        if not configs:
-            pytest.skip("Keine Generatoren konfiguriert")
-
-        first_config = configs[0]
-        new_priority = 99
-
-        success = engine.update_generator_config(
-            first_config.name, priority=new_priority
-        )
-        assert success is True
-
-        updated_configs = engine.get_generator_configs()
-        updated_config = next(c for c in updated_configs if c.name == first_config.name)
-        assert updated_config.priority == new_priority
-
-    def test_update_generator_config_max_insights(
-        self, engine: DailyInsightsEngine
-    ) -> None:
-        """Test: Maximale Insights aendern."""
-        configs = engine.get_generator_configs()
-        if not configs:
-            pytest.skip("Keine Generatoren konfiguriert")
-
-        first_config = configs[0]
-        new_max = 25
-
-        success = engine.update_generator_config(
-            first_config.name, max_insights=new_max
-        )
-        assert success is True
-
-        updated_configs = engine.get_generator_configs()
-        updated_config = next(c for c in updated_configs if c.name == first_config.name)
-        assert updated_config.max_insights == new_max
-
-    def test_update_nonexistent_generator(
-        self, engine: DailyInsightsEngine
-    ) -> None:
-        """Test: Nicht existierenden Generator aktualisieren."""
-        success = engine.update_generator_config(
-            "nonexistent_generator", enabled=False
-        )
-        assert success is False
-
-    @pytest.mark.asyncio
     async def test_generate_all_insights_empty_db(
         self, engine: DailyInsightsEngine, mock_db: AsyncMock
     ) -> None:
-        """Test: Insights generieren bei leerer Datenbank."""
-        company_id = uuid4()
-
-        # Mock leere Ergebnisse
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute.return_value = mock_result
-
-        insights = await engine.generate_all_insights(mock_db, company_id)
-
-        # Sollte leere Liste oder minimale Insights zurueckgeben
+        """Test: Leere DB -> leere Insight-Liste, kein Crash."""
+        insights = await generate_all_insights_from_db(engine, mock_db, uuid4())
         assert isinstance(insights, list)
+        assert insights == []
+        # Die DB-Provider haben tatsaechlich Queries abgesetzt
+        assert mock_db.execute.await_count >= 1
 
-    @pytest.mark.asyncio
     async def test_generate_insights_by_type(
         self, engine: DailyInsightsEngine, mock_db: AsyncMock
     ) -> None:
-        """Test: Insights nach Typ generieren."""
-        company_id = uuid4()
-
-        # Mock leere Ergebnisse
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute.return_value = mock_result
-
-        insights = await engine.generate_insights_by_type(
-            mock_db, company_id, InsightType.CASHFLOW_WARNING
+        """Test: Typ-Filter liefert nur Insights des angefragten Typs."""
+        insights = await generate_insights_by_type_from_db(
+            engine, mock_db, uuid4(), InsightType.CASHFLOW_WARNING
         )
-
         assert isinstance(insights, list)
-        # Alle Insights sollten vom richtigen Typ sein
         for insight in insights:
             assert insight.insight_type == InsightType.CASHFLOW_WARNING
 
@@ -282,6 +390,15 @@ class TestGetDailyInsightsEngine:
 
         assert engine1 is engine2
 
+    def test_get_daily_insights_engine_with_config_creates_new(self) -> None:
+        """Test: Mit expliziter Config wird eine neue Instanz erstellt."""
+        engine1 = get_daily_insights_engine()
+        engine2 = get_daily_insights_engine(
+            config=InsightGeneratorConfig(cashflow_warning_days=7)
+        )
+        assert engine2.config.cashflow_warning_days == 7
+        assert engine1 is not engine2
+
     def test_get_daily_insights_engine_type(self) -> None:
         """Test: Factory gibt korrekte Instanz zurueck."""
         engine = get_daily_insights_engine()
@@ -289,99 +406,80 @@ class TestGetDailyInsightsEngine:
 
 
 class TestInsightTypeDescriptions:
-    """Tests fuer Insight-Typ-Beschreibungen (deutsche Texte)."""
+    """Tests fuer deutsche Insight-Texte (Critical Rule 2, echte Generatoren)."""
 
-    def test_cashflow_warning_description(self) -> None:
-        """Test: Cashflow-Warnung hat deutsche Beschreibung."""
-        insight = DailyInsight(
-            id="test",
-            insight_type=InsightType.CASHFLOW_WARNING,
-            severity=InsightSeverity.HIGH,
-            title="Liquiditaetsengpass moeglich",
-            message="In 14 Tagen koennte die Liquiditaet knapp werden.",
-            explanation="Basierend auf Zahlungsplan.",
-            recommendation="Zahlungen pruefen.",
-            factors=[],
-            confidence=0.9,
-            created_at=datetime.now(timezone.utc),
-        )
-        # Deutsche Texte pruefen (keine Umlaute wegen UTF-8 Kompatibilitaet)
-        assert "Liquiditaet" in insight.title or "Liquiditaet" in insight.message
+    async def test_cashflow_warning_description(self) -> None:
+        """Test: Cashflow-Warnung hat deutschen Titel + Empfehlung."""
+        gen = CashflowWarningGenerator(InsightGeneratorConfig())
+        insights = await gen.generate(uuid4(), {
+            "cashflow_predictions": [{
+                "date": datetime.now(timezone.utc).isoformat(),
+                "predicted_balance": -500.0,
+                "confidence": 0.9,
+            }],
+        })
 
-    def test_contract_expiring_description(self) -> None:
-        """Test: Vertragsablauf hat sinnvolle Beschreibung."""
-        insight = DailyInsight(
-            id="test",
-            insight_type=InsightType.CONTRACT_EXPIRING,
-            severity=InsightSeverity.MEDIUM,
-            title="Vertrag laeuft aus",
-            message="Vertrag mit Muster GmbH laeuft in 30 Tagen aus.",
-            explanation="Kuendigungsfrist beachten.",
-            recommendation="Vertrag pruefen und ggf. verlaengern.",
-            factors=[],
-            confidence=0.95,
-            created_at=datetime.now(timezone.utc),
-        )
-        assert "Vertrag" in insight.title
-        assert "laeuft" in insight.message or "Tagen" in insight.message
+        assert len(insights) == 1
+        assert "Liquiditaetsengpass" in insights[0].title
+        assert insights[0].severity == InsightSeverity.CRITICAL
+        assert "Zahlung" in insights[0].recommendation
+        assert insights[0].primary_action_label == "Zahlungen optimieren"
+
+    async def test_contract_expiring_description(self) -> None:
+        """Test: Vertragsablauf hat sinnvolle deutsche Beschreibung."""
+        gen = ContractExpiringGenerator(InsightGeneratorConfig())
+        now = datetime.now(timezone.utc)
+        insights = await gen.generate(uuid4(), {
+            "expiring_contracts": [{
+                "id": str(uuid4()),
+                "title": "Mietvertrag Lager",
+                "notice_date": (now + timedelta(days=5)).isoformat(),
+                "monthly_cost": 1200.0,
+            }],
+        })
+
+        assert len(insights) == 1
+        assert "Kündigungsfrist" in insights[0].title
+        assert "Mietvertrag Lager" in insights[0].title
+        # <= contract_critical_days (7) -> CRITICAL
+        assert insights[0].severity == InsightSeverity.CRITICAL
+        assert "Tagen" in insights[0].summary
+        assert insights[0].primary_action_label == "Vertrag prüfen"
 
 
 class TestInsightSorting:
-    """Tests fuer Insight-Sortierung."""
+    """Tests fuer Insight-Sortierung (durch die Engine selbst)."""
 
-    def test_insights_sorted_by_severity(self) -> None:
-        """Test: Insights werden nach Schweregrad sortiert."""
-        insights = [
-            DailyInsight(
-                id="1",
-                insight_type=InsightType.SKONTO_DEADLINE,
-                severity=InsightSeverity.LOW,
-                title="Low",
-                message="Low priority",
-                explanation="",
-                recommendation="",
-                factors=[],
-                confidence=0.9,
-                created_at=datetime.now(timezone.utc),
-            ),
-            DailyInsight(
-                id="2",
-                insight_type=InsightType.CASHFLOW_WARNING,
-                severity=InsightSeverity.CRITICAL,
-                title="Critical",
-                message="Critical priority",
-                explanation="",
-                recommendation="",
-                factors=[],
-                confidence=0.9,
-                created_at=datetime.now(timezone.utc),
-            ),
-            DailyInsight(
-                id="3",
-                insight_type=InsightType.PAYMENT_RISK,
-                severity=InsightSeverity.HIGH,
-                title="High",
-                message="High priority",
-                explanation="",
-                recommendation="",
-                factors=[],
-                confidence=0.9,
-                created_at=datetime.now(timezone.utc),
-            ),
-        ]
+    async def test_insights_sorted_by_severity(self) -> None:
+        """Test: Engine sortiert Insights nach Schweregrad (critical zuerst)."""
+        engine = DailyInsightsEngine()
+        now = datetime.now(timezone.utc)
 
-        # Sortieren nach Schweregrad (critical > high > medium > low)
-        severity_order = {
-            InsightSeverity.CRITICAL: 0,
-            InsightSeverity.HIGH: 1,
-            InsightSeverity.MEDIUM: 2,
-            InsightSeverity.LOW: 3,
-        }
+        def pattern_provider() -> List[Dict[str, Union[str, int, float]]]:
+            # LOW (negative Abweichung) — wird von der Engine ans Ende sortiert
+            return [{
+                "category": "Reisekosten",
+                "current_amount": 100.0,
+                "avg_amount": 400.0,
+                "deviation_percent": -75.0,
+            }]
 
-        sorted_insights = sorted(
-            insights, key=lambda i: severity_order.get(i.severity, 4)
+        def cashflow_provider() -> List[Dict[str, Union[str, int, float]]]:
+            # CRITICAL — muss trotz spaeterem Generator-Lauf vorne stehen
+            return [{
+                "date": (now + timedelta(days=7)).isoformat(),
+                "predicted_balance": -2000.0,
+                "confidence": 0.95,
+            }]
+
+        result = await engine.generate_daily_insights(
+            uuid4(),
+            {
+                "spending_patterns": pattern_provider,
+                "cashflow_predictions": cashflow_provider,
+            },
         )
 
-        assert sorted_insights[0].severity == InsightSeverity.CRITICAL
-        assert sorted_insights[1].severity == InsightSeverity.HIGH
-        assert sorted_insights[2].severity == InsightSeverity.LOW
+        assert result.total_insights == 2
+        assert result.insights[0].severity == InsightSeverity.CRITICAL
+        assert result.insights[-1].severity == InsightSeverity.LOW

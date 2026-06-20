@@ -98,10 +98,18 @@ async def clear_gpu_cache(
 
     **Hinweis:** Kann laufende GPU-Operationen beeinträchtigen.
     """
-    result = await SystemStatusService.clear_gpu_cache()
+    # Schemathesis-Fix (W1-004 #7): Der Service liefert bool, der Endpoint rief
+    # result.get(...) auf -> AttributeError (500) bei JEDEM Aufruf. Ohne GPU
+    # liefert der Service False -> jetzt 503 statt 500.
+    success = await SystemStatusService.clear_gpu_cache()
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GPU nicht verfügbar - Cache konnte nicht geleert werden",
+        )
     return MessageResponse(
         message="GPU-Cache wurde geleert",
-        detail=result.get("message", "Speicher freigegeben"),
+        detail="Speicher freigegeben",
     )
 
 
@@ -180,7 +188,7 @@ async def get_processing_stats(
     - Statistiken nach Backend
     - Statistiken nach Tag
     """
-    return await SystemStatusService.get_processing_stats(db, days=days)
+    return await SystemStatusService.get_processing_stats(db, hours=days * 24)
 
 
 # ==================== Backend Status ====================
@@ -236,8 +244,8 @@ async def get_backends_status(
             },
         },
         "gpu_available": dashboard.available,
-        "gpu_memory_used_gb": dashboard.memory_used_gb,
-        "gpu_memory_total_gb": dashboard.memory_total_gb,
+        "gpu_memory_used_gb": dashboard.allocated_gb,
+        "gpu_memory_total_gb": dashboard.total_gb,
     }
 
 

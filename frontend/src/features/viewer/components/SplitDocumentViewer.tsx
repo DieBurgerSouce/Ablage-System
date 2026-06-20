@@ -226,7 +226,6 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     });
 
     // Check if this is an Office/Email document that uses a specialized viewer
-    const usesSpecialViewer = fileCategory === 'docx' || fileCategory === 'xlsx' || fileCategory === 'email';
 
     // When OCR-Diff tab is active, render full-width diff viewer
     if (activeRightTab === 'ocr-diff') {

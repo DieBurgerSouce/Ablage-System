@@ -282,23 +282,28 @@ class TestPipelineTaskRetryLogic:
         }
 
     def test_pipeline_task_retries_on_exception(self, mock_self, valid_pipeline_args):
-        """Pipeline-Task versucht Retry bei Exception."""
+        """Pipeline-Task versucht Retry bei Exception (retries < max_retries)."""
         from app.workers.tasks.auto_filing_tasks import trigger_auto_filing_pipeline_task
 
         exc = RuntimeError("Verbindungsfehler")
-        mock_self.request.retries = 0
+        mock_self.request.retries = 0  # < max_retries (2) => Retry-Pfad
+
+        retry_calls = []
+        mock_self.retry = lambda exc=None, **kw: retry_calls.append(exc) or (_ for _ in ()).throw(exc)
 
         with patch("app.workers.tasks.auto_filing_tasks.asyncio.run", side_effect=exc):
             with patch("app.workers.tasks.auto_filing_tasks.settings"):
-                result = trigger_auto_filing_pipeline_task.run(
-                    mock_self,
-                    **valid_pipeline_args,
-                )
+                # Bei retries < max_retries wird self.retry(exc=exc) aufgerufen,
+                # was in Celery die Exception erneut wirft.
+                with pytest.raises(RuntimeError):
+                    trigger_auto_filing_pipeline_task.run.__func__(
+                        mock_self,
+                        **valid_pipeline_args,
+                    )
 
-        # Nach max_retries gibt der Task ein Fehler-Dict zurueck
-        assert result is not None
-        assert result.get("success") is False
-        assert result.get("document_id") == valid_pipeline_args["document_id"]
+        # self.retry wurde mit der Original-Exception aufgerufen
+        assert len(retry_calls) == 1
+        assert retry_calls[0] is exc
 
     def test_pipeline_task_returns_failure_dict_after_max_retries(self, mock_self, valid_pipeline_args):
         """Nach max_retries gibt der Task ein Fehler-Dict zurueck."""
@@ -309,7 +314,7 @@ class TestPipelineTaskRetryLogic:
 
         with patch("app.workers.tasks.auto_filing_tasks.asyncio.run", side_effect=exc):
             with patch("app.workers.tasks.auto_filing_tasks.settings"):
-                result = trigger_auto_filing_pipeline_task.run(
+                result = trigger_auto_filing_pipeline_task.run.__func__(
                     mock_self,
                     **valid_pipeline_args,
                 )
@@ -337,7 +342,7 @@ class TestPipelineTaskRetryLogic:
         }
 
         with patch("app.workers.tasks.auto_filing_tasks.asyncio.run", return_value=expected_result):
-            result = trigger_auto_filing_pipeline_task.run(
+            result = trigger_auto_filing_pipeline_task.run.__func__(
                 mock_self,
                 **valid_pipeline_args,
             )
@@ -355,7 +360,7 @@ class TestPipelineTaskRetryLogic:
         with patch("app.workers.tasks.auto_filing_tasks.logger") as mock_logger:
             mock_logger.info = Mock(side_effect=lambda msg, **kw: logged_messages.append((msg, kw)))
             with patch("app.workers.tasks.auto_filing_tasks.asyncio.run", return_value={"success": True}):
-                trigger_auto_filing_pipeline_task.run(mock_self, **valid_pipeline_args)
+                trigger_auto_filing_pipeline_task.run.__func__(mock_self, **valid_pipeline_args)
 
         ocr_text = valid_pipeline_args["ocr_text"]
         for _msg, kwargs in logged_messages:
@@ -383,7 +388,10 @@ class TestAutoFileNewDocumentsTask:
     def test_task_signature_has_self(self):
         """auto_file_new_documents_task hat self als ersten Parameter (bound)."""
         from app.workers.tasks.auto_filing_tasks import auto_file_new_documents_task
-        sig = inspect.signature(auto_file_new_documents_task.run)
+        # Celery bindet self bereits an task.run (gebundene Methode), daher
+        # erscheint self nicht in inspect.signature(task.run). Die rohe Funktion
+        # unter task.run.__func__ enthaelt self -> belegt bind=True.
+        sig = inspect.signature(auto_file_new_documents_task.run.__func__)
         params = list(sig.parameters.keys())
         assert "self" in params
 
@@ -457,6 +465,8 @@ class TestAutoMatchDocumentsTask:
     def test_auto_match_task_signature_has_self(self):
         """auto_match_documents_task hat self als ersten Parameter (bound)."""
         from app.workers.tasks.auto_filing_tasks import auto_match_documents_task
-        sig = inspect.signature(auto_match_documents_task.run)
+        # Celery bindet self bereits an task.run; die rohe Funktion unter
+        # task.run.__func__ enthaelt self -> belegt bind=True.
+        sig = inspect.signature(auto_match_documents_task.run.__func__)
         params = list(sig.parameters.keys())
         assert "self" in params

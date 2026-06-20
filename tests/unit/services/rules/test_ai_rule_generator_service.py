@@ -72,7 +72,7 @@ class TestAIRuleGeneratorService:
         # Ollama wurde korrekt aufgerufen
         mock_ollama_service.generate.assert_called_once()
         call_args = mock_ollama_service.generate.call_args
-        assert "Erstelle eine Geschaeftsregel fuer" in call_args.kwargs["prompt"]
+        assert "Erstelle eine Geschäftsregel für" in call_args.kwargs["prompt"]
         assert call_args.kwargs["temperature"] == 0.3
         assert call_args.kwargs["format_json"] is True
 
@@ -153,7 +153,7 @@ Hier ist die generierte Regel:
         mock_ollama_service.generate.return_value = "Das ist kein JSON!"
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Konnte kein gueltiges JSON"):
+        with pytest.raises(ValueError, match="Konnte kein gültiges JSON"):
             await service.generate_rule(prompt)
 
     @pytest.mark.asyncio

@@ -151,7 +151,7 @@ export function useProcessHealth(days = 30) {
   return useQuery({
     queryKey: processMiningKeys.health(days),
     queryFn: async () => {
-      const response = await api.get<ProcessHealth>(`/api/v1/process-mining/health?days=${days}`);
+      const response = await api.get<ProcessHealth>(`/process-mining/health?days=${days}`);
       return response.data;
     },
     staleTime: 60_000, // 1 Minute
@@ -165,7 +165,7 @@ export function useBottlenecks(days = 30) {
   return useQuery({
     queryKey: processMiningKeys.bottlenecks(days),
     queryFn: async () => {
-      const response = await api.get<BottleneckAnalysis>(`/api/v1/process-mining/bottlenecks?days=${days}`);
+      const response = await api.get<BottleneckAnalysis>(`/process-mining/bottlenecks?days=${days}`);
       return response.data;
     },
     staleTime: 60_000,
@@ -179,7 +179,7 @@ export function useBottleneckHeatmap(days = 7) {
   return useQuery({
     queryKey: processMiningKeys.heatmap(days),
     queryFn: async () => {
-      const response = await api.get<HeatmapData>(`/api/v1/process-mining/bottlenecks/heatmap?days=${days}`);
+      const response = await api.get<HeatmapData>(`/process-mining/bottlenecks/heatmap?days=${days}`);
       return response.data;
     },
     staleTime: 300_000, // 5 Minuten
@@ -198,7 +198,7 @@ export function useAutomationSuggestions(status?: SuggestionStatus, limit = 20) 
       params.set('limit', String(limit));
 
       const response = await api.get<{ items: AutomationSuggestion[]; total: number }>(
-        `/api/v1/process-mining/suggestions?${params.toString()}`
+        `/process-mining/suggestions?${params.toString()}`
       );
       return response.data;
     },
@@ -213,7 +213,7 @@ export function useSuggestionStats() {
   return useQuery({
     queryKey: processMiningKeys.suggestionStats(),
     queryFn: async () => {
-      const response = await api.get<SuggestionStats>('/api/v1/process-mining/suggestions/statistics');
+      const response = await api.get<SuggestionStats>('/process-mining/suggestions/statistics');
       return response.data;
     },
     staleTime: 60_000,
@@ -228,7 +228,7 @@ export function useFlowDiagram(days = 30, minFrequency = 5) {
     queryKey: processMiningKeys.flowDiagram(days),
     queryFn: async () => {
       const response = await api.get<FlowDiagram>(
-        `/api/v1/process-mining/flow-diagram?days=${days}&min_frequency=${minFrequency}`
+        `/process-mining/flow-diagram?days=${days}&min_frequency=${minFrequency}`
       );
       return response.data;
     },
@@ -243,7 +243,7 @@ export function useMetricsSummary(days = 30) {
   return useQuery({
     queryKey: processMiningKeys.metricsSummary(days),
     queryFn: async () => {
-      const response = await api.get<MetricsSummary>(`/api/v1/process-mining/metrics/summary?days=${days}`);
+      const response = await api.get<MetricsSummary>(`/process-mining/metrics/summary?days=${days}`);
       return response.data;
     },
     staleTime: 60_000,
@@ -262,7 +262,7 @@ export function useProcessVariants(days = 30, limit = 10) {
         count: number;
         percentage: number;
         avg_duration_ms: number;
-      }>>(`/api/v1/process-mining/variants?days=${days}&limit=${limit}`);
+      }>>(`/process-mining/variants?days=${days}&limit=${limit}`);
       return response.data;
     },
     staleTime: 300_000,
@@ -278,7 +278,7 @@ export function useGenerateSuggestions() {
   return useMutation({
     mutationFn: async ({ days = 30, save = true }: { days?: number; save?: boolean }) => {
       const response = await api.post<{ items: AutomationSuggestion[]; total: number }>(
-        `/api/v1/process-mining/suggestions/generate?days=${days}&save=${save}`
+        `/process-mining/suggestions/generate?days=${days}&save=${save}`
       );
       return response.data;
     },
@@ -298,7 +298,7 @@ export function useActivateSuggestion() {
   return useMutation({
     mutationFn: async ({ suggestionId }: { suggestionId: string }) => {
       const response = await api.post<AutomationSuggestion>(
-        `/api/v1/process-mining/suggestions/${suggestionId}/activate`,
+        `/process-mining/suggestions/${suggestionId}/activate`,
         {}
       );
       return response.data;
@@ -319,7 +319,7 @@ export function useRejectSuggestion() {
   return useMutation({
     mutationFn: async ({ suggestionId, reason }: { suggestionId: string; reason?: string }) => {
       const response = await api.post<AutomationSuggestion>(
-        `/api/v1/process-mining/suggestions/${suggestionId}/reject`,
+        `/process-mining/suggestions/${suggestionId}/reject`,
         { reason }
       );
       return response.data;

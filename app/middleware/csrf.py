@@ -122,6 +122,14 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if exempt_prefixes:
             self.exempt_prefixes = CSRF_EXEMPT_PREFIXES + exempt_prefixes
 
+        # W1-Harness: Der Test-Harness-Router (/api/v1/test/) ist NUR im
+        # TESTING-Betrieb gemountet (app/main.py, doppelt gegated im Handler).
+        # Cookie-lose E2E-/Agent-Aufrufe (curl POST /test/reset-state) duerfen
+        # dann nicht am CSRF-Double-Submit scheitern. In Produktion existiert
+        # weder Mount noch Ausnahme.
+        if settings.TESTING and not settings.is_production:
+            self.exempt_prefixes = self.exempt_prefixes + ("/api/v1/test/",)
+
         logger.info(
             "csrf_middleware_initialized",
             enabled=self.enabled,

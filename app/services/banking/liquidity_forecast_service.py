@@ -441,14 +441,7 @@ class LiquidityForecastService:
 
         for account in accounts:
             # Neueste Transaktion für Saldo
-            tx_query = (
-                select(BankTransaction.running_balance)
-                .where(BankTransaction.bank_account_id == account.id)
-                .order_by(BankTransaction.booking_date.desc())
-                .limit(1)
-            )
-            tx_result = await db.execute(tx_query)
-            balance = tx_result.scalar()
+            balance = account.current_balance  # F-31: BankTransaction hat keine running_balance-Spalte
 
             if balance is not None:
                 total_balance += Decimal(str(balance))
@@ -600,11 +593,16 @@ class LiquidityForecastService:
         today = date.today()
         lookback_start = today - timedelta(days=lookback_days)
 
-        # 1. Historische Transaktionen laden
-        query = select(BankTransaction).where(
-            and_(
-                BankTransaction.company_id == company_id,
-                BankTransaction.booking_date >= lookback_start,
+        # 1. Historische Transaktionen laden (BankTransaction hat KEINE
+        # company_id-Spalte — Company-Scope via BankAccount-JOIN)
+        query = (
+            select(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .where(
+                and_(
+                    BankAccount.company_id == company_id,
+                    BankTransaction.booking_date >= lookback_start,
+                )
             )
         )
 

@@ -75,8 +75,8 @@ class AutoTemplateService:
             .where(
                 and_(
                     Document.company_id == company_id,
-                    Document.entity_id == entity_id,
-                    Document.ocr_status == "completed",
+                    Document.business_entity_id == entity_id,
+                    Document.status == "completed",
                 )
             )
             .order_by(Document.created_at.desc())
@@ -218,17 +218,17 @@ class AutoTemplateService:
         # Find entities with enough documents that don't have a template yet
         stmt = (
             select(
-                Document.entity_id,
+                Document.business_entity_id,
                 func.count(Document.id).label("doc_count"),
             )
             .where(
                 and_(
                     Document.company_id == company_id,
-                    Document.entity_id.isnot(None),
-                    Document.ocr_status == "completed",
+                    Document.business_entity_id.isnot(None),
+                    Document.status == "completed",
                 )
             )
-            .group_by(Document.entity_id)
+            .group_by(Document.business_entity_id)
             .having(func.count(Document.id) >= min_documents)
         )
         result = await db.execute(stmt)

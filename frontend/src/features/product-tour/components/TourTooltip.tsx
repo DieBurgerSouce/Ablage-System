@@ -19,7 +19,7 @@ import * as LucideIcons from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { TourStep } from '../types'
+import type { TourStep } from '../types'
 
 interface TooltipPosition {
   top: number
@@ -42,7 +42,7 @@ interface TourTooltipProps {
 // Helper component to render a dynamic Lucide icon by name
 function DynamicLucideIcon({ name, className }: { name?: string; className?: string }) {
   if (!name) return null
-  const Icon = (LucideIcons as Record<string, LucideIcon>)[name]
+  const Icon = (LucideIcons as unknown as Record<string, LucideIcon>)[name]
   if (!Icon) return null
   return <Icon className={className} />
 }
@@ -101,7 +101,7 @@ export function TourTooltip({
       const padding = 16
       let top = 0
       let left = 0
-      let placement = step.position
+      let placement: 'top' | 'bottom' | 'left' | 'right' | 'center' = step.position
 
       // Calculate position based on specified placement
       switch (step.position) {
@@ -203,6 +203,8 @@ export function TourTooltip({
             size="icon"
             className="h-8 w-8"
             onClick={onClose}
+            // a11y (button-name): nur X-Icon -> accessible name noetig.
+            aria-label="Tour schließen"
           >
             <X className="h-4 w-4" />
           </Button>

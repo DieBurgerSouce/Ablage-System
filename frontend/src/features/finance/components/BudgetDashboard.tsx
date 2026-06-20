@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -34,14 +33,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   BarChart,
   Bar,
   XAxis,
@@ -53,46 +44,10 @@ import {
   PieChart,
   Pie,
   Legend,
-  type TooltipProps,
 } from 'recharts';
-import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
-import {
-  useBudgets,
-  useBudgetSummary,
-  useVarianceReport,
-  useBudgetAlerts,
-  useKostenstellenTree,
-  useAcknowledgeAlert,
-  useActivateBudget,
-  useCloseBudget,
-} from '../hooks/use-budget-queries';
-import type {
-  Budget,
-  BudgetSummary,
-  BudgetVarianceReport,
-  BudgetAlert,
-  BudgetLineStatus,
-  AlertSeverity,
-  KostenstelleTreeNode,
-} from '@/lib/api/services/budgets';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  AlertCircle,
-  TrendingUp,
-  TrendingDown,
-  RefreshCw,
-  ChevronRight,
-  Building2,
-  Wallet,
-  FileText,
-  Bell,
-  ChevronDown,
-  Check,
-  X,
-  Info,
-  Target,
-} from 'lucide-react';
+import { useBudgets, useBudgetSummary, useVarianceReport, useBudgetAlerts, useAcknowledgeAlert, useActivateBudget, useCloseBudget } from '../hooks/use-budget-queries';
+import type { BudgetSummary, BudgetVarianceReport, BudgetLineStatus, AlertSeverity } from '@/lib/api/services/budgets';
+import { AlertTriangle, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, RefreshCw, Building2, Wallet, FileText, Bell, ChevronDown, Check, Info, Target } from 'lucide-react';
 import { useTheme } from '@/lib/theme/ThemeContext';
 
 // ==================== Utility Functions ====================
@@ -380,8 +335,14 @@ function CategoryChart({ summary }: { summary: BudgetSummary }) {
     status: cat.status,
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
+  // recharts v3 exportiert keine nutzbaren Tooltip-Content-Props mehr —
+  // minimale eigene Typisierung der tatsaechlich genutzten Felder.
+  interface BudgetTooltipProps {
+    active?: boolean;
+    label?: string | number;
+    payload?: Array<{ payload?: { planned: number; actual: number; utilization: number } }>;
+  }
+  const CustomTooltip = ({ active, payload, label }: BudgetTooltipProps) => {
     if (!active || !payload) return null;
 
     const data = payload[0]?.payload;
@@ -451,7 +412,7 @@ function CategoryChart({ summary }: { summary: BudgetSummary }) {
 // ==================== Kostenstellen Distribution Chart ====================
 
 function KostenstellenChart({ summary }: { summary: BudgetSummary }) {
-  const chartColors = useChartColors();
+  void useChartColors();
 
   const chartData = summary.byKostenstelle.map((ks, index) => ({
     name: ks.kostenstelleCode,
@@ -498,7 +459,7 @@ function KostenstellenChart({ summary }: { summary: BudgetSummary }) {
             outerRadius={100}
             dataKey="value"
             nameKey="name"
-            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+            label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
             labelLine={false}
           >
             {chartData.map((entry, index) => (

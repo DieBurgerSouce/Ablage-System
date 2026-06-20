@@ -16,7 +16,11 @@ import type {
   SetSkontoRequest,
   MissedSkontoFilter,
 } from './types';
-import type { InvoiceTrackingResponse } from '@/features/invoices/types/invoice-types';
+import type {
+  InvoiceTrackingBackend,
+  InvoiceTrackingResponse,
+} from '@/features/invoices/types/invoice-types';
+import { transformInvoice } from '@/features/invoices/api/invoice-api';
 
 // ==================== Skonto Info ====================
 
@@ -24,7 +28,7 @@ import type { InvoiceTrackingResponse } from '@/features/invoices/types/invoice-
  * Holt Skonto-Informationen für eine Rechnung
  */
 export async function getSkontoInfo(invoiceId: string): Promise<SkontoInfo> {
-  const response = await apiClient.get<{
+  const { data: response } = await apiClient.get<{
     invoice_id: string;
     skonto_percentage: number | null;
     skonto_amount: number | null;
@@ -69,12 +73,12 @@ export async function setSkonto(
     params.append('net_days', data.netDays.toString());
   }
 
-  const response = await apiClient.patch<InvoiceTrackingResponse>(
+  const { data: response } = await apiClient.patch<InvoiceTrackingBackend>(
     `/invoices/${invoiceId}/skonto?${params.toString()}`
   );
 
   // Transform snake_case to camelCase
-  return transformInvoiceResponse(response);
+  return transformInvoice(response);
 }
 
 /**
@@ -95,11 +99,11 @@ export async function applySkonto(
     params.append('force_apply', data.forceApply.toString());
   }
 
-  const response = await apiClient.post<InvoiceTrackingResponse>(
+  const { data: response } = await apiClient.post<InvoiceTrackingBackend>(
     `/invoices/${invoiceId}/apply-skonto?${params.toString()}`
   );
 
-  return transformInvoiceResponse(response);
+  return transformInvoice(response);
 }
 
 // ==================== Upcoming Skonto ====================
@@ -116,7 +120,7 @@ export async function getUpcomingSkonto(
     limit: limit.toString(),
   });
 
-  const response = await apiClient.get<Array<{
+  const { data: response } = await apiClient.get<Array<{
     invoice_id: string;
     invoice_number: string;
     entity_name: string;
@@ -152,7 +156,7 @@ export async function getMissedSkonto(
   if (filter.page) params.append('page', filter.page.toString());
   if (filter.perPage) params.append('per_page', filter.perPage.toString());
 
-  const response = await apiClient.get<{
+  const { data: response } = await apiClient.get<{
     items: Array<{
       invoice_id: string;
       invoice_number: string;
@@ -211,7 +215,7 @@ export async function getSkontoStatistics(
     end_date: endDate,
   });
 
-  const response = await apiClient.get<{
+  const { data: response } = await apiClient.get<{
     period_start: string;
     period_end: string;
     total_invoices: number;
@@ -250,7 +254,7 @@ export async function getMonthlySkontoSummary(
     months: months.toString(),
   });
 
-  const response = await apiClient.get<Array<{
+  const { data: response } = await apiClient.get<Array<{
     year: string;
     month: string;
     used_amount: number;
@@ -301,28 +305,3 @@ export async function exportMissedSkonto(
   return response.blob();
 }
 
-// ==================== Helper Functions ====================
-
-/**
- * Transform Backend snake_case Response to Frontend camelCase
- */
-function transformInvoiceResponse(data: InvoiceTrackingResponse): InvoiceTrackingResponse {
-  return {
-    id: data.id,
-    documentId: data.document_id,
-    invoiceNumber: data.invoice_number,
-    invoiceDate: data.invoice_date,
-    dueDate: data.due_date,
-    amount: data.amount,
-    currency: data.currency,
-    status: data.status,
-    paidAmount: data.paid_amount,
-    paidAt: data.paid_at,
-    dunningLevel: data.dunning_level,
-    lastDunningAt: data.last_dunning_at,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-    isOverdue: data.is_overdue,
-    daysOverdue: data.days_overdue,
-  };
-}

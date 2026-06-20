@@ -19,7 +19,7 @@ from uuid import UUID
 from enum import Enum
 import structlog
 
-from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy import select, and_, or_, func, desc, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, Field, ConfigDict
@@ -530,15 +530,15 @@ class ActivityTimelineService:
         # Activities by Day
         daily_query = (
             select(
-                func.date_trunc('day', DocumentActivity.created_at).label("day"),
+                func.date_trunc(literal_column("'day'"), DocumentActivity.created_at).label("day"),
                 func.count(DocumentActivity.id).label("count")
             )
             .where(
                 DocumentActivity.created_at >= date_from,
                 DocumentActivity.created_at <= date_until,
             )
-            .group_by(func.date_trunc('day', DocumentActivity.created_at))
-            .order_by(func.date_trunc('day', DocumentActivity.created_at))
+            .group_by(func.date_trunc(literal_column("'day'"), DocumentActivity.created_at))
+            .order_by(func.date_trunc(literal_column("'day'"), DocumentActivity.created_at))
         )
 
         if user_id:
@@ -617,10 +617,13 @@ class ActivityTimelineService:
 
         if user_id and include_owned_docs:
             # Aktivitäten vom User ODER an seinen Dokumenten
+            # Schemathesis-Fix (W1-004 #2): Document hat KEIN created_by_id
+            # (AttributeError -> 500 bei JEDEM /activity/filter und /activity/my).
+            # Eigentümerschaft liegt in Document.owner_id.
             query = query.where(
                 or_(
                     DocumentActivity.user_id == user_id,
-                    Document.created_by_id == user_id,
+                    Document.owner_id == user_id,
                 )
             )
         elif user_id:

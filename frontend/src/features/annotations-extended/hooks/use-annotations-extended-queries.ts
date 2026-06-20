@@ -1,13 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type {
-  BoundingBox,
-  CommentReply,
-  AnnotationTask,
-  CreateBoundingBoxRequest,
-  CreateReplyRequest,
-  CreateTaskRequest,
-  UpdateTaskRequest,
-} from "../types/annotations-extended-types";
+import type { CreateBoundingBoxRequest, CreateReplyRequest, CreateTaskRequest, UpdateTaskRequest } from "../types/annotations-extended-types";
 import {
   createBoundingBox,
   getBoundingBoxes,

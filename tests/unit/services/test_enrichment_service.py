@@ -48,6 +48,13 @@ def mock_entity():
     return entity
 
 
+# W3 (2026-06-12): Die zwei frueheren Enrichment-Quirks sind BEHOBEN
+# (fix/w3b-backend-sweep): sauberer Bundesanzeiger-Befund zaehlt jetzt als
+# befragte Quelle (insolvency_warning=False ist ein echtes Ergebnis) und
+# die Confidence-Formel erreicht 1.0 (1.0 pro liefernder Quelle / Anzahl
+# angefragter Quellen). Die strict-xfail-Marker wurden entfernt.
+
+
 @pytest.mark.asyncio
 async def test_enrichment_orchestrator_all_sources(orchestrator, mock_db, mock_entity):
     """Test enriching entity from all available sources."""
@@ -365,6 +372,7 @@ async def test_enrichment_cache_expired(orchestrator, mock_db, mock_entity):
     assert "legal_form" in result.enriched_fields
 
 
+# xfail entfernt (W3b-Integration): Confidence-Formel gefixt in 48cf08588.
 @pytest.mark.asyncio
 async def test_enrichment_confidence_scoring(orchestrator, mock_db, mock_entity):
     """Test confidence scores are calculated correctly."""
@@ -406,6 +414,7 @@ async def test_enrichment_confidence_scoring(orchestrator, mock_db, mock_entity)
     assert result.confidence == 1.0
 
 
+# xfail entfernt (W3b-Integration): sauberer Befund zaehlt als befragte Quelle (48cf08588).
 @pytest.mark.asyncio
 async def test_enrichment_error_handling(orchestrator, mock_db, mock_entity):
     """Test graceful error handling on source failure."""
@@ -475,8 +484,17 @@ async def test_entity_not_found(orchestrator, mock_db):
 
 
 @pytest.mark.asyncio
-async def test_enrichment_updates_metadata(orchestrator, mock_db, mock_entity):
-    """Test enrichment updates entity metadata."""
+async def test_enrichment_persists_no_phantom_metadata(
+    orchestrator, mock_db, mock_entity
+):
+    """Test: Enrichment schreibt NICHT in die nicht existente metadata-Spalte.
+
+    Ehrlicher Vertrag (Fix 2026-06-12): BusinessEntity hat KEINE
+    metadata-Spalte — `.metadata` ist SQLAlchemys MetaData-Registry. Der
+    alte Code `entity.metadata["enrichment"] = ...` crashte auf echten
+    ORM-Objekten mit TypeError (dieser Test maskierte das frueher via
+    Mock-Attribut). Bis zur Schema-Erweiterung wird nichts persistiert.
+    """
     # Mock database query
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_entity
@@ -505,9 +523,8 @@ async def test_enrichment_updates_metadata(orchestrator, mock_db, mock_entity):
         db=mock_db,
     )
 
-    # Metadata should be updated
-    assert mock_entity.metadata is not None
-    assert "enrichment" in mock_entity.metadata
-    assert "last_updated" in mock_entity.metadata["enrichment"]
-    assert "sources" in mock_entity.metadata["enrichment"]
-    mock_db.commit.assert_called_once()
+    # Ergebnis wird zurueckgegeben, aber nicht in eine Phantom-Spalte
+    # geschrieben und auch nicht committet
+    assert "legal_form" in result.enriched_fields
+    assert mock_entity.metadata == {}
+    mock_db.commit.assert_not_called()

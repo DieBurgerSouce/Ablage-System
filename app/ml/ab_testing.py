@@ -541,7 +541,7 @@ class ABTestManager:
             storage_path: Pfad für Experiment-Daten
             auto_conclude: Automatisch abschließen bei Signifikanz
         """
-        self.storage_path = storage_path or Path("data/ab_tests")
+        self.storage_path = storage_path or Path("/tmp/ablage_ml/ab_tests")
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.auto_conclude = auto_conclude
 

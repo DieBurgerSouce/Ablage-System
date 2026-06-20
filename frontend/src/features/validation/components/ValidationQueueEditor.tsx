@@ -40,9 +40,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import {
@@ -396,7 +395,9 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
                 fields.map((field) => (
                   <Card
                     key={field.id}
-                    ref={(el) => (fieldRefs.current[field.field_key] = el)}
+                    ref={(el) => {
+                      fieldRefs.current[field.field_key] = el;
+                    }}
                     className={`transition-all ${
                       highlightedField === field.field_key
                         ? 'ring-2 ring-primary'

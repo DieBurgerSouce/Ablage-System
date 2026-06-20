@@ -134,7 +134,7 @@ class TestABTestingMetrics:
             result = await get_ab_testing_metrics()
 
             # Deutsche Fehler-Keys
-            assert result["qdrant_status"]["verfuegbar"] is False
+            assert result["qdrant_status"]["verfügbar"] is False
             assert "Timeout" in result["qdrant_status"]["fehler"]
 
     @pytest.mark.asyncio
@@ -159,7 +159,7 @@ class TestABTestingMetrics:
 
             result = await get_ab_testing_metrics()
 
-            assert result["qdrant_status"]["verfuegbar"] is False
+            assert result["qdrant_status"]["verfügbar"] is False
             assert "Verbindung" in result["qdrant_status"]["fehler"]
 
     @pytest.mark.asyncio
@@ -194,7 +194,7 @@ class TestABTestingMetrics:
             result = await get_ab_testing_metrics()
 
             # Deutsche Qdrant Status Keys
-            assert result["qdrant_status"]["verfuegbar"] is True
+            assert result["qdrant_status"]["verfügbar"] is True
             assert result["qdrant_status"]["punkte_anzahl"] == 674
             assert result["qdrant_status"]["vektoren_anzahl"] == 674
 
@@ -289,7 +289,7 @@ class TestABTestingResetMetrics:
             result = await reset_ab_testing_metrics(mock_user)
 
             assert result["status"] == "erfolg"
-            assert "zurueckgesetzt" in result["nachricht"]
+            assert "zurückgesetzt" in result["nachricht"]
             mock_router.reset_metrics.assert_called_once()
 
     @pytest.mark.asyncio

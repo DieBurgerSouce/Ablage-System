@@ -377,16 +377,11 @@ class TransactionListResponse(BaseModel):
     matched_count: int
 
 
-class TransactionFilter(BaseModel):
-    """Filter für Transaktionen."""
-    bank_account_id: Optional[UUID] = None
-    date_from: Optional[date] = None
-    date_to: Optional[date] = None
-    amount_min: Optional[Decimal] = None
-    amount_max: Optional[Decimal] = None
-    reconciliation_status: Optional[ReconciliationStatus] = None
-    search_text: Optional[str] = None
-    counterparty_iban: Optional[str] = None
+# TransactionFilter (Basis-Variante mit bank_account_id) ENTFERNT: war ein
+# Shadowing-Duplikat der reicheren TransactionFilter weiter unten (mit
+# transaction_type/counterparty_name); die 2. Definition ueberschattete diese
+# im Namespace und kein Aufrufer konstruierte die bank_account_id-Variante
+# (app-weit verifiziert) -> tote Definition entfernt (Dedup-Tech-Debt).
 
 
 # =============================================================================
@@ -484,7 +479,8 @@ class PaymentOrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    user_id: UUID
+    # company-scoped Zahlungen haben keinen User (Migration 269); user_id nur Audit
+    user_id: Optional[UUID] = None
     bank_account_id: UUID
     document_id: Optional[UUID]
     invoice_number: Optional[str]

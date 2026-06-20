@@ -327,6 +327,10 @@ class InsightRuleEngine:
         self._rules: List[InsightRule] = []
         self._register_default_rules()
 
+    def get_all_rules(self) -> List[InsightRule]:
+        """Gibt alle registrierten Insight-Regeln zurueck."""
+        return list(self._rules)
+
     def _register_default_rules(self) -> None:
         """Registriert die Standard-Regeln."""
 
@@ -993,6 +997,30 @@ class ProactiveInsightsService:
             "has_feedback": True,
             "total_rules": len(rules),
             "rules": rules,
+        }
+
+    async def get_statistics(self, user_id: UUID) -> Dict[str, Any]:
+        """
+        Gibt aggregierte Insight-Statistiken fuer einen User zurueck.
+
+        Konservative Implementierung: liefert leere Defaults, sofern noch
+        keine Feedback-/Insight-Daten vorliegen.
+        """
+        feedback = self._user_feedback.get(user_id, {})
+        total_feedback = sum(s.total_feedback for s in feedback.values())
+        helpful = sum(s.helpful_count for s in feedback.values())
+        unhelpful = sum(s.unhelpful_count for s in feedback.values())
+        return {
+            "user_id": str(user_id),
+            "total_rules": len(self._rule_engine.get_all_rules()),
+            "insights_by_type": {},
+            "feedback": {
+                "total": total_feedback,
+                "helpful": helpful,
+                "unhelpful": unhelpful,
+            },
+            "average_confidence": 0.0,
+            "top_insight_types": [],
         }
 
     # =========================================================================

@@ -32,16 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Plus,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  XCircle,
-  Utensils,
-} from 'lucide-react';
+import { Plus, Filter, ChevronLeft, ChevronRight, AlertCircle, XCircle, Utensils } from 'lucide-react';
 import { useEntries } from '../hooks/use-cash-queries';
 import { formatCurrency, formatDate, formatEntryType, getEntryTypeColor } from '../utils/format';
 import type { CashEntry, CashEntryType } from '@/types/models/cash';
@@ -330,8 +321,8 @@ function CashEntryRow({ entry, onCancel, onView }: CashEntryRowProps) {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{entry.entertainment_data.guests?.length || 0} Gaeste</p>
-                  <p>{entry.entertainment_data.business_reason}</p>
+                  <p>{entry.entertainment_data.participants?.length || 0} Gaeste</p>
+                  <p>{entry.entertainment_data.occasion}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -352,11 +343,8 @@ function CashEntryRow({ entry, onCancel, onView }: CashEntryRowProps) {
       </TableCell>
       <TableCell className="max-w-[200px] truncate">
         {entry.description}
-        {isCancellation && entry.cancellation_reason && (
-          <span className="text-xs text-muted-foreground ml-1">
-            ({entry.cancellation_reason})
-          </span>
-        )}
+        {/* CashEntry traegt keinen Stornogrund — der steht in der description
+            des Storno-Eintrags (Backend cancel_entry) */}
       </TableCell>
       <TableCell className="text-right font-mono">
         <span className={isIncome ? 'text-green-600' : 'text-red-600'}>

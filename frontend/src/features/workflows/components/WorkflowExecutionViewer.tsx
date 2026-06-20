@@ -106,7 +106,7 @@ export default function WorkflowExecutionViewer({
                 <StatusIcon
                   className={cn('h-4 w-4', status === 'active' && 'animate-spin')}
                 />
-                <span className="font-medium">{node.data.label || 'Unbenannt'}</span>
+                <span className="font-medium">{typeof node.data.label === 'string' ? node.data.label : 'Unbenannt'}</span>
               </div>
               {nodeState?.duration_ms && (
                 <div className="text-xs mt-1 text-muted-foreground">

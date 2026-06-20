@@ -28,6 +28,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, Company
+from app.db.models import AuditLog  # F-31
 from app.db.bpmn_models.gobd import (
     AuditChainEntry,
     RetentionPolicy,
@@ -125,7 +126,7 @@ class ProcedureDocumentationService:
             company_name=company.name if company else "Unbekannt",
             company_id=company_id,
             generated_at=datetime.now(timezone.utc),
-            generated_by=f"{user.first_name} {user.last_name}" if user else "System",
+            generated_by=user.full_name if user else "System",
             version=self.DOCUMENT_VERSION,
             valid_from=datetime.now(timezone.utc),
         )
@@ -665,7 +666,7 @@ Alle Änderungen am System werden dokumentiert:
         user_result = await db.execute(
             select(func.count())
             .select_from(User)
-            .where(User.company_id == company_id, User.is_active == True)
+            .where(User.is_active == True)  # F-31: User hat kein company_id (Tenancy via UserCompany)
         )
         total_users = user_result.scalar() or 0
 

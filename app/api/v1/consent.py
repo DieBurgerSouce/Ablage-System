@@ -283,7 +283,7 @@ async def request_consent(
     service = ConsentService(db)
 
     consent = await service.request_consent(
-        company_id=company.company_id,
+        company_id=company.id,
         consent_type=data.consent_type,
         entity_id=data.entity_id,
         user_id=data.user_id,
@@ -302,7 +302,7 @@ async def request_consent(
         "Consent requested",
         consent_id=str(consent.id),
         consent_type=data.consent_type,
-        company_id=str(company.company_id),
+        company_id=str(company.id),
     )
 
     return _consent_to_response(consent)
@@ -327,7 +327,7 @@ async def list_consents(
     service = ConsentService(db)
 
     consents, total = await service.list_consents(
-        company_id=company.company_id,
+        company_id=company.id,
         entity_id=entity_id,
         user_id=user_id,
         consent_type=consent_type,
@@ -357,7 +357,7 @@ async def get_expiring_consents(
     """
     service = ConsentService(db)
     consents = await service.get_expiring_consents(
-        company_id=company.company_id,
+        company_id=company.id,
         days_ahead=days_ahead,
     )
 
@@ -379,7 +379,7 @@ async def check_consent(
     service = ConsentService(db)
 
     has_consent = await service.check_consent(
-        company_id=company.company_id,
+        company_id=company.id,
         consent_type=consent_type,
         entity_id=entity_id,
         user_id=user_id,
@@ -419,7 +419,7 @@ async def get_consent(
     service = ConsentService(db)
     consent = await service.get_consent(
         consent_id=consent_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not consent:
@@ -465,7 +465,7 @@ async def grant_consent(
         )
 
     # Verifiziere Company-Zugehoerigkeit
-    if consent.company_id != company.company_id:
+    if consent.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff verweigert",
@@ -509,7 +509,7 @@ async def deny_consent(
             detail="Einwilligung nicht gefunden",
         )
 
-    if consent.company_id != company.company_id:
+    if consent.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff verweigert",
@@ -550,7 +550,7 @@ async def withdraw_consent(
             detail="Einwilligung nicht gefunden oder bereits widerrufen",
         )
 
-    if consent.company_id != company.company_id:
+    if consent.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff verweigert",
@@ -580,7 +580,7 @@ async def get_consent_audit_trail(
     service = ConsentService(db)
 
     # Verifiziere Consent existiert und gehoert zur Company
-    consent = await service.get_consent(consent_id, company.company_id)
+    consent = await service.get_consent(consent_id, company.id)
     if not consent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -609,7 +609,7 @@ async def create_dpa(
     service = ConsentService(db)
 
     dpa = await service.create_dpa(
-        company_id=company.company_id,
+        company_id=company.id,
         controller_name=data.controller_name,
         processor_name=data.processor_name,
         title=data.title,
@@ -655,7 +655,7 @@ async def list_dpas(
     service = ConsentService(db)
 
     dpas, total = await service.list_dpas(
-        company_id=company.company_id,
+        company_id=company.id,
         status=status_filter,
         only_active=only_active,
         offset=(page - 1) * per_page,
@@ -681,7 +681,7 @@ async def get_dpa(
     Einzelnen AVV abrufen.
     """
     service = ConsentService(db)
-    dpa = await service.get_dpa(dpa_id, company.company_id)
+    dpa = await service.get_dpa(dpa_id, company.id)
 
     if not dpa:
         raise HTTPException(
@@ -706,7 +706,7 @@ async def terminate_dpa(
     service = ConsentService(db)
 
     # Verifiziere Zugehoerigkeit
-    existing = await service.get_dpa(dpa_id, company.company_id)
+    existing = await service.get_dpa(dpa_id, company.id)
     if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -743,7 +743,7 @@ async def create_retention_policy(
     service = ConsentService(db)
 
     policy = await service.create_retention_policy(
-        company_id=company.company_id,
+        company_id=company.id,
         name=data.name,
         description=data.description,
         document_type=data.document_type,
@@ -780,7 +780,7 @@ async def list_retention_policies(
     """
     service = ConsentService(db)
     policies = await service.list_retention_policies(
-        company_id=company.company_id,
+        company_id=company.id,
         only_active=only_active,
     )
 
@@ -800,7 +800,7 @@ async def get_applicable_policy(
     """
     service = ConsentService(db)
     policy = await service.get_applicable_policy(
-        company_id=company.company_id,
+        company_id=company.id,
         document_type=document_type,
         data_category=data_category,
     )
@@ -825,7 +825,7 @@ async def get_consent_statistics(
     Einwilligungs-Statistiken.
     """
     service = ConsentService(db)
-    stats = await service.get_consent_statistics(company_id=company.company_id)
+    stats = await service.get_consent_statistics(company_id=company.id)
 
     return ConsentStatsResponse(**stats)
 
@@ -849,7 +849,7 @@ async def search_audit_logs(
     """
     service = ConsentService(db)
     logs = await service.search_audit_logs(
-        company_id=company.company_id,
+        company_id=company.id,
         action=action,
         date_from=date_from,
         date_to=date_to,
@@ -875,7 +875,7 @@ async def expire_consents(
     Normalerweise automatisch per Celery-Task.
     """
     service = ConsentService(db)
-    count = await service.expire_consents(company_id=company.company_id)
+    count = await service.expire_consents(company_id=company.id)
 
     await db.commit()
 

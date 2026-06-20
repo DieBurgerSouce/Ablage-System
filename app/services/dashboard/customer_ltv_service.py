@@ -18,10 +18,11 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 import structlog
 
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, or_, desc, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.services.invoice_direction import is_outgoing_invoice
 from app.db.models import (
     BusinessEntity,
     InvoiceTracking,
@@ -295,7 +296,7 @@ class CustomerLTVService:
             and_(
                 InvoiceTracking.entity_id == customer.id,
                 InvoiceTracking.company_id == company_id if company_id else True,
-                InvoiceTracking.is_incoming == False,  # Ausgehende = Umsatz
+                is_outgoing_invoice(),  # Ausgehende Rechnung (Kunde) = Umsatz
             )
         )
 
@@ -310,7 +311,7 @@ class CustomerLTVService:
 
         # LTV = Summe aller Rechnungen
         lifetime_value = sum(
-            Decimal(str(inv.total_amount or 0)) for inv in invoices
+            Decimal(str(inv.amount or 0)) for inv in invoices
         )
 
         # Bestelldaten
@@ -434,7 +435,7 @@ class CustomerLTVService:
             if inv.created_at and inv.created_at.date() >= three_months_ago
         ]
         recent_revenue = sum(
-            float(inv.total_amount or 0) for inv in recent
+            float(inv.amount or 0) for inv in recent
         )
 
         # Vorherige 3 Monate
@@ -443,7 +444,7 @@ class CustomerLTVService:
             if inv.created_at and six_months_ago <= inv.created_at.date() < three_months_ago
         ]
         previous_revenue = sum(
-            float(inv.total_amount or 0) for inv in previous
+            float(inv.amount or 0) for inv in previous
         )
 
         if previous_revenue > 0:
@@ -472,21 +473,21 @@ class CustomerLTVService:
         cutoff_date = date.today() - timedelta(days=period_days)
 
         query = select(
-            func.date_trunc("month", InvoiceTracking.created_at).label("month"),
-            func.sum(InvoiceTracking.total_amount).label("total_revenue"),
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at).label("month"),
+            func.sum(InvoiceTracking.amount).label("total_revenue"),
             func.count(func.distinct(InvoiceTracking.entity_id)).label("customer_count"),
-            func.avg(InvoiceTracking.total_amount).label("avg_order"),
+            func.avg(InvoiceTracking.amount).label("avg_order"),
         ).where(
             and_(
                 InvoiceTracking.company_id == company_id if company_id else True,
-                InvoiceTracking.is_incoming == False,  # Ausgehende = Umsatz
+                is_outgoing_invoice(),  # Ausgehende Rechnung (Kunde) = Umsatz
                 InvoiceTracking.created_at >= cutoff_date,
-                InvoiceTracking.total_amount.isnot(None),
+                InvoiceTracking.amount.isnot(None),
             )
         ).group_by(
-            func.date_trunc("month", InvoiceTracking.created_at)
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at)
         ).order_by(
-            func.date_trunc("month", InvoiceTracking.created_at)
+            func.date_trunc(literal_column("'month'"), InvoiceTracking.created_at)
         )
 
         result = await db.execute(query)

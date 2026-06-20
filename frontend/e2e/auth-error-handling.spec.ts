@@ -59,10 +59,24 @@ test.describe('Auth Error Handling - API', () => {
   test('Rate-Limiting/Abweisung nach mehreren Fehlversuchen (401 oder 429)', async ({ request }) => {
     const statuses: number[] = [];
     for (let i = 0; i < 6; i++) {
-      const resp = await request.post(`${API_BASE}/api/v1/auth/login`, {
-        data: { email: 'test@rate-limit.local', password: 'WrongPassword!' },
-      });
-      statuses.push(resp.status());
+      // WICHTIG: keine .local-Domain verwenden — der Backend-E-Mail-Validator
+      // (pydantic/email-validator) lehnt Special-Use-Domains wie .local mit
+      // 422 ab, BEVOR die Credential-Pruefung greift (verifiziert 2026-06-12).
+      // Retry bei Verbindungsfehlern: 6 sequentielle bcrypt-Pruefungen unter
+      // parallelem Suite-Load fuehren gelegentlich zu "socket hang up".
+      let resp;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          resp = await request.post(`${API_BASE}/api/v1/auth/login`, {
+            data: { email: 'falsche-creds@example.com', password: 'WrongPassword!' },
+          });
+          break;
+        } catch (err) {
+          if (attempt === 2) throw err;
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+      statuses.push(resp!.status());
     }
     const last = statuses[statuses.length - 1];
     // Jede Fehlanmeldung muss abgewiesen werden; nach mehreren ggf. 429.
@@ -111,7 +125,7 @@ test.describe('Auth Error Handling - Geschuetzte Routen ohne Auth', () => {
     });
 
     await page.goto('/documents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(page).toHaveURL(/login|auth/i, { timeout: 10000 });
   });
 
@@ -123,7 +137,7 @@ test.describe('Auth Error Handling - Geschuetzte Routen ohne Auth', () => {
       window.sessionStorage.clear();
     });
     await page.goto('/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
     await expect(page).toHaveURL(/login|auth|forbidden/i, { timeout: 10000 });
   });
 });

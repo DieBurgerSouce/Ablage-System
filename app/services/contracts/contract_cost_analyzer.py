@@ -456,6 +456,61 @@ class ContractCostAnalyzer:
         return opportunities
 
     # =========================================================================
+    # F-31 minimal: Router-Vertrags-Wrapper (Aufruf an reale Methoden angleichen)
+    # =========================================================================
+
+    async def get_portfolio_summary(
+        self,
+        company_id: UUID,
+    ) -> Dict[str, Any]:
+        """F-31 minimal: JSON-serialisierbare Portfolio-Kostenzusammenfassung.
+
+        Delegiert an ``get_portfolio_cost_summary`` und wandelt das
+        PortfolioCostSummary-Dataclass (mit Decimal-Feldern) in ein Dict um.
+        """
+        summary = await self.get_portfolio_cost_summary(company_id=company_id)
+        return {
+            "total_monthly_cost": float(summary.total_monthly_cost),
+            "total_annual_cost": float(summary.total_annual_cost),
+            "total_contract_value": float(summary.total_contract_value),
+            "contract_count": summary.contract_count,
+            "by_category": {
+                k: float(v) for k, v in summary.by_category.items()
+            },
+            "by_status": {
+                k: float(v) for k, v in summary.by_status.items()
+            },
+            "top_cost_contracts": summary.top_cost_contracts,
+            "total_optimization_potential": float(summary.total_optimization_potential),
+            "currency": summary.currency,
+        }
+
+    async def get_cost_trends(
+        self,
+        company_id: UUID,
+        months: int = 12,
+    ) -> Dict[str, Any]:
+        """F-31 minimal: Kostentrends ueber Zeit.
+
+        Delegiert an ``get_cost_trend_report`` (bereits JSON-serialisierbar).
+        """
+        return await self.get_cost_trend_report(company_id=company_id, months=months)
+
+    async def get_all_optimization_suggestions(
+        self,
+        company_id: UUID,
+        min_savings: float = 0.0,
+    ) -> List[Dict[str, Any]]:
+        """F-31 minimal: Optimierungsvorschlaege ueber alle Vertraege.
+
+        Delegiert an ``find_optimization_opportunities`` (liefert List[dict]).
+        """
+        return await self.find_optimization_opportunities(
+            company_id=company_id,
+            min_potential_savings=Decimal(str(min_savings)),
+        )
+
+    # =========================================================================
     # Retrieval Methods
     # =========================================================================
 

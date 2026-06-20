@@ -6,7 +6,7 @@
  */
 
 import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   TrendingUp,
   TrendingDown,
@@ -54,16 +54,6 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-/**
- * Format percentage.
- */
-function formatPercent(value: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(value / 100);
-}
 
 /**
  * Get trend icon and color.
@@ -153,7 +143,7 @@ function InvoiceAnalysisView({ data }: { data: BIInvoiceAnalysis }) {
             <span className="text-sm font-medium">Nach Monat</span>
           </div>
           <div className="flex gap-1 items-end h-20">
-            {data.by_month.slice(-12).map((month, i) => {
+            {data.by_month.slice(-12).map((month, _i) => {
               const maxAmount = Math.max(...data.by_month.map(m => m.amount));
               const height = maxAmount > 0 ? (month.amount / maxAmount) * 100 : 0;
               return (
@@ -302,7 +292,7 @@ function TrendAnalysisView({ data }: { data: BITrendAnalysis }) {
       {data.data_points.length > 0 && (
         <div className="mt-4">
           <div className="flex gap-1 items-end h-24">
-            {data.data_points.map((point, i) => {
+            {data.data_points.map((point, _i) => {
               const maxValue = Math.max(...data.data_points.map(p => p.value));
               const height = maxValue > 0 ? (point.value / maxValue) * 100 : 0;
               return (

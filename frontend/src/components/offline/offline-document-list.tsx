@@ -80,12 +80,6 @@ function formatDate(timestamp: number): string {
   });
 }
 
-function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function getTimeUntilExpiry(expiresAt: number): string {
   const now = Date.now();

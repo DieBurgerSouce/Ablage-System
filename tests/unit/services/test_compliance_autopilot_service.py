@@ -79,11 +79,13 @@ async def test_compliance_scan_gobd(service, mock_db, company_id):
     mock_doc1 = MagicMock(spec=Document)
     mock_doc1.id = uuid4()
     mock_doc1.document_type = DocumentType.INVOICE
+    mock_doc1.created_at = datetime.utcnow() - timedelta(days=30)
     mock_doc1.metadata = {"version_history": [{"version": 1}]}
 
     mock_doc2 = MagicMock(spec=Document)
     mock_doc2.id = uuid4()
     mock_doc2.document_type = DocumentType.RECEIPT
+    mock_doc2.created_at = datetime.utcnow() - timedelta(days=30)
     mock_doc2.metadata = {"version_history": [{"version": 1}]}
 
     mock_result = MagicMock()
@@ -364,6 +366,9 @@ async def test_compliance_recommendations(service, mock_db, company_id):
     assert len(items_with_recommendations) > 0
 
 
+# W3-Bug behoben: run_gdpr_check/_check_gobd nutzen jetzt korrekt
+# Document.document_metadata (statt Document.metadata = MetaData-Registry).
+# xfail(strict)-Marker daher entfernt (Test laeuft regulaer gruen).
 @pytest.mark.asyncio
 async def test_run_gdpr_check(service, mock_db, company_id):
     """Test dedicated GDPR check method."""
@@ -433,3 +438,145 @@ async def test_audit_package_date_filtering(service, mock_db, company_id):
 
     assert package.document_count == 1
     assert package.date_range == date_range
+
+
+# ============================================================================
+# W1-031: Audit-Paket mit echten MinIO-Dateien
+# ============================================================================
+
+
+def _make_doc(filename: str, file_path: str, doc_type=DocumentType.INVOICE):
+    """Hilfsfunktion: Dokument-Mock fuer Audit-Tests."""
+    doc = MagicMock(spec=Document)
+    doc.id = uuid4()
+    doc.document_type = doc_type
+    doc.created_at = datetime(2025, 6, 1, 12, 0, 0)
+    doc.filename = filename
+    doc.file_path = file_path
+    return doc
+
+
+@pytest.mark.asyncio
+async def test_audit_package_contains_real_minio_content(
+    service, mock_db, company_id
+):
+    """W1-031: ZIP enthaelt echten Datei-Inhalt aus dem Storage, kein Mock."""
+    import io
+    import zipfile
+    from unittest.mock import patch
+
+    doc = _make_doc("rechnung_001.pdf", "docs/rechnung_001.pdf")
+    real_content = b"%PDF-1.4 echter Inhalt aus MinIO"
+
+    mock_result = MagicMock()
+    mock_result.scalars().all.return_value = [doc]
+    mock_db.execute.return_value = mock_result
+
+    fake_storage = MagicMock()
+    fake_storage.download_document = AsyncMock(return_value=real_content)
+
+    with patch(
+        "app.services.storage_service.get_storage_service",
+        return_value=fake_storage,
+    ):
+        package = await service.prepare_audit(
+            company_id, (date(2025, 1, 1), date(2025, 12, 31)), mock_db
+        )
+
+    fake_storage.download_document.assert_awaited_once_with("docs/rechnung_001.pdf")
+    assert package.documents_missing == 0
+
+    with zipfile.ZipFile(io.BytesIO(package.zip_content)) as zf:
+        entry = f"invoice/20250601_{doc.id}.pdf"
+        assert entry in zf.namelist()
+        assert zf.read(entry) == real_content
+        # Kein Mock-Content mehr
+        assert f"Dokument {doc.id}".encode() != zf.read(entry)
+
+
+@pytest.mark.asyncio
+async def test_audit_package_marks_missing_files(service, mock_db, company_id):
+    """W1-031: Nicht abrufbare Dateien -> *_FEHLT.txt + FEHLENDE_DATEIEN.txt."""
+    import io
+    import zipfile
+    from unittest.mock import patch
+
+    doc = _make_doc("beleg.pdf", "docs/beleg.pdf", DocumentType.RECEIPT)
+
+    mock_result = MagicMock()
+    mock_result.scalars().all.return_value = [doc]
+    mock_db.execute.return_value = mock_result
+
+    fake_storage = MagicMock()
+    fake_storage.download_document = AsyncMock(
+        side_effect=RuntimeError("MinIO not available")
+    )
+
+    with patch(
+        "app.services.storage_service.get_storage_service",
+        return_value=fake_storage,
+    ):
+        package = await service.prepare_audit(
+            company_id, (date(2025, 1, 1), date(2025, 12, 31)), mock_db
+        )
+
+    assert package.documents_missing == 1
+    with zipfile.ZipFile(io.BytesIO(package.zip_content)) as zf:
+        names = zf.namelist()
+        assert f"receipt/20250601_{doc.id}_FEHLT.txt" in names
+        assert "FEHLENDE_DATEIEN.txt" in names
+        placeholder = zf.read(f"receipt/20250601_{doc.id}_FEHLT.txt").decode("utf-8")
+        assert "nicht abrufbar" in placeholder
+
+
+@pytest.mark.asyncio
+async def test_audit_package_survives_storage_init_failure(
+    service, mock_db, company_id
+):
+    """W1-031: Storage-Init-Fehler crasht das Audit-Paket nicht."""
+    from unittest.mock import patch
+
+    doc = _make_doc("rechnung.pdf", "docs/rechnung.pdf")
+
+    mock_result = MagicMock()
+    mock_result.scalars().all.return_value = [doc]
+    mock_db.execute.return_value = mock_result
+
+    with patch(
+        "app.services.storage_service.get_storage_service",
+        side_effect=RuntimeError("Konfiguration fehlt"),
+    ):
+        package = await service.prepare_audit(
+            company_id, (date(2025, 1, 1), date(2025, 12, 31)), mock_db
+        )
+
+    assert package.document_count == 1
+    assert package.documents_missing == 1
+
+
+@pytest.mark.asyncio
+async def test_audit_package_keeps_original_extension(service, mock_db, company_id):
+    """W1-031: Original-Datei-Endung bleibt erhalten (kein .pdf-Zwang)."""
+    import io
+    import zipfile
+    from unittest.mock import patch
+
+    doc = _make_doc("scan_007.tiff", "docs/scan_007.tiff")
+
+    mock_result = MagicMock()
+    mock_result.scalars().all.return_value = [doc]
+    mock_db.execute.return_value = mock_result
+
+    fake_storage = MagicMock()
+    fake_storage.download_document = AsyncMock(return_value=b"TIFF-Daten")
+
+    with patch(
+        "app.services.storage_service.get_storage_service",
+        return_value=fake_storage,
+    ):
+        package = await service.prepare_audit(
+            company_id, (date(2025, 1, 1), date(2025, 12, 31)), mock_db
+        )
+
+    with zipfile.ZipFile(io.BytesIO(package.zip_content)) as zf:
+        assert f"invoice/20250601_{doc.id}.tiff" in zf.namelist()

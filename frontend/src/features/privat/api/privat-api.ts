@@ -15,69 +15,7 @@
  */
 
 import { apiClient } from '@/lib/api/client';
-import type {
-  PrivatSpaceCreate,
-  PrivatSpaceUpdate,
-  PrivatSpaceWithStats,
-  PrivatSpaceAccessCreate,
-  PrivatSpaceAccess,
-  PrivatFolderCreate,
-  PrivatFolderUpdate,
-  PrivatFolder,
-  PrivatFolderTree,
-  PrivatDocumentCreate,
-  PrivatDocumentUpdate,
-  PrivatDocument,
-  PrivatDocumentListResponse,
-  PrivatDocumentType,
-  PrivatPropertyCreate,
-  PrivatPropertyUpdate,
-  PrivatPropertyWithDetails,
-  PrivatPropertyListResponse,
-  PrivatTenantCreate,
-  PrivatTenantUpdate,
-  PrivatTenant,
-  PrivatRentalIncomeCreate,
-  PrivatRentalIncome,
-  PrivatVehicleCreate,
-  PrivatVehicleUpdate,
-  PrivatVehicleWithStats,
-  PrivatVehicleListResponse,
-  VehicleType,
-  PrivatFuelLogCreate,
-  PrivatFuelLog,
-  PrivatFuelStatistics,
-  PrivatInsuranceCreate,
-  PrivatInsuranceUpdate,
-  PrivatInsuranceWithDeadlines,
-  PrivatInsuranceListResponse,
-  InsuranceType,
-  PrivatLoanCreate,
-  PrivatLoanUpdate,
-  PrivatLoanWithStats,
-  PrivatLoanListResponse,
-  LoanType,
-  PrivatInvestmentCreate,
-  PrivatInvestmentUpdate,
-  PrivatInvestmentWithStats,
-  PrivatInvestmentListResponse,
-  InvestmentType,
-  PrivatPortfolioBreakdown,
-  PrivatDeadlineCreate,
-  PrivatDeadlineUpdate,
-  PrivatDeadlineWithStatus,
-  PrivatDeadlineListResponse,
-  PrivatDeadlineWidget,
-  PrivatDeadlineType,
-  PrivatEmergencyContactCreate,
-  PrivatEmergencyContactUpdate,
-  PrivatEmergencyContact,
-  PrivatEmergencyAccessRequestCreate,
-  PrivatEmergencyAccessRequest,
-  PrivatEmergencyAccessStatus,
-  PrivatDashboardStats,
-  PrivatFinancialSummary,
-} from '@/types/privat';
+import type { PrivatSpaceCreate, PrivatSpaceUpdate, PrivatSpaceWithStats, PrivatSpaceAccessCreate, PrivatSpaceAccess, PrivatFolderCreate, PrivatFolderUpdate, PrivatFolder, PrivatFolderTree, PrivatDocumentCreate, PrivatDocumentUpdate, PrivatDocument, PrivatDocumentListResponse, PrivatDocumentType, PrivatPropertyCreate, PrivatPropertyUpdate, PrivatPropertyWithDetails, PrivatPropertyListResponse, PrivatTenantCreate, PrivatTenant, PrivatRentalIncomeCreate, PrivatRentalIncome, PrivatVehicleCreate, PrivatVehicleUpdate, PrivatVehicleWithStats, PrivatVehicleListResponse, VehicleType, PrivatFuelLogCreate, PrivatFuelLog, PrivatFuelStatistics, PrivatInsuranceCreate, PrivatInsuranceUpdate, PrivatInsuranceWithDeadlines, PrivatInsuranceListResponse, InsuranceType, PrivatLoanCreate, PrivatLoanUpdate, PrivatLoanWithStats, PrivatLoanListResponse, LoanType, PrivatInvestmentCreate, PrivatInvestmentUpdate, PrivatInvestmentWithStats, PrivatInvestmentListResponse, InvestmentType, PrivatPortfolioBreakdown, PrivatDeadlineCreate, PrivatDeadlineUpdate, PrivatDeadlineWithStatus, PrivatDeadlineListResponse, PrivatDeadlineWidget, PrivatDeadlineType, PrivatEmergencyContactCreate, PrivatEmergencyContactUpdate, PrivatEmergencyContact, PrivatEmergencyAccessRequestCreate, PrivatEmergencyAccessRequest, PrivatEmergencyAccessStatus, PrivatDashboardStats, PrivatFinancialSummary } from '@/types/privat';
 
 // Base URL without /api/v1/ prefix (apiClient already has it)
 const BASE_URL = '/privat';
@@ -124,7 +62,7 @@ function toSnakeCase<T>(obj: T): T {
   ) as T;
 }
 
-function buildQueryParams(params: Record<string, unknown>): Record<string, string> {
+function buildQueryParams<T extends object>(params: T): Record<string, string> {
   const result: Record<string, string> = {};
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {

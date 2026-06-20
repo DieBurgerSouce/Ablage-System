@@ -91,7 +91,7 @@ function getApprovalEndpoint(action: ApprovalAction): string {
 export function useOfflineApproval(
   options: UseOfflineApprovalOptions = {}
 ): UseOfflineApprovalResult {
-  const { onApprovalComplete, optimisticUpdate = true } = options;
+  const { onApprovalComplete, optimisticUpdate: _optimisticUpdate = true } = options;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**

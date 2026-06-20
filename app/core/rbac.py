@@ -38,6 +38,17 @@ from app.core.config import settings
 logger = structlog.get_logger(__name__)
 
 
+def _twofa_bypass_active() -> bool:
+    """2FA-Bypass NUR im Test-Betrieb (TESTING=true) und nie in Produktion.
+
+    W1-001: Frueher hing der Bypass an settings.DEBUG — ein DEBUG=true in der
+    .env einer produktiv genutzten Instanz schaltete damit die 2FA-Pflicht
+    fuer Admin-Rollen komplett ab. TESTING (docker-compose.test.yml) ist der
+    einzige legitime Bypass-Kontext; in Produktion gilt die Pflicht immer.
+    """
+    return settings.TESTING and not settings.is_production
+
+
 class PermissionDeniedError(HTTPException):
     """
     Exception für verweigerte Berechtigungen.
@@ -234,8 +245,8 @@ def require_role(role_name: str) -> Callable:
 
         if any(role.name == role_name for role in user_roles):
             # J.1 SECURITY FIX: Auch normale User mit Rolle müssen 2FA haben für Admin-Rollen
-            # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
-            if role_name in ("admin", "super_admin") and not current_user.totp_enabled and not settings.DEBUG:
+            # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
+            if role_name in ("admin", "super_admin") and not current_user.totp_enabled and not _twofa_bypass_active():
                 logger.warning(
                     "2fa_required_for_role",
                     user_id=str(current_user.id),
@@ -247,9 +258,9 @@ def require_role(role_name: str) -> Callable:
             return current_user
 
         # J.1 SECURITY FIX: Superuser hat immer Zugriff, ABER muss 2FA haben für Admin-Rollen
-        # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
+        # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
         if current_user.is_superuser:
-            if role_name in ("admin", "super_admin", "manager") and not current_user.totp_enabled and not settings.DEBUG:
+            if role_name in ("admin", "super_admin", "manager") and not current_user.totp_enabled and not _twofa_bypass_active():
                 logger.warning(
                     "2fa_required_for_superuser",
                     user_id=str(current_user.id),
@@ -299,8 +310,8 @@ def require_any_role(*role_names: str) -> Callable:
         requires_2fa = bool(set(role_names) & privileged_roles)
 
         if current_user.is_superuser:
-            # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
-            if requires_2fa and not current_user.totp_enabled and not settings.DEBUG:
+            # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
+            if requires_2fa and not current_user.totp_enabled and not _twofa_bypass_active():
                 logger.warning(
                     "2fa_required_for_superuser_any_role",
                     user_id=str(current_user.id),
@@ -317,9 +328,9 @@ def require_any_role(*role_names: str) -> Callable:
         for role in user_roles:
             if role.name in role_names:
                 # J.1 SECURITY FIX: Auch normale User müssen 2FA haben für Admin-Rollen
-                # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
+                # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
                 privileged_roles = {"admin", "super_admin", "manager"}
-                if role.name in privileged_roles and not current_user.totp_enabled and not settings.DEBUG:
+                if role.name in privileged_roles and not current_user.totp_enabled and not _twofa_bypass_active():
                     logger.warning(
                         "2fa_required_for_privileged_role",
                         user_id=str(current_user.id),
@@ -371,8 +382,8 @@ def require_min_role_priority(min_priority: int) -> Callable:
         db: AsyncSession = Depends(get_db)
     ) -> User:
         # J.1 SECURITY FIX: Hohe Prioritaet (>=75 = Manager+) erfordert 2FA
-        # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
-        requires_2fa = min_priority >= 75 and not settings.DEBUG
+        # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
+        requires_2fa = min_priority >= 75 and not _twofa_bypass_active()
 
         # Superuser hat immer Zugriff, aber muss 2FA haben bei hoher Prioritaet
         if current_user.is_superuser:
@@ -451,8 +462,8 @@ def require_superuser() -> Callable:
             )
 
         # J.1 SECURITY FIX: Superuser-Aktionen erfordern IMMER 2FA
-        # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
-        if not current_user.totp_enabled and not settings.DEBUG:
+        # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
+        if not current_user.totp_enabled and not _twofa_bypass_active():
             logger.warning(
                 "2fa_required_for_superuser",
                 user_id=str(current_user.id)
@@ -598,8 +609,8 @@ def require_2fa_for_admin() -> Callable:
                 is_privileged = max_priority >= 75  # Manager oder höher
 
         # Privilegierte Benutzer müssen 2FA haben
-        # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
-        if is_privileged and not current_user.totp_enabled and not settings.DEBUG:
+        # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
+        if is_privileged and not current_user.totp_enabled and not _twofa_bypass_active():
             logger.warning(
                 "2fa_required_for_admin",
                 user_id=str(current_user.id),
@@ -654,8 +665,8 @@ def require_admin_with_2fa() -> Callable:
             raise InsufficientRoleError("admin")
 
         # 2. Prüfe 2FA
-        # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
-        if not current_user.totp_enabled and not settings.DEBUG:
+        # W1-001: 2FA-Pflicht gilt immer; Bypass nur im TESTING-Betrieb (nie Production)
+        if not current_user.totp_enabled and not _twofa_bypass_active():
             logger.warning(
                 "2fa_required_for_admin_endpoint",
                 user_id=str(current_user.id),

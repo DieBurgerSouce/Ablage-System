@@ -22,17 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Calendar,
-  CalendarDays,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Bell,
-  RefreshCw,
-} from 'lucide-react';
+import { Calendar, CalendarDays, AlertTriangle, Clock, ChevronLeft, ChevronRight, Bell, RefreshCw } from 'lucide-react';
 import type { TaxDeadline, TaxDeadlineType } from '@/lib/api/services/tax-optimization';
 
 // ==================== Deadline-Typ Metadaten ====================
@@ -106,12 +96,6 @@ const formatDate = (dateString: string): string => {
   });
 };
 
-const formatShortDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-  });
-};
 
 const getDaysUntilColor = (days: number): string => {
   if (days < 0) return 'text-red-600 bg-red-50';

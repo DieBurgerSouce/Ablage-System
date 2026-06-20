@@ -12,7 +12,7 @@
 
 import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
-import { TrendingDown, Clock, AlertTriangle, ArrowRight, Loader2 } from 'lucide-react';
+import { TrendingDown, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -146,7 +146,7 @@ export function SkontoOpportunityWidget({
         {opportunities.length >= limit && (
           <div className="mt-4 pt-4 border-t">
             <Button variant="ghost" className="w-full gap-2" asChild>
-              <Link to="/banking/skonto/upcoming">
+              <Link to="/admin/banking/skonto">
                 Alle anzeigen
                 <ArrowRight className="w-4 h-4" />
               </Link>
@@ -195,7 +195,7 @@ function OpportunityItem({ opportunity }: { opportunity: any }) {
 
   return (
     <Link
-      to="/invoices"
+      to="/admin/rechnungen/liste"
       search={{ invoiceId: opportunity.invoiceId }}
       className={cn(
         'block p-3 rounded-lg border-l-4 transition-colors hover:bg-accent',

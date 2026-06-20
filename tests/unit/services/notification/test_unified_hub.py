@@ -14,11 +14,41 @@ Feinpoliert und durchdacht - Unified Notification Hub Tests.
 """
 
 import pytest
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from uuid import UUID, uuid4
 import json
+
+
+def _ok_channel_result(channel):
+    """Erstellt ein erfolgreiches ChannelDeliveryResult.
+
+    Die echten _send_*-Methoden geben ChannelDeliveryResult zurueck (nicht bool).
+    Channel-Sender-Mocks muessen denselben Vertrag erfuellen, damit die
+    Aggregation in _send_to_recipient (r.status) funktioniert.
+    """
+    from app.services.notification.unified_hub import (
+        ChannelDeliveryResult,
+        DeliveryStatus,
+    )
+
+    return ChannelDeliveryResult(channel=channel, status=DeliveryStatus.SENT)
+
+
+def _failed_channel_result(channel, error_message="Fehler"):
+    """Erstellt ein fehlgeschlagenes ChannelDeliveryResult."""
+    from app.services.notification.unified_hub import (
+        ChannelDeliveryResult,
+        DeliveryStatus,
+    )
+
+    return ChannelDeliveryResult(
+        channel=channel,
+        status=DeliveryStatus.FAILED,
+        error_message=error_message,
+    )
 
 
 # Test-Konstanten fuer gueltige UUIDs
@@ -461,19 +491,14 @@ class TestDeduplication:
 
         hub = UnifiedNotificationHub()
 
-        payload = NotificationPayload(
-            notification_type="test",
-            title="Test",
-            message="Test-Nachricht",
-            dedupe_key="test-dedupe-key",
-        )
-
-        # First call - not a duplicate
+        # _is_duplicate(dedupe_key: str, ttl_seconds: int): der Cache haelt
+        # einen Float-Ablaufzeitpunkt (now + ttl). Ein noch nicht abgelaufener
+        # Eintrag muss als Duplikat erkannt werden.
         with patch.object(hub, '_dedup_cache', {}):
-            hub._dedup_cache["test-dedupe-key"] = datetime.now(timezone.utc)
+            hub._dedup_cache["test-dedupe-key"] = time.time() + 3600
 
             # Now it should be a duplicate
-            is_duplicate = await hub._is_duplicate(payload, TEST_USER_UUID)
+            is_duplicate = await hub._is_duplicate("test-dedupe-key", 3600)
 
             assert is_duplicate is True
 
@@ -484,18 +509,13 @@ class TestDeduplication:
 
         hub = UnifiedNotificationHub()
 
-        payload = NotificationPayload(
-            notification_type="test",
-            title="Test",
-            message="Test-Nachricht",
-            dedupe_key="new-dedupe-key",
-        )
-
         # Empty cache - should not be duplicate
         with patch.object(hub, '_dedup_cache', {}):
-            is_duplicate = await hub._is_duplicate(payload, TEST_USER_UUID)
+            is_duplicate = await hub._is_duplicate("new-dedupe-key", 3600)
 
             assert is_duplicate is False
+            # Der Key wird beim ersten Aufruf hinterlegt -> zweiter Aufruf ist Duplikat
+            assert await hub._is_duplicate("new-dedupe-key", 3600) is True
 
     def test_deduplication_key_generation(self):
         """Deduplizierungs-Key sollte aus dedupe_key stammen."""
@@ -531,8 +551,10 @@ class TestSendNotification:
 
         hub = UnifiedNotificationHub()
 
-        # Mock the _send_email method
-        hub._send_email = AsyncMock(return_value=True)
+        # Mock the _send_email method (gibt ChannelDeliveryResult zurueck)
+        hub._send_email = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.EMAIL)
+        )
 
         payload = NotificationPayload(
             notification_type="document_processed",
@@ -554,6 +576,7 @@ class TestSendNotification:
         )
 
         assert len(results) >= 1
+        assert results[0].successful_channels == 1
         hub._send_email.assert_called()
 
     @pytest.mark.asyncio
@@ -569,9 +592,13 @@ class TestSendNotification:
 
         hub = UnifiedNotificationHub()
 
-        # Mock the channel send methods
-        hub._send_email = AsyncMock(return_value=True)
-        hub._send_slack = AsyncMock(return_value=True)
+        # Mock the channel send methods (geben ChannelDeliveryResult zurueck)
+        hub._send_email = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.EMAIL)
+        )
+        hub._send_slack = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.SLACK)
+        )
 
         payload = NotificationPayload(
             notification_type="test",
@@ -593,6 +620,7 @@ class TestSendNotification:
         )
 
         assert len(results) >= 1
+        assert results[0].successful_channels == 2
         hub._send_email.assert_called()
         hub._send_slack.assert_called()
 
@@ -608,8 +636,10 @@ class TestSendNotification:
 
         hub = UnifiedNotificationHub()
 
-        # Mock the _send_email method
-        hub._send_email = AsyncMock(return_value=True)
+        # Mock the _send_email method (gibt ChannelDeliveryResult zurueck)
+        hub._send_email = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.EMAIL)
+        )
 
         payload = NotificationPayload(
             notification_type="test",
@@ -654,11 +684,17 @@ class TestEscalation:
             EscalationLevel,
         )
 
+        from app.services.notification.unified_hub import NotificationChannel
+
         hub = UnifiedNotificationHub()
 
-        # Mock the send methods
-        hub._send_email = AsyncMock(return_value=True)
-        hub._send_slack = AsyncMock(return_value=True)
+        # Mock the send methods (geben ChannelDeliveryResult zurueck)
+        hub._send_email = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.EMAIL)
+        )
+        hub._send_slack = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.SLACK)
+        )
 
         payload = NotificationPayload(
             notification_type="test",
@@ -676,10 +712,13 @@ class TestEscalation:
             original_notification_id=TEST_NOTIFICATION_UUID,
             recipient=recipient,
             payload=payload,
-            level=EscalationLevel.LEVEL_1,
+            escalation_level=EscalationLevel.LEVEL_1,
         )
 
         assert results is not None
+        # Level 1 nutzt Email + Slack
+        hub._send_email.assert_called()
+        hub._send_slack.assert_called()
 
     @pytest.mark.asyncio
     async def test_escalation_level_4_uses_sms(self, sample_payload):
@@ -691,14 +730,26 @@ class TestEscalation:
             EscalationLevel,
         )
 
+        from app.services.notification.unified_hub import NotificationChannel
+
         hub = UnifiedNotificationHub()
 
-        # Mock the send methods
-        hub._send_email = AsyncMock(return_value=True)
-        hub._send_slack = AsyncMock(return_value=True)
-        hub._send_teams = AsyncMock(return_value=True)
-        hub._send_push = AsyncMock(return_value=True)
-        hub._send_sms = AsyncMock(return_value=True)
+        # Mock the send methods (geben ChannelDeliveryResult zurueck)
+        hub._send_email = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.EMAIL)
+        )
+        hub._send_slack = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.SLACK)
+        )
+        hub._send_teams = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.TEAMS)
+        )
+        hub._send_push = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.PUSH)
+        )
+        hub._send_sms = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.SMS)
+        )
 
         payload = NotificationPayload(
             notification_type="test",
@@ -715,7 +766,7 @@ class TestEscalation:
             original_notification_id=TEST_NOTIFICATION_UUID,
             recipient=recipient,
             payload=payload,
-            level=EscalationLevel.LEVEL_4,
+            escalation_level=EscalationLevel.LEVEL_4,
         )
 
         hub._send_sms.assert_called()
@@ -735,14 +786,23 @@ class TestChannelPreferences:
             NotificationPayload,
             NotificationRecipient,
             NotificationChannel,
+            NotificationCategory,
+            NotificationSeverity,
             UserNotificationPreferences,
         )
 
         hub = UnifiedNotificationHub()
 
-        # Mock the _send_email method
-        hub._send_email = AsyncMock(return_value=True)
+        # Mock the _send_email method (gibt ChannelDeliveryResult zurueck)
+        hub._send_email = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.EMAIL)
+        )
+        hub._send_slack = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.SLACK)
+        )
 
+        # email_enabled=False -> Email-Kanal soll bei severity-basiertem Routing
+        # herausgefiltert werden (preferences_override: einzelnes Praeferenz-Objekt)
         prefs = UserNotificationPreferences(
             email_enabled=False,  # Email deaktiviert
             slack_enabled=True,
@@ -752,23 +812,27 @@ class TestChannelPreferences:
             notification_type="test",
             title=sample_payload["title"],
             message=sample_payload["message"],
+            category=NotificationCategory.ALERT,  # in allen Kanal-Kategorien erlaubt
+            severity=NotificationSeverity.MEDIUM,  # MEDIUM-Routing -> Email + Slack
         )
 
         recipient = NotificationRecipient(
             user_id=TEST_USER_UUID,
             email="user@example.com",
+            slack_user_id="U12345",
         )
 
+        # Kein explizites channels -> severity-Routing greift, gefiltert durch prefs
         results = await hub.send(
             recipients=[recipient],
             payload=payload,
-            channels=[NotificationChannel.EMAIL],
-            preferences={str(TEST_USER_UUID): prefs},
+            preferences_override=prefs,
         )
 
-        # Email sollte nicht gesendet worden sein (deaktiviert)
-        # Note: The actual behavior depends on how preferences are checked
-        # in the UnifiedNotificationHub implementation
+        # Email ist deaktiviert -> _send_email darf NICHT aufgerufen werden,
+        # Slack (aktiviert) hingegen schon.
+        hub._send_email.assert_not_called()
+        hub._send_slack.assert_called()
 
 
 # ========================= Delivery Result Tests =========================
@@ -852,9 +916,17 @@ class TestErrorHandling:
 
         hub = UnifiedNotificationHub()
 
-        # Email schlaegt fehl, Slack erfolgreich
-        hub._send_email = AsyncMock(side_effect=Exception("SMTP error"))
-        hub._send_slack = AsyncMock(return_value=True)
+        # Email schlaegt fehl (FAILED-Result, wie der echte Sender bei SMTP-Fehler),
+        # Slack erfolgreich. Die echten _send_*-Methoden fangen Exceptions intern ab
+        # und geben ein FAILED-ChannelDeliveryResult zurueck statt zu werfen.
+        hub._send_email = AsyncMock(
+            return_value=_failed_channel_result(
+                NotificationChannel.EMAIL, "SMTP error"
+            )
+        )
+        hub._send_slack = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.SLACK)
+        )
 
         payload = NotificationPayload(
             notification_type="test",
@@ -876,6 +948,10 @@ class TestErrorHandling:
 
         # Slack sollte trotzdem gesendet worden sein
         hub._send_slack.assert_called()
+        # Email gescheitert, Slack erfolgreich -> Gesamt-Erfolg, 1 Fehler
+        assert results[0].failed_channels == 1
+        assert results[0].successful_channels == 1
+        assert results[0].success is True
 
     @pytest.mark.asyncio
     async def test_all_channels_fail_returns_results(self, sample_payload):
@@ -889,7 +965,11 @@ class TestErrorHandling:
 
         hub = UnifiedNotificationHub()
 
-        hub._send_email = AsyncMock(side_effect=Exception("SMTP error"))
+        hub._send_email = AsyncMock(
+            return_value=_failed_channel_result(
+                NotificationChannel.EMAIL, "SMTP error"
+            )
+        )
 
         payload = NotificationPayload(
             notification_type="test",
@@ -964,19 +1044,38 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_empty_channels_list(self, sample_payload):
-        """Leere Kanalliste sollte leere Results zurueckgeben."""
+        """Leere Kanalliste faellt auf severity-basiertes Routing zurueck.
+
+        Vertrag: channels=[] (falsy) wird wie channels=None behandelt
+        (target_channels = channels or self._determine_channels(...)),
+        d.h. es greift das Standard-Routing nach Schweregrad. Pro Empfaenger
+        wird genau ein Delivery-Ergebnis erzeugt.
+        """
         from app.services.notification.unified_hub import (
             UnifiedNotificationHub,
             NotificationPayload,
             NotificationRecipient,
+            NotificationChannel,
+            NotificationSeverity,
         )
 
         hub = UnifiedNotificationHub()
+        # Channel-Sender mocken, damit kein echter Service/Redis benoetigt wird
+        hub._send_email = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.EMAIL)
+        )
+        hub._send_slack = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.SLACK)
+        )
+        hub._send_in_app = AsyncMock(
+            return_value=_ok_channel_result(NotificationChannel.IN_APP)
+        )
 
         payload = NotificationPayload(
             notification_type="test",
             title=sample_payload["title"],
             message=sample_payload["message"],
+            severity=NotificationSeverity.MEDIUM,
         )
 
         recipient = NotificationRecipient(
@@ -990,7 +1089,9 @@ class TestEdgeCases:
             channels=[],
         )
 
-        assert results == []
+        assert len(results) == 1
+        # MEDIUM-Routing nutzt mindestens Email/Slack/In-App
+        assert results[0].total_channels >= 1
 
     def test_payload_with_german_umlauts(self):
         """Payload mit Umlauten sollte korrekt verarbeitet werden."""
@@ -1007,17 +1108,25 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_recipient_missing_channel_contact(self, sample_payload):
-        """Empfaenger ohne Kontaktinfo fuer Kanal sollte uebersprungen werden."""
+        """Empfaenger ohne Kontaktinfo fuer Kanal sollte uebersprungen werden.
+
+        Vertrag: Der echte _send_email prueft selbst auf eine fehlende
+        E-Mail-Adresse und liefert dann DeliveryStatus.SKIPPED zurueck
+        (statt zu senden). Daher den echten Sender NICHT mocken.
+        """
         from app.services.notification.unified_hub import (
             UnifiedNotificationHub,
             NotificationPayload,
             NotificationRecipient,
             NotificationChannel,
+            DeliveryStatus,
         )
 
         hub = UnifiedNotificationHub()
-
-        hub._send_email = AsyncMock(return_value=True)
+        # Email-Service-Mock, damit ein versehentlicher Sendeversuch erkennbar waere
+        email_service_mock = AsyncMock()
+        email_service_mock.send = AsyncMock(return_value=True)
+        hub._email_service = email_service_mock
 
         payload = NotificationPayload(
             notification_type="test",
@@ -1036,8 +1145,12 @@ class TestEdgeCases:
             channels=[NotificationChannel.EMAIL],
         )
 
-        # Email sollte nicht gesendet worden sein (keine Email-Adresse)
-        hub._send_email.assert_not_called()
+        assert len(results) == 1
+        email_result = results[0].channel_results[0]
+        assert email_result.channel == NotificationChannel.EMAIL
+        # Ohne E-Mail-Adresse: SKIPPED, und der eigentliche Versand wird nie aufgerufen
+        assert email_result.status == DeliveryStatus.SKIPPED
+        email_service_mock.send.assert_not_called()
 
 
 # ========================= TTL Tests =========================

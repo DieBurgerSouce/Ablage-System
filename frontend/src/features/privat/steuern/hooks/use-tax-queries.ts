@@ -11,16 +11,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
-import {
-  taxOptimizationService,
-  type TaxOptimizationResult,
-  type TaxDeductionSummary,
-  type TaxDeadline,
-  type DeductibilityCheckResult,
-  type DATEVExportData,
-  type TaxYearComparison,
-  type TaxCategory,
-} from '@/lib/api/services/tax-optimization';
+import { taxOptimizationService, type TaxOptimizationResult, type TaxDeductionSummary, type TaxDeadline, type TaxYearComparison, type TaxCategory } from '@/lib/api/services/tax-optimization';
 
 // ==================== Query Keys ====================
 

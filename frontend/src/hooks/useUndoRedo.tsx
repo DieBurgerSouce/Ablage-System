@@ -27,7 +27,7 @@
  * ```
  */
 
-import { useState, useCallback, useRef, useEffect, createContext, useContext, type ReactNode } from 'react';
+import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { useRegisterShortcut, type KeyboardShortcut } from './useKeyboardShortcuts';
@@ -478,7 +478,5 @@ export function useGlobalUndoRedo(): UseUndoRedoReturn {
   return context;
 }
 
-// ==================== Exports ====================
-
-export type { UndoableAction, ActionDefinition, UseUndoRedoOptions, UseUndoRedoReturn };
+// Typen sind bereits an ihrer Deklaration exportiert (kein Re-Export noetig).
 export default useUndoRedo;

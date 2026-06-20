@@ -268,6 +268,9 @@ class TestAblageSystemExceptionHandler:
         request.method = "GET"
         request.client = Mock()
         request.client.host = "127.0.0.1"
+        # request.state.request_id wird sonst zu einem Mock (Mock(spec)
+        # legt das Attribut automatisch an) und ist nicht JSON-serialisierbar
+        request.state.request_id = None
         return request
 
     @pytest.mark.asyncio
@@ -313,7 +316,8 @@ class TestAblageSystemExceptionHandler:
 
         import json
         content = json.loads(response.body.decode())
-        assert content["fehler_code"] == "E007"
+        # DocumentNotFoundError nutzt error_code "DOC_003" (siehe app/core/exceptions.py)
+        assert content["fehler_code"] == "DOC_003"
 
 
 class TestHttpExceptionHandler:
@@ -324,6 +328,8 @@ class TestHttpExceptionHandler:
         """Mock Request für Tests."""
         request = Mock(spec=Request)
         request.url.path = "/api/v1/test"
+        # Verhindert nicht-serialisierbaren Mock-request_id in der Response
+        request.state.request_id = None
         return request
 
     @pytest.mark.asyncio
@@ -378,6 +384,8 @@ class TestGenericExceptionHandler:
         request = Mock(spec=Request)
         request.url.path = "/api/v1/test"
         request.method = "POST"
+        # Verhindert nicht-serialisierbaren Mock-request_id in der Response
+        request.state.request_id = None
         return request
 
     @pytest.mark.asyncio

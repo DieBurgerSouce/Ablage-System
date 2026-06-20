@@ -161,8 +161,12 @@ class RiskIntelligenceService:
         query = (
             select(
                 func.count(InvoiceTracking.id).label("total_invoices"),
-                func.sum(InvoiceTracking.total_amount).label("total_volume"),
-                func.avg(InvoiceTracking.days_until_payment).label("avg_payment_days"),
+                func.sum(InvoiceTracking.amount).label("total_volume"),
+                func.avg(
+                    func.extract(
+                        'epoch', InvoiceTracking.paid_at - InvoiceTracking.invoice_date
+                    ) / 86400
+                ).label("avg_payment_days"),
                 func.count(
                     InvoiceTracking.id
                 ).filter(
@@ -224,10 +228,14 @@ class RiskIntelligenceService:
 
             query = (
                 select(
-                    func.avg(InvoiceTracking.days_until_payment).label("avg_days"),
+                    func.avg(
+                    func.extract(
+                        'epoch', InvoiceTracking.paid_at - InvoiceTracking.invoice_date
+                    ) / 86400
+                ).label("avg_days"),
                     func.count(InvoiceTracking.id).label("invoice_count"),
                     func.sum(
-                        InvoiceTracking.total_amount
+                        InvoiceTracking.amount
                     ).filter(
                         InvoiceTracking.dunning_level > 0
                     ).label("dunning_amount"),
@@ -302,7 +310,11 @@ class RiskIntelligenceService:
         one_year_ago = datetime.utcnow() - timedelta(days=365)
         query = (
             select(
-                func.avg(InvoiceTracking.days_until_payment).label("avg_days"),
+                func.avg(
+                    func.extract(
+                        'epoch', InvoiceTracking.paid_at - InvoiceTracking.invoice_date
+                    ) / 86400
+                ).label("avg_days"),
                 func.count(
                     InvoiceTracking.id
                 ).filter(

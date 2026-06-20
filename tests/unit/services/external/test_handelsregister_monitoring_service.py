@@ -563,7 +563,8 @@ class TestHandelsregisterMonitoringService:
         impact = await service.calculate_risk_impact(uuid4())
 
         assert impact["risk_factor"] == 0
-        assert "Nicht ueberwacht" in impact["reason"]
+        # W3: App-Text nutzt korrekte Umlaute (Critical Rule 2)
+        assert "Nicht überwacht" in impact["reason"]
 
     @pytest.mark.asyncio
     async def test_calculate_risk_impact_valid(

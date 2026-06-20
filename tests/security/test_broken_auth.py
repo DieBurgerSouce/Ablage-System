@@ -140,8 +140,12 @@ class TestSessionManagement:
 
     def test_session_invalidation_on_logout(self, test_client, auth_headers):
         """Testet dass Sessions bei Logout invalidiert werden."""
-        # Logout
-        response = test_client.post("/api/v1/auth/logout", headers=auth_headers)
+        # Logout. Der Endpunkt erwartet einen LogoutRequest-Body (refresh_token
+        # ist optional, der Body selbst aber erforderlich) - ohne Body liefert
+        # FastAPI korrekt 422. Daher leeren JSON-Body senden.
+        response = test_client.post(
+            "/api/v1/auth/logout", json={}, headers=auth_headers
+        )
         assert response.status_code == 200
 
         # Versuche mit dem gleichen Token erneut zuzugreifen
@@ -236,12 +240,17 @@ class TestMFABypass:
             if response.status_code == 429:
                 # Rate Limit erreicht - gut!
                 return
-        # Nach 10 Versuchen sollte Rate Limit greifen
+        # Nach 10 Versuchen sollte Rate Limit greifen - oder der Versuch wird
+        # gar nicht erst durchgelassen: Der unauthentifizierte POST wird bereits
+        # vom CSRF-Schutz mit 403 (CSRF_VALIDATION_FAILED) abgewiesen, bevor die
+        # MFA-Verifikation (und damit ein Brute-Force) ueberhaupt moeglich ist.
+        # 403 ist hier also ein WIRKENDER Schutz (W3-403-Konvention), kein
+        # Fehlschlag.
         final_response = test_client.post(
             "/api/v1/auth/mfa/verify",
             json={"mfa_token": "999999"},
         )
-        assert final_response.status_code in [429, 401]
+        assert final_response.status_code in [429, 401, 403]
 
     def test_mfa_skip_attempt(self, test_client):
         """Testet dass MFA nicht uebersprungen werden kann."""

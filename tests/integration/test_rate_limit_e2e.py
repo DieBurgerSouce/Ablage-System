@@ -13,6 +13,8 @@ Ausfuehrung:
     pytest tests/integration/test_rate_limit_e2e.py -v -m integration
 """
 
+import os
+
 import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
@@ -46,8 +48,15 @@ pytestmark = [
 # TEST CONFIGURATION
 # ============================================================================
 
-TEST_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test"
-TEST_REDIS_URL = "redis://localhost:6380/15"  # Nutze DB 15 fuer Tests
+# TEST_DATABASE_URL / TEST_REDIS_URL haben Vorrang (Docker/CI), sonst Fallback
+TEST_DB_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test",
+)
+TEST_REDIS_URL = os.environ.get(
+    "TEST_REDIS_URL",
+    "redis://localhost:6380/15",  # Nutze DB 15 fuer Tests
+)
 
 
 # ============================================================================
@@ -58,6 +67,11 @@ TEST_REDIS_URL = "redis://localhost:6380/15"  # Nutze DB 15 fuer Tests
 async def redis_client() -> AsyncGenerator[aioredis.Redis, None]:
     """Erstellt Redis-Client und bereinigt nach jedem Test."""
     client = await aioredis.from_url(TEST_REDIS_URL, decode_responses=True)
+    try:
+        await client.ping()
+    except Exception as exc:
+        await client.aclose()
+        pytest.skip(f"Redis-Testinstanz nicht erreichbar: {exc}")
     yield client
     # Bereinige alle Rate-Limit-Keys nach dem Test
     keys = await client.keys("rate_limit:*")
@@ -68,15 +82,23 @@ async def redis_client() -> AsyncGenerator[aioredis.Redis, None]:
 
 @pytest_asyncio.fixture
 async def db_engine():
-    """Erstellt Test-Datenbank-Engine."""
+    """Erstellt Test-Datenbank-Engine.
+
+    Ohne erreichbare Datenbank wird sauber geskippt statt mit ERROR
+    abzubrechen.
+    """
     engine = create_async_engine(
         TEST_DB_URL,
         echo=False,
         pool_pre_ping=True,
     )
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        await engine.dispose()
+        pytest.skip(f"PostgreSQL-Testdatenbank nicht erreichbar: {exc}")
 
     yield engine
     await engine.dispose()

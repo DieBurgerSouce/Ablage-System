@@ -15,7 +15,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -49,7 +48,7 @@ export function SlackTestDialog({ open, onOpenChange }: SlackTestDialogProps) {
             notification_type: notificationType,
             priority,
         });
-        setResult(response);
+        setResult({ success: response.success, error: response.error ?? undefined });
     };
 
     const handleClose = () => {

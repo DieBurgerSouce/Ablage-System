@@ -243,25 +243,25 @@ class TestPunctualityCalculation:
         invoice1 = MagicMock(spec=InvoiceTracking)
         invoice1.due_date = date.today() - timedelta(days=5)
         invoice1.paid_at = datetime.now() - timedelta(days=6)  # On-time
-        invoice1.total_amount = Decimal("1000.00")
+        invoice1.amount = Decimal("1000.00")
         invoice1.created_at = datetime.now()
 
         invoice2 = MagicMock(spec=InvoiceTracking)
         invoice2.due_date = date.today() - timedelta(days=10)
         invoice2.paid_at = datetime.now() - timedelta(days=3)  # Late
-        invoice2.total_amount = Decimal("2000.00")
+        invoice2.amount = Decimal("2000.00")
         invoice2.created_at = datetime.now()
 
         invoice3 = MagicMock(spec=InvoiceTracking)
         invoice3.due_date = date.today() - timedelta(days=20)
         invoice3.paid_at = datetime.now() - timedelta(days=21)  # On-time
-        invoice3.total_amount = Decimal("1500.00")
+        invoice3.amount = Decimal("1500.00")
         invoice3.created_at = datetime.now()
 
         invoice4 = MagicMock(spec=InvoiceTracking)
         invoice4.due_date = date.today() - timedelta(days=30)
         invoice4.paid_at = datetime.now() - timedelta(days=31)  # On-time
-        invoice4.total_amount = Decimal("3000.00")
+        invoice4.amount = Decimal("3000.00")
         invoice4.created_at = datetime.now()
 
         # Mock DB Query
@@ -274,18 +274,14 @@ class TestPunctualityCalculation:
         ]
         mock_db.execute.return_value = mock_result
 
-        # Add missing attributes to InvoiceTracking for query construction
-        # These attributes don't exist in the actual model but are used by the service
-        with patch.object(InvoiceTracking, "entity_id", create=True), \
-             patch.object(InvoiceTracking, "is_incoming", create=True), \
-             patch.object(InvoiceTracking, "total_amount", create=True):
-            # Execute
-            metrics = await service._calculate_supplier_metrics(
-                mock_db,
-                supplier,
-                cutoff,
-                TEST_COMPANY_UUID,
-            )
+        # Echte Modell-Spalten (entity_id existiert, Richtung via
+        # Entity-JOIN) - keine Phantom-Attribut-Patches mehr noetig.
+        metrics = await service._calculate_supplier_metrics(
+            mock_db,
+            supplier,
+            cutoff,
+            TEST_COMPANY_UUID,
+        )
 
         # Assertions: 3 on-time, 1 late -> 75%
         assert metrics.total_orders == 4
@@ -374,7 +370,7 @@ class TestPriceTrend:
             inv = MagicMock(spec=InvoiceTracking)
             inv.due_date = date.today()
             inv.paid_at = datetime.now()
-            inv.total_amount = Decimal("1000.00")
+            inv.amount = Decimal("1000.00")
             inv.created_at = base_time + timedelta(days=i * 5)
             invoices.append(inv)
 
@@ -383,7 +379,7 @@ class TestPriceTrend:
             inv = MagicMock(spec=InvoiceTracking)
             inv.due_date = date.today()
             inv.paid_at = datetime.now()
-            inv.total_amount = Decimal("1500.00")
+            inv.amount = Decimal("1500.00")
             inv.created_at = base_time + timedelta(days=30 + i * 5)
             invoices.append(inv)
 
@@ -392,17 +388,14 @@ class TestPriceTrend:
         mock_result.scalars.return_value.all.return_value = invoices
         mock_db.execute.return_value = mock_result
 
-        # Add missing attributes to InvoiceTracking for query construction
-        with patch.object(InvoiceTracking, "entity_id", create=True), \
-             patch.object(InvoiceTracking, "is_incoming", create=True), \
-             patch.object(InvoiceTracking, "total_amount", create=True):
-            # Execute
-            metrics = await service._calculate_supplier_metrics(
-                mock_db,
-                supplier,
-                cutoff,
-                TEST_COMPANY_UUID,
-            )
+        # Echte Modell-Spalten (entity_id existiert, Richtung via
+        # Entity-JOIN) - keine Phantom-Attribut-Patches mehr noetig.
+        metrics = await service._calculate_supplier_metrics(
+            mock_db,
+            supplier,
+            cutoff,
+            TEST_COMPANY_UUID,
+        )
 
         # Assertions
         assert metrics.trend_direction == TrendDirection.UP
@@ -426,7 +419,7 @@ class TestPriceTrend:
             inv = MagicMock(spec=InvoiceTracking)
             inv.due_date = date.today()
             inv.paid_at = datetime.now()
-            inv.total_amount = Decimal("1000.00")
+            inv.amount = Decimal("1000.00")
             inv.created_at = base_time + timedelta(days=i * 5)
             invoices.append(inv)
 
@@ -435,17 +428,14 @@ class TestPriceTrend:
         mock_result.scalars.return_value.all.return_value = invoices
         mock_db.execute.return_value = mock_result
 
-        # Add missing attributes to InvoiceTracking for query construction
-        with patch.object(InvoiceTracking, "entity_id", create=True), \
-             patch.object(InvoiceTracking, "is_incoming", create=True), \
-             patch.object(InvoiceTracking, "total_amount", create=True):
-            # Execute
-            metrics = await service._calculate_supplier_metrics(
-                mock_db,
-                supplier,
-                cutoff,
-                TEST_COMPANY_UUID,
-            )
+        # Echte Modell-Spalten (entity_id existiert, Richtung via
+        # Entity-JOIN) - keine Phantom-Attribut-Patches mehr noetig.
+        metrics = await service._calculate_supplier_metrics(
+            mock_db,
+            supplier,
+            cutoff,
+            TEST_COMPANY_UUID,
+        )
 
         # Assertions
         assert metrics.trend_direction == TrendDirection.STABLE

@@ -148,7 +148,7 @@ class TestImportWorkflow:
 
     @pytest.mark.asyncio
     async def test_mt940_parsing(self, sample_mt940_content):
-        """MT940 wird korrekt geparst."""
+        """MT940 wird korrekt geparst (Transaktionen + Betraege)."""
         from app.services.banking.parsers.mt940_parser import MT940Parser
 
         parser = MT940Parser()
@@ -156,7 +156,57 @@ class TestImportWorkflow:
 
         assert result.success
         assert result.transaction_count >= 1
+        assert result.total_debits == Decimal("1234.56")
+
+    # xfail entfernt (W3b-Integration): Parser nutzt seit Commit 7e55cb232
+    # die Collection-API (transactions.data['account_identification']).
+    @pytest.mark.asyncio
+    async def test_mt940_account_iban_extracted(self, sample_mt940_content):
+        """MT940: IBAN aus :25: wird extrahiert (fuer Konto-Matching)."""
+        from app.services.banking.parsers.mt940_parser import MT940Parser
+
+        parser = MT940Parser()
+        result = parser.parse(sample_mt940_content)
+
+        assert result.success
         assert result.account_iban == "DE89370400440532013000"
+        # BIC aus dem ":25: IBAN/BIC"-Suffix
+        assert result.account_bic == "COBADEFFXXX"
+
+    @pytest.mark.asyncio
+    async def test_mt940_mehrere_transaktionen_keine_duplikate(self):
+        """Regression: jede Transaktion wird genau EINMAL geparst.
+
+        Der alte Parser iterierte die mt940-Transactions-Collection als
+        'Statements' und verarbeitete ueber den .transactions-Backref jede
+        Transaktion N-fach (quadratische Duplikate ab 2 Transaktionen).
+        """
+        from app.services.banking.parsers.mt940_parser import MT940Parser
+
+        content = """:20:STARTUMS
+:25:DE89370400440532013000/COBADEFFXXX
+:28C:00001/001
+:60F:C231201EUR10000,00
+:61:2312011201D1234,56NTRFNONREF//BANK-REF1
+:86:SVWZ+Rechnung 2023-001
+:61:2312021202D100,00NTRFNONREF//BANK-REF2
+:86:SVWZ+Rechnung 2023-002
+:61:2312031203C500,00NTRFNONREF//BANK-REF3
+:86:SVWZ+Gutschrift 2023-003
+:62F:C231203EUR9165,44
+-"""
+
+        parser = MT940Parser()
+        result = parser.parse(content)
+
+        assert result.success
+        # Vorher: 3 Transaktionen x 3 Iterationen = 9 Duplikate
+        assert result.transaction_count == 3
+        assert result.account_iban == "DE89370400440532013000"
+        assert result.opening_balance == Decimal("10000.00")
+        assert result.closing_balance == Decimal("9165.44")
+        assert result.total_credits == Decimal("500.00")
+        assert result.total_debits == Decimal("1334.56")
 
     @pytest.mark.asyncio
     async def test_import_service_preview(
@@ -180,27 +230,42 @@ class TestImportWorkflow:
     async def test_import_service_duplicate_prevention(
         self,
         mock_db_session,
-        sample_user_id,
         sample_mt940_content,
     ):
-        """Duplikat-Import wird verhindert."""
+        """Duplikat-Import wird verhindert (atomar via flush-Constraint).
+
+        W3 (2026-06-12): Echter Vertrag — import_file nimmt company_id
+        (G1-Rollout), nicht user_id. Vorpruefung muss 'kein Duplikat'
+        liefern, damit der atomare Pfad (IntegrityError bei flush)
+        getestet wird statt des Early-Returns.
+        """
         from app.services.banking.import_service import ImportService
         from sqlalchemy.exc import IntegrityError
 
         service = ImportService()
 
-        # Simuliere IntegrityError bei flush (Duplikat)
+        # Vorpruefung findet kein Duplikat -> Flow erreicht db.flush()
+        no_dup_result = MagicMock()
+        no_dup_result.scalar_one_or_none.return_value = None
+        mock_db_session.execute.return_value = no_dup_result
+
+        # Simuliere IntegrityError bei flush (Race: paralleles Duplikat)
         mock_db_session.flush.side_effect = IntegrityError(
             "Duplicate entry", None, None
         )
 
+        # Signatur-Drift behoben (2026-06-12): import_file nimmt seit dem
+        # G1-company_id-Rollout company_id statt user_id.
         with pytest.raises(ValueError, match="bereits importiert"):
             await service.import_file(
                 db=mock_db_session,
-                user_id=sample_user_id,
+                company_id=sample_user_id,
                 content=sample_mt940_content,
                 filename="test.mt940"
             )
+
+        # Rollback nach IntegrityError (kein halb-geschriebener Import)
+        mock_db_session.rollback.assert_awaited_once()
 
 
 # ============================================================================
@@ -261,14 +326,29 @@ class TestConcurrency:
     """Tests fuer Race Conditions und Concurrency."""
 
     @pytest.mark.asyncio
-    async def test_parallel_import_same_file_prevented(self):
-        """Paralleler Import derselben Datei wird verhindert."""
+    async def test_parallel_import_same_file_prevented(self, sample_mt940_content):
+        """Paralleler Import derselben Datei wird verhindert.
+
+        W3 (2026-06-12): company_id statt user_id (G1) + parsebarer
+        MT940-Inhalt, damit der Flow den atomaren flush-Check erreicht.
+        """
         from app.services.banking.import_service import ImportService
         from sqlalchemy.exc import IntegrityError
 
         service = ImportService()
-        content = b"Test content for hash"
-        user_id = uuid4()
+        # Parsbarer MT940-Inhalt, damit der Flow bis zum atomaren
+        # flush()-Duplikat-Check kommt (Garbage scheitert frueher am Parser).
+        content = (
+            b":20:STARTUMS\n"
+            b":25:DE89370400440532013000/COBADEFFXXX\n"
+            b":28C:00001/001\n"
+            b":60F:C231201EUR10000,00\n"
+            b":61:2312011201D1234,56NTRFNONREF//BANK-REF\n"
+            b":86:SVWZ+Rechnung 2023-001\n"
+            b":62F:C231201EUR8765,44\n"
+            b"-"
+        )
+        company_id = uuid4()
 
         # Beide "Prozesse" sehen keinen existierenden Import
         mock_db_1 = AsyncMock()
@@ -276,31 +356,30 @@ class TestConcurrency:
             scalar_one_or_none=MagicMock(return_value=None)
         ))
 
+        # "Prozess 2" sieht keinen existierenden Import (Race)...
         mock_db_2 = AsyncMock()
         mock_db_2.execute = AsyncMock(return_value=MagicMock(
             scalar_one_or_none=MagicMock(return_value=None)
         ))
 
-        # Prozess 2 bekommt IntegrityError beim flush (Unique Constraint)
+        # ...bekommt aber IntegrityError beim flush (Unique Constraint)
         mock_db_2.flush = AsyncMock(side_effect=IntegrityError(
             "Duplicate", None, None
         ))
         mock_db_2.rollback = AsyncMock()
         mock_db_2.add = MagicMock()
 
-        # Prozess 1 erfolgreich
-        mock_db_1.flush = AsyncMock()
-        mock_db_1.commit = AsyncMock()
-        mock_db_1.add = MagicMock()
-
         # Prozess 2 sollte ValueError werfen
+        # (Signatur-Drift behoben: company_id statt user_id, G1-Rollout)
         with pytest.raises(ValueError, match="bereits importiert"):
             await service.import_file(
                 db=mock_db_2,
-                user_id=user_id,
+                company_id=company_id,
                 content=content,
-                filename="test.csv"
+                filename="test.mt940"
             )
+
+        mock_db_2.rollback.assert_awaited_once()
 
 
 # ============================================================================

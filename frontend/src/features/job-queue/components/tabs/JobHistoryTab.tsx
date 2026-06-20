@@ -6,25 +6,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import {
-  Ban,
-  Calendar,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Clock,
-  Download,
-  FileText,
-  Filter,
-  Loader2,
-  MoreHorizontal,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  XCircle,
-} from 'lucide-react';
+import { Ban, Calendar, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Loader2, MoreHorizontal, RefreshCw, RotateCcw, Search, XCircle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -53,11 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { useJobHistory } from '../../hooks/use-jobs-query';

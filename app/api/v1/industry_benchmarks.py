@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.db.models import User
 from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_user_company_id  # F-31
 from app.services.analytics.industry_benchmark_service import (
     IndustryBenchmarkService,
     get_benchmark_service,
@@ -188,7 +189,7 @@ async def get_company_benchmark(
     current_user: User = Depends(get_current_active_user),
 ) -> BenchmarkReportResponse:
     """Erstellt Benchmark-Report für die eigene Firma."""
-    if not current_user.default_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=400,
             detail="Keine Firma zugeordnet.",
@@ -208,7 +209,7 @@ async def get_company_benchmark(
     service = await get_benchmark_service(db)
 
     report = await service.get_company_benchmark(
-        company_id=current_user.default_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         industry=industry_enum,
         period_days=period_days,
     )
@@ -271,7 +272,7 @@ async def get_percentile_ranking(
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
     """Holt Perzentil-Ranking."""
-    if not current_user.default_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(status_code=400, detail="Keine Firma zugeordnet.")
 
     industry_enum = None
@@ -283,7 +284,7 @@ async def get_percentile_ranking(
 
     service = await get_benchmark_service(db)
     report = await service.get_company_benchmark(
-        company_id=current_user.default_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         industry=industry_enum,
     )
 
@@ -334,7 +335,7 @@ async def get_trends(
     current_user: User = Depends(get_current_active_user),
 ) -> TrendResponse:
     """Holt Trend-Vergleich."""
-    if not current_user.default_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(status_code=400, detail="Keine Firma zugeordnet.")
 
     industry_enum = Industry.OTHER
@@ -346,13 +347,13 @@ async def get_trends(
 
     service = await get_benchmark_service(db)
     trend_data = await service.get_trend_comparison(
-        company_id=current_user.default_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         industry=industry_enum,
         months=months,
     )
 
     return TrendResponse(
-        company_id=str(current_user.default_company_id),
+        company_id=str((await get_user_company_id(db, current_user))),
         industry=industry_enum.value,
         industry_label=INDUSTRY_LABELS.get(industry_enum, industry_enum.value),
         months=months,
@@ -372,7 +373,7 @@ async def get_benchmark_summary(
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
     """Holt kompakte Benchmark-Zusammenfassung."""
-    if not current_user.default_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(status_code=400, detail="Keine Firma zugeordnet.")
 
     industry_enum = Industry.OTHER
@@ -384,7 +385,7 @@ async def get_benchmark_summary(
 
     service = await get_benchmark_service(db)
     report = await service.get_company_benchmark(
-        company_id=current_user.default_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         industry=industry_enum,
     )
 

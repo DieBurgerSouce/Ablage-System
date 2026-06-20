@@ -179,8 +179,13 @@ async def _check_redis() -> KomponentenStatus:
         import redis.asyncio as redis
 
         start = time.perf_counter()
+        # Kanonische URL nutzen (wie RedisStateManager): settings.REDIS_URL traegt die
+        # In-Container-Adresse inkl. Passwort (z.B. redis://:***@redis:6379). Der frueher
+        # aus REDIS_HOST:REDIS_PORT gebaute String zeigte auf die Host-Mapping
+        # (localhost:6380) -> im Container nicht erreichbar -> faelschlich redis:false
+        # -> /health/startup 503, obwohl die App via REDIS_URL laeuft.
         client = redis.from_url(
-            f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
+            settings.REDIS_URL or f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
             decode_responses=True,
         )
         await client.ping()

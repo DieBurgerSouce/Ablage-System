@@ -128,7 +128,7 @@ class TrendAnalyzer:
             day_end = day_start + timedelta(days=1)
 
             query = select(
-                func.coalesce(func.sum(InvoiceTracking.total_amount), 0)
+                func.coalesce(func.sum(InvoiceTracking.amount), 0)
             ).where(
                 and_(
                     InvoiceTracking.company_id == company_id,

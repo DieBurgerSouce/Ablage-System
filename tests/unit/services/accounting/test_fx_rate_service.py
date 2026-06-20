@@ -4,6 +4,7 @@
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -243,7 +244,7 @@ class TestConvert:
         result.scalar_one_or_none = MagicMock(return_value=None)
         mock_db.execute = AsyncMock(return_value=result)
 
-        with pytest.raises(ValueError, match="Kein Wechselkurs verfuegbar"):
+        with pytest.raises(ValueError, match="Kein Wechselkurs verfügbar"):
             await fx_service.convert(
                 amount=Decimal("100.00"),
                 from_currency="EUR",

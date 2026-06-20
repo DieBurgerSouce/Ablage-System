@@ -17,15 +17,26 @@ from collections import Counter
 
 # Bekannte Alt-Lasten (Stand 2026-06-04). Format: (relpath, "class"|"func", name).
 KNOWN_DUPLICATES = {
-    ("app/api/v1/orchestration.py", "class", "SeasonalPatternResponse"),
-    ("app/api/v1/training.py", "func", "create_quality_snapshot"),
+    # AUFGELOEST (aus KNOWN entfernt):
+    #  - SeasonalPatternResponse (orchestration.py): ECHTER Shadowing-Bug -> detect-
+    #    patterns konstruierte die falsche Klasse -> 500; detaillierte Klasse zu
+    #    SeasonalPatternDetailResponse umbenannt + Endpoint umgestellt.
+    #  - TransactionFilter (banking/models.py): tote Basis-Def entfernt (kein Aufrufer).
+    #  - create_quality_snapshot (training.py): 1. Route-Handler -> _bulk umbenannt.
+    #
+    # VERBLEIBEND - die 6 schemas.py-Duplikate sind agent-verifiziert KOSMETISCH
+    # (Konstruktionen treffen die ueberschattende 2. Def), aber NICHT trivial
+    # entfernbar: schemas.py hat KEINE deferred annotations, und Klassen ZWISCHEN den
+    # beiden Defs nutzen die 1. Def (z.B. BusinessEntityBase -> EntityType.SUPPLIER;
+    # TrendResponse -> List[TrendDataPoint]). Loeschen/Umbenennen der 1. Def -> NameError
+    # beim Import (gelernt: AST/ratchet maskiert das, nur ein Import-Check faengt es).
+    # Sauberer Fix braucht Umverdrahtung der Zwischen-Nutzer -> separater Task.
+    ("app/db/schemas.py", "class", "EntityType"),
     ("app/db/schemas.py", "class", "DocumentTypeStats"),
     ("app/db/schemas.py", "class", "EntityRiskResponse"),
-    ("app/db/schemas.py", "class", "EntityType"),
     ("app/db/schemas.py", "class", "RiskFactorsResponse"),
     ("app/db/schemas.py", "class", "TrendDataPoint"),
     ("app/db/schemas.py", "class", "ValidationQueueListResponse"),
-    ("app/services/banking/models.py", "class", "TransactionFilter"),
 }
 
 

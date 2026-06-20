@@ -274,13 +274,15 @@ class TestPredictRoutingEndpoint:
         with patch("app.api.v1.routing.RoutingPredictor") as MockPredictor:
             mock_predictor = MockPredictor.return_value
             mock_predictor.model_version = "1.0.0"
-            mock_predictor.predict.return_value = RoutingPrediction(
-                target=RoutingTarget.PRIORITY,
-                predicted_value="high",
-                confidence=0.85,
-                alternatives=[],
-                reasoning="Hoher Betrag",
-                model_version="1.0.0",
+            mock_predictor.predict = AsyncMock(
+                return_value=RoutingPrediction(
+                    target_type=RoutingTarget.PRIORITY,
+                    prediction="high",
+                    confidence=0.85,
+                    alternatives=[],
+                    explanation="Hoher Betrag",
+                    features_used=["total_amount"],
+                )
             )
 
             response = await predict_routing(
@@ -518,9 +520,10 @@ class TestEdgeCases:
         from app.ml.routing_predictor import RoutingTarget
 
         assert RoutingTarget.USER.value == "user"
+        assert RoutingTarget.DEPARTMENT.value == "department"
         assert RoutingTarget.PRIORITY.value == "priority"
+        assert RoutingTarget.WORKFLOW.value == "workflow"
         assert RoutingTarget.TAGS.value == "tags"
-        assert RoutingTarget.FOLDER.value == "folder"
 
     def test_priority_level_enum_values(self) -> None:
         """Test: PriorityLevel Enum hat richtige Werte."""
@@ -528,7 +531,6 @@ class TestEdgeCases:
 
         assert PriorityLevel.LOW.value == "low"
         assert PriorityLevel.NORMAL.value == "normal"
-        assert PriorityLevel.MEDIUM.value == "medium"
         assert PriorityLevel.HIGH.value == "high"
         assert PriorityLevel.URGENT.value == "urgent"
 

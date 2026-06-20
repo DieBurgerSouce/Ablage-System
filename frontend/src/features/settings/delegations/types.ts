@@ -5,31 +5,34 @@
  */
 
 // Enums matching backend
-export enum DelegationType {
-  FULL = 'full',
-  PARTIAL = 'partial',
-  APPROVAL = 'approval',
-  READ_ONLY = 'read_only',
-  EMERGENCY = 'emergency',
-}
+export const DelegationType = {
+  FULL: 'full',
+  PARTIAL: 'partial',
+  APPROVAL: 'approval',
+  READ_ONLY: 'read_only',
+  EMERGENCY: 'emergency',
+} as const;
+export type DelegationType = (typeof DelegationType)[keyof typeof DelegationType];
 
-export enum DelegationStatus {
-  PENDING = 'pending',
-  ACTIVE = 'active',
-  EXPIRED = 'expired',
-  REVOKED = 'revoked',
-  DECLINED = 'declined',
-}
+export const DelegationStatus = {
+  PENDING: 'pending',
+  ACTIVE: 'active',
+  EXPIRED: 'expired',
+  REVOKED: 'revoked',
+  DECLINED: 'declined',
+} as const;
+export type DelegationStatus = (typeof DelegationStatus)[keyof typeof DelegationStatus];
 
-export enum DelegationReason {
-  VACATION = 'vacation',
-  ILLNESS = 'illness',
-  PARENTAL_LEAVE = 'parental_leave',
-  BUSINESS_TRIP = 'business_trip',
-  PROJECT = 'project',
-  TRAINING = 'training',
-  OTHER = 'other',
-}
+export const DelegationReason = {
+  VACATION: 'vacation',
+  ILLNESS: 'illness',
+  PARENTAL_LEAVE: 'parental_leave',
+  BUSINESS_TRIP: 'business_trip',
+  PROJECT: 'project',
+  TRAINING: 'training',
+  OTHER: 'other',
+} as const;
+export type DelegationReason = (typeof DelegationReason)[keyof typeof DelegationReason];
 
 // German labels
 export const DELEGATION_TYPE_LABELS: Record<DelegationType, string> = {

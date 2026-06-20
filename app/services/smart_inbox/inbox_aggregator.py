@@ -537,7 +537,7 @@ class InboxAggregator:
 
         try:
             result = await db.execute(
-                select(User.role).where(
+                select(User.is_superuser).where(
                     User.id == user_id,
                     User.company_id == company_id,
                 )

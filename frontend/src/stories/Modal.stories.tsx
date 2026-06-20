@@ -1,3 +1,4 @@
+import * as React from 'react';
 /**
  * Modal/Dialog Component Stories
  *
@@ -7,7 +8,6 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { fn } from '@storybook/test';
 import { Trash2, AlertTriangle, Info, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -451,7 +451,7 @@ export const DarkMode: Story = {
         backgrounds: { default: 'dark' },
     },
     decorators: [
-        (Story) => (
+        (Story: React.ComponentType) => (
             <div className="dark">
                 <Story />
             </div>

@@ -11,40 +11,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState, useEffect } from 'react';
-import {
-  chatWithAssistant,
-  executeAction,
-  rollbackAction,
-  getInsights,
-  getAssistantHelp,
-  ChatRequest,
-  ChatResponse,
-  ExecuteActionRequest,
-  ExecuteActionResponse,
-  InsightsListResponse,
-  AssistantHelpResponse,
-  ActionData,
-  BookingSuggestionData,
-  // Conversation persistence
-  createConversation,
-  getConversationBySession,
-  listConversations,
-  updateConversation,
-  deleteConversation,
-  getConversationMessages,
-  getConversationActions,
-  confirmConversationAction,
-  cancelConversationAction,
-  addMessageFeedback,
-  getConversationStats,
-  ConversationSummary,
-  ConversationDetail,
-  ConversationMessage,
-  ConversationAction,
-  ConversationListResponse,
-  ActionStatus,
-  FeedbackType,
-} from '@/lib/api/services/finance-assistant';
+import { chatWithAssistant, executeAction, rollbackAction, getInsights, getAssistantHelp, type ChatRequest, type ChatResponse, type ExecuteActionRequest, type ExecuteActionResponse, type InsightsListResponse, type AssistantHelpResponse, type ActionData, type BookingSuggestionData, createConversation, getConversationBySession, listConversations, updateConversation, deleteConversation, getConversationMessages, getConversationActions, confirmConversationAction, cancelConversationAction, addMessageFeedback, getConversationStats, type ConversationSummary, type ConversationDetail, type ConversationMessage, type ConversationAction, type ConversationListResponse, type ActionStatus, type FeedbackType } from '@/lib/api/services/finance-assistant';
 import { useAIAssistantStore } from '../stores/ai-assistant-store';
 
 // ===== Query Keys =====
@@ -173,7 +140,7 @@ export function useFinanceAssistantChat(options: UseFinanceAssistantChatOptions 
     (message: string, selectedDocuments?: string[]) => {
       const request: ChatRequest = {
         message,
-        current_page: pageContext?.pageType,
+        current_page: pageContext?.type,
         selected_documents: selectedDocuments,
         session_id: options.sessionId,
       };

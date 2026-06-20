@@ -194,7 +194,7 @@ class FraudDetectionService:
                                        f"ist möglicherweise ein Duplikat von {first.invoice_number or first.id}",
                         "invoice_id": str(dupe.id),
                         "related_invoice_id": str(first.id),
-                        "amount": float(dupe.total_amount) if dupe.total_amount else None,
+                        "amount": float(dupe.amount) if dupe.amount else None,
                         "detected_at": datetime.utcnow().isoformat(),
                         "confidence": 0.95,
                     })
@@ -212,7 +212,7 @@ class FraudDetectionService:
                 continue
             for i, inv1 in enumerate(day_invoices):
                 for inv2 in day_invoices[i + 1:]:
-                    if self._are_similar_amounts(inv1.total_amount, inv2.total_amount):
+                    if self._are_similar_amounts(inv1.amount, inv2.amount):
                         # Bereits als exaktes Duplikat erfasst?
                         if self._create_invoice_hash(inv1) == self._create_invoice_hash(inv2):
                             continue
@@ -224,7 +224,7 @@ class FraudDetectionService:
                                            f"und {inv2.invoice_number or inv2.id} haben ähnliche Betraege",
                             "invoice_id": str(inv1.id),
                             "related_invoice_id": str(inv2.id),
-                            "amount": float(inv1.total_amount) if inv1.total_amount else None,
+                            "amount": float(inv1.amount) if inv1.amount else None,
                             "detected_at": datetime.utcnow().isoformat(),
                             "confidence": 0.75,
                         })
@@ -250,8 +250,8 @@ class FraudDetectionService:
         hist_query = (
             select(
                 InvoiceTracking.entity_id,
-                func.avg(InvoiceTracking.total_amount).label("avg_amount"),
-                func.stddev(InvoiceTracking.total_amount).label("stddev_amount"),
+                func.avg(InvoiceTracking.amount).label("avg_amount"),
+                func.stddev(InvoiceTracking.amount).label("stddev_amount"),
                 func.count(InvoiceTracking.id).label("invoice_count"),
             )
             .where(
@@ -287,12 +287,12 @@ class FraudDetectionService:
                 continue
 
             hist = historical[invoice.entity_id]
-            if not hist.avg_amount or not invoice.total_amount:
+            if not hist.avg_amount or not invoice.amount:
                 continue
 
             avg = float(hist.avg_amount)
             stddev = float(hist.stddev_amount) if hist.stddev_amount else avg * 0.1
-            amount = float(invoice.total_amount)
+            amount = float(invoice.amount)
 
             # Z-Score berechnen
             if stddev > 0:
@@ -662,7 +662,7 @@ class FraudDetectionService:
                     InvoiceTracking.company_id == company_id,
                     InvoiceTracking.created_at >= start_date,
                     InvoiceTracking.created_at <= end_date,
-                    InvoiceTracking.total_amount >= threshold,
+                    InvoiceTracking.amount >= threshold,
                 )
             )
         )
@@ -671,7 +671,7 @@ class FraudDetectionService:
 
         round_invoices = []
         for invoice in invoices:
-            if invoice.total_amount and self._is_round_amount(float(invoice.total_amount)):
+            if invoice.amount and self._is_round_amount(float(invoice.amount)):
                 round_invoices.append(invoice)
 
         # Mehr als 20% runde Betraege ist verdaechtig
@@ -792,7 +792,7 @@ class FraudDetectionService:
             SELECT
                 id,
                 invoice_number,
-                total_amount,
+                amount AS total_amount,
                 created_at,
                 EXTRACT(DOW FROM created_at) as day_of_week
             FROM invoice_tracking
@@ -834,7 +834,7 @@ class FraudDetectionService:
         """Erstellt einen Hash zur Duplikat-Erkennung."""
         components = [
             str(invoice.invoice_number or "").lower().strip(),
-            f"{float(invoice.total_amount or 0):.2f}",
+            f"{float(invoice.amount or 0):.2f}",
             str(invoice.entity_id or ""),
         ]
         combined = "|".join(components)

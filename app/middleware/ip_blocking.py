@@ -149,12 +149,17 @@ class IPBlockingMiddleware(BaseHTTPMiddleware):
         try:
             from app.core.redis_state import get_redis
 
-
-            redis = await get_redis()
-            if redis:
-                blocked = await redis.get(f"blocked_ip:{ip_address}")
-                if blocked:
-                    return True, "redis_block"
+            manager = await get_redis()
+            if manager:
+                # RedisStateManager hat keine generische .get()-Methode; der
+                # rohe aioredis-Client liegt unter ._redis. Verbindung
+                # sicherstellen und Schlüssel direkt lesen.
+                await manager._ensure_connection()
+                raw_redis = manager._redis
+                if raw_redis is not None:
+                    blocked = await raw_redis.get(f"blocked_ip:{ip_address}")
+                    if blocked:
+                        return True, "redis_block"
         except Exception as e:
             logger.debug("redis_ip_check_failed", **safe_error_log(e))
 

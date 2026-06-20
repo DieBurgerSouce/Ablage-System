@@ -45,6 +45,18 @@ export function DeadlinesPage({ spaceId: propSpaceId }: DeadlinesPageProps = {})
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  // Suche erfolgt clientseitig ueber die geladene Seite —
+  // der Backend-Endpunkt kennt keinen search-Parameter.
+  const visibleDeadlines = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return deadlines;
+    return deadlines.filter(
+      (d) =>
+        d.title.toLowerCase().includes(q) ||
+        (d.description ?? '').toLowerCase().includes(q)
+    );
+  }, [deadlines, searchQuery]);
   const [typeFilter, setTypeFilter] = React.useState<PrivatDeadlineType | 'all'>('all');
   const [showCompleted, setShowCompleted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -81,7 +93,6 @@ export function DeadlinesPage({ spaceId: propSpaceId }: DeadlinesPageProps = {})
         const response = await privatApi.listDeadlines(spaceId, {
           page: page + 1,
           pageSize,
-          search: searchQuery || undefined,
           deadlineType: typeFilter !== 'all' ? typeFilter : undefined,
           includeCompleted: showCompleted,
         });
@@ -203,7 +214,7 @@ export function DeadlinesPage({ spaceId: propSpaceId }: DeadlinesPageProps = {})
   return (
     <div className="p-8">
       <DeadlineList
-        deadlines={deadlines}
+        deadlines={visibleDeadlines}
         total={total}
         page={page}
         pageSize={pageSize}

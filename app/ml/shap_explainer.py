@@ -189,7 +189,7 @@ class SHAPExplainer:
         """
         self.model = model
         self.feature_names = feature_names or []
-        self.storage_path = storage_path or Path("data/explanations")
+        self.storage_path = storage_path or Path("/tmp/ablage_ml/explanations")
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
         self._shap_explainer: Optional[object] = None

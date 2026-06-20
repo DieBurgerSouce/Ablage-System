@@ -394,7 +394,7 @@ function PieChartRenderer({ data, chart, colors }: ChartRendererProps) {
                     cy="50%"
                     outerRadius={80}
                     label={showLabels ? ({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%` : undefined
+                        `${name}: ${((percent ?? 0) * 100).toFixed(0)}%` : undefined
                     }
                     labelLine={showLabels}
                 >

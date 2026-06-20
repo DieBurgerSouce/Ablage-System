@@ -5,23 +5,9 @@
  */
 
 import { apiClient } from '@/lib/api/client';
-import type {
-    SlackChannel,
-    SlackChannelCreate,
-    SlackChannelUpdate,
-    SlackChannelListResponse,
-    SlackMessageLog,
-    SlackMessageListResponse,
-    SlackUserMapping,
-    SlackUserMappingCreate,
-    SlackConnectionStatus,
-    SlackStatistics,
-    SlackTestMessageRequest,
-    SlackTestMessageResponse,
-    SlackNotificationTypeInfo,
-} from '../types';
+import type { SlackChannel, SlackChannelCreate, SlackChannelUpdate, SlackChannelListResponse, SlackMessageListResponse, SlackUserMapping, SlackUserMappingCreate, SlackConnectionStatus, SlackStatistics, SlackTestMessageRequest, SlackTestMessageResponse, SlackNotificationTypeInfo } from '../types';
 
-const BASE_URL = '/api/v1/slack';
+const BASE_URL = '/slack';
 
 // =============================================================================
 // CONNECTION & STATUS

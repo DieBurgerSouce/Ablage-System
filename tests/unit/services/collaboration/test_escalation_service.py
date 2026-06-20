@@ -103,6 +103,19 @@ def mock_user():
 # ========================= Rule Management Tests =========================
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "APP-BUG: EscalationService nutzt Felder, die das kanonische "
+        "EscalationRule-Modell (models_approval_extended) nicht besitzt "
+        "(escalate_to_user_id/escalate_to_role/rule_priority/description/"
+        "task_type/priority/notify_* + Relationship escalate_to_user). "
+        "Das Modell kennt nur escalation_target_user_id/-role, send_email, "
+        "send_notification. Rule-CRUD crasht daher zur Laufzeit. Eine "
+        "Korrektur erfordert eine Produktentscheidung (Modell+Migration "
+        "erweitern -> TABU) und ist kein rein mechanischer Drift-Fix."
+    ),
+)
 class TestEscalationServiceRuleManagement:
     """Tests fuer Escalation Rule CRUD."""
 

@@ -3,16 +3,10 @@
  * Zeigt Offline-Status und ausstehende Synchronisierungen an.
  */
 import { useState, useEffect } from 'react'
-import { WifiOff, Wifi, CloudOff, RefreshCw, Check, AlertTriangle, X } from 'lucide-react'
+import { WifiOff, CloudOff, RefreshCw, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-interface SyncQueueItem {
-  id: string
-  type: string
-  timestamp: number
-}
 
 export function OfflineSyncStatusBar() {
   const [isOnline, setIsOnline] = useState(navigator.onLine)

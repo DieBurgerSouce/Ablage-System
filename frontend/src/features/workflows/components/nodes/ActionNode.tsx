@@ -165,7 +165,9 @@ function ActionNode({ data, selected }: NodeProps<ActionNodeData>) {
         <Icon className="h-4 w-4 text-white" />
         <span className="text-sm font-medium text-white">{label}</span>
         {data.retryOnFailure && (
-          <RefreshCw className="ml-auto h-3 w-3 text-white/70" title="Retry bei Fehler" />
+          <span title="Retry bei Fehler" className="ml-auto">
+            <RefreshCw className="h-3 w-3 text-white/70" />
+          </span>
         )}
       </div>
 

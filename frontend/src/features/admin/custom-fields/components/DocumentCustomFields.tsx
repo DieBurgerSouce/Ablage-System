@@ -27,7 +27,6 @@ import {
   useDocumentFieldValues,
   useSetDocumentFieldValues,
 } from '../api'
-import { FIELD_TYPE_LABELS } from '../types'
 import type { CustomFieldDefinitionResponse } from '../types'
 
 interface DocumentCustomFieldsProps {

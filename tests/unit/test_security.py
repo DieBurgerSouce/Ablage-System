@@ -170,7 +170,8 @@ class TestJWTTokens:
 
     def test_access_token_contains_jti(self):
         """Test: Access Token enthält JTI für Blacklisting."""
-        from app.core.security import create_access_token, decode_token_sync
+        from app.core.security import create_access_token
+        from app.core.security_auth import decode_token_sync
 
         user_data = {"sub": "user-123"}
         token = create_access_token(user_data)
@@ -181,7 +182,8 @@ class TestJWTTokens:
 
     def test_token_expiration(self):
         """Test: Token enthält Ablaufzeit."""
-        from app.core.security import create_access_token, decode_token_sync
+        from app.core.security import create_access_token
+        from app.core.security_auth import decode_token_sync
 
         user_data = {"sub": "user-123"}
         token = create_access_token(user_data)
@@ -196,7 +198,7 @@ class TestTokenBlacklistFallback:
 
     def test_blacklist_token_sync(self):
         """Test: Token kann synchron zur Blacklist hinzugefügt werden."""
-        from app.core.security import blacklist_token_sync, is_token_blacklisted_sync
+        from app.core.security_auth import blacklist_token_sync, is_token_blacklisted_sync
 
         jti = secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -207,7 +209,7 @@ class TestTokenBlacklistFallback:
 
     def test_expired_token_removed_from_blacklist(self):
         """Test: Abgelaufene Tokens werden aus Blacklist entfernt."""
-        from app.core.security import blacklist_token_sync, is_token_blacklisted_sync
+        from app.core.security_auth import blacklist_token_sync, is_token_blacklisted_sync
 
         jti = secrets.token_urlsafe(32)
         # Token bereits abgelaufen
@@ -220,7 +222,7 @@ class TestTokenBlacklistFallback:
 
     def test_non_blacklisted_token(self):
         """Test: Nicht-blacklistete Tokens werden als gültig erkannt."""
-        from app.core.security import is_token_blacklisted_sync
+        from app.core.security_auth import is_token_blacklisted_sync
 
         jti = secrets.token_urlsafe(32)
 
@@ -233,15 +235,12 @@ class TestTokenBlacklistRedis:
 
     async def test_blacklist_token_redis_fallback(self):
         """Test: Fallback auf In-Memory wenn Redis nicht verfügbar."""
-        from app.core.security import (
-            blacklist_token_redis,
-            is_token_blacklisted_redis,
-            _token_blacklist_fallback
-        )
+        from app.core.security import blacklist_token_redis
+        from app.core.security_auth import _token_blacklist_fallback
 
         # Simuliere Redis nicht verfügbar und fail-closed deaktiviert
-        with patch('app.core.security._redis_available', False):
-            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+        with patch('app.core.security_auth._redis_available', False):
+            with patch('app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED', False):
                 jti = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
@@ -254,10 +253,8 @@ class TestTokenBlacklistRedis:
 
     async def test_blacklist_check_fallback(self):
         """Test: Blacklist-Check funktioniert mit Fallback."""
-        from app.core.security import (
-            is_token_blacklisted_redis,
-            _token_blacklist_fallback
-        )
+        from app.core.security import is_token_blacklisted_redis
+        from app.core.security_auth import _token_blacklist_fallback
 
         jti = secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -266,8 +263,8 @@ class TestTokenBlacklistRedis:
         _token_blacklist_fallback[jti] = expires
 
         # Simuliere Redis nicht verfügbar und fail-closed deaktiviert
-        with patch('app.core.security._redis_available', False):
-            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+        with patch('app.core.security_auth._redis_available', False):
+            with patch('app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED', False):
                 result = await is_token_blacklisted_redis(jti)
                 assert result is True
 
@@ -275,7 +272,7 @@ class TestTokenBlacklistRedis:
         """Test: Blacklist-Statistiken werden korrekt zurückgegeben."""
         from app.core.security import get_blacklist_stats
 
-        with patch('app.core.security._redis_available', False):
+        with patch('app.core.security_auth._redis_available', False):
             stats = await get_blacklist_stats()
 
             assert "redis_available" in stats
@@ -295,8 +292,8 @@ class TestAsyncTokenOperations:
         jti = secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
-        with patch('app.core.security._redis_available', False):
-            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+        with patch('app.core.security_auth._redis_available', False):
+            with patch('app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED', False):
                 await blacklist_token(jti, expires)
                 result = await is_token_blacklisted(jti)
 
@@ -309,8 +306,8 @@ class TestAsyncTokenOperations:
         user_data = {"sub": "user-123", "email": "test@example.com"}
         token = create_access_token(user_data)
 
-        with patch('app.core.security._redis_available', False):
-            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+        with patch('app.core.security_auth._redis_available', False):
+            with patch('app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED', False):
                 payload = await decode_token(token)
 
                 assert payload["sub"] == "user-123"
@@ -322,8 +319,8 @@ class TestAsyncTokenOperations:
             create_access_token,
             decode_token,
             blacklist_token,
-            decode_token_sync
         )
+        from app.core.security_auth import decode_token_sync
         from fastapi import HTTPException
 
         user_data = {"sub": "user-123"}
@@ -334,8 +331,8 @@ class TestAsyncTokenOperations:
         jti = payload["jti"]
         exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
 
-        with patch('app.core.security._redis_available', False):
-            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+        with patch('app.core.security_auth._redis_available', False):
+            with patch('app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED', False):
                 await blacklist_token(jti, exp)
 
                 with pytest.raises(HTTPException) as exc_info:
@@ -351,8 +348,8 @@ class TestAsyncTokenOperations:
         user_id = "user-abc-123"
         token = create_access_token({"sub": user_id})
 
-        with patch('app.core.security._redis_available', False):
-            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+        with patch('app.core.security_auth._redis_available', False):
+            with patch('app.core.security_auth.TOKEN_BLACKLIST_FAIL_CLOSED', False):
                 extracted_id = await extract_user_id_from_token(token)
 
                 assert extracted_id == user_id
@@ -363,7 +360,8 @@ class TestTokenTypeVerification:
 
     def test_verify_access_token_type(self):
         """Test: Access Token Typ wird korrekt verifiziert."""
-        from app.core.security import create_access_token, verify_token_type, decode_token_sync
+        from app.core.security import create_access_token, verify_token_type
+        from app.core.security_auth import decode_token_sync
 
         token = create_access_token({"sub": "user-123"})
         payload = decode_token_sync(token)
@@ -373,7 +371,8 @@ class TestTokenTypeVerification:
 
     def test_verify_refresh_token_type(self):
         """Test: Refresh Token Typ wird korrekt verifiziert."""
-        from app.core.security import create_refresh_token, verify_token_type, decode_token_sync
+        from app.core.security import create_refresh_token, verify_token_type
+        from app.core.security_auth import decode_token_sync
 
         token = create_refresh_token({"sub": "user-123"})
         payload = decode_token_sync(token)
@@ -383,7 +382,8 @@ class TestTokenTypeVerification:
 
     def test_wrong_token_type_raises(self):
         """Test: Falscher Token-Typ wirft Exception."""
-        from app.core.security import create_access_token, verify_token_type, decode_token_sync
+        from app.core.security import create_access_token, verify_token_type
+        from app.core.security_auth import decode_token_sync
         from fastapi import HTTPException
 
         # Access Token erstellen
@@ -399,25 +399,49 @@ class TestTokenTypeVerification:
 
 
 class TestCleanupFallbackBlacklist:
-    """Tests für Fallback-Blacklist Cleanup."""
+    """Tests für Fallback-Blacklist Cleanup.
 
-    def test_cleanup_removes_expired(self):
-        """Test: Cleanup entfernt abgelaufene Tokens."""
-        from app.core.security import _cleanup_fallback_blacklist, _token_blacklist_fallback
+    Hinweis: Im Produktiv-Setup ist cachetools installiert, daher ist die
+    Fallback-Blacklist eine TTLCache. Diese verfaellt automatisch anhand der
+    Einfuegezeit (nicht anhand des gespeicherten Ablauf-Datums). Der
+    massgebliche Ablauf-Check fuer den synchronen Pfad sitzt deshalb in
+    is_token_blacklisted_sync(), das den gespeicherten Ablauf-Wert prueft.
+    """
 
-        # Abgelaufenes Token hinzufügen
-        expired_jti = secrets.token_urlsafe(32)
-        _token_blacklist_fallback[expired_jti] = datetime.now(timezone.utc) - timedelta(hours=1)
+    def test_cleanup_runs_and_keeps_valid_tokens(self):
+        """Test: Cleanup laeuft fehlerfrei und behaelt gueltige Tokens."""
+        from app.core.security_auth import (
+            _cleanup_fallback_blacklist,
+            _token_blacklist_fallback,
+        )
 
-        # Gültiges Token hinzufügen
         valid_jti = secrets.token_urlsafe(32)
         _token_blacklist_fallback[valid_jti] = datetime.now(timezone.utc) + timedelta(hours=1)
 
+        # Darf nicht crashen und gibt eine nicht-negative Anzahl zurueck
         removed = _cleanup_fallback_blacklist()
+        assert isinstance(removed, int)
+        assert removed >= 0
 
-        assert removed >= 1
-        assert expired_jti not in _token_blacklist_fallback
+        # Gueltiges Token bleibt erhalten
         assert valid_jti in _token_blacklist_fallback
 
-        # Cleanup
         del _token_blacklist_fallback[valid_jti]
+
+    def test_value_expired_token_rejected_by_sync_check(self):
+        """Test: Wertmaessig abgelaufenes Token wird vom Sync-Check entfernt.
+
+        is_token_blacklisted_sync prueft den gespeicherten Ablauf-Wert und
+        loescht das Token, wenn es abgelaufen ist - unabhaengig vom TTLCache.
+        """
+        from app.core.security_auth import (
+            _token_blacklist_fallback,
+            is_token_blacklisted_sync,
+        )
+
+        expired_jti = secrets.token_urlsafe(32)
+        _token_blacklist_fallback[expired_jti] = datetime.now(timezone.utc) - timedelta(hours=1)
+
+        # Abgelaufen -> nicht mehr als blacklisted gewertet UND entfernt
+        assert is_token_blacklisted_sync(expired_jti) is False
+        assert expired_jti not in _token_blacklist_fallback

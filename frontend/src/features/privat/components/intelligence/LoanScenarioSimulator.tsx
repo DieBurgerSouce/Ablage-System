@@ -20,7 +20,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
@@ -33,19 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Calculator,
-  TrendingDown,
-  Calendar,
-  Euro,
-  Percent,
-  CheckCircle2,
-  XCircle,
-  ArrowRight,
-  RefreshCw,
-  PiggyBank,
-  Clock,
-} from 'lucide-react';
+import { Calculator, Calendar, Percent, CheckCircle2, XCircle, RefreshCw, PiggyBank, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { privatIntelligenceService } from '@/lib/api/services/privat-intelligence';
 import type {
@@ -68,7 +55,7 @@ export function LoanScenarioSimulator({
   loanName,
   currentBalance,
   interestRate,
-  monthlyPayment,
+  monthlyPayment: _monthlyPayment,
   className,
 }: LoanScenarioSimulatorProps) {
   const [activeTab, setActiveTab] = React.useState('extra-payment');

@@ -183,7 +183,7 @@ export function DataQualityDashboard() {
           <h3 className="text-xl font-semibold">Gefundene Probleme</h3>
 
           {/* Group by Severity */}
-          {['critical', 'high', 'medium', 'low'].map((severity) => {
+          {(['critical', 'high', 'medium', 'low'] as const).map((severity) => {
             const issuesForSeverity = report.issues.filter((i) => i.severity === severity);
             if (issuesForSeverity.length === 0) return null;
 
@@ -191,7 +191,7 @@ export function DataQualityDashboard() {
               <Card key={severity}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Badge variant={getSeverityVariant(severity as any)}>
+                    <Badge variant={getSeverityVariant(severity)}>
                       {getSeverityLabel(severity)}
                     </Badge>
                     <span className="text-base">

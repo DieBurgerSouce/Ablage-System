@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -83,8 +84,13 @@ export function WidgetSyncStatus({
     return 'Nicht synchronisiert';
   };
 
+  // B1: Eigener TooltipProvider - Radix' Tooltip.Root wirft ohne Provider
+  // ("`Tooltip` must be used within `TooltipProvider`") und riss damit das
+  // Admin-Dashboard ('/') in den Root-ErrorBoundary. Die Komponente ist so
+  // selbsttragend, egal wo sie gerendert wird.
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <TooltipProvider>
+      <div className={cn('flex items-center gap-2', className)}>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -134,6 +140,7 @@ export function WidgetSyncStatus({
           </TooltipContent>
         </Tooltip>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

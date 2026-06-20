@@ -3,6 +3,7 @@
 Admin-Endpunkte für DATEV Write-back und Lexware Bidirektional-Export.
 """
 
+from datetime import date, datetime, time
 from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
@@ -21,12 +22,18 @@ router = APIRouter(prefix="/admin/integration-sync", tags=["Integration Sync"])
 # --- DATEV Writeback Schemas ---
 
 class DATEVWritebackEntryRequest(BaseModel):
-    document_id: str
-    soll_konto: str
-    haben_konto: str
-    betrag: float
-    belegdatum: str  # ISO date
-    buchungstext: str
+    """Eine Buchung für den DATEV-Writeback.
+
+    Schemathesis-Fix (W1-004 #3): Leere Pflichtfelder ("" / betrag=false)
+    liefen bis ``datetime.fromisoformat("")`` durch -> 500. Jetzt 422 via
+    Pydantic-Constraints; belegdatum wird als ISO-Datum validiert.
+    """
+    document_id: str = Field(..., min_length=1, max_length=64)
+    soll_konto: str = Field(..., min_length=1, max_length=9, pattern=r"^\d+$")
+    haben_konto: str = Field(..., min_length=1, max_length=9, pattern=r"^\d+$")
+    betrag: float = Field(..., gt=0)
+    belegdatum: date  # ISO date (von Pydantic validiert)
+    buchungstext: str = Field(..., min_length=1, max_length=200)
     belegnummer: Optional[str] = None
     steuerschluessel: Optional[str] = None
     kostenstelle: Optional[str] = None
@@ -64,7 +71,6 @@ async def create_datev_writeback(
 ):
     """Erstellt einen DATEV Writeback-Batch mit Buchungen."""
     from app.services.datev.datev_writeback_service import DATEVWritebackService, WritebackEntry
-    from datetime import datetime
 
     service = DATEVWritebackService(db)
     batch = await service.create_batch(company_id, current_user.id, body.kontenrahmen)
@@ -80,7 +86,7 @@ async def create_datev_writeback(
             soll_konto=e.soll_konto,
             haben_konto=e.haben_konto,
             betrag=Decimal(str(e.betrag)),
-            belegdatum=datetime.fromisoformat(e.belegdatum),
+            belegdatum=datetime.combine(e.belegdatum, time.min),
             buchungstext=e.buchungstext,
             belegnummer=e.belegnummer,
             steuerschluessel=e.steuerschluessel,

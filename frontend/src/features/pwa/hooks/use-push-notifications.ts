@@ -6,16 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import {
-  getPushSubscriptions,
-  updateSubscriptionPreferences,
-  subscribeToPushNotifications,
-  unsubscribeFromPushNotifications,
-  sendTestNotification,
-  getSubscriptionStats,
-  type PushSubscriptionResponse,
-  type SubscriptionStats,
-} from '../api/push-api'
+import { getPushSubscriptions, updateSubscriptionPreferences, subscribeToPushNotifications, unsubscribeFromPushNotifications, sendTestNotification, getSubscriptionStats } from '../api/push-api'
 import { logger } from '@/lib/logger'
 
 // ==================================================

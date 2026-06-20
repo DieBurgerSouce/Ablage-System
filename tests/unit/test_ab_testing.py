@@ -416,8 +416,20 @@ class TestABTestManager:
 class TestConvenienceFunctions:
     """Test convenience functions."""
 
+    @pytest.fixture
+    def writable_singleton(self, tmp_path, monkeypatch):
+        """Setzt das globale ABTestManager-Singleton auf einen beschreibbaren tmp-Pfad.
+
+        Der Default-Storage-Pfad ist 'data/ab_tests'; das Container-Rootfs ist
+        read-only -> ohne Override schlaegt mkdir/_save_experiment mit OSError fehl.
+        """
+        import app.ml.ab_testing as ab
+        manager = ab.ABTestManager(storage_path=tmp_path / "ab_tests")
+        monkeypatch.setattr(ab, "_ab_test_manager", manager)
+        return manager
+
     @pytest.mark.unit
-    def test_get_ab_test_manager_singleton(self):
+    def test_get_ab_test_manager_singleton(self, writable_singleton):
         """Test singleton access."""
         from app.ml.ab_testing import get_ab_test_manager
 
@@ -425,9 +437,10 @@ class TestConvenienceFunctions:
         manager2 = get_ab_test_manager()
 
         assert manager1 is manager2
+        assert manager1 is writable_singleton
 
     @pytest.mark.unit
-    def test_create_routing_experiment(self):
+    def test_create_routing_experiment(self, writable_singleton):
         """Test quick routing experiment creation."""
         from app.ml.ab_testing import create_routing_experiment, ExperimentStatus
 

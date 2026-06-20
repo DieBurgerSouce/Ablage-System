@@ -572,10 +572,13 @@ class TestEnums:
 
     def test_member_role_values(self) -> None:
         """ProjectMemberRole hat erwartete Werte."""
+        # Echte Enum-Member (models_project.ProjectMemberRole):
+        # MEMBER, LEAD, ADMIN, OBSERVER, EXTERNAL. MANAGER/VIEWER existieren nicht.
         assert ProjectMemberRole.MEMBER.value == "member"
         assert ProjectMemberRole.LEAD.value == "lead"
-        assert ProjectMemberRole.MANAGER.value == "manager"
-        assert ProjectMemberRole.VIEWER.value == "viewer"
+        assert ProjectMemberRole.ADMIN.value == "admin"
+        assert ProjectMemberRole.OBSERVER.value == "observer"
+        assert ProjectMemberRole.EXTERNAL.value == "external"
 
 
 # =============================================================================
@@ -625,7 +628,10 @@ class TestDataClasses:
             project_id=uuid.uuid4(),
             confidence=0.85,
             assignment_reason="Entity-Match: Kunde XYZ",
-            assignment_type=DocumentAssignmentType.AUTO.value,
+            # DocumentAssignmentType bezeichnet den Dokument-TYP (invoice/contract/
+            # general...), nicht die Zuweisungs-Methode. AUTO existiert nicht;
+            # der Auto-Aspekt steckt in auto_assigned=True.
+            assignment_type=DocumentAssignmentType.GENERAL.value,
             auto_assigned=True,
         )
 

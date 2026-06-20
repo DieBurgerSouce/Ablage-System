@@ -4,7 +4,6 @@
  * mit verlinkter Hervorhebung.
  */
 
-import { useState, useCallback } from 'react'
 import {
     ResizablePanelGroup,
     ResizablePanel,
@@ -44,7 +43,7 @@ interface SplitViewLayoutProps {
     extractedDataReview: UseExtractedDataForReviewReturn
     corrections: UseFieldCorrectionsReturn
     isSubmitting: boolean
-    structuredPanelRef: React.RefObject<HTMLDivElement>
+    structuredPanelRef: React.RefObject<HTMLDivElement | null>
     // OCR text
     originalText: string
     currentText: string
@@ -77,18 +76,12 @@ export function SplitViewLayout({
     onTextChange,
     activeTab,
     onTabChange,
-    onBoundingBoxClick,
 }: SplitViewLayoutProps) {
-    const [highlightedField, setHighlightedField] = useState<string | null>(null)
 
-    const handleBoundingBoxClick = useCallback((fieldName: string) => {
-        setHighlightedField(fieldName)
-        onBoundingBoxClick?.(fieldName)
-    }, [onBoundingBoxClick])
 
     return (
         <ResizablePanelGroup
-            direction="horizontal"
+            orientation="horizontal"
             className="min-h-[calc(100vh-280px)] rounded-lg border"
         >
             {/* Linkes Panel: PDF/Bild-Vorschau */}

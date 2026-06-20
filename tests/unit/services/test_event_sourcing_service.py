@@ -53,6 +53,11 @@ async def test_event_store_append():
 
     mock_db.add = MagicMock(side_effect=mock_add)
 
+    # SHA-256 Hash-Chain: previous chain_hash muss ein gueltiger Hash-String
+    # sein (sonst bricht die Verkettung mit int+str). Bei seq>1 fragt der
+    # EventStore den vorherigen chain_hash via _get_previous_chain_hash ab.
+    event_store._get_previous_chain_hash = AsyncMock(return_value="0" * 64)
+
     # Act
     stored_event = await event_store.append(
         aggregate_type=aggregate_type,
@@ -184,7 +189,7 @@ async def test_event_store_aggregate_type_whitelist():
     invalid_type = "malicious_type"
 
     # Act & Assert
-    with pytest.raises(ValueError, match="Ungueltiger Aggregat-Typ"):
+    with pytest.raises(ValueError, match="Ungültiger Aggregat-Typ"):
         await event_store.append(
             aggregate_type=invalid_type,
             aggregate_id=uuid4(),
@@ -389,7 +394,7 @@ async def test_snapshot_aggregate_type_whitelist():
     snapshot_service = SnapshotService()
 
     # Act & Assert
-    with pytest.raises(ValueError, match="Ungueltiger Aggregat-Typ"):
+    with pytest.raises(ValueError, match="Ungültiger Aggregat-Typ"):
         await snapshot_service.create_snapshot(
             aggregate_type="invalid_type",
             aggregate_id=uuid4(),

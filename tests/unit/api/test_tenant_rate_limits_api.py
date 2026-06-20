@@ -285,7 +285,7 @@ class TestTenantRateLimitsAPI:
                 db=mock_db,
             )
 
-        assert "3 Custom-Limits geloescht" in result["message"]
+        assert "3 Custom-Limits gelöscht" in result["message"]
         assert result["company_id"] == str(company_id)
         mock_db.commit.assert_called_once()
 

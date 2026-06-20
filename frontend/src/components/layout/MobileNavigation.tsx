@@ -15,17 +15,7 @@ import { useCallback, useMemo } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import {
-    Home,
-    FileText,
-    Upload,
-    Search,
-    User,
-    Bell,
-    Settings,
-    LayoutDashboard,
-    type LucideIcon,
-} from 'lucide-react';
+import { FileText, Upload, Search, User, LayoutDashboard, type LucideIcon } from 'lucide-react';
 
 // =============================================================================
 // Types

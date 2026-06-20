@@ -8,6 +8,8 @@ Testet:
 - Health-Checks
 """
 
+import os
+
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from typing import Dict, Any
@@ -70,9 +72,15 @@ class TestVaultClientConnection:
     @pytest.fixture
     def mock_hvac(self):
         """Mock hvac Client."""
-        with patch('app.core.config.vault_client.VAULT_AVAILABLE', True):
-            with patch('app.core.config.vault_client.hvac') as mock:
-                yield mock
+        # VAULT_* aus os.environ entfernen: VaultClient.__init__ faellt sonst auf
+        # die Container-Env zurueck (VAULT_ADDR/VAULT_TOKEN gesetzt), wodurch
+        # vault_addr=None/vault_token=None nicht "nicht konfiguriert" bedeutet
+        # (Test-Pollution via Env, Wurzel e).
+        _vault_env = {k: v for k, v in os.environ.items() if not k.startswith("VAULT_")}
+        with patch.dict(os.environ, _vault_env, clear=True):
+            with patch('app.core.config.vault_client.VAULT_AVAILABLE', True):
+                with patch('app.core.config.vault_client.hvac') as mock:
+                    yield mock
 
     def test_connect_returns_false_when_hvac_not_available(self):
         """Connect sollte False zurückgeben wenn hvac nicht verfügbar."""
@@ -239,9 +247,14 @@ class TestVaultClientAppRole:
     @pytest.fixture
     def mock_hvac(self):
         """Mock hvac Client."""
-        with patch('app.core.config.vault_client.VAULT_AVAILABLE', True):
-            with patch('app.core.config.vault_client.hvac') as mock:
-                yield mock
+        # VAULT_* aus os.environ entfernen, sonst leakt das Container-VAULT_TOKEN
+        # in den Client und der AppRole-Pfad (nur wenn KEIN Token) wird nie
+        # betreten -> approle.login wird nicht aufgerufen (Wurzel e).
+        _vault_env = {k: v for k, v in os.environ.items() if not k.startswith("VAULT_")}
+        with patch.dict(os.environ, _vault_env, clear=True):
+            with patch('app.core.config.vault_client.VAULT_AVAILABLE', True):
+                with patch('app.core.config.vault_client.hvac') as mock:
+                    yield mock
 
     def test_approle_authentication(self, mock_hvac):
         """AppRole-Auth sollte Token setzen."""

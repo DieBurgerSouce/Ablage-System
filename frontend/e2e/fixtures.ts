@@ -114,6 +114,27 @@ export const test = base.extend<{
       window.sessionStorage.setItem('auth_token', data.access_token);
       window.sessionStorage.setItem('refresh_token', data.refresh_token);
       window.sessionStorage.setItem('user', data.user);
+
+      // Onboarding/Touren unterdruecken: Jeder frische Browser-Context gilt sonst
+      // als "Erstbesuch" und die App legt einen modalen OnboardingWizard (Radix-
+      // Dialog -> aria-hidden auf dem Rest der App) plus Produkt-Tour-Spotlight
+      // (z-[9998]-Overlay, faengt alle Klicks ab) ueber jede Seite.
+      // Keys stammen aus:
+      //  - features/onboarding/hooks/use-onboarding.ts  (ablage_onboarding_v2)
+      //  - components/onboarding/WelcomeModal.tsx       (ablage_onboarding_complete)
+      //  - features/product-tour/components/TourProvider.tsx (ablage-first-visit-done)
+      window.localStorage.setItem(
+        'ablage_onboarding_v2',
+        JSON.stringify({
+          completed: true,
+          skipped: true,
+          currentStep: 0,
+          companyConfigured: true,
+          documentUploaded: false,
+        })
+      );
+      window.localStorage.setItem('ablage_onboarding_complete', 'true');
+      window.localStorage.setItem('ablage-first-visit-done', 'true');
     }, sessionData);
 
     // Set up automatic session refresh during long tests
@@ -138,15 +159,28 @@ export const test = base.extend<{
       }, SESSION_REFRESH_INTERVAL_MS);
     };
 
+    // HINWEIS (B5, 2026-06-12): Der fruehere Notifications-Shim wurde
+    // entfernt - der Frontend-API-Layer normalisiert den echten Backend-
+    // Vertrag ({notifications, unreadCount, total}) jetzt selbst
+    // (frontend/src/features/notifications/api/index.ts).
+
     // Now navigate to the app - auth data will already be in sessionStorage
+    // Kein 'networkidle': Das Dashboard laedt dauerhaft nach (Notifications,
+    // KI-Insights, WebSocket-Reconnects) und unter Last retried TanStack Query —
+    // 'networkidle' wird dann nie erreicht und riss ganze Spec-Dateien per
+    // 30s-Timeout ab (QA-Lauf 2026-06-12). Stattdessen auf die App-Shell warten.
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify we're logged in (not on login page)
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
+    // BEWUSST KEIN Warten auf #main-content: Die Ziel-Routen der Tests
+    // rendern nach page.goto() ohnehin frisch. (Der fruehere deterministische
+    // Dashboard-Crash - WidgetSyncStatus ohne TooltipProvider - ist seit
+    // 2026-06-12 behoben, B1.)
+
     const currentUrl = page.url();
     console.log('[Fixtures] After auth setup, current URL: ' + currentUrl);
-
-    await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // Start background session refresh for long-running tests
     startSessionRefresh();
@@ -158,6 +192,9 @@ export const test = base.extend<{
     if (refreshInterval) {
       clearInterval(refreshInterval);
     }
+    // Offene Route-Handler (aus einzelnen Specs) sauber abraeumen, damit
+    // In-Flight-Requests beim Page-Close keine Teardown-Fehler ausloesen.
+    await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
   },
 });
 

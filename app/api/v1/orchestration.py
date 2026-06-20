@@ -1828,20 +1828,34 @@ async def get_insight_rules(
     from app.services.orchestration import get_proactive_insights_service
 
     service = get_proactive_insights_service()
-    rules = service.rule_engine.get_all_rules()
+    rules = service._rule_engine.get_all_rules()
 
-    return [
-        InsightRuleResponse(
-            rule_id=rule.rule_id,
-            name=rule.name,
-            description=rule.description,
-            entity_type=rule.entity_type.value,
-            insight_type=rule.insight_type.value,
-            priority=rule.priority.value,
-            is_enabled=rule.is_enabled,
+    responses: List[InsightRuleResponse] = []
+    for rule in rules:
+        # InsightRule-Dataclass besitzt nur rule_id/entity_types/condition/
+        # generate/priority. Restliche Felder defensiv ableiten.
+        entity_types = getattr(rule, "entity_types", []) or []
+        first_entity = entity_types[0] if entity_types else None
+        entity_type_value = (
+            getattr(first_entity, "value", str(first_entity))
+            if first_entity is not None
+            else "general"
         )
-        for rule in rules
-    ]
+        priority = getattr(rule, "priority", None)
+        priority_value = getattr(priority, "value", str(priority) if priority is not None else "medium")
+        rule_id = getattr(rule, "rule_id", "")
+        responses.append(
+            InsightRuleResponse(
+                rule_id=rule_id,
+                name=getattr(rule, "name", rule_id.replace("_", " ").title()),
+                description=getattr(rule, "description", ""),
+                entity_type=entity_type_value,
+                insight_type=getattr(rule, "insight_type", "unknown"),
+                priority=priority_value,
+                is_enabled=getattr(rule, "is_enabled", True),
+            )
+        )
+    return responses
 
 
 @limiter.limit("60/minute", key_func=get_user_identifier)
@@ -2646,8 +2660,14 @@ async def get_threshold_stats(
 # Seasonality Pydantic Models
 # ----------------------
 
-class SeasonalPatternResponse(BaseModel):
-    """Response für ein erkanntes saisonales Muster."""
+class SeasonalPatternDetailResponse(BaseModel):
+    """Response für ein erkanntes saisonales Muster (detailliert).
+
+    Umbenannt von SeasonalPatternResponse: es gab eine zweite, knappere Klasse
+    gleichen Namens weiter unten (Z.~3374), die diese hier im Modul-Namespace
+    ueberschattete -> der detect-patterns-Endpoint konstruierte faelschlich die
+    falsche (knappe) Klasse OHNE deren Pflichtfelder -> ValidationError/500.
+    """
     id: str
     category: str
     season_type: str
@@ -2767,7 +2787,7 @@ class SeasonalityStatisticsResponse(BaseModel):
 @limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/seasonality/detect-patterns",
-    response_model=List[SeasonalPatternResponse],
+    response_model=List[SeasonalPatternDetailResponse],
     summary="Saisonale Muster erkennen",
     description="""
     Analysiert historische Transaktionsdaten und erkennt saisonale Muster.
@@ -2787,7 +2807,7 @@ async def detect_seasonal_patterns(
     fastapi_request: Request,
     request: DetectPatternsRequest,
     current_user: User = Depends(get_current_active_user),
-) -> List[SeasonalPatternResponse]:
+) -> List[SeasonalPatternDetailResponse]:
     """Erkennt saisonale Muster aus historischen Daten."""
     from app.services.orchestration import get_seasonality_detection_service
 
@@ -2799,7 +2819,7 @@ async def detect_seasonal_patterns(
     )
 
     return [
-        SeasonalPatternResponse(
+        SeasonalPatternDetailResponse(
             id=str(p.id),
             category=p.category.value,
             season_type=p.season_type.value,
@@ -3730,7 +3750,7 @@ async def get_seasonal_analysis(
         analysis = await service.analyze_company_seasonality(
             db=db,
             company_id=company_id,
-            months_history=months_history,
+            
         )
 
         if not analysis:

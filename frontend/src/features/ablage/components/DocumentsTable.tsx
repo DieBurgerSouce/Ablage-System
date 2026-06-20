@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import {
   createColumnHelper,
+  type ColumnDef,
   type SortingState,
   type RowSelectionState,
   type OnChangeFn,
@@ -436,7 +437,9 @@ export function DocumentsTable({
   return (
     <div data-testid="documents-table">
       <DataGrid
-        columns={columns}
+        // TanStack-Helper erzeugt ColumnDef<T, TValue>-Varianten; DataGrid
+        // erwartet die unkonkretisierte unknown-Form (dokumentiertes Muster)
+        columns={columns as ColumnDef<CategoryDocumentResponse, unknown>[]}
         data={documents}
         sorting={sorting}
         onSortingChange={onSortingChange}

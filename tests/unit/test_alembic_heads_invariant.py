@@ -84,15 +84,19 @@ class TestAlembicSingleHead:
             "Erzeuge eine Merge-Revision oder dokumentiere bewusste Branches."
         )
 
-    def test_head_is_262(self):
-        """Aktueller Head muss 262 (merge_all_dangling_heads) sein."""
+    def test_head_is_268(self):
+        """Aktueller Head muss 268 sein (single head; seit 262 weiter gewachsen).
+
+        Die Invariante ist 'genau EIN Head'; die Nummer wandert mit neuen
+        Migrationen mit (262 -> ... -> 268).
+        """
         repo_root = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "..")
         )
         versions = os.path.join(repo_root, "alembic", "versions")
         revisions = _enumerate_revisions(versions)
         heads = _compute_heads(revisions)
-        assert heads == ["262"], f"Erwarte head '262', gefunden {heads}"
+        assert heads == ["268"], f"Erwarte head '268', gefunden {heads}"
 
     def test_no_orphan_revisions(self):
         """Jede down_revision muss auf eine existierende Revision verweisen."""

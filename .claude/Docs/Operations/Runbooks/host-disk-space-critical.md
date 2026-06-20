@@ -91,7 +91,7 @@ docker volume ls -f "dangling=true" -q | wc -l
 
 ```bash
 # PostgreSQL Tabellen-Größen
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT
     schemaname,
     tablename,
@@ -103,7 +103,7 @@ LIMIT 10;
 "
 
 # PostgreSQL VACUUM-Status
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT relname, n_dead_tup, last_vacuum, last_autovacuum
 FROM pg_stat_user_tables
 ORDER BY n_dead_tup DESC
@@ -163,7 +163,7 @@ docker update --log-opt max-size=50m --log-opt max-file=3 ablage-backend
 
 ```bash
 # VACUUM FULL (blockiert, aber effektiv)
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "VACUUM FULL ANALYZE;"
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "VACUUM FULL ANALYZE;"
 
 # Alte Audit-Logs löschen (> 90 Tage)
 docker exec ablage-backend python -c "
@@ -288,7 +288,7 @@ done | sort -rh | head -10
 
 ```bash
 # Wachstumsrate berechnen (letzte 30 Tage)
-docker exec ablage-postgres psql -U ablage_admin -d ablage -c "
+docker exec ablage-postgres psql -U ablage_admin -d ablage_system -c "
 SELECT
     date_trunc('day', created_at) as day,
     COUNT(*) as documents,

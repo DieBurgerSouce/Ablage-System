@@ -69,6 +69,14 @@ describe('invoiceService', () => {
         updatedAt: '2025-01-01T00:00:00Z',
         isOverdue: false,
         daysOverdue: 0,
+        // Skonto-/Teilzahlungs-Felder (Feature-Erweiterung der Transform)
+        isPartialPayment: false,
+        outstandingAmount: null,
+        skontoAmount: null,
+        skontoDays: null,
+        skontoDeadline: null,
+        skontoPercentage: null,
+        skontoUsed: false,
       });
     });
 

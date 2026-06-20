@@ -6,14 +6,7 @@
 
 import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import {
-    AlertTriangle,
-    Clock,
-    CheckSquare,
-    Percent,
-    Bell,
-    FileWarning,
-} from 'lucide-react';
+import { Clock, CheckSquare, Percent, Bell, FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

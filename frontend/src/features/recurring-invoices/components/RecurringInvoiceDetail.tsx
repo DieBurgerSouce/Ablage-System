@@ -5,7 +5,7 @@
  * und Kündigungsinformationen.
  */
 
-import { ArrowLeft, Calendar, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';

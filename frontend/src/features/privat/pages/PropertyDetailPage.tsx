@@ -25,7 +25,6 @@ import { toast } from 'sonner';
 import * as privatApi from '../api/privat-api';
 import type { PrivatPropertyWithDetails, PrivatPropertyUpdate } from '@/types/privat';
 import { PropertyEditDialog } from '../components/properties/PropertyEditDialog';
-import { DocumentUploadSection } from '../components/shared/DocumentUploadSection';
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   apartment: 'Wohnung',

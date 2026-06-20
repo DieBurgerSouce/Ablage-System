@@ -12,6 +12,8 @@ Ausfuehrung:
     pytest tests/integration/test_cash_isolation.py -v -m integration
 """
 
+import os
+
 import pytest
 import pytest_asyncio
 from decimal import Decimal
@@ -50,8 +52,15 @@ pytestmark = [
 
 @pytest_asyncio.fixture
 async def db_engine():
-    """Erstellt Test-Datenbank-Engine."""
-    test_db_url = "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test"
+    """Erstellt Test-Datenbank-Engine.
+
+    TEST_DATABASE_URL hat Vorrang (Docker/CI); ohne erreichbare Datenbank
+    wird sauber geskippt statt mit ERROR abzubrechen.
+    """
+    test_db_url = os.environ.get(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test",
+    )
 
     engine = create_async_engine(
         test_db_url,
@@ -59,8 +68,12 @@ async def db_engine():
         pool_pre_ping=True,
     )
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        await engine.dispose()
+        pytest.skip(f"PostgreSQL-Testdatenbank nicht erreichbar: {exc}")
 
     yield engine
 

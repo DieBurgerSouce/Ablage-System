@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db, get_current_company_id
+from app.api.dependencies import get_current_active_user, get_db, get_current_company_id, get_user_company_id
 from app.db.models import User
 from app.services.active_learning.active_learning_service import ActiveLearningService
 from app.core.safe_errors import safe_error_log, safe_error_detail
@@ -387,16 +387,27 @@ async def get_stats(
 )
 async def get_metrics(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
 ) -> ImpactMetricsResponse:
     """Berechnet und liefert Impact-Metriken."""
     try:
+        # F-31: Company-ID robust ueber UserCompany aufloesen statt aus dem
+        # ContextVar (der fuer User ohne aktive Company None ist -> der Service
+        # schreibt sonst eine ActiveLearningMetrics-Zeile mit NULL company_id ->
+        # NotNullViolation/500). Ohne Company-Zuordnung: sauberes 400.
+        company_id = await get_user_company_id(db, current_user)
+        if company_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Keine Company-Zuordnung gefunden",
+            )
         service = ActiveLearningService(db)
         metrics = await service.calculate_impact_metrics(company_id=company_id)
 
         return ImpactMetricsResponse(**metrics)
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(
             "get_metrics_failed",

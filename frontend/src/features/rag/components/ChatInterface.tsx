@@ -56,7 +56,7 @@ export function ChatInterface({
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Chat status
-    const { data: chatStatus, isLoading: statusLoading } = useChatStatus();
+    const { data: chatStatus } = useChatStatus();
 
     // WebSocket connection
     const {
@@ -68,7 +68,7 @@ export function ChatInterface({
         contextDocuments,
         statusMessage,
         connect,
-        disconnect,
+        disconnect: _disconnect,
         sendMessage,
         clearHistory,
     } = useChatWebSocket({
@@ -204,6 +204,8 @@ export function ChatInterface({
                                     size="icon"
                                     onClick={handleClear}
                                     disabled={status !== 'connected' || messages.length === 0}
+                                    // a11y (button-name): nur Icon + Tooltip -> echter accessible name noetig.
+                                    aria-label="Verlauf löschen"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>

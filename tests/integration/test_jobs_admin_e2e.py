@@ -14,6 +14,8 @@ Ausfuehrung:
     pytest tests/integration/test_jobs_admin_e2e.py -v -m integration
 """
 
+import os
+
 import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
@@ -47,7 +49,11 @@ pytestmark = [
 # TEST DATABASE CONFIGURATION
 # ============================================================================
 
-TEST_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test"
+# TEST_DATABASE_URL hat Vorrang (Docker/CI), sonst lokaler Fallback
+TEST_DB_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test",
+)
 
 
 # ============================================================================
@@ -56,7 +62,11 @@ TEST_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5433/ablage_test
 
 @pytest_asyncio.fixture
 async def db_engine():
-    """Erstellt Test-Datenbank-Engine mit PostgreSQL."""
+    """Erstellt Test-Datenbank-Engine mit PostgreSQL.
+
+    Ohne erreichbare Datenbank wird sauber geskippt statt mit ERROR
+    abzubrechen.
+    """
     engine = create_async_engine(
         TEST_DB_URL,
         echo=False,
@@ -64,8 +74,12 @@ async def db_engine():
     )
 
     # Tabellen erstellen falls nicht vorhanden
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        await engine.dispose()
+        pytest.skip(f"PostgreSQL-Testdatenbank nicht erreichbar: {exc}")
 
     yield engine
 

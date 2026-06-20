@@ -25,7 +25,6 @@ import { toast } from 'sonner';
 import * as privatApi from '../api/privat-api';
 import type { PrivatInsuranceWithDeadlines, PrivatInsuranceUpdate } from '@/types/privat';
 import { InsuranceEditDialog } from '../components/insurances/InsuranceEditDialog';
-import { DocumentUploadSection } from '../components/shared/DocumentUploadSection';
 
 const INSURANCE_TYPE_LABELS: Record<string, string> = {
   health: 'Krankenversicherung',

@@ -264,7 +264,6 @@ function ForecastCard({ forecast, periodLabel }: ForecastCardProps) {
 // ==================== Bottleneck Alert Component ====================
 
 function BottleneckAlert({ bottleneck }: { bottleneck: LiquidityBottleneck }) {
-    const config = RISK_LEVEL_CONFIG[bottleneck.severity];
 
     return (
         <Alert variant={bottleneck.severity === 'critical' ? 'destructive' : 'default'} className="mb-2">

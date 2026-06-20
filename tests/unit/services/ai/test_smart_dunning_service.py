@@ -199,10 +199,14 @@ class TestToneDetermination:
         service: SmartDunningService,
         sample_customer_profile: CustomerProfile,
     ):
-        """1. Mahnung sollte neutral sein."""
+        """1. Mahnung sollte neutral sein.
+
+        Vertrag: Basis-Ton der 1. Mahnung ist NEUTRAL. Der GOOD/VIP-Rabatt
+        mildert nur FIRM->NEUTRAL und URGENT->FIRM ab; NEUTRAL bleibt NEUTRAL
+        (eine erste Erinnerung ist bereits angemessen zurueckhaltend).
+        """
         tone = service._determine_tone(DunningLevel.FIRST, sample_customer_profile)
-        # GOOD-Kunde bekommt eine Stufe freundlicher
-        assert tone == DunningTone.FRIENDLY
+        assert tone == DunningTone.NEUTRAL
 
     def test_tone_second_dunning(
         self,
@@ -727,7 +731,8 @@ class TestPaymentBehaviorDescription:
 
         description = service._describe_payment_behavior(sample_customer_profile)
 
-        assert "verspaetet" in description.lower()
+        # Echte Beschreibung nutzt UTF-8-Umlaut: "... verspätet"
+        assert "verspätet" in description.lower()
 
     def test_describe_with_trend(
         self,

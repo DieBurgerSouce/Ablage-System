@@ -406,8 +406,14 @@ class TestCheckRateLimitBudget:
 
     @pytest.mark.asyncio
     async def test_budget_when_redis_unavailable(self):
-        """Test budget check returns available when Redis unavailable."""
-        with patch("app.core.rate_limiting.get_redis_storage", AsyncMock(return_value=None)):
+        """Test budget check returns available when Redis unavailable (fail-open)."""
+        # Dieser Test prueft den Fail-OPEN-Pfad (graceful degradation). Die Quelle
+        # entscheidet anhand settings.RATE_LIMIT_FAIL_CLOSED; im Container ist das
+        # True (-> wuerde RateLimitStorageError werfen). Fuer den Fail-Open-Vertrag
+        # explizit auf False patchen. (Den Fail-CLOSED-Pfad deckt
+        # test_rate_limiting_fail_closed.py ab.)
+        with patch("app.core.rate_limiting.settings.RATE_LIMIT_FAIL_CLOSED", False), \
+             patch("app.core.rate_limiting.get_redis_storage", AsyncMock(return_value=None)):
             from app.core.rate_limiting import check_rate_limit_budget
 
             result = await check_rate_limit_budget("user123", "ocr", "free")

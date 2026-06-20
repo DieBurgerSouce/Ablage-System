@@ -6,20 +6,10 @@
 
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import {
-  Play,
-  Pause,
-  Trophy,
-  BarChart3,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  FlaskConical,
-} from 'lucide-react';
+import { Play, Pause, Trophy, Clock, CheckCircle2, XCircle, FlaskConical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import type { WorkflowABTest } from '../types/version-types';

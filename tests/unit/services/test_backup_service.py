@@ -264,20 +264,22 @@ class TestBackupService:
     @pytest.mark.asyncio
     async def test_backup_full(self, backup_service):
         """Test full backup runs all components."""
-        # Mock individual backup methods
+        # Mock individual backup methods (alle 5 Komponenten inkl. qdrant)
         postgres_result = BackupResult(success=True, backup_type="postgres")
         redis_result = BackupResult(success=True, backup_type="redis")
         minio_result = BackupResult(success=True, backup_type="minio")
         config_result = BackupResult(success=True, backup_type="config")
+        qdrant_result = BackupResult(success=True, backup_type="qdrant")
 
         with patch.object(backup_service, "backup_postgres", new_callable=AsyncMock, return_value=postgres_result):
             with patch.object(backup_service, "backup_redis", new_callable=AsyncMock, return_value=redis_result):
                 with patch.object(backup_service, "backup_minio", new_callable=AsyncMock, return_value=minio_result):
                     with patch.object(backup_service, "backup_config", new_callable=AsyncMock, return_value=config_result):
-                        results = await backup_service.backup_full()
+                        with patch.object(backup_service, "backup_qdrant", new_callable=AsyncMock, return_value=qdrant_result):
+                            results = await backup_service.backup_full()
 
-                        assert len(results) == 4
-                        assert all(r.success for r in results)
+                            assert len(results) == 5
+                            assert all(r.success for r in results)
 
     @pytest.mark.asyncio
     async def test_validate_backup_gzip(self, backup_service, temp_backup_dir):
@@ -638,7 +640,7 @@ class TestBackupServicePostEncryptionValidation:
         result = await backup_service._validate_encrypted_file(encrypted_file, 1000)
 
         assert result["valid"] is False
-        assert "Ungueltige GPG-Datei" in result["error"]
+        assert "Ungültige GPG-Datei" in result["error"]
 
     @pytest.mark.asyncio
     async def test_validate_encrypted_file_ascii_armored(self, backup_service, tmp_path):

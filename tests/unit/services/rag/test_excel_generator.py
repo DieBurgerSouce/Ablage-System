@@ -292,7 +292,7 @@ class TestCreateSupplierReport:
         wb = load_workbook(BytesIO(result))
         assert "Zusammenfassung" in wb.sheetnames
         assert "Rechnungen" in wb.sheetnames
-        assert "Vertraege" in wb.sheetnames
+        assert "Verträge" in wb.sheetnames
 
     def test_create_supplier_report_with_data(self, generator: ExcelReportGenerator):
         """Sollte Lieferantenreport mit Daten erstellen."""
@@ -331,7 +331,7 @@ class TestCreateSupplierReport:
         assert ws_invoices["A2"].value == "RE-001"
 
         # Vertraege pruefen
-        ws_contracts = wb["Vertraege"]
+        ws_contracts = wb["Verträge"]
         assert ws_contracts["A1"].value == "Vertragsnr."
         assert ws_contracts["B2"].value == "Rahmenvertrag"
 

@@ -1,4 +1,4 @@
-import { Link, useLocation, useMatches } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { ChevronRight, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -82,7 +82,7 @@ const ROUTE_LABELS: Record<string, string> = {
 /**
  * Dynamic segment patterns for label generation
  */
-function getDynamicLabel(segment: string, fullPath: string): string {
+function getDynamicLabel(segment: string, _fullPath: string): string {
     // Year pattern (4 digits)
     if (/^\d{4}$/.test(segment)) {
         return segment
@@ -193,14 +193,14 @@ export function Breadcrumbs({
 
     // Collapse middle items if too many
     let displayItems = items
-    let hasCollapsed = false
+    
     if (items.length > maxItems) {
         displayItems = [
             items[0], // Home
             { label: '...', path: '', isLast: false }, // Collapsed indicator
             ...items.slice(-(maxItems - 2)), // Last items
         ]
-        hasCollapsed = true
+        
     }
 
     return (

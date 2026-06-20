@@ -602,7 +602,10 @@ function ContractSections({ contract, corrections, extractedDataReview, disabled
     } = extractedDataReview
 
     // Helper für Feld-Props
-    const getFieldProps = (field: string, value: string | number | boolean | null | undefined) => {
+    // Hinweis: boolean ist bewusst NICHT erlaubt — EditableField akzeptiert nur
+    // string | number | null | undefined (boolesche Felder wie auto_renewal
+    // werden separat als Ja/Nein gerendert).
+    const getFieldProps = (field: string, value: string | number | null | undefined) => {
         const correction = getCorrection(field)
         const validationError = getValidationError(field)
         const normalizedValue = value ?? null

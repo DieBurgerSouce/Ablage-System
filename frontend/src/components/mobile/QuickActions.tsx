@@ -14,26 +14,10 @@
  */
 
 import * as React from 'react';
-import {
-  Camera,
-  Upload,
-  CheckCircle2,
-  FileText,
-  Clock,
-  Bell,
-  Search,
-  Plus,
-  FolderOpen,
-  AlertTriangle,
-  RefreshCw,
-  WifiOff,
-  Loader2,
-  type LucideIcon,
-} from 'lucide-react';
+import { Camera, Upload, CheckCircle2, Clock, Search, Plus, AlertTriangle, RefreshCw, WifiOff, Loader2, type LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { usePWA } from '@/context/PWAContext';
 import { useQuery } from '@tanstack/react-query';
@@ -132,7 +116,7 @@ function useQuickActionCounts(enabled: boolean) {
   return useQuery<QuickActionCounts>({
     queryKey: ['quick-action-counts'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/v1/dashboard/quick-counts');
+      const response = await apiClient.get('/dashboard/quick-counts');
       return response.data;
     },
     enabled,

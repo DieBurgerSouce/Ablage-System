@@ -5,22 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import {
-  CreditCard,
-  RefreshCw,
-  Users,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Clock,
-  Percent,
-  DollarSign,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-} from 'lucide-react';
+import { CreditCard, RefreshCw, Users, AlertTriangle, TrendingUp, TrendingDown, Minus, Clock, Percent, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +18,6 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -54,13 +38,7 @@ import type {
   PaymentBehaviorCategory,
   PaymentTrend,
 } from '../types/payment-behavior-types';
-import {
-  BEHAVIOR_CATEGORY_COLORS,
-  BEHAVIOR_CATEGORY_LABELS,
-  PAYMENT_TREND_COLORS,
-  PAYMENT_TREND_LABELS,
-  UI_LABELS,
-} from '../types/payment-behavior-types';
+import { BEHAVIOR_CATEGORY_COLORS, BEHAVIOR_CATEGORY_LABELS, PAYMENT_TREND_COLORS, UI_LABELS } from '../types/payment-behavior-types';
 
 interface PaymentBehaviorDashboardProps {
   className?: string;

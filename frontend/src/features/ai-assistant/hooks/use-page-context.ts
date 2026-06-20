@@ -6,14 +6,8 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { useLocation, useParams, useMatches } from '@tanstack/react-router';
+import { useLocation, useParams } from '@tanstack/react-router';
 import { useAIAssistantStore, type PageContext, type PageContextType } from '../stores/ai-assistant-store';
-
-interface RouteMatch {
-  id: string;
-  pathname: string;
-  params: Record<string, string>;
-}
 
 /**
  * Maps route patterns to page context types.

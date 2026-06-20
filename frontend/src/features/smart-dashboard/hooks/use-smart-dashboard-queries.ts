@@ -1,26 +1,11 @@
 // Smart Dashboard React Query Hooks
 // Query key factory + hooks with optimistic updates
 
-import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type UseQueryResult, type UseMutationResult } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import { smartDashboardApi } from '../api/smart-dashboard-api';
-import {
-  KPIData,
-  TabData,
-  WidgetData,
-  DocumentProgress,
-  BatchProgress,
-  TrendData,
-  WidgetLayout,
-  DashboardTabKey,
-  transformKPIData,
-  transformTabData,
-  transformWidgetData,
-  transformDocumentProgress,
-  transformBatchProgress,
-  transformTrendData,
-} from '../types/smart-dashboard-types';
+import { type KPIData, type TabData, type WidgetData, type DocumentProgress, type BatchProgress, type TrendData, type WidgetLayout, type DashboardTabKey, transformKPIData, transformTabData, transformWidgetData, transformDocumentProgress, transformBatchProgress, transformTrendData } from '../types/smart-dashboard-types';
 
 // ============================================================================
 // QUERY KEY FACTORY
@@ -95,7 +80,7 @@ export function useSaveLayout(): UseMutationResult<void, Error, WidgetLayout[], 
     mutationFn: async (layout: WidgetLayout[]) => {
       await smartDashboardApi.saveLayout(layout);
     },
-    onMutate: async (newLayout) => {
+    onMutate: async (_newLayout) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: smartDashboardKeys.all });
 
@@ -107,7 +92,7 @@ export function useSaveLayout(): UseMutationResult<void, Error, WidgetLayout[], 
 
       return { previousLayout };
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       // Rollback on error
       if (context?.previousLayout) {
         queryClient.setQueryData(smartDashboardKeys.all, context.previousLayout);

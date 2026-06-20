@@ -53,6 +53,20 @@ class PortalDocumentService:
         Returns:
             Tuple aus (ist_valide, Fehlermeldung)
         """
+        # Sicherheit: Dateiname darf keine Pfad-Trenner, Null-Bytes oder
+        # Parent-Verweise enthalten (Path-Traversal, CWE-22). Auch wenn
+        # Path().stem/.suffix Verzeichnisanteile entfernt, lehnen wir hier
+        # explizit ab statt uns auf Seiteneffekte zu verlassen.
+        if not filename or not filename.strip():
+            return False, "Ungueltiger Dateiname"
+        if (
+            "\x00" in filename
+            or "/" in filename
+            or "\\" in filename
+            or ".." in filename
+        ):
+            return False, "Ungueltiger Dateiname (Pfad nicht erlaubt)"
+
         # Prüfe Dateigröße
         if file_size > MAX_FILE_SIZE:
             return False, f"Datei zu gross. Maximum: {MAX_FILE_SIZE // (1024*1024)} MB"

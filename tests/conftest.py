@@ -112,11 +112,18 @@ except (ImportError, Exception) as e:
 # Ensure all model modules are imported so SQLAlchemy mapper resolves string relationships.
 # Without this, creating model instances (e.g. DomainEvent) fails with
 # "expression 'ProcessDefinition' failed to locate a name".
+# WICHTIG: importlib statt "import app.db...." verwenden! Ein nacktes
+# "import app.db.bpmn_models.bpmn" bindet den Namen ``app`` in DIESEM Modul
+# an das Paket-Modul und ueberschreibt damit die oben importierte
+# FastAPI-Instanz -> client/async_client erhalten ein Modul statt der App
+# ("TypeError: 'module' object is not callable").
 try:
-    import app.db.bpmn_models.bpmn  # noqa: F401 - ProcessDefinition, ProcessInstance, etc.
-    import app.db.bpmn_models.gobd  # noqa: F401 - AuditChainEntry, DocumentArchive, etc.
-    import app.db.models_po_matching  # noqa: F401 - PurchaseOrderMatch, MatchStatus
-    import app.db.models_gl_posting  # noqa: F401 - JournalEntry, JournalEntryLine
+    import importlib
+
+    importlib.import_module("app.db.bpmn_models.bpmn")  # ProcessDefinition, ProcessInstance, etc.
+    importlib.import_module("app.db.bpmn_models.gobd")  # AuditChainEntry, DocumentArchive, etc.
+    importlib.import_module("app.db.models_po_matching")  # PurchaseOrderMatch, MatchStatus
+    importlib.import_module("app.db.models_gl_posting")  # JournalEntry, JournalEntryLine
 except (ImportError, Exception):
     pass
 
@@ -177,6 +184,10 @@ async def test_db():
         )
 
         async with engine.begin() as conn:
+            # Modelle nutzen pgvector/pg_trgm-Typen -> Extensions sicherstellen,
+            # bevor create_all die Tabellen baut (idempotent).
+            await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
+            await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS pg_trgm")
             await conn.run_sync(Base.metadata.create_all)
 
         async_session_maker = async_sessionmaker(
@@ -186,9 +197,24 @@ async def test_db():
         async with async_session_maker() as session:
             yield session
 
-        # Cleanup
+        # Cleanup: DROP SCHEMA ... CASCADE statt metadata.drop_all - letzteres
+        # scheitert an zyklischen FK-Abhaengigkeiten ohne benannte Constraints
+        # (cash_entries/document_groups/documents/expense_reports) mit
+        # "Can't sort tables for DROP". CASCADE loest alle Abhaengigkeiten sauber;
+        # die Extensions werden im naechsten Setup via IF NOT EXISTS neu angelegt.
+        #
+        # NACHHALTIGKEITS-HINWEIS: DROP SCHEMA CASCADE nimmt ALLE Objekt-Locks in EINER
+        # Transaktion. Bei ~480 Modell-Tabellen kann das max_locks_per_transaction
+        # (PG-Default 64) ueberschreiten -> "out of shared memory / increase
+        # max_locks_per_transaction" -> die db-Fixture skippt ("Database not available").
+        # Ein frischer CI-Lauf (leere Test-DB) ist nicht betroffen; nur wiederholte
+        # lokale Laeufe auf einer schon befuellten Test-DB. Dauerhafte Abhilfe: Postgres
+        # mit `-c max_locks_per_transaction=256` starten (docker-compose). Lokaler
+        # Workaround ohne DB-Reconfig: `DROP DATABASE ablage_test; CREATE DATABASE
+        # ablage_test OWNER ablage_admin;` vor dem erneuten Lauf.
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+            await conn.exec_driver_sql("DROP SCHEMA public CASCADE")
+            await conn.exec_driver_sql("CREATE SCHEMA public")
 
         await engine.dispose()
     except Exception as e:
@@ -431,12 +457,58 @@ def sample_image_file(tmp_path):
 
 
 # Event loop configuration
+_SESSION_EVENT_LOOP: "asyncio.AbstractEventLoop | None" = None
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an event loop for async tests."""
+    global _SESSION_EVENT_LOOP
     loop = asyncio.get_event_loop_policy().new_event_loop()
+    _SESSION_EVENT_LOOP = loop
     yield loop
+    _SESSION_EVENT_LOOP = None
     loop.close()
+
+
+@pytest.fixture(autouse=True)
+def _repair_global_event_loop() -> Generator[None, None, None]:
+    """Stellt vor jedem Test einen funktionsfaehigen Current-Event-Loop sicher.
+
+    Hintergrund (Test-Pollution, Vollsuiten-Lauf 2026-06-12: ~6900 Failures):
+    pytest-asyncio 0.23 fuehrt async Tests auf dem *aktuellen* Loop aus
+    (``asyncio.get_event_loop()`` in ``wrap_in_sync``), waehrend die
+    session-scoped ``event_loop``-Fixture oben nur EINMAL als Current-Loop
+    gesetzt wird. Viele Celery-Sync-Wrapper in ``app/workers/tasks/*`` nutzen
+    das Muster ``new_event_loop() -> set_event_loop() -> close()`` OHNE den
+    vorherigen Loop zu restaurieren; ``asyncio.run()`` setzt den Current-Loop
+    am Ende auf ``None``. Ruft ein synchroner Test solchen App-Code auf
+    (z.B. ``_run_async`` in duplicate_detection_tasks), ist der globale Loop
+    danach geschlossen bzw. entfernt -> ALLE nachfolgenden async Tests der
+    Session scheitern mit "Event loop is closed" / "There is no current event
+    loop in thread 'MainThread'", obwohl jede Datei standalone gruen ist.
+
+    Dieser Guard repariert den globalen Zustand pro Test: Ist der aktuelle
+    Loop geschlossen oder nicht gesetzt, wird der Session-Loop (bevorzugt,
+    identisch zum Standalone-Verhalten) oder ersatzweise ein frischer Loop
+    als Current-Loop gesetzt.
+    """
+    import warnings as _warnings
+
+    policy = asyncio.get_event_loop_policy()
+    try:
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore", DeprecationWarning)
+            current = policy.get_event_loop()
+    except RuntimeError:
+        # set_event_loop(None) wurde aufgerufen (z.B. durch asyncio.run())
+        current = None
+    if current is None or current.is_closed():
+        if _SESSION_EVENT_LOOP is not None and not _SESSION_EVENT_LOOP.is_closed():
+            policy.set_event_loop(_SESSION_EVENT_LOOP)
+        else:
+            policy.set_event_loop(policy.new_event_loop())
+    yield
 
 
 # Cleanup fixtures

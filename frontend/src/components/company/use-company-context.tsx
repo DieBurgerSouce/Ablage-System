@@ -8,7 +8,7 @@ import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/lib/api/services/companies';
 import { QUERY_SEMI_STATIC } from '@/lib/api/query-config';
-import type { Company, CompanyListResponse } from '@/types/models/company';
+import type { Company } from '@/types/models/company';
 
 // ==================== Query Keys ====================
 
@@ -85,7 +85,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
 
   const value: CompanyContextValue = {
     currentCompany: currentCompany ?? null,
-    companies: companiesData?.companies ?? [],
+    companies: companiesData?.items ?? [],
     isLoading: isLoadingCompanies || isLoadingCurrent,
     error: (companiesError as Error) ?? (currentError as Error) ?? null,
     switchCompany,

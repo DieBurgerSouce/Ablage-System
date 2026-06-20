@@ -3,7 +3,7 @@
 
 import { Check, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DocumentProgress, PROGRESS_STEP_CONFIG, UI_LABELS } from '../types/smart-dashboard-types';
+import { type DocumentProgress, PROGRESS_STEP_CONFIG } from '../types/smart-dashboard-types';
 
 interface DocumentProgressTrackerProps {
   progress: DocumentProgress;
@@ -12,7 +12,6 @@ interface DocumentProgressTrackerProps {
 
 export function DocumentProgressTracker({ progress, className }: DocumentProgressTrackerProps) {
   const steps = progress.steps;
-  const currentStepIndex = steps.findIndex(step => step.status === 'active');
 
   return (
     <div className={cn('w-full', className)}>

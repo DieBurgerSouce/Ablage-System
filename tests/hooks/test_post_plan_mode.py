@@ -25,6 +25,9 @@ import pytest
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / ".claude/hooks"))
 
+# F-06: claude-flow Hook-Modul ist nicht Teil des App-Test-Scopes -> Skip.
+pytest.importorskip("post_plan_mode")
+
 from post_plan_mode import (
     check_plan_needs_breakdown,
     _is_meta_file,

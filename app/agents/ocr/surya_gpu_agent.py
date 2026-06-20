@@ -14,7 +14,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -389,9 +389,9 @@ class SuryaGPUAgent(OCRAgent):
         except Exception as e:
             logger.error("ocr_processing_failed", **safe_error_log(e))
 
-            # Erstelle standardisiertes Fehler-Result
+            # Erstelle standardisiertes Fehler-Result (PII-frei)
             result = self.create_error_result(
-                **safe_error_log(e),
+                error=safe_error_detail(e, "Surya-GPU-OCR"),
                 error_code="SURYA_OCR_ERROR",
             )
             return result.to_dict()

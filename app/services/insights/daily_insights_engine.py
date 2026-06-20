@@ -20,6 +20,7 @@ Insight-Typen:
 from __future__ import annotations
 
 import asyncio
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -373,21 +374,27 @@ class InsightGeneratorConfig:
 # Insight Generators
 # =============================================================================
 
-class BaseInsightGenerator:
-    """Basis-Klasse für Insight-Generatoren."""
+class BaseInsightGenerator(ABC):
+    """Basis-Klasse für Insight-Generatoren.
+
+    W1-040: Abstrakte Basisklasse - fehlende ``generate``-Implementierungen
+    fallen jetzt bei der Instanziierung auf (TypeError) statt erst zur
+    Laufzeit mit NotImplementedError.
+    """
 
     insight_type: DailyInsightType
 
     def __init__(self, config: InsightGeneratorConfig):
         self.config = config
 
+    @abstractmethod
     async def generate(
         self,
         company_id: UUID,
         data: DataProvidersResult,
     ) -> List[DailyInsight]:
         """Generiert Insights. Muss überschrieben werden."""
-        raise NotImplementedError
+        raise NotImplementedError("Subklassen müssen generate() implementieren")
 
 
 class CashflowWarningGenerator(BaseInsightGenerator):
@@ -1010,6 +1017,16 @@ class MissingDocumentGenerator(BaseInsightGenerator):
 # Daily Insights Engine
 # =============================================================================
 
+@dataclass
+class _GeneratorConfigView:
+    """F-31 minimal: Konfigurations-View eines Insight-Generators (Router-Vertrag)."""
+    name: str
+    enabled: bool
+    priority: int
+    max_insights: int
+    description: str = ""
+
+
 class DailyInsightsEngine:
     """
     Engine für tägliche proaktive Insights.
@@ -1029,6 +1046,8 @@ class DailyInsightsEngine:
     ):
         self.config = config or InsightGeneratorConfig()
         self._generators: List[BaseInsightGenerator] = []
+        # F-31 minimal: In-Memory-Overrides fuer Generator-Konfiguration.
+        self._generator_overrides: Dict[str, Dict[str, object]] = {}
         self._register_default_generators()
 
         logger.info("daily_insights_engine_initialized")
@@ -1205,6 +1224,46 @@ class DailyInsightsEngine:
             insights = [i for i in insights if i.insight_type in insight_types]
 
         return insights
+
+    def get_generator_configs(self) -> List["_GeneratorConfigView"]:
+        """F-31 minimal: Liefert die Konfiguration aller registrierten Generatoren.
+
+        Die einzelnen Generatoren haben keinen eigenen enabled/priority-State;
+        diese werden hier (mit sinnvollen Defaults) abgeleitet und ueber
+        ``update_generator_config`` ueberschreibbar gehalten.
+        """
+        configs: List[_GeneratorConfigView] = []
+        for idx, generator in enumerate(self._generators):
+            name = generator.insight_type.value
+            override = self._generator_overrides.get(name, {})
+            configs.append(_GeneratorConfigView(
+                name=name,
+                enabled=override.get("enabled", True),
+                priority=override.get("priority", idx + 1),
+                max_insights=override.get("max_insights", 50),
+                description=(generator.__class__.__doc__ or "").strip().split("\n")[0],
+            ))
+        return configs
+
+    def update_generator_config(
+        self,
+        generator_name: str,
+        enabled: Optional[bool] = None,
+        priority: Optional[int] = None,
+        max_insights: Optional[int] = None,
+    ) -> bool:
+        """F-31 minimal: Ueberschreibt die Konfiguration eines Generators (In-Memory)."""
+        known = {g.insight_type.value for g in self._generators}
+        if generator_name not in known:
+            return False
+        override = self._generator_overrides.setdefault(generator_name, {})
+        if enabled is not None:
+            override["enabled"] = enabled
+        if priority is not None:
+            override["priority"] = priority
+        if max_insights is not None:
+            override["max_insights"] = max_insights
+        return True
 
 
 # =============================================================================

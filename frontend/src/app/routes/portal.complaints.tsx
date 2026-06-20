@@ -66,7 +66,7 @@ type ComplaintFormData = z.infer<typeof complaintSchema>;
 
 export const Route = createFileRoute('/portal/complaints')({
   component: ComplaintsPage,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { invoice_id?: string } => ({
     invoice_id: search.invoice_id as string | undefined,
   }),
 });
@@ -101,7 +101,8 @@ function ComplaintsPage() {
   const search = useSearch({ from: '/portal/complaints' });
   const [dialogOpen, setDialogOpen] = useState(!!search.invoice_id);
   const { data: complaints, isLoading } = usePortalComplaints({});
-  const { data: complaintTypes } = usePortalComplaintTypes();
+  // Hook beibehalten (laedt/cached Beschwerde-Typen), Binding ungenutzt
+  usePortalComplaintTypes();
   const createComplaint = usePortalCreateComplaint();
 
   const {

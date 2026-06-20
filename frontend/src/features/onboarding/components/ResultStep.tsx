@@ -12,14 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import {
-  FileText,
-  Eye,
-  Pencil,
-  Check,
-  Info,
-  Lightbulb,
-} from 'lucide-react'
+import { FileText, Eye, Pencil, Check, Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -70,11 +63,6 @@ function getConfidenceColor(confidence: number): string {
   return 'text-red-600 bg-red-500/10 border-red-500/20'
 }
 
-function getConfidenceLabel(confidence: number): string {
-  if (confidence >= 95) return 'Hoch'
-  if (confidence >= 70) return 'Mittel'
-  return 'Niedrig'
-}
 
 export function ResultStep({ document }: ResultStepProps) {
   const fields = generateExtractedFields(document)

@@ -9,12 +9,12 @@ import { Plus, Check } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { WidgetDefinition } from '../registry';
+import type { WidgetRegistryEntry } from '../registry';
 import { cn } from '@/lib/utils';
 
 interface WidgetPreviewCardProps {
   type: string;
-  definition: WidgetDefinition;
+  definition: WidgetRegistryEntry;
   isAdded: boolean;
   onAdd: (type: string) => void;
 }

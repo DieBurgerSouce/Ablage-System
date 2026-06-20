@@ -13,7 +13,7 @@ import type {
   VideoTutorial,
 } from '../types';
 
-const BASE_URL = '/api/v1/help';
+const BASE_URL = '/help';
 
 // Help Articles
 export const getHelpArticles = async (

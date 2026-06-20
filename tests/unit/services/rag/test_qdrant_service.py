@@ -55,8 +55,17 @@ def reset_singleton():
 
 @pytest.fixture
 def mock_qdrant_client():
-    """Mock fuer Qdrant Client."""
+    """Mock fuer Qdrant Client.
+
+    WICHTIG: Der Service laedt die Clients lazy via lokalem Re-Import
+    (`from qdrant_client import QdrantClient/AsyncQdrantClient`) in
+    `_get_sync_client()` / `_get_async_client()`. Deshalb muss zusaetzlich
+    zur Modul-Ebene (`qdrant_service.AsyncQdrantClient`) auch die echte
+    Import-Quelle (`qdrant_client.AsyncQdrantClient`) gepatcht werden,
+    sonst wird der echte Client gebaut und scheitert ohne Qdrant-Server.
+    """
     import app.services.rag.qdrant_service as qdrant_module
+    import qdrant_client as qdrant_pkg
 
     # Create mock qdrant_models if not present
     mock_qdrant_models = MagicMock()
@@ -68,34 +77,36 @@ def mock_qdrant_client():
     mock_distance.EUCLID = "Euclid"
     mock_distance.DOT = "Dot"
 
-    with patch.object(qdrant_module, 'QdrantClient', create=True) as mock_sync, \
-         patch.object(qdrant_module, 'AsyncQdrantClient', create=True) as mock_async, \
+    # Sync Client Mocks
+    sync_instance = MagicMock()
+
+    # Async Client Mocks - use AsyncMock so all methods are async
+    async_instance = AsyncMock()
+
+    # Mock get_collections response
+    collections_response = MagicMock()
+    collections_response.collections = []
+    async_instance.get_collections.return_value = collections_response
+
+    async_instance.create_collection.return_value = None
+    async_instance.delete_collection.return_value = True
+    async_instance.upsert.return_value = None
+    async_instance.delete.return_value = None
+    async_instance.search.return_value = []
+
+    mock_sync = MagicMock(return_value=sync_instance)
+    mock_async = MagicMock(return_value=async_instance)
+
+    with patch.object(qdrant_module, 'QdrantClient', mock_sync, create=True), \
+         patch.object(qdrant_module, 'AsyncQdrantClient', mock_async, create=True), \
+         patch.object(qdrant_pkg, 'QdrantClient', mock_sync, create=True), \
+         patch.object(qdrant_pkg, 'AsyncQdrantClient', mock_async, create=True), \
          patch.object(qdrant_module, 'qdrant_models', mock_qdrant_models, create=True), \
          patch.object(qdrant_module, 'PointStruct', MagicMock, create=True), \
          patch.object(qdrant_module, 'VectorParams', MagicMock, create=True), \
          patch.object(qdrant_module, 'Distance', mock_distance, create=True), \
          patch.object(qdrant_module, 'HnswConfigDiff', MagicMock, create=True), \
          patch.object(qdrant_module, 'OptimizersConfigDiff', MagicMock, create=True):
-
-        # Sync Client Mocks
-        sync_instance = MagicMock()
-        mock_sync.return_value = sync_instance
-
-        # Async Client Mocks - use AsyncMock so all methods are async
-        async_instance = AsyncMock()
-
-        # Mock get_collections response
-        collections_response = MagicMock()
-        collections_response.collections = []
-        async_instance.get_collections.return_value = collections_response
-
-        async_instance.create_collection.return_value = None
-        async_instance.delete_collection.return_value = True
-        async_instance.upsert.return_value = None
-        async_instance.delete.return_value = None
-        async_instance.search.return_value = []
-
-        mock_async.return_value = async_instance
 
         yield {
             'sync_class': mock_sync,

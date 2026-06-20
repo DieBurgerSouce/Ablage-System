@@ -5,7 +5,6 @@
  * manuelle Drift-Detection.
  */
 
-import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,

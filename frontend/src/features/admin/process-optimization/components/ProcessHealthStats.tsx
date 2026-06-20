@@ -4,15 +4,7 @@
  * Zeigt Gesundheits-Statistiken des Prozesses.
  */
 
-import {
-  Activity,
-  TrendingUp,
-  AlertTriangle,
-  Zap,
-  Clock,
-  CheckCircle,
-  Bot,
-} from 'lucide-react';
+import { Activity, TrendingUp, Clock, CheckCircle, Bot } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -109,11 +101,6 @@ export function ProcessHealthStats() {
     F: 'bg-red-100 text-red-800',
   };
 
-  const getVariantFromGrade = (grade: string): StatCardProps['variant'] => {
-    if (grade === 'A' || grade === 'B') return 'success';
-    if (grade === 'C') return 'warning';
-    return 'danger';
-  };
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

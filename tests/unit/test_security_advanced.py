@@ -64,7 +64,7 @@ class TestDNSResolutionTimeout:
 
             # Da ThreadPoolExecutor verwendet wird, müssen wir den
             # tatsächlichen Timeout testen
-            with patch("app.core.security.DNS_RESOLUTION_TIMEOUT_SECONDS", 0.1):
+            with patch("app.core.security_auth.DNS_RESOLUTION_TIMEOUT_SECONDS", 0.1):
                 is_valid, error = validate_url_for_ssrf("http://slowdns.example.com/test")
 
                 # Timeout sollte eintreten
@@ -88,7 +88,7 @@ class TestTOTPAtomicOperations:
         """Test: Erster TOTP-Code Gebrauch gibt False zurück (kein Replay)."""
         from app.core.security import check_and_mark_totp_used
 
-        with patch("app.core.security._get_redis_client") as mock_redis_getter:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis_getter:
             mock_redis = AsyncMock()
             # SETNX gibt True zurück wenn Key neu gesetzt wurde
             mock_redis.set = AsyncMock(return_value=True)
@@ -106,7 +106,7 @@ class TestTOTPAtomicOperations:
         """Test: Zweiter TOTP-Code Gebrauch gibt True zurück (Replay erkannt)."""
         from app.core.security import check_and_mark_totp_used
 
-        with patch("app.core.security._get_redis_client") as mock_redis_getter:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis_getter:
             mock_redis = AsyncMock()
             # SETNX gibt False zurück wenn Key bereits existiert
             mock_redis.set = AsyncMock(return_value=False)
@@ -125,7 +125,7 @@ class TestTOTPAtomicOperations:
             _totp_fallback_lock,
         )
 
-        with patch("app.core.security._get_redis_client") as mock_redis_getter:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis_getter:
             mock_redis_getter.return_value = None  # Redis nicht verfügbar
 
             # Ersten Aufruf - sollte nicht als Replay erkannt werden
@@ -148,7 +148,7 @@ class TestTOTPAtomicOperations:
         """Test: Gleicher Code für unterschiedliche User ist erlaubt."""
         from app.core.security import check_and_mark_totp_used
 
-        with patch("app.core.security._get_redis_client") as mock_redis_getter:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis_getter:
             mock_redis = AsyncMock()
             # Beide Aufrufe setzen neuen Key (unterschiedliche User)
             mock_redis.set = AsyncMock(return_value=True)
@@ -166,7 +166,7 @@ class TestTOTPAtomicOperations:
         """Test: Redis-Key enthält User-ID und Code (gehasht)."""
         from app.core.security import check_and_mark_totp_used, TOTP_REPLAY_PREFIX
 
-        with patch("app.core.security._get_redis_client") as mock_redis_getter:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis_getter:
             mock_redis = AsyncMock()
             mock_redis.set = AsyncMock(return_value=True)
             mock_redis_getter.return_value = mock_redis
@@ -188,7 +188,7 @@ class TestTOTPAtomicOperations:
         assert TOTP_REPLAY_TTL_SECONDS > 0
         assert TOTP_REPLAY_TTL_SECONDS <= 120  # Max 2 Minuten
 
-        with patch("app.core.security._get_redis_client") as mock_redis_getter:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis_getter:
             mock_redis = AsyncMock()
             mock_redis.set = AsyncMock(return_value=True)
             mock_redis_getter.return_value = mock_redis
@@ -234,7 +234,7 @@ class TestRaceConditionPrevention:
             # Erster Aufruf erfolgreich, weitere nicht
             return call_count == 1
 
-        with patch("app.core.security._get_redis_client") as mock_redis_getter:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis_getter:
             mock_redis = AsyncMock()
             mock_redis.set = mock_set
             mock_redis_getter.return_value = mock_redis

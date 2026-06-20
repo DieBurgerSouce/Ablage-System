@@ -82,13 +82,13 @@ export interface CashRegisterListResponse {
 /**
  * Bewirtungskosten-Daten
  */
+// Backend-Vertrag: app/db/schemas.py EntertainmentData
 export interface EntertainmentData {
+  /** Teilnehmer (mind. 1 Person) */
+  participants: string[];
+  /** Anlass der Bewirtung (min. 5 Zeichen) */
   occasion: string;
-  attendees: string[];
-  business_reason: string;
-  host_company: string;
   location?: string;
-  date?: string;
 }
 
 /**

@@ -208,7 +208,11 @@ function argsToContext(...args: unknown[]): Record<string, unknown> | undefined 
  * Logger mit Loki-Integration und Component-Labels.
  */
 class LoggerWithLabels {
-  constructor(private labels: Record<string, string>) {}
+  private labels: Record<string, string>;
+
+  constructor(labels: Record<string, string>) {
+    this.labels = labels;
+  }
 
   debug(message: string, ...args: unknown[]): void {
     if (isDev) {

@@ -483,8 +483,17 @@ class ProcedureDocumentationVersion(Base):
     )
     generated_by = Column(String(50), nullable=False, default="system")
 
-    # Signatur für Unveränderbarkeit
+    # Signatur für Unveränderbarkeit (Hash über den JSON-Inhalt)
     content_hash = Column(String(128), nullable=False)
+
+    # Signiertes, persistiertes PDF-Artefakt (GoBD-Unveränderbarkeit) - additiv, nullable.
+    # Migration 270. Das PDF liegt WORM-geschützt in MinIO; Signatur via interner CA.
+    pdf_object_key = Column(String(512), nullable=True, comment="MinIO-Objektschlüssel des signierten PDF (WORM)")
+    pdf_sha256 = Column(String(64), nullable=True, comment="SHA-256 der PDF-Bytes (hex)")
+    pdf_signature = Column(Text, nullable=True, comment="Base64-Signatur über die PDF-Bytes (interne CA)")
+    pdf_signature_alg = Column(String(40), nullable=True, comment="Signaturverfahren, z.B. RSA-PSS-SHA256")
+    pdf_signing_cert_serial = Column(String(64), nullable=True, comment="Seriennummer des signierenden CA-Zertifikats")
+    pdf_signed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Änderungshistorie
     change_summary = Column(

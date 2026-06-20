@@ -20,18 +20,7 @@ import {
   getCashflowScenarios,
   getCashflowHistory,
 } from '../api/german-finance-api';
-import type {
-  UStReport,
-  BWAReport,
-  CashflowForecast,
-  LiquidityWarning,
-  CashflowScenario,
-  CashflowHistory,
-  GenerateUStRequest,
-  GenerateBWARequest,
-  UpdateCashflowRequest,
-  RunScenarioRequest,
-} from '../types/german-finance-types';
+import type { UStReport, BWAReport, GenerateUStRequest, GenerateBWARequest, RunScenarioRequest } from '../types/german-finance-types';
 import {
   transformUStReport,
   transformBWAReport,

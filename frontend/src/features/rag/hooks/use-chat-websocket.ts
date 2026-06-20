@@ -9,13 +9,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { logger } from '@/lib/logger';
-import type {
-    ChatMessage,
-    ContextDocument,
-    ConnectionStatus,
-    WSMessage,
-    ChatMessageSource,
-} from '../types/chat-types';
+import type { ChatMessage, ContextDocument, ConnectionStatus, WSMessage } from '../types/chat-types';
 
 // ==================== Types ====================
 
@@ -85,7 +79,7 @@ export function useChatWebSocket(
 
     // Refs
     const wsRef = useRef<WebSocket | null>(null);
-    const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentStreamingId = useRef<string | null>(null);
 
     // ==================== Cleanup ====================

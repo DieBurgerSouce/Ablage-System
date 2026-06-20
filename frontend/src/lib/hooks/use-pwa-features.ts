@@ -8,7 +8,7 @@
  * - Install prompt
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { logger } from '@/lib/logger';
 
@@ -40,8 +40,8 @@ export function usePWAFeatures(): UsePWAFeaturesResult {
 
   // Use VitePWA's register hook
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    offlineReady: [offlineReady, setOfflineReady],
+    needRefresh: [needRefresh, _setNeedRefresh],
+    offlineReady: [offlineReady, _setOfflineReady],
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(registration) {
@@ -86,7 +86,8 @@ export function usePWAFeatures(): UsePWAFeaturesResult {
 
         // Check if Background Sync API is available
         if ('sync' in registration) {
-          await (registration as any).sync.register(tag);
+          // Background-Sync-API fehlt in den DOM-Lib-Typen (extern erzwungener Cast)
+          await (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag);
           logger.info('[PWA] Background Sync registriert', { tag });
           return true;
         }

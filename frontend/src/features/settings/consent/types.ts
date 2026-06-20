@@ -4,15 +4,16 @@
  * DSGVO Art. 6, 7 - Einwilligungsverwaltung
  */
 
-export enum ConsentScope {
-  PERSONAL_DATA = 'personal_data',
-  FINANCIAL_DATA = 'financial_data',
-  DOCUMENT_PROCESSING = 'document_processing',
-  ANALYTICS = 'analytics',
-  MARKETING = 'marketing',
-  THIRD_PARTY_SHARING = 'third_party_sharing',
-  AUTOMATED_DECISIONS = 'automated_decisions',
-}
+export const ConsentScope = {
+  PERSONAL_DATA: 'personal_data',
+  FINANCIAL_DATA: 'financial_data',
+  DOCUMENT_PROCESSING: 'document_processing',
+  ANALYTICS: 'analytics',
+  MARKETING: 'marketing',
+  THIRD_PARTY_SHARING: 'third_party_sharing',
+  AUTOMATED_DECISIONS: 'automated_decisions',
+} as const;
+export type ConsentScope = (typeof ConsentScope)[keyof typeof ConsentScope];
 
 export interface ConsentScopeInfo {
   scope: ConsentScope;

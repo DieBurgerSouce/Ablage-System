@@ -1157,6 +1157,8 @@ class SelfLearningOCRService:
 
         return {
             "learning_mode": self._learning_mode.value,
+            "training_samples": feedback_count,
+            "total_corrections": correction_count,
             "total_feedbacks": feedback_count,
             "pending_feedbacks": pending_count,
             "processed_feedbacks": processed_count,

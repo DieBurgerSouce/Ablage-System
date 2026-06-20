@@ -14,6 +14,7 @@ Kritische Regeln aus CLAUDE.md:
 - "SQL Injection: ALWAYS validate JSONB column/key names"
 """
 
+import urllib.parse
 import uuid
 from typing import List
 
@@ -162,8 +163,14 @@ class TestCommandInjection:
             files={"file": (payload, b"dummy content", "application/pdf")},
             headers=auth_headers,
         )
-        # Sollte abgelehnt oder sanitized werden
-        assert response.status_code in [400, 422, 201]
+        # Sollte abgelehnt oder sanitized werden. 405 = es gibt keinen
+        # multipart-POST /documents/upload (Upload laeuft ueber Presigned-URL
+        # direkt zu MinIO: /check-duplicate -> Client-Upload -> /upload-complete;
+        # der Pfad matcht nur das GET-Pattern /documents/{document_id}).
+        # Command-Injection via Dateiname ist zudem strukturell ausgeschlossen,
+        # da im gesamten Code kein shell=True/os.system/os.popen genutzt wird -
+        # ein Dateiname erreicht nie eine Shell.
+        assert response.status_code in [400, 422, 201, 405]
         if response.status_code == 201:
             # Falls akzeptiert, Filename sollte sanitized sein
             data = response.json()
@@ -185,7 +192,11 @@ class TestCommandInjection:
             json=payload,
             headers=auth_headers,
         )
-        assert response.status_code in [400, 422, 404]
+        # 405 = kein POST /documents/process (Pfad matcht nur das GET-Pattern
+        # /documents/{document_id}); OCR-Verarbeitung wird intern via Celery
+        # angestossen, nicht ueber frei setzbare Shell-Parameter. Kein
+        # shell=True/os.system im Code -> keine Command-Injection-Flaeche.
+        assert response.status_code in [400, 422, 404, 405]
 
 
 # =============================================================================
@@ -243,12 +254,22 @@ class TestHeaderInjection:
     ])
     def test_header_injection_in_redirect(self, payload: str, test_client, auth_headers):
         """Testet Header Injection in Redirect-URLs."""
+        # WICHTIG: Den Payload URL-kodieren. Ein roher CR/LF im URL-String wird
+        # bereits CLIENT-seitig von httpx mit InvalidURL abgelehnt (RFC 3986:
+        # keine Steuerzeichen in URLs) - das wuerde die Client-Grenze pruefen,
+        # nicht die Server-Validierung. Kodiert erreicht der Wert den Server und
+        # die Redirect-/Header-Sanitisierung (CWE-113) wird tatsaechlich getestet.
+        encoded = urllib.parse.quote(payload, safe="")
         response = test_client.get(
-            f"/api/v1/redirect?url={payload}",
+            f"/api/v1/redirect?url={encoded}",
             headers=auth_headers,
             follow_redirects=False,
         )
-        # Redirect sollte validiert werden
+        # Redirect sollte validiert werden. Es existiert kein /api/v1/redirect
+        # (404) -> keine offene Redirect-/Header-Injection-Flaeche. Falls der
+        # Endpunkt existierte: 400/422 (abgelehnt) oder 3xx ohne injizierten
+        # Header (unten geprueft).
+        assert "X-Injected" not in response.headers
         assert response.status_code in [400, 404, 422]
 
 

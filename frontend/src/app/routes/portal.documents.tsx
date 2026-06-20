@@ -8,19 +8,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import {
-  Upload,
-  FileText,
-  File,
-  Trash2,
-  Download,
-  Loader2,
-  CheckCircle,
-  Clock,
-  XCircle,
-} from 'lucide-react';
+import { Upload, FileText, File, Download, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Card,
@@ -107,7 +96,7 @@ function DocumentsPage() {
     try {
       await uploadDocument.mutateAsync({
         file,
-        description: file.name,
+        options: { description: file.name },
       });
     } finally {
       setUploading(false);

@@ -12,7 +12,7 @@ API für Entity-basierte Cashflow-Vorhersagen:
 
 SECURITY:
 - Alle Endpoints erfordern Authentifizierung
-- Company-Isolation via current_user.current_company_id
+- Company-Isolation via (await get_user_company_id(db, current_user))
 - Keine PII in Responses (Entity-Namen werden maskiert)
 
 Created: 2026-02-02
@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_user_company_id  # F-31
 from app.db.models import User
 from app.services.predictive.cashflow_predictor_service import (
     CashflowPredictorService,
@@ -184,7 +185,7 @@ async def get_cashflow_forecast(
     Returns:
         Tagesweise Prognose mit Konfidenzintervallen
     """
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt",
@@ -194,7 +195,7 @@ async def get_cashflow_forecast(
 
     # Prognose erstellen
     predictions = await service.get_cashflow_forecast(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         days=days,
     )
 
@@ -206,7 +207,7 @@ async def get_cashflow_forecast(
 
     # Aktueller Kontostand
     current_balance = await service._get_current_balance(
-        current_user.current_company_id
+        (await get_user_company_id(db, current_user))
     )
 
     # Zusammenfassung berechnen
@@ -223,7 +224,7 @@ async def get_cashflow_forecast(
     now = datetime.now(timezone.utc)
 
     return CashFlowForecastResponse(
-        company_id=str(current_user.current_company_id),
+        company_id=str((await get_user_company_id(db, current_user))),
         forecast_days=days,
         current_balance=float(current_balance),
         min_balance=float(min_balance),
@@ -275,7 +276,7 @@ async def get_invoice_payment_prediction(
     Returns:
         Vorhergesagtes Zahlungsdatum mit Konfidenzintervall
     """
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt",
@@ -285,7 +286,7 @@ async def get_invoice_payment_prediction(
 
     probability = await service.get_invoice_payment_probability(
         invoice_id=invoice_id,
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
     )
 
     if not probability:
@@ -337,7 +338,7 @@ async def get_entity_payment_profile(
     Returns:
         Vollständiges EntityPaymentProfile
     """
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt",
@@ -347,7 +348,7 @@ async def get_entity_payment_profile(
 
     profile = await service.get_entity_payment_profile(
         entity_id=entity_id,
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         force_refresh=force_refresh,
     )
 
@@ -410,7 +411,7 @@ async def get_liquidity_alerts(
     Returns:
         Liste von Warnungen sortiert nach Dringlichkeit
     """
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt",
@@ -419,7 +420,7 @@ async def get_liquidity_alerts(
     service = get_cashflow_predictor_service(db)
 
     alerts = await service.get_liquidity_alerts(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         forecast_days=days,
     )
 
@@ -434,7 +435,7 @@ async def get_liquidity_alerts(
     )
 
     return LiquidityAlertsResponse(
-        company_id=str(current_user.current_company_id),
+        company_id=str((await get_user_company_id(db, current_user))),
         alert_count=len(alerts),
         critical_count=critical_count,
         warning_count=warning_count,
@@ -476,7 +477,7 @@ async def refresh_entity_profile(
     Returns:
         Aktualisiertes EntityPaymentProfile
     """
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt",
@@ -486,7 +487,7 @@ async def refresh_entity_profile(
 
     profile = await service.get_entity_payment_profile(
         entity_id=entity_id,
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         force_refresh=True,
     )
 
@@ -525,6 +526,8 @@ async def refresh_entity_profile(
     "/summary",
     summary="Cashflow-Zusammenfassung",
     description="Kurze Zusammenfassung der aktuellen Liquiditaetssituation.",
+    # Eindeutige operation_id: kollidierte mit banking_fints.py (gleicher Pfad)
+    operation_id="cashflow_get_cashflow_summary",
 )
 async def get_cashflow_summary(
     current_user: User = Depends(get_current_user),
@@ -538,7 +541,7 @@ async def get_cashflow_summary(
     Returns:
         Dictionary mit Kennzahlen
     """
-    if not current_user.current_company_id:
+    if not (await get_user_company_id(db, current_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Keine Company ausgewaehlt",
@@ -548,23 +551,23 @@ async def get_cashflow_summary(
 
     # 7-Tage und 30-Tage Prognose
     forecast_7 = await service.get_cashflow_forecast(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         days=7,
     )
     forecast_30 = await service.get_cashflow_forecast(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         days=30,
     )
 
     # Alerts
     alerts = await service.get_liquidity_alerts(
-        company_id=current_user.current_company_id,
+        company_id=(await get_user_company_id(db, current_user)),
         forecast_days=30,
     )
 
     # Aktueller Kontostand
     current_balance = await service._get_current_balance(
-        current_user.current_company_id
+        (await get_user_company_id(db, current_user))
     )
 
     # Kennzahlen berechnen

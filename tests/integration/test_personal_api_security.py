@@ -550,17 +550,28 @@ class TestInputValidation:
         """C.2 MEDIUM: Ungueltige IBAN wird abgelehnt."""
         from app.api.v1.personal.employees import EmployeeBase
 
+        # 2026-06-13: Der Validator prueft das STRUKTUR-Format
+        # (^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$), nicht ISO-Laendercode oder
+        # mod-97-Pruefsumme. "XX89..." ist daher ein gueltiges *Format* und
+        # wurde aus der Negativliste entfernt (frueher faelschlich als
+        # "ungueltige Pruefziffer" gefuehrt — der Validator macht keine
+        # Pruefziffernrechnung). Hier nur echte Format-Verstoesse.
         invalid_ibans = [
             "INVALID",
             "123456789",
-            "DE1234",  # Zu kurz
-            "XX89370400440532013000",  # Ungueltige Pruefziffer-Position
+            "DE1234",                      # Zu kurz
+            "12DE370400440532013000",      # Ziffern an Laendercode-Position
+            "DE!9370400440532013000",      # Sonderzeichen
         ]
 
         for iban in invalid_ibans:
+            # G.1 CRITICAL: Der Validator wirft bewusst die generische Meldung
+            # 'Ungültig', um keine Format-Details zu leaken (siehe
+            # app/api/v1/personal/employees.py). Test darf das NICHT aufweichen
+            # — entscheidend ist, dass ungueltige IBANs abgelehnt werden.
             with pytest.raises(ValueError) as exc_info:
                 EmployeeBase.validate_iban(iban)
-            assert "IBAN" in str(exc_info.value)
+            assert "Ungültig" in str(exc_info.value)
 
     def test_bic_validation_valid(self):
         """C.2 MEDIUM: Gueltige BIC wird akzeptiert."""
@@ -590,9 +601,11 @@ class TestInputValidation:
         ]
 
         for bic in invalid_bics:
+            # G.1 CRITICAL: generische 'Ungültig'-Meldung (kein Format-Leak),
+            # siehe IBAN-Test oben. Wichtig ist die Ablehnung selbst.
             with pytest.raises(ValueError) as exc_info:
                 EmployeeBase.validate_bic(bic)
-            assert "BIC" in str(exc_info.value)
+            assert "Ungültig" in str(exc_info.value)
 
     def test_photo_path_traversal_blocked(self):
         """B.3 HIGH: Path Traversal in photo_path wird blockiert."""
@@ -751,9 +764,11 @@ class TestUnauthorizedAccess:
             "iat": datetime.now(timezone.utc) - timedelta(hours=2),
             "type": "access",
         }
+        # SECRET_KEY ist ein Pydantic SecretStr — jwt.encode braucht den rohen
+        # String (wie die App via get_secret_value()), sonst TypeError.
         expired_token = jwt.encode(
             expired_payload,
-            settings.SECRET_KEY,
+            settings.SECRET_KEY.get_secret_value(),
             algorithm=settings.ALGORITHM
         )
 
@@ -870,9 +885,10 @@ class TestRateLimiting:
             "type": "access",
             "company_id": str(uuid4()),
         }
+        # SECRET_KEY ist ein Pydantic SecretStr — get_secret_value() noetig.
         valid_token = jwt.encode(
             valid_payload,
-            settings.SECRET_KEY,
+            settings.SECRET_KEY.get_secret_value(),
             algorithm=settings.ALGORITHM
         )
 

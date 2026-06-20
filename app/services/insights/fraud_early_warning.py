@@ -1127,6 +1127,40 @@ class FraudEarlyWarningService:
         return min(100, int(weighted_sum / total_weight))
 
 
+    async def get_alerts(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        severity: Optional[str] = None,
+        alert_type: Optional[str] = None,
+        include_dismissed: bool = False,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Hole aktive Betrugs-Warnungen.
+
+        F-31 minimal: Alerts werden derzeit nicht persistiert (``scan`` liefert
+        sie transient). Bis eine Persistenz-Schicht existiert, liefert dieser
+        Endpoint eine leere Liste statt eines 500ers. Signatur deckt die vom
+        Router uebergebenen Filter ab.
+        """
+        return []
+
+    async def dismiss_alert(
+        self,
+        db: AsyncSession,
+        alert_id: str,
+        company_id: UUID,
+        dismissed_by: UUID,
+        reason: str,
+    ) -> bool:
+        """Verwerfe eine Betrugs-Warnung.
+
+        F-31 minimal: Ohne Alert-Persistenz gibt es nichts zu verwerfen ->
+        False (Router antwortet dann mit 404 statt 500).
+        """
+        return False
+
+
 # =============================================================================
 # Singleton
 # =============================================================================

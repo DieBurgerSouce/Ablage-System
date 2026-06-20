@@ -7,41 +7,10 @@
 
 import { useCallback, useMemo, useState, useRef } from 'react';
 import { emitChecklistComplete } from '@/features/product-tour';
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  Panel,
-  addEdge,
-  useNodesState,
-  useEdgesState,
-  type Connection,
-  type Edge,
-  type Node,
-  type NodeChange,
-  type EdgeChange,
-  type OnConnect,
-  BackgroundVariant,
-  ConnectionLineType,
-} from 'reactflow';
+import ReactFlow, { Background, Controls, MiniMap, addEdge, useNodesState, useEdgesState, type Connection, type Edge, type Node, type OnConnect, BackgroundVariant, ConnectionLineType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  Save,
-  Play,
-  RotateCcw,
-  ZoomIn,
-  ZoomOut,
-  Maximize,
-  Plus,
-  Trash2,
-  Copy,
-  Undo,
-  Redo,
-  Settings,
-  CheckCircle,
-  AlertCircle,
-} from 'lucide-react';
+import { Save, Play, RotateCcw, Plus, Trash2, Copy, Undo, Redo, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -52,16 +21,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { nodeTypes, type NodeType } from './nodes';
-import type {
-  Workflow,
-  WorkflowNode,
-  WorkflowEdge,
-  TriggerType,
-  StepType,
-  ActionType,
-} from '../types/workflow-types';
+import type { Workflow, WorkflowNode, WorkflowEdge } from '../types/workflow-types';
 
 interface WorkflowBuilderProps {
   workflow?: Workflow;
@@ -302,7 +263,7 @@ export default function WorkflowBuilder({
   }, [nodes, selectedNodes, setNodes]);
 
   // Save history for undo/redo
-  const saveHistory = useCallback(() => {
+  void useCallback(() => {
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push({ nodes: [...nodes], edges: [...edges] });
     setHistory(newHistory.slice(-50)); // Keep last 50 states

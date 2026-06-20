@@ -25,36 +25,11 @@ import {
   CommandShortcut,
 } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  FileText,
-  Users,
-  Truck,
-  Home,
-  Settings,
-  Upload,
-  Search,
-  HelpCircle,
-  Plus,
-  Edit,
-  Clock,
-  Star,
-  Navigation,
-  Zap,
-  FormInput,
-  Keyboard,
-  Wallet,
-  Building2,
-  type LucideIcon,
-} from 'lucide-react';
+import { FileText, HelpCircle, Clock, Navigation, Zap, FormInput, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShortcutsContext } from '../context/ShortcutsContext';
-import { formatShortcutKeys, formatKeySequence } from '../hooks/useHotkeys';
-import type {
-  CommandItem as CommandItemType,
-  ShortcutCategory,
-  RecentCommand,
-} from '../types/shortcut-types';
+import { formatShortcutKeys } from '../hooks/useHotkeys';
+import type { CommandItem as CommandItemType, ShortcutCategory } from '../types/shortcut-types';
 import { SHORTCUT_CATEGORY_LABELS } from '../types/shortcut-types';
 
 // ==================== Types ====================
@@ -92,24 +67,6 @@ const categoryColors: Record<ShortcutCategory, string> = {
 
 // ==================== Fuzzy Search ====================
 
-function fuzzyMatch(query: string, text: string): boolean {
-  if (!query) return true;
-
-  const queryLower = query.toLowerCase();
-  const textLower = text.toLowerCase();
-
-  // Direct substring match
-  if (textLower.includes(queryLower)) return true;
-
-  // Fuzzy match (all characters in order)
-  let queryIndex = 0;
-  for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
-    if (textLower[i] === queryLower[queryIndex]) {
-      queryIndex++;
-    }
-  }
-  return queryIndex === queryLower.length;
-}
 
 function matchScore(query: string, text: string): number {
   if (!query) return 0;

@@ -13,18 +13,7 @@
 
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  FileText,
-  Building2,
-  Calendar,
-  Euro,
-  Hash,
-  FileCode,
-  User,
-  MapPin,
-  AlertTriangle,
-  Loader2,
-} from 'lucide-react';
+import { FileText, Building2, Euro, Hash, FileCode, User, AlertTriangle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -259,7 +248,7 @@ export function InlineMetadataEditor({
 }: InlineMetadataEditorProps) {
   const queryClient = useQueryClient();
   const { data, isLoading, error, isError } = useExtractedData(documentId);
-  const [savingField, setSavingField] = useState<string | null>(null);
+  const [_savingField, setSavingField] = useState<string | null>(null);
 
   // Mutation zum Speichern von Metadaten
   const updateMutation = useMutation({
@@ -285,7 +274,7 @@ export function InlineMetadataEditor({
 
       return { previousData };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       // Rollback bei Fehler
       if (context?.previousData) {
         queryClient.setQueryData(['extracted-data', documentId], context.previousData);

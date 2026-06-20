@@ -186,14 +186,17 @@ class TestABTestingRouterAssignment:
         assert "document_bucket" in assignment.assignment_reason
 
     def test_random_assignment_without_identifier(self, mock_settings, reset_singleton):
-        """Test Random-Zuordnung ohne Identifier."""
+        """Test Random-Zuordnung ohne Identifier (timestamp-basierter Bucket)."""
         from app.services.rag.ab_testing_router import ABTestingRouter
 
         router = ABTestingRouter()
 
         assignment = router.get_assignment()
 
-        assert "random_bucket" in assignment.assignment_reason
+        # Ohne Identifier nutzt der Router einen deterministischen
+        # Timestamp-Bucket fuer anonyme Anfragen.
+        assert "timestamp_bucket" in assignment.assignment_reason
+        assert assignment.assignment_reason.endswith(("control", "treatment"))
 
 
 class TestABTestingRouterBackendSelection:

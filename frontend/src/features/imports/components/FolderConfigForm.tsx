@@ -4,7 +4,6 @@
  * Formular zum Erstellen/Bearbeiten von Ordner-Import-Konfigurationen.
  */
 
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -114,13 +113,16 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
     values: existingConfig
       ? {
           name: existingConfig.name,
-          folderPath: existingConfig.folderPath,
-          includeSubfolders: existingConfig.includeSubfolders,
-          filePatterns: existingConfig.filePatterns?.join(',') ?? '',
+          folderPath: existingConfig.watchPath,
+          includeSubfolders: existingConfig.recursive,
+          filePatterns: existingConfig.includePatterns?.join(',') ?? '',
           excludePatterns: existingConfig.excludePatterns?.join(',') ?? '',
-          pollIntervalMinutes: existingConfig.pollIntervalMinutes,
-          moveAfterImport: existingConfig.moveAfterImport,
-          processedFolder: existingConfig.processedFolder ?? '',
+          pollIntervalMinutes: Math.max(
+            1,
+            Math.round(existingConfig.pollIntervalSeconds / 60)
+          ),
+          moveAfterImport: existingConfig.moveAfterProcessing,
+          processedFolder: existingConfig.processedSubfolder ?? '',
           isActive: existingConfig.isActive,
         }
       : undefined,
@@ -143,13 +145,13 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
       if (isEditMode && configId) {
         const updateData: FolderConfigUpdate = {
           name: data.name,
-          folderPath: data.folderPath,
-          includeSubfolders: data.includeSubfolders,
-          filePatterns: filePatterns?.length ? filePatterns : undefined,
+          watchPath: data.folderPath,
+          recursive: data.includeSubfolders,
+          includePatterns: filePatterns?.length ? filePatterns : undefined,
           excludePatterns: excludePatterns?.length ? excludePatterns : undefined,
-          pollIntervalMinutes: data.pollIntervalMinutes,
-          moveAfterImport: data.moveAfterImport,
-          processedFolder: data.moveAfterImport ? data.processedFolder : undefined,
+          pollIntervalSeconds: data.pollIntervalMinutes * 60,
+          moveAfterProcessing: data.moveAfterImport,
+          processedSubfolder: data.moveAfterImport ? data.processedFolder : undefined,
           isActive: data.isActive,
         };
         await updateConfig.mutateAsync({ configId, data: updateData });
@@ -160,14 +162,13 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
       } else {
         const createData: FolderConfigCreate = {
           name: data.name,
-          folderPath: data.folderPath,
-          includeSubfolders: data.includeSubfolders,
-          filePatterns: filePatterns?.length ? filePatterns : undefined,
+          watchPath: data.folderPath,
+          recursive: data.includeSubfolders,
+          includePatterns: filePatterns?.length ? filePatterns : undefined,
           excludePatterns: excludePatterns?.length ? excludePatterns : undefined,
-          pollIntervalMinutes: data.pollIntervalMinutes,
-          moveAfterImport: data.moveAfterImport,
-          processedFolder: data.moveAfterImport ? data.processedFolder : undefined,
-          isActive: data.isActive,
+          pollIntervalSeconds: data.pollIntervalMinutes * 60,
+          moveAfterProcessing: data.moveAfterImport,
+          processedSubfolder: data.moveAfterImport ? data.processedFolder : undefined,
         };
         await createConfig.mutateAsync(createData);
         toast({

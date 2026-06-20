@@ -1,3 +1,4 @@
+import * as React from 'react';
 /**
  * Form Components Stories
  *
@@ -326,8 +327,8 @@ function CompleteFormExample() {
         },
     });
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        console.log(values);
+    function onSubmit(_values: z.infer<typeof formSchema>) {
+        // Demo-Story: Absenden hat hier bewusst keinen Effekt.
     }
 
     return (
@@ -481,7 +482,7 @@ export const DarkMode: Story = {
         backgrounds: { default: 'dark' },
     },
     decorators: [
-        (Story) => (
+        (Story: React.ComponentType) => (
             <div className="dark">
                 <Story />
             </div>

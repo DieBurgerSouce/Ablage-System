@@ -24,7 +24,7 @@ export function useWidgetPermissions() {
   const filteredWidgets = useMemo((): PermissionFilteredWidget[] => {
     if (!availableWidgets) {
       // Return all widgets as unavailable while loading
-      return Object.entries(widgetRegistry).map(([type, entry]) => ({
+      return Object.entries(widgetRegistry).map(([_type, entry]) => ({
         ...entry,
         requiresPermission: true,
         isAvailable: false,

@@ -7,22 +7,7 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import {
-  Folder,
-  RefreshCw,
-  Settings,
-  Trash2,
-  Play,
-  Pause,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Loader2,
-  Plus,
-  FolderOpen,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+import { Folder, RefreshCw, Settings, Trash2, Play, AlertCircle, Loader2, Plus, FolderOpen, Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +49,6 @@ import {
   useDeleteFolderConfig,
   useTriggerFolderPoll,
 } from '../hooks/use-import-queries';
-import type { FolderConfigListItem } from '../types/import-types';
 
 // ==================== Status Badge ====================
 
@@ -243,34 +227,29 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {config.name}
-                      {config.includeSubfolders && (
-                        <Badge variant="outline" className="text-xs">
-                          Unterordner
-                        </Badge>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm max-w-[200px] truncate">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger className="truncate block">
-                          {config.folderPath}
+                          {config.watchPath}
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-md">
-                          <p className="break-all">{config.folderPath}</p>
+                          <p className="break-all">{config.watchPath}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>
                   <TableCell>
                     <WatchStatusBadge
-                      isWatching={config.isWatching}
+                      isWatching={config.watcherStatus === 'running'}
                       isActive={config.isActive}
                     />
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {config.lastScanAt
-                      ? formatDistanceToNow(new Date(config.lastScanAt), {
+                    {config.lastPollAt
+                      ? formatDistanceToNow(new Date(config.lastPollAt), {
                           addSuffix: true,
                           locale: de,
                         })

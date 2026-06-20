@@ -16,14 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import {
-  FileText,
-  Calendar,
-  AlertTriangle,
-  RefreshCw,
-  ListFilter,
-  LayoutGrid,
-} from 'lucide-react';
+import { FileText, Calendar, AlertTriangle, RefreshCw, LayoutGrid } from 'lucide-react';
 import {
   useContracts,
   useContractSummary,
@@ -34,9 +27,8 @@ import { ContractStatsCards } from '@/features/contracts/components/ContractStat
 import { ContractDeadlineAlerts } from '@/features/contracts/components/ContractDeadlineAlerts';
 import { ContractDeadlineCalendar } from '@/features/contracts/components/ContractDeadlineCalendar';
 import { ContractQuickActions } from '@/features/contracts/components/ContractQuickActions';
-import { ContractTable } from '@/features/contracts/components/ContractTable';
 import { ContractDetailSheet } from '@/features/contracts/components/ContractDetailSheet';
-import type { Contract, ContractDetail, DeadlineAlert, ContractListParams } from '@/features/contracts/types/contract-types';
+import type { Contract, ContractDetail, DeadlineAlert } from '@/features/contracts/types/contract-types';
 
 function ContractDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');

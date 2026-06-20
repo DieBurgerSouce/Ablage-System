@@ -379,6 +379,48 @@ class MonitoredEntity:
 # Service
 # =============================================================================
 
+@dataclass
+class _MonitoringStatusData:
+    """F-31 minimal: Status-View fuer den Monitoring-Status-Endpoint."""
+    active_entities: int = 0
+    pending_alerts: int = 0
+    last_check_at: Optional[datetime] = None
+    next_check_at: Optional[datetime] = None
+    check_interval_hours: int = 24
+    service_status: str = "operational"
+
+
+@dataclass
+class _AlertView:
+    """F-31 minimal: Alert-View fuer den Alerts-Endpoint (Router-Vertrag)."""
+    id: UUID
+    entity_id: UUID
+    entity_name: str
+    alert_type: MonitoringEvent
+    severity: str
+    title: str
+    message: str
+    details: Dict[str, object] = field(default_factory=dict)
+    risk_impact: Optional[float] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    acknowledged: bool = False
+    acknowledged_at: Optional[datetime] = None
+
+
+@dataclass
+class _MonitoredEntityView:
+    """F-31 minimal: Entity-View fuer den Entities-Endpoint (Router-Vertrag)."""
+    entity_id: UUID
+    entity_name: str
+    monitoring_since: datetime
+    validation_status: ValidationResult
+    insolvency_status: InsolvencyType
+    hrb_number: Optional[str] = None
+    court: Optional[str] = None
+    last_checked_at: Optional[datetime] = None
+    alert_count: int = 0
+    risk_score_impact: float = 0.0
+
 class HandelsregisterMonitoringService:
     """
     Service für Handelsregister-Monitoring.
@@ -992,6 +1034,127 @@ class HandelsregisterMonitoringService:
             factors=factors,
         )
 
+    async def get_monitoring_status(
+        self,
+        db: "AsyncSession",
+        company_id: UUID,
+    ) -> "_MonitoringStatusData":
+        """F-31 minimal: Aggregierter Monitoring-Status fuer eine Company.
+
+        Liefert reale In-Memory-Zaehler (aktive Entities, offene Alerts)
+        sowie deterministische Defaults fuer Intervall/Service-Status.
+        """
+        entities = [
+            e for e in self._monitored_entities.values()
+            if e.company_id == company_id
+        ]
+        pending = [
+            a for a in self._alerts.values()
+            if a.company_id == company_id and not a.acknowledged
+        ]
+        last_check = max(
+            (e.last_check_at for e in entities if e.last_check_at is not None),
+            default=None,
+        )
+        next_check = min(
+            (e.next_check_at for e in entities if e.next_check_at is not None),
+            default=None,
+        )
+        return _MonitoringStatusData(
+            active_entities=len(entities),
+            pending_alerts=len(pending),
+            last_check_at=last_check,
+            next_check_at=next_check,
+            check_interval_hours=24,
+            service_status="operational",
+        )
+
+    async def get_alerts(
+        self,
+        db: "AsyncSession",
+        company_id: UUID,
+        include_acknowledged: bool = False,
+        severity: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> List["_AlertView"]:
+        """F-31 minimal: Liefert Monitoring-Alerts fuer eine Company.
+
+        Mappt die internen MonitoringAlert-Dataclasses auf die vom Router
+        erwartete Attribut-Form (alert_type/created_at/risk_impact).
+        """
+        alerts = [a for a in self._alerts.values() if a.company_id == company_id]
+        if not include_acknowledged:
+            alerts = [a for a in alerts if not a.acknowledged]
+        if severity:
+            alerts = [a for a in alerts if a.severity == severity]
+        alerts.sort(key=lambda a: a.detected_at, reverse=True)
+
+        start = max(0, (page - 1) * page_size)
+        end = start + page_size
+        return [
+            _AlertView(
+                id=a.id,
+                entity_id=a.entity_id,
+                entity_name=a.entity_name,
+                alert_type=a.event_type,
+                severity=a.severity,
+                title=a.title,
+                message=a.message,
+                details=dict(a.details) if a.details else {},
+                risk_impact=None,
+                created_at=a.detected_at,
+                acknowledged=a.acknowledged,
+                acknowledged_at=a.acknowledged_at,
+            )
+            for a in alerts[start:end]
+        ]
+
+    async def list_monitored_entities(
+        self,
+        db: "AsyncSession",
+        company_id: UUID,
+        status_filter: Optional[str] = None,
+    ) -> List["_MonitoredEntityView"]:
+        """F-31 minimal: Listet ueberwachte Entities fuer eine Company.
+
+        Mappt die internen MonitoredEntity-Dataclasses auf die vom Router
+        erwartete Attribut-Form (validation_status/insolvency_status/...).
+        """
+        entities = [
+            e for e in self._monitored_entities.values()
+            if e.company_id == company_id
+        ]
+        views: List[_MonitoredEntityView] = []
+        for e in entities:
+            validation_status = (
+                e.last_validation.result if e.last_validation
+                else ValidationResult.PENDING
+            )
+            insolvency_status = (
+                e.last_validation.insolvency_status if e.last_validation
+                else InsolvencyType.NONE
+            )
+            alert_count = len([
+                a for a in self._alerts.values()
+                if a.entity_id == e.entity_id and not a.acknowledged
+            ])
+            view = _MonitoredEntityView(
+                entity_id=e.entity_id,
+                entity_name=e.entity_name,
+                hrb_number=e.register_number,
+                court=None,
+                monitoring_since=e.last_check_at or datetime.now(timezone.utc),
+                last_checked_at=e.last_check_at,
+                validation_status=validation_status,
+                insolvency_status=insolvency_status,
+                alert_count=alert_count,
+                risk_score_impact=0.0,
+            )
+            if status_filter and validation_status.value != status_filter:
+                continue
+            views.append(view)
+        return views
     def _get_mock_court(self, company_name: str) -> str:
         """Generiert Mock-Registergericht."""
         courts = [

@@ -160,7 +160,7 @@ class TestBuildStandardChecklist:
         items = service._build_standard_checklist()
         bank = [i for i in items if i["category"] == "Bankabgleich"]
         assert len(bank) == 1
-        assert bank[0]["check_name"] == "Bankabgleich durchgefuehrt"
+        assert bank[0]["check_name"] == "Bankabgleich durchgeführt"
 
     def test_checklist_items_have_required_keys(self, service):
         """Alle Items haben category und check_name."""
@@ -295,7 +295,7 @@ class TestResolveGap:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        with pytest.raises(ValueError, match="Luecke nicht gefunden"):
+        with pytest.raises(ValueError, match="Lücke nicht gefunden"):
             await service.resolve_gap(
                 db=mock_db,
                 gap_id=uuid4(),
@@ -344,7 +344,7 @@ class TestUpdateCheckItem:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        with pytest.raises(ValueError, match="Pruefpunkt nicht gefunden"):
+        with pytest.raises(ValueError, match="Prüfpunkt nicht gefunden"):
             await service.update_check_item(
                 db=mock_db,
                 item_id=uuid4(),
@@ -373,7 +373,7 @@ class TestCompleteSession:
         )
 
         with patch.object(service, "get_session", return_value=session):
-            with pytest.raises(ValueError, match="fehlgeschlagene Pruefpunkte"):
+            with pytest.raises(ValueError, match="fehlgeschlagene Prüfpunkte"):
                 await service.complete_session(
                     db=mock_db,
                     session_id=sample_session_id,
@@ -441,18 +441,18 @@ class TestGenerateReportData:
             )
 
             assert "zusammenfassung" in report
-            assert "pruefpunkte_nach_kategorie" in report
-            assert "luecken_analyse" in report
-            assert "monats_uebersicht" in report
+            assert "prüfpunkte_nach_kategorie" in report
+            assert "lücken_analyse" in report
+            assert "monats_übersicht" in report
             assert "loesungsfortschritt" in report
             assert "empfehlungen" in report
 
             # Zusammenfassung hat die richtigen Felder
             summary = report["zusammenfassung"]
-            assert summary["geschaeftsjahr"] == 2025
+            assert summary["geschäftsjahr"] == 2025
 
             # Monats-Uebersicht hat 12 Eintraege
-            assert len(report["monats_uebersicht"]) == 12
+            assert len(report["monats_übersicht"]) == 12
 
 
 class TestListSessions:

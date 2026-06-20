@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { lazy, Suspense } from 'react'
-import { LazyLoadFallback } from '@/components/LazyLoadFallback'
+import { lazyRoute } from '@/lib/lazyRoute'
 
-const ChatLayout = lazy(() => import('@/features/chat/components/ChatLayout').then(m => ({ default: m.ChatLayout })))
+const ChatLayout = lazyRoute(() => import('@/features/chat/components/ChatLayout').then(m => ({ default: m.ChatLayout })))
 
 export const Route = createFileRoute('/chat')({
     component: ChatPage,
@@ -10,10 +9,8 @@ export const Route = createFileRoute('/chat')({
 
 function ChatPage() {
     return (
-        <Suspense fallback={<LazyLoadFallback />}>
-            <div className="h-full">
-                <ChatLayout />
-            </div>
-        </Suspense>
+        <div className="h-full">
+            <ChatLayout />
+        </div>
     )
 }

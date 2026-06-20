@@ -279,7 +279,8 @@ class RetryStrategy:
                     attempt=attempt + 1,
                     max_retries=retry_config.max_retries,
                     delay_seconds=round(delay, 2),
-                    error_type=type(e).__name__,
+                    # error_type wird bereits von safe_error_log(e) geliefert;
+                    # ein zusaetzliches error_type= kollidiert (doppeltes Keyword).
                     **safe_error_log(e),
                 )
 

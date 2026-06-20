@@ -12,7 +12,17 @@ vi.mock('@/components/ui/use-toast', () => ({
     toast: vi.fn(),
 }));
 
+// Wiederholbare Fehler (429/5xx/Timeout) laufen ueber sonner (Retry-Action)
+vi.mock('sonner', () => ({
+    toast: { error: vi.fn() },
+}));
+
+vi.mock('@/lib/api/client', () => ({
+    apiClient: { request: vi.fn() },
+}));
+
 import { toast } from '@/components/ui/use-toast';
+import { toast as sonnerToast } from 'sonner';
 
 // Helper to create Axios errors
 function createAxiosError(
@@ -106,10 +116,9 @@ describe('error-toast-handler', () => {
                 const error = createAxiosError(429);
                 showApiErrorToast(error);
 
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Zu viele Anfragen',
+                expect(sonnerToast.error).toHaveBeenCalledWith('Zu viele Anfragen', {
                     description: 'Sie haben zu viele Anfragen gesendet. Bitte warten Sie einen Moment.',
-                    variant: 'destructive',
+                    action: expect.objectContaining({ label: 'Erneut versuchen' }),
                 });
             });
 
@@ -117,10 +126,9 @@ describe('error-toast-handler', () => {
                 const error = createAxiosError(500);
                 showApiErrorToast(error);
 
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Server-Fehler',
+                expect(sonnerToast.error).toHaveBeenCalledWith('Server-Fehler', {
                     description: 'Ein interner Server-Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.',
-                    variant: 'destructive',
+                    action: expect.objectContaining({ label: 'Erneut versuchen' }),
                 });
             });
 
@@ -128,10 +136,9 @@ describe('error-toast-handler', () => {
                 const error = createAxiosError(502);
                 showApiErrorToast(error);
 
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Server nicht erreichbar',
+                expect(sonnerToast.error).toHaveBeenCalledWith('Server nicht erreichbar', {
                     description: 'Der Server ist vorübergehend nicht erreichbar.',
-                    variant: 'destructive',
+                    action: expect.objectContaining({ label: 'Erneut versuchen' }),
                 });
             });
 
@@ -139,10 +146,9 @@ describe('error-toast-handler', () => {
                 const error = createAxiosError(503);
                 showApiErrorToast(error);
 
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Dienst nicht verfügbar',
+                expect(sonnerToast.error).toHaveBeenCalledWith('Dienst nicht verfügbar', {
                     description: 'Der Dienst ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.',
-                    variant: 'destructive',
+                    action: expect.objectContaining({ label: 'Erneut versuchen' }),
                 });
             });
 
@@ -150,10 +156,9 @@ describe('error-toast-handler', () => {
                 const error = createAxiosError(504);
                 showApiErrorToast(error);
 
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Gateway-Zeitüberschreitung',
+                expect(sonnerToast.error).toHaveBeenCalledWith('Gateway-Zeitüberschreitung', {
                     description: 'Der Server hat nicht rechtzeitig geantwortet.',
-                    variant: 'destructive',
+                    action: expect.objectContaining({ label: 'Erneut versuchen' }),
                 });
             });
         });
@@ -207,10 +212,9 @@ describe('error-toast-handler', () => {
                 error.code = 'ECONNABORTED';
                 showApiErrorToast(error);
 
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Zeitüberschreitung',
+                expect(sonnerToast.error).toHaveBeenCalledWith('Zeitüberschreitung', {
                     description: 'Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.',
-                    variant: 'destructive',
+                    action: expect.objectContaining({ label: 'Erneut versuchen' }),
                 });
             });
 
@@ -219,10 +223,9 @@ describe('error-toast-handler', () => {
                 error.code = 'ETIMEDOUT';
                 showApiErrorToast(error);
 
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Zeitüberschreitung',
+                expect(sonnerToast.error).toHaveBeenCalledWith('Zeitüberschreitung', {
                     description: 'Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.',
-                    variant: 'destructive',
+                    action: expect.objectContaining({ label: 'Erneut versuchen' }),
                 });
             });
         });
@@ -300,8 +303,8 @@ describe('error-toast-handler', () => {
             showApiErrorToast(error);
             showApiErrorToast(error);
 
-            // Nur ein Toast sollte angezeigt werden
-            expect(toast).toHaveBeenCalledTimes(1);
+            // Nur ein Toast sollte angezeigt werden (500 ist retryable -> sonner)
+            expect(sonnerToast.error).toHaveBeenCalledTimes(1);
         });
 
         it('erlaubt verschiedene Fehlertypen nacheinander', () => {
@@ -309,7 +312,9 @@ describe('error-toast-handler', () => {
             showApiErrorToast(createAxiosError(404));
             showApiErrorToast(createAxiosError(403));
 
-            expect(toast).toHaveBeenCalledTimes(3);
+            // 500 retryable -> sonner; 404/403 -> klassischer Toast
+            expect(sonnerToast.error).toHaveBeenCalledTimes(1);
+            expect(toast).toHaveBeenCalledTimes(2);
         });
 
         it('erlaubt gleichen Fehler nach Rate-Limit-Intervall', async () => {
@@ -318,13 +323,13 @@ describe('error-toast-handler', () => {
             const error = createAxiosError(500);
 
             showApiErrorToast(error);
-            expect(toast).toHaveBeenCalledTimes(1);
+            expect(sonnerToast.error).toHaveBeenCalledTimes(1);
 
             // Advance time past rate limit (3000ms)
             vi.advanceTimersByTime(3500);
 
             showApiErrorToast(error);
-            expect(toast).toHaveBeenCalledTimes(2);
+            expect(sonnerToast.error).toHaveBeenCalledTimes(2);
 
             vi.useRealTimers();
         });

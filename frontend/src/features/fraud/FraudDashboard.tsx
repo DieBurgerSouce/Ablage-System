@@ -19,12 +19,7 @@ import {
   FileText,
   BarChart3,
 } from 'lucide-react';
-import {
-  useFraudDashboard,
-  useFraudAlerts,
-  useFraudAnalysis,
-  useFraudTypes,
-} from './hooks/use-fraud';
+import { useFraudDashboard, useFraudAnalysis, useFraudTypes } from './hooks/use-fraud';
 import { FraudStatsCards } from './components/FraudStatsCards';
 import { FraudAlertsTable } from './components/FraudAlertsTable';
 import { FraudTypesChart } from './components/FraudTypesChart';

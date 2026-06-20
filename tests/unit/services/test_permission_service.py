@@ -697,3 +697,73 @@ class TestEdgeCases:
 
         # Name should be normalized
         assert added_role.name == "team_leader"
+
+
+# ============== Redis Permission-Cache: Wiring & Invalidierung ==============
+
+
+class TestPermissionCacheRedisWiring:
+    """Tests fuer den AKTIVEN Redis-Permission-Cache (Multi-Worker-Sync).
+
+    Regression-Guard: der Cache war DAUERHAFT tot, weil _get_redis_client() den
+    RedisStateManager statt des rohen aioredis-Clients lieferte -> jeder Aufruf von
+    .get/.setex/.delete/.scan_iter warf AttributeError (still verschluckt) -> der
+    Service lief permanent im per-Request-In-Memory-Fallback (kein Worker-Sync).
+    """
+
+    @pytest.mark.asyncio
+    async def test_get_redis_client_returns_raw_client_not_manager(self, permission_service):
+        """REGRESSION: _get_redis_client muss manager.get_client() (rohen aioredis-Client)
+        liefern, NICHT den RedisStateManager selbst."""
+        raw_client = AsyncMock(name="raw_aioredis_client")
+        fake_manager = Mock()
+        fake_manager.get_client = AsyncMock(return_value=raw_client)
+
+        with patch("app.core.redis_state.get_redis", AsyncMock(return_value=fake_manager)):
+            client = await permission_service._get_redis_client()
+
+        assert client is raw_client, "muss den rohen Client liefern, nicht den Manager"
+        fake_manager.get_client.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_permissions_written_to_redis_and_invalidated_on_change(
+        self, permission_service, mock_db, sample_user
+    ):
+        """SECURITY: get_user_permissions schreibt nach Redis (setex -> Cache LEBT);
+        eine Rollenaenderung invalidiert (Redis-Key geloescht) -> alte Permissions
+        persistieren NICHT, die Neu-Abfrage liefert den aktuellen Stand."""
+        # Rohen Redis-Client faken + direkt injizieren (umgeht get_redis-Verbindung)
+        fake_redis = AsyncMock()
+        fake_redis.get = AsyncMock(return_value=None)      # Cache-Miss
+        fake_redis.setex = AsyncMock()
+        fake_redis.delete = AsyncMock()
+
+        async def _scan_iter(match=None):
+            yield f"permission_cache:global:{sample_user.id}"
+
+        fake_redis.scan_iter = _scan_iter
+        permission_service._redis_client = fake_redis
+
+        # DB liefert zunaechst nur documents:read
+        res1 = Mock()
+        res1.fetchall = Mock(return_value=[("documents:read",)])
+        mock_db.execute = AsyncMock(return_value=res1)
+
+        perms = await permission_service.get_user_permissions(sample_user)
+        assert perms == {"documents:read"}
+        # REGRESSION-GUARD: ohne den Fix wuerde setex NIE aufgerufen (AttributeError am Manager)
+        fake_redis.setex.assert_awaited_once()
+
+        # Rollenaenderung -> Cache invalidieren (Redis + In-Memory, wie assign_role/remove_role)
+        await permission_service._clear_user_cache_async(sample_user)
+        fake_redis.delete.assert_awaited()  # Redis-Key wurde geloescht
+
+        # Neu-Abfrage: DB liefert jetzt zusaetzlich documents:write; die alten Perms
+        # duerfen weder aus Redis noch In-Memory persistieren
+        fake_redis.get = AsyncMock(return_value=None)  # Cache-Miss nach Invalidierung
+        res2 = Mock()
+        res2.fetchall = Mock(return_value=[("documents:read",), ("documents:write",)])
+        mock_db.execute = AsyncMock(return_value=res2)
+
+        perms2 = await permission_service.get_user_permissions(sample_user)
+        assert perms2 == {"documents:read", "documents:write"}

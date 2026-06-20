@@ -20,16 +20,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import type {
-  ShortcutsContextValue,
-  ShortcutsContextState,
-  KeyboardShortcut,
-  KeySequence,
-  CommandItem,
-  ShortcutScope,
-  ShortcutsUserPreferences,
-  RecentCommand,
-} from '../types/shortcut-types';
+import type { ShortcutsContextValue, KeyboardShortcut, KeySequence, CommandItem, ShortcutScope, ShortcutsUserPreferences, RecentCommand } from '../types/shortcut-types';
 import {
   SHORTCUTS_STORAGE_KEY,
   MAX_RECENT_COMMANDS,

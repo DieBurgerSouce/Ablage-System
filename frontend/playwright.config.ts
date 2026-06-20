@@ -6,7 +6,11 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    workers: process.env.CI ? 1 : undefined,
+    // Lokal hart auf 4 Worker begrenzen: Mit `undefined` startet Playwright auf
+    // dieser Maschine 16 Worker und ueberlastet das Single-Uvicorn-Backend
+    // (socket hang up / ECONNRESET / 502 / 503, x-response-time >3s fuer triviale
+    // Requests — siehe QA-Lauf 2026-06-12).
+    workers: process.env.CI ? 1 : 4,
     reporter: 'html',
     use: {
         baseURL: process.env.BASE_URL || 'http://localhost:80',
@@ -14,20 +18,23 @@ export default defineConfig({
     },
     projects: [
         // Tests use authenticatedPage fixture for auth (no setup project needed)
+        // a11y-Specs laufen NUR im dedizierten a11y-Projekt (unten):
+        // Unter paralleler Last messen axe-Scans transiente Renderzustaende
+        // (Einblende-Animationen, Avatar-Lade-Fallbacks) und werden flaky.
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
-            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts|[\\/]a11y[\\/]/,
         },
         {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
-            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts|[\\/]a11y[\\/]/,
         },
         {
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
-            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts|[\\/]a11y[\\/]/,
         },
         {
             name: 'a11y',

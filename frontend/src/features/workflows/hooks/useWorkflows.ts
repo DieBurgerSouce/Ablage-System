@@ -7,19 +7,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as workflowsApi from '../api/workflows-api';
-import type {
-  Workflow,
-  WorkflowCreate,
-  WorkflowUpdate,
-  WorkflowListParams,
-  WorkflowStep,
-  StepCreate,
-  StepUpdate,
-  StepReorderItem,
-  WorkflowExecution,
-  ExecutionListParams,
-  ExecutionStart,
-} from '../types/workflow-types';
+import type { WorkflowCreate, WorkflowUpdate, WorkflowListParams, StepCreate, StepUpdate, StepReorderItem, ExecutionListParams, ExecutionStart } from '../types/workflow-types';
 
 // =============================================================================
 // Query Keys
@@ -446,8 +434,8 @@ export function useExecution(executionId: string, enabled = true) {
     queryKey: workflowKeys.execution(executionId),
     queryFn: () => workflowsApi.getExecution(executionId),
     enabled: enabled && !!executionId,
-    refetchInterval: (data) =>
-      data?.status === 'running' ? 2000 : false, // Auto-refresh bei laufender Execution
+    refetchInterval: (query) =>
+      query.state.data?.status === 'running' ? 2000 : false, // Auto-refresh bei laufender Execution (v5: Query-Objekt)
   });
 }
 

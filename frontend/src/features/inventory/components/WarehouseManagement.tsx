@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, MapPin, Star } from 'lucide-react';
-import { useWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse, Warehouse, WarehouseCreate } from '../hooks/useInventory';
+import { useWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse, type Warehouse, type WarehouseCreate } from '../hooks/useInventory';
 import { toast } from 'sonner';
 
 export function WarehouseManagement() {
@@ -111,7 +111,7 @@ export function WarehouseManagement() {
     });
   };
 
-  const WarehouseForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+  const WarehouseForm = (_props: { isEdit?: boolean }) => (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="code" className="text-right">

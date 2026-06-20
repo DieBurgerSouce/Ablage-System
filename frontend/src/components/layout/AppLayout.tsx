@@ -10,7 +10,6 @@ import { WebSocketStatusIndicator } from './WebSocketStatusIndicator'
 import { TourLauncher } from '@/features/product-tour'
 import { OfflineIndicator } from './OfflineIndicator'
 import { SmartUploadOverlay } from '@/features/upload/components/SmartUploadOverlay'
-import { SpotlightDialog } from '@/features/spotlight'
 import { Menu, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RecentActionsPanel, usePendingReviewCount } from '@/features/auto-learning'
@@ -118,7 +117,16 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                 {/* Global AI Assistant - Floating Widget auf jeder Seite */}
                 <GlobalAIAssistant />
             </div>
-            <SpotlightDialog />
+            {/*
+              B8 (2026-06-12): <SpotlightDialog /> hier ENTFERNT. Er
+              registrierte einen ZWEITEN document-Listener auf Strg/Cmd+K
+              (use-spotlight.ts) parallel zum GlobalCommandDialog in
+              __root.tsx - beide Paletten oeffneten gleichzeitig.
+              Kanonisch ist der GlobalCommandDialog: aktiver gepflegt und
+              maechtiger (NLQ-Suche + Autocomplete + Entities via
+              useSpotlightSearch, Navigation, Darstellung, Einstellungen,
+              Letzte Suchen). features/spotlight ist damit ungenutzt.
+            */}
         </SmartUploadOverlay>
     )
 }

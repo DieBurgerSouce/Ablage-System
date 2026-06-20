@@ -14,7 +14,7 @@ interface AnnotationLayerProps {
     height: number
 }
 
-export function AnnotationLayer({ pageNumber, scale, width, height }: AnnotationLayerProps) {
+export function AnnotationLayer({ pageNumber, scale: _scale, width: _width, height: _height }: AnnotationLayerProps) {
     const { annotations, mode, addAnnotation, removeAnnotation, updateAnnotation, selectAnnotation, selectedId } = useAnnotationStore()
     const setAuthorName = useAnnotationStore((s) => s.setAuthorName)
     const { user } = useAuth()

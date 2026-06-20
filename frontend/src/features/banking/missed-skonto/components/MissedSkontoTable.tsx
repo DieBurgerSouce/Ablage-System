@@ -3,7 +3,6 @@
  * Tabelle mit verpassten Skonto-Möglichkeiten
  */
 
-import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import {
   Table,

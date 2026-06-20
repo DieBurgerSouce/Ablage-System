@@ -505,14 +505,6 @@ class TestGDPRSecurity:
                 # Route sollte Authentifizierung erfordern
                 pass  # FastAPI handled this via Depends
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    def test_user_can_only_access_own_data(self):
-        """Benutzer kann nur eigene Daten abrufen."""
-        # Die Endpunkte verwenden current_user.id für alle Abfragen
-        # Das wird durch die Dependency get_current_active_user erzwungen
-        pass
-
-
 # ==================== Edge Cases ====================
 
 
@@ -624,21 +616,22 @@ class TestConsentManagementAPI:
 
         with patch('app.api.v1.gdpr.get_consent_management_service') as mock_service:
             service = mock_service.return_value
-            mock_summary = Mock()
-            mock_summary.user_id = mock_user.id
-            mock_summary.scopes = []
-            mock_summary.total_scopes = 5
-            mock_summary.active_consents = 3
-            mock_summary.pending_consents = 2
-
-            service.get_consent_summary = AsyncMock(return_value=mock_summary)
+            # Der Endpoint ruft check_consent je ConsentScope auf (echter Vertrag).
+            mock_check = Mock()
+            mock_check.consent_given = False
+            mock_check.consent_version = None
+            mock_check.granted_at = None
+            mock_check.valid_until = None
+            service.check_consent = AsyncMock(return_value=mock_check)
 
             response = await get_consent_status(
+                request=Mock(),
                 current_user=mock_user,
-                db=mock_db
+                db=mock_db,
+                company_id=mock_user.company_id,
             )
 
-            service.get_consent_summary.assert_called_once()
+            service.check_consent.assert_called()
 
     @pytest.mark.asyncio
     async def test_grant_consent_success(self, mock_user, mock_db):
@@ -654,17 +647,29 @@ class TestConsentManagementAPI:
             mock_result.consent_given = True
             mock_result.message = "Einwilligung erfolgreich erteilt"
             mock_result.granted_at = datetime.now(timezone.utc)
+            # Vom ConsentGrantResponse benoetigte Felder (echter Vertrag)
+            mock_result.consent_scope_id = uuid4()
+            mock_result.consent_version = "1.0"
 
             service.grant_consent = AsyncMock(return_value=mock_result)
 
-            # Mock Request fuer consent_request
+            # consent_request: scope + consent_given (bool) + valid_until
             mock_request = Mock()
             mock_request.scope = "personal_data"
+            mock_request.consent_given = True
+            mock_request.valid_until = None
+
+            # Echte Strings fuer client.host/headers (Endpoint macht user_agent[:500])
+            http_request = Mock()
+            http_request.client.host = "127.0.0.1"
+            http_request.headers = {"user-agent": "pytest"}
 
             response = await grant_consent(
+                request=http_request,
                 consent_request=mock_request,
                 current_user=mock_user,
-                db=mock_db
+                db=mock_db,
+                company_id=mock_user.company_id,
             )
 
             service.grant_consent.assert_called_once()
@@ -682,13 +687,22 @@ class TestConsentManagementAPI:
             mock_result.consent_given = False
             mock_result.message = "Einwilligung erfolgreich widerrufen"
             mock_result.withdrawn_at = datetime.now(timezone.utc)
+            # Vom ConsentWithdrawResponse benoetigtes Feld (echter Vertrag)
+            mock_result.consent_scope_id = uuid4()
 
             service.withdraw_consent = AsyncMock(return_value=mock_result)
 
+            # Echte Strings fuer client.host/headers (Endpoint macht user_agent[:500])
+            http_request = Mock()
+            http_request.client.host = "127.0.0.1"
+            http_request.headers = {"user-agent": "pytest"}
+
             response = await withdraw_consent(
                 scope="marketing",
+                request=http_request,
                 current_user=mock_user,
-                db=mock_db
+                db=mock_db,
+                company_id=mock_user.company_id,
             )
 
             service.withdraw_consent.assert_called_once()
@@ -734,7 +748,8 @@ class TestMyDataAPI:
                 include_documents=True,
                 include_activity=True,
                 current_user=mock_user,
-                db=mock_db
+                db=mock_db,
+                company_id=mock_user.company_id,
             )
 
             service.export_personal_data_summary.assert_called_once_with(
@@ -871,10 +886,11 @@ class TestDSRAPI:
             mock_request = Mock()
             mock_request.request_type = "access"
             mock_request.description = "Auskunft ueber meine Daten"
-            mock_request.data_categories = None
+            mock_request.affected_data_categories = None
             mock_request.rectification_details = None
 
             response = await create_dsr_request(
+                request=Mock(),
                 dsr_request=mock_request,
                 current_user=mock_user,
                 db=mock_db
@@ -897,6 +913,11 @@ class TestDSRAPI:
             mock_request.status = "pending"
             mock_request.due_date = datetime.now(timezone.utc) + timedelta(days=30)
             mock_request.created_at = datetime.now(timezone.utc)
+            # Vom DSRStatusResponse benoetigte Felder (echter Endpoint-Vertrag)
+            mock_request.requested_at = datetime.now(timezone.utc)
+            mock_request.started_at = None
+            mock_request.completed_at = None
+            mock_request.response_notes = None
 
             service.list_requests = AsyncMock(return_value=[mock_request])
 
@@ -912,7 +933,7 @@ class TestDSRAPI:
     @pytest.mark.asyncio
     async def test_get_dsr_request_success(self, mock_user, mock_db):
         """DSR-Anfrage Details erfolgreich abrufen."""
-        from app.api.v1.gdpr import get_dsr_request
+        from app.api.v1.gdpr import get_dsr_status as get_dsr_request
 
         request_id = uuid4()
 
@@ -928,6 +949,11 @@ class TestDSRAPI:
             mock_request.created_at = datetime.now(timezone.utc)
             mock_request.requester_email = mock_user.email
             mock_request.verified_at = None
+            # Vom DSRStatusResponse benoetigte Felder (echter Endpoint-Vertrag)
+            mock_request.requested_at = datetime.now(timezone.utc)
+            mock_request.started_at = None
+            mock_request.completed_at = None
+            mock_request.response_notes = None
 
             service.get_request = AsyncMock(return_value=mock_request)
 
@@ -946,7 +972,7 @@ class TestDSRAPI:
     @pytest.mark.asyncio
     async def test_get_dsr_request_not_found(self, mock_user, mock_db):
         """DSR-Anfrage nicht gefunden."""
-        from app.api.v1.gdpr import get_dsr_request
+        from app.api.v1.gdpr import get_dsr_status as get_dsr_request
 
         request_id = uuid4()
 
@@ -966,7 +992,7 @@ class TestDSRAPI:
     @pytest.mark.asyncio
     async def test_verify_dsr_request_success(self, mock_user, mock_db):
         """DSR-Verifikation erfolgreich."""
-        from app.api.v1.gdpr import verify_dsr_request, DSRVerifyRequest
+        from app.api.v1.gdpr import verify_dsr_identity as verify_dsr_request, DSRVerifyRequest
 
         request_id = uuid4()
 
@@ -994,7 +1020,7 @@ class TestDSRAPI:
     @pytest.mark.asyncio
     async def test_verify_dsr_request_invalid_token(self, mock_user, mock_db):
         """DSR-Verifikation mit ungueltigem Token."""
-        from app.api.v1.gdpr import verify_dsr_request, DSRVerifyRequest
+        from app.api.v1.gdpr import verify_dsr_identity as verify_dsr_request, DSRVerifyRequest
 
         request_id = uuid4()
 

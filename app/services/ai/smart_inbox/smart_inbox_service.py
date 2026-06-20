@@ -460,7 +460,7 @@ class SmartInboxService:
             and_(
                 base_filter,
                 SmartInboxItem.status == SmartInboxItemStatus.DISMISSED.value,
-                SmartInboxItem.dismissed_at >= today_start,
+                SmartInboxItem.updated_at >= today_start,
             )
         )
         dismissed_today_result = await self.db.execute(dismissed_today_query)

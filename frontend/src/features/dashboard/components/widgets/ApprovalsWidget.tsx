@@ -14,20 +14,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-    CheckCircle2,
-    Clock,
-    AlertTriangle,
-    ChevronRight,
-    XCircle,
-    Loader2,
-} from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, ChevronRight, XCircle } from 'lucide-react';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardSectionError } from '../shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -63,7 +55,7 @@ function useApprovalSummary() {
     return useQuery({
         queryKey: ['approvals', 'summary'],
         queryFn: async (): Promise<ApprovalSummary> => {
-            const response = await api.get('/api/v1/approvals/summary');
+            const response = await api.get('/approvals/summary');
             return response.data;
         },
         staleTime: 60 * 1000, // 1 minute
@@ -75,7 +67,7 @@ function useMyPendingApprovals(limit: number = 5) {
     return useQuery({
         queryKey: ['approvals', 'my-pending', { limit }],
         queryFn: async (): Promise<{ requests: ApprovalRequest[]; total: number }> => {
-            const response = await api.get('/api/v1/approvals/requests', {
+            const response = await api.get('/approvals/requests', {
                 params: {
                     my_pending: true,
                     status_filter: 'pending',

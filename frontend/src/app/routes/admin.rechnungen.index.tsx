@@ -6,19 +6,14 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
-import { LazyLoadFallback } from '@/components/LazyLoadFallback';
+import { lazyRoute } from '@/lib/lazyRoute';
 
-const InvoiceOverviewPage = lazy(() => import('@/features/invoices/components/InvoiceOverviewPage').then(m => ({ default: m.InvoiceOverviewPage })));
+const InvoiceOverviewPage = lazyRoute(() => import('@/features/invoices/components/InvoiceOverviewPage').then(m => ({ default: m.InvoiceOverviewPage })));
 
 export const Route = createFileRoute('/admin/rechnungen/')({
   component: RechnungenIndexPage,
 });
 
 function RechnungenIndexPage() {
-  return (
-    <Suspense fallback={<LazyLoadFallback />}>
-      <InvoiceOverviewPage />
-    </Suspense>
-  );
+  return <InvoiceOverviewPage />;
 }

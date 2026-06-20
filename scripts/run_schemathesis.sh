@@ -45,6 +45,16 @@ if [ "$SEED" = "1" ]; then
         exec -T backend python - < scripts/seed_e2e.py
 fi
 
+# OpenAPI-Schema vorwaermen: Die Spec ist gross (~7-8 MB) und die ERSTE
+# Generierung nach (Re-)Start dauert >10s. Schemathesis v4 hat einen festen
+# 10s-Schema-Load-Read-Timeout -> ohne Warmup schlaegt das Laden fehl
+# ("Read timed out after 10 seconds"). Nach dem Warmup laedt /openapi.json
+# in <0.5s. Generoeses --max-time, Fehler nicht fatal (schemathesis meldet es
+# sonst selbst).
+echo ">> Waerme OpenAPI-Schema vor (erste Generierung kann >10s dauern)..."
+curl -fsS --max-time 90 "$BASE_URL/openapi.json" >/dev/null 2>&1 \
+    || echo "WARNUNG: OpenAPI-Warmup langsam/fehlgeschlagen - Schemathesis koennte beim Laden scheitern." >&2
+
 echo ">> Hole Access-Token ($ADMIN_EMAIL)..."
 TOKEN=$(curl -fsS -X POST "$BASE_URL/api/v1/auth/login" \
     -H "Content-Type: application/json" \
@@ -60,7 +70,9 @@ echo ">> Starte Schemathesis (max-examples=$MAX_EXAMPLES, Check: not_a_server_er
 # Ausgeschlossen: /api/v1/test/ (Reset wuerde den Seed-Zustand zerstoeren),
 # Auth-Logout (wuerde das Fuzz-Token invalidieren) sowie DELETE-Methoden
 # (erste Ausbaustufe konservativ - kein Wegfuzzen von Dev-Daten).
-schemathesis run "$BASE_URL/openapi.json" \
+# SCHEMATHESIS_BIN: absoluter Pfad fuer Windows-Hosts, auf denen das
+# Python-Scripts-Verzeichnis nicht im (Git-Bash-)PATH liegt.
+"${SCHEMATHESIS_BIN:-schemathesis}" run "$BASE_URL/openapi.json" \
     --header "Authorization: Bearer $TOKEN" \
     --checks not_a_server_error \
     --max-examples "$MAX_EXAMPLES" \

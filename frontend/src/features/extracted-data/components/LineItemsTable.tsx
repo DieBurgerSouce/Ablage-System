@@ -19,12 +19,15 @@ interface LineItemsTableProps {
     items: ExtractedLineItem[];
     currency?: string;
     className?: string;
+    /** Ueberschrift der Tabelle (default: Positionen) */
+    title?: string;
 }
 
 export function LineItemsTable({
     items,
     currency = "EUR",
     className,
+    title = "Positionen",
 }: LineItemsTableProps) {
     if (!items || items.length === 0) {
         return null;
@@ -41,7 +44,7 @@ export function LineItemsTable({
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <List className="h-4 w-4" />
-                    Positionen ({items.length})
+                    {title} ({items.length})
                 </CardTitle>
             </CardHeader>
             <CardContent>

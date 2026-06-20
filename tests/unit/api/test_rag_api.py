@@ -351,8 +351,8 @@ class TestRAGChatEndpoints:
         mock_db.execute.return_value = mock_result
 
         result = await list_chat_sessions(
-            limit=20,
-            offset=0,
+            per_page=20,
+            page=1,
             current_user=mock_user,
             db=mock_db,
         )

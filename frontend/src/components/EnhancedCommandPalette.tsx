@@ -32,43 +32,7 @@ import {
     CommandShortcut,
 } from "@/components/ui/command"
 import { Badge } from "@/components/ui/badge"
-import {
-    LayoutDashboard,
-    FileText,
-    FolderOpen,
-    Search,
-    Upload,
-    Settings,
-    Sun,
-    Moon,
-    Laptop,
-    LogOut,
-    Calculator,
-    Receipt,
-    Users,
-    Building2,
-    ShieldCheck,
-    Link2,
-    Truck,
-    AlertTriangle,
-    Clock,
-    Star,
-    Zap,
-    Plus,
-    History,
-    ArrowRight,
-    Loader2,
-    Lightbulb,
-    LayoutGrid,
-    Euro,
-    FileBarChart2,
-    BrainCircuit,
-    Pen,
-    CheckCircle,
-    Gauge,
-    type LucideIcon,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+import { LayoutDashboard, FileText, FolderOpen, Search, Upload, Settings, Sun, Moon, Laptop, LogOut, Calculator, Receipt, Users, Building2, ShieldCheck, Link2, Truck, AlertTriangle, Clock, Zap, History, ArrowRight, Loader2, Lightbulb, LayoutGrid, Euro, FileBarChart2, BrainCircuit, Pen, CheckCircle, Gauge, type LucideIcon } from "lucide-react"
 
 // ==================== Types ====================
 
@@ -246,7 +210,7 @@ export function EnhancedCommandPalette() {
                 icon: Calculator,
                 category: 'quick-actions',
                 keywords: ['prüfen', 'validieren', 'check'],
-                action: () => navigate({ to: '/validation' }),
+                action: () => navigate({ to: '/validation-queue' }),
             },
 
             // Navigation
@@ -264,7 +228,7 @@ export function EnhancedCommandPalette() {
                 icon: FileText,
                 category: 'navigation',
                 keywords: ['liste', 'alle'],
-                action: () => navigate({ to: '/documents' }),
+                action: () => navigate({ to: '/search' }),
             },
             {
                 id: 'nav-ablage',
@@ -272,7 +236,7 @@ export function EnhancedCommandPalette() {
                 icon: FolderOpen,
                 category: 'navigation',
                 keywords: ['ordner', 'archiv'],
-                action: () => navigate({ to: '/ablage' }),
+                action: () => navigate({ to: '/kunden' }),
             },
             {
                 id: 'nav-chains',
@@ -297,7 +261,7 @@ export function EnhancedCommandPalette() {
                 icon: Truck,
                 category: 'navigation',
                 keywords: ['tracking', 'versand', 'lieferung', 'paket'],
-                action: () => navigate({ to: '/shipments' }),
+                action: () => navigate({ to: '/sendungen' }),
             },
             {
                 id: 'nav-holding',

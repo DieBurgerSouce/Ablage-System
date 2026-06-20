@@ -163,7 +163,10 @@ export function KundenPage() {
         {/* Sortierung */}
         <div className="flex items-center gap-2">
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as CustomerSortField)}>
-            <SelectTrigger className="w-[180px]">
+            {/* a11y (WCAG 2.1 AA button-name): expliziter accessible name am
+                Select-Trigger, damit axe immer einen Namen findet (Icon-Button
+                ohne sichtbares Label). */}
+            <SelectTrigger className="w-[180px]" aria-label="Sortieren nach">
               <SelectValue placeholder="Sortieren nach" />
             </SelectTrigger>
             <SelectContent>
@@ -250,7 +253,6 @@ export function KundenPage() {
           {customers.map((customer) => {
             const totalDocs = getTotalDocs(customer)
             const openCount = getOpenInvoices(customer)
-            const folderCount = customer.companyPresence?.length || 0
 
             return (
               <Card

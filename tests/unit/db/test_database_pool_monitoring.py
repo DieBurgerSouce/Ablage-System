@@ -304,7 +304,10 @@ class TestPoolHealthCheck:
                 result = await mgr.health_check()
 
         assert result["status"] == "unhealthy"
-        assert "error" in result
+        # PII-sicheres Fehlerformat (safe_error_log): error_id/error_type
+        # statt rohem "error"-Key (CLAUDE.md Regel 1 — kein PII-Leak).
+        assert "error_id" in result
+        assert "error_type" in result
 
 
 class TestPoolStats:
@@ -397,7 +400,10 @@ class TestGetPoolStatus:
             result = await get_pool_status()
 
         assert result["status"] == "error"
-        assert "error" in result
+        # PII-sicheres Fehlerformat (safe_error_log): error_id/error_type
+        # statt rohem "error"-Key (CLAUDE.md Regel 1 — kein PII-Leak).
+        assert "error_id" in result
+        assert "error_type" in result
 
 
 class TestCheckDatabaseConnection:

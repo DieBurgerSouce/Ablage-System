@@ -11,23 +11,7 @@
 
 import { AxiosError } from 'axios';
 import { apiClient } from '../client';
-import type {
-  InvestmentPerformance,
-  PortfolioAllocation,
-  DiversificationScore,
-  RiskProfile,
-  RebalancingSuggestion,
-  InvestmentFullAnalytics,
-  NetWorthComponents,
-  FinancialHealthScore,
-  SmartRecommendationsList,
-  ExtraPaymentScenario,
-  RefinancingScenario,
-  FullAmortizationSchedule,
-  LoanComparison,
-  PropertyIntelligence,
-  VehicleIntelligence,
-} from '@/types/privat';
+import type { InvestmentPerformance, PortfolioAllocation, DiversificationScore, RiskProfile, RebalancingSuggestion, InvestmentFullAnalytics, NetWorthComponents, FinancialHealthScore, SmartRecommendationsList, ExtraPaymentScenario, RefinancingScenario, FullAmortizationSchedule, LoanComparison } from '@/types/privat';
 
 // ==================== Error Class ====================
 
@@ -322,7 +306,16 @@ function transformRiskProfile(data: RiskProfileBackend): RiskProfile {
     spaceId: data.space_id,
     overallRiskScore: data.overall_risk_score,
     riskCategory: data.risk_category as RiskProfile['riskCategory'],
-    riskByType: data.risk_by_type,
+    riskByType: Object.fromEntries(
+      Object.entries(data.risk_by_type).map(([key, value]) => [
+        key,
+        {
+          allocation: value.allocation,
+          riskLevel: value.risk_level,
+          contribution: value.contribution,
+        },
+      ])
+    ),
     volatilityEstimate: data.volatility_estimate,
     recommendations: data.recommendations,
     calculatedAt: data.calculated_at,

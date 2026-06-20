@@ -61,7 +61,6 @@ import type {
   ExportFormat,
   FieldDefinition,
   DataType,
-  AggregationType,
 } from '../types';
 
 interface ReportBuilderProps {
@@ -92,14 +91,6 @@ const dataTypeLabels: Record<DataType, string> = {
   boolean: 'Ja/Nein',
 };
 
-const _aggregationOptions: { value: AggregationType; label: string }[] = [
-  { value: 'none', label: 'Keine' },
-  { value: 'sum', label: 'Summe' },
-  { value: 'avg', label: 'Durchschnitt' },
-  { value: 'count', label: 'Anzahl' },
-  { value: 'min', label: 'Minimum' },
-  { value: 'max', label: 'Maximum' },
-];
 
 export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
   const [activeTab, setActiveTab] = useState('basics');

@@ -27,7 +27,7 @@ class TestTaskRegistration:
 
         assert reprocess_all_documents_structured_extraction is not None
         assert hasattr(reprocess_all_documents_structured_extraction, 'name')
-        assert reprocess_all_documents_structured_extraction.name == "extraction.reprocess_all_structured_extraction"
+        assert reprocess_all_documents_structured_extraction.name == "app.workers.tasks.extraction_tasks.reprocess_all_documents_structured_extraction"
 
     def test_reprocess_single_is_registered(self):
         """Sollte reprocess_single_document Task registriert haben."""
@@ -35,7 +35,7 @@ class TestTaskRegistration:
 
         assert reprocess_single_document is not None
         assert hasattr(reprocess_single_document, 'name')
-        assert reprocess_single_document.name == "extraction.reprocess_single_document"
+        assert reprocess_single_document.name == "app.workers.tasks.extraction_tasks.reprocess_single_document"
 
     def test_generate_stats_is_registered(self):
         """Sollte generate_extraction_stats Task registriert haben."""
@@ -43,7 +43,7 @@ class TestTaskRegistration:
 
         assert generate_extraction_stats is not None
         assert hasattr(generate_extraction_stats, 'name')
-        assert generate_extraction_stats.name == "extraction.generate_extraction_stats"
+        assert generate_extraction_stats.name == "app.workers.tasks.extraction_tasks.generate_extraction_stats"
 
     def test_quick_classify_is_registered(self):
         """Sollte quick_classify_document Task registriert haben."""
@@ -51,7 +51,7 @@ class TestTaskRegistration:
 
         assert quick_classify_document is not None
         assert hasattr(quick_classify_document, 'name')
-        assert quick_classify_document.name == "extraction.quick_classify_document"
+        assert quick_classify_document.name == "app.workers.tasks.extraction_tasks.quick_classify_document"
 
     def test_reprocess_quick_classification_is_registered(self):
         """Sollte reprocess_quick_classification Task registriert haben."""
@@ -59,7 +59,7 @@ class TestTaskRegistration:
 
         assert reprocess_quick_classification is not None
         assert hasattr(reprocess_quick_classification, 'name')
-        assert reprocess_quick_classification.name == "extraction.reprocess_quick_classification"
+        assert reprocess_quick_classification.name == "app.workers.tasks.extraction_tasks.reprocess_quick_classification"
 
 
 class TestTaskOptions:
@@ -150,7 +150,10 @@ class TestTaskNaming:
     """Tests fuer Task Namenskonventionen."""
 
     def test_task_names_follow_extraction_prefix(self):
-        """Sollte Task-Namen mit extraction-Prefix haben."""
+        """Sollte Task-Namen mit dem voll-qualifizierten Modulpfad-Prefix haben.
+
+        Konvention dieser Codebase: name == 'app.workers.tasks.<modul>.<func>'.
+        """
         from app.workers.tasks.extraction_tasks import (
             reprocess_all_documents_structured_extraction,
             reprocess_single_document,
@@ -168,7 +171,7 @@ class TestTaskNaming:
         ]
 
         for task in tasks:
-            assert task.name.startswith("extraction."), \
+            assert task.name.startswith("app.workers.tasks.extraction_tasks."), \
                 f"Task {task.name} folgt nicht der extraction-Namenskonvention"
 
 

@@ -126,7 +126,9 @@ class TestRecordImportEvent:
 
         # Verify event was added
         mock_db.add.assert_called()
-        mock_db.flush.assert_called_once()
+        # Bei neuer Summary flusht der Service zweimal: einmal in
+        # _get_or_create_summary (neue Summary) und einmal am Methodenende.
+        mock_db.flush.assert_called()
 
     @pytest.mark.asyncio
     async def test_records_email_import(
@@ -196,7 +198,8 @@ class TestRecordProcessingStep:
         )
 
         mock_db.add.assert_called()
-        mock_db.flush.assert_called_once()
+        # Neue Summary -> flush in _get_or_create_summary + flush am Methodenende.
+        mock_db.flush.assert_called()
 
     @pytest.mark.asyncio
     async def test_records_classification(
@@ -265,7 +268,8 @@ class TestRecordEntityLink:
         )
 
         mock_db.add.assert_called()
-        mock_db.flush.assert_called_once()
+        # Neue Summary -> flush in _get_or_create_summary + flush am Methodenende.
+        mock_db.flush.assert_called()
 
     @pytest.mark.asyncio
     async def test_sanitizes_reason_field(
@@ -314,7 +318,8 @@ class TestRecordModification:
         )
 
         mock_db.add.assert_called()
-        mock_db.flush.assert_called_once()
+        # Neue Summary -> flush in _get_or_create_summary + flush am Methodenende.
+        mock_db.flush.assert_called()
 
     @pytest.mark.asyncio
     async def test_does_not_store_field_values(

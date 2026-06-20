@@ -368,7 +368,7 @@ class TestAuditTrailCompliance:
         )
 
         seq_metric = metrics[1]
-        assert seq_metric.name == "Sequenzluecken im Audit-Trail"
+        assert seq_metric.name == "Sequenzlücken im Audit-Trail"
         assert seq_metric.value == 5
         assert seq_metric.status == ComplianceStatus.NON_COMPLIANT
 

@@ -40,7 +40,10 @@ class DocumentType(str, Enum):
     """Document type classification."""
     DOCUMENT = "document"  # Generic document (default for uncategorized)
     INVOICE = "invoice"
+    CREDIT_NOTE = "credit_note"          # Gutschrift
+    DUNNING = "dunning"                  # Mahnung
     ORDER = "order"
+    PURCHASE_ORDER = "purchase_order"    # Bestellung
     OFFER = "offer"  # Angebote
     CONTRACT = "contract"
     DELIVERY_NOTE = "delivery_note"
@@ -51,6 +54,7 @@ class DocumentType(str, Enum):
     OTHER = "other"
     UNKNOWN = "unknown"
     # Finanz-Dokumenttypen
+    TAX_DOCUMENT = "tax_document"               # Steuerdokument (generisch)
     TAX_ASSESSMENT = "tax_assessment"           # Grundabgabenbescheid
     TAX_NOTICE = "tax_notice"                   # Steuerbescheid
     TAX_PREPAYMENT = "tax_prepayment"           # Vorauszahlung
@@ -127,6 +131,25 @@ class DocumentMetadata(BaseModel):
 
 
 # User Schemas
+
+# bcrypt verarbeitet maximal 72 Bytes; bcrypt >= 4.1 wirft bei laengeren
+# Passwoertern ValueError (-> 500 ohne Validierung). KEIN Truncating
+# (Entscheidung 2026-06-11): Ueberlange Passwoerter werden sauber mit 422
+# abgelehnt. Achtung: Byte-Laenge != Zeichen-Laenge (Umlaute = 2 Bytes),
+# deshalb reicht Pydantic max_length nicht aus.
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
+def validate_password_byte_length(v: str) -> str:
+    """Lehnt Passwoerter ab, die UTF-8-kodiert laenger als 72 Bytes sind."""
+    if len(v.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError(
+            "Passwort darf maximal 72 Bytes (UTF-8) lang sein "
+            "(Umlaute und Sonderzeichen zaehlen mehrfach)"
+        )
+    return v
+
+
 class UserBase(BaseModel):
     """Base user schema."""
     email: EmailStr
@@ -147,6 +170,12 @@ class UserCreate(UserBase):
     """User creation schema."""
     password: str = Field(..., min_length=8)
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, v: str) -> str:
+        """bcrypt-Limit: max 72 Bytes (UTF-8), kein Truncating."""
+        return validate_password_byte_length(v)
+
 
 class UserUpdate(BaseModel):
     """User update schema."""
@@ -160,6 +189,12 @@ class UserChangePassword(BaseModel):
     """Schema for password change."""
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8, max_length=100)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password_bytes(cls, v: str) -> str:
+        """bcrypt-Limit: max 72 Bytes (UTF-8), kein Truncating."""
+        return validate_password_byte_length(v)
 
 
 class UserInDB(UserBase):
@@ -179,6 +214,9 @@ class UserInDB(UserBase):
 
 class UserResponse(UserBase):
     """User response schema (public - no password)."""
+    # F-04: bestehende/Reserved-TLD-Mails (z.B. *.local) nicht an EmailStr
+    # scheitern lassen -> Response als plain str serialisieren.
+    email: str
     id: uuid.UUID
     is_active: bool
     is_superuser: bool
@@ -444,7 +482,7 @@ class PasswordResetConfirm(BaseModel):
             raise ValueError("Passwort muss mindestens eine Zahl enthalten")
         if not any(c in "!@#$%^&*(),.?\":{}|<>-_=+[]'" for c in v):
             raise ValueError("Passwort muss mindestens ein Sonderzeichen enthalten")
-        return v
+        return validate_password_byte_length(v)
 
 
 class PasswordResetValidate(BaseModel):
@@ -1504,6 +1542,12 @@ class UserAdminCreate(BaseModel):
     tier: UserTier = UserTier.FREE
     daily_quota: int = Field(100, ge=1)
     notes: Optional[str] = Field(None, max_length=1000)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, v: str) -> str:
+        """bcrypt-Limit: max 72 Bytes (UTF-8), kein Truncating."""
+        return validate_password_byte_length(v)
 
     @field_validator("username")
     @classmethod

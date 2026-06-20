@@ -127,10 +127,10 @@ class TestGetAllInsights:
         """Erfolgreiches Abrufen aller Insights."""
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
-                with patch("app.api.v1.proactive_insights.DeadlineInsightsService") as mock_deadline:
-                    with patch("app.api.v1.proactive_insights.AnomalyInsightsService") as mock_anomaly:
-                        with patch("app.api.v1.proactive_insights.WorkflowInsightsService") as mock_workflow:
-                            with patch("app.api.v1.proactive_insights.DataEnrichmentInsightsService") as mock_data:
+                with patch("app.api.v1.proactive_insights.get_deadline_insights_service") as mock_deadline:
+                    with patch("app.api.v1.proactive_insights.get_anomaly_insights_service") as mock_anomaly:
+                        with patch("app.api.v1.proactive_insights.get_workflow_insights_service") as mock_workflow:
+                            with patch("app.api.v1.proactive_insights.get_data_enrichment_insights_service") as mock_data:
                                 # Setup mocks
                                 mock_deadline.return_value.check_all_deadlines = AsyncMock(return_value=[])
                                 mock_anomaly.return_value.detect_all_anomalies = AsyncMock(return_value=[])
@@ -159,7 +159,7 @@ class TestGetDeadlineInsights:
         """Deadline-Insights mit days-Parameter."""
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
-                with patch("app.api.v1.proactive_insights.DeadlineInsightsService") as mock_service:
+                with patch("app.api.v1.proactive_insights.get_deadline_insights_service") as mock_service:
                     mock_service.return_value.check_all_deadlines = AsyncMock(return_value=[])
 
                     async with AsyncClient(app=app, base_url="http://test") as client:
@@ -183,7 +183,7 @@ class TestGetAnomalyInsights:
         """Anomalie-Insights mit lookback_days-Parameter."""
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
-                with patch("app.api.v1.proactive_insights.AnomalyInsightsService") as mock_service:
+                with patch("app.api.v1.proactive_insights.get_anomaly_insights_service") as mock_service:
                     mock_service.return_value.detect_all_anomalies = AsyncMock(return_value=[])
 
                     async with AsyncClient(app=app, base_url="http://test") as client:
@@ -207,7 +207,7 @@ class TestGetWorkflowInsights:
         """Workflow-Insights abrufen."""
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
-                with patch("app.api.v1.proactive_insights.WorkflowInsightsService") as mock_service:
+                with patch("app.api.v1.proactive_insights.get_workflow_insights_service") as mock_service:
                     mock_service.return_value.get_all_workflow_insights = AsyncMock(return_value=[])
 
                     async with AsyncClient(app=app, base_url="http://test") as client:
@@ -231,7 +231,7 @@ class TestGetDataQualityInsights:
         """Datenqualitaets-Insights abrufen."""
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
-                with patch("app.api.v1.proactive_insights.DataEnrichmentInsightsService") as mock_service:
+                with patch("app.api.v1.proactive_insights.get_data_enrichment_insights_service") as mock_service:
                     mock_service.return_value.get_all_data_insights = AsyncMock(return_value=[])
 
                     async with AsyncClient(app=app, base_url="http://test") as client:
@@ -257,7 +257,7 @@ class TestGetDataQualitySummary:
         """Datenqualitaets-Zusammenfassung abrufen."""
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
-                with patch("app.api.v1.proactive_insights.DataEnrichmentInsightsService") as mock_service:
+                with patch("app.api.v1.proactive_insights.get_data_enrichment_insights_service") as mock_service:
                     mock_summary = MagicMock()
                     for key, value in sample_data_quality_summary.items():
                         setattr(mock_summary, key, value)
@@ -287,10 +287,10 @@ class TestGetInsightsSummary:
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
                 # Patch all services
-                with patch("app.api.v1.proactive_insights.DeadlineInsightsService") as mock_deadline:
-                    with patch("app.api.v1.proactive_insights.AnomalyInsightsService") as mock_anomaly:
-                        with patch("app.api.v1.proactive_insights.WorkflowInsightsService") as mock_workflow:
-                            with patch("app.api.v1.proactive_insights.DataEnrichmentInsightsService") as mock_data:
+                with patch("app.api.v1.proactive_insights.get_deadline_insights_service") as mock_deadline:
+                    with patch("app.api.v1.proactive_insights.get_anomaly_insights_service") as mock_anomaly:
+                        with patch("app.api.v1.proactive_insights.get_workflow_insights_service") as mock_workflow:
+                            with patch("app.api.v1.proactive_insights.get_data_enrichment_insights_service") as mock_data:
                                 mock_deadline.return_value.check_all_deadlines = AsyncMock(return_value=[])
                                 mock_anomaly.return_value.detect_all_anomalies = AsyncMock(return_value=[])
                                 mock_workflow.return_value.get_all_workflow_insights = AsyncMock(return_value=[])
@@ -445,7 +445,7 @@ class TestErrorHandling:
         """Behandelt Service-Fehler graceful."""
         with patch("app.api.v1.proactive_insights.get_current_active_user", return_value=mock_current_user):
             with patch("app.api.v1.proactive_insights.get_db", return_value=mock_db):
-                with patch("app.api.v1.proactive_insights.DeadlineInsightsService") as mock_service:
+                with patch("app.api.v1.proactive_insights.get_deadline_insights_service") as mock_service:
                     mock_service.return_value.check_all_deadlines = AsyncMock(
                         side_effect=Exception("Service Error")
                     )

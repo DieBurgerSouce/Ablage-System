@@ -55,6 +55,7 @@ const perDiemSchema = z.object({
 });
 
 type PerDiemFormData = z.infer<typeof perDiemSchema>;
+type PerDiemFormDataInput = z.input<typeof perDiemSchema>;
 
 interface PerDiemCalculatorProps {
   onCalculate?: (calculation: PerDiemCalculation) => void;
@@ -75,7 +76,7 @@ export function PerDiemCalculator({
   const defaultStart = `${today.toISOString().split('T')[0]}T08:00`;
   const defaultEnd = `${today.toISOString().split('T')[0]}T18:00`;
 
-  const form = useForm<PerDiemFormData>({
+  const form = useForm<PerDiemFormDataInput, unknown, PerDiemFormData>({
     resolver: zodResolver(perDiemSchema),
     defaultValues: {
       travel_start: defaultStart,
@@ -135,7 +136,7 @@ export function PerDiemCalculator({
               <FormField
                 control={form.control}
                 name="travel_start"
-                render={({ field }: { field: { onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; value: string; name: string; onBlur: () => void } }) => (
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Reisebeginn *</FormLabel>
                     <FormControl>
@@ -149,7 +150,7 @@ export function PerDiemCalculator({
               <FormField
                 control={form.control}
                 name="travel_end"
-                render={({ field }: { field: { onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; value: string; name: string; onBlur: () => void } }) => (
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Reiseende *</FormLabel>
                     <FormControl>
@@ -164,7 +165,7 @@ export function PerDiemCalculator({
             <FormField
               control={form.control}
               name="country"
-              render={({ field }: { field: { onChange: (value: string) => void; value: string } }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Land</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
@@ -204,7 +205,7 @@ export function PerDiemCalculator({
                 <FormField
                   control={form.control}
                   name="meals_breakfast"
-                  render={({ field }: { field: { onChange: (value: boolean) => void; value: boolean } }) => (
+                  render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox
@@ -222,7 +223,7 @@ export function PerDiemCalculator({
                 <FormField
                   control={form.control}
                   name="meals_lunch"
-                  render={({ field }: { field: { onChange: (value: boolean) => void; value: boolean } }) => (
+                  render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox
@@ -240,7 +241,7 @@ export function PerDiemCalculator({
                 <FormField
                   control={form.control}
                   name="meals_dinner"
-                  render={({ field }: { field: { onChange: (value: boolean) => void; value: boolean } }) => (
+                  render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox

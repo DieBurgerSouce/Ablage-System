@@ -269,7 +269,7 @@ class TestBackupReportService:
         service._analyze_issues(report)
 
         # Should have warning about encryption
-        assert any("Verschluesselung" in warning for warning in report.warnings)
+        assert any("Verschlüsselung" in warning for warning in report.warnings)
 
     def test_analyze_issues_stale_backup(self, temp_dirs):
         """Test that stale backup generates issue."""

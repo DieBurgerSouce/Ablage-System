@@ -665,7 +665,11 @@ async def initiate_payment(
     )
 
 
-@router.post("/payments/{payment_id}/approve")
+@router.post(
+    "/payments/{payment_id}/approve",
+    # Eindeutige operation_id: kollidierte mit banking/payments.py
+    operation_id="connections_approve_payment",
+)
 async def approve_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -694,7 +698,11 @@ async def approve_payment(
     return {"success": True, "status": result.status}
 
 
-@router.post("/payments/{payment_id}/cancel")
+@router.post(
+    "/payments/{payment_id}/cancel",
+    # Eindeutige operation_id: kollidierte mit banking/payments.py
+    operation_id="connections_cancel_payment",
+)
 async def cancel_payment(
     payment_id: UUID,
     reason: Optional[str] = Query(None),

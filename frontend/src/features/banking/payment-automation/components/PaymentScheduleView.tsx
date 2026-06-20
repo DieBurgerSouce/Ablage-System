@@ -5,14 +5,8 @@
  */
 
 import { useState } from 'react';
-import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Banknote,
-} from 'lucide-react';
+import { Calendar, Banknote } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -28,10 +22,6 @@ function formatCurrency(amount: number): string {
   return amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-}
 
 function getDayOfWeek(dateString: string): number {
   return new Date(dateString).getDay();

@@ -2,7 +2,6 @@
  * CompanyUsersDialog - Benutzer einer Firma verwalten
  */
 
-import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -28,7 +26,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, UserPlus, Trash2 } from 'lucide-react';
 import type { Company, UserCompany, CompanyRole } from '@/types/models/company';

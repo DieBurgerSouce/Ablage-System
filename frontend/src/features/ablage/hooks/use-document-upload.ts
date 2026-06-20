@@ -11,14 +11,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { logger } from '@/lib/logger'
-import type {
-  OCRProcessResult,
-  UploadCompleteRequest,
-  UploadCompleteResponse,
-  UploadWorkflowStatus,
-  UploadWorkflowState,
-  UseDocumentUploadOptions,
-} from '../types'
+import type { UploadCompleteRequest, UploadCompleteResponse, UploadWorkflowState, UseDocumentUploadOptions } from '../types'
 import {
   processDocumentOCR,
   uploadComplete,
@@ -62,7 +55,7 @@ export function useDocumentUpload(
 ): UseDocumentUploadReturn {
   const [state, setState] = useState<UploadWorkflowState>(initialState)
   const queryClient = useQueryClient()
-  const ttlExtendInterval = useRef<NodeJS.Timeout | null>(null)
+  const ttlExtendInterval = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortController = useRef<AbortController | null>(null)
 
   // Cleanup TTL-Extend Interval on unmount
@@ -207,18 +200,18 @@ export function useDocumentUpload(
         tempFileId: state.tempFileId,
         finalFilename: data.finalFilename || state.file?.name || 'dokument.pdf',
         documentType: data.documentType || state.quickClassification?.suggestedDocumentType || 'document',
-        documentNumber: data.documentNumber || state.quickClassification?.extractedData?.documentNumber || null,
-        documentDate: data.documentDate || state.quickClassification?.extractedData?.documentDate || null,
-        totalAmount: data.totalAmount ?? state.quickClassification?.extractedData?.totalAmount ?? null,
+        documentNumber: data.documentNumber ?? state.quickClassification?.extractedData?.documentNumber ?? undefined,
+        documentDate: data.documentDate ?? state.quickClassification?.extractedData?.documentDate ?? undefined,
+        totalAmount: data.totalAmount ?? state.quickClassification?.extractedData?.totalAmount ?? undefined,
         currency: data.currency || state.quickClassification?.extractedData?.currency || 'EUR',
-        dueDate: data.dueDate || state.quickClassification?.extractedData?.dueDate || null,
-        businessEntityId: data.businessEntityId || state.quickClassification?.matchedEntityId || options.entityId || null,
+        dueDate: data.dueDate ?? state.quickClassification?.extractedData?.dueDate ?? undefined,
+        businessEntityId: data.businessEntityId ?? state.quickClassification?.matchedEntityId ?? options.entityId ?? undefined,
         folderId: data.folderId || options.folderId,
         category: data.category || options.category,
         entityType: data.entityType || options.entityType,
         tags: data.tags || state.quickClassification?.suggestedTags || [],
-        ocrText: state.ocrResult?.text || null,
-        ocrConfidence: state.ocrResult?.confidence || null,
+        ocrText: state.ocrResult?.text ?? undefined,
+        ocrConfidence: state.ocrResult?.confidence ?? undefined,
       }
 
       logger.info('[DocumentUpload] Saving document', {

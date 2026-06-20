@@ -62,7 +62,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { TeamInvitation, InvitationStatus, TeamMemberRole } from '../api/teams-api';
+import type { TeamInvitation, InvitationStatus, TeamMemberRole } from '../api/teams-api';
 import { useTeamInvitations, useSendInvitation, useRevokeInvitation } from '../hooks/use-teams';
 
 interface TeamInvitationListProps {

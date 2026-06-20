@@ -604,7 +604,7 @@ class DataSubjectRightsService:
         if user:
             personal_data["benutzer"] = {
                 "email": user.email,
-                "name": user.name,
+                "name": user.full_name,
                 "erstellt_am": user.created_at.isoformat() if user.created_at else None,
                 "letzte_anmeldung": user.last_login.isoformat() if hasattr(user, 'last_login') and user.last_login else None,
             }

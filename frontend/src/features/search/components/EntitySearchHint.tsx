@@ -42,6 +42,44 @@ const matchTypeIcons: Record<string, typeof Building2> = {
 };
 
 /**
+ * Typsicherer Link auf die Entity-Detailseite (Kunde oder Lieferant).
+ */
+function EntityDetailLink({
+    isCustomer,
+    entityId,
+    className,
+    children,
+}: {
+    isCustomer: boolean;
+    entityId: string;
+    className?: string;
+    children: React.ReactNode;
+}) {
+    if (isCustomer) {
+        return (
+            <Link
+                to="/kunden/$customerId"
+                params={{ customerId: entityId }}
+                className={className}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {children}
+            </Link>
+        );
+    }
+    return (
+        <Link
+            to="/lieferanten/$supplierId"
+            params={{ supplierId: entityId }}
+            className={className}
+            onClick={(e) => e.stopPropagation()}
+        >
+            {children}
+        </Link>
+    );
+}
+
+/**
  * Zeigt Entity-Match-Information für ein Suchergebnis.
  */
 export function EntitySearchHint({ entity, className, compact = false }: EntitySearchHintProps) {
@@ -61,11 +99,10 @@ export function EntitySearchHint({ entity, className, compact = false }: EntityS
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Link
-                            to={isCustomer ? '/relationships/customers/$entityId' : '/relationships/suppliers/$entityId'}
-                            params={{ entityId: entity.entityId }}
+                        <EntityDetailLink
+                            isCustomer={isCustomer}
+                            entityId={entity.entityId}
                             className="inline-flex"
-                            onClick={(e) => e.stopPropagation()}
                         >
                             <Badge
                                 variant="outline"
@@ -80,7 +117,7 @@ export function EntitySearchHint({ entity, className, compact = false }: EntityS
                                 <Icon className="h-3 w-3" />
                                 <span className="truncate max-w-24">{entity.entityName}</span>
                             </Badge>
-                        </Link>
+                        </EntityDetailLink>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs">
                         <div className="space-y-1">
@@ -104,11 +141,10 @@ export function EntitySearchHint({ entity, className, compact = false }: EntityS
 
     // Full version - expandable card section
     return (
-        <Link
-            to={isCustomer ? '/relationships/customers/$entityId' : '/relationships/suppliers/$entityId'}
-            params={{ entityId: entity.entityId }}
+        <EntityDetailLink
+            isCustomer={isCustomer}
+            entityId={entity.entityId}
             className="block"
-            onClick={(e) => e.stopPropagation()}
         >
             <div
                 className={cn(
@@ -165,7 +201,7 @@ export function EntitySearchHint({ entity, className, compact = false }: EntityS
                     {confidencePercent}%
                 </Badge>
             </div>
-        </Link>
+        </EntityDetailLink>
     );
 }
 

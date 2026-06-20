@@ -206,6 +206,12 @@ class TestAutoFilingService:
         # Arrange
         service = AutoFilingService()
 
+        # Keine firmenspezifische Regel -> Fallback auf Standard-Mapping.
+        # scalar_one_or_none() ist SYNCHRON -> Result als MagicMock (Regel b).
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=None)
+        mock_db_session.execute = AsyncMock(return_value=mock_result)
+
         # Act
         result = await service.determine_filing(
             document_id=sample_document_id,
@@ -229,10 +235,13 @@ class TestAutoFilingService:
         # Arrange
         service = AutoFilingService()
 
-        # Mock Entity
+        # Mock Entity ohne Standard-Ordner -> Fallback auf Entity-Namen
+        # (default_folder_id muss explizit None sein, sonst greift der
+        # Folder-Lookup-Pfad mit gemocktem db.get).
         mock_entity = Mock()
         mock_entity.id = sample_entity_id
         mock_entity.name = "Test GmbH"
+        mock_entity.default_folder_id = None
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_entity)
@@ -251,7 +260,7 @@ class TestAutoFilingService:
         assert result is not None
         assert result.folder_name == "Test GmbH"
         assert result.confidence >= 0.95
-        assert "Geschaeftspartner" in result.reason
+        assert "Geschäftspartner" in result.reason
 
     @pytest.mark.asyncio
     async def test_auto_filing_unknown_type(
@@ -260,6 +269,11 @@ class TestAutoFilingService:
         """Unbekannte Dokumententypen sollten in 'Sonstiges' abgelegt werden."""
         # Arrange
         service = AutoFilingService()
+
+        # Keine firmenspezifische Regel -> Fallback auf Standard-Mapping.
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=None)
+        mock_db_session.execute = AsyncMock(return_value=mock_result)
 
         # Act
         result = await service.determine_filing(
@@ -298,6 +312,18 @@ class TestBusinessObjectFactory:
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(side_effect=[mock_document, None])
         mock_db_session.execute = AsyncMock(return_value=mock_result)
+
+        # db.flush() vergibt im echten Betrieb die ID -> hier simulieren,
+        # damit result.object_id (= invoice_tracking.id) gesetzt ist.
+        added_objects: list = []
+        mock_db_session.add = Mock(side_effect=added_objects.append)
+
+        async def _assign_ids() -> None:
+            for obj in added_objects:
+                if getattr(obj, "id", None) is None:
+                    obj.id = uuid4()
+
+        mock_db_session.flush = AsyncMock(side_effect=_assign_ids)
 
         extracted_fields = {
             "invoice_number": {"value": "RE-2024-001", "confidence": 0.95},

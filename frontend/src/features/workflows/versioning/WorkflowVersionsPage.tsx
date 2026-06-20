@@ -23,7 +23,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { VersionList } from './components/VersionList';
@@ -60,13 +59,16 @@ export function WorkflowVersionsPage() {
   } = useWorkflowVersions(workflowId);
 
   const { data: activeVersionData, isLoading: activeVersionLoading } = useActiveVersion(workflowId);
+
+  // Die Versions-API liefert { items, total } — hier die eigentliche Liste.
+  const versionItems = versions?.items;
   const { data: abTests, isLoading: abTestLoading } = useABTests(workflowId);
 
   // Workflow-Name aus aktiver Version oder Versions-Liste ableiten
   const workflow = activeVersionData ? {
     name: activeVersionData.definition?.name ?? `Workflow ${workflowId.slice(0, 8)}`,
-  } : (versions?.[0] ? {
-    name: versions[0].definition?.name ?? `Workflow ${workflowId.slice(0, 8)}`,
+  } : (versionItems?.[0] ? {
+    name: versionItems[0].definition?.name ?? `Workflow ${workflowId.slice(0, 8)}`,
   } : null);
 
   // Aktiver AB-Test aus Liste filtern
@@ -99,12 +101,12 @@ export function WorkflowVersionsPage() {
   };
 
   // Stats berechnen
-  const activeVersion = versions?.find((v) => v.is_active);
-  const draftVersions = versions?.filter((v) => v.status === 'draft') ?? [];
-  const totalExecutions = versions?.reduce((sum, v) => sum + v.execution_count, 0) ?? 0;
+  const activeVersion = versionItems?.find((v) => v.is_active);
+  const draftVersions = versionItems?.filter((v) => v.status === 'draft') ?? [];
+  const totalExecutions = versionItems?.reduce((sum, v) => sum + v.execution_count, 0) ?? 0;
   const avgSuccessRate =
-    versions && versions.length > 0
-      ? versions.reduce((sum, v) => sum + v.success_rate * v.execution_count, 0) /
+    versionItems && versionItems.length > 0
+      ? versionItems.reduce((sum, v) => sum + v.success_rate * v.execution_count, 0) /
         (totalExecutions || 1)
       : 0;
 
@@ -177,7 +179,7 @@ export function WorkflowVersionsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{versions?.length ?? 0}</p>
+              <p className="text-2xl font-bold">{versionItems?.length ?? 0}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {draftVersions.length} Entwürfe
               </p>
@@ -245,9 +247,10 @@ export function WorkflowVersionsPage() {
             <FlaskConical className="h-4 w-4" />
             <AlertTitle>A/B Test aktiv</AlertTitle>
             <AlertDescription>
-              Aktuell läuft ein A/B Test zwischen v{activeABTest.versionA.version} und v
-              {activeABTest.versionB.version}. Traffic-Verteilung:{' '}
-              {activeABTest.trafficSplit[0]}% / {activeABTest.trafficSplit[1]}%
+              Aktuell läuft der A/B Test „{activeABTest.name}&ldquo;.
+              Traffic-Verteilung:{' '}
+              {100 - activeABTest.treatment_percentage}% /{' '}
+              {activeABTest.treatment_percentage}%
             </AlertDescription>
           </Alert>
         )}
@@ -281,7 +284,7 @@ export function WorkflowVersionsPage() {
               </CardHeader>
               <CardContent>
                 <VersionList
-                  versions={versions ?? []}
+                  versions={versionItems ?? []}
                   workflowId={workflowId}
                   isLoading={versionsLoading}
                   onSelectVersion={handleSelectVersion}
@@ -308,7 +311,6 @@ export function WorkflowVersionsPage() {
                     workflowId={workflowId}
                     versionA={compareVersions.versionA}
                     versionB={compareVersions.versionB}
-                    onClearComparison={() => setCompareVersions(null)}
                   />
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
@@ -325,12 +327,31 @@ export function WorkflowVersionsPage() {
 
           {/* A/B Testing Tab */}
           <TabsContent value="ab-test">
-            <ABTestCard
-              workflowId={workflowId}
-              versions={versions ?? []}
-              activeTest={activeABTest}
-              isLoading={abTestLoading}
-            />
+            {abTestLoading ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>A/B-Tests werden geladen …</p>
+              </div>
+            ) : activeABTest ? (
+              <ABTestCard
+                test={activeABTest}
+                workflowId={workflowId}
+                controlVersion={
+                  versionItems?.find(
+                    (v) => v.id === activeABTest.control_version_id
+                  )?.version
+                }
+                treatmentVersion={
+                  versionItems?.find(
+                    (v) => v.id === activeABTest.treatment_version_id
+                  )?.version
+                }
+              />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <FlaskConical className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Kein aktiver A/B-Test fuer diesen Workflow.</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -338,19 +359,23 @@ export function WorkflowVersionsPage() {
       {/* Dialogs */}
       <CreateVersionDialog
         open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
+        onOpenChange={(open) => {
+          setShowCreateDialog(open);
+          if (!open) handleVersionCreated();
+        }}
         workflowId={workflowId}
-        latestVersion={versions?.[0]}
-        onVersionCreated={handleVersionCreated}
+        currentVersion={versionItems?.[0]?.version}
       />
 
       <RollbackDialog
         open={showRollbackDialog}
-        onOpenChange={setShowRollbackDialog}
+        onOpenChange={(open) => {
+          setShowRollbackDialog(open);
+          if (!open) handleRollbackComplete();
+        }}
         workflowId={workflowId}
         targetVersion={rollbackTarget}
         currentActiveVersion={activeVersion}
-        onRollbackComplete={handleRollbackComplete}
       />
     </>
   );

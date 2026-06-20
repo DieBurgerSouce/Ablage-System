@@ -13,24 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { apiClient } from '@/lib/api/client';
-import type {
-  InvoiceTrackingResponse,
-  InvoiceTrackingBackend,
-  InvoiceStatisticsResponse,
-  InvoiceStatisticsBackend,
-  InvoiceFilter,
-  InvoiceTrackingCreate,
-  InvoiceTrackingUpdate,
-  DunningLevel,
-  InvoiceStatus,
-  SkontoInfo,
-  SkontoUpdate,
-  UpcomingSkontoDeadline,
-  PaymentTransaction,
-  PaymentTransactionBackend,
-  PaymentCreate,
-  PaymentSummary,
-} from '../types/invoice-types';
+import type { InvoiceTrackingResponse, InvoiceTrackingBackend, InvoiceStatisticsResponse, InvoiceStatisticsBackend, InvoiceFilter, InvoiceTrackingCreate, InvoiceTrackingUpdate, DunningLevel, SkontoInfo, SkontoUpdate, UpcomingSkontoDeadline, PaymentTransaction, PaymentTransactionBackend, PaymentCreate, PaymentSummary } from '../types/invoice-types';
 
 // ==================== Error Classes ====================
 
@@ -52,7 +35,7 @@ export class InvoiceApiError extends Error {
 
 // ==================== Transformers ====================
 
-function transformInvoice(inv: InvoiceTrackingBackend): InvoiceTrackingResponse {
+export function transformInvoice(inv: InvoiceTrackingBackend): InvoiceTrackingResponse {
   return {
     id: inv.id,
     documentId: inv.document_id,

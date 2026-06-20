@@ -7,22 +7,24 @@
 /**
  * Prioritätsstufen für Benachrichtigungen
  */
-export enum NotificationPriority {
-  CRITICAL = 'critical',
-  WARNING = 'warning',
-  INFO = 'info'
-}
+export const NotificationPriority = {
+  CRITICAL: 'critical',
+  WARNING: 'warning',
+  INFO: 'info'
+} as const;
+export type NotificationPriority = (typeof NotificationPriority)[keyof typeof NotificationPriority];
 
 /**
  * Benachrichtigungstypen
  */
-export enum NotificationType {
-  SYSTEM = 'system',
-  DOCUMENT = 'document',
-  INVOICE = 'invoice',
-  WORKFLOW = 'workflow',
-  ALERT = 'alert'
-}
+export const NotificationType = {
+  SYSTEM: 'system',
+  DOCUMENT: 'document',
+  INVOICE: 'invoice',
+  WORKFLOW: 'workflow',
+  ALERT: 'alert'
+} as const;
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 
 /**
  * Benachrichtigungs-Metadaten

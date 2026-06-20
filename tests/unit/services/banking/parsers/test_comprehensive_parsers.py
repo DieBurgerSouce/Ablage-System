@@ -39,6 +39,26 @@ from app.services.banking.models import ImportFormat, TransactionType
 from app.services.banking.utils import mask_iban, mask_account_number, mask_bic
 
 
+class _MT940Collection:
+    """Mimt die mt940 Transactions-Collection (Parser-Refactor 2026-06-12).
+
+    ``mt940.parse()`` liefert ein iterierbares Collection-Objekt: Statement-
+    Metadaten (:25:/:60F:/:62F:) liegen im ``.data``-Dict, die Iteration ergibt
+    die einzelnen Transaktionen.
+    """
+
+    def __init__(self, data: dict, transactions: list) -> None:
+        self.data = data
+        self._transactions = transactions
+
+    def __iter__(self):
+        return iter(self._transactions)
+
+
+def _make_mt940_collection(data: dict, transactions: list) -> _MT940Collection:
+    return _MT940Collection(data=data, transactions=transactions)
+
+
 # =============================================================================
 # COMMERZBANK CSV PARSER TESTS
 # =============================================================================
@@ -419,15 +439,8 @@ EREF+END2END-001
 :62F:C241215EUR11500,00
 -"""
         with patch('app.services.banking.parsers.mt940_parser.mt940_parse') as mock_parse:
-            # Mock the mt940 library response
-            mock_statement = MagicMock()
-            mock_statement.account_id = "DE89370400440532013000"
-            mock_statement.bic = "COBADEFFXXX"
-            mock_statement.opening_balance = MagicMock()
-            mock_statement.opening_balance.amount = MagicMock(amount=Decimal("10000.00"))
-            mock_statement.opening_balance.date = date(2024, 12, 15)
-
-            # mt940 Bibliothek speichert Daten in tx.data Dictionary
+            # mt940 Bibliothek speichert Daten in tx.data Dictionary; die
+            # Collection-Iteration ergibt die Transaktionen (Refactor 2026-06-12).
             mock_amount = MagicMock()
             mock_amount.amount = Decimal("1500.00")
             mock_amount.currency = "EUR"
@@ -445,12 +458,21 @@ EREF+END2END-001
                 "currency": "EUR",
             }
 
-            mock_statement.transactions = [mock_tx]
-            mock_statement.final_closing_balance = MagicMock()
-            mock_statement.final_closing_balance.amount = MagicMock(amount=Decimal("11500.00"))
-            mock_statement.final_closing_balance.date = date(2024, 12, 15)
+            mock_ob = MagicMock()
+            mock_ob.amount = MagicMock(amount=Decimal("10000.00"))
+            mock_ob.date = date(2024, 12, 15)
+            mock_cb = MagicMock()
+            mock_cb.amount = MagicMock(amount=Decimal("11500.00"))
+            mock_cb.date = date(2024, 12, 15)
 
-            mock_parse.return_value = [mock_statement]
+            mock_parse.return_value = _make_mt940_collection(
+                data={
+                    "account_identification": "DE89370400440532013000/COBADEFFXXX",
+                    "final_opening_balance": mock_ob,
+                    "final_closing_balance": mock_cb,
+                },
+                transactions=[mock_tx],
+            )
 
             result = parser.parse(content)
             assert result.success
@@ -480,17 +502,22 @@ Betreff: Rechnung 2024-001"""
 :62F:C241231EUR7500,00
 -"""
         with patch('app.services.banking.parsers.mt940_parser.mt940_parse') as mock_parse:
-            mock_statement = MagicMock()
-            mock_statement.account_id = "DE89370400440532013000"
-            mock_statement.opening_balance = MagicMock()
-            mock_statement.opening_balance.amount = MagicMock(amount=Decimal("5000.00"))
-            mock_statement.opening_balance.date = date(2024, 12, 1)
-            mock_statement.final_closing_balance = MagicMock()
-            mock_statement.final_closing_balance.amount = MagicMock(amount=Decimal("7500.00"))
-            mock_statement.final_closing_balance.date = date(2024, 12, 31)
-            mock_statement.transactions = []
+            # Salden liegen in der Collection-.data (:60F:/:62F:), Refactor 2026-06-12.
+            mock_ob = MagicMock()
+            mock_ob.amount = MagicMock(amount=Decimal("5000.00"))
+            mock_ob.date = date(2024, 12, 1)
+            mock_cb = MagicMock()
+            mock_cb.amount = MagicMock(amount=Decimal("7500.00"))
+            mock_cb.date = date(2024, 12, 31)
 
-            mock_parse.return_value = [mock_statement]
+            mock_parse.return_value = _make_mt940_collection(
+                data={
+                    "account_identification": "DE89370400440532013000",
+                    "final_opening_balance": mock_ob,
+                    "final_closing_balance": mock_cb,
+                },
+                transactions=[],
+            )
 
             result = parser.parse(content)
             assert result.success

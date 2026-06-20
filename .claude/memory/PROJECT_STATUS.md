@@ -1,6 +1,12 @@
 # Project Status
 
-> ## ⚠️ Reality-Check (Status-Scan 2026-06-03)
+> ## ✅ Aktueller Stand (Welle-1-Exploration 2026-06-11)
+>
+> **B1–B4 sind behoben bzw. bewusst gescoped** (16-Agenten-Exploration, adversarial verifiziert): B1 (company_id) ✅, B2 (FinTS/PSD2) ✅ geguarded + OAuth2-Token bewusst outscoped (BaFin), B3 (CI-Dockerfiles) ✅, B4 (Test-Stubs) ✅ echt. Der untenstehende Reality-Check 2026-06-03 ist damit **historisch**.
+> Aktuelles, verbindliches Findings-Register: [`.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md`](../reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md) — 50 Findings (1× P0: `DEBUG=true`-2FA-Bypass, **seit W1-001 neutralisiert**: config.py erzwingt `DEBUG=false` in Produktion, 2FA-Bypass hängt nur noch an `TESTING`; 12× P1, 25× P2, 12× P3).
+> **alembic head: 268** (268 = Multi-Tenant-Korrektheit). GoBD-Trigger der Real-DB am 2026-06-11 repariert (`scripts/db/repair_gobd_triggers_20260611.sql`, Backup `backups/ablage_system_pre_offensive_20260611.dump`) — Migration 151 war durch Stamp-Reconcile nie ausgeführt worden.
+
+> ## ⚠️ Reality-Check (Status-Scan 2026-06-03 — HISTORISCH, siehe oben)
 >
 > **Realer Gesamtstatus: 🟡 GELB — NICHT „Full Production-Ready".** Ein A–Z-Fan-Out-Scan (12 Subagents, gegen den Code verifiziert) zeigt: echte, breite Enterprise-Software mit **solidem Security-Fundament (🟢)**, aber **4 produktionskritische Blocker** und zahlreiche Mock-/Platzhalter-Pfade, die als echt erscheinen. Die unten stehenden „✅ OK"/„100 %"-Aussagen sind **historische Selbsteinschätzungen** und teils überzeichnet — sie wurden NICHT End-to-End verifiziert.
 >
@@ -28,7 +34,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | 🟡 | :5434, **alembic head 267** (265 create_all-Reconcile, 266 BPMN Call-Activity, 267 model↔DB-Reconcile); **Live-dev-DB am 2026-06-08 reconciled** (war Stamp 261 mit 63 fehlenden Tabellen / 148 fehlenden Spalten = Model-ahead-of-Migrations → additiv ergänzt via create_all + ADD COLUMN IF NOT EXISTS + Migration 267; 0 Drift, pg_dump-Backup auf Host). Historisch: (261: Query Performance Indexes; 260: Domain Constraints; 259: Seed Default Roles; 258: Missing Indexes; 257: Missing Constraints; 255: EntitySeasonalPattern; 254: DomainEvent SHA-256 Hash-Chain; 253: GoBD/DSGVO Compliance Views; 252: GoBD Audit-Felder; 251: DocumentGroup company_id; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
+| PostgreSQL | 🟡 | :5434, **alembic head 268** (265 create_all-Reconcile, 266 BPMN Call-Activity, 267 model↔DB-Reconcile, 268 Multi-Tenant-Korrektheit: `business_entities.company_id`, Partial-Unique `is_current`, Banking `user_id` nullable); **Live-dev-DB am 2026-06-08 reconciled** (war Stamp 261 mit 63 fehlenden Tabellen / 148 fehlenden Spalten = Model-ahead-of-Migrations → additiv ergänzt via create_all + ADD COLUMN IF NOT EXISTS + Migration 267; 0 Drift, pg_dump-Backup auf Host). Historisch: (261: Query Performance Indexes; 260: Domain Constraints; 259: Seed Default Roles; 258: Missing Indexes; 257: Missing Constraints; 255: EntitySeasonalPattern; 254: DomainEvent SHA-256 Hash-Chain; 253: GoBD/DSGVO Compliance Views; 252: GoBD Audit-Felder; 251: DocumentGroup company_id; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -129,6 +135,7 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-06-11 | Database | **GoBD-Trigger-Repair auf Real-DB**: Migration 151 war durch den Stamp-Reconcile (stamp 262) nie ausgeführt worden → INSERT-only-Trigger auf `domain_events`/`gobd_audit_chain` fehlten. Repariert via `scripts/db/repair_gobd_triggers_20260611.sql` (Endzustand 151+234); Backup `backups/ablage_system_pre_offensive_20260611.dump`. Real-DB verifiziert auf alembic head **268**. |
 | 2026-05-20 | Ops | **Pilot-Start-Block P0b geschlossen** - 9 Critical Alerts triagiert, Endstand 0 firing. Root-Cause: Backend-Crash-Loop durch `NameError: ConfigDict` in 4 Files (B3-Codemod-Restbestand), RestartCount=10. Fix Commit `0b1b391e` (ConfigDict-Imports), Backend force-recreated -> healthy. Triage-Doku `docs/operations/alert-triage-2026-05-20.md`. Sentry-DSN (G10) bewusst vertagt. |
 | 2026-05-20 | Release | **Pilot-Ship v0.1.0** - PR #9 squash-gemerged nach master (`7e6bd9e7`), Tag `pilot-v0.1.0`. Konsolidiert Sprint-0/Phase A/Phase B/Multi-Agent-Review/Sprint-1 + Tier-1-Transformation-Merge. 5 CRITICAL + 11 HIGH-Sec gefixt. Backlog: Sentry-DSN, 9 Alert-Triage, Strict-Root-Policy, Phase C/D/E. |
 | 2026-05-20 | Ops-Prep | Pilot-Start-Block Vorbereitung: Triage-Skript `scripts/operations/pilot-start-block.sh` (6 Subcommands), Triage-Template `docs/operations/alert-triage-2026-05-20.md` mit Pre-Analyse (5/9 Alerts NEEDS_VERIFY = Code bereits gefixt). Sentry-Code-Integration verifiziert. Goal Pilot-Start-Block bleibt blockiert auf User-Action (Squash-Merge-Option + Docker-Reparatur + Sentry-DSN setzen). PR #8 mergeable=CONFLICTING wegen 109 Konflikten - Auflösungs-Optionen A-E dokumentiert in `.claude/reviews/2026-05-20/MERGE_CONFLICT_ANALYSIS.md`. Safety-Tag `pre-merge-master-backup-2026-05-20`. |

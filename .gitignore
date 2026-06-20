@@ -186,3 +186,9 @@ scripts/watchdog/logs/
 .claude-flow/swarm/
 .swarm/state.json
 .claude/worktrees/
+
+# DB-Dumps/Backups (lokal, nie committen)
+backups/
+
+# A-Z-Loop Rohlogs
+.claude/reviews/*/loop-logs/

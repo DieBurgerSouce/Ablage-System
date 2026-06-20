@@ -202,9 +202,9 @@ i18n
 /**
  * Change the current language
  */
-export function changeLanguage(lang: SupportedLanguage): Promise<void> {
+export async function changeLanguage(lang: SupportedLanguage): Promise<void> {
   storeLanguage(lang);
-  return i18n.changeLanguage(lang);
+  await i18n.changeLanguage(lang);
 }
 
 /**

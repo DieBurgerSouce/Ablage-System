@@ -320,19 +320,19 @@ class FraudFeatureExtractor:
             return FeatureVector(features={}, metadata={"error": "invoice_not_found"})
 
         # Amount features
-        if invoice.total_amount:
+        if invoice.amount:
             hist_stats = await self._get_historical_stats(company_id)
             if hist_stats.get("median", 0) > 0:
                 features["amount_zscore"] = self._calculate_zscore(
-                    float(invoice.total_amount),
+                    float(invoice.amount),
                     hist_stats.get("mean", 0),
                     hist_stats.get("std", 1),
                 )
-            features["is_round_amount"] = 1.0 if self._is_round_amount(float(invoice.total_amount)) else 0.0
+            features["is_round_amount"] = 1.0 if self._is_round_amount(float(invoice.amount)) else 0.0
 
         # Duplicate features
         similar_count = await self._count_similar_invoices(
-            invoice.total_amount,
+            invoice.amount,
             invoice.entity_id,
             invoice_id,
             company_id,
@@ -499,14 +499,14 @@ class FraudFeatureExtractor:
         cutoff = datetime.now(timezone.utc) - timedelta(days=365)
         stmt = (
             select(
-                func.avg(InvoiceTracking.total_amount).label("mean"),
-                func.stddev(InvoiceTracking.total_amount).label("std"),
-                func.percentile_cont(0.5).within_group(InvoiceTracking.total_amount).label("median"),
+                func.avg(InvoiceTracking.amount).label("mean"),
+                func.stddev(InvoiceTracking.amount).label("std"),
+                func.percentile_cont(0.5).within_group(InvoiceTracking.amount).label("median"),
             )
             .where(
                 and_(
                     InvoiceTracking.company_id == company_id,
-                    InvoiceTracking.total_amount.isnot(None),
+                    InvoiceTracking.amount.isnot(None),
                     InvoiceTracking.created_at >= cutoff,
                 )
             )
@@ -575,8 +575,8 @@ class FraudFeatureExtractor:
                 and_(
                     InvoiceTracking.company_id == company_id,
                     InvoiceTracking.id != exclude_id,
-                    InvoiceTracking.total_amount >= min_amount,
-                    InvoiceTracking.total_amount <= max_amount,
+                    InvoiceTracking.amount >= min_amount,
+                    InvoiceTracking.amount <= max_amount,
                 )
             )
         )

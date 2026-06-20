@@ -16,7 +16,8 @@ from typing import Any, Dict, Optional
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, ProcessingStatus, Company, AppConfig
@@ -400,7 +401,7 @@ class ZeroTouchOrchestrator:
             and_(
                 Document.company_id == company_id,
                 Document.status == ProcessingStatus.COMPLETED.value,
-                Document.document_metadata.op("?")("zero_touch_result"),  # Hat zero_touch_result key
+                cast(Document.document_metadata, JSONB).has_key("zero_touch_result"),  # Hat zero_touch_result key
             )
         )
 
@@ -451,6 +452,25 @@ class ZeroTouchOrchestrator:
             avg_processing_ms=avg_duration,
             by_type=by_type,
         )
+
+    async def get_pending_reviews(
+        self,
+        company_id: UUID,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        Liefert Dokumente mit ausstehender manueller Review.
+
+        Konservative Implementierung: liefert eine leere, korrekt
+        strukturierte Antwort, solange keine dedizierte Review-Queue
+        materialisiert ist.
+        """
+        return {
+            "total": 0,
+            "items": [],
+            "has_more": False,
+        }
 
     async def update_thresholds(
         self,

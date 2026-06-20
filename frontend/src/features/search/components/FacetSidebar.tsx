@@ -8,7 +8,6 @@ import { useFacets } from '../hooks/useFacets';
 import { FacetSection } from './FacetSection';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Filter,
   Bookmark,
@@ -60,7 +59,7 @@ export function FacetSidebar({
   const { savedSearches, deleteSearch } = useSavedSearches();
 
   // Load shared filters from backend (optional - can be mocked for now)
-  const { data: sharedFilters, isLoading: isLoadingShared } = useQuery({
+  const { data: sharedFilters } = useQuery({
     queryKey: ['saved-filters', 'shared'],
     queryFn: async () => {
       try {

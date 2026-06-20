@@ -1,6 +1,5 @@
 import { AnimatedList, AnimatedListItem } from '@/components/animations';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 

@@ -1,3 +1,4 @@
+import * as React from 'react';
 /**
  * Chart Component Stories
  *
@@ -24,7 +25,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { WaterfallChart, WaterfallDataPoint } from '@/components/charts/WaterfallChart';
+import { WaterfallChart, type WaterfallDataPoint } from '@/components/charts/WaterfallChart';
 
 const meta: Meta = {
     title: 'UI/Charts',
@@ -482,7 +483,7 @@ export const DarkMode: Story = {
         backgrounds: { default: 'dark' },
     },
     decorators: [
-        (Story) => (
+        (Story: React.ComponentType) => (
             <div className="dark">
                 <Story />
             </div>

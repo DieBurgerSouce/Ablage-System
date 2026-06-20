@@ -5,22 +5,11 @@
  * Enterprise-Level Data Fetching mit Caching und Auto-Refetch.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { jobQueueKeys } from '../api/query-keys';
 import { jobQueueApi } from '../api/job-queue-api';
 import { QUERY_REALTIME } from '@/lib/api/query-config';
-import type {
-  JobListFilters,
-  SortDirection,
-  Job,
-  JobStats,
-  QueueListResponse,
-  QueueStats,
-  WorkerListResponse,
-  WorkerHealth,
-  DLQStats,
-  DLQTaskListResponse,
-} from '../types/job-types';
+import type { JobListFilters, SortDirection } from '../types/job-types';
 
 // ==================== Job Queries ====================
 

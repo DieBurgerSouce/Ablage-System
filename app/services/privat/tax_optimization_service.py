@@ -570,13 +570,13 @@ class TaxOptimizationService:
         self._category_names = {
             TaxCategory.WERBUNGSKOSTEN: "Werbungskosten",
             TaxCategory.SONDERAUSGABEN: "Sonderausgaben",
-            TaxCategory.AUSSERGEWOEHNLICHE_BELASTUNGEN: "Aussergewoehnliche Belastungen",
+            TaxCategory.AUSSERGEWOEHNLICHE_BELASTUNGEN: "Außergewöhnliche Belastungen",
             TaxCategory.HAUSHALTSNAHE_DIENSTLEISTUNGEN: "Haushaltsnahe Dienstleistungen",
             TaxCategory.HANDWERKERLEISTUNGEN: "Handwerkerleistungen",
             TaxCategory.DOPPELTE_HAUSHALTSFUEHRUNG: "Doppelte Haushaltsführung",
             TaxCategory.HOMEOFFICE: "Homeoffice-Pauschale",
             TaxCategory.KINDERBETREUUNG: "Kinderbetreuungskosten",
-            TaxCategory.SPENDEN: "Spenden und Mitgliedsbeitraege",
+            TaxCategory.SPENDEN: "Spenden und Mitgliedsbeiträge",
             TaxCategory.KIRCHENSTEUER: "Kirchensteuer",
         }
 

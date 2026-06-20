@@ -13,14 +13,7 @@
  */
 
 import { create } from 'zustand'
-import {
-  addMutation,
-  getPendingMutations,
-  removeMutation,
-  updateMutationStatus,
-  getPendingMutationCount,
-  type OfflineMutation,
-} from '@/lib/storage/indexed-db'
+import { addMutation, getPendingMutations, removeMutation, updateMutationStatus } from '@/lib/storage/indexed-db'
 import { logger } from '@/lib/logger'
 
 // ==================== Types ====================

@@ -56,7 +56,14 @@ class SearchService:
     """
 
     def __init__(self) -> None:
-        self.embedding_service = get_embedding_service()
+        # W4b: NICHT eager get_embedding_service() — dessen Konstruktor
+        # erzwingt die volle CUDA-Context-Init (torch.cuda.get_device_
+        # properties). Schreibpfade (z.B. bulk_delete -> Such-Cache-
+        # Invalidierung) konstruieren eine SearchService nur fuer einen
+        # Redis-Pattern-Delete und blockierten dadurch sekundenlang/haengend
+        # an der GPU-Init. Lazy via Property -> nur echte Embedding-Nutzung
+        # (Semantik-/Hybrid-Suche) loest die GPU-Init aus.
+        self._embedding_service: Optional[Any] = None
         self.fts_weight = settings.HYBRID_FTS_WEIGHT
         self.semantic_weight = settings.HYBRID_SEMANTIC_WEIGHT
         self.similarity_threshold = settings.SEMANTIC_SIMILARITY_THRESHOLD
@@ -78,6 +85,13 @@ class SearchService:
 
         # Adaptive RRF-Gewichte (Query-längenabhängig)
         self._adaptive_weights_enabled = settings.ADAPTIVE_RRF_WEIGHTS_ENABLED
+
+    @property
+    def embedding_service(self):
+        """Lazy: erst bei echter Embedding-Nutzung wird die GPU initialisiert."""
+        if self._embedding_service is None:
+            self._embedding_service = get_embedding_service()
+        return self._embedding_service
 
     async def _get_redis(self) -> RedisStateManager:
         """Lazy-load Redis connection."""
@@ -724,14 +738,18 @@ class SearchService:
                     d.ocr_confidence,
                     d.owner_id,
                     d.extracted_text,
-                    -- Field-Level Boosting: Filename-Treffer ranken höher
+                    -- Field-Level Boosting: Filename-Treffer ranken höher.
+                    -- W4b: Casts sind PFLICHT — im CASE ohne Typkontext bindet
+                    -- asyncpg die Boost-Parameter als text, und Postgres kennt
+                    -- keinen Operator real * text -> jede Suche war HTTP 500
+                    -- (vorher zusaetzlich vom Rate-Limit-503 maskiert, B4).
                     ts_rank_cd(d.search_vector, sq.query) *
                     CASE
                         WHEN lower(d.filename) LIKE '%' || lower(:raw_query) || '%'
-                            THEN :filename_boost
+                            THEN CAST(:filename_boost AS real)
                         WHEN lower(d.original_filename) LIKE '%' || lower(:raw_query) || '%'
-                            THEN :orig_filename_boost
-                        ELSE :text_boost
+                            THEN CAST(:orig_filename_boost AS real)
+                        ELSE CAST(:text_boost AS real)
                     END AS fts_rank,
                     CASE
                         WHEN :enable_highlight THEN
@@ -858,13 +876,13 @@ class SearchService:
                     d.ocr_confidence,
                     d.owner_id,
                     d.extracted_text,
-                    1 - (d.embedding <=> :embedding::vector) AS similarity
+                    1 - (d.embedding <=> CAST(:embedding AS vector)) AS similarity
                 FROM documents d
                 WHERE d.id IN (SELECT document_id FROM accessible_docs)
                     AND d.embedding IS NOT NULL
-                    AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
+                    AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                     {filters}
-                ORDER BY d.embedding <=> :embedding::vector
+                ORDER BY d.embedding <=> CAST(:embedding AS vector)
             )
             SELECT * FROM semantic_results
             LIMIT :limit OFFSET :offset
@@ -882,7 +900,7 @@ class SearchService:
             SELECT COUNT(*) FROM documents d
             WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.embedding IS NOT NULL
-                AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
+                AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                 {filters}
         """.format(filters=self._build_filter_sql(filters)))
 
@@ -1126,16 +1144,16 @@ class SearchService:
                 d.id AS document_id,
                 d.filename,
                 d.document_type,
-                1 - (d.embedding <=> :embedding::vector) AS similarity,
+                1 - (d.embedding <=> CAST(:embedding AS vector)) AS similarity,
                 d.created_at,
                 LEFT(d.extracted_text, 200) AS text_preview
             FROM documents d
             WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.id != :source_id
                 AND d.embedding IS NOT NULL
-                AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
+                AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                 {type_filter}
-            ORDER BY d.embedding <=> :embedding::vector
+            ORDER BY d.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
 
@@ -1709,7 +1727,7 @@ class SearchService:
         except Exception as e:
             # Log at WARNING for unexpected failures (schema issues, etc.)
             # SQLite limitation is expected and harmless, but other errors need visibility
-            logger.warning("text_suggest_failed", **safe_error_log(e), error_type=type(e).__name__)
+            logger.warning("text_suggest_failed", **safe_error_log(e))
 
         # Nach Score sortieren und limitieren
         suggestions.sort(key=lambda x: x.score, reverse=True)

@@ -8,7 +8,6 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ConfidenceIndicator } from './ConfidenceIndicator';
 import { FileText, ArrowRight, Clock, Languages, Table2, PenLine } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import type { TrainingSample } from '../types';

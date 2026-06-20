@@ -19,7 +19,7 @@ from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.db.models import User
 from app.api.dependencies import get_db, get_current_active_user, get_current_company_id
@@ -44,6 +44,17 @@ class VerifyProofRequest(BaseModel):
     entry_hash: str = Field(..., min_length=64, max_length=64, description="SHA256 Hash des Eintrags")
     root_hash: str = Field(..., min_length=64, max_length=64, description="Root Hash des Trees")
     proof_path: list[Dict[str, str]] = Field(..., description="Proof-Pfad")
+
+    @field_validator("proof_path")
+    @classmethod
+    def _validate_proof_path(cls, v: list) -> list:
+        """F-07: Malformed proof_path (fehlendes hash/position) -> 422 statt 500 (KeyError)."""
+        for i, step in enumerate(v):
+            if not isinstance(step, dict) or "hash" not in step or "position" not in step:
+                raise ValueError(f"proof_path[{i}] benoetigt die Schluessel hash und position")
+            if step.get("position") not in ("left", "right"):
+                raise ValueError(f"proof_path[{i}].position muss left oder right sein")
+        return v
 
 
 # =============================================================================

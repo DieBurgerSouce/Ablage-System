@@ -65,6 +65,24 @@ class Settings(BaseSettings):
         Umgebungs-Labels nicht still durchrutschen.
         """
         return self.ENVIRONMENT.lower().startswith("prod")
+
+    @model_validator(mode="after")
+    def _enforce_debug_off_in_production(self) -> "Settings":
+        """W1-001 Fail-Safe: DEBUG darf in Produktion niemals aktiv bleiben.
+
+        Ein versehentliches DEBUG=true in einer Produktions-.env wuerde sonst
+        Secure-Cookies/HSTS deaktivieren und (historisch) Sicherheits-Bypässe
+        oeffnen. Wir neutralisieren statt zu crashen und loggen laut.
+        """
+        if self.is_production and self.DEBUG:
+            logger.error(
+                "debug_forced_off_in_production",
+                environment=self.ENVIRONMENT,
+                hint="DEBUG=true in Produktions-Umgebung erkannt und neutralisiert",
+            )
+            self.DEBUG = False
+        return self
+
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent  # Project root
     
     # Server
@@ -317,6 +335,14 @@ class Settings(BaseSettings):
     MODEL_PRELOAD_ENABLED: bool = True
     MODEL_PRELOAD_GPU_MODELS: bool = True  # Ob GPU-Modelle vorgeladen werden
     MODEL_PRELOAD_TIMEOUT_SECONDS: int = 600  # Timeout pro Model (10 Min)
+
+    # Multi-Tenant / Row-Level-Security: Fail-Closed-Schalter (opt-in, Default AUS).
+    # Wenn True, verweigert set_rls_company_context einen fehlenden/ungueltigen
+    # Tenant-Kontext hart (statt ihn still zu ueberspringen = bisheriges fail-open).
+    # HINWEIS: dies ist die APP-seitige Absicherung des RLS-Kontext-Pfads, NICHT die
+    # vollstaendige RLS-Loesung - die PG-Policies nutzen 3 versch. Session-Vars und
+    # erlauben company_id IS NULL; deren Reconciliation ist ein separater Task.
+    RLS_ENFORCE_DEFAULT: bool = False
     WAIT_FOR_MODEL_PRELOAD: bool = False  # Block startup until models are loaded
     WAIT_FOR_MODEL_PRELOAD_TIMEOUT: int = 120  # Timeout in seconds for blocking preload
 

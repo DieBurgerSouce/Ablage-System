@@ -19,7 +19,7 @@ import hashlib
 import json
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import structlog
@@ -28,6 +28,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models import ProcedureDocumentationVersion, Company
+from app.services.compliance.document_signer import DocumentSigner
+from app.services.storage_service import get_storage_service
 
 logger = structlog.get_logger(__name__)
 
@@ -102,6 +104,116 @@ class ProcedureDocService:
         )
 
         return doc_version
+
+    async def generate_signed_pdf(
+        self,
+        db: AsyncSession,
+        company_id: Optional[uuid.UUID] = None,
+    ) -> ProcedureDocumentationVersion:
+        """Rendert die neueste Verfahrensdokumentation als PDF, signiert sie intern
+        (RSA-PSS, on-premises) und legt sie in MinIO ab. Signatur-Metadaten +
+        Objektschluessel werden auf der Version persistiert. Ohne Version wird erst eine
+        erzeugt. Ohne MinIO -> RuntimeError (ehrlich: ohne Storage keine Persistenz).
+        """
+        version = await self.get_latest_version(db, company_id)
+        if version is None:
+            version = await self.generate_documentation(db, company_id)
+
+        pdf_bytes = self._render_pdf(version)
+        pdf_sha256 = hashlib.sha256(pdf_bytes).hexdigest()
+        sig = DocumentSigner().sign(pdf_bytes)
+
+        storage = get_storage_service()
+        result = await storage.upload_document(
+            file_data=pdf_bytes,
+            filename=f"verfahrensdokumentation_v{version.version}.pdf",
+            content_type="application/pdf",
+            user_id=str(company_id) if company_id else "system",
+            metadata={
+                "gobd": "verfahrensdokumentation",
+                "version": str(version.version),
+                "content-hash": version.content_hash,
+                "pdf-sha256": pdf_sha256,
+                "signature-alg": sig["alg"],
+                "signing-cert-serial": sig["cert_serial"],
+            },
+        )
+        object_key = (
+            result.get("object_key")
+            or result.get("storage_path")
+            or result.get("path")
+            or result.get("key")
+        )
+
+        version.pdf_object_key = object_key
+        version.pdf_sha256 = pdf_sha256
+        version.pdf_signature = sig["signature"]
+        version.pdf_signature_alg = sig["alg"]
+        version.pdf_signing_cert_serial = sig["cert_serial"]
+        version.pdf_signed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(version)
+
+        logger.info(
+            "procedure_documentation_pdf_signed",
+            version=version.version,
+            company_id=str(company_id) if company_id else "system-wide",
+            pdf_sha256=pdf_sha256[:16],
+            object_key=object_key,
+        )
+        return version
+
+    def _render_pdf(self, version: ProcedureDocumentationVersion) -> bytes:
+        """Rendert die Verfahrensdokumentation als PDF (reportlab)."""
+        from io import BytesIO
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import cm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+
+        buf = BytesIO()
+        doc = SimpleDocTemplate(
+            buf,
+            pagesize=A4,
+            topMargin=2 * cm,
+            bottomMargin=2 * cm,
+            title=f"GoBD-Verfahrensdokumentation v{version.version}",
+        )
+        styles = getSampleStyleSheet()
+        story = [
+            Paragraph("GoBD-Verfahrensdokumentation", styles["Title"]),
+            Paragraph(f"Version {self._xml(version.version)}", styles["Heading2"]),
+            Paragraph(f"Erzeugt: {self._xml(str(version.generated_at))}", styles["Normal"]),
+            Paragraph(
+                f"Inhalts-Hash (SHA-256): {self._xml(version.content_hash)}",
+                styles["Normal"],
+            ),
+            Spacer(1, 12),
+        ]
+        self._content_flowables(version.content, story, styles, level=0)
+        doc.build(story)
+        return buf.getvalue()
+
+    @staticmethod
+    def _xml(text) -> str:
+        """XML-escape fuer reportlab-Paragraphs."""
+        return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    def _content_flowables(self, obj, story, styles, level: int) -> None:
+        """Rendert den JSON-Inhalt rekursiv in reportlab-Flowables."""
+        from reportlab.platypus import Paragraph, Spacer
+
+        heading = styles["Heading%d" % min(level + 2, 4)]
+        if isinstance(obj, dict):
+            for key, val in obj.items():
+                story.append(Paragraph(self._xml(key), heading))
+                self._content_flowables(val, story, styles, level + 1)
+        elif isinstance(obj, (list, tuple)):
+            for item in obj:
+                self._content_flowables(item, story, styles, level)
+        else:
+            story.append(Paragraph(self._xml(obj), styles["Normal"]))
+            story.append(Spacer(1, 4))
 
     async def get_latest_version(
         self,

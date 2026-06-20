@@ -31,6 +31,90 @@ from app.db.models_banking_connection import (
 )
 
 
+class TestPaymentProductionGuard:
+    """F-08: PSD2/FinTS-Zahlungsausloesung muss in Produktion blockiert sein
+    (BaFin/PSD2 nicht freigegeben). Kein Placeholder-Token/Mock-TAN darf je
+    als echte Zahlung durchgehen.
+    """
+
+    @pytest.fixture
+    def service(self) -> PaymentInitiationService:
+        return PaymentInitiationService(
+            psd2_service=Mock(),
+            fints_service=Mock(),
+            config=PaymentConfig(),
+        )
+
+    async def test_initiate_payment_blocked_in_production(
+        self, service: PaymentInitiationService
+    ) -> None:
+        """initiate_payment liefert in Produktion success=False ohne DB-/Bankkontakt."""
+        request = PaymentRequest(
+            company_id=uuid4(),
+            account_id=uuid4(),
+            creditor_name="Test GmbH",
+            creditor_iban="DE89370400440532013000",
+            creditor_bic=None,
+            amount=Decimal("100.00"),
+        )
+        db = AsyncMock()
+        with patch(
+            "app.services.banking.payment_initiation_service.settings"
+        ) as mock_settings:
+            mock_settings.is_production = True
+            result = await service.initiate_payment(
+                db=db, request=request, user_id=uuid4()
+            )
+        assert result.success is False
+        assert "deaktiviert" in (result.error_message or "")
+        # Guard greift VOR jedem DB-/Bankzugriff
+        db.get.assert_not_called()
+
+    async def test_complete_payment_sca_blocked_in_production(
+        self, service: PaymentInitiationService
+    ) -> None:
+        """complete_payment_sca liefert in Produktion success=False ohne DB-Zugriff."""
+        db = AsyncMock()
+        with patch(
+            "app.services.banking.payment_initiation_service.settings"
+        ) as mock_settings:
+            mock_settings.is_production = True
+            result = await service.complete_payment_sca(
+                db=db,
+                payment_id=uuid4(),
+                company_id=uuid4(),
+                user_id=uuid4(),
+            )
+        assert result.success is False
+        assert "deaktiviert" in (result.error_message or "")
+        db.get.assert_not_called()
+
+    async def test_guard_does_not_overblock_outside_production(
+        self, service: PaymentInitiationService
+    ) -> None:
+        """Adversarial: ausserhalb Produktion greift der Guard NICHT -
+        normaler Pfad (hier: Validierung) laeuft weiter."""
+        request = PaymentRequest(
+            company_id=uuid4(),
+            account_id=uuid4(),
+            creditor_name="Test GmbH",
+            creditor_iban="DE89370400440532013000",
+            creditor_bic=None,
+            amount=Decimal("-5.00"),  # negativ -> Validierungsfehler, NICHT Prod-Guard
+        )
+        db = AsyncMock()
+        with patch(
+            "app.services.banking.payment_initiation_service.settings"
+        ) as mock_settings:
+            mock_settings.is_production = False
+            result = await service.initiate_payment(
+                db=db, request=request, user_id=uuid4()
+            )
+        assert result.success is False
+        # Fehler stammt aus der Validierung (positiv), NICHT aus dem Prod-Guard
+        assert "positiv" in (result.error_message or "")
+
+
 class TestPaymentValidation:
     """Tests fuer Zahlungsvalidierung."""
 

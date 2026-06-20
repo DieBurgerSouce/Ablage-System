@@ -12,7 +12,7 @@
  * - Priorisierung (kritische Events oben)
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   FileText,
@@ -37,7 +37,6 @@ import { de } from 'date-fns/locale';
 
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Tooltip,
@@ -569,7 +568,7 @@ export function ActivityFeed({
         break;
       case 'validation.item_added':
       case 'validation.item_resolved':
-        navigate({ to: '/validation' });
+        navigate({ to: '/validation-queue' });
         break;
       case 'approval.requested':
       case 'approval.approved':

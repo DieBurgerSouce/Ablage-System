@@ -502,7 +502,14 @@ class TestActionExecution:
 
             assert result is False
             assert action.status == "failed"
-            assert "Test error" in action.error
+            # action.error wird ueber safe_error_detail() gesetzt und ist
+            # PII-sicher: die rohe Exception-Message ("Test error") wird
+            # NIE geleakt (CLAUDE.md Rule 1). Stattdessen deutscher,
+            # sanitisierter Text mit Exception-Typ.
+            assert action.error
+            assert "Test error" not in action.error
+            assert "fehlgeschlagen" in action.error
+            assert "Exception" in action.error
 
     @pytest.mark.asyncio
     async def test_execute_notification_calls_service(self, orchestrator):

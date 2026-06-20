@@ -137,7 +137,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("token_validation_failed", **safe_error_log(e), error_type=type(e).__name__)
+        logger.warning("token_validation_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentifizierung fehlgeschlagen",  # Authentication failed
@@ -518,6 +518,14 @@ async def check_rate_limit(
         rate_limit_metrics.record_whitelisted()
         return current_user
 
+    # BUGFIX (2026-06-12): Ist Rate-Limiting EXPLIZIT deaktiviert
+    # (RATE_LIMIT_ENABLED=False, z.B. Dev/Test), liefert get_redis_storage()
+    # None - das ist KEIN Redis-Ausfall. Fail-Closed (L.1) gilt nur fuer den
+    # Storage-Ausfall bei AKTIVIERTEM Rate-Limiting; sonst waren diese
+    # Endpoints bei deaktiviertem Limiter pauschal tot (503).
+    if not settings.RATE_LIMIT_ENABLED:
+        return current_user
+
     # Get Redis storage
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
@@ -596,6 +604,11 @@ async def check_ocr_rate_limit(
     ip = get_remote_address(request)
     if ip_whitelist.is_whitelisted(ip):
         rate_limit_metrics.record_whitelisted()
+        return current_user
+
+    # BUGFIX (2026-06-12): Explizit deaktiviertes Rate-Limiting ist kein
+    # Redis-Ausfall - kein Fail-Closed (siehe check_rate_limit).
+    if not settings.RATE_LIMIT_ENABLED:
         return current_user
 
     # Get Redis storage
@@ -682,6 +695,11 @@ async def check_batch_rate_limit(
 
     rate_limit_metrics.record_request()
 
+    # BUGFIX (2026-06-12): Explizit deaktiviertes Rate-Limiting ist kein
+    # Redis-Ausfall - kein Fail-Closed (siehe check_rate_limit).
+    if not settings.RATE_LIMIT_ENABLED:
+        return current_user
+
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
         # L.1 SECURITY FIX: Fail-Closed für Batch Rate Limiting
@@ -753,6 +771,11 @@ async def check_destructive_admin_rate_limit(
     )
 
     rate_limit_metrics.record_request()
+
+    # BUGFIX (2026-06-12): Explizit deaktiviertes Rate-Limiting ist kein
+    # Redis-Ausfall - kein Fail-Closed (siehe check_rate_limit).
+    if not settings.RATE_LIMIT_ENABLED:
+        return admin
 
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
@@ -1104,6 +1127,11 @@ async def check_datev_export_rate_limit(
 
     rate_limit_metrics.record_request()
 
+    # BUGFIX (2026-06-12): Explizit deaktiviertes Rate-Limiting ist kein
+    # Redis-Ausfall - kein Fail-Closed (siehe check_rate_limit).
+    if not settings.RATE_LIMIT_ENABLED:
+        return current_user
+
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
         # L.1 SECURITY FIX: Fail-Closed für DATEV-Export Rate Limiting
@@ -1256,6 +1284,11 @@ class RateLimitDependency:
         ip = get_remote_address(request)
         if ip_whitelist.is_whitelisted(ip):
             rate_limit_metrics.record_whitelisted()
+            return current_user
+
+        # BUGFIX (2026-06-12): Explizit deaktiviertes Rate-Limiting ist kein
+        # Redis-Ausfall - kein Fail-Closed (siehe check_rate_limit).
+        if not settings.RATE_LIMIT_ENABLED:
             return current_user
 
         # Redis-Speicher holen

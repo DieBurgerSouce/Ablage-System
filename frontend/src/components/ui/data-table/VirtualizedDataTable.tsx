@@ -17,20 +17,7 @@
 "use client"
 
 import * as React from "react"
-import {
-    type ColumnDef,
-    type ColumnFiltersState,
-    type SortingState,
-    type VisibilityState,
-    type RowSelectionState,
-    type RowData,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getSortedRowModel,
-    useReactTable,
-    type OnChangeFn,
-} from "@tanstack/react-table"
+import { type ColumnDef, type ColumnFiltersState, type SortingState, type VisibilityState, type RowSelectionState, flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable, type OnChangeFn } from "@tanstack/react-table"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import {
     Download,

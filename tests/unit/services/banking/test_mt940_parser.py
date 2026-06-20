@@ -28,6 +28,26 @@ from app.services.banking.parsers.base import ParseResult, ParsedTransaction
 from app.services.banking.models import ImportFormat, TransactionType
 
 
+class _MT940Collection:
+    """Mimt die mt940 Transactions-Collection.
+
+    ``mt940.parse()`` liefert ein iterierbares Collection-Objekt, dessen
+    Statement-Metadaten (:25:/:60F:/:62F:) im ``.data``-Dict liegen und dessen
+    Iteration die einzelnen Transaktionen ergibt (Parser-Refactor 2026-06-12).
+    """
+
+    def __init__(self, data: dict, transactions: list) -> None:
+        self.data = data
+        self._transactions = transactions
+
+    def __iter__(self):
+        return iter(self._transactions)
+
+
+def _make_mt940_collection(data: dict, transactions: list) -> _MT940Collection:
+    return _MT940Collection(data=data, transactions=transactions)
+
+
 class TestMT940ParserCanParse:
     """Tests fuer die MT940-Format-Erkennung."""
 
@@ -92,7 +112,7 @@ class TestMT940ParserParse:
             assert len(result.errors) > 0
 
     def test_parse_with_transactions(self, parser: MT940Parser) -> None:
-        """Parst Statement mit Transaktionen."""
+        """Parst Transactions-Collection mit Transaktionen."""
         # Mock Transaction
         mock_amount = Mock()
         mock_amount.amount = Decimal("-150.50")
@@ -127,16 +147,18 @@ class TestMT940ParserParse:
         mock_cb.amount = mock_cb_amount
         mock_cb.date = date(2024, 3, 31)
 
-        # Mock Statement
-        mock_stmt = Mock()
-        mock_stmt.account_id = "DE89370400440532013000"
-        mock_stmt.bic = "COBADEFFXXX"
-        mock_stmt.opening_balance = mock_ob
-        mock_stmt.final_closing_balance = mock_cb
-        mock_stmt.closing_balance = None
-        mock_stmt.transactions = [mock_tx]
+        # mt940.parse() liefert eine Transactions-COLLECTION: Statement-
+        # Metadaten in .data (:25:/:60F:/:62F:), Transaktionen per Iteration.
+        collection = _make_mt940_collection(
+            data={
+                "account_identification": "DE89370400440532013000/COBADEFFXXX",
+                "final_opening_balance": mock_ob,
+                "final_closing_balance": mock_cb,
+            },
+            transactions=[mock_tx],
+        )
 
-        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=[mock_stmt]):
+        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=collection):
             result = parser.parse("mt940 content")
 
         assert result.success is True
@@ -156,15 +178,12 @@ class TestMT940ParserParse:
 
     def test_parse_account_number_not_iban(self, parser: MT940Parser) -> None:
         """Speichert kurze Account-IDs als account_number, nicht als IBAN."""
-        mock_stmt = Mock()
-        mock_stmt.account_id = "1234567890"
-        mock_stmt.bic = None
-        mock_stmt.opening_balance = None
-        mock_stmt.final_closing_balance = None
-        mock_stmt.closing_balance = None
-        mock_stmt.transactions = []
+        collection = _make_mt940_collection(
+            data={"account_identification": "1234567890"},
+            transactions=[],
+        )
 
-        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=[mock_stmt]):
+        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=collection):
             result = parser.parse("mt940 content")
 
         assert result.account_iban is None
@@ -204,19 +223,18 @@ class TestMT940ParserParse:
             "currency": "EUR",
         }
 
-        mock_stmt = Mock()
-        mock_stmt.account_id = None
-        mock_stmt.bic = None
-        mock_stmt.opening_balance = None
-        mock_stmt.final_closing_balance = None
-        mock_stmt.closing_balance = None
-        mock_stmt.transactions = [mock_tx]
+        # mt940.parse() liefert eine Transactions-COLLECTION: Iteration ergibt
+        # die einzelnen Transaktionen, Statement-Metadaten liegen in .data
+        # (Parser-Refactor 2026-06-12).
+        collection = _make_mt940_collection(data={}, transactions=[mock_tx])
 
-        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=[mock_stmt]):
+        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=collection):
             result = parser.parse("mt940 content")
 
         assert result.success is True
         assert len(result.transactions) == 1
+        # extra_details als String wird als counterparty_name uebernommen
+        assert result.transactions[0].counterparty_name == "Max Mustermann"
 
     def test_parse_statistics(self, parser: MT940Parser) -> None:
         """Berechnet Gutschriften und Belastungen korrekt."""
@@ -241,18 +259,17 @@ class TestMT940ParserParse:
             }
             return tx
 
-        mock_stmt = Mock()
-        mock_stmt.account_id = None
-        mock_stmt.bic = None
-        mock_stmt.opening_balance = None
-        mock_stmt.final_closing_balance = None
-        mock_stmt.closing_balance = None
-        mock_stmt.transactions = [
-            make_tx(mock_credit, date(2024, 1, 10)),
-            make_tx(mock_debit, date(2024, 1, 15)),
-        ]
+        # Transactions-COLLECTION: Iteration ergibt die einzelnen Transaktionen
+        # (Parser-Refactor 2026-06-12).
+        collection = _make_mt940_collection(
+            data={},
+            transactions=[
+                make_tx(mock_credit, date(2024, 1, 10)),
+                make_tx(mock_debit, date(2024, 1, 15)),
+            ],
+        )
 
-        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=[mock_stmt]):
+        with patch("app.services.banking.parsers.mt940_parser.mt940_parse", return_value=collection):
             result = parser.parse("mt940 content")
 
         assert result.success is True

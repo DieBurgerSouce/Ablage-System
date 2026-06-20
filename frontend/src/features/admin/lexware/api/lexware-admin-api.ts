@@ -103,7 +103,7 @@ export async function importCustomers(
   params.append('dry_run', String(dryRun))
 
   const response = await apiClient.post<LexwareImportResponse>(
-    `/api/v1/lexware/import/customers?${params.toString()}`,
+    `/lexware/import/customers?${params.toString()}`,
     formData,
     {
       headers: {
@@ -135,7 +135,7 @@ export async function importSuppliers(
   params.append('dry_run', String(dryRun))
 
   const response = await apiClient.post<LexwareImportResponse>(
-    `/api/v1/lexware/import/suppliers?${params.toString()}`,
+    `/lexware/import/suppliers?${params.toString()}`,
     formData,
     {
       headers: {
@@ -154,7 +154,7 @@ export async function importSuppliers(
  */
 export async function fetchLinkingStatistics(): Promise<LinkingStatistics> {
   const response = await apiClient.get<LinkingStatistics>(
-    '/api/v1/lexware/linking-statistics'
+    '/lexware/linking-statistics'
   )
   return response.data
 }
@@ -167,7 +167,7 @@ export async function triggerDocumentLinking(
   options: EntityLinkingRequest = {}
 ): Promise<EntityLinkingResponse> {
   const response = await apiClient.post<EntityLinkingResponse>(
-    '/api/v1/lexware/link-documents',
+    '/lexware/link-documents',
     {
       min_confidence: options.min_confidence ?? 0.75,
       only_unlinked: options.only_unlinked ?? true,

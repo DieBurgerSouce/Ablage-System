@@ -4,12 +4,13 @@ Unit tests for ConsentManagementService (Art. 6, 7 DSGVO).
 
 Phase 7: Compliance & Audit - GDPR Erweiterungen
 
-Tests:
-- Consent erteilen (grant)
-- Consent widerrufen (withdraw)
-- Consent-Status pruefen (check)
-- Consent-Historie abrufen
-- Consent-Versionen verwalten
+Testet gegen den ECHTEN Vertrag von
+app.services.compliance.consent_management_service:
+- grant_consent (Convenience-Wrapper um record_consent)
+- withdraw_consent (ConsentWithdrawalResult: was_active/impacts)
+- check_consent (ConsentCheckResult: consent_given/status/message)
+- get_consent_history (ConsentHistoryEntry-Liste)
+- get_consent_summary (ConsentSummary: by_scope Dict)
 """
 
 import pytest
@@ -24,10 +25,11 @@ from app.services.compliance.consent_management_service import (
     ConsentMethod,
     ConsentStatus,
     ConsentHistoryAction,
-    ConsentRecord,
     ConsentGrantResult,
     ConsentWithdrawalResult,
     ConsentCheckResult,
+    ConsentHistoryEntry,
+    ConsentSummary,
 )
 
 
@@ -39,151 +41,123 @@ def consent_service():
 
 @pytest.fixture
 def mock_user_id():
-    """Create mock user ID."""
     return uuid4()
 
 
 @pytest.fixture
 def mock_company_id():
-    """Create mock company ID."""
     return uuid4()
 
 
 @pytest.fixture
 def mock_db():
-    """Create mock database session."""
     db = AsyncMock()
     db.execute = AsyncMock()
     db.commit = AsyncMock()
+    db.flush = AsyncMock()
     db.add = MagicMock()
     return db
 
 
 @pytest.fixture
 def mock_consent_version():
-    """Create mock consent version record."""
+    """Create mock active consent version (von get_active_consent_version)."""
     version = MagicMock()
     version.id = uuid4()
     version.scope = ConsentScope.PERSONAL_DATA.value
     version.version = "1.0.0"
-    version.title = "Verarbeitung personenbezogener Daten"
-    version.description = "Beschreibung"
-    version.full_text = "Voller Einwilligungstext..."
     version.text_hash = hashlib.sha256(b"Voller Einwilligungstext...").hexdigest()
     version.is_active = True
-    version.effective_from = datetime.now(timezone.utc) - timedelta(days=30)
     return version
 
 
+def _result(scalar_value=None, scalars_list=None):
+    """Mock-Result fuer db.execute()."""
+    res = MagicMock()
+    res.scalar_one_or_none = MagicMock(return_value=scalar_value)
+    res.scalar = MagicMock(return_value=scalar_value)
+    scalars = MagicMock()
+    scalars.all = MagicMock(return_value=scalars_list if scalars_list is not None else [])
+    res.scalars = MagicMock(return_value=scalars)
+    return res
+
+
 class TestGrantConsent:
-    """Tests for grant_consent method."""
+    """Tests for grant_consent (-> record_consent)."""
 
     @pytest.mark.asyncio
-    async def test_grant_consent_success(
+    async def test_grant_consent_success_new_record(
         self, consent_service, mock_db, mock_user_id, mock_company_id, mock_consent_version
     ):
-        """Einwilligung erfolgreich erteilen."""
-        # Mock: Keine existierende Consent
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        """Neue Einwilligung erfolgreich erteilen (kein Bestandsdatensatz)."""
+        # existing-Query liefert None -> neuer Datensatz
+        mock_db.execute.return_value = _result(scalar_value=None)
 
-        # Mock: Consent-Version abrufen
         with patch.object(
-            consent_service, '_get_active_consent_version',
-            return_value=mock_consent_version
+            consent_service, "get_active_consent_version",
+            new=AsyncMock(return_value=mock_consent_version),
         ):
             result = await consent_service.grant_consent(
                 db=mock_db,
                 user_id=mock_user_id,
                 scope=ConsentScope.PERSONAL_DATA,
-                method=ConsentMethod.WEB_FORM,
+                consent_method=ConsentMethod.WEB_FORM,
                 company_id=mock_company_id,
                 ip_address="192.168.1.1",
                 user_agent="Mozilla/5.0",
             )
 
+        assert isinstance(result, ConsentGrantResult)
         assert result.success is True
         assert result.scope == ConsentScope.PERSONAL_DATA
-        assert result.consent_given is True
         assert "erfolgreich erteilt" in result.message
-        mock_db.add.assert_called()
-        mock_db.commit.assert_called()
+        assert result.text_hash == mock_consent_version.text_hash
+        # Neuer Consent + History-Eintrag wurden hinzugefuegt
+        assert mock_db.add.call_count >= 2
+        mock_db.flush.assert_awaited()
 
     @pytest.mark.asyncio
-    async def test_grant_consent_already_active(
-        self, consent_service, mock_db, mock_user_id, mock_company_id
-    ):
-        """Einwilligung bereits aktiv - keine Aenderung."""
-        # Mock: Existierende aktive Consent
-        existing_consent = MagicMock()
-        existing_consent.consent_given = True
-        existing_consent.withdrawn_at = None
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_consent
-        mock_db.execute.return_value = mock_result
-
-        result = await consent_service.grant_consent(
-            db=mock_db,
-            user_id=mock_user_id,
-            scope=ConsentScope.PERSONAL_DATA,
-            method=ConsentMethod.WEB_FORM,
-            company_id=mock_company_id,
-        )
-
-        assert result.success is True
-        assert "bereits aktiv" in result.message
-
-    @pytest.mark.asyncio
-    async def test_grant_consent_reactivate_withdrawn(
+    async def test_grant_consent_updates_existing(
         self, consent_service, mock_db, mock_user_id, mock_company_id, mock_consent_version
     ):
-        """Widerrufene Einwilligung reaktivieren."""
-        # Mock: Existierende widerrufene Consent
+        """Bestehender (widerrufener) Datensatz wird reaktiviert."""
         existing_consent = MagicMock()
+        existing_consent.id = uuid4()
         existing_consent.consent_given = False
         existing_consent.withdrawn_at = datetime.now(timezone.utc) - timedelta(days=1)
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_consent
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _result(scalar_value=existing_consent)
 
         with patch.object(
-            consent_service, '_get_active_consent_version',
-            return_value=mock_consent_version
+            consent_service, "get_active_consent_version",
+            new=AsyncMock(return_value=mock_consent_version),
         ):
             result = await consent_service.grant_consent(
                 db=mock_db,
                 user_id=mock_user_id,
                 scope=ConsentScope.PERSONAL_DATA,
-                method=ConsentMethod.WEB_FORM,
+                consent_method=ConsentMethod.WEB_FORM,
                 company_id=mock_company_id,
             )
 
         assert result.success is True
+        # Bestandsdatensatz wurde reaktiviert
         assert existing_consent.consent_given is True
         assert existing_consent.withdrawn_at is None
 
 
 class TestWithdrawConsent:
-    """Tests for withdraw_consent method."""
+    """Tests for withdraw_consent."""
 
     @pytest.mark.asyncio
     async def test_withdraw_consent_success(
         self, consent_service, mock_db, mock_user_id, mock_company_id
     ):
-        """Einwilligung erfolgreich widerrufen."""
-        # Mock: Existierende aktive Consent
+        """Aktive Einwilligung erfolgreich widerrufen."""
         existing_consent = MagicMock()
         existing_consent.id = uuid4()
         existing_consent.consent_given = True
         existing_consent.withdrawn_at = None
-        existing_consent.scope = ConsentScope.MARKETING.value
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_consent
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _result(scalar_value=existing_consent)
 
         result = await consent_service.withdraw_consent(
             db=mock_db,
@@ -193,21 +167,22 @@ class TestWithdrawConsent:
             company_id=mock_company_id,
         )
 
+        assert isinstance(result, ConsentWithdrawalResult)
         assert result.success is True
         assert result.scope == ConsentScope.MARKETING
-        assert result.consent_given is False
+        assert result.was_active is True
         assert "erfolgreich widerrufen" in result.message
         assert existing_consent.consent_given is False
         assert existing_consent.withdrawn_at is not None
+        # Marketing-Widerruf liefert Auswirkungen
+        assert len(result.impacts) > 0
 
     @pytest.mark.asyncio
     async def test_withdraw_consent_not_found(
         self, consent_service, mock_db, mock_user_id, mock_company_id
     ):
-        """Widerruf fehlgeschlagen - keine Einwilligung gefunden."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        """Widerruf ohne vorhandene Einwilligung -> success=False."""
+        mock_db.execute.return_value = _result(scalar_value=None)
 
         result = await consent_service.withdraw_consent(
             db=mock_db,
@@ -217,20 +192,23 @@ class TestWithdrawConsent:
         )
 
         assert result.success is False
-        assert "nicht gefunden" in result.message
+        assert result.was_active is False
+        assert "gefunden" in result.message
 
     @pytest.mark.asyncio
     async def test_withdraw_consent_already_withdrawn(
         self, consent_service, mock_db, mock_user_id, mock_company_id
     ):
-        """Widerruf fehlgeschlagen - bereits widerrufen."""
+        """Bereits widerrufene Einwilligung: erneuter Widerruf ist idempotent.
+
+        Der Service kennt keinen Sonderfall - er setzt erneut withdrawn_at,
+        meldet aber was_active=False (war vorher nicht aktiv).
+        """
         existing_consent = MagicMock()
+        existing_consent.id = uuid4()
         existing_consent.consent_given = False
         existing_consent.withdrawn_at = datetime.now(timezone.utc) - timedelta(days=1)
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_consent
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _result(scalar_value=existing_consent)
 
         result = await consent_service.withdraw_consent(
             db=mock_db,
@@ -239,94 +217,103 @@ class TestWithdrawConsent:
             company_id=mock_company_id,
         )
 
-        assert result.success is False
-        assert "bereits widerrufen" in result.message
+        assert result.success is True
+        assert result.was_active is False
 
 
 class TestCheckConsent:
-    """Tests for check_consent method."""
+    """Tests for check_consent (ConsentCheckResult.consent_given/status)."""
 
     @pytest.mark.asyncio
     async def test_check_consent_active(
-        self, consent_service, mock_db, mock_user_id, mock_company_id
+        self, consent_service, mock_db, mock_user_id, mock_company_id, mock_consent_version
     ):
-        """Aktive Einwilligung pruefen."""
+        """Aktive Einwilligung -> consent_given=True, status=ACTIVE."""
         existing_consent = MagicMock()
         existing_consent.consent_given = True
         existing_consent.withdrawn_at = None
         existing_consent.granted_at = datetime.now(timezone.utc) - timedelta(days=10)
         existing_consent.valid_until = None
+        # Hash passt zur aktiven Version (version_current=True)
+        existing_consent.consent_text_hash = mock_consent_version.text_hash
+        mock_db.execute.return_value = _result(scalar_value=existing_consent)
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_consent
-        mock_db.execute.return_value = mock_result
+        with patch.object(
+            consent_service, "get_active_consent_version",
+            new=AsyncMock(return_value=mock_consent_version),
+        ):
+            result = await consent_service.check_consent(
+                db=mock_db,
+                user_id=mock_user_id,
+                scope=ConsentScope.DOCUMENT_PROCESSING,
+                company_id=mock_company_id,
+            )
 
-        result = await consent_service.check_consent(
-            db=mock_db,
-            user_id=mock_user_id,
-            scope=ConsentScope.DOCUMENT_PROCESSING,
-            company_id=mock_company_id,
-        )
-
-        assert result.has_consent is True
+        assert isinstance(result, ConsentCheckResult)
+        assert result.consent_given is True
         assert result.status == ConsentStatus.ACTIVE
 
     @pytest.mark.asyncio
     async def test_check_consent_expired(
-        self, consent_service, mock_db, mock_user_id, mock_company_id
+        self, consent_service, mock_db, mock_user_id, mock_company_id, mock_consent_version
     ):
-        """Abgelaufene Einwilligung pruefen."""
+        """Abgelaufene Einwilligung -> status=EXPIRED, consent_given=False."""
         existing_consent = MagicMock()
         existing_consent.consent_given = True
         existing_consent.withdrawn_at = None
         existing_consent.granted_at = datetime.now(timezone.utc) - timedelta(days=400)
         existing_consent.valid_until = datetime.now(timezone.utc) - timedelta(days=30)
+        existing_consent.consent_text_hash = mock_consent_version.text_hash
+        mock_db.execute.return_value = _result(scalar_value=existing_consent)
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_consent
-        mock_db.execute.return_value = mock_result
+        with patch.object(
+            consent_service, "get_active_consent_version",
+            new=AsyncMock(return_value=mock_consent_version),
+        ):
+            result = await consent_service.check_consent(
+                db=mock_db,
+                user_id=mock_user_id,
+                scope=ConsentScope.ANALYTICS,
+                company_id=mock_company_id,
+            )
 
-        result = await consent_service.check_consent(
-            db=mock_db,
-            user_id=mock_user_id,
-            scope=ConsentScope.ANALYTICS,
-            company_id=mock_company_id,
-        )
-
-        assert result.has_consent is False
         assert result.status == ConsentStatus.EXPIRED
+        assert result.consent_given is False
+        assert result.requires_renewal is True
 
     @pytest.mark.asyncio
     async def test_check_consent_withdrawn(
-        self, consent_service, mock_db, mock_user_id, mock_company_id
+        self, consent_service, mock_db, mock_user_id, mock_company_id, mock_consent_version
     ):
-        """Widerrufene Einwilligung pruefen."""
+        """Widerrufene Einwilligung -> status=WITHDRAWN."""
         existing_consent = MagicMock()
         existing_consent.consent_given = False
         existing_consent.withdrawn_at = datetime.now(timezone.utc) - timedelta(days=5)
+        existing_consent.granted_at = datetime.now(timezone.utc) - timedelta(days=30)
+        existing_consent.valid_until = None
+        existing_consent.consent_text_hash = mock_consent_version.text_hash
+        mock_db.execute.return_value = _result(scalar_value=existing_consent)
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_consent
-        mock_db.execute.return_value = mock_result
+        with patch.object(
+            consent_service, "get_active_consent_version",
+            new=AsyncMock(return_value=mock_consent_version),
+        ):
+            result = await consent_service.check_consent(
+                db=mock_db,
+                user_id=mock_user_id,
+                scope=ConsentScope.MARKETING,
+                company_id=mock_company_id,
+            )
 
-        result = await consent_service.check_consent(
-            db=mock_db,
-            user_id=mock_user_id,
-            scope=ConsentScope.MARKETING,
-            company_id=mock_company_id,
-        )
-
-        assert result.has_consent is False
         assert result.status == ConsentStatus.WITHDRAWN
+        assert result.consent_given is False
 
     @pytest.mark.asyncio
     async def test_check_consent_not_found(
         self, consent_service, mock_db, mock_user_id, mock_company_id
     ):
-        """Keine Einwilligung gefunden."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        """Keine Einwilligung -> status=NOT_GIVEN, consent_given=False."""
+        mock_db.execute.return_value = _result(scalar_value=None)
 
         result = await consent_service.check_consent(
             db=mock_db,
@@ -335,39 +322,21 @@ class TestCheckConsent:
             company_id=mock_company_id,
         )
 
-        assert result.has_consent is False
         assert result.status == ConsentStatus.NOT_GIVEN
+        assert result.consent_given is False
 
 
 class TestGetConsentSummary:
-    """Tests for get_consent_summary method."""
+    """Tests for get_consent_summary (ConsentSummary.by_scope Dict)."""
 
     @pytest.mark.asyncio
-    async def test_get_consent_summary_all_scopes(
+    async def test_get_consent_summary_aggregates(
         self, consent_service, mock_db, mock_user_id, mock_company_id
     ):
-        """Zusammenfassung aller Consent-Scopes abrufen."""
-        # Mock: Verschiedene Consents fuer verschiedene Scopes
-        consents = [
-            MagicMock(
-                scope=ConsentScope.PERSONAL_DATA.value,
-                consent_given=True,
-                withdrawn_at=None,
-                granted_at=datetime.now(timezone.utc) - timedelta(days=10),
-                valid_until=None,
-            ),
-            MagicMock(
-                scope=ConsentScope.MARKETING.value,
-                consent_given=False,
-                withdrawn_at=datetime.now(timezone.utc) - timedelta(days=5),
-                granted_at=datetime.now(timezone.utc) - timedelta(days=30),
-                valid_until=None,
-            ),
-        ]
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = consents
-        mock_db.execute.return_value = mock_result
+        """Zusammenfassung aggregiert ueber alle Scopes (by_scope-Dict)."""
+        # check_all_consents ruft check_consent je Scope -> kein Consent (None),
+        # daher Status NOT_GIVEN ueberall. get_consent_history liefert leer.
+        mock_db.execute.return_value = _result(scalar_value=None, scalars_list=[])
 
         summary = await consent_service.get_consent_summary(
             db=mock_db,
@@ -375,63 +344,65 @@ class TestGetConsentSummary:
             company_id=mock_company_id,
         )
 
+        assert isinstance(summary, ConsentSummary)
         assert summary.user_id == mock_user_id
-        assert len(summary.scopes) >= 2
-        # Personal Data sollte aktiv sein
-        personal_data_scope = next(
-            (s for s in summary.scopes if s.scope == ConsentScope.PERSONAL_DATA),
-            None
-        )
-        assert personal_data_scope is not None
-        assert personal_data_scope.status == ConsentStatus.ACTIVE
+        assert summary.total_scopes == len(ConsentScope)
+        # Alle Scopes ohne Datensatz -> by_scope deckt alle Scopes ab
+        assert len(summary.by_scope) == len(ConsentScope)
+        assert all(v == ConsentStatus.NOT_GIVEN for v in summary.by_scope.values())
 
 
 class TestGetConsentHistory:
-    """Tests for get_consent_history method."""
+    """Tests for get_consent_history (ConsentHistoryEntry-Liste)."""
 
     @pytest.mark.asyncio
     async def test_get_consent_history_success(
         self, consent_service, mock_db, mock_user_id, mock_company_id
     ):
-        """Consent-Historie erfolgreich abrufen."""
+        """Consent-Historie wird zu ConsentHistoryEntry serialisiert."""
         history_entries = [
             MagicMock(
                 id=uuid4(),
+                consent_scope_id=uuid4(),
                 action=ConsentHistoryAction.GRANTED.value,
                 created_at=datetime.now(timezone.utc) - timedelta(days=30),
                 previous_value=False,
                 new_value=True,
+                consent_version_id=uuid4(),
                 ip_address="192.168.1.1",
+                user_agent="Mozilla/5.0",
                 reason=None,
             ),
             MagicMock(
                 id=uuid4(),
+                consent_scope_id=uuid4(),
                 action=ConsentHistoryAction.WITHDRAWN.value,
                 created_at=datetime.now(timezone.utc) - timedelta(days=5),
                 previous_value=True,
                 new_value=False,
+                consent_version_id=uuid4(),
                 ip_address="192.168.1.2",
+                user_agent="Mozilla/5.0",
                 reason="Keine Emails mehr",
             ),
         ]
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = history_entries
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _result(scalars_list=history_entries)
 
         history = await consent_service.get_consent_history(
             db=mock_db,
             user_id=mock_user_id,
             scope=ConsentScope.MARKETING,
-            company_id=mock_company_id,
         )
 
         assert len(history) == 2
-        assert history[0].action in [ConsentHistoryAction.GRANTED, ConsentHistoryAction.WITHDRAWN]
+        assert all(isinstance(e, ConsentHistoryEntry) for e in history)
+        # action wird in das Enum konvertiert
+        assert history[0].action == ConsentHistoryAction.GRANTED
+        assert history[1].action == ConsentHistoryAction.WITHDRAWN
 
 
 class TestConsentScopes:
-    """Tests for ConsentScope enum values."""
+    """Tests for ConsentScope/ConsentMethod enum values."""
 
     def test_all_required_scopes_exist(self):
         """Alle erforderlichen Scopes sind definiert."""
@@ -442,9 +413,7 @@ class TestConsentScopes:
             "analytics",
             "marketing",
         ]
-
         scope_values = [s.value for s in ConsentScope]
-
         for required in required_scopes:
             assert required in scope_values, f"Scope '{required}' fehlt"
 

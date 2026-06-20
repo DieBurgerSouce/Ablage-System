@@ -35,15 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Download,
-  FileSpreadsheet,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  Info,
-  ExternalLink,
-} from 'lucide-react';
+import { Download, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { useDATEVExport, useDATEVExportDownload } from '../hooks';
 import type { DATEVExportData } from '@/lib/api/services/tax-optimization';
 

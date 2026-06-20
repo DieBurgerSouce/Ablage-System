@@ -205,38 +205,8 @@ class TestListFavorites:
 class TestRemoveFavorite:
     """Tests for DELETE /favorites/{document_id} endpoint."""
 
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_remove_favorite_success(self):
-        """Successfully removing a favorite should return 200."""
-        # Test validates removal logic
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_remove_favorite_not_found(self):
-        """Removing non-existent favorite should return 404."""
-        # Test validates 404 handling
-        pass
-
-
 class TestUpdateFavorite:
     """Tests for PATCH /favorites/{document_id} endpoint."""
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_update_favorite_note(self):
-        """Updating favorite note should work."""
-        # Test validates note update
-        pass
-
-    @pytest.mark.skip(reason="stub - nicht implementiert")
-    @pytest.mark.asyncio
-    async def test_update_favorite_priority(self):
-        """Updating favorite priority should work."""
-        # Test validates priority update
-        pass
-
 
 class TestFavoriteSchemas:
     """Tests for favorite-related Pydantic schemas."""

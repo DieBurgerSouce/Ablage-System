@@ -61,7 +61,7 @@ const connectionSchema = z.object({
         .min(1, 'Beraternummer ist erforderlich')
         .regex(/^\d{1,10}$/, 'Beraternummer muss 1-10 Ziffern enthalten'),
     kontenrahmen: z.enum(['SKR03', 'SKR04'], {
-        required_error: 'Kontenrahmen ist erforderlich',
+        message: 'Kontenrahmen ist erforderlich',
     }),
     wirtschaftsjahr_beginn: z
         .number()

@@ -54,6 +54,18 @@ CRLF_PAYLOADS = [
     "test%09X-Injected: true",
 ]
 
+# Payloads, die als ROHER HTTP-Header-Wert ueber den Client gesendet werden
+# koennen. RFC 7230 erlaubt in Header-Werten nur sichtbares ASCII plus
+# Leerzeichen/Tab; httpx/der ASGI-Transport lehnt Nicht-ASCII-Zeilentrenner
+# (NEL , LS  , PS  ) bereits CLIENT-SEITIG mit UnicodeEncodeError
+# ab - das prueft die Encoding-Grenze des Clients, NICHT die Sanitisierung des
+# Servers (CWE-113). Fuer rohe Request-Header ist der echte, transportierbare
+# Angriffsvektor ASCII-CR/LF/Tab; genau den decken diese Payloads ab. Die
+# vollstaendige CRLF_PAYLOADS-Liste (inkl. Unicode + URL-encoded) bleibt fuer die
+# Query-/Body-/Filename-Tests aktiv, wo die Werte URL-kodiert uebertragbar sind
+# und der Server die Sanitisierung beweisen muss.
+RAW_HEADER_CRLF_PAYLOADS = [p for p in CRLF_PAYLOADS if p.isascii()]
+
 COOKIE_INJECTION_PAYLOADS = [
     "test\r\nSet-Cookie: session=hijacked",
     "test%0d%0aSet-Cookie: session=hijacked",
@@ -84,7 +96,7 @@ REDIRECT_INJECTION_PAYLOADS = [
 class TestRequestHeaderInjection:
     """Tests against CRLF injection in request headers."""
 
-    @pytest.mark.parametrize("payload", CRLF_PAYLOADS)
+    @pytest.mark.parametrize("payload", RAW_HEADER_CRLF_PAYLOADS)
     def test_crlf_in_custom_header(self, payload: str, test_client, auth_headers) -> None:
         """Test CRLF injection in custom request headers."""
         headers = {**auth_headers, "X-Custom-Header": payload}
@@ -99,7 +111,7 @@ class TestRequestHeaderInjection:
         assert response.status_code != 500, \
             f"CRLF sollte keinen Server-Fehler verursachen: {payload}"
 
-    @pytest.mark.parametrize("payload", CRLF_PAYLOADS)
+    @pytest.mark.parametrize("payload", RAW_HEADER_CRLF_PAYLOADS)
     def test_crlf_in_accept_header(self, payload: str, test_client, auth_headers) -> None:
         """Test CRLF injection in Accept header."""
         headers = {**auth_headers, "Accept": f"application/json{payload}"}
@@ -109,7 +121,7 @@ class TestRequestHeaderInjection:
         assert "X-Injected" not in response.headers
         assert response.status_code != 500
 
-    @pytest.mark.parametrize("payload", CRLF_PAYLOADS)
+    @pytest.mark.parametrize("payload", RAW_HEADER_CRLF_PAYLOADS)
     def test_crlf_in_user_agent(self, payload: str, test_client, auth_headers) -> None:
         """Test CRLF injection in User-Agent header."""
         headers = {**auth_headers, "User-Agent": f"TestClient/1.0 {payload}"}
@@ -399,8 +411,12 @@ class TestEmailHeaderInjection:
             # (Bcc injection should not work)
             pass
         else:
-            # Expected: rejected with 400/422
-            assert response.status_code in [400, 422, 404]
+            # Erwartet: abgelehnt mit 400/422, oder die Angriffsflaeche
+            # existiert gar nicht (404 = Pfad fehlt, 405 = Methode am Pfad
+            # nicht erlaubt). 405 ist sicherheitstechnisch gleichwertig zu
+            # 404: es gibt keinen POST-Endpunkt, der beliebige
+            # Empfaenger-Adressen in E-Mail-Header schreibt.
+            assert response.status_code in [400, 422, 404, 405]
 
 
 # =============================================================================
@@ -449,24 +465,8 @@ class TestEdgeCases:
 # =============================================================================
 # FIXTURES
 # =============================================================================
-
-
-@pytest.fixture
-def log_capture(mocker):
-    """Capture log output for testing log injection."""
-    import io
-    import logging
-
-    log_stream = io.StringIO()
-    handler = logging.StreamHandler(log_stream)
-    handler.setLevel(logging.DEBUG)
-
-    logger = logging.getLogger()
-    original_level = logger.level
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
-
-    yield log_stream
-
-    logger.removeHandler(handler)
-    logger.setLevel(original_level)
+# Der ``log_capture``-Fixture wird aus conftest.py bezogen. Die frueher hier
+# definierte Modul-Variante forderte das Argument ``mocker`` (pytest-mock) an -
+# das Plugin ist nicht installiert -> "fixture 'mocker' not found" ERROR bei
+# allen TestLoggingInjection-Tests. Der conftest-Fixture leistet dasselbe ohne
+# diese Abhaengigkeit, daher wurde die lokale Duplikat-Definition entfernt.

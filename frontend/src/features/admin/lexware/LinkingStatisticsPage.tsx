@@ -81,7 +81,7 @@ export function LinkingStatisticsPage() {
             <span className="ml-2">Aktualisieren</span>
           </Button>
           <Button
-            onClick={() => linkingMutation.mutate()}
+            onClick={() => linkingMutation.mutate({})}
             disabled={linkingMutation.isPending}
           >
             {linkingMutation.isPending ? (

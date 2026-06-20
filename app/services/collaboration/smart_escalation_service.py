@@ -19,11 +19,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 from enum import Enum
 
-from sqlalchemy import and_, func, or_, select, text
+from sqlalchemy import Integer, and_, cast, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.datetime_utils import utc_now
+from sqlalchemy.dialects.postgresql import JSONB  # F-31
 from app.db.models import (
     BusinessEntity,
     Company,
@@ -538,18 +539,17 @@ class SmartEscalationService:
             select(
                 func.count(ValidationQueueItem.id).label("total"),
                 func.sum(
-                    func.cast(
+                    cast(
                         ValidationQueueItem.status == ValidationStatus.APPROVED.value,
-                        Integer=False,
+                        Integer,
                     )
                 ).label("approved"),
             )
             .join(Document, Document.id == ValidationQueueItem.document_id)
             .where(
                 and_(
-                    ValidationQueueItem.reviewer_id == user_id,
-                    ValidationQueueItem.company_id == company_id,
-                    ValidationQueueItem.reviewed_at >= cutoff_date,
+                    ValidationQueueItem.validated_by_id == user_id,
+                    ValidationQueueItem.validated_at >= cutoff_date,
                     ValidationQueueItem.status.in_([
                         ValidationStatus.APPROVED.value,
                         ValidationStatus.REJECTED.value,
@@ -645,8 +645,7 @@ class SmartEscalationService:
             select(func.count(ValidationQueueItem.id))
             .where(
                 and_(
-                    ValidationQueueItem.reviewer_id == user_id,
-                    ValidationQueueItem.company_id == company_id,
+                    ValidationQueueItem.validated_by_id == user_id,
                     ValidationQueueItem.status == ValidationStatus.PENDING.value,
                 )
             )
@@ -722,7 +721,7 @@ class SmartEscalationService:
         result = await self.db.execute(
             select(
                 User.is_active,
-                User.last_login_at,
+                User.last_login,
                 # Hier könnten weitere Felder wie absence_until geprüft werden
             )
             .where(User.id == user_id)
@@ -750,8 +749,8 @@ class SmartEscalationService:
         is_available = True
         details: Dict[str, Any] = {"is_active": True}
 
-        if row.last_login_at:
-            days_since_login = (utc_now() - row.last_login_at).days
+        if row.last_login:
+            days_since_login = (utc_now() - row.last_login).days
             details["last_login_days_ago"] = days_since_login
 
             if days_since_login > 30:
@@ -895,10 +894,9 @@ class SmartEscalationService:
             .join(Document, Document.id == ValidationQueueItem.document_id)
             .where(
                 and_(
-                    ValidationQueueItem.reviewer_id == user_id,
-                    ValidationQueueItem.company_id == company_id,
+                    ValidationQueueItem.validated_by_id == user_id,
                     Document.entity_id == entity_id,
-                    ValidationQueueItem.reviewed_at >= cutoff_date,
+                    ValidationQueueItem.validated_at >= cutoff_date,
                 )
             )
         )

@@ -15,19 +15,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-    Brain,
-    TrendingUp,
-    TrendingDown,
-    ChevronRight,
-    AlertTriangle,
-    CheckCircle2,
-    Activity,
-    Zap,
-    RefreshCw,
-    FlaskConical,
-    GitBranch,
-} from 'lucide-react';
+import { Brain, TrendingUp, TrendingDown, ChevronRight, AlertTriangle, Activity, RefreshCw, FlaskConical, GitBranch } from 'lucide-react';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardSectionError } from '../shared';
@@ -84,7 +72,7 @@ function useMLOpsPerformance() {
     return useQuery({
         queryKey: ['mlops', 'performance'],
         queryFn: async (): Promise<MLOpsSummary> => {
-            const response = await api.get('/api/v1/mlops/performance');
+            const response = await api.get('/mlops/performance');
             return response.data;
         },
         staleTime: 60 * 1000, // 1 minute

@@ -324,7 +324,7 @@ function ImportLogVirtualizedTable({
   isRetrying,
 }: {
   logs: ImportLogResponse[];
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onRetry: (logId: string) => void;
   isRetrying: boolean;
 }) {

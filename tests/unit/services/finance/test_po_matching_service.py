@@ -476,7 +476,7 @@ class TestAddDocument:
             document_type="purchase_order",
         )
 
-        with pytest.raises(ValueError, match="bereits verknuepft"):
+        with pytest.raises(ValueError, match="bereits verknüpft"):
             await service.add_document_to_match(
                 mock_db, TEST_MATCH_UUID, request
             )
@@ -498,7 +498,7 @@ class TestAddDocument:
             document_type="ungueltig",
         )
 
-        with pytest.raises(ValueError, match="Ungueltiger Dokumenttyp"):
+        with pytest.raises(ValueError, match="Ungültiger Dokumenttyp"):
             await service.add_document_to_match(
                 mock_db, TEST_MATCH_UUID, request
             )

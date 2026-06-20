@@ -7,6 +7,12 @@ Tests correctness properties for benchmark runner functionality.
 """
 
 import pytest
+
+# Optionale Test-Abhaengigkeit: property-based Tests benoetigen 'hypothesis'.
+# Ist sie im Runtime-Image nicht installiert, wird das gesamte Modul sauber
+# geskippt (statt eines Collection-Errors, der die ganze Suite abbricht).
+pytest.importorskip("hypothesis")
+
 from hypothesis import given, strategies as st, settings
 from typing import Dict, Any
 

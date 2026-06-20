@@ -18,32 +18,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calculator, Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 
-interface TaxCalculation {
-  totalTax: number;
-  effectiveRate: number;
-  breakdown: Array<{
-    beneficiaryName: string;
-    relationship: string;
-    taxClass: 1 | 2 | 3;
-    inheritanceAmount: number;
-    taxAllowance: number;
-    taxableAmount: number;
-    taxRate: number;
-    taxAmount: number;
-  }>;
-}
+// Echter Service-Typ statt lokalem Drift-Duplikat
+import type { InheritanceTaxCalculation } from '@/lib/api/services/estate-planning';
 
 interface InheritanceTaxCalculatorProps {
   spaceId: string;
-  taxCalculation: TaxCalculation | null;
+  taxCalculation: InheritanceTaxCalculation | null;
 }
 
 // Deutsche Erbschaftsteuer-Freibeträge
@@ -94,17 +76,9 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 0,
   }).format(value);
 
-const getTaxClassLabel = (taxClass: 1 | 2 | 3): string => {
-  const labels: Record<1 | 2 | 3, string> = {
-    1: 'Klasse I (Ehepartner, Kinder)',
-    2: 'Klasse II (Geschwister, Neffen)',
-    3: 'Klasse III (Alle anderen)',
-  };
-  return labels[taxClass];
-};
 
 export function InheritanceTaxCalculator({
-  spaceId,
+  spaceId: _spaceId,
   taxCalculation,
 }: InheritanceTaxCalculatorProps) {
   const [showCalculator, setShowCalculator] = useState(false);
@@ -156,15 +130,15 @@ export function InheritanceTaxCalculator({
                 </p>
               </div>
               <Badge variant="outline" className="text-lg">
-                Ø {taxCalculation.effectiveRate.toFixed(1)}%
+                Ø {taxCalculation.averageEffectiveRate.toFixed(1)}%
               </Badge>
             </div>
 
             {/* Aufschlüsselung nach Begünstigten */}
-            {taxCalculation.breakdown.length > 0 && (
+            {taxCalculation.scenarios.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-medium">Aufschlüsselung</h4>
-                {taxCalculation.breakdown.map((item, idx) => (
+                {taxCalculation.scenarios.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-5 gap-2 text-sm p-2 bg-muted/50 rounded">
                     <div>
                       <p className="font-medium">{item.beneficiaryName}</p>
@@ -172,11 +146,11 @@ export function InheritanceTaxCalculator({
                     </div>
                     <div className="text-right">
                       <p className="text-muted-foreground text-xs">Erbe</p>
-                      <p>{formatCurrency(item.inheritanceAmount)}</p>
+                      <p>{formatCurrency(item.grossInheritance)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-muted-foreground text-xs">Freibetrag</p>
-                      <p className="text-green-600">-{formatCurrency(item.taxAllowance)}</p>
+                      <p className="text-green-600">-{formatCurrency(item.personalAllowance)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-muted-foreground text-xs">Steuersatz</p>

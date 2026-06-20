@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 from prometheus_client import Counter, Histogram
 
+from app.core.config import settings
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.models_banking_connection import (
@@ -199,6 +200,15 @@ class PaymentInitiationService:
         Returns:
             PaymentResult with status and any SCA requirements
         """
+        # F-08: PSD2/FinTS-Zahlungsauslösung ist NICHT BaFin-freigegeben (outscoped).
+        # In Produktion hart blockieren, damit weder PSD2-Placeholder-Token noch
+        # simulierte FinTS-TAN je als echte Zahlung ausgeführt werden.
+        if settings.is_production:
+            return PaymentResult(
+                success=False,
+                error_message="Zahlungsauslösung ist in Produktion deaktiviert (PSD2/FinTS nicht freigegeben).",
+            )
+
         # Validate request
         validation_error = self._validate_payment_request(request)
         if validation_error:
@@ -436,6 +446,13 @@ class PaymentInitiationService:
             tan: TAN for FinTS payments
             authorization_code: Authorization code for PSD2
         """
+        # F-08: SCA-Abschluss ebenfalls in Produktion blockieren (PSD2/FinTS outscoped).
+        if settings.is_production:
+            return PaymentResult(
+                success=False,
+                error_message="Zahlungsauslösung ist in Produktion deaktiviert (PSD2/FinTS nicht freigegeben).",
+            )
+
         payment = await db.get(PaymentInitiation, payment_id)
         if not payment or payment.company_id != company_id:
             return PaymentResult(

@@ -32,14 +32,7 @@ import {
   FormInput,
   Search,
 } from 'lucide-react';
-import {
-  type KeyboardShortcut,
-  type KeySequence,
-  type ShortcutCategory,
-  formatShortcutKeys,
-  formatKeySequence,
-  SHORTCUT_CATEGORY_LABELS,
-} from '@/hooks/useKeyboardShortcuts';
+import { type KeyboardShortcut, type KeySequence, type ShortcutCategory, formatShortcutKeys, SHORTCUT_CATEGORY_LABELS } from '@/hooks/useKeyboardShortcuts';
 import { cn } from '@/lib/utils';
 
 // ==================== Types ====================

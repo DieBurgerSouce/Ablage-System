@@ -21,7 +21,7 @@ export const Route = createFileRoute('/reset-password/$token')({
 
 function ResetPasswordPage() {
     const { token } = Route.useParams();
-    const navigate = useNavigate();
+    void useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [isValidating, setIsValidating] = useState(true);
     const [isTokenValid, setIsTokenValid] = useState(false);

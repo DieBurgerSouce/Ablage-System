@@ -187,7 +187,7 @@ export function SharedReportsList({ className, onReportClick }: SharedReportsLis
         if (onReportClick) {
             onReportClick(templateId);
         } else {
-            navigate({ to: '/reports/builder/$templateId', params: { templateId } });
+            navigate({ to: '/berichte' });
         }
     };
 

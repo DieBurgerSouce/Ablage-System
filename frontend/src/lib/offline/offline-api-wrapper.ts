@@ -54,13 +54,6 @@ export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
 }
 
-/**
- * Generate cache key for a request
- */
-function generateCacheKey(endpoint: string, params?: Record<string, unknown>): string {
-  const paramString = params ? JSON.stringify(params) : '';
-  return `${endpoint}:${paramString}`;
-}
 
 // ============================================
 // Offline API Functions

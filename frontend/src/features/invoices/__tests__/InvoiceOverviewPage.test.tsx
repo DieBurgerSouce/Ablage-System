@@ -26,6 +26,26 @@ vi.mock('../hooks/use-invoice-queries', () => ({
 }));
 
 // Mock useToast
+// happy-dom hat keine Layout-Engine -> der echte Virtualizer liefert 0 Zeilen.
+// Mock rendert alle Zeilen, damit die InvoiceTable testbar ist.
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: (opts: { count: number; estimateSize: () => number }) => {
+    const size = opts.estimateSize();
+    return {
+      getVirtualItems: () =>
+        Array.from({ length: opts.count }, (_, index) => ({
+          index,
+          key: index,
+          start: index * size,
+          end: (index + 1) * size,
+          size,
+        })),
+      getTotalSize: () => opts.count * size,
+      measureElement: () => undefined,
+    };
+  },
+}));
+
 vi.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));

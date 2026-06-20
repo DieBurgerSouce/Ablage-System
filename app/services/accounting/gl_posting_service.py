@@ -505,15 +505,22 @@ class GLPostingService:
     async def _get_datev_config(
         self, company_id: UUID
     ) -> Optional[DATEVConfiguration]:
-        """Lade aktive DATEV-Konfiguration für die Firma (via User)."""
-        from app.db.models import User as UserModel
+        """Lade aktive DATEV-Konfiguration für die Firma (via UserCompany).
+
+        Hinweis: Das User-Modell besitzt KEIN company_id. Die Zuordnung
+        User<->Company erfolgt ueber die UserCompany-Verknuepfungstabelle.
+        """
+        from app.db.models import UserCompany
 
         stmt = (
             select(DATEVConfiguration)
-            .join(UserModel, DATEVConfiguration.user_id == UserModel.id)
+            .join(
+                UserCompany,
+                DATEVConfiguration.user_id == UserCompany.user_id,
+            )
             .where(
                 and_(
-                    UserModel.company_id == company_id,
+                    UserCompany.company_id == company_id,
                     DATEVConfiguration.is_active == True,
                     DATEVConfiguration.is_default == True,
                 )

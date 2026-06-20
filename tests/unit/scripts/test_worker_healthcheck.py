@@ -10,11 +10,46 @@ Testet:
 
 import os
 import sys
+import importlib
+import importlib.util
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 
-# Script-Verzeichnis zum Path hinzufuegen
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts"))
+
+def _locate_worker_healthcheck() -> str:
+    """Finde das worker_healthcheck.py-Skript ueber mehrere Kandidaten-Pfade.
+
+    Der Test laeuft sowohl direkt auf dem Host (Repo-Root) als auch im
+    Backend-Container. Im Container ist scripts/ je nach Compose-Setup unter
+    /app/scripts gemountet, der Test-Tree liegt unter /app/tests/...
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        # Repo-Layout: tests/unit/scripts -> ../../../scripts
+        os.path.join(here, "..", "..", "..", "scripts"),
+        # Container mit gemountetem scripts/
+        "/app/scripts",
+        os.path.join(os.getcwd(), "scripts"),
+    ]
+    for base in candidates:
+        path = os.path.abspath(os.path.join(base, "worker_healthcheck.py"))
+        if os.path.isfile(path):
+            return os.path.dirname(path)
+    return ""
+
+
+_SCRIPTS_DIR = _locate_worker_healthcheck()
+
+if not _SCRIPTS_DIR:
+    pytest.skip(
+        "worker_healthcheck.py nicht auffindbar - scripts/ ist in dieser "
+        "Umgebung nicht gemountet (Infra-Setup, kein Test-Drift).",
+        allow_module_level=True,
+    )
+
+# Script-Verzeichnis zum Path hinzufuegen, damit `import worker_healthcheck` klappt
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
 
 
 class TestCeleryWorkerCheck:
@@ -214,16 +249,24 @@ class TestHealthCheckIntegration:
     @patch("subprocess.run")
     def test_all_checks_pass(self, mock_run):
         """Alle Checks bestehen."""
+        import worker_healthcheck
         from worker_healthcheck import run_health_checks
 
-        # Celery OK
+        # Celery OK (Celery + GPU laufen ueber subprocess.run)
         mock_run.return_value = Mock(
             returncode=0,
             stdout="celery@worker: PONG",
             stderr=""
         )
 
-        exit_code = run_health_checks()
+        # Redis-Check nutzt eine echte Verbindung -> fuer "alle OK" mocken,
+        # damit run_health_checks nicht an einer fehlenden Redis-Instanz scheitert.
+        with patch.object(
+            worker_healthcheck,
+            "check_redis_connection",
+            return_value=(True, "Redis verbunden"),
+        ):
+            exit_code = run_health_checks()
 
         assert exit_code == 0
 

@@ -13,7 +13,7 @@ from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id
 from app.db.models import User
 from app.services.compliance.esg import (
     get_esg_service,
@@ -121,7 +121,7 @@ async def get_esg_dashboard(
     service = get_esg_service(db)
 
     return await service.get_dashboard_summary(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         period_start=period_start,
         period_end=period_end,
     )
@@ -170,7 +170,7 @@ async def record_carbon_emissions(
 
     try:
         entry = await calculator.record_emissions(
-            company_id=user.company_id,
+            company_id=(await get_user_company_id(db, user)),
             period_start=data.period_start,
             period_end=data.period_end,
             source_category=data.source_category,
@@ -214,7 +214,7 @@ async def get_carbon_emissions(
     calculator = get_carbon_calculator(db)
 
     entries, total = await calculator.get_emissions(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         period_start=period_start,
         period_end=period_end,
         scope=scope,
@@ -245,7 +245,7 @@ async def get_carbon_summary(
     calculator = get_carbon_calculator(db)
 
     return await calculator.get_emissions_summary(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         period_start=period_start,
         period_end=period_end,
     )
@@ -263,7 +263,7 @@ async def get_carbon_trend(
     service = get_esg_service(db)
 
     return await service.get_carbon_footprint_trend(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         months=months,
     )
 
@@ -291,7 +291,7 @@ async def create_supplier_rating(
     service = get_supplier_sustainability_service(db)
 
     rating = await service.create_rating(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         entity_id=data.entity_id,
         environmental_details=data.environmental_details,
         social_details=data.social_details,
@@ -330,7 +330,7 @@ async def get_supplier_ratings(
     service = get_supplier_sustainability_service(db)
 
     ratings, total = await service.get_ratings(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         entity_id=entity_id,
         risk_level=risk_level,
         min_score=min_score,
@@ -357,7 +357,7 @@ async def get_supplier_risk_summary(
     """
     service = get_supplier_sustainability_service(db)
 
-    return await service.get_risk_summary(company_id=user.company_id)
+    return await service.get_risk_summary(company_id=(await get_user_company_id(db, user)))
 
 
 @router.get("/supplier-ratings/{entity_id}/latest")
@@ -372,7 +372,7 @@ async def get_latest_supplier_rating(
     service = get_supplier_sustainability_service(db)
 
     rating = await service.get_latest_rating(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         entity_id=entity_id,
     )
 
@@ -405,7 +405,7 @@ async def add_certification(
 
     try:
         cert = await tracker.add_certification(
-            company_id=user.company_id,
+            company_id=(await get_user_company_id(db, user)),
             certification_type=data.certification_type,
             certification_name=data.certification_name,
             issue_date=data.issue_date,
@@ -446,7 +446,7 @@ async def get_certifications(
     tracker = get_certification_tracker(db)
 
     certifications, total = await tracker.get_certifications(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         category=category,
         status=status,
         include_expired=include_expired,
@@ -472,7 +472,7 @@ async def get_certification_summary(
     """
     tracker = get_certification_tracker(db)
 
-    return await tracker.get_certification_summary(company_id=user.company_id)
+    return await tracker.get_certification_summary(company_id=(await get_user_company_id(db, user)))
 
 
 @router.get("/certifications/expiring")
@@ -487,7 +487,7 @@ async def get_expiring_certifications(
     tracker = get_certification_tracker(db)
 
     return {"items": await tracker.get_expiring_soon(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         days=days,
     )}
 
@@ -504,7 +504,7 @@ async def get_upcoming_audits(
     tracker = get_certification_tracker(db)
 
     return {"items": await tracker.get_upcoming_audits(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         days=days,
     )}
 
@@ -522,7 +522,7 @@ async def get_certification_detail(
 
     detail = await tracker.get_certification_detail(
         certification_id=certification_id,
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
     )
 
     if not detail:
@@ -554,7 +554,7 @@ async def generate_report(
 
     try:
         report = await generator.generate_report(
-            company_id=user.company_id,
+            company_id=(await get_user_company_id(db, user)),
             report_type=data.report_type,
             period_start=data.period_start,
             period_end=data.period_end,
@@ -588,7 +588,7 @@ async def get_reports(
     generator = get_esg_report_generator(db)
 
     reports, total = await generator.get_reports(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         report_type=report_type,
         status=status,
         limit=per_page,
@@ -616,7 +616,7 @@ async def get_report_detail(
 
     detail = await generator.get_report_detail(
         report_id=report_id,
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
     )
 
     if not detail:
@@ -640,7 +640,7 @@ async def create_goal(
 
     try:
         goal = await service.create_goal(
-            company_id=user.company_id,
+            company_id=(await get_user_company_id(db, user)),
             title=data.title,
             description=data.description,
             category=data.category,
@@ -675,7 +675,7 @@ async def get_goals(
     service = get_esg_service(db)
 
     goals = await service.get_goals(
-        company_id=user.company_id,
+        company_id=(await get_user_company_id(db, user)),
         category=category,
         active_only=active_only,
     )
@@ -698,7 +698,7 @@ async def update_goal_progress(
     try:
         goal = await service.update_goal_progress(
             goal_id=goal_id,
-            company_id=user.company_id,
+            company_id=(await get_user_company_id(db, user)),
             current_value=data.current_value,
         )
 
@@ -722,6 +722,6 @@ async def get_sdg_mapping(
     """
     service = get_esg_service(db)
 
-    mapping = await service.get_sdg_mapping(company_id=user.company_id)
+    mapping = await service.get_sdg_mapping(company_id=(await get_user_company_id(db, user)))
 
     return {"mapping": mapping}

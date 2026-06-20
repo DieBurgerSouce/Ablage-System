@@ -526,7 +526,13 @@ class TestScoreCalculation:
         self,
         service: SupplierVerificationService,
     ) -> None:
-        """Critical reduziert Score stark."""
+        """Critical reduziert Score stark UND erzwingt CRITICAL-Status.
+
+        W3 (2026-06-12): Echter Vertrag — CRITICAL kostet 40 Punkte
+        (100 -> 60), nicht >50. Die harte Konsequenz laeuft ueber den
+        STATUS: _determine_overall_status liefert bei jedem CRITICAL-
+        Finding VerificationStatus.CRITICAL, unabhaengig vom Score.
+        """
         findings = [
             VerificationFinding(
                 source=VerificationSource.INSOLVENZREGISTER,
@@ -536,7 +542,10 @@ class TestScoreCalculation:
             )
         ]
         score = service._calculate_verification_score(findings)
-        assert score < 50
+        assert score == 60  # 100 - 40 pro CRITICAL-Finding
+        # Status dominiert: Insolvenz -> CRITICAL, egal wie hoch der Score ist
+        status = service._determine_overall_status(findings, score)
+        assert status == VerificationStatus.CRITICAL
 
 
 # =============================================================================
@@ -824,32 +833,38 @@ class TestMultiTenantVerification:
         self,
         mock_db: AsyncMock,
     ) -> None:
-        """Verifiziert dass Entity zur eigenen Company gehoert."""
+        """Verifiziert dass Entity zur eigenen Company gehoert.
+
+        W3 (2026-06-12): Die alte Fassung liess den DB-Mock die Entity
+        TROTZ Company-Filter zurueckgeben — damit war der Test prinzipiell
+        nicht in der Lage, den Filter zu pruefen (der Mock ignoriert die
+        WHERE-Klausel). Echter Vertrag: verify_entity filtert in der Query
+        auf BusinessEntity.company_id == company_id; eine fremde Company
+        bekommt die Entity also nie zu sehen (scalar_one_or_none -> None)
+        und erhaelt ein ERROR-Ergebnis. Geprueft wird beides:
+        1) die emittierte Query enthaelt den company_id-Filter,
+        2) 'nicht gefunden' fuehrt zum ERROR-Resultat mit Score 0.
+        """
         service = SupplierVerificationService(mock_db)
 
         entity_id = uuid.uuid4()
-        company_a_id = uuid.uuid4()
         company_b_id = uuid.uuid4()
 
-        # Entity gehoert zu Company A
-        mock_entity = MagicMock()
-        mock_entity.id = entity_id
-        mock_entity.name = "Test GmbH"
-        mock_entity.display_name = "Test GmbH"
-        mock_entity.company_id = company_a_id  # Company A!
-        mock_entity.vat_id = None
-        mock_entity.tax_id = None
-
+        # DB setzt den Mandanten-Filter durch: fremde Company sieht nichts
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_entity
+        mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
 
         # Company B versucht zu verifizieren
         result = await service.verify_entity(entity_id, company_b_id)
 
-        # Sollte Fehler zurueckgeben (Entity nicht gefunden/nicht berechtigt)
-        # Oder leeres Ergebnis mit Error-Status
-        assert result.overall_status == VerificationStatus.ERROR or result.verification_score == 0
+        # 1) Query filtert tatsaechlich auf company_id (Multi-Tenant-Scope)
+        executed_stmt = mock_db.execute.call_args_list[0].args[0]
+        assert "company_id" in str(executed_stmt)
+
+        # 2) Ergebnis ist ein Fehler-Resultat, keine Verifikation
+        assert result.overall_status == VerificationStatus.ERROR
+        assert result.verification_score == 0
 
     def test_verification_result_dataclass_no_iban_field(self) -> None:
         """Verifiziert dass VerificationResult keine IBAN-Felder hat."""

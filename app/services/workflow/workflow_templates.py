@@ -536,7 +536,7 @@ async def seed_workflow_templates(db_session) -> int:
             from app.db.models import User
 
             admin_result = await db_session.execute(
-                select(User).where(User.role == "admin").limit(1)
+                select(User).where(User.is_superuser.is_(True)).limit(1)
             )
             admin_user = admin_result.scalar_one_or_none()
 

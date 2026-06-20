@@ -197,7 +197,7 @@ class TestBlacklistedTokenRejection:
         exp_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
 
         # Mock Redis für diesen Test
-        with patch("app.core.security._get_redis_client") as mock_redis:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis:
             mock_client = AsyncMock()
             mock_redis.return_value = mock_client
             mock_client.setex = AsyncMock()
@@ -221,7 +221,7 @@ class TestBlacklistedTokenRejection:
         token = create_access_token({"sub": "user123", "email": "test@example.com"})
 
         # Mock Redis - Token nicht auf Blacklist
-        with patch("app.core.security._get_redis_client") as mock_redis:
+        with patch("app.core.security_auth._get_redis_client") as mock_redis:
             mock_client = AsyncMock()
             mock_redis.return_value = mock_client
             mock_client.exists = AsyncMock(return_value=False)
@@ -328,7 +328,7 @@ class TestLogoutTokenExpiration:
         mock_redis = AsyncMock()
         mock_redis.setex = mock_setex
 
-        with patch("app.core.security._get_redis_client", AsyncMock(return_value=mock_redis)):
+        with patch("app.core.security_auth._get_redis_client", AsyncMock(return_value=mock_redis)):
             # Token läuft in 10 Minuten ab
             expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
             await blacklist_token_redis("test-jti", expires_at)
@@ -380,7 +380,7 @@ class TestBlacklistStatistics:
         mock_redis = AsyncMock()
         mock_redis.scan = AsyncMock(return_value=(0, ["token:blacklist:1", "token:blacklist:2"]))
 
-        with patch("app.core.security._get_redis_client", AsyncMock(return_value=mock_redis)):
+        with patch("app.core.security_auth._get_redis_client", AsyncMock(return_value=mock_redis)):
             stats = await get_blacklist_stats()
 
         assert "redis_available" in stats
@@ -392,7 +392,7 @@ class TestBlacklistStatistics:
         """get_blacklist_stats ohne Redis zeigt Fallback-Info."""
         from app.core.security import get_blacklist_stats
 
-        with patch("app.core.security._get_redis_client", AsyncMock(return_value=None)):
+        with patch("app.core.security_auth._get_redis_client", AsyncMock(return_value=None)):
             stats = await get_blacklist_stats()
 
         assert stats["redis_available"] is False
@@ -448,7 +448,7 @@ class TestConcurrentBlacklisting:
         mock_redis = AsyncMock()
         mock_redis.setex = mock_setex
 
-        with patch("app.core.security._get_redis_client", AsyncMock(return_value=mock_redis)):
+        with patch("app.core.security_auth._get_redis_client", AsyncMock(return_value=mock_redis)):
             # Starte 10 gleichzeitige Blacklist-Operationen
             expires = datetime.now(timezone.utc) + timedelta(hours=1)
             tasks = [

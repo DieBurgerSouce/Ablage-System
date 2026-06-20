@@ -4,13 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import {
-  KPIData,
-  formatKPIValue,
-  getTrendIcon,
-  getTrendColor,
-  UI_LABELS,
-} from '../types/smart-dashboard-types';
+import { type KPIData, formatKPIValue, getTrendIcon, getTrendColor } from '../types/smart-dashboard-types';
 
 interface KPICardProps {
   kpi: KPIData;

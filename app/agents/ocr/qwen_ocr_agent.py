@@ -20,7 +20,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -556,7 +556,7 @@ class QwenOCRAgent(OCRAgent):
             )
 
             result = self.create_error_result(
-                **safe_error_log(e),
+                error=safe_error_detail(e, "Qwen-OCR"),
                 error_code="QWEN_OCR_ERROR",
                 processing_time_ms=processing_time_ms
             )

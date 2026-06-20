@@ -12,6 +12,7 @@ Feinpoliert und durchdacht - Enterprise SSO Test Configuration.
 
 import sys
 import importlib
+import importlib.util
 from unittest.mock import MagicMock, Mock, AsyncMock
 from typing import TYPE_CHECKING
 import os
@@ -23,9 +24,36 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-minimum-32-chars-for-testin
 os.environ.setdefault("SSO_ENCRYPTION_KEY", "a" * 32)
 
 # ========================= Mock problematische Module =========================
+#
+# WICHTIG (Test-Isolation / Pollution-Guard):
+# Diese conftest mockt beim Import zahlreiche Module in sys.modules (echte Libs
+# wie minio/surya/PIL und v.a. app.db.models). Ohne Wiederherstellung leckt das
+# in nachfolgende Tests (z.B. test_supplier_verification_service: select(
+# BusinessEntity.id) -> ArgumentError "Column expression ... expected", weil
+# app.db.models ein MagicMock geworden ist).
+# Loesung: Wir merken uns fuer JEDEN von uns mutierten sys.modules-Key den
+# Original-Zustand und stellen ihn per session-scoped autouse-Fixture am Ende
+# der SSO-Tests wieder her (siehe _restore_sys_modules_after_sso unten).
+
+# Original-Zustand der von dieser conftest mutierten sys.modules-Keys merken.
+# value=_MODULE_ABSENT bedeutet: Key existierte vorher nicht und muss am Ende
+# wieder geloescht werden.
+_MODULE_ABSENT = object()
+_POLLUTED_MODULE_KEYS: dict = {}
+# Falls app.db.models bereits ECHT geladen war: (modul, original_AppConfig)
+# zum Wiederherstellen des nur-AppConfig-Patches im Teardown.
+_SSO_ORIGINAL_APPCONFIG: list = []
+
+
+def _remember_module_key(name: str) -> None:
+    """Merkt den Original-Zustand eines sys.modules-Keys (idempotent)."""
+    if name not in _POLLUTED_MODULE_KEYS:
+        _POLLUTED_MODULE_KEYS[name] = sys.modules.get(name, _MODULE_ABSENT)
+
 
 def _create_mock_module(name):
     """Erzeugt ein Mock-Modul und registriert es in sys.modules."""
+    _remember_module_key(name)
     mock = MagicMock()
     sys.modules[name] = mock
     return mock
@@ -38,6 +66,7 @@ if "pgvector" not in sys.modules:
     _mocks["pgvector"] = _create_mock_module("pgvector")
     _mocks["pgvector"].sqlalchemy = MagicMock()
     _mocks["pgvector"].sqlalchemy.Vector = MagicMock()
+    _remember_module_key("pgvector.sqlalchemy")
     sys.modules["pgvector.sqlalchemy"] = _mocks["pgvector"].sqlalchemy
 
 # tiktoken
@@ -88,6 +117,7 @@ if "qrcode" not in sys.modules:
 # docling
 if "docling" not in sys.modules:
     _mocks["docling"] = _create_mock_module("docling")
+    _remember_module_key("docling.document_converter")
     sys.modules["docling.document_converter"] = MagicMock()
 
 # numpy
@@ -97,16 +127,32 @@ if "numpy" not in sys.modules:
     _mocks["numpy"].array = MagicMock()
 
 # Optional dependencies
+# WICHTIG: 'surya' wurde aus dieser Liste ENTFERNT. surya ist im Backend-Image
+# echt installiert und wird vom sso_config_service NICHT gebraucht. Es hier am
+# Modul-Import (Collection) zu mocken leckte trotz package-scoped Teardown in
+# tests/unit/test_surya_agent.py (anderes Package, unzuverlaessiges Teardown-
+# Timing) -> 'surya' is not a package. Generell nur Module mocken, deren echte
+# Lib NICHT installiert ist (find_spec), damit reale Libs nicht fuer andere
+# Tests verfaelscht werden.
 for mod_name in [
     "redis", "redis.asyncio", "minio", "celery", "asyncpg", "PIL", "PIL.Image",
-    "httpx", "aiohttp", "surya", "openai", "anthropic", "langchain",
+    "httpx", "aiohttp", "openai", "anthropic", "langchain",
     "langchain.text_splitter", "langchain_core", "langchain_community",
     "pdf2image", "pypdf", "magic", "boto3", "botocore", "slack_sdk",
     "slack_sdk.web", "slack_sdk.webhook", "jwt", "aiosmtplib",
     "aioimaplib", "watchdog", "watchdog.observers", "watchdog.events"
 ]:
-    if mod_name not in sys.modules:
-        sys.modules[mod_name] = MagicMock()
+    if mod_name in sys.modules:
+        continue
+    # Echte Lib installiert? Dann NICHT mocken (verhindert Pollution realer Libs
+    # fuer Tests, die sie echt brauchen). Nur fehlende Deps werden gemockt.
+    try:
+        if importlib.util.find_spec(mod_name) is not None:
+            continue
+    except (ImportError, ValueError, ModuleNotFoundError):
+        pass
+    _remember_module_key(mod_name)
+    sys.modules[mod_name] = MagicMock()
 
 # ========================= Ende Mock Section =========================
 
@@ -162,14 +208,25 @@ def _load_sso_config_service_directly():
     mock_key.__eq__ = MagicMock(return_value=MagicMock())  # Fuer WHERE key == value
     mock_app_config_class.key = mock_key
 
+    # app.db.models fuer die SSO-Tests mit Mock-AppConfig versehen.
+    # WICHTIG (Pollution-Guard): Wenn das ECHTE app.db.models bereits geladen
+    # ist, darf es NICHT durch ein MagicMock ersetzt werden (sonst werden
+    # BusinessEntity/Document etc. zu Mocks -> MagicMock(spec=...) und
+    # select(BusinessEntity.id) brechen in nachfolgenden Tests). In dem Fall
+    # nur AppConfig patchen und das Original-Attribut zur Wiederherstellung
+    # merken. Ist app.db.models noch nicht geladen, wird ein Mock-Modul gesetzt
+    # und zum Teardown wieder entfernt (-> echtes Modul laedt frisch nach).
     if "app.db.models" not in sys.modules:
-        # Erstelle ein Mock-Modul fuer app.db.models
+        _remember_module_key("app.db.models")
         models_mock = MagicMock()
         models_mock.AppConfig = mock_app_config_class
         sys.modules["app.db.models"] = models_mock
     else:
-        # Falls schon geladen, ersetze nur AppConfig
-        sys.modules["app.db.models"].AppConfig = mock_app_config_class
+        _real_models = sys.modules["app.db.models"]
+        _SSO_ORIGINAL_APPCONFIG.append(
+            (_real_models, getattr(_real_models, "AppConfig", _MODULE_ABSENT))
+        )
+        _real_models.AppConfig = mock_app_config_class
 
     # Modul ausfuehren
     spec.loader.exec_module(module)
@@ -206,6 +263,43 @@ def get_sso_config_module():
 
 import pytest
 from uuid import uuid4
+
+
+@pytest.fixture(scope="package", autouse=True)
+def _restore_sys_modules_after_sso():
+    """Stellt die von dieser conftest mutierten sys.modules nach den SSO-Tests
+    wieder her.
+
+    Verhindert Test-Pollution: Diese conftest ersetzt beim Import u.a.
+    app.db.models (und echte Libs wie minio/surya/PIL) durch MagicMocks. Ohne
+    Wiederherstellung leckt das in spaeter laufende Tests und bricht reale
+    SQLAlchemy-Queries (select(BusinessEntity.id) -> ArgumentError in
+    test_supplier_verification_service).
+
+    Scope=package: Teardown laeuft, wenn der letzte Test dieses SSO-Pakets
+    fertig ist (vor Tests in Geschwister-Verzeichnissen wie external/), damit
+    der reale app.db.models-Zustand rechtzeitig wiederhergestellt wird.
+    """
+    # Sicherstellen, dass das SSO-Modul (und damit der app.db.models-Patch)
+    # geladen ist, BEVOR wir am Ende restoren.
+    get_sso_config_module()
+    yield
+    # --- Teardown: Original-Zustand wiederherstellen ---
+    for name, original in _POLLUTED_MODULE_KEYS.items():
+        if original is _MODULE_ABSENT:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
+    # Falls app.db.models real war und nur AppConfig gepatcht wurde:
+    for models_module, original_appconfig in _SSO_ORIGINAL_APPCONFIG:
+        if original_appconfig is _MODULE_ABSENT:
+            if hasattr(models_module, "AppConfig"):
+                try:
+                    delattr(models_module, "AppConfig")
+                except AttributeError:
+                    pass
+        else:
+            models_module.AppConfig = original_appconfig
 
 
 # Fixtures werden hier definiert, um in allen SSO-Tests verfuegbar zu sein

@@ -1302,13 +1302,52 @@ async def get_catalog(
     catalog_service: ReportCatalogService = Depends(get_catalog_service),
 ) -> CatalogListResponse:
     """Gibt den Template-Katalog zurück."""
+    # F-31: get_catalog() liefert kompakte Dicts mit camelCase-Keys
+    # (reportType/dataSource/columnCount/...), NICHT das Response-Schema-Shape;
+    # get_categories() liefert reine Kategorie-Namen (List[str]). Direktes
+    # CatalogTemplateResponse(**t)/CatalogCategoryResponse(**c) schlug fehl
+    # (ValidationError/TypeError -> 500). Hier explizit auf die Schemas mappen.
     templates = catalog_service.get_catalog(category=category)
     categories = catalog_service.get_categories()
 
+    template_responses = [
+        CatalogTemplateResponse(
+            id=t["id"],
+            name=t["name"],
+            description=t["description"],
+            category=t.get("category", "Allgemein"),
+            report_type=t.get("reportType", "custom"),
+            data_source=t.get("dataSource", "documents"),
+            icon=t.get("icon", "file"),
+            default_columns=[],
+            default_filters=None,
+            default_charts=None,
+            tags=[],
+        )
+        for t in templates
+    ]
+
+    # Template-Anzahl pro Kategorie ueber den vollen Katalog ermitteln.
+    full_catalog = catalog_service.get_catalog()
+    category_counts: dict = {}
+    for entry in full_catalog:
+        cat = entry.get("category", "Allgemein")
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+
+    category_responses = [
+        CatalogCategoryResponse(
+            id=str(cat),
+            name=str(cat),
+            description="",
+            template_count=category_counts.get(cat, 0),
+        )
+        for cat in categories
+    ]
+
     return CatalogListResponse(
-        templates=[CatalogTemplateResponse(**t) for t in templates],
-        categories=[CatalogCategoryResponse(**c) for c in categories],
-        total=len(templates),
+        templates=template_responses,
+        categories=category_responses,
+        total=len(template_responses),
     )
 
 

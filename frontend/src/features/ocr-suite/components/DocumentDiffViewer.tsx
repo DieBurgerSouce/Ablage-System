@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDocumentVersions } from '../hooks/use-ocr-suite-queries';
-import type { DocumentVersion } from '../types';
 import { GitCompare } from 'lucide-react';
 
 interface DocumentDiffViewerProps {

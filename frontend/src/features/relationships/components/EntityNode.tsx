@@ -7,14 +7,14 @@
 
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Users, Truck, FileText, Building2 } from 'lucide-react';
+import { Users, Truck, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { EntityNodeData } from '../api/relationships-api';
 
 // ==================== Component ====================
 
-function EntityNodeComponent({ data, selected }: NodeProps<{ data: EntityNodeData }>) {
+function EntityNodeComponent({ data, selected }: NodeProps) {
     const nodeData = data as unknown as EntityNodeData;
     const isCustomer = nodeData.nodeType === 'customer';
     const Icon = isCustomer ? Users : Truck;

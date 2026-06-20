@@ -1,19 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Upload,
-    X,
-    FileText,
-    Image,
-    AlertCircle,
-    CheckCircle2,
-    Loader2,
-    Trash2,
-    RefreshCw,
-    Cpu,
-    Zap,
-} from 'lucide-react';
+import { Upload, FileText, Image, AlertCircle, CheckCircle2, Loader2, Trash2, RefreshCw, Cpu, Zap } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -54,7 +42,7 @@ export function UploadModal({
     onUploadComplete,
 }: UploadModalProps) {
     const [selectedBackend, setSelectedBackend] = useState<string>('got-ocr');
-    const [autoClassify, setAutoClassify] = useState(true);
+    const [autoClassify, _setAutoClassify] = useState(true);
 
     const { data: gpuStatus } = useGPUStatus();
     const gpuAvailable = gpuStatus?.available ?? true;
@@ -126,7 +114,7 @@ export function UploadModal({
                 <div className="flex-1 overflow-hidden flex flex-col gap-4">
                     {/* Dropzone */}
                     <motion.div
-                        {...getRootProps()}
+                        {...(getRootProps() as unknown as Record<string, unknown>)}
                         animate={{
                             borderColor: isDragReject
                                 ? 'rgb(239 68 68)'

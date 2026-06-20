@@ -7,7 +7,6 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -59,7 +58,7 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export function NiessbrauchCalculator({ spaceId }: NiessbrauchCalculatorProps) {
+export function NiessbrauchCalculator(_props: NiessbrauchCalculatorProps) {
   const [propertyValue, setPropertyValue] = useState(500000);
   const [annualRent, setAnnualRent] = useState(12000);
   const [age, setAge] = useState(65);

@@ -12,6 +12,8 @@ Feinpoliert und durchdacht - Enterprise Risk Scoring.
 """
 
 from typing import Optional, List
+from app.api.dependencies import get_user_company_id_dep  # F-31
+from app.api.dependencies import get_user_company_id  # F-31
 from uuid import UUID
 from datetime import datetime, timezone
 
@@ -739,7 +741,7 @@ async def get_invoice_skonto(
             invoice_date=invoice.invoice_date,
             skonto_percentage=invoice.skonto_percentage,
             skonto_days=invoice.skonto_days,
-            net_days=invoice.net_payment_days,
+            net_days=invoice.net_days,
         )
         return {
             "invoice_id": str(invoice_id),

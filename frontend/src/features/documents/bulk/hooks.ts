@@ -12,7 +12,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import {
   bulkAddTags,
   bulkRemoveTags,
@@ -96,7 +96,7 @@ export function useDocumentBulkOperations(
   // Selection hook
   const {
     selectedIds,
-    selectedItems,
+    selectedItems: _selectedItems,
     selectedCount,
     isSelected,
     toggleSelection: baseToggleSelection,

@@ -9,6 +9,7 @@ API für vollautomatischen Rechnungsworkflow (Feature #3):
 """
 
 from typing import Optional, List
+from app.api.dependencies import get_user_company_id_dep  # F-31
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -117,7 +118,7 @@ class MessageResponse(BaseModel):
 )
 async def process_invoice(
     document_id: UUID,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PipelineResultResponse:
@@ -175,7 +176,7 @@ async def process_invoice(
 )
 async def get_pipeline_status(
     document_id: UUID,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PipelineResultResponse:
@@ -218,7 +219,7 @@ async def get_pipeline_status(
 )
 async def approve_invoice(
     document_id: UUID,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PipelineResultResponse:
@@ -271,7 +272,7 @@ async def approve_invoice(
 )
 async def get_pipeline_stats(
     days: int = 30,
-    company_id: UUID = Depends(require_company),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PipelineStatsResponse:

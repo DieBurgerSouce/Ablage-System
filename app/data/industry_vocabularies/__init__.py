@@ -88,7 +88,16 @@ def get_abbreviation(industry: str, abbrev: str) -> Optional[str]:
     """
     try:
         vocab = load_vocabulary(industry)
-        return vocab.get("abbreviations", {}).get(abbrev.upper())
+        abbreviations = vocab.get("abbreviations", {})
+        # Exakter Treffer zuerst, dann case-insensitive (die Vokabular-Schluessel
+        # sind teils gemischt-gross/klein, z. B. "MwSt", "GmbH", "i.v.").
+        if abbrev in abbreviations:
+            return abbreviations[abbrev]
+        abbrev_lower = abbrev.lower()
+        for key, expansion in abbreviations.items():
+            if key.lower() == abbrev_lower:
+                return expansion
+        return None
     except FileNotFoundError:
         return None
 

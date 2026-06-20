@@ -27,7 +27,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Only load heavy models for autogenerate (saves ~2-3GB RAM for upgrade/downgrade)
-_needs_metadata = any(cmd in sys.argv for cmd in ("--autogenerate", "revision"))
+_needs_metadata = any(cmd in sys.argv for cmd in ("--autogenerate", "revision", "check"))  # F-12: check braucht metadata fuer Drift-Gate
 
 if _needs_metadata:
     try:

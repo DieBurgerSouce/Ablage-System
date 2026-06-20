@@ -6,6 +6,7 @@
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "claude-flow"
+    "claude-flow",
+    "slack-ask"
   ]
 }

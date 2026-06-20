@@ -1,5 +1,13 @@
 # Claude Code Configuration - Claude Flow V3
 
+> **Disambiguation**: Diese Datei = Claude-Flow-/Tooling-Konfiguration. Die fachliche Projekt-Referenz (Architektur, Critical Rules, Feature-Status) ist `.claude/CLAUDE.md`.
+> **Projekt-Status** (2026-06-11): B1–B4 behoben/gescoped; verbindliches Findings-Register: `.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md`.
+
+<!-- slack-ask-rule -->
+## Rückfragen & Scope (Slack)
+- Rückfragen und Scope-Entscheidungen IMMER über das `ask_human`-Tool (Slack) stellen — nie im Terminal raten und nie still annehmen.
+- Den vereinbarten Scope nie eigenmächtig verlassen; bei jeder Unklarheit zuerst `ask_human` nutzen und auf die Antwort warten.
+
 ## 🚨 AUTOMATIC SWARM ORCHESTRATION
 
 **When starting work on complex tasks, Claude Code MUST automatically:**

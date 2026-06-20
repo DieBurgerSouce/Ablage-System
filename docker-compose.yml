@@ -84,7 +84,12 @@ services:
     image: edoburu/pgbouncer:v1.25.1-p0@sha256:85d1e38593617af1b5f7f285e97d407e56c29939683cc7cfe4c8f6dc19f1268b
     container_name: ablage-pgbouncer
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # W1: KEIN ?sslmode=-Query-Anhang — der edoburu-Config-Generator parst die
+      # Query nicht ab und erzeugt "dbname?sslmode=... = host=..." -> ini-Syntax-
+      # fehler + Crash-Loop. Server-TLS stattdessen via SERVER_TLS_SSLMODE
+      # (entrypoint.sh Z.174, offiziell unterstuetzt).
+      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      SERVER_TLS_SSLMODE: ${DB_SSL_MODE:-prefer}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 500
       DEFAULT_POOL_SIZE: 25
@@ -578,7 +583,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DEBUG: ${DEBUG:-false}
       # Qdrant Vector Database
-      QDRANT_ENABLED: ${QDRANT_ENABLED:-false}
+      # W1-023: Default true wie bei worker/worker-cpu — Qdrant startet immer
+      # mit (kein profile) und das Backend wartet ohnehin auf dessen Health;
+      # false/true-Drift fuehrte zu inkonsistentem Verhalten Backend vs. Worker.
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
@@ -614,6 +622,13 @@ services:
       # Ganzes Verzeichnis mounten, damit __init__.py-Hierarchie greift (sentry, vault, etc).
       - ./infrastructure:/app/infrastructure:ro
       - ./Trainings_Data:/app/Trainings_Data:ro
+      # 2026-06-13 (Offensive s1): Execution_Layer-Package mounten, damit die
+      # Agent-Unit-Tests (tests/unit/execution_layer/*) ihren Import
+      # `from Execution_Layer.Agents.* import ...` im backend-Container aufloesen.
+      # Das Package liegt im Repo-Root (nicht unter app/) und war nicht ins Image
+      # kopiert -> ModuleNotFoundError: No module named 'Execution_Layer'.
+      # Read-only, beeinflusst den Prod-Pfad nicht (analog tests/ + infrastructure/).
+      - ./Execution_Layer:/app/Execution_Layer:ro
       # 2026-06-07: tests/ + pytest.ini gemountet, damit der dokumentierte
       # `docker-compose exec backend pytest tests/...`-Gesundheitscheck out-of-the-box
       # laeuft (Image enthaelt tests/ nicht). Read-only, beeinflusst den Prod-Pfad nicht.
@@ -624,7 +639,10 @@ services:
       - backups:/var/backups/ablage
       - model_cache:/home/ablage/.cache  # Persistent HuggingFace/Surya Model Cache
     ports:
-      - "8000:8000"
+      # F-24: nur an Localhost binden (vorher 0.0.0.0) - die API wird intern ueber
+      # das Docker-Netz (frontend/nginx) erreicht; direkter Host-Zugriff nur lokal
+      # bzw. via Reverse-Proxy. Verhindert ungewollte Exposition auf allen Interfaces.
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -1276,12 +1294,12 @@ services:
     container_name: ablage-jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
-      SPAN_STORAGE_TYPE: badger
-      BADGER_EPHEMERAL: "false"
-      BADGER_DIRECTORY_VALUE: /badger/data
-      BADGER_DIRECTORY_KEY: /badger/key
-    volumes:
-      - jaeger_data:/badger
+      # W1: badger auf frischem Volume crasht (mkdir /badger/key: permission denied —
+      # non-root-Image vs. root-owned Volume) -> Container kam NIE hoch. Solange das
+      # OTEL-SDK nicht integriert ist (W1-020: keine Traces vorhanden), ist In-Memory
+      # korrekt und from-scratch-robust. Bei OTEL-Integration: badger + Volume-Init.
+      SPAN_STORAGE_TYPE: memory
+      MEMORY_MAX_TRACES: "50000"
     ports:
       - "127.0.0.1:16686:16686"  # Jaeger UI
       - "127.0.0.1:4317:4317"    # OTLP gRPC
@@ -1319,7 +1337,11 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: ablage-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # W4: Der Go-lib/pq-Treiber des Exporters kennt KEIN sslmode=prefer
+      # (nur require/verify-full/verify-ca/disable) -> pg_up=0, Alert
+      # "PostgreSQLDown" feuerte dauerhaft. Internes Docker-Netz -> disable;
+      # bei echtem TLS POSTGRES_EXPORTER_SSLMODE=require setzen.
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${POSTGRES_EXPORTER_SSLMODE:-disable}
     ports:
       - "127.0.0.1:9187:9187"  # Nur localhost
     depends_on:
@@ -1644,7 +1666,7 @@ volumes:
   grafana_data:
   loki_data:
   alertmanager_data:
-  jaeger_data:  # Jaeger Distributed Tracing Storage
+  # jaeger_data entfernt (W1): Jaeger laeuft in-memory bis OTEL-SDK integriert ist
   vault_data:
   vault_logs:
   watchdog_state:  # Sprint 0 / G05 - Watchdog State + Logs persistent

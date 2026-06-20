@@ -1,7 +1,7 @@
 // Generic Widget Container Component
 // Configurable wrapper with title, actions menu (maximize, configure, remove)
 
-import { ReactNode, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +28,7 @@ interface WidgetContainerProps {
 export function WidgetContainer({
   title,
   children,
-  widgetId,
+  widgetId: _widgetId,
   className,
   onMaximize,
   onConfigure,

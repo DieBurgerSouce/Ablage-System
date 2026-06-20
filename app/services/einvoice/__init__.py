@@ -57,6 +57,18 @@ from .validator_service import (
     get_validator_service,
 )
 
+# Parser/Generator-Factories re-exportieren, damit
+# `from app.services.einvoice import get_parser_service/get_generator_service`
+# funktioniert (wird u.a. von einvoice_tasks.py lazy importiert).
+from .parser_service import (
+    EInvoiceParserService,
+    get_parser_service,
+)
+from .generator_service import (
+    EInvoiceGeneratorService,
+    get_generator_service,
+)
+
 from .zugferd_embedder import (
     ZUGFeRDEmbedder,
     get_zugferd_embedder,
@@ -106,6 +118,8 @@ __all__ = [
     "EInvoiceParserService",
     "EInvoiceGeneratorService",
     "EInvoiceValidatorService",
+    "get_parser_service",
+    "get_generator_service",
 
     # Mustang Client
     "MustangClient",

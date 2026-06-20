@@ -33,32 +33,10 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  Save,
-  Play,
-  RotateCcw,
-  Undo,
-  Redo,
-  CheckCircle,
-  AlertCircle,
-  Download,
-  Upload,
-  PanelLeftClose,
-  PanelRightClose,
-  Copy,
-  Trash2,
-  FileJson,
-  Maximize,
-} from 'lucide-react';
+import { Save, Play, RotateCcw, Undo, Redo, CheckCircle, AlertCircle, Download, Upload, PanelLeftClose, PanelRightClose, Copy, Trash2, FileJson } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -145,6 +123,18 @@ function WorkflowBuilderInner({
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importJson, setImportJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ==================== History ====================
+  // (vor den Consumern deklariert — useCallback-const unterliegt der TDZ)
+
+  const saveHistory = useCallback(() => {
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push({ nodes: [...nodes], edges: [...edges] });
+      return newHistory.slice(-50);
+    });
+    setHistoryIndex((prev) => Math.min(prev + 1, 49));
+  }, [nodes, edges, historyIndex]);
 
   // ==================== Connections ====================
 
@@ -243,15 +233,6 @@ function WorkflowBuilderInner({
   );
 
   // ==================== History ====================
-
-  const saveHistory = useCallback(() => {
-    setHistory((prev) => {
-      const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push({ nodes: [...nodes], edges: [...edges] });
-      return newHistory.slice(-50);
-    });
-    setHistoryIndex((prev) => Math.min(prev + 1, 49));
-  }, [nodes, edges, historyIndex]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {

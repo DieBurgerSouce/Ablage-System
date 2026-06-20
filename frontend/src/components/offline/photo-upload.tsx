@@ -11,9 +11,9 @@
  */
 
 import * as React from 'react';
-import { Camera, Upload, X, RotateCw, Check, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, X, RotateCw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -350,8 +350,6 @@ export function PhotoUpload({
       onUpload?.(results);
 
       // Show summary
-      const succeeded = results.filter((r) => r.success && !r.queued).length;
-      const queued = results.filter((r) => r.queued).length;
       const failed = results.filter((r) => !r.success).length;
 
       if (failed > 0) {

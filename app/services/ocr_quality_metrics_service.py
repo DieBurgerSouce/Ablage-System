@@ -224,13 +224,16 @@ class OCRQualityMetricsService:
 
         Returns:
             Dict mit ``avg_confidence``, ``avg_german_quality``,
-            ``document_count`` und ``low_quality_count``.
+            ``document_count``, ``ocr_processed_count`` und ``low_quality_count``.
         """
         # OCR-Confidence/German-Score liegen als 0..1-Werte vor.
         low_quality_threshold = 0.7
 
         agg_stmt = select(
             func.count(Document.id),
+            # Nur OCR-verarbeitete Dokumente (ocr_confidence gesetzt) zaehlen -
+            # ehrlicher Nenner fuer Erfolgsquoten (W1-010).
+            func.count(Document.ocr_confidence),
             func.avg(Document.ocr_confidence),
             func.avg(Document.german_validation_score),
         ).where(
@@ -239,7 +242,7 @@ class OCRQualityMetricsService:
                 Document.created_at >= since,
             )
         )
-        document_count, avg_confidence, avg_german_quality = (
+        document_count, ocr_processed_count, avg_confidence, avg_german_quality = (
             await db.execute(agg_stmt)
         ).one()
 
@@ -259,6 +262,7 @@ class OCRQualityMetricsService:
                 float(avg_german_quality) if avg_german_quality is not None else 0.0
             ),
             "document_count": int(document_count or 0),
+            "ocr_processed_count": int(ocr_processed_count or 0),
             "low_quality_count": int(low_quality_count),
         }
 

@@ -35,6 +35,7 @@ import { FolderConfigList } from '../components/FolderConfigList';
 import { FolderConfigForm } from '../components/FolderConfigForm';
 import { ImportLogTable } from '../components/ImportLogTable';
 import { ImportRuleBuilder } from '../components/ImportRuleBuilder';
+import { ImportRunsPanel } from '../components/ImportRunsPanel';
 import { RuleTestingPanel } from '../components/RuleTestingPanel';
 import { useImportStats, useImportRules } from '../hooks/use-import-queries';
 
@@ -167,19 +168,14 @@ function ImportRulesList({ onEdit }: { onEdit: (ruleId: string) => void }) {
                 </Badge>
                 <div>
                   <p className="font-medium">{rule.name}</p>
-                  {rule.description && (
-                    <p className="text-sm text-muted-foreground truncate max-w-md">
-                      {rule.description}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant="outline">
-                  {rule.conditions.length} Bedingung{rule.conditions.length !== 1 ? 'en' : ''}
+                  Prioritaet {rule.priority}
                 </Badge>
                 <Badge variant="outline">
-                  {rule.actions.length} Aktion{rule.actions.length !== 1 ? 'en' : ''}
+                  {rule.matchCount} Treffer
                 </Badge>
               </div>
             </div>
@@ -230,12 +226,6 @@ export function ImportsPage() {
     setActiveTab('folder');
   };
 
-  const handleCreateRule = () => {
-    setConfigType('rule');
-    setViewMode('create');
-    setEditId(null);
-    setActiveTab('rules');
-  };
 
   const handleEditRule = (ruleId: string) => {
     setConfigType('rule');
@@ -256,7 +246,7 @@ export function ImportsPage() {
         <div className="p-8">
           <EmailConfigForm
             configId={editId ?? undefined}
-            onSave={handleBack}
+            onSuccess={handleBack}
             onCancel={handleBack}
           />
         </div>
@@ -341,22 +331,29 @@ export function ImportsPage() {
               onEdit={handleEditFolder}
             />
           </div>
+          {/* B13 (W3-F2 Vertrauens-Loop): Live-Status der Import-Laeufe.
+              Das Panel war nach der Konsolidierung auf diese Seite nur noch
+              in den verwaisten Routen /admin/imports/email + /folder
+              eingebaut (nirgends verlinkt) und damit unerreichbar. */}
+          <ImportRunsPanel limit={5} />
           <ImportRulesList onEdit={handleEditRule} />
           <ImportLogTable maxItems={10} />
         </TabsContent>
 
-        <TabsContent value="email" className="pt-4">
+        <TabsContent value="email" className="space-y-6 pt-4">
           <EmailConfigList
             onCreateNew={handleCreateEmail}
             onEdit={handleEditEmail}
           />
+          <ImportRunsPanel sourceType="email" />
         </TabsContent>
 
-        <TabsContent value="folder" className="pt-4">
+        <TabsContent value="folder" className="space-y-6 pt-4">
           <FolderConfigList
             onCreateNew={handleCreateFolder}
             onEdit={handleEditFolder}
           />
+          <ImportRunsPanel sourceType="folder" />
         </TabsContent>
 
         <TabsContent value="rules" className="pt-4">

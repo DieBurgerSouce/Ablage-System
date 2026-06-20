@@ -33,14 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Search, Package, AlertTriangle } from 'lucide-react';
-import {
-  useInventoryItems,
-  useItemCategories,
-  useCreateItem,
-  useLowStockItems,
-  InventoryItem,
-  ItemCreate,
-} from '../hooks/useInventory';
+import { useInventoryItems, useItemCategories, useCreateItem, useLowStockItems, type ItemCreate } from '../hooks/useInventory';
 import { toast } from 'sonner';
 
 function formatCurrency(value: number | undefined): string {
@@ -309,7 +302,9 @@ export function ItemsTable() {
                     <div className="flex items-center gap-2">
                       {item.name}
                       {lowStockIds.has(item.id) && (
-                        <AlertTriangle className="h-4 w-4 text-orange-500" title="Niedriger Bestand" />
+                        <span title="Niedriger Bestand">
+                          <AlertTriangle className="h-4 w-4 text-orange-500" />
+                        </span>
                       )}
                     </div>
                     {item.ean && (

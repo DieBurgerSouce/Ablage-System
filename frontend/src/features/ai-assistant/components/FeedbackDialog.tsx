@@ -40,7 +40,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useMessageFeedback, FeedbackType } from '../hooks/use-finance-assistant';
+import { useMessageFeedback, type FeedbackType } from '../hooks/use-finance-assistant';
 
 // ===== Types =====
 

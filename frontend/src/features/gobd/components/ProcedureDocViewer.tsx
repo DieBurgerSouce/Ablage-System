@@ -102,7 +102,7 @@ export function ProcedureDocViewer() {
                 />
                 Neu generieren
               </Button>
-              <Button onClick={() => exportDoc.mutate()} disabled={exportDoc.isPending}>
+              <Button onClick={() => exportDoc.mutate(undefined)} disabled={exportDoc.isPending}>
                 <Download className="mr-2 h-4 w-4" />
                 Als PDF exportieren
               </Button>

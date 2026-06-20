@@ -144,7 +144,7 @@ export function EditableField({
       return null;
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return err.errors[0]?.message || 'Ungültiger Wert';
+        return err.issues[0]?.message || 'Ungültiger Wert';
       }
       return 'Validierungsfehler';
     }

@@ -21,28 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  Area,
-  ComposedChart,
-} from 'recharts';
-import {
-  TrendingUp,
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
-  Play,
-  Target,
-  BarChart3,
-} from 'lucide-react';
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts';
+import { Activity, AlertTriangle, CheckCircle2, ChevronRight, Play, Target, BarChart3 } from 'lucide-react';
 import { useRunMonteCarlo } from '../hooks/useRetirementQueries';
 import type { MonteCarloResult, RiskProfile } from '@/lib/api/services/retirement';
 
@@ -90,7 +70,7 @@ export function MonteCarloSimulation({
   const [withdrawal, setWithdrawal] = React.useState(defaultWithdrawal);
   const [timeHorizon, setTimeHorizon] = React.useState(30);
   const [riskProfile, setRiskProfile] = React.useState<RiskProfile>('ausgewogen');
-  const [iterations, setIterations] = React.useState(1000);
+  const [iterations, _setIterations] = React.useState(1000);
 
   // Result State
   const [result, setResult] = React.useState<MonteCarloResult | null>(null);

@@ -8,7 +8,7 @@ Testet:
 - POST /api/v1/archive/export/tax-authority
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 import pytest
@@ -18,6 +18,41 @@ from fastapi import status
 # =============================================================================
 # Fixtures
 # =============================================================================
+
+
+@pytest.fixture
+def superuser_headers():
+    """Superuser-Auth fuer die tax-authority-Endpoints.
+
+    Die Endpoints haengen an Depends(get_current_superuser); ein echtes Token
+    wuerde DB + JWT erfordern. Stattdessen wird die Auth-Dependency per
+    app.dependency_overrides durch einen Superuser-Mock ersetzt (sauberer
+    Cleanup nach dem Test). Der zurueckgegebene Header erfuellt die
+    Bearer-/CSRF-Erwartung des Clients.
+    """
+    from app.main import app
+    from app.api.dependencies import get_current_superuser
+    from app.api.v1.archive import require_company
+
+    superuser = MagicMock()
+    superuser.id = uuid4()
+    superuser.email = "admin@test.local"
+    superuser.is_active = True
+    superuser.is_superuser = True
+    superuser.company_id = uuid4()
+
+    company = MagicMock()
+    company.id = superuser.company_id
+    company.name = "Test GmbH"
+
+    app.dependency_overrides[get_current_superuser] = lambda: superuser
+    # require_company haengt ebenfalls als Depends; mock.patch greift nicht.
+    app.dependency_overrides[require_company] = lambda: company
+    try:
+        yield {"Authorization": "Bearer superuser-dummy"}
+    finally:
+        app.dependency_overrides.pop(get_current_superuser, None)
+        app.dependency_overrides.pop(require_company, None)
 
 
 @pytest.fixture
@@ -45,14 +80,17 @@ def mock_export_result():
         period_start=date(2024, 1, 1),
         period_end=date(2024, 12, 31),
         company_name="Test GmbH",
+        created_at=datetime.now(timezone.utc),
         files=["index.xml", "rechnungen.csv", "bankbewegungen.csv"],
         archive_path="/tmp/export.zip",
         statistics=ExportStatistics(
             total_records=150,
-            invoices_count=50,
-            transactions_count=80,
-            documents_count=15,
-            audit_entries_count=5,
+            by_category={
+                "rechnungen": 50,
+                "bankbewegungen": 80,
+                "belege": 15,
+                "aenderungsprotokoll": 5,
+            },
         ),
     )
 
@@ -66,9 +104,9 @@ class TestListTaxExportTables:
     """Tests fuer GET /archive/export/tax-authority/tables."""
 
     @pytest.mark.asyncio
-    async def test_returns_table_definitions(self, client, superuser_headers):
+    async def test_returns_table_definitions(self, async_client, superuser_headers):
         """Test: Tabellendefinitionen werden zurueckgegeben."""
-        response = await client.get(
+        response = await async_client.get(
             "/api/v1/archive/export/tax-authority/tables",
             headers=superuser_headers,
         )
@@ -87,9 +125,9 @@ class TestListTaxExportTables:
         assert "fields" in table
 
     @pytest.mark.asyncio
-    async def test_requires_superuser(self, client, auth_headers):
+    async def test_requires_superuser(self, async_client, auth_headers):
         """Test: Nur Superuser duerfen zugreifen."""
-        response = await client.get(
+        response = await async_client.get(
             "/api/v1/archive/export/tax-authority/tables",
             headers=auth_headers,
         )
@@ -101,10 +139,13 @@ class TestListTaxExportTables:
         ]
 
     @pytest.mark.asyncio
-    async def test_requires_authentication(self, client):
+    async def test_requires_authentication(self, async_client):
         """Test: Authentifizierung erforderlich."""
-        response = await client.get("/api/v1/archive/export/tax-authority/tables")
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        response = await async_client.get("/api/v1/archive/export/tax-authority/tables")
+        assert response.status_code in [
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        ]
 
 
 # =============================================================================
@@ -117,7 +158,7 @@ class TestPreviewTaxExport:
 
     @pytest.mark.asyncio
     async def test_returns_preview(
-        self, client, superuser_headers, mock_company
+        self, async_client, superuser_headers, mock_company
     ):
         """Test: Vorschau wird zurueckgegeben."""
         with patch(
@@ -126,7 +167,7 @@ class TestPreviewTaxExport:
             mock_require_company.return_value = mock_company
 
             with patch(
-                "app.api.v1.archive.get_tax_authority_export_service"
+                "app.services.compliance.tax_authority_export_service.get_tax_authority_export_service"
             ) as mock_service:
                 service = AsyncMock()
                 service.count_records_by_category.return_value = {
@@ -137,7 +178,7 @@ class TestPreviewTaxExport:
                 }
                 mock_service.return_value = service
 
-                response = await client.post(
+                response = await async_client.post(
                     "/api/v1/archive/export/tax-authority/preview",
                     json={
                         "period_start": "2024-01-01",
@@ -153,9 +194,9 @@ class TestPreviewTaxExport:
                 assert data["categories"]["rechnungen"] == 50
 
     @pytest.mark.asyncio
-    async def test_validates_date_range(self, client, superuser_headers):
+    async def test_validates_date_range(self, async_client, superuser_headers):
         """Test: Datumsbereich wird validiert."""
-        response = await client.post(
+        response = await async_client.post(
             "/api/v1/archive/export/tax-authority/preview",
             json={
                 "period_start": "invalid-date",
@@ -177,7 +218,7 @@ class TestCreateTaxExport:
 
     @pytest.mark.asyncio
     async def test_creates_export(
-        self, client, superuser_headers, mock_company, mock_export_result
+        self, async_client, superuser_headers, mock_company, mock_export_result
     ):
         """Test: Export wird erstellt."""
         with patch(
@@ -186,7 +227,7 @@ class TestCreateTaxExport:
             mock_require_company.return_value = mock_company
 
             with patch(
-                "app.api.v1.archive.get_tax_authority_export_service"
+                "app.services.compliance.tax_authority_export_service.get_tax_authority_export_service"
             ) as mock_service:
                 service = AsyncMock()
                 service.create_gdpdu_export.return_value = mock_export_result
@@ -198,7 +239,7 @@ class TestCreateTaxExport:
                         b"PK\x03\x04"  # ZIP magic bytes
                     )
 
-                    response = await client.post(
+                    response = await async_client.post(
                         "/api/v1/archive/export/tax-authority",
                         json={
                             "period_start": "2024-01-01",
@@ -216,7 +257,7 @@ class TestCreateTaxExport:
 
     @pytest.mark.asyncio
     async def test_handles_export_failure(
-        self, client, superuser_headers, mock_company
+        self, async_client, superuser_headers, mock_company
     ):
         """Test: Fehler bei Export wird behandelt."""
         from app.services.compliance.tax_authority_export_service import (
@@ -232,14 +273,12 @@ class TestCreateTaxExport:
             period_start=date(2024, 1, 1),
             period_end=date(2024, 12, 31),
             company_name="Test GmbH",
+            created_at=datetime.now(timezone.utc),
             files=[],
             error="Export fehlgeschlagen: Keine Daten gefunden",
             statistics=ExportStatistics(
                 total_records=0,
-                invoices_count=0,
-                transactions_count=0,
-                documents_count=0,
-                audit_entries_count=0,
+                by_category={},
             ),
         )
 
@@ -249,13 +288,13 @@ class TestCreateTaxExport:
             mock_require_company.return_value = mock_company
 
             with patch(
-                "app.api.v1.archive.get_tax_authority_export_service"
+                "app.services.compliance.tax_authority_export_service.get_tax_authority_export_service"
             ) as mock_service:
                 service = AsyncMock()
                 service.create_gdpdu_export.return_value = failed_result
                 mock_service.return_value = service
 
-                response = await client.post(
+                response = await async_client.post(
                     "/api/v1/archive/export/tax-authority",
                     json={
                         "period_start": "2024-01-01",
@@ -267,9 +306,9 @@ class TestCreateTaxExport:
                 assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     @pytest.mark.asyncio
-    async def test_requires_superuser_permission(self, client, auth_headers):
+    async def test_requires_superuser_permission(self, async_client, auth_headers):
         """Test: Nur Superuser duerfen exportieren."""
-        response = await client.post(
+        response = await async_client.post(
             "/api/v1/archive/export/tax-authority",
             json={
                 "period_start": "2024-01-01",

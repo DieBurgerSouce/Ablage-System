@@ -24,11 +24,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import (
     Company,
     Document,
+    EntityType,
     InvoiceTracking,
     BusinessEntity,
     BankAccount,
     BankTransaction,
     UserCompany,
+)
+from app.services.invoice_direction import (
+    is_incoming_invoice,
+    is_open_invoice,
+    is_outgoing_invoice,
+    is_paid_invoice,
 )
 
 logger = structlog.get_logger(__name__)
@@ -113,8 +120,8 @@ class HoldingKPIService:
             select(func.sum(InvoiceTracking.amount))
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
-                InvoiceTracking.invoice_type == "outgoing",
-                InvoiceTracking.is_paid == False,
+                is_outgoing_invoice(),
+                is_open_invoice(),
             )
         )
         total_receivables = receivables_result.scalar() or Decimal("0")
@@ -124,8 +131,8 @@ class HoldingKPIService:
             select(func.sum(InvoiceTracking.amount))
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
             )
         )
         total_payables = payables_result.scalar() or Decimal("0")
@@ -136,8 +143,8 @@ class HoldingKPIService:
             select(func.sum(InvoiceTracking.amount))
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
-                InvoiceTracking.invoice_type == "outgoing",
-                InvoiceTracking.is_paid == False,
+                is_outgoing_invoice(),
+                is_open_invoice(),
                 InvoiceTracking.due_date < now,
             )
         )
@@ -148,8 +155,8 @@ class HoldingKPIService:
             select(func.sum(InvoiceTracking.amount))
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
                 InvoiceTracking.due_date < now,
             )
         )
@@ -222,8 +229,8 @@ class HoldingKPIService:
             .select_from(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
-                InvoiceTracking.invoice_type == "outgoing",
-                InvoiceTracking.is_paid == False,
+                is_outgoing_invoice(),
+                is_open_invoice(),
             )
         )
         open_outgoing = open_outgoing_result.scalar() or 0
@@ -233,8 +240,8 @@ class HoldingKPIService:
             .select_from(InvoiceTracking)
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
-                InvoiceTracking.invoice_type == "incoming",
-                InvoiceTracking.is_paid == False,
+                is_incoming_invoice(),
+                is_open_invoice(),
             )
         )
         open_incoming = open_incoming_result.scalar() or 0
@@ -243,12 +250,12 @@ class HoldingKPIService:
         ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
 
         avg_payment_result = await self.db.execute(
-            select(func.avg(InvoiceTracking.paid_date - InvoiceTracking.invoice_date))
+            select(func.avg(InvoiceTracking.paid_at - InvoiceTracking.invoice_date))
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
-                InvoiceTracking.is_paid == True,
-                InvoiceTracking.paid_date.isnot(None),
-                InvoiceTracking.paid_date >= ninety_days_ago,
+                is_paid_invoice(),
+                InvoiceTracking.paid_at.isnot(None),
+                InvoiceTracking.paid_at >= ninety_days_ago,
             )
         )
         avg_payment_days = avg_payment_result.scalar()
@@ -265,8 +272,9 @@ class HoldingKPIService:
     ) -> Dict[str, Any]:
         """Hole Banking-Metriken."""
         # Summe aller Kontostaende
+        # BankAccount-Spalte heisst current_balance (kein "balance")
         balance_result = await self.db.execute(
-            select(func.sum(BankAccount.balance))
+            select(func.sum(BankAccount.current_balance))
             .where(
                 BankAccount.company_id.in_(company_ids),
                 BankAccount.is_active == True,
@@ -288,11 +296,14 @@ class HoldingKPIService:
         # Transaktionen letzte 30 Tage
         thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
+        # Company-Scope via BankAccount-JOIN (BankTransaction hat KEINE
+        # company_id-Spalte)
         transactions_result = await self.db.execute(
             select(func.count())
             .select_from(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
             .where(
-                BankTransaction.company_id.in_(company_ids),
+                BankAccount.company_id.in_(company_ids),
                 BankTransaction.booking_date >= thirty_days_ago,
             )
         )
@@ -341,18 +352,30 @@ class HoldingKPIService:
 
         # Intercompany Forderungen/Verbindlichkeiten
         # (vereinfacht - müsste noch verfeinert werden für echte Intercompany-Erkennung)
+        # Richtung via Entity-Typ statt nie existenter Spalte invoice_type
+        # (customer -> outgoing, supplier -> incoming), siehe
+        # app/services/invoice_direction.py
+        richtung = case(
+            (BusinessEntity.entity_type == EntityType.CUSTOMER.value, "outgoing"),
+            (BusinessEntity.entity_type == EntityType.SUPPLIER.value, "incoming"),
+        ).label("richtung")
         intercompany_result = await self.db.execute(
             select(
-                InvoiceTracking.invoice_type,
+                richtung,
                 func.sum(InvoiceTracking.amount),
                 func.count()
             )
+            .select_from(InvoiceTracking)
+            .join(BusinessEntity, BusinessEntity.id == InvoiceTracking.entity_id)
             .where(
                 InvoiceTracking.company_id.in_(company_ids),
                 InvoiceTracking.entity_id.in_(intercompany_entity_ids),
-                InvoiceTracking.is_paid == False,
+                is_open_invoice(),
+                BusinessEntity.entity_type.in_(
+                    [EntityType.CUSTOMER.value, EntityType.SUPPLIER.value]
+                ),
             )
-            .group_by(InvoiceTracking.invoice_type)
+            .group_by(richtung)
         )
 
         results = {row[0]: (float(row[1] or 0), row[2]) for row in intercompany_result.all()}
@@ -436,8 +459,8 @@ class HoldingKPIService:
                     select(func.sum(InvoiceTracking.amount))
                     .where(
                         InvoiceTracking.company_id == company_id,
-                        InvoiceTracking.invoice_type == "outgoing",
-                        InvoiceTracking.is_paid == False,
+                        is_outgoing_invoice(),
+                        is_open_invoice(),
                     )
                 )
                 value = float(result.scalar() or 0)
@@ -447,15 +470,15 @@ class HoldingKPIService:
                     select(func.sum(InvoiceTracking.amount))
                     .where(
                         InvoiceTracking.company_id == company_id,
-                        InvoiceTracking.invoice_type == "incoming",
-                        InvoiceTracking.is_paid == False,
+                        is_incoming_invoice(),
+                        is_open_invoice(),
                     )
                 )
                 value = float(result.scalar() or 0)
 
             elif metric == "balance":
                 result = await self.db.execute(
-                    select(func.sum(BankAccount.balance))
+                    select(func.sum(BankAccount.current_balance))
                     .where(
                         BankAccount.company_id == company_id,
                         BankAccount.is_active == True,

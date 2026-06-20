@@ -1,3 +1,4 @@
+import * as React from 'react';
 /**
  * Navigation Component Stories
  *
@@ -36,7 +37,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
 
 const meta: Meta = {
     title: 'UI/Navigation',
@@ -465,7 +465,7 @@ export const DarkMode: Story = {
         backgrounds: { default: 'dark' },
     },
     decorators: [
-        (Story) => (
+        (Story: React.ComponentType) => (
             <div className="dark">
                 <Story />
             </div>

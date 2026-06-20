@@ -98,7 +98,7 @@ class TestScoreToAmpel:
         """Score >= 0.80 ergibt GRUEN."""
         color, label = _score_to_ampel(0.80)
         assert color == AmpelColor.GRUEN
-        assert label == "Vollstaendig und vertrauenswuerdig"
+        assert label == "Vollständig und vertrauenswuerdig"
 
     def test_ampel_threshold_green_high(self) -> None:
         """Perfekter Score ergibt GRUEN."""
@@ -109,7 +109,7 @@ class TestScoreToAmpel:
         """Score 0.50-0.79 ergibt GELB."""
         color, label = _score_to_ampel(0.65)
         assert color == AmpelColor.GELB
-        assert label == "Pruefung empfohlen"
+        assert label == "Prüfung empfohlen"
 
     def test_ampel_threshold_yellow_lower_bound(self) -> None:
         """Score exakt 0.50 ergibt GELB."""

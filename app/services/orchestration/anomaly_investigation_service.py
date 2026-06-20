@@ -36,6 +36,7 @@ from app.db.models import (
     Document,
     BusinessEntity,
     InvoiceTracking,
+    BankAccount,
     BankTransaction,
 )
 from app.db.models_alert import Alert, AlertCategory, AlertSeverity, AlertStatus
@@ -498,7 +499,7 @@ class AnomalyInvestigationService:
                 event_type=f"invoice_{inv.status}",
                 description=f"Rechnung {inv.status}: {inv.invoice_number or 'ohne Nr.'}",
                 document_id=inv.document_id,
-                amount=inv.gross_amount,
+                amount=inv.amount,  # InvoiceTracking hat KEIN gross_amount
             ))
 
             if inv.paid_at:
@@ -507,7 +508,7 @@ class AnomalyInvestigationService:
                     event_type="invoice_paid",
                     description=f"Zahlung eingegangen: {inv.invoice_number or 'ohne Nr.'}",
                     document_id=inv.document_id,
-                    amount=inv.gross_amount,
+                    amount=inv.amount,  # InvoiceTracking hat KEIN gross_amount
                 ))
 
         # Nach Zeitstempel sortieren
@@ -529,13 +530,17 @@ class AnomalyInvestigationService:
 
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=self._lookback_days)
 
-        # Transaktionen mit verknüpfter Entity
+        # Transaktionen mit verknüpfter Entity. BankTransaction hat KEINE
+        # Spalten company_id/business_entity_id: Entity-Bezug via gematchtes
+        # Dokument, Company-Scope via BankAccount-JOIN.
         query = (
             select(BankTransaction)
+            .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+            .join(Document, BankTransaction.matched_document_id == Document.id)
             .where(
                 and_(
-                    BankTransaction.company_id == company_id,
-                    BankTransaction.business_entity_id == entity_id,
+                    BankAccount.company_id == company_id,
+                    Document.business_entity_id == entity_id,
                     BankTransaction.booking_date >= cutoff_date,
                 )
             )
@@ -552,7 +557,7 @@ class AnomalyInvestigationService:
                 transaction_date=tx.booking_date,
                 amount=tx.amount,
                 counterparty=tx.counterparty_name,
-                description=tx.purpose,
+                description=tx.reference_text,
                 relevance_score=1.0,
             ))
 

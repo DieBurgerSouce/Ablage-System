@@ -15,7 +15,7 @@ from typing import Optional, List, Tuple, Dict, Any, TYPE_CHECKING
 from uuid import UUID
 import structlog
 
-from sqlalchemy import select, func, and_, or_, desc, asc
+from sqlalchemy import select, func, and_, or_, desc, asc, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -391,7 +391,7 @@ class TransactionService:
         # Gruppiere nach Monat
         query = (
             select(
-                func.date_trunc('month', BankTransaction.booking_date).label("month"),
+                func.date_trunc(literal_column("'month'"), BankTransaction.booking_date).label("month"),
                 func.sum(BankTransaction.amount).filter(BankTransaction.amount > 0).label("credits"),
                 func.sum(func.abs(BankTransaction.amount)).filter(BankTransaction.amount < 0).label("debits"),
                 func.count(BankTransaction.id).label("count"),
@@ -399,8 +399,8 @@ class TransactionService:
             .select_from(BankTransaction)
             .join(BankAccount)
             .where(and_(*base_conditions))
-            .group_by(func.date_trunc('month', BankTransaction.booking_date))
-            .order_by(func.date_trunc('month', BankTransaction.booking_date))
+            .group_by(func.date_trunc(literal_column("'month'"), BankTransaction.booking_date))
+            .order_by(func.date_trunc(literal_column("'month'"), BankTransaction.booking_date))
         )
 
         result = await db.execute(query)

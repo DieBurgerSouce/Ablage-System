@@ -472,7 +472,7 @@ class SkontoService:
         if skonto_days is not None:
             invoice.skonto_days = skonto_days
         if net_days is not None:
-            invoice.net_payment_days = net_days
+            invoice.net_days = net_days
 
         # Berechnete Felder aktualisieren
         if invoice.invoice_date and invoice.skonto_percentage and invoice.skonto_days:
@@ -481,8 +481,8 @@ class SkontoService:
                 Decimal(str(invoice.amount)) * Decimal(str(invoice.skonto_percentage)) / Decimal("100")
             )
 
-        if invoice.invoice_date and invoice.net_payment_days:
-            invoice.due_date = invoice.invoice_date + timedelta(days=invoice.net_payment_days)
+        if invoice.invoice_date and invoice.net_days:
+            invoice.due_date = invoice.invoice_date + timedelta(days=invoice.net_days)
 
         invoice.updated_at = utc_now()
         await db.flush()

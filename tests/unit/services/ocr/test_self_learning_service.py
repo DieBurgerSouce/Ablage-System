@@ -288,11 +288,17 @@ class TestPersistenceLayer:
         service: SelfLearningOCRService,
         mock_db: AsyncMock,
     ) -> None:
-        """State wird mit leeren Defaults initialisiert wenn DB-Fehler auftritt."""
-        # Mock: DB wirft Exception (z.B. bei fehlender Tabelle)
-        mock_db.execute = AsyncMock(side_effect=Exception("DB connection error"))
+        """State wird mit leeren Defaults initialisiert wenn Lade-Fehler auftritt."""
+        # _load_state_from_db laedt aus Redis (nicht aus der DB-Session).
+        # Mock: Redis-Verbindung wirft Exception -> except-Pfad initialisiert leer.
+        with patch(
+            "app.services.ocr.self_learning_service.RedisStateManager"
+        ) as mock_redis_class:
+            mock_redis = MagicMock()
+            mock_redis.connect = AsyncMock(side_effect=Exception("Redis connection error"))
+            mock_redis_class.get_instance.return_value = mock_redis
 
-        await service._load_state_from_db()
+            await service._load_state_from_db()
 
         # Service sollte mit leeren Defaults initialisiert sein
         assert service._backend_adjustments == {}
@@ -660,11 +666,17 @@ class TestEdgeCases:
         service: SelfLearningOCRService,
         mock_db: AsyncMock,
     ) -> None:
-        """DB-Fehler beim Laden wird abgefangen."""
-        mock_db.execute.side_effect = Exception("DB Connection Error")
+        """Lade-Fehler (Redis) wird abgefangen."""
+        # _load_state_from_db laedt aus Redis; Verbindungsfehler -> Defaults.
+        with patch(
+            "app.services.ocr.self_learning_service.RedisStateManager"
+        ) as mock_redis_class:
+            mock_redis = MagicMock()
+            mock_redis.connect = AsyncMock(side_effect=Exception("Redis Connection Error"))
+            mock_redis_class.get_instance.return_value = mock_redis
 
-        # Sollte nicht crashen
-        await service._load_state_from_db()
+            # Sollte nicht crashen
+            await service._load_state_from_db()
 
         # State sollte mit Defaults initialisiert sein
         assert service._backend_adjustments == {}

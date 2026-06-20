@@ -267,7 +267,7 @@ async def create_contract(
 
     contract = await service.create_contract(
         db=db,
-        company_id=company.company_id,
+        company_id=company.id,
         user_id=current_user.id,
         contract_number=data.contract_number,
         title=data.title,
@@ -339,7 +339,7 @@ async def list_contracts(
 
     contracts, total = await service.list_contracts(
         db=db,
-        company_id=company.company_id,
+        company_id=company.id,
         status=DBContractStatus(status.value) if status else None,
         contract_type=DBContractType(contract_type.value) if contract_type else None,
         party_id=party_id,
@@ -376,7 +376,7 @@ async def get_contract_summary(
     - Gesamtwert und monatliche Verpflichtungen
     """
     service = get_contract_service()
-    summary = await service.get_portfolio_summary(db=db, company_id=company.company_id)
+    summary = await service.get_portfolio_summary(db=db, company_id=company.id)
 
     return ContractSummaryResponse(
         total_contracts=summary.total_contracts,
@@ -408,7 +408,7 @@ async def get_upcoming_deadlines(
     service = get_contract_service()
     alerts = await service.get_upcoming_deadlines(
         db=db,
-        company_id=company.company_id,
+        company_id=company.id,
         days_ahead=days_ahead,
     )
 
@@ -450,7 +450,7 @@ async def get_contract(
     contract = await service.get_contract(
         db=db,
         contract_id=contract_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not contract:
@@ -492,7 +492,7 @@ async def get_contract_timeline(
     contract = await service.get_contract(
         db=db,
         contract_id=contract_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not contract:
@@ -504,7 +504,7 @@ async def get_contract_timeline(
     events = await service.get_contract_timeline(
         db=db,
         contract_id=contract_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     return ContractTimelineResponse(
@@ -552,7 +552,7 @@ async def update_contract(
     contract = await service.update_contract(
         db=db,
         contract_id=contract_id,
-        company_id=company.company_id,
+        company_id=company.id,
         **updates,
     )
 
@@ -582,7 +582,7 @@ async def delete_contract(
     success = await service.delete_contract(
         db=db,
         contract_id=contract_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     if not success:
@@ -609,7 +609,7 @@ async def create_milestone(
     """
     # Verify contract exists
     service = get_contract_service()
-    contract = await service.get_contract(db, contract_id, company.company_id)
+    contract = await service.get_contract(db, contract_id, company.id)
 
     if not contract:
         raise HTTPException(
@@ -649,7 +649,7 @@ async def update_milestone(
 
     # Verify contract exists
     service = get_contract_service()
-    contract = await service.get_contract(db, contract_id, company.company_id)
+    contract = await service.get_contract(db, contract_id, company.id)
 
     if not contract:
         raise HTTPException(
@@ -701,7 +701,7 @@ async def delete_milestone(
 
     # Verify contract exists
     service = get_contract_service()
-    contract = await service.get_contract(db, contract_id, company.company_id)
+    contract = await service.get_contract(db, contract_id, company.id)
 
     if not contract:
         raise HTTPException(
@@ -745,7 +745,7 @@ async def list_renewal_options(
     Verlängerungsoptionen eines Vertrags auflisten.
     """
     service = get_contract_service()
-    contract = await service.get_contract(db, contract_id, company.company_id)
+    contract = await service.get_contract(db, contract_id, company.id)
 
     if not contract:
         raise HTTPException(
@@ -777,7 +777,7 @@ async def make_renewal_decision(
             db=db,
             option_id=option_id,
             user_id=current_user.id,
-            company_id=company.company_id,
+            company_id=company.id,
             notes=data.notes,
         )
     else:
@@ -785,7 +785,7 @@ async def make_renewal_decision(
             db=db,
             option_id=option_id,
             user_id=current_user.id,
-            company_id=company.company_id,
+            company_id=company.id,
             notes=data.notes,
         )
 
@@ -817,7 +817,7 @@ async def create_amendment(
 
     # Verify contract exists
     service = get_contract_service()
-    contract = await service.get_contract(db, contract_id, company.company_id)
+    contract = await service.get_contract(db, contract_id, company.id)
 
     if not contract:
         raise HTTPException(
@@ -871,7 +871,7 @@ async def update_amendment(
 
     # Verify contract exists
     service = get_contract_service()
-    contract = await service.get_contract(db, contract_id, company.company_id)
+    contract = await service.get_contract(db, contract_id, company.id)
 
     if not contract:
         raise HTTPException(
@@ -930,7 +930,7 @@ async def delete_amendment(
 
     # Verify contract exists
     service = get_contract_service()
-    contract = await service.get_contract(db, contract_id, company.company_id)
+    contract = await service.get_contract(db, contract_id, company.id)
 
     if not contract:
         raise HTTPException(
@@ -1019,7 +1019,7 @@ async def analyze_contract_text(
     result = await extraction_service.extract_from_text(
         text=text,
         document_id=document_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     return result
@@ -1064,14 +1064,14 @@ async def analyze_and_create_contract(
     extraction = await extraction_service.extract_from_text(
         text=doc.extracted_text,
         document_id=document_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     # Erstelle Contract
     contract = await extraction_service.create_contract_from_extraction(
         extraction=extraction,
         document_id=document_id,
-        company_id=company.company_id,
+        company_id=company.id,
         created_by_id=current_user.id,
         title=title,
     )
@@ -1166,7 +1166,7 @@ async def get_contract_risks(
             detail="Vertrag nicht gefunden",
         )
 
-    if contract.company_id != company.company_id:
+    if contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff verweigert",
@@ -1198,7 +1198,7 @@ async def recalculate_contract_risks(
             detail="Vertrag nicht gefunden",
         )
 
-    if contract.company_id != company.company_id:
+    if contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zugriff verweigert",
@@ -1228,7 +1228,7 @@ async def get_high_risk_contracts(
 
     scorer = ContractRiskScorer(db)
     contracts = await scorer.get_high_risk_contracts(
-        company_id=company.company_id,
+        company_id=company.id,
         threshold=threshold,
     )
 
@@ -1257,8 +1257,8 @@ async def get_risk_distribution(
     from app.services.contracts import ContractRiskScorer
 
     scorer = ContractRiskScorer(db)
-    distribution = await scorer.get_risk_distribution(company_id=company.company_id)
-    metrics = await scorer.get_aggregate_risk_metrics(company_id=company.company_id)
+    distribution = await scorer.get_risk_distribution(company_id=company.id)
+    metrics = await scorer.get_aggregate_risk_metrics(company_id=company.id)
 
     return {
         "distribution": distribution,
@@ -1297,7 +1297,7 @@ async def compare_contracts(
         result = await comparison_service.compare_contracts(
             contract_a_id=contract_a_id,
             contract_b_id=contract_b_id,
-            company_id=company.company_id,
+            company_id=company.id,
             created_by_id=current_user.id,
             save_comparison=save_comparison,
         )
@@ -1324,7 +1324,7 @@ async def get_contract_comparisons(
 
     # Verify contract access
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1368,7 +1368,7 @@ async def get_contract_ai_obligations(
 
     # Verify contract access
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1400,7 +1400,7 @@ async def get_upcoming_ai_obligations(
 
     tracker = ContractObligationTracker(db)
     obligations = await tracker.get_upcoming_obligations(
-        company_id=company.company_id,
+        company_id=company.id,
         days_ahead=days_ahead,
     )
 
@@ -1420,7 +1420,7 @@ async def get_overdue_ai_obligations(
 
     tracker = ContractObligationTracker(db)
     obligations = await tracker.get_overdue_obligations(
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     return [o.to_dict() for o in obligations]
@@ -1475,7 +1475,7 @@ async def get_contract_ai_deadlines(
 
     # Verify contract access
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1505,7 +1505,7 @@ async def get_upcoming_ai_deadlines(
 
     deadline_service = ContractDeadlineService(db)
     deadlines = await deadline_service.get_upcoming_deadlines(
-        company_id=company.company_id,
+        company_id=company.id,
         days_ahead=days_ahead,
         priority=priority,
     )
@@ -1527,7 +1527,7 @@ async def get_expiring_contracts(
 
     deadline_service = ContractDeadlineService(db)
     expiring = await deadline_service.get_expiring_contracts(
-        company_id=company.company_id,
+        company_id=company.id,
         days_ahead=days_ahead,
     )
 
@@ -1575,7 +1575,7 @@ async def get_ai_deadline_statistics(
     from app.services.contracts import ContractDeadlineService
 
     deadline_service = ContractDeadlineService(db)
-    stats = await deadline_service.get_statistics(company_id=company.company_id)
+    stats = await deadline_service.get_statistics(company_id=company.id)
 
     return stats
 
@@ -1608,7 +1608,7 @@ async def get_upcoming_renewals(
 
     renewal_service = get_contract_renewal_service(db)
     renewals = await renewal_service.get_upcoming_renewals(
-        company_id=company.company_id,
+        company_id=company.id,
         days_ahead=days_ahead,
         include_auto_renewal=include_auto_renewal,
     )
@@ -1645,7 +1645,7 @@ async def set_contract_deadline(
 
     # Verify contract access
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1698,7 +1698,7 @@ async def get_contract_reminders(
 
     # Verify contract access
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1734,7 +1734,7 @@ async def extract_contract_dates(
 
     # Verify contract access
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1751,7 +1751,7 @@ async def extract_contract_dates(
     # Extract dates from document
     dates = await renewal_service.extract_contract_dates_from_document(
         document_id=contract.document_id,
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     # Update contract with extracted dates
@@ -1815,7 +1815,7 @@ async def schedule_contract_reminders(
 
     # Verify contract access
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1883,7 +1883,7 @@ async def get_contract_clauses(
     from app.db.models_contract import Contract
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1937,7 +1937,7 @@ async def extract_contract_clauses(
     from app.db.models import Document
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -1959,7 +1959,7 @@ async def extract_contract_clauses(
     service = get_clause_recognition_service(db)
     clauses = await service.extract_and_store_clauses(
         contract_id=contract_id,
-        company_id=company.company_id,
+        company_id=company.id,
         text=document.extracted_text,
     )
 
@@ -1991,7 +1991,7 @@ async def verify_contract_clause(
     from app.db.models_contract import Contract
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -2045,7 +2045,7 @@ async def get_contract_benchmark(
     from app.db.models_contract import Contract
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -2126,7 +2126,7 @@ async def prepare_contract_cancellation(
     from app.db.models_contract import Contract, CancellationType
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -2145,7 +2145,7 @@ async def prepare_contract_cancellation(
     try:
         cancellation = await service.prepare_cancellation(
             contract_id=contract_id,
-            company_id=company.company_id,
+            company_id=company.id,
             cancellation_type=CancellationType(cancellation_type),
             reason=reason,
             effective_date=effective_date,
@@ -2182,7 +2182,7 @@ async def get_contract_cancellations(
     from sqlalchemy import select
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -2229,7 +2229,7 @@ async def approve_cancellation(
     from app.db.models_contract import Contract
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -2240,7 +2240,7 @@ async def approve_cancellation(
     try:
         cancellation = await service.approve_cancellation(
             cancellation_id=cancellation_id,
-            company_id=company.company_id,
+            company_id=company.id,
             approved_by_id=current_user.id,
             send_date=send_date,
         )
@@ -2275,7 +2275,7 @@ async def send_cancellation(
     from app.db.models_contract import Contract
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -2293,7 +2293,7 @@ async def send_cancellation(
     try:
         cancellation = await service.send_cancellation(
             cancellation_id=cancellation_id,
-            company_id=company.company_id,
+            company_id=company.id,
             send_method=send_method,
         )
         return {
@@ -2337,7 +2337,7 @@ async def get_contract_cost_analysis(
     from app.db.models_contract import Contract
 
     contract = await db.get(Contract, contract_id)
-    if not contract or contract.company_id != company.company_id:
+    if not contract or contract.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vertrag nicht gefunden",
@@ -2384,7 +2384,7 @@ async def get_cost_portfolio_summary(
     service = get_contract_cost_analyzer(db)
 
     summary = await service.get_portfolio_summary(
-        company_id=company.company_id,
+        company_id=company.id,
     )
 
     return summary
@@ -2407,12 +2407,12 @@ async def get_cost_trends(
     service = get_contract_cost_analyzer(db)
 
     trends = await service.get_cost_trends(
-        company_id=company.company_id,
+        company_id=company.id,
         months=months,
     )
 
     return {
-        "company_id": str(company.company_id),
+        "company_id": str(company.id),
         "period_months": months,
         "trends": trends,
     }
@@ -2438,7 +2438,7 @@ async def get_cost_optimization_suggestions(
     service = get_contract_cost_analyzer(db)
 
     suggestions = await service.get_all_optimization_suggestions(
-        company_id=company.company_id,
+        company_id=company.id,
         min_savings=min_savings,
     )
 

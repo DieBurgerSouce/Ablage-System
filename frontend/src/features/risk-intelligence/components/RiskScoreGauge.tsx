@@ -28,7 +28,7 @@ export function RiskScoreGauge({
     return { level: 'Kritisch', color: 'text-red-600', bgColor: 'bg-red-500' };
   };
 
-  const { level, color, bgColor } = getRiskLevel(normalizedScore);
+  const { level, color, bgColor: _bgColor } = getRiskLevel(normalizedScore);
 
   const sizeClasses = {
     sm: { width: 'w-24', height: 'h-12', text: 'text-lg', label: 'text-xs' },

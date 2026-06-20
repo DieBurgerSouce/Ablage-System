@@ -389,27 +389,29 @@ class TestRiskAssessment:
         self,
         service: LiquidityScenarioService,
     ) -> None:
-        """Medium Risk bei niedrigem Min-Balance."""
-        forecast = {"forecast": [{"balance": 1000}]}
-        risk = service._assess_risk(500, forecast)
+        """Medium Risk bei leicht negativem Min-Balance (-10000 <= mb < 0)."""
+        # Echter Vertrag _assess_risk: mb<-50000 CRITICAL, <-10000 HIGH,
+        # <0 MEDIUM, sonst LOW.
+        forecast = {"forecast": [{"balance": -5000}]}
+        risk = service._assess_risk(-5000, forecast)
         assert risk == RiskLevel.MEDIUM
 
     def test_assess_risk_high(
         self,
         service: LiquidityScenarioService,
     ) -> None:
-        """High Risk bei sehr niedrigem Min-Balance."""
-        forecast = {"forecast": [{"balance": 100}]}
-        risk = service._assess_risk(100, forecast)
+        """High Risk bei deutlich negativem Min-Balance (-50000 <= mb < -10000)."""
+        forecast = {"forecast": [{"balance": -20000}]}
+        risk = service._assess_risk(-20000, forecast)
         assert risk == RiskLevel.HIGH
 
     def test_assess_risk_critical(
         self,
         service: LiquidityScenarioService,
     ) -> None:
-        """Critical Risk bei negativem Min-Balance."""
-        forecast = {"forecast": [{"balance": -1000}]}
-        risk = service._assess_risk(-5000, forecast)
+        """Critical Risk bei stark negativem Min-Balance (mb < -50000)."""
+        forecast = {"forecast": [{"balance": -60000}]}
+        risk = service._assess_risk(-60000, forecast)
         assert risk == RiskLevel.CRITICAL
 
 

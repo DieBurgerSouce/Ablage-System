@@ -2,7 +2,7 @@
 // Tabs: Übersicht | Finanzen | Dokumente | Workflows | System
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DashboardTabKey, TAB_CONFIG } from '../types/smart-dashboard-types';
+import { type DashboardTabKey, TAB_CONFIG } from '../types/smart-dashboard-types';
 
 interface DashboardTabBarProps {
   activeTab: DashboardTabKey;

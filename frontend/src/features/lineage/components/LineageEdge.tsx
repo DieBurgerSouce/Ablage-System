@@ -10,6 +10,7 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
+  type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 import { cn } from '@/lib/utils';
@@ -20,14 +21,16 @@ import { Clock } from 'lucide-react';
 // Types
 // =============================================================================
 
-export interface LineageEdgeData {
+export type LineageEdgeData = {
   /** Zeit zwischen den Events in Millisekunden */
   timeDeltaMs?: number;
   /** Zeige Timing-Label an */
   showTiming?: boolean;
   /** Edge-Typ für unterschiedliches Styling */
   edgeType?: 'default' | 'success' | 'error' | 'warning';
-}
+};
+
+export type LineageFlowEdge = Edge<LineageEdgeData, 'lineageTiming'>;
 
 // =============================================================================
 // Helper Functions
@@ -97,7 +100,7 @@ export const LineageEdge = memo(function LineageEdge({
   data,
   selected,
   style,
-}: EdgeProps<LineageEdgeData>) {
+}: EdgeProps<LineageFlowEdge>) {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,

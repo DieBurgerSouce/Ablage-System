@@ -151,6 +151,24 @@ class SAMLService:
             # Not compressed (POST binding)
             return decoded.decode("utf-8")
 
+    @staticmethod
+    def _canonicalize_signed_info(signed_info_elem: Element) -> bytes:
+        """Kanonisiert das SignedInfo-Element mittels exklusiver C14N.
+
+        Nutzt lxml fuer eine standardkonforme (Exclusive XML Canonicalization,
+        http://www.w3.org/2001/10/xml-exc-c14n#) Serialisierung. Dadurch ist
+        der Bytestrom stabil und unabhaengig von global registrierten
+        Namespace-Praefixen.
+        """
+        from lxml import etree as LET
+
+        # Standard-/defusedxml-Element nach lxml ueberfuehren und exklusiv
+        # kanonisieren. tostring(method="c14n", exclusive=True) liefert die
+        # standardkonformen Bytes.
+        raw = ET.tostring(signed_info_elem, encoding="utf-8")
+        lxml_elem = LET.fromstring(raw)
+        return LET.tostring(lxml_elem, method="c14n", exclusive=True)
+
     def _validate_signature(
         self, root: Element, config: SAMLConfig
     ) -> None:
@@ -229,10 +247,12 @@ class SAMLService:
             "".join(signature_value_elem.text.split())
         )
 
-        # Get canonical SignedInfo for verification
-        # Note: In production, use proper C14N canonicalization
-        signed_info_str = ET.tostring(signed_info_elem, encoding="unicode")
-        signed_info_bytes = signed_info_str.encode("utf-8")
+        # Get canonical SignedInfo for verification.
+        # WICHTIG: Korrekte (exklusive) C14N-Kanonisierung verwenden. Naives
+        # ET.tostring() benennt Namespace-Praefixe um (ds: -> ns0:), wodurch
+        # der signierte Bytestrom abweicht und JEDE Verifikation fehlschlaegt
+        # (sofern nicht zufaellig global ein ds-Praefix registriert ist).
+        signed_info_bytes = self._canonicalize_signed_info(signed_info_elem)
 
         # Determine hash algorithm from signature method
         hash_algo: hashes.HashAlgorithm

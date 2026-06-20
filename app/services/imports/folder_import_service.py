@@ -251,6 +251,12 @@ class FolderImportService:
         Raises:
             ValueError: Bei ungültigem Pfad
         """
+        # Null-Bytes ablehnen (CWE-158/CWE-22: Null-Byte-Injection / Path-Truncation)
+        # Manche OS/Funktionen kürzen Pfade am Null-Byte ab, wodurch
+        # Allowlist-Prüfungen umgangen werden können.
+        if "\x00" in path:
+            raise ValueError("Ungültiger Pfad: Null-Byte nicht erlaubt")
+
         # Normalisieren
         try:
             normalized = os.path.normpath(os.path.abspath(path))
@@ -549,11 +555,13 @@ class FolderImportService:
                 except Exception as file_error:
                     result.errors.append({
                         "file": str(file_path),
+                        "error_type": type(file_error).__name__,
                         "error": str(file_error),
                     })
                     logger.warning(
                         "file_processing_failed",
                         file=str(file_path),
+                        error_type=type(file_error).__name__,
                         error=str(file_error),
                     )
 

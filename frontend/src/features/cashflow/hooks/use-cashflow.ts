@@ -3,14 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  getLiquidityForecast,
-  predictPayment,
-  getPaymentRecommendations,
-  runScenario,
-  getCashflowSummary,
-  ScenarioRequest,
-} from '../api/cashflow-api';
+import { getLiquidityForecast, predictPayment, getPaymentRecommendations, runScenario, getCashflowSummary, type ScenarioRequest } from '../api/cashflow-api';
 
 // ==================== Query Keys ====================
 

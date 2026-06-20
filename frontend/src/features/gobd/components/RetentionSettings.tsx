@@ -52,15 +52,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Sonstige',
 }
 
-const DEFAULT_YEARS: Record<string, number> = {
-  invoice: 10,
-  contract: 10,
-  correspondence: 6,
-  tax_document: 10,
-  bank_statement: 10,
-  receipt: 10,
-  other: 6,
-}
 
 interface EditDialogProps {
   setting: RetentionSetting

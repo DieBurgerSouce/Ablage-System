@@ -46,6 +46,16 @@ def editor_id():
     return uuid4()
 
 
+@pytest.fixture
+def db_session(test_db):
+    """Alias auf die echte PostgreSQL-Session (conftest `test_db`).
+
+    Die Tests benoetigen eine echte async DB-Session (JSONB/UUID-Typen). Ist
+    keine Test-DB erreichbar, ueberspringt `test_db` sauber (kein gruen-biegen).
+    """
+    return test_db
+
+
 @pytest.mark.asyncio
 class TestDashboardSharingService:
     """Tests fuer DashboardSharingService."""

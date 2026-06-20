@@ -274,7 +274,19 @@ class SSOConfigService:
                 message="SSO_ENCRYPTION_KEY nicht gesetzt - verwende abgeleiteten Schluessel. "
                         "Für Produktionssysteme SSO_ENCRYPTION_KEY konfigurieren."
             )
-            return hashlib.sha256(secret_key.encode()).digest()[:32]
+            # BUGFIX (2026-06-12): settings.SECRET_KEY ist seit der
+            # SecretStr-Umstellung ein pydantic SecretStr - .encode() direkt
+            # darauf wirft AttributeError und brach die gesamte
+            # SSO-Schluesselableitung (alle SSOConfigService-Instanziierungen
+            # ohne SSO_ENCRYPTION_KEY).
+            secret_key_value = (
+                secret_key.get_secret_value()
+                if isinstance(secret_key, SecretStr)
+                else secret_key
+            )
+            return hashlib.sha256(secret_key_value.encode()).digest()[:32]
+        if isinstance(key, SecretStr):
+            return key.get_secret_value().encode()
         return key.encode() if isinstance(key, str) else key
 
     def _encrypt_secret(self, secret: str) -> str:

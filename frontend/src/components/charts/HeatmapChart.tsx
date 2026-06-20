@@ -113,13 +113,15 @@ export function HeatmapChart({
     yLabels: providedYLabels,
     prefix = "",
     suffix = "",
-    colorScale = DEFAULT_COLORS,
+    colorScale: colorScaleProp,
     minValue: providedMin,
     maxValue: providedMax,
     cellSize = 50,
     showValues = true,
     onCellClick,
 }: HeatmapChartProps) {
+    // Partielle colorScale mit Defaults auffuellen (getColor braucht alle drei Stufen)
+    const colorScale = { ...DEFAULT_COLORS, ...colorScaleProp }
     // Extract unique labels from data if not provided
     const xLabels = React.useMemo(() =>
         providedXLabels ?? [...new Set(data.map(d => d.x))],

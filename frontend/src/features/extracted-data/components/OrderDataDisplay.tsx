@@ -2,7 +2,7 @@
  * OrderDataDisplay - Zeigt alle extrahierten Bestellungsdaten.
  */
 
-import { Package, Truck, CreditCard, Hash, Calendar } from "lucide-react";
+import { Truck, CreditCard, Hash, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -131,9 +131,9 @@ export function OrderDataDisplay({ order, className }: OrderDataDisplayProps) {
                                         {order.delivery_address.street && (
                                             <div>{order.delivery_address.street}</div>
                                         )}
-                                        {(order.delivery_address.zip || order.delivery_address.city) && (
+                                        {(order.delivery_address.zip_code || order.delivery_address.city) && (
                                             <div>
-                                                {order.delivery_address.zip} {order.delivery_address.city}
+                                                {order.delivery_address.zip_code} {order.delivery_address.city}
                                             </div>
                                         )}
                                         {order.delivery_address.country && (

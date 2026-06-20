@@ -5,20 +5,9 @@
  */
 
 import { useState } from 'react'
-import { format, formatDistanceToNow } from 'date-fns'
+import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
-import {
-  Archive,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Search,
-  RefreshCw,
-  Shield,
-  FileText,
-  Calendar,
-  Filter,
-} from 'lucide-react'
+import { Archive, CheckCircle2, AlertTriangle, Search, RefreshCw, Shield, FileText, Calendar, Filter } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -76,9 +65,6 @@ export function ArchiveManagement() {
     return format(new Date(dateString), 'dd.MM.yyyy', { locale: de })
   }
 
-  const formatRelativeDate = (dateString: string) => {
-    return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: de })
-  }
 
   return (
     <div className="space-y-6">

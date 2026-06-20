@@ -10,15 +10,7 @@
  */
 
 import * as React from 'react';
-import {
-  WifiOff,
-  Wifi,
-  CloudOff,
-  RefreshCw,
-  Check,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { WifiOff, Wifi, CloudOff, RefreshCw, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -55,7 +47,7 @@ export function OfflineStatusBanner({
 }: OfflineStatusBannerProps) {
   const { progress, pendingCount, isSyncing, isOnline, sync } = useOfflineSync({
     autoSync: true,
-    onSyncComplete: (result) => {
+    onSyncComplete: (_result) => {
       // Could show toast here
     },
   });
