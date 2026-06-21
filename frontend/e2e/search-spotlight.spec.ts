@@ -56,21 +56,10 @@ test.describe('Suche - UI', () => {
   });
 
   test('Spotlight (Strg+K) oeffnet die Befehlspalette', async ({ authenticatedPage: page }) => {
-    // BEKANNTER APP-BUG (Kategorie B, 2026-06-12, bestaetigt Stream s5 2026-06-13):
-    // ZWEI konkurrierende globale Strg+K-Paletten sind gleichzeitig gemountet
-    // (GlobalCommandDialog via __root.tsx:92 + eigener Listener
-    // GlobalCommandDialog.tsx:126 UND SpotlightDialog via AppLayout.tsx:121 +
-    // Listener features/spotlight/hooks/use-spotlight.ts:114). Strg+K oeffnet
-    // BEIDE uebereinander, Escape schliesst nur die oberste -> eine bleibt offen
-    // (Assertion toHaveCount(0) schlaegt korrekt fehl). App-Code-Befund (Konflikt
-    // zweier global gemounteter Dialoge), nicht in der Spec-Zone -> fixme bis
-    // zum App-Fix (ein einziger globaler Strg+K-Handler).
-    test.fixme(true, 'App-Bug: Zwei konkurrierende globale Strg+K-Paletten gemountet (GlobalCommandDialog + SpotlightDialog), Escape schliesst nur eine. Siehe stream-Report s5-e2e-a11y.');
-    // Auf eine nicht-crashende Route wechseln: Das Admin-Dashboard ('/')
-    // crasht aktuell im ErrorBoundary (App-Bug: Tooltip ohne TooltipProvider,
-    // DashboardGridEnhanced.tsx:302) — dann ist auch der globale
-    // GlobalCommandDialog unmounted. Spotlight ist global, der Test auf
-    // /kunden ist gleichwertig.
+    // Reaktiviert 2026-06-21: Die doppelte Strg+K-Palette ist behoben (B8) —
+    // der SpotlightDialog wurde aus AppLayout.tsx entfernt, nur der
+    // GlobalCommandDialog (via __root.tsx) ist noch global gemountet. Strg+K
+    // oeffnet genau einen Dialog, Escape schliesst ihn.
     await page.goto('/kunden');
     await page.waitForLoadState('domcontentloaded');
     await page.locator('#main-content').waitFor({ state: 'attached', timeout: 15000 });
@@ -82,13 +71,6 @@ test.describe('Suche - UI', () => {
       dialog.first().getByRole('combobox').or(dialog.first().locator('input')).first()
     ).toBeVisible();
     await page.keyboard.press('Escape');
-    // HINWEIS: Schlaegt aktuell KORREKT fehl — App-Bug (Kategorie B,
-    // 2026-06-12): ZWEI konkurrierende globale Strg+K-Paletten sind gemountet
-    // (GlobalCommandDialog via __root.tsx:92 mit eigenem Listener
-    // GlobalCommandDialog.tsx:126 UND SpotlightDialog via AppLayout.tsx:121
-    // mit Listener features/spotlight/hooks/use-spotlight.ts:114). Strg+K
-    // oeffnet BEIDE uebereinander, Escape schliesst nur die oberste — eine
-    // bleibt offen.
     await expect(dialog).toHaveCount(0, { timeout: 5000 });
   });
 });

@@ -109,11 +109,9 @@ test.describe('File Upload Validation - API', () => {
 });
 
 authTest.describe('File Upload Validation - UI', () => {
-  // BEKANNTER APP-BUG (Stream s5, 2026-06-13): /upload bleibt im
-  // LazyLoadFallback-Spinner haengen, der UploadWizard (React.lazy) mountet nie
-  // -> das <input type="file"> wird nie attached. Gleiche Ursache wie in
-  // upload.spec.ts dokumentiert (alle React.lazy-Routen betroffen).
-  authTest.fixme(true, 'App-Bug: React.lazy-Routen haengen im Suspense-Spinner (/upload mountet UploadWizard nie). Siehe stream-Report s5-e2e-a11y.');
+  // Reaktiviert 2026-06-21: Der React.lazy-Suspense-Hang ist behoben — /upload
+  // nutzt jetzt lazyRoute (src/lib/lazyRoute.tsx); der UploadWizard mountet im
+  // Build und das <input type="file"> wird attached.
 
   authTest('Upload-Seite rendert ein Datei-Eingabefeld', async ({ authenticatedPage: page }) => {
     await page.goto('/upload');

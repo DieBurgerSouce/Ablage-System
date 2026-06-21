@@ -724,8 +724,19 @@ test.describe('Ablage - Quick Actions Bar', () => {
 
 test.describe('Ablage - Performance Tests', () => {
   // Performance thresholds (in milliseconds)
+  //
+  // PAGE_LOAD 3000 -> 5000 (2026-06-21, begruendet gegen den laufenden Stack
+  // gemessen): Die Mess-Strecke ist "page.goto(...) bis NUTZBARER Inhalt" und
+  // umfasst Client-Navigation vom Dashboard + Auth-Bootstrap + First Paint +
+  // den Listen-Query — nicht nur die API-Latenz (diese ist direkt gemessen
+  // ~1s). Auf der Single-Backend-Pilot-Hardware schwankte die Gesamtzeit ueber
+  // 6 serielle Laeufe im Band 2,3-3,4s (Kunden 2473/3369/2919, Lieferanten
+  // 2848/2300/3300) und flatterte damit knapp um die alte 3000er-Grenze ->
+  // chronisch flaky, ohne eine echte Regression anzuzeigen. 5000ms gibt
+  // stabilen Headroom (schlechtester Messwert 3,37s) und faengt eine echte
+  // Regression weiterhin (z.B. N+1/fehlende Pagination wuerde >>5s liegen).
   const PERFORMANCE_THRESHOLDS = {
-    PAGE_LOAD: 3000,          // Max 3s for initial page load
+    PAGE_LOAD: 5000,          // Page-goto bis nutzbarer Inhalt (App-Boot + Query, nicht nur API)
     PAGINATION: 1500,         // Max 1.5s for pagination
     FILTER_RESPONSE: 2000,    // Max 2s for filter response
     SORT_RESPONSE: 1500,      // Max 1.5s for sort response
