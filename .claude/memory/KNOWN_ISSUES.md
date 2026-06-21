@@ -2,6 +2,19 @@
 
 ## Active Issues
 
+### 🔴 api-Hang/DoS via gefuzzter Request (NEU 2026-06-21, A-Z-Loop-2)
+
+> Gefunden beim best-effort A-Z-Loop (Schemathesis `not_a_server_error`, MAX_EXAMPLES=5). **Pre-existierend** (existiert auf master genauso, nicht von der Pilot-Hardening-Arbeit eingeführt). **HOCH-PRIORITÄR** (DoS-Klasse).
+
+| Aspekt | Detail |
+|--------|--------|
+| **Symptom** | Während des Fuzzings (nach ~116 Min sauberem 5xx-Sweep, **0 Server-Fehler**) brachte EIN gefuzzter Request einen Threadpool-Handler zum **Endlos-CPU-Spin**: Backend-Container 105 % CPU für ~2 h, **kein Completion-Log** (Request terminiert nie), Schemathesis blockiert/idle wartend. `/health` blieb responsiv → der **async-Event-Loop ist NICHT blockiert**, der Spin läuft im sync-Threadpool. |
+| **Verdacht** | Letzte geloggte Endpoints vor dem Hang: `/api/v1/admin/audit/*`, `/api/v1/documents/bulk/update`. Der hängende Request selbst wurde nicht geloggt (nie abgeschlossen). Vermutlich eine sync-CPU-gebundene Schleife/Pathologie bei malformed Input. |
+| **Fix-Empfehlung** | (1) Server-seitige **Request-Timeout-Middleware** (harte Obergrenze pro Request → 504 statt Endlos-Spin). (2) Endpoint via gezieltem Re-Fuzz der Verdachts-Endpoints mit malformed Query/Body identifizieren. (3) Mehr Uvicorn-Worker erwägen (Single-Worker = ein Spin pegt einen Core). |
+| **Status** | 🔴 OFFEN (Backlog). NICHT in dieser Runde gefixt (Reproduktion des gefuzzten Requests nötig; außerhalb des zugesagten „500→4xx"-Scopes). |
+
+**DoD-Loop-Bilanz 2026-06-21 (best-effort, gemergt `dc5ad466a`):** GRÜN: build/up/gates/docker/**unit/security/integ** (echter Loop mit Seed), a11y, vitest (919). **api**: 5xx-Sweep 116 Min sauber (0 Server-Fehler) → Hang (s.o.). **e2e**: 130 passed, 3 failed = 1 Perf-Aggregat (4-Worker-Contention auf Single-Uvicorn, kein Code-Regress, per EXPLAIN ANALYZE DB-Query 0,07ms) + 2 pre-existierend (`ablage.spec.ts:691` error-state-UI, `pwa-offline` service-worker). **monitor**: `CeleryNoActivity` firing = wedged solo-GPU-Worker ohne GPU im Dev-Env (`celery inspect ping` → „No nodes replied"; Backlog: **graceful CPU-OCR-Fallback** — CPU-Worker der ocr-Queue zuordnen). Formale **2× clean A-Z-Runs** weiterhin offen (api-Hang + Perf-Contention).
+
 ### 🔴 Status-Scan 2026-06-03 — verifizierte Blocker (NEU)
 
 > Quelle: A–Z-Fan-Out-Scan, gegen Code verifiziert. Vollständig: `.claude/reviews/2026-06-03/STATUS_SCAN_2026-06-03.md`. Mock-Inventur: `.claude/reviews/2026-06-03/MOCK_DATA_REGISTER.md`. **Diese 4 Punkte waren bisher NICHT als offen geführt.**
