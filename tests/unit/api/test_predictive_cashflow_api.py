@@ -102,6 +102,9 @@ class TestPredictiveCashFlowAPI:
         with patch(
             "app.api.v1.predictive_cashflow.PredictiveCashFlowService",
             return_value=mock_cashflow_service,
+        ), patch(
+            "app.api.v1.predictive_cashflow.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.current_company_id),
         ):
             result = await get_liquidity_forecast(
                 days=30,
@@ -121,12 +124,16 @@ class TestPredictiveCashFlowAPI:
         user = MagicMock()
         user.current_company_id = None
 
-        with pytest.raises(HTTPException) as exc_info:
-            await get_liquidity_forecast(
-                days=30,
-                current_user=user,
-                db=AsyncMock(),
-            )
+        with patch(
+            "app.api.v1.predictive_cashflow.get_user_company_id",
+            new=AsyncMock(return_value=None),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await get_liquidity_forecast(
+                    days=30,
+                    current_user=user,
+                    db=AsyncMock(),
+                )
 
         assert exc_info.value.status_code == 400
 
@@ -195,6 +202,9 @@ class TestPredictiveCashFlowAPI:
         with patch(
             "app.api.v1.predictive_cashflow.PredictiveCashFlowService",
             return_value=mock_cashflow_service,
+        ), patch(
+            "app.api.v1.predictive_cashflow.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.current_company_id),
         ):
             result = await get_payment_recommendations(
                 current_user=mock_user,
@@ -219,6 +229,9 @@ class TestPredictiveCashFlowAPI:
         with patch(
             "app.api.v1.predictive_cashflow.PredictiveCashFlowService",
             return_value=mock_service,
+        ), patch(
+            "app.api.v1.predictive_cashflow.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.current_company_id),
         ):
             result = await get_payment_recommendations(
                 current_user=mock_user,
@@ -250,6 +263,9 @@ class TestPredictiveCashFlowAPI:
         with patch(
             "app.api.v1.predictive_cashflow.PredictiveCashFlowService",
             return_value=mock_cashflow_service,
+        ), patch(
+            "app.api.v1.predictive_cashflow.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.current_company_id),
         ):
             result = await run_scenario(
                 request=ScenarioRequest(
@@ -284,6 +300,9 @@ class TestPredictiveCashFlowAPI:
         with patch(
             "app.api.v1.predictive_cashflow.PredictiveCashFlowService",
             return_value=mock_cashflow_service,
+        ), patch(
+            "app.api.v1.predictive_cashflow.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.current_company_id),
         ):
             result = await run_scenario(
                 request=ScenarioRequest(
@@ -317,6 +336,9 @@ class TestPredictiveCashFlowAPI:
         with patch(
             "app.api.v1.predictive_cashflow.PredictiveCashFlowService",
             return_value=mock_cashflow_service,
+        ), patch(
+            "app.api.v1.predictive_cashflow.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.current_company_id),
         ):
             result = await run_scenario(
                 request=ScenarioRequest(

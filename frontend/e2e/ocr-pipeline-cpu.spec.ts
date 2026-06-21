@@ -53,15 +53,21 @@ startxref
 );
 
 apiTest.describe('OCR-Pipeline (CPU) - Upload und Verarbeitung', () => {
-  // BEKANNTER INFRA-/APP-BEFUND (Stream s5, 2026-06-13): Der Upload
-  // funktioniert (HTTP 201, Dokument-Status "pending"), aber die OCR-
-  // Verarbeitung schliesst nie ab. Die ocr_normal-Queue fuellt sich
-  // (check_queue_backpressure meldet 'ocr_normal': 1), doch der CPU-Worker
-  // (ablage-worker-cpu) konsumiert sie nicht — der worker_health_check meldet
-  // wiederholt "KRITISCH: Keine aktiven Worker gefunden!" (healthy_workers=0).
-  // Dokumente bleiben deshalb dauerhaft "pending" -> Polling-Timeout. Das ist
-  // ein Worker-/Queue-Konfigurationsbefund (Infra), nicht in der Spec-Zone.
-  apiTest.fixme(true, 'Infra-Befund: CPU-OCR-Worker konsumiert die ocr_normal-Queue nicht (healthy_workers=0), Dokument bleibt "pending". Siehe stream-Report s5-e2e-a11y.');
+  // EHRLICH GESKIPPT (2026-06-21, gegen den laufenden Stack verifiziert): Der
+  // Upload funktioniert (HTTP 201, Status "pending") und die OCR-Task wird
+  // korrekt enqueued (Redis ocr_normal-Tiefe steigt). Verarbeitet wird sie
+  // dennoch nicht: Den ocr_normal/ocr_high-Queues ist NUR der GPU-Worker
+  // (ablage-worker, --pool=solo --concurrency=1) zugeordnet — der CPU-Worker
+  // (ablage-worker-cpu) konsumiert -Q validation,metadata,...,privat, aber
+  // KEINE ocr-Queue. Der GPU-Worker wiederum hat in dieser Umgebung keine GPU
+  // (Log "gpu_not_available_skipping_preload") und haengt seit Start an seiner
+  // ersten solo-Task fest (CPU 0.01%, "celery inspect" -> "No nodes replied"),
+  // sodass die ocr_normal-Queue dauerhaft zurueckstaut und das Dokument
+  // "pending" bleibt -> Polling-Timeout. Das ist ein Worker-/Queue-Infra-Befund
+  // (kein GPU im OCR-Worker + wedged solo-Pool), nicht in der Spec-Zone. Gegen
+  // einen Stack mit funktionierendem OCR-Worker (GPU oder ein der ocr-Queue
+  // zugeordneter CPU-Worker) den Skip entfernen, dann prueft der Test strikt.
+  apiTest.skip(true, 'Infra: OCR-Worker verarbeitet ocr_normal nicht (GPU-Worker ohne GPU + wedged solo-Pool; CPU-Worker nicht der ocr-Queue zugeordnet) -> Dokument bleibt "pending". Verifiziert 2026-06-21.');
 
   apiTest('Upload -> pending/processing -> completed', async ({ request }) => {
     apiTest.setTimeout(360_000); // CPU-OCR + Queue: grosszuegig
@@ -101,16 +107,16 @@ apiTest.describe('OCR-Pipeline (CPU) - Upload und Verarbeitung', () => {
 });
 
 test.describe('OCR-Pipeline - Upload-UI', () => {
-  // BEKANNTER APP-BUG (Stream s5, 2026-06-13): /upload bleibt im LazyLoadFallback-
-  // Spinner haengen — der UploadWizard (React.lazy) mountet nie. Gleiche Ursache
-  // wie in upload.spec.ts dokumentiert (alle React.lazy-Routen betroffen).
-  test.fixme(true, 'App-Bug: React.lazy-Routen haengen im Suspense-Spinner (/upload mountet UploadWizard nie). Siehe stream-Report s5-e2e-a11y.');
+  // Reaktiviert 2026-06-21: Der React.lazy-Suspense-Hang ist behoben — /upload
+  // nutzt jetzt lazyRoute (src/lib/lazyRoute.tsx); der UploadWizard mountet im
+  // Build.
 
   test('/upload rendert den Upload-Wizard', async ({ authenticatedPage: page }) => {
     await page.goto('/upload');
     await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    // h1-Seitentitel gezielt (die Dropzone hat "Dokumente hochladen" auch als h3)
     await expect(
-      page.getByRole('heading', { name: 'Dokumente hochladen' })
+      page.getByRole('heading', { name: 'Dokumente hochladen', level: 1 })
     ).toBeVisible({ timeout: 15000 });
   });
 });

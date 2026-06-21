@@ -837,8 +837,15 @@ class AccessAnalyticsService:
             row = result.fetchone()
             if row:
                 return row.original_filename or row.filename or str(document_id)
-        except Exception:
-            pass
+        except Exception as e:
+            # OPEN-46: Audit-Lookup-Fehler sichtbar machen (war still -> Audit-Trail
+            # zeigte stumm die ID statt des Dateinamens bei DB-Fehlern).
+            logger.warning(
+                "audit_document_filename_lookup_failed",
+                document_id=str(document_id),
+                company_id=str(company_id),
+                error_type=type(e).__name__,
+            )
         return str(document_id)
 
     async def _get_user_email(
@@ -858,6 +865,11 @@ class AccessAnalyticsService:
             row = result.fetchone()
             if row and row.email:
                 return row.email
-        except Exception:
-            pass
+        except Exception as e:
+            # OPEN-46: Audit-Lookup-Fehler sichtbar machen (war still).
+            logger.warning(
+                "audit_user_email_lookup_failed",
+                user_id=str(user_id),
+                error_type=type(e).__name__,
+            )
         return str(user_id)

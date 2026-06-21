@@ -107,11 +107,19 @@ def company_id():
 
 @pytest.fixture
 def mock_user():
-    """Mock User Model."""
+    """Mock User Model.
+
+    Der CollaborationService liest fuer den Anzeigenamen
+    ``user.full_name or user.username or user.email`` (siehe acquire_lock).
+    Diese Attribute muessen explizit gesetzt sein, sonst liefert MagicMock
+    truthy-MagicMocks zurueck (nicht JSON-serialisierbar).
+    """
     user = MagicMock()
     user.id = uuid.uuid4()
     user.first_name = "Max"
     user.last_name = "Mustermann"
+    user.full_name = "Max Mustermann"
+    user.username = "max.mustermann"
     user.email = "max.mustermann@example.com"
     return user
 

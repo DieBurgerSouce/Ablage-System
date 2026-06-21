@@ -195,8 +195,12 @@ groups:
       # ===================================================================
       # GPU THERMAL ALERTS (B6: Reaktiviert 2026-05-19)
       # ===================================================================
-      # Erfordert nvidia-dcgm-exporter fuer DCGM-Metriken.
-      # Installation: https://github.com/NVIDIA/dcgm-exporter
+      # Robust gegen Exporter-Verfuegbarkeit (2026-06-21): Die Temperatur-Alerts
+      # feuern mit DCGM (nvidia-dcgm-exporter, nur mit `--profile gpu`) ODER mit
+      # der stets gescrapten hardware_gpu_temperature_celsius-Metrik (`or`-Match).
+      # Vorher DCGM-only -> ohne DCGM-Profil tot. Power-Alert bleibt DCGM-only
+      # (keine hardware_gpu-Limit-Metrik vorhanden).
+      # Installation DCGM: https://github.com/NVIDIA/dcgm-exporter
       #
       # B6 (2026-05-19): Bis 2026-05-19 waren diese vier Alerts auskommentiert
       # mit dem Hinweis "fuer lokale Entwicklung ohne DCGM". DCGM-Exporter
@@ -206,7 +210,7 @@ groups:
       # nicht optional. Quelle: MASTER_REVIEW_2026-05-19.md B6.
 
       - alert: GPUTemperatureHigh
-        expr: DCGM_FI_DEV_GPU_TEMP > 75
+        expr: (DCGM_FI_DEV_GPU_TEMP > 75) or (hardware_gpu_temperature_celsius > 75)
         for: 5m
         labels:
           severity: warning
@@ -217,7 +221,7 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-high"
 
       - alert: GPUThermalThrottling
-        expr: DCGM_FI_DEV_GPU_TEMP > 80
+        expr: (DCGM_FI_DEV_GPU_TEMP > 80) or (hardware_gpu_temperature_celsius > 80)
         for: 2m
         labels:
           severity: critical
@@ -228,7 +232,7 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-thermal-throttling"
 
       - alert: GPUTemperatureCritical
-        expr: DCGM_FI_DEV_GPU_TEMP > 85
+        expr: (DCGM_FI_DEV_GPU_TEMP > 85) or (hardware_gpu_temperature_celsius > 85)
         for: 1m
         labels:
           severity: critical

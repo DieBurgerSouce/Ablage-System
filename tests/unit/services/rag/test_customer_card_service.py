@@ -132,7 +132,8 @@ class TestGetCard:
         """Sollte Card aus Cache zurueckgeben."""
         mock_card = MagicMock(spec=RAGCustomerCard)
         mock_card.customer_id = "KD-001"
-        mock_card.last_sync_at = datetime.now(timezone.utc)
+        # Service prueft Cache-Frische via last_full_sync_at (umbenannt von last_sync_at)
+        mock_card.last_full_sync_at = datetime.now(timezone.utc)
 
         # Card in Cache legen
         service._cache["KD-001"] = mock_card
@@ -199,8 +200,8 @@ class TestGetCard:
         """Sollte Cache ignorieren wenn zu alt."""
         mock_card = MagicMock(spec=RAGCustomerCard)
         mock_card.customer_id = "KD-001"
-        # Card ist 2 Stunden alt
-        mock_card.last_sync_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        # Card ist 2 Stunden alt (Frische-Check liest last_full_sync_at)
+        mock_card.last_full_sync_at = datetime.now(timezone.utc) - timedelta(hours=2)
 
         service._cache["KD-001"] = mock_card
 
@@ -221,7 +222,15 @@ class TestGenerateCard:
     def service(self):
         """Erstelle Service mit gemockten Dependencies."""
         mock_search = MagicMock()
-        mock_search.search_for_context = AsyncMock(return_value=[])
+        # generate_card hat einen Fast-Path: ohne gefundene Dokumente (leere
+        # source_document_ids) wird KEINE Card persistiert (return None). Damit der
+        # Persistenz-Pfad (db.add/db.commit) getestet wird, muss search_for_context
+        # mindestens ein Chunk mit document_id liefern.
+        mock_search.search_for_context = AsyncMock(
+            return_value=[
+                {"text": "Kontext", "document_id": str(uuid4())}
+            ]
+        )
         mock_llm = MagicMock()
         mock_llm.generate = AsyncMock(return_value=MagicMock(content="Test Summary"))
         return CustomerCardService(

@@ -159,10 +159,21 @@ class TestBackendManagerInit:
         assert "deepseek" not in manager.backends
         assert "got_ocr" not in manager.backends
 
+    # HINWEIS zur GPU-Backend-Registrierung (Quell der frueheren 13 Failures):
+    # backend_manager.py importiert DeepSeekAgent/GOTOCRAgent NUR wenn
+    # torch.cuda zur IMPORT-Zeit verfuegbar war (Z.149-159). Im CPU-OCR-
+    # Test-Container ist das nicht der Fall -> die Namen existieren gar nicht
+    # im Modul-Namespace. Daher reicht @patch("app.services.backend_manager.
+    # TORCH_AVAILABLE", True) NICHT: der Konstruktor laeuft in einen NameError
+    # und das Backend wird (graceful) verworfen. Das frueher genutzte
+    # @patch("app.agents.ocr.deepseek_agent.DeepSeekAgent") patcht das
+    # Quell-Modul, aber NICHT den Namen im backend_manager-Namespace.
+    # Korrekt: den Namen via create=True direkt in backend_manager injizieren.
     @patch("app.services.backend_manager.TORCH_AVAILABLE", True)
+    @patch("app.services.backend_manager.DONUT_AVAILABLE", False)
     @patch("app.services.backend_manager.SuryaDoclingAgent")
-    @patch("app.services.backend_manager.DeepSeekAgent")
-    @patch("app.services.backend_manager.GOTOCRAgent")
+    @patch("app.services.backend_manager.DeepSeekAgent", create=True)
+    @patch("app.services.backend_manager.GOTOCRAgent", create=True)
     def test_init_with_gpu_backends(
         self,
         mock_got_class,
@@ -187,10 +198,13 @@ class TestBackendManagerInit:
         assert "got_ocr" in manager.backends
 
     @patch("app.services.backend_manager.TORCH_AVAILABLE", True)
+    @patch("app.services.backend_manager.DONUT_AVAILABLE", False)
     @patch("app.services.backend_manager.SuryaDoclingAgent")
-    @patch("app.services.backend_manager.DeepSeekAgent")
+    @patch("app.services.backend_manager.DeepSeekAgent", create=True)
+    @patch("app.services.backend_manager.GOTOCRAgent", create=True)
     def test_init_partial_gpu_failure(
         self,
+        mock_got_class,
         mock_deepseek_class,
         mock_surya_class,
         mock_surya_agent
@@ -198,6 +212,7 @@ class TestBackendManagerInit:
         """Test Initialisierung bei teilweisem GPU-Fehler."""
         mock_surya_class.return_value = mock_surya_agent
         mock_deepseek_class.side_effect = Exception("GPU nicht verfügbar")
+        mock_got_class.side_effect = Exception("GPU nicht verfügbar")
 
         from app.services.backend_manager import BackendManager
 
@@ -223,9 +238,10 @@ class TestBackendSelection:
     ):
         """Create manager with mocked backends."""
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_deepseek_agent
@@ -334,9 +350,10 @@ class TestBackendSelectionABTesting:
         mock_ab_manager.get_variant.return_value = mock_variant
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent"), \
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True), \
              patch("app.services.backend_manager.get_ab_test_manager") as mock_ab:
 
             surya_cls.return_value = mock_surya_agent
@@ -501,9 +518,10 @@ class TestBackendStatus:
     ):
         """Create manager with multiple backends."""
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_deepseek_agent
@@ -570,9 +588,10 @@ class TestBackendCleanup:
     ):
         """Test Cleanup aller Backends."""
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_deepseek_agent
@@ -632,9 +651,10 @@ class TestBackendHealthCheck:
         })
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_deepseek_agent
@@ -676,9 +696,10 @@ class TestBackendHealthCheck:
         })
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_gpu_backend
@@ -708,9 +729,10 @@ class TestBackendHealthCheck:
         })
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_gpu_backend
@@ -731,9 +753,10 @@ class TestBackendHealthCheck:
         mock_error_backend.get_status = Mock(side_effect=Exception("Status error"))
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_error_backend
@@ -769,10 +792,11 @@ class TestFallbackOrder:
     ):
         """Create manager with all backends for fallback tests."""
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.torch") as mock_torch, \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             mock_torch.cuda.is_available.return_value = True
             mock_torch.cuda.get_device_name.return_value = "RTX 4080"
@@ -783,7 +807,7 @@ class TestFallbackOrder:
 
             # Also mock the GPU surya import
             with patch.dict('sys.modules', {'app.agents.ocr.surya_gpu_agent': MagicMock()}):
-                with patch("app.services.backend_manager.SuryaGPUAgent", create=True) as surya_gpu_cls:
+                with patch("app.agents.ocr.surya_gpu_agent.SuryaGPUAgent", create=True) as surya_gpu_cls:
                     surya_gpu_cls.return_value = mock_surya_gpu_agent
 
                     from app.services.backend_manager import BackendManager
@@ -845,9 +869,10 @@ class TestProcessWithFallback:
     def manager_with_fallback_backends(self, mock_surya_agent, mock_deepseek_agent):
         """Create manager for fallback processing tests."""
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_deepseek_agent
@@ -896,9 +921,10 @@ class TestProcessWithFallback:
         })
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_failing_backend
@@ -937,9 +963,10 @@ class TestProcessWithFallback:
         })
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_failing_backend
@@ -982,9 +1009,10 @@ class TestProcessWithFallback:
         })
 
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_unhealthy_backend
@@ -1031,8 +1059,8 @@ class TestProcessWithFallback:
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
              patch("app.services.backend_manager.SuryaDoclingEnhancedAgent") as surya_enhanced_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.agents.ocr.deepseek_agent.DeepSeekAgent") as deepseek_cls, \
+             patch("app.agents.ocr.got_ocr_agent.GOTOCRAgent") as got_cls:
 
             surya_cls.return_value = mock_failing_backend1
             surya_enhanced_cls.return_value = mock_failing_backend3
@@ -1067,9 +1095,10 @@ class TestBackendManagerEdgeCases:
     async def test_select_backend_large_file(self, mock_surya_agent, mock_deepseek_agent):
         """Test Backend-Auswahl für große Dateien."""
         with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.DONUT_AVAILABLE", False), \
              patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
-             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
-             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+             patch("app.services.backend_manager.DeepSeekAgent", create=True) as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent", create=True) as got_cls:
 
             surya_cls.return_value = mock_surya_agent
             deepseek_cls.return_value = mock_deepseek_agent

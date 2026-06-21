@@ -48,7 +48,9 @@ def mock_document():
     doc.company_id = uuid4()
     doc.category = "rechnung"
     doc.created_at = datetime.now(timezone.utc)
-    doc.ai_metadata = {
+    # get_review_queue liest document_metadata (kanonische Column), confirm_filing
+    # liest ai_metadata. Beide auf denselben Pipeline-Result setzen.
+    pipeline_metadata = {
         "pipeline_result": {
             "requires_review": True,
             "review_confirmed": False,
@@ -69,6 +71,8 @@ def mock_document():
             },
         }
     }
+    doc.document_metadata = pipeline_metadata
+    doc.ai_metadata = pipeline_metadata
     return doc
 
 
@@ -216,6 +220,8 @@ class TestGetReviewQueue:
         doc.id = uuid4()
         doc.filename = "unknown.pdf"
         doc.created_at = datetime.now(timezone.utc)
+        # get_review_queue liest document_metadata (kanonische Column)
+        doc.document_metadata = None
         doc.ai_metadata = None
 
         count_result = MagicMock()

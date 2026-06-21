@@ -12,7 +12,7 @@ groups:
       # Warnung: Character Error Rate (CER) zu hoch
       - alert: OCRQualityCERHigh
         expr: |
-          avg(ablage_ocr_cer_estimate_avg) > 0.05
+          (rate(ocr_character_error_rate_sum[5m]) / rate(ocr_character_error_rate_count[5m])) > 0.05
         for: 10m
         labels:
           severity: warning
@@ -25,7 +25,7 @@ groups:
       # Kritisch: Character Error Rate sehr hoch
       - alert: OCRQualityCERCritical
         expr: |
-          avg(ablage_ocr_cer_estimate_avg) > 0.10
+          (rate(ocr_character_error_rate_sum[5m]) / rate(ocr_character_error_rate_count[5m])) > 0.10
         for: 5m
         labels:
           severity: critical
@@ -38,7 +38,7 @@ groups:
       # Warnung: Word Error Rate (WER) zu hoch
       - alert: OCRQualityWERHigh
         expr: |
-          avg(ablage_ocr_wer_estimate_avg) > 0.10
+          (rate(ocr_word_error_rate_sum[5m]) / rate(ocr_word_error_rate_count[5m])) > 0.10
         for: 10m
         labels:
           severity: warning
@@ -51,7 +51,7 @@ groups:
       # Warnung: Umlaut-Erkennung unter Ziel
       - alert: OCRUmlautAccuracyLow
         expr: |
-          avg(ablage_ocr_umlaut_accuracy) < 0.99
+          (rate(ocr_umlaut_accuracy_sum[5m]) / rate(ocr_umlaut_accuracy_count[5m])) < 0.99
         for: 15m
         labels:
           severity: warning

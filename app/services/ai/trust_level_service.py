@@ -589,8 +589,9 @@ class TrustLevelService:
             idx = levels.index(current)
             if idx < len(levels) - 1:
                 return levels[idx + 1]
-        except ValueError:
-            pass
+        except ValueError as e:
+            # OPEN-46: Enum-Inkonsistenz sichtbar machen (Fallback bleibt None)
+            logger.error("trust_level_enum_inconsistency", error_type=type(e).__name__)
         return None
 
     def _get_previous_level(self, current: TrustLevel) -> Optional[TrustLevel]:
@@ -600,8 +601,9 @@ class TrustLevelService:
             idx = levels.index(current)
             if idx > 0:
                 return levels[idx - 1]
-        except ValueError:
-            pass
+        except ValueError as e:
+            # OPEN-46: Enum-Inkonsistenz sichtbar machen (Fallback bleibt None)
+            logger.error("trust_level_enum_inconsistency", error_type=type(e).__name__)
         return None
 
     def _check_upgrade_requirements(

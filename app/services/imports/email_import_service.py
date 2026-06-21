@@ -774,6 +774,14 @@ class EmailImportService:
                 user_id=user_id,
             )
 
+            # E-Rechnung (ZUGFeRD/Factur-X/XRechnung) aus PDF/XML automatisch
+            # extrahieren + mit dem Dokument verknuepfen (best-effort).
+            await self._extract_einvoice_if_present(
+                document_id=document_id,
+                attachment=attachment,
+                user_id=user_id,
+            )
+
             # Import-Log aktualisieren
             import_log.status = "completed"
             import_log.document_id = document_id
@@ -823,6 +831,55 @@ class EmailImportService:
                 pass
 
             return {"success": False, **safe_error_log(e)}
+
+    async def _extract_einvoice_if_present(
+        self,
+        document_id: UUID,
+        attachment: EmailAttachment,
+        user_id: UUID,
+    ) -> None:
+        """Best-effort E-Rechnungs-Extraktion aus einem PDF/XML-Anhang.
+
+        Versucht, eingebettete strukturierte Rechnungsdaten (ZUGFeRD/Factur-X im
+        PDF, oder XRechnung-XML) zu parsen und als EInvoiceDocument mit dem
+        Dokument zu verknuepfen. Schliesst die OPEN-44-Luecke: ein per E-Mail
+        empfangenes ZUGFeRD-PDF wird nicht mehr nur als Plain-PDF abgelegt.
+
+        DARF DEN E-MAIL-IMPORT NIEMALS BRECHEN: vollstaendig geguarded. Bei
+        Nicht-E-Rechnungen ein No-Op (parser_service liefert success=False;
+        parse_and_store flush't dann nichts). parse_and_store committet nicht
+        selbst -> der EInvoiceDocument-Eintrag wird vom aeusseren commit
+        persistiert.
+        """
+        fname = (attachment.filename or "").lower()
+        if not (fname.endswith(".pdf") or fname.endswith(".xml")):
+            return
+        try:
+            from app.services.einvoice.parser_service import get_parser_service
+
+            parser = get_parser_service()
+            result = await parser.parse_and_store(
+                file_content=attachment.content,
+                filename=attachment.filename,
+                document_id=document_id,
+                db=self.db,
+                user_id=user_id,
+            )
+            if getattr(result, "success", False):
+                fmt = getattr(result, "format_detected", None)
+                logger.info(
+                    "email_import_einvoice_extracted",
+                    document_id=str(document_id),
+                    format=getattr(fmt, "value", None),
+                )
+        except Exception as e:
+            # E-Rechnungs-Extraktion ist reine Anreicherung - Fehler nicht fatal
+            # fuer den Import. Sichtbar loggen statt still schlucken.
+            logger.warning(
+                "email_import_einvoice_extraction_failed",
+                document_id=str(document_id),
+                **safe_error_log(e),
+            )
 
     async def _check_duplicate_by_hash(
         self, user_id: UUID, file_hash: str

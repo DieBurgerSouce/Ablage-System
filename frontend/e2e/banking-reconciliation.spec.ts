@@ -64,16 +64,10 @@ apiTest.describe('Banking - API-Vorbedingungen', () => {
 });
 
 test.describe('Banking - CSV-Import-Journey', () => {
-  // BEKANNTER APP-BUG (Stream s5, 2026-06-13): Alle /admin/banking/*-Kinderrouten
-  // (import, transactions, reconciliation, accounts, payments, skonto) sind
-  // React.lazy + <Suspense> und bleiben im Production-Build dauerhaft im
-  // LazyLoadFallback-Spinner haengen — das Banking-Layout rendert, der lazy
-  // Inhalts-Outlet nie. Nachweis: Chunk laedt (HTTP 200), dynamischer Import
-  // resolved zur Funktionskomponente, kein pageerror; sowohl direkter goto als
-  // auch Tab-Klick (Client-Navigation) bleiben haengen. Eager Routen wie der
-  // /admin/banking-Index rendern korrekt. Gleiche Ursache wie in upload.spec.ts
-  // dokumentiert (22 betroffene Routen). App-Code-Befund, nicht Spec-Zone.
-  test.fixme(true, 'App-Bug: React.lazy-Routen haengen im Suspense-Spinner (/admin/banking/* Kinderrouten mounten nie). Siehe stream-Report s5-e2e-a11y.');
+  // Reaktiviert 2026-06-21: Der React.lazy-Suspense-Hang der /admin/banking/*-
+  // Kinderrouten ist behoben — sie nutzen jetzt lazyRoute
+  // (src/lib/lazyRoute.tsx), das den dynamischen Import via setState erzwingt;
+  // der lazy Inhalts-Outlet mountet im Build.
 
   test('CSV hochladen, Vorschau erstellen, ggf. importieren', async ({ authenticatedPage: page }) => {
     test.setTimeout(120_000);
@@ -91,9 +85,14 @@ test.describe('Banking - CSV-Import-Journey', () => {
       buffer: Buffer.from(SPARKASSE_CSV, 'utf-8'),
     });
 
-    // Konto waehlen (Select/Combobox). Erster verfuegbarer Eintrag.
-    const accountSelect = page.getByRole('combobox').first();
-    await expect(accountSelect).toBeVisible();
+    // ZIELKONTO waehlen (nicht .first()!): ImportPage hat ZWEI Comboboxen —
+    // den Bankformat-Selektor UND das Zielkonto-Select. "Vorschau anzeigen" ist
+    // disabled, solange `selectedAccount` leer ist (ImportPage.tsx:241). Der
+    // fruehere .first()-Selektor traf den Format-Selektor -> Zielkonto blieb
+    // "Konto wählen..." -> Button dauerhaft disabled (verifiziert 2026-06-21).
+    // Gezielt das Zielkonto-Select ueber seinen Placeholder ansprechen.
+    const accountSelect = page.getByRole('combobox').filter({ hasText: /Konto wählen/ });
+    await expect(accountSelect).toBeVisible({ timeout: 10000 });
     await accountSelect.click();
     await page.getByRole('option').first().click();
 

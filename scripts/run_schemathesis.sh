@@ -70,6 +70,9 @@ echo ">> Starte Schemathesis (max-examples=$MAX_EXAMPLES, Check: not_a_server_er
 # Ausgeschlossen: /api/v1/test/ (Reset wuerde den Seed-Zustand zerstoeren),
 # Auth-Logout (wuerde das Fuzz-Token invalidieren) sowie DELETE-Methoden
 # (erste Ausbaustufe konservativ - kein Wegfuzzen von Dev-Daten).
+# ai/, ai-chat/, assistant/: LLM-Inferenz-Endpoints liefern ohne erreichbaren
+# Ollama/LLM-Dienst korrekt 503 (on-prem by design, kein Server-Bug) -> aus dem
+# 5xx-Fuzzing-Scope genommen; separat gegen einen laufenden LLM-Stack testen.
 # SCHEMATHESIS_BIN: absoluter Pfad fuer Windows-Hosts, auf denen das
 # Python-Scripts-Verzeichnis nicht im (Git-Bash-)PATH liegt.
 "${SCHEMATHESIS_BIN:-schemathesis}" run "$BASE_URL/openapi.json" \
@@ -78,5 +81,5 @@ echo ">> Starte Schemathesis (max-examples=$MAX_EXAMPLES, Check: not_a_server_er
     --max-examples "$MAX_EXAMPLES" \
     --max-failures "$MAX_FAILURES" \
     --exclude-method DELETE \
-    --exclude-path-regex '^/api/v1/(test/|auth/logout)' \
+    --exclude-path-regex '^/api/v1/(test/|auth/logout|ai/|ai-chat/|assistant/)' \
     "$@"

@@ -45,6 +45,7 @@ from app.db.models_approval_matrix import (
     ApprovalGroupMember,
 )
 from sqlalchemy import select, and_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 logger = structlog.get_logger(__name__)
@@ -98,6 +99,23 @@ async def create_matrix(
     company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ApprovalMatrixResponse:
     """Erstellt einen Matrix-Eintrag."""
+    # Validierung: Referenziertes Chain Template muss existieren und der eigenen
+    # Firma gehoeren (verhindert FK-Violation -> 500 und Cross-Tenant-Referenzen).
+    if data.chain_template_id is not None:
+        tmpl_result = await db.execute(
+            select(ApprovalChainTemplate.id).where(
+                and_(
+                    ApprovalChainTemplate.id == data.chain_template_id,
+                    ApprovalChainTemplate.company_id == company_id,
+                )
+            )
+        )
+        if tmpl_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Ungueltige chain_template_id: Chain Template nicht gefunden",
+            )
+
     service = ApprovalMatrixService(db)
     matrix = await service.create_matrix_entry(
         company_id=company_id,
@@ -250,14 +268,21 @@ async def create_chain_template(
     # Convert Pydantic models to dicts for JSONB storage
     steps_config = [step.model_dump() for step in data.steps_config]
 
-    template = await service.create_chain_template(
-        company_id=company_id,
-        name=data.name,
-        steps_config=steps_config,
-        created_by_id=current_user.id,
-        description=data.description,
-        is_default=data.is_default,
-    )
+    try:
+        template = await service.create_chain_template(
+            company_id=company_id,
+            name=data.name,
+            steps_config=steps_config,
+            created_by_id=current_user.id,
+            description=data.description,
+            is_default=data.is_default,
+        )
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Eine Chain Template mit diesem Namen existiert bereits",
+        )
 
     return ApprovalChainTemplateResponse.model_validate(template)
 
@@ -458,8 +483,23 @@ async def create_group(
         decision_mode=data.decision_mode,
     )
     db.add(group)
-    await db.commit()
-    await db.refresh(group)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Eine Gruppe mit diesem Namen existiert bereits",
+        )
+
+    # Beziehung 'members' eager laden, damit die Response-Serialisierung kein
+    # Lazy-Load im async-Kontext ausloest (MissingGreenlet -> 500).
+    result = await db.execute(
+        select(ApprovalGroup)
+        .options(selectinload(ApprovalGroup.members))
+        .where(ApprovalGroup.id == group.id)
+    )
+    group = result.scalar_one()
 
     return ApprovalGroupResponse.model_validate(group)
 

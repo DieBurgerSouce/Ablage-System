@@ -886,8 +886,14 @@ class EnhancedFraudDetectionService:
             median = result.scalar()
             if median and median > 0:
                 return float(amount) > float(median) * 3
-        except Exception:
-            pass
+        except Exception as e:
+            # OPEN-46: Fraud-Median-Check-Fehler nicht still schlucken (war Fail-Open:
+            # ein DB-Fehler liess das Betrugssignal lautlos verschwinden -> sichtbar machen).
+            logger.warning(
+                "fraud_unusual_amount_check_failed",
+                company_id=str(company_id),
+                **safe_error_log(e),
+            )
         return False
 
     def _find_urgency_keywords(self, text: str) -> List[str]:
@@ -1092,7 +1098,13 @@ class EnhancedFraudDetectionService:
             if isinstance(value, Decimal):
                 return value
             return Decimal(str(value))
-        except Exception:
+        except Exception as e:
+            # OPEN-46: Betrags-Parse-Fehler sichtbar machen (Fallback bleibt None)
+            logger.warning(
+                "fraud_amount_parse_failed",
+                value_type=type(value).__name__,
+                **safe_error_log(e),
+            )
             return None
 
     def _empty_result(

@@ -157,7 +157,7 @@ async def list_api_keys(
             created_at=key.created_at,
             last_used=key.last_used,
             expires_at=key.expires_at,
-            key_prefix=key.key_hash[:8] if key.key_hash else None
+            key_prefix=key.prefix
         ))
 
     return APIKeyListResponse(
@@ -201,7 +201,7 @@ async def get_api_key(
         created_at=db_key.created_at,
         last_used=db_key.last_used,
         expires_at=db_key.expires_at,
-        key_prefix=db_key.key_hash[:8] if db_key.key_hash else None
+        key_prefix=db_key.prefix
     )
 
 
@@ -259,7 +259,7 @@ async def update_api_key(
             created_at=db_key.created_at,
             last_used=db_key.last_used,
             expires_at=db_key.expires_at,
-            key_prefix=db_key.key_hash[:8] if db_key.key_hash else None
+            key_prefix=db_key.prefix
         )
 
     except APIKeyNotFoundError as e:

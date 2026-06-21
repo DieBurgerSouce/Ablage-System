@@ -1208,7 +1208,8 @@ class TestSearchResultMapping:
         doc.id = uuid4()
         doc.owner_id = mock_user.id
         doc.filename = "bestellung_001.pdf"
-        doc.ocr_text = "Bestellung Nr. 2025-001"
+        # Mapping liest doc.extracted_text (Modell-Spalte), nicht ocr_text
+        doc.extracted_text = "Bestellung Nr. 2025-001"
         doc.created_at = datetime.now(timezone.utc)
         doc.extracted_data = {
             "classification": {"document_type": "order", "confidence": 0.88},
@@ -1258,7 +1259,8 @@ class TestSearchResultMapping:
         doc.id = uuid4()
         doc.owner_id = mock_user.id
         doc.filename = "vertrag_001.pdf"
-        doc.ocr_text = "Vertrag Nr. 2025-001"
+        # Mapping liest doc.extracted_text (Modell-Spalte), nicht ocr_text
+        doc.extracted_text = "Vertrag Nr. 2025-001"
         doc.created_at = datetime.now(timezone.utc)
         doc.extracted_data = {
             "classification": {"document_type": "contract", "confidence": 0.92},
@@ -1308,7 +1310,8 @@ class TestSearchResultMapping:
         doc.id = uuid4()
         doc.owner_id = mock_user.id
         doc.filename = "unknown.pdf"
-        doc.ocr_text = "Unbekanntes Dokument"
+        # Mapping liest doc.extracted_text (Modell-Spalte), nicht ocr_text
+        doc.extracted_text = "Unbekanntes Dokument"
         doc.created_at = datetime.now(timezone.utc)
         doc.extracted_data = {
             "classification": {"document_type": "unknown_type", "confidence": 0.5},

@@ -21,12 +21,13 @@ from difflib import SequenceMatcher
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
 from app.db.models import Document, BusinessEntity
 from app.db.models_approval_extended import AutoFilingRule
+from app.db.models_folder import FolderDocument
 
 logger = structlog.get_logger(__name__)
 
@@ -165,13 +166,51 @@ class AutoFilingService:
             "rule_name": rule.name,
         }
 
-        # In Zielordner verschieben
+        # In Zielordner verschieben: echte folder_documents-Assoziation
+        # (Document hat KEINE folder_id-Spalte -> das fruehere
+        #  `document.folder_id = ...` war ein stilles No-Op / Phantom-Attribut).
         if rule.target_folder_id:
-            document.folder_id = rule.target_folder_id
+            existing_assoc = await db.execute(
+                select(FolderDocument).where(
+                    and_(
+                        FolderDocument.folder_id == rule.target_folder_id,
+                        FolderDocument.document_id == document_id,
+                    )
+                )
+            )
+            if existing_assoc.scalar_one_or_none() is None:
+                # Bisherige Primaer-Zuordnung zuruecksetzen (genau ein Hauptordner)
+                await db.execute(
+                    update(FolderDocument)
+                    .where(
+                        and_(
+                            FolderDocument.document_id == document_id,
+                            FolderDocument.is_primary.is_(True),
+                        )
+                    )
+                    .values(is_primary=False)
+                )
+                db.add(
+                    FolderDocument(
+                        folder_id=rule.target_folder_id,
+                        document_id=document_id,
+                        is_primary=True,
+                        added_by_id=None,  # System-Aktion (Auto-Filing)
+                    )
+                )
             applied_changes["folder_id"] = str(rule.target_folder_id)
 
-        # Kategorie setzen
+        # Kategorie setzen: kanonisch auf document_type abbilden (wie bulk_move_category).
+        # Unbekannte Kategorien werden NICHT verworfen (kein Crash), sondern nur
+        # im Ergebnis vermerkt.
         if rule.target_category:
+            from app.services.document_services.ablage_service import (
+                CATEGORY_TO_DOCTYPE,
+            )
+
+            target_doc_type = CATEGORY_TO_DOCTYPE.get(rule.target_category.lower())
+            if target_doc_type is not None:
+                document.document_type = target_doc_type.value
             applied_changes["target_category"] = rule.target_category
 
         # Training-Statistik erhöhen

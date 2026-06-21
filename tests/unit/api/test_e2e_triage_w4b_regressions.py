@@ -166,20 +166,33 @@ COMPANY_SCOPED_CALLS = [
     "mahn_task_service.assign_task",
     "mahn_task_service.snooze_task",
     "mahn_task_service.complete_task",
-    "dunning_stage_service.get_stages",
+    # dunning_stage_service write-Pfade passieren company_id=company_id; die
+    # read-Pfade get_stages/get_auto_dunning_settings sind USER-scoped (F-31,
+    # Commit 8dce67679) und stehen in DUNNING_USER_VALUE_CALLS.
     "dunning_stage_service.create_stage",
     "dunning_stage_service.update_stage",
     "dunning_stage_service.reorder_stages",
-    "dunning_stage_service.get_auto_dunning_settings",
     "dunning_stage_service.update_auto_dunning_settings",
-]
-
-# Services, die WEITERHIN user_id erwarten (kein Overshoot!).
-USER_SCOPED_CALLS = [
+    # PaymentService wurde auf company-scope migriert (Service-Signaturen
+    # erwarten company_id=, Route passiert company_id=company_id).
     "payment_service.list_payments",
     "payment_service.get_pending_payments",
+]
+
+# Services, deren Call-Sites weiterhin user_id=current_user.id passieren
+# (kein Overshoot!). aging_report_service erwartet weiterhin user_id.
+USER_SCOPED_CALLS = [
     "aging_report_service.get_receivables_aging",
     "aging_report_service.calculate_dso",
+]
+
+# F-31 (Commit 8dce67679): DunningStageConfig hat eine user_id-Spalte und KEINE
+# company_id-Spalte; der Service filtert intern DunningStageConfig.user_id ==
+# <param> (Parameter heisst missverstaendlich company_id). Die read-Pfade
+# passieren daher absichtlich company_id=current_user.id (User-Wert).
+DUNNING_USER_VALUE_CALLS = [
+    "dunning_stage_service.get_stages",
+    "dunning_stage_service.get_auto_dunning_settings",
 ]
 
 
@@ -246,8 +259,8 @@ class TestB2BankingCompanyScope:
         assert total_calls == 36
 
     def test_user_scoped_services_untouched(self):
-        """Kein Overshoot: payment_service/aging_report_service erwarten
-        user_id - ihre Call-Sites passieren weiterhin user_id=."""
+        """Kein Overshoot: aging_report_service erwartet weiterhin user_id -
+        seine Call-Sites passieren weiterhin user_id=current_user.id."""
         from app.api.v1 import banking
 
         source = inspect.getsource(banking.routes)
@@ -257,6 +270,22 @@ class TestB2BankingCompanyScope:
             for block in blocks:
                 assert "user_id=current_user.id" in block, (
                     f"{target} passiert kein user_id mehr (Service erwartet es!)"
+                )
+
+    def test_dunning_read_paths_pass_user_value(self):
+        """F-31: DunningStageConfig ist user-scoped (user_id-Spalte, KEINE
+        company_id-Spalte). Die read-Pfade passieren company_id=current_user.id
+        (User-Wert), NICHT company_id=company_id."""
+        from app.api.v1 import banking
+
+        source = inspect.getsource(banking.routes)
+        for target in DUNNING_USER_VALUE_CALLS:
+            blocks = _extract_call_block(source, target)
+            assert blocks, f"Call-Site fuer {target} nicht gefunden"
+            for block in blocks:
+                assert "company_id=current_user.id" in block, (
+                    f"{target} passiert nicht company_id=current_user.id "
+                    "(DunningStageConfig ist user-scoped, F-31)"
                 )
 
 

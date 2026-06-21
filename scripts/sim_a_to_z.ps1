@@ -114,10 +114,16 @@ Invoke-Stage 'gates' {
 # Selbst-Deadlock, W3b) soll die Stufe nach einem harten Limit ROT beenden
 # (Exit 124) statt den Loop unendlich zu blockieren. pytest-timeout ist im
 # Image nicht installiert (read-only Rootfs).
+# CUDA_VISIBLE_DEVICES='' pro Exec: tests/conftest.py importiert (transitiv) ein
+# Modul, das bei sichtbarer GPU triton-CUDA-JIT ausloest -> 'Failed to find C
+# compiler' (GPU-Image hat kein gcc) -> ConftestImportFailure bricht die GESAMTE
+# Collection ab. Mit leerem CUDA_VISIBLE_DEVICES sieht torch keine GPU -> kein
+# triton-JIT. Scoped auf den pytest-Prozess (App-Container/GPU fuer gates/e2e
+# bleibt unberuehrt). Non-GPU-Stufen ohnehin (integ: -m 'not gpu').
 Invoke-Stage 'docker'   { python -m pytest tests/docker -q --no-header }
-Invoke-Stage 'unit'     { docker compose @ComposeFiles exec -T backend timeout -k 30 7200 pytest tests/unit -q --no-header -p no:cacheprovider --continue-on-collection-errors }
-Invoke-Stage 'security' { docker compose @ComposeFiles exec -T backend timeout -k 30 3600 pytest tests/security -q --no-header -p no:cacheprovider --continue-on-collection-errors }
-Invoke-Stage 'integ'    { docker compose @ComposeFiles exec -T backend timeout -k 30 5400 pytest tests/integration -q --no-header -p no:cacheprovider -m 'not gpu' --continue-on-collection-errors }
+Invoke-Stage 'unit'     { docker compose @ComposeFiles exec -T -e 'CUDA_VISIBLE_DEVICES=' backend timeout -k 30 7200 pytest tests/unit -q --no-header -p no:cacheprovider --continue-on-collection-errors }
+Invoke-Stage 'security' { docker compose @ComposeFiles exec -T -e 'CUDA_VISIBLE_DEVICES=' backend timeout -k 30 3600 pytest tests/security -q --no-header -p no:cacheprovider --continue-on-collection-errors }
+Invoke-Stage 'integ'    { docker compose @ComposeFiles exec -T -e 'CUDA_VISIBLE_DEVICES=' backend timeout -k 30 5400 pytest tests/integration -q --no-header -p no:cacheprovider -m 'not gpu' --continue-on-collection-errors }
 
 Invoke-Stage 'api' {
     $env:BASE_URL = $BackendUrl
@@ -170,7 +176,10 @@ Invoke-Stage 'monitor' {
     # App-Gesundheit -> diese Klassen werden ignoriert (separat dem Nutzer
     # gemeldet). Echte App-Alerts (Backend down, PostgreSQLDown, Celery,
     # Pipeline-SLOs) bleiben blockierend.
-    $envAlerts = @('HostDiskSpaceLow','HostHighCpuLoad','HostOutOfMemory',
+    # HostDiskSpaceCritical = dieselbe Klasse wie HostDiskSpaceLow (Host-Kapazitaet
+    # der geteilten Dev-Maschine; Docker-vhdx auf Windows gibt geprunten Platz nicht
+    # an den Host zurueck) -> Ops-Sache, KEINE App-Regression. Real-Stand separat melden.
+    $envAlerts = @('HostDiskSpaceLow','HostDiskSpaceCritical','HostHighCpuLoad','HostOutOfMemory',
                    'HostHighSwapUsage','HostSwapUsageHigh',
                    'RedisLowCacheHitRate','RedisHighLatency','RedisRDBSnapshotFailed')
     $targets = curl.exe -s 'http://localhost:9090/api/v1/targets' | ConvertFrom-Json

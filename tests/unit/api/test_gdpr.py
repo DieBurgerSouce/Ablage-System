@@ -1080,5 +1080,79 @@ class TestGDPRDeadlines:
         assert on_time_request.due_date >= now
 
 
+# ==================== Art. 30 - Verarbeitungsverzeichnis Tests ====================
+
+
+class TestProcessingActivitiesRegister:
+    """Tests für GET /admin/gdpr/processing-activities (Art. 30 DSGVO)."""
+
+    @pytest.fixture
+    def mock_db(self):
+        return AsyncMock()
+
+    @pytest.fixture
+    def admin_user(self):
+        user = Mock()
+        user.id = uuid4()
+        user.is_superuser = True
+        return user
+
+    @pytest.fixture
+    def normal_user(self):
+        user = Mock()
+        user.id = uuid4()
+        user.is_superuser = False
+        return user
+
+    @pytest.mark.asyncio
+    async def test_non_admin_forbidden(self, normal_user, mock_db):
+        """Nicht-Admin erhält 403 (Art.30-Verzeichnis ist Admin-only)."""
+        from app.api.v1.gdpr import get_processing_activities_register
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_processing_activities_register(
+                purpose=None, limit=100, offset=0,
+                current_user=normal_user, db=mock_db,
+            )
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_admin_returns_register(self, admin_user, mock_db):
+        """Admin erhält paginiertes Art.30-Verzeichnis mit Pflichtangaben."""
+        from app.api.v1.gdpr import get_processing_activities_register
+
+        activity = {
+            "id": "abc123",
+            "document_id": str(uuid4()),
+            "subject_id": "hashed-subject",
+            "data_categories": ["personal_identifiable"],
+            "purpose": "document_digitization",
+            "legal_basis": "Art. 6(1)(b) DSGVO",
+            "retention_period_days": 3650,
+            "retention_expires_at": "2036-01-01T00:00:00+00:00",
+            "processing_backend": "deepseek",
+            "created_at": "2026-01-01T00:00:00+00:00",
+        }
+        with patch("app.api.v1.gdpr.get_gdpr_manager") as mock_mgr:
+            mgr = mock_mgr.return_value
+            mgr.get_processing_activities_async = AsyncMock(return_value=[activity])
+            mgr.get_compliance_report_async = AsyncMock(return_value={
+                "total_processing_activities": 1,
+                "gdpr_articles_covered": ["Art. 30 - Verarbeitungsverzeichnis"],
+            })
+
+            result = await get_processing_activities_register(
+                purpose=None, limit=100, offset=0,
+                current_user=admin_user, db=mock_db,
+            )
+
+        assert result.total == 1
+        assert len(result.activities) == 1
+        assert result.activities[0].purpose == "document_digitization"
+        assert result.activities[0].legal_basis == "Art. 6(1)(b) DSGVO"
+        assert "Art. 30 - Verarbeitungsverzeichnis" in result.gdpr_articles_covered
+        mgr.get_processing_activities_async.assert_awaited_once()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-m", "not integration"])

@@ -31,7 +31,7 @@ class DATEVWritebackEntryRequest(BaseModel):
     document_id: str = Field(..., min_length=1, max_length=64)
     soll_konto: str = Field(..., min_length=1, max_length=9, pattern=r"^\d+$")
     haben_konto: str = Field(..., min_length=1, max_length=9, pattern=r"^\d+$")
-    betrag: float = Field(..., gt=0)
+    betrag: float = Field(..., gt=0, allow_inf_nan=False)
     belegdatum: date  # ISO date (von Pydantic validiert)
     buchungstext: str = Field(..., min_length=1, max_length=200)
     belegnummer: Optional[str] = None
@@ -42,7 +42,9 @@ class DATEVWritebackBatchRequest(BaseModel):
     kontenrahmen: str = "SKR03"
     berater_nummer: Optional[str] = None
     mandanten_nummer: Optional[str] = None
-    entries: List[DATEVWritebackEntryRequest]
+    # Mindestens eine Buchung erforderlich: ein leerer Batch laeuft sonst in
+    # ValueError("Batch hat keine Buchungen") -> 500. Jetzt 422 via Pydantic.
+    entries: List[DATEVWritebackEntryRequest] = Field(..., min_length=1)
 
 class DATEVBatchResponse(BaseModel):
     id: str
@@ -80,21 +82,33 @@ async def create_datev_writeback(
     if body.mandanten_nummer:
         batch.mandanten_nummer = body.mandanten_nummer
 
-    for e in body.entries:
-        entry = WritebackEntry(
-            document_id=e.document_id,
-            soll_konto=e.soll_konto,
-            haben_konto=e.haben_konto,
-            betrag=Decimal(str(e.betrag)),
-            belegdatum=datetime.combine(e.belegdatum, time.min),
-            buchungstext=e.buchungstext,
-            belegnummer=e.belegnummer,
-            steuerschluessel=e.steuerschluessel,
-            kostenstelle=e.kostenstelle,
-        )
-        await service.add_entry(batch.id, entry)
+    try:
+        for e in body.entries:
+            # Nicht-finite Betraege (inf/-inf/NaN) sind fuer eine Buchung ungueltig
+            # und wuerden spaetestens bei der CSV-/DB-Verarbeitung scheitern.
+            betrag_value = Decimal(str(e.betrag))
+            if not betrag_value.is_finite():
+                raise ValueError("Betrag muss eine endliche Zahl sein")
 
-    await service.generate_csv(batch.id)
+            entry = WritebackEntry(
+                document_id=e.document_id,
+                soll_konto=e.soll_konto,
+                haben_konto=e.haben_konto,
+                betrag=betrag_value,
+                belegdatum=datetime.combine(e.belegdatum, time.min),
+                buchungstext=e.buchungstext,
+                belegnummer=e.belegnummer,
+                steuerschluessel=e.steuerschluessel,
+                kostenstelle=e.kostenstelle,
+            )
+            await service.add_entry(batch.id, entry)
+
+        await service.generate_csv(batch.id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Ungueltige Writeback-Daten: {exc}",
+        )
     return DATEVBatchResponse(
         id=batch.id, status=batch.status.value, entry_count=len(batch.entries),
         kontenrahmen=batch.kontenrahmen, created_at=batch.created_at.isoformat(),

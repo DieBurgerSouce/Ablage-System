@@ -193,8 +193,11 @@ jobs:
       - name: Run Bandit Security Scan
         run: |
           echo "::group::Bandit Security Scan"
-          bandit -r app/ -f json -o bandit-report.json || true
-          bandit -r app/ -f screen
+          # -ll -ii: blockierendes Gate nur fuer MEDIUM+ Severity UND MEDIUM+ Confidence
+          # (verifiziert clean 2026-06-20; verhindert Rauschen aus LOW-Heuristiken,
+          #  blockiert aber echte Sicherheitsbefunde). Report-Step weiterhin || true.
+          bandit -r app/ -ll -ii -f json -o bandit-report.json || true
+          bandit -r app/ -ll -ii -f screen
           echo "::endgroup::"
 
       - name: Upload Bandit Report

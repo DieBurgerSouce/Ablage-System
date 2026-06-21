@@ -41,6 +41,7 @@ from app.db.schemas import (
 )
 from app.services.gdpr_service import get_gdpr_service, GDPRService
 from app.services.data_export_service import get_data_export_service, DataExportService
+from app.core.gdpr import get_gdpr_manager
 from app.core.exceptions import GDPRError, UserNotFoundError, ExportError
 from app.services.compliance import (
     ConsentManagementService,
@@ -327,6 +328,93 @@ async def get_pending_deletions(
             for user in pending
         ]
     }
+
+
+# ==================== Art. 30 - Verarbeitungsverzeichnis (ROPA) ====================
+
+class ProcessingActivityEntry(BaseModel):
+    """Ein Eintrag im Art.30-Verarbeitungsverzeichnis (Pflichtangaben)."""
+    id: str
+    document_id: Optional[str] = None
+    subject_id: Optional[str] = None  # pseudonymisiert (Hash, Art. 4(5) DSGVO)
+    data_categories: List[str] = Field(default_factory=list)
+    purpose: str
+    legal_basis: str
+    retention_period_days: int
+    retention_expires_at: Optional[str] = None
+    processing_backend: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class ProcessingActivityRegisterResponse(BaseModel):
+    """Art. 30 DSGVO - Verzeichnis von Verarbeitungstaetigkeiten (auditierbar)."""
+    total: int
+    limit: int
+    offset: int
+    activities: List[ProcessingActivityEntry]
+    gdpr_articles_covered: List[str] = Field(default_factory=list)
+    hinweis: str
+
+
+@admin_router.get(
+    "/processing-activities",
+    response_model=ProcessingActivityRegisterResponse,
+    summary="Art. 30 Verarbeitungsverzeichnis abrufen (Admin)",
+    description="Art. 30 DSGVO - Verzeichnis aller Verarbeitungstaetigkeiten "
+                "(Rechenschaftspflicht, bei Audits vorzulegen). Nur Administratoren."
+)
+async def get_processing_activities_register(
+    purpose: Optional[str] = Query(None, description="Filter nach Verarbeitungszweck"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProcessingActivityRegisterResponse:
+    """
+    Art. 30 DSGVO - Verzeichnis von Verarbeitungstaetigkeiten (Record of
+    Processing Activities). Controller-Ebene: dokumentiert Zweck, Rechtsgrundlage,
+    Datenkategorien, Aufbewahrung und technische Massnahmen je Verarbeitung.
+
+    Args:
+        purpose: Optionaler Filter nach Verarbeitungszweck
+        limit/offset: Pagination
+        current_user: Admin-Benutzer (superuser)
+        db: Datenbank-Session
+
+    Returns:
+        Paginiertes Verzeichnis + Gesamtzahl + abgedeckte DSGVO-Artikel
+
+    Raises:
+        403: Nicht autorisiert (kein Administrator)
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nur Administratoren koennen das Verarbeitungsverzeichnis einsehen"
+        )
+
+    gdpr_manager = get_gdpr_manager()
+    activities = await gdpr_manager.get_processing_activities_async(
+        db, purpose=purpose, limit=limit, offset=offset
+    )
+    report = await gdpr_manager.get_compliance_report_async(db)
+
+    logger.info(
+        "gdpr_art30_register_viewed",
+        admin_id=str(current_user.id)[:8] + "...",
+        returned=len(activities),
+        total=report.get("total_processing_activities", 0),
+    )
+
+    return ProcessingActivityRegisterResponse(
+        total=report.get("total_processing_activities", len(activities)),
+        limit=limit,
+        offset=offset,
+        activities=[ProcessingActivityEntry(**a) for a in activities],
+        gdpr_articles_covered=report.get("gdpr_articles_covered", []),
+        hinweis="Verzeichnis von Verarbeitungstaetigkeiten gemaess Art. 30 DSGVO. "
+                "Subject-IDs sind pseudonymisiert (Art. 4(5) DSGVO).",
+    )
 
 
 # ==================== Art. 20 - Datenportabilität ====================

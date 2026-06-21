@@ -171,8 +171,13 @@ class ConditionalLogicEngine:
                 if approver_type == "user":
                     try:
                         step.assigned_user_id = UUID(approver_value)
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        # OPEN-46: ungültige Approver-UUID sichtbar machen
+                        # (Verhalten beibehalten: Schritt bleibt ohne assigned_user_id, kein raise)
+                        logger.error(
+                            "invalid_approver_uuid",
+                            error_type=type(e).__name__,
+                        )
 
                 db.add(step)
                 request.total_steps = new_step_number
