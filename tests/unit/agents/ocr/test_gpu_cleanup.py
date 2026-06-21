@@ -20,10 +20,18 @@ from pathlib import Path
 
 @pytest.fixture
 def mock_torch_cuda():
-    """Mock torch.cuda modul."""
+    """Mock torch.cuda modul.
+
+    Diese Tests laufen im CPU-OCR-Container OHNE GPU (CUDA_VISIBLE_DEVICES='').
+    Da der App-Code `is_available()` auf True gemockt bekommt, MUESSEN auch alle
+    weiteren CUDA-Aufrufe innerhalb des `if torch.cuda.is_available()`-Zweigs
+    gemockt werden (sonst RuntimeError: No CUDA GPUs are available). Der Cleanup-
+    Vertrag ruft synchronize() VOR empty_cache() auf -> beides hier mocken.
+    """
     with patch('torch.cuda.is_available', return_value=True):
-        with patch('torch.cuda.empty_cache') as mock_cache:
-            yield mock_cache
+        with patch('torch.cuda.synchronize'):
+            with patch('torch.cuda.empty_cache') as mock_cache:
+                yield mock_cache
 
 
 @pytest.fixture
@@ -42,6 +50,30 @@ def mock_gpu_manager():
     manager.handle_oom_error.return_value = {"recovered": True}
     manager.get_optimal_batch_size.return_value = 4
     return manager
+
+
+@pytest.fixture
+def mock_surya_cuda():
+    """Mock saemtliche torch.cuda-Aufrufe im surya_gpu_agent-Modul.
+
+    SuryaGPUAgent.__init__ ruft bei is_available()==True zusaetzlich
+    get_device_name/get_device_properties/version.cuda auf, process() ruft
+    memory_allocated()/synchronize(). Im CPU-OCR-Container ohne GPU muessen
+    daher ALLE diese Aufrufe gemockt werden, nicht nur is_available/empty_cache.
+    Gibt den empty_cache-Mock zum Assert zurueck.
+    """
+    props = MagicMock()
+    props.total_memory = 16 * 1024**3
+    props.name = "Mock-GPU"
+    with patch('app.agents.ocr.surya_gpu_agent.torch.cuda.is_available', return_value=True), \
+         patch('app.agents.ocr.surya_gpu_agent.torch.cuda.synchronize'), \
+         patch('app.agents.ocr.surya_gpu_agent.torch.cuda.get_device_name', return_value="Mock-GPU"), \
+         patch('app.agents.ocr.surya_gpu_agent.torch.cuda.get_device_properties', return_value=props), \
+         patch('app.agents.ocr.surya_gpu_agent.torch.cuda.memory_allocated', return_value=0), \
+         patch('app.agents.ocr.surya_gpu_agent.torch.cuda.max_memory_allocated', return_value=0), \
+         patch('app.agents.ocr.surya_gpu_agent.torch.cuda.memory_reserved', return_value=0), \
+         patch('app.agents.ocr.surya_gpu_agent.torch.cuda.empty_cache') as mock_cache:
+        yield mock_cache
 
 
 @pytest.fixture
@@ -174,47 +206,45 @@ class TestSuryaGPUCleanup:
         assert 'empty_cache' in source, "finally Block sollte empty_cache aufrufen"
 
     @pytest.mark.asyncio
-    async def test_cleanup_called_on_success(self, mock_torch_cuda):
+    async def test_cleanup_called_on_success(self, mock_surya_cuda):
         """GPU Cleanup sollte nach erfolgreicher Verarbeitung aufgerufen werden."""
-        with patch('app.agents.ocr.surya_gpu_agent.torch.cuda.is_available', return_value=True):
-            with patch('app.agents.ocr.surya_gpu_agent.torch.cuda.empty_cache') as mock_cache:
-                from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
+        mock_cache = mock_surya_cuda
+        from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
 
-                agent = SuryaGPUAgent()
-                agent._models_loaded = True
+        agent = SuryaGPUAgent()
+        agent._models_loaded = True
 
-                # Mock _load_image and _process_single_image
-                mock_image = Mock()
-                with patch.object(agent, '_load_image', return_value=[mock_image]):
-                    with patch.object(agent, '_process_single_image', return_value={
-                        "text": "Test text",
-                        "confidence": 0.9,
-                        "text_regions": 1,
-                        "german_chars_found": []
-                    }):
-                        result = await agent.process("/test/image.png")
+        # Mock _load_image and _process_single_image
+        mock_image = Mock()
+        with patch.object(agent, '_load_image', return_value=[mock_image]):
+            with patch.object(agent, '_process_single_image', return_value={
+                "text": "Test text",
+                "confidence": 0.9,
+                "text_regions": 1,
+                "german_chars_found": []
+            }):
+                result = await agent.process("/test/image.png")
 
-                # Verify empty_cache was called (by finally block)
-                assert mock_cache.called
+        # Verify empty_cache was called (by finally block)
+        assert mock_cache.called
 
     @pytest.mark.asyncio
-    async def test_cleanup_called_on_error(self):
+    async def test_cleanup_called_on_error(self, mock_surya_cuda):
         """GPU Cleanup sollte auch bei Fehlern aufgerufen werden."""
-        with patch('app.agents.ocr.surya_gpu_agent.torch.cuda.is_available', return_value=True):
-            with patch('app.agents.ocr.surya_gpu_agent.torch.cuda.empty_cache') as mock_cache:
-                from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
+        mock_cache = mock_surya_cuda
+        from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
 
-                agent = SuryaGPUAgent()
+        agent = SuryaGPUAgent()
 
-                # Mock _load_image to raise exception
-                with patch.object(agent, '_load_image', side_effect=FileNotFoundError("Test error")):
-                    result = await agent.process("/nonexistent/image.png")
+        # Mock _load_image to raise exception
+        with patch.object(agent, '_load_image', side_effect=FileNotFoundError("Test error")):
+            result = await agent.process("/nonexistent/image.png")
 
-                    # Should return error result, not raise
-                    assert "error" in result or result.get("status") == "error"
+            # Should return error result, not raise
+            assert "error" in result or result.get("status") == "error"
 
-                # Verify empty_cache was still called (by finally block)
-                assert mock_cache.called
+        # Verify empty_cache was still called (by finally block)
+        assert mock_cache.called
 
 
 # ========================= Full Cleanup Tests =========================
@@ -268,20 +298,19 @@ class TestFullCleanupMethod:
                 mock_manager.deallocate_backend.assert_called_once_with("deepseek")
 
     @pytest.mark.asyncio
-    async def test_surya_full_cleanup(self, mock_torch_cuda):
+    async def test_surya_full_cleanup(self, mock_surya_cuda):
         """Surya cleanup() sollte alle Ressourcen freigeben."""
-        with patch('app.agents.ocr.surya_gpu_agent.torch.cuda.synchronize'):
-            from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
+        from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
 
-            agent = SuryaGPUAgent()
-            agent._det_predictor = Mock()
-            agent._rec_predictor = Mock()
-            agent._foundation_predictor = Mock()
-            agent._models_loaded = True
+        agent = SuryaGPUAgent()
+        agent._det_predictor = Mock()
+        agent._rec_predictor = Mock()
+        agent._foundation_predictor = Mock()
+        agent._models_loaded = True
 
-            await agent.cleanup()
+        await agent.cleanup()
 
-            assert agent._det_predictor is None
-            assert agent._rec_predictor is None
-            assert agent._foundation_predictor is None
-            assert agent._models_loaded is False
+        assert agent._det_predictor is None
+        assert agent._rec_predictor is None
+        assert agent._foundation_predictor is None
+        assert agent._models_loaded is False

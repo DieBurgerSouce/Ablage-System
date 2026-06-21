@@ -17,11 +17,16 @@ class TestTenantRateLimitsAPI:
 
     @pytest.fixture
     def mock_user(self):
-        """Mock authenticated user."""
+        """Mock authenticated user (non-admin)."""
         user = MagicMock()
         user.id = uuid4()
-        user.is_admin = False
-        user.current_company_id = uuid4()
+        # B1: User-Modell hat keine company-Spalte; Rolle ist is_superuser.
+        # Explizit False setzen, sonst liefert MagicMock ein truthy Attribut
+        # und die 403-Admin-Guards feuern nicht.
+        user.is_superuser = False
+        # B1: company_id wird ueber get_user_company_id() (UserCompany) aufgeloest,
+        # nicht ueber ein User-Attribut. Wert nur als Referenz fuer Permission-Tests.
+        user.company_id = uuid4()
         return user
 
     @pytest.fixture
@@ -29,8 +34,8 @@ class TestTenantRateLimitsAPI:
         """Mock admin user."""
         user = MagicMock()
         user.id = uuid4()
-        user.is_admin = True
-        user.current_company_id = uuid4()
+        user.is_superuser = True
+        user.company_id = uuid4()
         return user
 
     @pytest.fixture
@@ -96,9 +101,14 @@ class TestTenantRateLimitsAPI:
         """Eigene Rate Limits abrufen."""
         from app.api.v1.tenant_rate_limits import get_own_limits
 
+        # B1: company_id wird ueber get_user_company_id() (UserCompany-Tabelle)
+        # aufgeloest, nicht ueber ein User-Attribut. Im Unit-Test mocken.
         with patch(
             "app.api.v1.tenant_rate_limits.TenantRateLimitService",
             return_value=mock_rate_limit_service,
+        ), patch(
+            "app.api.v1.tenant_rate_limits.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.company_id),
         ):
             result = await get_own_limits(
                 current_user=mock_user,
@@ -115,13 +125,18 @@ class TestTenantRateLimitsAPI:
         from fastapi import HTTPException
 
         mock_user = MagicMock()
-        mock_user.current_company_id = None
+        mock_user.is_superuser = False
 
-        with pytest.raises(HTTPException) as exc_info:
-            await get_own_limits(
-                current_user=mock_user,
-                db=AsyncMock(),
-            )
+        # B1: Keine Firmenzuordnung -> get_user_company_id() liefert None.
+        with patch(
+            "app.api.v1.tenant_rate_limits.get_user_company_id",
+            new=AsyncMock(return_value=None),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await get_own_limits(
+                    current_user=mock_user,
+                    db=AsyncMock(),
+                )
 
         assert exc_info.value.status_code == 400
         assert "Keine Company" in exc_info.value.detail
@@ -300,12 +315,16 @@ class TestTenantRateLimitsAPI:
         """User kann eigene Usage-Metriken abrufen."""
         from app.api.v1.tenant_rate_limits import get_usage_metrics
 
-        # Company IDs muessen uebereinstimmen
-        company_id = mock_user.current_company_id
+        # Company IDs muessen uebereinstimmen (eigene Company)
+        company_id = mock_user.company_id
 
+        # B1: Permission-Check vergleicht get_user_company_id() == company_id.
         with patch(
             "app.api.v1.tenant_rate_limits.TenantRateLimitService",
             return_value=mock_rate_limit_service,
+        ), patch(
+            "app.api.v1.tenant_rate_limits.get_user_company_id",
+            new=AsyncMock(return_value=company_id),
         ):
             result = await get_usage_metrics(
                 company_id=company_id,
@@ -327,17 +346,23 @@ class TestTenantRateLimitsAPI:
         from app.api.v1.tenant_rate_limits import get_usage_metrics
         from fastapi import HTTPException
 
-        # Andere Company ID
+        # Andere Company ID als die eigene des Users
         foreign_company_id = uuid4()
 
-        with pytest.raises(HTTPException) as exc_info:
-            await get_usage_metrics(
-                company_id=foreign_company_id,
-                period_type="daily",
-                days_back=30,
-                current_user=mock_user,
-                db=AsyncMock(),
-            )
+        # B1: Permission-Check vergleicht get_user_company_id() != company_id.
+        # Eigene Company (!= foreign) liefern, damit der 403-Pfad greift.
+        with patch(
+            "app.api.v1.tenant_rate_limits.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.company_id),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await get_usage_metrics(
+                    company_id=foreign_company_id,
+                    period_type="daily",
+                    days_back=30,
+                    current_user=mock_user,
+                    db=AsyncMock(),
+                )
 
         assert exc_info.value.status_code == 403
 
@@ -405,9 +430,13 @@ class TestTenantRateLimitsAPI:
         """Rate Limit Check."""
         from app.api.v1.tenant_rate_limits import check_rate_limit
 
+        # B1: company_id wird ueber get_user_company_id() aufgeloest.
         with patch(
             "app.api.v1.tenant_rate_limits.TenantRateLimitService",
             return_value=mock_rate_limit_service,
+        ), patch(
+            "app.api.v1.tenant_rate_limits.get_user_company_id",
+            new=AsyncMock(return_value=mock_user.company_id),
         ):
             result = await check_rate_limit(
                 endpoint="/api/v1/documents",
@@ -427,15 +456,20 @@ class TestTenantRateLimitsAPI:
         from fastapi import HTTPException
 
         mock_user = MagicMock()
-        mock_user.current_company_id = None
+        mock_user.is_superuser = False
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_rate_limit(
-                endpoint="/api/v1/documents",
-                method="GET",
-                current_user=mock_user,
-                db=AsyncMock(),
-            )
+        # B1: Keine Firmenzuordnung -> get_user_company_id() liefert None.
+        with patch(
+            "app.api.v1.tenant_rate_limits.get_user_company_id",
+            new=AsyncMock(return_value=None),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_rate_limit(
+                    endpoint="/api/v1/documents",
+                    method="GET",
+                    current_user=mock_user,
+                    db=AsyncMock(),
+                )
 
         assert exc_info.value.status_code == 400
 
@@ -448,8 +482,8 @@ class TestSubscriptionsAPI:
         """Mock admin user."""
         user = MagicMock()
         user.id = uuid4()
-        user.is_admin = True
-        user.current_company_id = uuid4()
+        user.is_superuser = True
+        user.company_id = uuid4()
         return user
 
     @pytest.fixture
@@ -539,7 +573,9 @@ class TestSubscriptionsAPI:
         from fastapi import HTTPException
 
         mock_user = MagicMock()
-        mock_user.is_admin = False
+        # B1: Admin-Rolle ist is_superuser, nicht is_admin. Explizit False,
+        # sonst liefert MagicMock truthy und der 403-Guard feuert nicht.
+        mock_user.is_superuser = False
 
         with pytest.raises(HTTPException) as exc_info:
             await get_subscription_statistics(
