@@ -29,7 +29,17 @@ def _mock_gpu_modules() -> None:
         if mod_name not in sys.modules:
             try:
                 __import__(mod_name)
-            except (ImportError, OSError):
+            except Exception:
+                # Bewusst breit: Eine GPU-Lib kann INSTALLIERT, aber beim Import
+                # defekt sein. Beispiel bitsandbytes -> triton waehlt bei
+                # sichtbarem NVIDIA-Treiber den CUDA-Backend und versucht, den
+                # Treiber-C-Code zur Import-Zeit zu kompilieren; ohne C-Compiler
+                # wirft das einen ``RuntimeError`` (nicht ImportError/OSError).
+                # Ein zu enges ``except`` liess diese Exception durch und brach
+                # die gesamte Test-Collection ab (Schein-Rot der unit/security/
+                # integ-Stufen). Fuer einen Offline-Unit-Lauf ist jede solche
+                # GPU-Lib ohnehin nur ein Mock - also fallen wir generisch auf
+                # den Mock zurueck, egal welche Import-Fehlerart auftritt.
                 mock_mod = MagicMock()
                 # torch.cuda.is_available() -> False fuer Tests
                 if mod_name == "torch":

@@ -26,11 +26,16 @@ class TestBackendManagerInitialization:
     @pytest.fixture
     def mock_all_agents(self):
         """Mock all OCR agents."""
+        # create=True: DeepSeekAgent/GOTOCRAgent existieren nur im
+        # backend_manager-Namespace, wenn torch.cuda zur Import-Zeit verfuegbar
+        # war (siehe backend_manager.py Z.149-159). Im CPU-OCR-Test-Container
+        # (CUDA_VISIBLE_DEVICES='') ist das nicht der Fall -> die Namen fehlen,
+        # und patch() ohne create=True schlaegt im Setup mit AttributeError fehl.
         with patch('app.services.backend_manager.SuryaDoclingAgent') as mock_surya, \
              patch('app.services.backend_manager.TORCH_AVAILABLE', True), \
              patch('app.services.backend_manager.torch') as mock_torch, \
-             patch('app.services.backend_manager.DeepSeekAgent') as mock_deepseek, \
-             patch('app.services.backend_manager.GOTOCRAgent') as mock_got_ocr:
+             patch('app.services.backend_manager.DeepSeekAgent', create=True) as mock_deepseek, \
+             patch('app.services.backend_manager.GOTOCRAgent', create=True) as mock_got_ocr:
 
             # Mock torch
             mock_torch.cuda.is_available.return_value = True
@@ -479,11 +484,13 @@ class TestBackendSelectionGerman:
     @pytest.fixture
     def manager_with_german_support(self, tmp_path):
         """Create manager for German text tests."""
+        # create=True: siehe Begruendung in TestBackendManagerInitialization.
+        # mock_all_agents - die GPU-Agent-Namen fehlen im CPU-Test-Container.
         with patch('app.services.backend_manager.SuryaDoclingAgent') as mock_surya, \
              patch('app.services.backend_manager.TORCH_AVAILABLE', True), \
              patch('app.services.backend_manager.torch') as mock_torch, \
-             patch('app.services.backend_manager.DeepSeekAgent') as mock_deepseek, \
-             patch('app.services.backend_manager.GOTOCRAgent') as mock_got_ocr:
+             patch('app.services.backend_manager.DeepSeekAgent', create=True) as mock_deepseek, \
+             patch('app.services.backend_manager.GOTOCRAgent', create=True) as mock_got_ocr:
 
             mock_torch.cuda.is_available.return_value = True
             mock_torch.cuda.get_device_name.return_value = "NVIDIA GeForce RTX 4080"
