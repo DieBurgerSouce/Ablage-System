@@ -188,7 +188,7 @@ class TestListAPIKeys:
             key = Mock()
             key.id = uuid4()
             key.name = f"Key {i+1}"
-            key.key_prefix = f"abc{i}1234"
+            key.prefix = f"abc{i}1234"  # Echte Modell-Spalte (Response key_prefix wird daraus befüllt)
             key.key_hash = f"abcdef{i}12345678901234567890"  # String, nicht Mock
             key.description = "Test key"
             key.permissions = ["read:documents"]
@@ -218,7 +218,7 @@ class TestListAPIKeys:
         key = Mock()
         key.id = uuid4()
         key.name = "Test Key"
-        key.key_prefix = "abc12345"
+        key.prefix = "abc12345"  # Echte Modell-Spalte (Response key_prefix wird daraus befüllt)
         key.key_hash = "abcdef1234567890abcdef1234567890"  # String, nicht Mock
         key.description = "Test key"
         key.permissions = ["read:documents"]
@@ -243,6 +243,8 @@ class TestListAPIKeys:
                     # Der volle Key sollte nie in der Liste erscheinen
                     assert not hasattr(key_response, 'api_key') or \
                            key_response.api_key is None
+                    # key_prefix kommt aus der echten prefix-Spalte, nicht aus key_hash
+                    assert key_response.key_prefix == "abc12345"
 
 
 # ==================== API Key Abrufen Tests ====================
@@ -272,7 +274,7 @@ class TestGetAPIKey:
         mock_key = Mock()
         mock_key.id = key_id
         mock_key.name = "Test Key"
-        mock_key.key_prefix = "abc12345"
+        mock_key.prefix = "abc12345"  # Echte Modell-Spalte (Response key_prefix wird daraus befüllt)
         mock_key.key_hash = "abcdef1234567890"  # String
         mock_key.description = "Test key"
         mock_key.permissions = ["read:documents"]
@@ -352,6 +354,7 @@ class TestUpdateAPIKey:
         mock_key.last_used = None
         mock_key.expires_at = None
         mock_key.key_hash = "abcdef1234567890"
+        mock_key.prefix = "abc12345"  # Echte Modell-Spalte (Response key_prefix wird daraus befüllt)
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
             service = mock_service.return_value
@@ -386,6 +389,7 @@ class TestUpdateAPIKey:
         mock_key.last_used = None
         mock_key.expires_at = None
         mock_key.key_hash = "abcdef1234567890"
+        mock_key.prefix = "abc12345"  # Echte Modell-Spalte (Response key_prefix wird daraus befüllt)
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
             service = mock_service.return_value

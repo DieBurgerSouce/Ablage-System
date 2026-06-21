@@ -39,11 +39,20 @@ def gdpdu_service() -> GDPdUExportService:
 
 @pytest.fixture
 def mock_company() -> MagicMock:
-    """Erstellt eine Mock-Firma."""
+    """Erstellt eine Mock-Firma.
+
+    Das Company-Modell hat KEIN 'address'-Feld; die Adresse wird vom Service
+    aus den Einzelfeldern street/street_number/postal_code/city zusammengesetzt.
+    """
     company = MagicMock()
     company.id = uuid.uuid4()
     company.name = "Test GmbH"
-    company.address = "Musterstrasse 123, 12345 Berlin"
+    company.street = "Musterstrasse"
+    company.street_number = "123"
+    company.postal_code = "12345"
+    company.city = "Berlin"
+    # Zusammengesetzte Adresse, wie der Service sie erzeugt (street_line, plz ort)
+    company.expected_address = "Musterstrasse 123, 12345 Berlin"
     return company
 
 
@@ -329,7 +338,7 @@ class TestExportPreview:
         assert "zeitraum" in preview
         assert "anzahl" in preview
         assert "tabellen" in preview
-        assert "geschätzte_größe_kb" in preview
+        assert "geschaetzte_groesse_kb" in preview
 
         assert preview["zeitraum"]["von"] == "2024-01-01"
         assert preview["zeitraum"]["bis"] == "2024-12-31"
@@ -391,7 +400,8 @@ class TestXMLGeneration:
         xml_content = gdpdu_service._generate_index_xml(mock_company, export_options)
 
         assert mock_company.name in xml_content
-        assert mock_company.address in xml_content
+        # Adresse wird aus Einzelfeldern zusammengesetzt (street/PLZ/Ort)
+        assert mock_company.expected_address in xml_content
 
     def test_xml_contains_date_range(
         self,
