@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class ApprovalMatrixBase(BaseModel):
     """Base Schema fuer ApprovalMatrix."""
-    department: str = Field(..., max_length=100, description="Abteilung (z.B. Einkauf, Finanzen)")
+    department: str = Field(..., min_length=1, max_length=100, description="Abteilung (z.B. Einkauf, Finanzen)")
     document_type: Optional[str] = Field(None, max_length=50, description="Dokumenttyp (z.B. invoice, contract)")
     amount_min: Decimal = Field(default=0, description="Mindestbetrag (EUR)")
     amount_max: Optional[Decimal] = Field(None, description="Hoechstbetrag (EUR, NULL = unbegrenzt)")
@@ -75,7 +75,7 @@ class ChainStepConfig(BaseModel):
 
 class ApprovalChainTemplateBase(BaseModel):
     """Base Schema fuer ApprovalChainTemplate."""
-    name: str = Field(..., max_length=255, description="Template-Name")
+    name: str = Field(..., min_length=1, max_length=255, description="Template-Name")
     description: Optional[str] = Field(None, description="Beschreibung")
     steps_config: List[ChainStepConfig] = Field(default_factory=list, description="Schritte-Konfiguration")
     is_default: bool = Field(default=False, description="Standard-Template fuer Firma")
@@ -135,7 +135,7 @@ class ApprovalAuditLogResponse(BaseModel):
 
 class ApprovalGroupBase(BaseModel):
     """Base Schema fuer ApprovalGroup."""
-    name: str = Field(..., max_length=255, description="Gruppenname")
+    name: str = Field(..., min_length=1, max_length=255, description="Gruppenname")
     description: Optional[str] = Field(None, description="Beschreibung")
     decision_mode: str = Field(
         default="any",

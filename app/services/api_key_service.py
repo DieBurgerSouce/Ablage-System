@@ -134,6 +134,7 @@ class APIKeyService:
         # Generiere Key
         api_key = self._generate_api_key()
         key_hash = self._hash_api_key(api_key)
+        key_prefix = self._get_key_prefix(api_key)
 
         # Berechne Ablaufdatum
         expires_at = None
@@ -148,6 +149,7 @@ class APIKeyService:
         db_key = APIKey(
             user_id=user_id,
             key_hash=key_hash,
+            prefix=key_prefix,
             name=name,
             description=description,
             permissions=permissions,

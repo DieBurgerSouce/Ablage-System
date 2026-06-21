@@ -161,11 +161,14 @@ class TaxAdvisorService:
         # SECURITY FIX: Pessimistic Lock verhindert Race Condition
         # SELECT ... FOR UPDATE sperrt die Zeile bis zum Commit/Rollback
         # Dies verhindert, dass parallele Requests dasselbe Token verwenden
+        # FOR UPDATE darf NICHT auf die nullable Seite eines OUTER JOIN angewendet
+        # werden (joinedload(company) erzeugt einen LEFT OUTER JOIN). Daher sperren
+        # wir gezielt nur die invites-Zeile via ``of=TaxAdvisorInvite``.
         result = await db.execute(
             select(TaxAdvisorInvite)
             .options(joinedload(TaxAdvisorInvite.company))
             .where(TaxAdvisorInvite.token_hash == token_hash)
-            .with_for_update(nowait=False)  # Wartet auf Lock statt Fehler
+            .with_for_update(nowait=False, of=TaxAdvisorInvite)  # Wartet auf Lock statt Fehler
         )
         invite = result.scalar_one_or_none()
 

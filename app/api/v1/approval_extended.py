@@ -438,6 +438,19 @@ async def create_escalation_rule(
             ),
         )
 
+    # Validierung: Ziel-User muss existieren (verhindert FK-Violation -> 500).
+    if request.escalation_target_user_id is not None:
+        from sqlalchemy import select as _select
+
+        target_exists = await db.execute(
+            _select(User.id).where(User.id == request.escalation_target_user_id)
+        )
+        if target_exists.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Ungueltige escalation_target_user_id: Benutzer nicht gefunden",
+            )
+
     rule = EscalationRule(
         company_id=company_id,
         name=request.name,

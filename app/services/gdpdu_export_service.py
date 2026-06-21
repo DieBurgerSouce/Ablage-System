@@ -395,7 +395,7 @@ class GDPdUExportService:
                 INVOICE_TABLE.name if options.include_invoices else None,
                 CONTRACT_TABLE.name if options.include_contracts else None,
             ],
-            "geschätzte_größe_kb": (doc_count * 0.5 + archive_count * 0.3) * 10,
+            "geschaetzte_groesse_kb": (doc_count * 0.5 + archive_count * 0.3) * 10,
         }
 
     # =========================================================================
@@ -631,9 +631,29 @@ class GDPdUExportService:
         supplier = ET.SubElement(root, "DataSupplier")
         name = ET.SubElement(supplier, "Name")
         name.text = company.name
-        if company.address:
+        # Adresse aus Einzelfeldern zusammensetzen (das Company-Modell hat kein
+        # 'address'-Feld, sondern street/street_number/postal_code/city).
+        address_parts = []
+        street_line = " ".join(
+            part for part in [
+                getattr(company, "street", None),
+                getattr(company, "street_number", None),
+            ] if part
+        ).strip()
+        if street_line:
+            address_parts.append(street_line)
+        city_line = " ".join(
+            part for part in [
+                getattr(company, "postal_code", None),
+                getattr(company, "city", None),
+            ] if part
+        ).strip()
+        if city_line:
+            address_parts.append(city_line)
+        company_address = ", ".join(address_parts)
+        if company_address:
             location = ET.SubElement(supplier, "Location")
-            location.text = company.address
+            location.text = company_address
         if options.comment:
             comment = ET.SubElement(supplier, "Comment")
             comment.text = options.comment

@@ -833,6 +833,9 @@ class APIKey(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
 
     key_hash = Column(String(255), unique=True, nullable=False)
+    # Prefix (erste Zeichen des Keys) zur Identifikation in der UI;
+    # DB-Spalte ist NOT NULL (siehe Migration), daher MUSS sie beim Anlegen gesetzt werden.
+    prefix = Column(String(10), nullable=False, index=True)
     name = Column(String(100))
     description = Column(String(255))
 
