@@ -623,3 +623,52 @@ Body text without headers."""
         assert result is not None
         assert result.subject == "(Kein Betreff)"
         assert result.from_address  # Should have some default
+
+
+class TestEInvoiceExtraction:
+    """Tests fuer _extract_einvoice_if_present (OPEN-44, ZUGFeRD-Empfang)."""
+
+    @pytest.fixture
+    def mock_db(self) -> AsyncMock:
+        return AsyncMock(spec=AsyncSession)
+
+    @pytest.fixture
+    def service(self, mock_db: AsyncMock) -> EmailImportService:
+        return EmailImportService(db=mock_db)
+
+    @pytest.mark.asyncio
+    async def test_skips_non_pdf_xml(self, service: EmailImportService) -> None:
+        """Bild-Anhang (.png) loest keine E-Rechnungs-Extraktion aus (No-Op)."""
+        att = EmailAttachment(filename="scan.png", content=b"\x89PNGdata", mime_type="image/png")
+        with patch("app.services.einvoice.parser_service.get_parser_service") as mock_get:
+            await service._extract_einvoice_if_present(
+                document_id=uuid4(), attachment=att, user_id=uuid4()
+            )
+            mock_get.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_pdf_calls_parse_and_store(self, service: EmailImportService) -> None:
+        """PDF-Anhang ruft parse_and_store auf (E-Rechnungs-Extraktion)."""
+        att = EmailAttachment(filename="rechnung.pdf", content=b"%PDF-1.7 data", mime_type="application/pdf")
+        parser = MagicMock()
+        parser.parse_and_store = AsyncMock(
+            return_value=MagicMock(success=True, format_detected=MagicMock(value="zugferd_2_3"))
+        )
+        with patch("app.services.einvoice.parser_service.get_parser_service", return_value=parser):
+            await service._extract_einvoice_if_present(
+                document_id=uuid4(), attachment=att, user_id=uuid4()
+            )
+            parser.parse_and_store.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_parser_failure_is_swallowed(self, service: EmailImportService) -> None:
+        """Parser-Fehler bricht den Import NICHT (best-effort, voll geguarded)."""
+        att = EmailAttachment(filename="rechnung.pdf", content=b"%PDF-broken", mime_type="application/pdf")
+        parser = MagicMock()
+        parser.parse_and_store = AsyncMock(side_effect=RuntimeError("parse boom"))
+        with patch("app.services.einvoice.parser_service.get_parser_service", return_value=parser):
+            # Darf NICHT raisen
+            await service._extract_einvoice_if_present(
+                document_id=uuid4(), attachment=att, user_id=uuid4()
+            )
+            parser.parse_and_store.assert_awaited_once()
