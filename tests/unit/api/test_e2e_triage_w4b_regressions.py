@@ -166,13 +166,9 @@ COMPANY_SCOPED_CALLS = [
     "mahn_task_service.assign_task",
     "mahn_task_service.snooze_task",
     "mahn_task_service.complete_task",
-    # dunning_stage_service write-Pfade passieren company_id=company_id; die
-    # read-Pfade get_stages/get_auto_dunning_settings sind USER-scoped (F-31,
-    # Commit 8dce67679) und stehen in DUNNING_USER_VALUE_CALLS.
-    "dunning_stage_service.create_stage",
-    "dunning_stage_service.update_stage",
-    "dunning_stage_service.reorder_stages",
-    "dunning_stage_service.update_auto_dunning_settings",
+    # ALLE dunning_stage_service-Pfade (read UND write) sind USER-scoped und
+    # stehen in DUNNING_USER_VALUE_CALLS (frueher waren die write-Pfade
+    # inkonsistent company_id=company_id -> behoben).
     # PaymentService wurde auf company-scope migriert (Service-Signaturen
     # erwarten company_id=, Route passiert company_id=company_id).
     "payment_service.list_payments",
@@ -188,11 +184,17 @@ USER_SCOPED_CALLS = [
 
 # F-31 (Commit 8dce67679): DunningStageConfig hat eine user_id-Spalte und KEINE
 # company_id-Spalte; der Service filtert intern DunningStageConfig.user_id ==
-# <param> (Parameter heisst missverstaendlich company_id). Die read-Pfade
-# passieren daher absichtlich company_id=current_user.id (User-Wert).
+# <param> (Parameter heisst missverstaendlich company_id). ALLE Pfade (read +
+# write) passieren daher company_id=current_user.id (User-Wert). Die write-Pfade
+# waren zuvor inkonsistent (company_id=company_id) -> Writes speicherten eine
+# Company-UUID in user_id und die Reads fanden sie nie. Behoben.
 DUNNING_USER_VALUE_CALLS = [
     "dunning_stage_service.get_stages",
     "dunning_stage_service.get_auto_dunning_settings",
+    "dunning_stage_service.create_stage",
+    "dunning_stage_service.update_stage",
+    "dunning_stage_service.reorder_stages",
+    "dunning_stage_service.update_auto_dunning_settings",
 ]
 
 
