@@ -454,9 +454,14 @@ class TestDashboardData:
         data = service_with_logs.get_dashboard_data()
         summary = data["summary"]
 
+        # F-31: Summary-Keys an DashboardSummary-Schema angeglichen
+        # (total_entries, error_count, warning_count, error_rate_percent,
+        # entries_per_minute) - kein warning_rate_percent mehr.
         assert summary["total_entries"] == 85
         assert "error_rate_percent" in summary
-        assert "warning_rate_percent" in summary
+        assert "error_count" in summary
+        assert "warning_count" in summary
+        assert "entries_per_minute" in summary
 
 
 # =============================================================================

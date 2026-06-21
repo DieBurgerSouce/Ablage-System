@@ -411,18 +411,26 @@ class TestModelInfoEndpoint:
 
         with patch("app.api.v1.routing.RoutingPredictor") as MockPredictor:
             mock_predictor = MockPredictor.return_value
-            mock_predictor.model_version = "1.0.0"
-            mock_predictor.last_trained = datetime.now(timezone.utc)
-            mock_predictor.training_samples = 5000
-            mock_predictor.accuracy_by_target = {"user": 0.85}
-            mock_predictor.model = MagicMock()  # ML-Modell vorhanden
+            # F-31: Endpoint baut die Antwort aus MODEL_VERSION_PREFIX + get_statistics()
+            # auf (nicht mehr aus model_version/last_trained/training_samples/model).
+            mock_predictor.MODEL_VERSION_PREFIX = "routing-v1"
+            mock_predictor.get_statistics.return_value = {
+                "predictions_count": 5000,
+                "correct_predictions": 4250,
+                "accuracy": 0.85,
+                "user_rules_count": 3,
+                "priority_rules_count": 2,
+                "has_ml_model": True,  # ML-Modell vorhanden
+            }
 
             response = await get_model_info(
                 db=mock_db,
                 current_user=sample_user,
             )
 
-        assert response.model_version == "1.0.0"
+        # has_ml_model=True -> Version ohne "-rules-only"-Suffix
+        assert response.model_version == "routing-v1"
+        assert response.training_samples == 5000
         assert response.is_ml_model is True
 
 

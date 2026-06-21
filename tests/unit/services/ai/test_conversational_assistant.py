@@ -38,11 +38,20 @@ from app.services.ai.conversational_assistant import (
 
 @pytest.fixture
 def service():
-    """Erstellt eine Service-Instanz mit gemocktem Ollama."""
+    """Erstellt eine Service-Instanz mit gemocktem Ollama.
+
+    Wichtig: ``generate`` wird als nicht erreichbar gemockt, damit die
+    Intent-Klassifikation deterministisch auf den Keyword-Klassifikator
+    zurueckfaellt (die LLM-Verfeinerung ist ein Laufzeit-Verhalten und
+    darf einen Offline-Unit-Test nicht von einem live laufenden Ollama
+    abhaengig machen). Tests, die das LLM-Verhalten pruefen wollen,
+    ueberschreiben ``svc._ollama.generate`` selbst.
+    """
     with patch.object(OllamaClient, 'is_available', new_callable=AsyncMock) as mock_available:
         mock_available.return_value = True
         svc = ConversationalAssistantService()
         svc._enabled = True
+        svc._ollama.generate = AsyncMock(side_effect=ConnectionError("Ollama im Unit-Test nicht verfuegbar"))
         yield svc
 
 
