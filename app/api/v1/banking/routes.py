@@ -3037,7 +3037,11 @@ async def create_dunning_stage(
     try:
         return await dunning_stage_service.create_stage(
             db=db,
-            company_id=company_id,
+            # F-31-Konsistenz: DunningStageConfig ist USER-scoped (Model hat user_id,
+            # keine company_id-Spalte; Service filtert user_id == <param>). Die
+            # READ-Pfade uebergeben current_user.id -> WRITE-Pfade ebenso, sonst
+            # speichern Writes eine Company-UUID in user_id und die Reads finden sie nie.
+            company_id=current_user.id,
             stage_number=request.stage_number,
             stage_name=request.stage_name,
             trigger_days_after_due=request.trigger_days_after_due,
@@ -3074,7 +3078,7 @@ async def update_dunning_stage(
     try:
         return await dunning_stage_service.update_stage(
             db=db,
-            company_id=company_id,
+            company_id=current_user.id,  # F-31-Konsistenz: USER-scoped (s. create_dunning_stage)
             stage_id=stage_id,
             stage_name=request.stage_name,
             trigger_days_after_due=request.trigger_days_after_due,
@@ -3112,7 +3116,7 @@ async def reorder_dunning_stages(
     try:
         return await dunning_stage_service.reorder_stages(
             db=db,
-            company_id=company_id,
+            company_id=current_user.id,  # F-31-Konsistenz: USER-scoped (s. create_dunning_stage)
             stage_ids=request.stage_ids,
         )
     except ValueError as e:
@@ -3175,7 +3179,7 @@ async def update_auto_dunning_settings(
     try:
         return await dunning_stage_service.update_auto_dunning_settings(
             db=db,
-            company_id=company_id,
+            company_id=current_user.id,  # F-31-Konsistenz: USER-scoped (s. create_dunning_stage)
             settings=request,
         )
     except ValueError as e:
