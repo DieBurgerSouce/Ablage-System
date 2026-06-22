@@ -12,7 +12,15 @@ OCR noetig).
 import pytest
 from unittest.mock import patch, MagicMock
 
-from app.services import ocr
+# app/services/ocr.py koexistiert mit dem Package app/services/ocr/ und wird von
+# dessen __init__.py via importlib als Ad-hoc-Modul (_ocr_module) geladen;
+# quick_ocr_preview wird daraus re-exportiert. Die gehaertete Funktion liest ihre
+# DoS-Guards (PILLOW_AVAILABLE, Image, OCR_MAX_*, OCR_PREVIEW_TIMEOUT_SECONDS) aus
+# DIESEM Modul-Namespace. Patches muessen daher auf genau dieser Instanz greifen,
+# nicht auf dem Package-Namespace (der die Konstanten gar nicht hat).
+from app.services import ocr as _ocr_pkg
+
+ocr = _ocr_pkg._ocr_module
 
 
 @pytest.mark.asyncio
