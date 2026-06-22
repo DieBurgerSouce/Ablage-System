@@ -490,8 +490,10 @@ class DocumentChunkingService:
                 ))
                 chunk_index += 1
 
-            # Nächste Position mit Overlap
-            i += chunk_size - overlap
+            # Nächste Position mit Overlap.
+            # GUARD: Schritt MUSS >= 1 sein, sonst Endlosschleife (terminiert nie),
+            # falls overlap >= chunk_size oder chunk_size <= 0 (degenerierte Config).
+            i += max(1, chunk_size - overlap)
 
         return chunks
 
