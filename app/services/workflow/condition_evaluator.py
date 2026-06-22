@@ -16,6 +16,7 @@ FieldValue = Union[str, int, float, bool, list, dict, None]
 
 import structlog
 from app.core.safe_errors import safe_error_log
+from app.core.safe_regex import safe_match
 from typing import Any
 
 if TYPE_CHECKING:
@@ -41,7 +42,8 @@ class ConditionEvaluator:
         "not_contains": lambda a, b: str(b).lower() not in str(a).lower() if a is not None else True,
         "starts_with": lambda a, b: str(a).lower().startswith(str(b).lower()) if a is not None else False,
         "ends_with": lambda a, b: str(a).lower().endswith(str(b).lower()) if a is not None else False,
-        "regex": lambda a, b: bool(re.match(b, str(a), re.IGNORECASE)) if a is not None else False,
+        # ReDoS-Schutz: user-geliefertes Pattern via safe_match (Denylist + Timeout).
+        "regex": lambda a, b: bool(safe_match(b, str(a), re.IGNORECASE)) if a is not None else False,
 
         # Numerische Operatoren
         "greater_than": lambda a, b: _safe_float(a) > _safe_float(b),
