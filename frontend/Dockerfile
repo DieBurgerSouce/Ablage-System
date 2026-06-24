@@ -1,7 +1,7 @@
 # Stage 1: Build
 # Pin base image digest for reproducible builds
 # Update digest via: docker manifest inspect node:22.12-alpine3.21
-FROM node:22.12-alpine3.21@sha256:513c40ed37f6a5b7200de0a9a18e963d8c049c0427bbc9e4fc5cd16ef8881114 AS builder
+FROM node:25.2-alpine3.21@sha256:32509199057d74a987fdd88cde00fdfd48ef52469adbd6bd11969fc701477761 AS builder
 
 WORKDIR /app
 
