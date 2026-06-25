@@ -35,6 +35,13 @@ from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
+# DoS-Haertung (2026-06-25): die text_similarity-Metrik in _calculate_quality_metrics
+# nutzt SequenceMatcher.ratio() (~O(L^2)) ueber die VOLLEN OCR-Texte (original vs
+# korrigiert). Bei pathologisch grossem OCR-Text -> Memory/CPU-Explosion im Worker.
+# Die Metrik ist nur ein "wie viel hat sich geaendert"-Mass -> auf den Anfang kappen
+# ist semantisch ausreichend und beschraenkt die Kosten auf O(MAX^2)=konstant.
+MAX_SIMILARITY_TEXT_LEN = 100_000
+
 # Try to import Hunspell (optional dependency)
 try:
     import hunspell
@@ -1788,8 +1795,12 @@ class GermanCorrectionAgent(PostprocessingAgent):
         )
 
         # Calculate text similarity (how much changed)
+        # DoS-Haertung: Inputs vor dem ~O(L^2)-SequenceMatcher kappen (Metrik =
+        # "wie viel hat sich geaendert", der Anfang ist repraesentativ).
         text_similarity = SequenceMatcher(
-            None, original_text, corrected_text
+            None,
+            original_text[:MAX_SIMILARITY_TEXT_LEN],
+            corrected_text[:MAX_SIMILARITY_TEXT_LEN],
         ).ratio()
 
         # Umlaut density (expected for German text)
