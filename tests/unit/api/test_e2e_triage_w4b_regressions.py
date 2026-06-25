@@ -241,7 +241,11 @@ class TestB2BankingCompanyScope:
 
     def test_all_company_scoped_calls_pass_company_id(self):
         """Statisches Netz: KEIN company-scoped Service-Call passiert mehr
-        user_id=; alle passieren company_id=company_id (36 Call-Sites)."""
+        user_id=; alle passieren company_id=company_id (32 Call-Sites).
+
+        Hinweis: 32 statt vormals 36 — die 4 dunning-WRITE-Pfade
+        (create/update/reorder_stages + update_auto_dunning_settings) sind
+        seit dem USER-scope-Fix in DUNNING_USER_VALUE_CALLS verschoben."""
         from app.api.v1 import banking
 
         source = inspect.getsource(banking.routes)
@@ -258,7 +262,7 @@ class TestB2BankingCompanyScope:
                 assert "company_id=company_id" in block, (
                     f"{target} passiert kein company_id=company_id"
                 )
-        assert total_calls == 36
+        assert total_calls == 32
 
     def test_user_scoped_services_untouched(self):
         """Kein Overshoot: aging_report_service erwartet weiterhin user_id -

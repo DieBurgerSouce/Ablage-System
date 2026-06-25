@@ -439,7 +439,9 @@ class TestRetryWithBackoff:
             jitter=False  # Disable jitter for predictable test
         )
         async def measure_backoff():
-            delays.append(time.time())
+            # monotonic() statt time(): Wall-Clock kann rueckwaerts springen
+            # (NTP-Resync, z.B. nach Reboot) -> negative Dauer -> Flake.
+            delays.append(time.monotonic())
             if len(delays) < 3:
                 raise ValueError("Retry")
             return "success"
