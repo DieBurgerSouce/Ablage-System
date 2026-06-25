@@ -140,13 +140,31 @@ def normalize_text(text: str) -> str:
     return text
 
 
+# DoS-Haertung (2026-06-25): SequenceMatcher.ratio() ist ~O(len1*len2). Bei
+# angreifer-kontrolliertem Such-Input (z.B. POST-Suche mit Riesen-String) wuerde
+# EIN Vergleich CPU-spinnen, ueber die volle Entity-Tabelle multipliziert sich das.
+# Reale Entity-Namen/Matchcodes sind kurz -> Inputs vor dem Vergleich hart kappen
+# (kein Genauigkeitsverlust bei realen Daten, killt die O(L^2)-Explosion).
+MAX_SIMILARITY_INPUT_LEN = 256
+
+# Obergrenze fuer Fuzzy-Kandidaten pro Suche (find_by_matchcode laeuft sonst die
+# VOLLE Entity-Tabelle synchron durch -> O(N)). Pilot-Tabellen liegen weit darunter.
+MAX_FUZZY_CANDIDATES = 10_000
+
+
 def calculate_similarity(text1: str, text2: str) -> float:
-    """Berechnet Ähnlichkeit zwischen zwei Texten (0.0-1.0)."""
+    """Berechnet Ähnlichkeit zwischen zwei Texten (0.0-1.0).
+
+    DoS-Haertung: Inputs werden auf MAX_SIMILARITY_INPUT_LEN gekappt, damit ein
+    angreifer-kontrollierter Riesen-String den ~O(L^2)-SequenceMatcher nicht in
+    einen CPU-Spin treibt. Reale Namen/Matchcodes sind << 256 Zeichen, daher
+    praktisch verlustfrei.
+    """
     if not text1 or not text2:
         return 0.0
-    return SequenceMatcher(
-        None, normalize_text(text1), normalize_text(text2)
-    ).ratio()
+    a = normalize_text(text1[:MAX_SIMILARITY_INPUT_LEN])[:MAX_SIMILARITY_INPUT_LEN]
+    b = normalize_text(text2[:MAX_SIMILARITY_INPUT_LEN])[:MAX_SIMILARITY_INPUT_LEN]
+    return SequenceMatcher(None, a, b).ratio()
 
 
 class EntitySearchService:
@@ -417,8 +435,20 @@ class EntitySearchService:
         if entity_type:
             stmt = stmt.where(BusinessEntity.entity_type == entity_type.value)
 
+        # DoS-Haertung (2026-06-25): fuzzy-Matching laeuft synchron ueber JEDEN
+        # Kandidaten (O(N)). Kandidaten SQL-seitig kappen, damit eine einzelne
+        # Suche nicht die volle Entity-Tabelle CPU-scannt (+1, um den Cap-Hit zu
+        # erkennen). Pilot-Tabellen << Cap, daher praktisch verlustfrei.
+        stmt = stmt.limit(MAX_FUZZY_CANDIDATES + 1)
+
         result = await self.db.execute(stmt)
         entities = result.scalars().all()
+        if len(entities) > MAX_FUZZY_CANDIDATES:
+            logger.warning(
+                "find_by_matchcode_candidate_cap_hit",
+                cap=MAX_FUZZY_CANDIDATES,
+            )
+            entities = entities[:MAX_FUZZY_CANDIDATES]
 
         # Ähnlichkeit berechnen
         matches: list[tuple[BusinessEntity, float]] = []
