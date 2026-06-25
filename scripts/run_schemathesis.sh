@@ -21,6 +21,13 @@ export PYTHONIOENCODING=utf-8 PYTHONUTF8=1
 BASE_URL="${BASE_URL:-http://localhost:8000}"
 MAX_EXAMPLES="${MAX_EXAMPLES:-25}"
 MAX_FAILURES="${MAX_FAILURES:-10}"
+# Per-Request-Timeout (Sekunden). KRITISCH gegen den dokumentierten api-Hang/DoS
+# (KNOWN_ISSUES 2026-06-21): EIN gefuzzter Request kann einen Sync-`def`-Handler in
+# einen non-cancellable Threadpool-CPU-Spin treiben -> ohne Timeout wartet
+# Schemathesis unbegrenzt auf diese eine Response (Stage-Hang >2 h statt Completion).
+# Mit --request-timeout wird der haengende Endpoint zum *gemeldeten* Timeout
+# (identifiziert ihn fuer die Handler-Haertung) statt die ganze Stage zu blockieren.
+REQUEST_TIMEOUT="${REQUEST_TIMEOUT:-30}"
 ADMIN_EMAIL="${E2E_ADMIN_EMAIL:-admin@localhost.com}"
 ADMIN_PASSWORD="${E2E_ADMIN_PASSWORD:-admin123}"
 SEED="${SEED:-1}"
@@ -66,7 +73,7 @@ if [ -z "$TOKEN" ]; then
     exit 1
 fi
 
-echo ">> Starte Schemathesis (max-examples=$MAX_EXAMPLES, Check: not_a_server_error)..."
+echo ">> Starte Schemathesis (max-examples=$MAX_EXAMPLES, request-timeout=${REQUEST_TIMEOUT}s, Check: not_a_server_error)..."
 # Ausgeschlossen: /api/v1/test/ (Reset wuerde den Seed-Zustand zerstoeren),
 # Auth-Logout (wuerde das Fuzz-Token invalidieren) sowie DELETE-Methoden
 # (erste Ausbaustufe konservativ - kein Wegfuzzen von Dev-Daten).
@@ -80,6 +87,7 @@ echo ">> Starte Schemathesis (max-examples=$MAX_EXAMPLES, Check: not_a_server_er
     --checks not_a_server_error \
     --max-examples "$MAX_EXAMPLES" \
     --max-failures "$MAX_FAILURES" \
+    --request-timeout "$REQUEST_TIMEOUT" \
     --exclude-method DELETE \
     --exclude-path-regex '^/api/v1/(test/|auth/logout|ai/|ai-chat/|assistant/)' \
     "$@"

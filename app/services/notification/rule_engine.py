@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import NotificationRule, User, UserNotification
 from app.services.events.event_bus import Event, EventBus, get_event_bus
 from app.core.safe_errors import safe_error_log
+from app.core.safe_regex import safe_match
 from app.services.notifications.smart_notification_engine import (
     SmartNotificationEngine,
     NotificationEvent,
@@ -174,7 +175,8 @@ class RuleConditionMatcher:
         "not_in": lambda a, b: a not in b if isinstance(b, (list, tuple, set)) else False,
         "is_null": lambda a, _: a is None,
         "is_not_null": lambda a, _: a is not None,
-        "regex": lambda a, b: bool(re.match(b, str(a))) if a else False,
+        # ReDoS-Schutz: user-geliefertes Pattern via safe_match (Denylist + Timeout).
+        "regex": lambda a, b: bool(safe_match(b, str(a))) if a else False,
     }
 
     def match(self, conditions: Dict[str, Any], data: Dict[str, Any]) -> bool:

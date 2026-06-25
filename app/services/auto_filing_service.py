@@ -25,6 +25,7 @@ from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_regex import safe_search
 from app.db.models import Document, BusinessEntity
 from app.db.models_approval_extended import AutoFilingRule
 from app.db.models_folder import FolderDocument
@@ -350,7 +351,7 @@ class AutoFilingService:
         if regex_pattern:
             total_checks += 1
             try:
-                if re.search(str(regex_pattern), doc_text, re.IGNORECASE):
+                if safe_search(str(regex_pattern), doc_text, re.IGNORECASE):
                     matches += 1
             except re.error:
                 pass

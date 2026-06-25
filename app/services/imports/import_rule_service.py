@@ -18,6 +18,8 @@ import structlog
 from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_regex import safe_search
+
 logger = structlog.get_logger(__name__)
 
 
@@ -367,7 +369,7 @@ class ImportRuleService:
             return actual_str.endswith(expected_str)
         elif operator == "regex":
             try:
-                return bool(re.search(expected_value or "", str(actual_value), re.IGNORECASE))
+                return bool(safe_search(expected_value or "", str(actual_value), re.IGNORECASE))
             except re.error:
                 logger.warning(
                     "invalid_regex_pattern",
