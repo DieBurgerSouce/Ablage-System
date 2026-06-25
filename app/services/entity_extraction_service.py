@@ -29,6 +29,14 @@ from sqlalchemy.orm import selectinload
 
 logger = structlog.get_logger(__name__)
 
+# DoS-Haertung (2026-06-25): extract_entities laeuft ~20 Regex-finditer-Scans ueber
+# den vollen OCR-Text. Die Patterns sind linear (disjunkte Klassen, KEIN
+# catastrophic backtracking), aber ueber pathologisch grossen OCR-Text (riesiges/
+# praepariertes Upload-Dokument) summiert sich das linear zu spuerbarer CPU-Last.
+# Reale Dokumente liefern << 2 MB Text (Geschaeftspartner stehen im Kopf/Fuss).
+# Daher harte Input-Schranke -> beschraenkt alle Scans, ohne Patterns zu aendern.
+MAX_EXTRACTION_TEXT_LEN = 2_000_000
+
 
 # =============================================================================
 # DATA CLASSES
@@ -431,6 +439,17 @@ class EntityExtractionService:
         """
         if not text or not text.strip():
             return EntityExtractionResult()
+
+        # DoS-Haertung: pathologisch grossen OCR-Text vor den ~20 finditer-Scans
+        # hart kappen (reale Dokumente << Schranke; verhindert lineare CPU-Last-
+        # Akkumulation bei praepariertem Riesen-Upload).
+        if len(text) > MAX_EXTRACTION_TEXT_LEN:
+            logger.warning(
+                "entity_extraction_text_truncated",
+                original_length=len(text),
+                cap=MAX_EXTRACTION_TEXT_LEN,
+            )
+            text = text[:MAX_EXTRACTION_TEXT_LEN]
 
         self._extraction_stats["total_extractions"] += 1
 
