@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
-import { Users, Music, Settings, LayoutDashboard, Landmark, Brain, Eye, AlertTriangle, ListTodo, Receipt, Gauge, Shield, LayoutGrid, Scale, CheckCircle, GraduationCap, ShieldCheck, Building2 } from 'lucide-react'
+import { Users, Music, Settings, LayoutDashboard, Landmark, Brain, Eye, AlertTriangle, ListTodo, Receipt, Gauge, Shield, LayoutGrid, Scale, CheckCircle, GraduationCap, ShieldCheck, Building2, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useActiveJobsCount } from '@/features/job-queue/hooks'
 
@@ -29,6 +29,7 @@ function AdminLayout() {
         { href: '/admin/cross-tenant', label: 'Cross-Tenant Berichte', icon: Building2 },
         { href: '/admin/dlp', label: 'DLP Policies', icon: Shield },
         { href: '/admin/audit-trail', label: 'Audit-Trail', icon: ShieldCheck },
+        { href: '/admin/gdpr-processing', label: 'Art.30 Verzeichnis', icon: FileText },
         { href: '/admin/rules', label: 'Business Rules', icon: Scale },
         { href: '/admin/widgets', label: 'Widgets', icon: LayoutGrid },
         { href: '/admin/settings', label: 'Einstellungen', icon: Settings },
