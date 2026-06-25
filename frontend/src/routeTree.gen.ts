@@ -200,6 +200,7 @@ import { Route as AdminJobQueueRouteImport } from './app/routes/admin.job-queue'
 import { Route as AdminIntegrationSyncRouteImport } from './app/routes/admin.integration-sync'
 import { Route as AdminImportsRouteImport } from './app/routes/admin.imports'
 import { Route as AdminImportWizardRouteImport } from './app/routes/admin.import-wizard'
+import { Route as AdminGdprProcessingRouteImport } from './app/routes/admin.gdpr-processing'
 import { Route as AdminFirmenRouteImport } from './app/routes/admin.firmen'
 import { Route as AdminEuerExportRouteImport } from './app/routes/admin.euer-export'
 import { Route as AdminEsgRouteImport } from './app/routes/admin.esg'
@@ -1274,6 +1275,11 @@ const AdminImportWizardRoute = AdminImportWizardRouteImport.update({
   path: '/import-wizard',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminGdprProcessingRoute = AdminGdprProcessingRouteImport.update({
+  id: '/gdpr-processing',
+  path: '/gdpr-processing',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFirmenRoute = AdminFirmenRouteImport.update({
   id: '/firmen',
   path: '/firmen',
@@ -1963,6 +1969,7 @@ export interface FileRoutesByFullPath {
   '/admin/esg': typeof AdminEsgRouteWithChildren
   '/admin/euer-export': typeof AdminEuerExportRoute
   '/admin/firmen': typeof AdminFirmenRouteWithChildren
+  '/admin/gdpr-processing': typeof AdminGdprProcessingRoute
   '/admin/import-wizard': typeof AdminImportWizardRoute
   '/admin/imports': typeof AdminImportsRouteWithChildren
   '/admin/integration-sync': typeof AdminIntegrationSyncRoute
@@ -2246,6 +2253,7 @@ export interface FileRoutesByTo {
   '/admin/elster-export': typeof AdminElsterExportRoute
   '/admin/euer-export': typeof AdminEuerExportRoute
   '/admin/firmen': typeof AdminFirmenRouteWithChildren
+  '/admin/gdpr-processing': typeof AdminGdprProcessingRoute
   '/admin/import-wizard': typeof AdminImportWizardRoute
   '/admin/integration-sync': typeof AdminIntegrationSyncRoute
   '/admin/job-queue': typeof AdminJobQueueRoute
@@ -2540,6 +2548,7 @@ export interface FileRoutesById {
   '/admin/esg': typeof AdminEsgRouteWithChildren
   '/admin/euer-export': typeof AdminEuerExportRoute
   '/admin/firmen': typeof AdminFirmenRouteWithChildren
+  '/admin/gdpr-processing': typeof AdminGdprProcessingRoute
   '/admin/import-wizard': typeof AdminImportWizardRoute
   '/admin/imports': typeof AdminImportsRouteWithChildren
   '/admin/integration-sync': typeof AdminIntegrationSyncRoute
@@ -2845,6 +2854,7 @@ export interface FileRouteTypes {
     | '/admin/esg'
     | '/admin/euer-export'
     | '/admin/firmen'
+    | '/admin/gdpr-processing'
     | '/admin/import-wizard'
     | '/admin/imports'
     | '/admin/integration-sync'
@@ -3128,6 +3138,7 @@ export interface FileRouteTypes {
     | '/admin/elster-export'
     | '/admin/euer-export'
     | '/admin/firmen'
+    | '/admin/gdpr-processing'
     | '/admin/import-wizard'
     | '/admin/integration-sync'
     | '/admin/job-queue'
@@ -3421,6 +3432,7 @@ export interface FileRouteTypes {
     | '/admin/esg'
     | '/admin/euer-export'
     | '/admin/firmen'
+    | '/admin/gdpr-processing'
     | '/admin/import-wizard'
     | '/admin/imports'
     | '/admin/integration-sync'
@@ -5046,6 +5058,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminImportWizardRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/gdpr-processing': {
+      id: '/admin/gdpr-processing'
+      path: '/gdpr-processing'
+      fullPath: '/admin/gdpr-processing'
+      preLoaderRoute: typeof AdminGdprProcessingRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/firmen': {
       id: '/admin/firmen'
       path: '/firmen'
@@ -6090,6 +6109,7 @@ interface AdminRouteChildren {
   AdminEsgRoute: typeof AdminEsgRouteWithChildren
   AdminEuerExportRoute: typeof AdminEuerExportRoute
   AdminFirmenRoute: typeof AdminFirmenRouteWithChildren
+  AdminGdprProcessingRoute: typeof AdminGdprProcessingRoute
   AdminImportWizardRoute: typeof AdminImportWizardRoute
   AdminImportsRoute: typeof AdminImportsRouteWithChildren
   AdminIntegrationSyncRoute: typeof AdminIntegrationSyncRoute
@@ -6159,6 +6179,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminEsgRoute: AdminEsgRouteWithChildren,
   AdminEuerExportRoute: AdminEuerExportRoute,
   AdminFirmenRoute: AdminFirmenRouteWithChildren,
+  AdminGdprProcessingRoute: AdminGdprProcessingRoute,
   AdminImportWizardRoute: AdminImportWizardRoute,
   AdminImportsRoute: AdminImportsRouteWithChildren,
   AdminIntegrationSyncRoute: AdminIntegrationSyncRoute,
