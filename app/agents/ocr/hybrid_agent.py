@@ -12,6 +12,12 @@ from .got_ocr_agent import GOTOCRAgent
 from .surya_docling_agent import SuryaDoclingAgent
 from app.core.safe_errors import safe_error_detail
 
+# DoS-Haertung (2026-06-25): Obergrenze fuer Entity-Wert-Laengen vor der
+# O(L^2)-Levenshtein-Aehnlichkeit (_calculate_similarity). Reale Entity-Werte
+# (Namen, Nummern, Datumsangaben) sind << 4000 Zeichen; ein anomal grosser Wert
+# wird gekappt, damit die quadratische Distanz nicht explodiert.
+MAX_ENTITY_VALUE_LEN = 4000
+
 
 class HybridOCRAgent(OCRAgent):
     """
@@ -645,6 +651,12 @@ class HybridOCRAgent(OCRAgent):
 
         if str_a == str_b:
             return 1.0
+
+        # DoS-Haertung (2026-06-25): _levenshtein_distance ist O(L^2). Diese Funktion
+        # vergleicht Entity-WERTE (kurze Felder), aber ein anomal grosser Wert (z.B.
+        # fehlerhafte Extraktion) wuerde die O(L^2)-Schleife sprengen -> defensiv kappen.
+        str_a = str_a[:MAX_ENTITY_VALUE_LEN]
+        str_b = str_b[:MAX_ENTITY_VALUE_LEN]
 
         # Use internal Levenshtein implementation
         distance = self._levenshtein_distance(str_a, str_b)

@@ -28,6 +28,11 @@ from app.german_validator import GermanValidator
 
 logger = structlog.get_logger(__name__)
 
+# DoS-Haertung (2026-06-25): Obergrenze fuer Entity-Wert-Laengen vor der
+# O(L^2)-SequenceMatcher-Aehnlichkeit im Cross-Entity-Konflikt-Check. Reale
+# PERSON/ORGANIZATION-Werte sind kurz; ein anomal grosser Wert wird gekappt.
+MAX_QA_VALUE_LEN = 4000
+
 
 @dataclass
 class QualityMetrics:
@@ -1583,9 +1588,14 @@ class QAAgent(PostprocessingAgent):
                 for i, val1 in enumerate(normalized):
                     for j, val2 in enumerate(normalized[i + 1:], i + 1):
                         if val1 != val2:
-                            # Check similarity
+                            # Check similarity (DoS-Haertung: Werte vor dem
+                            # O(L^2)-SequenceMatcher kappen)
                             from difflib import SequenceMatcher
-                            ratio = SequenceMatcher(None, val1, val2).ratio()
+                            ratio = SequenceMatcher(
+                                None,
+                                val1[:MAX_QA_VALUE_LEN],
+                                val2[:MAX_QA_VALUE_LEN],
+                            ).ratio()
                             if 0.7 < ratio < 1.0:
                                 issues.append({
                                     "type": QAIssueType.CROSS_ENTITY_CONFLICT,

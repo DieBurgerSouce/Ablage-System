@@ -20,6 +20,13 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+# DoS-Haertung (2026-06-25): Levenshtein (Wagner-Fischer) ist O(m*n) Zeit und im
+# Backtracking-Pfad O(m*n) Speicher. Aufrufer sind aktuell offline/curated
+# (ML-Training, Benchmark-Datasets) -> bounded; dieser Cap ist Defense-in-Depth,
+# falls je voller (praeparierter) OCR-Text hineinfliesst. ~100k Zeichen reicht
+# fuer reale CER/WER-Vergleiche (viele Seiten) und verhindert die O(m*n)-Explosion.
+MAX_LEVENSHTEIN_TEXT_LEN = 100_000
+
 
 # =============================================================================
 # Data Classes
@@ -246,6 +253,21 @@ class OCRQualityCalculator:
                 deletions=len(reference),
                 substitutions=0,
             )
+
+        # DoS-Haertung: ueberlange Inputs vor der O(m*n)-Matrix (Zeit + Backtracking-
+        # Speicher) kappen. Defense-in-Depth (Aufrufer sind aktuell curated/bounded).
+        if (
+            len(reference) > MAX_LEVENSHTEIN_TEXT_LEN
+            or len(hypothesis) > MAX_LEVENSHTEIN_TEXT_LEN
+        ):
+            logger.warning(
+                "levenshtein_inputs_truncated",
+                ref_len=len(reference),
+                hyp_len=len(hypothesis),
+                cap=MAX_LEVENSHTEIN_TEXT_LEN,
+            )
+            reference = reference[:MAX_LEVENSHTEIN_TEXT_LEN]
+            hypothesis = hypothesis[:MAX_LEVENSHTEIN_TEXT_LEN]
 
         m, n = len(reference), len(hypothesis)
 
