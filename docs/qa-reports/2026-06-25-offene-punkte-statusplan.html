@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ablage-System — Offene Punkte &amp; Status-Reconciliation (Stand 2026-06-25)</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161b22; --panel2:#1c232c; --border:#2a323d;
+    --txt:#e6edf3; --muted:#9aa7b4; --accent:#4493f8;
+    --red:#f8514955; --redb:#f85149; --amber:#d2992255; --amberb:#e3b341;
+    --green:#3fb95055; --greenb:#3fb950; --grey:#6e7681; --greyb:#8b949e;
+    --p0:#ff6b6b; --p1:#f85149; --p2:#e3b341; --p3:#58a6ff;
+    --shadow:0 2px 12px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;font-size:15px}
+  .wrap{display:flex;max-width:1500px;margin:0 auto}
+  /* Sidebar TOC */
+  nav.toc{position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;
+    width:280px;min-width:280px;padding:24px 16px;background:var(--panel);
+    border-right:1px solid var(--border);font-size:13.5px}
+  nav.toc h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:6px;margin:2px 0}
+  nav.toc a:hover{background:var(--panel2);color:var(--txt)}
+  nav.toc .lvl2{padding-left:22px;font-size:12.5px}
+  main{flex:1;padding:36px 48px;min-width:0;max-width:1180px}
+  header.hero{border-bottom:1px solid var(--border);padding-bottom:24px;margin-bottom:8px}
+  h1{font-size:30px;margin:0 0 6px;line-height:1.25}
+  .sub{color:var(--muted);font-size:15px}
+  h2.sec{font-size:23px;margin:46px 0 6px;padding-top:14px;border-top:1px solid var(--border)}
+  h3{font-size:18px;margin:28px 0 6px;color:#cdd9e5}
+  p{margin:10px 0}
+  code{background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;
+    font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#a5d6ff}
+  .lead{color:var(--muted);font-size:16px;max-width:900px}
+  /* Stat cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:24px 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+  .card .n{font-size:34px;font-weight:700;line-height:1}
+  .card .l{color:var(--muted);font-size:13px;margin-top:6px}
+  .card.green{border-color:var(--greenb)} .card.green .n{color:var(--greenb)}
+  .card.red{border-color:var(--redb)} .card.red .n{color:var(--redb)}
+  .card.amber{border-color:var(--amberb)} .card.amber .n{color:var(--amberb)}
+  .card.blue{border-color:var(--accent)} .card.blue .n{color:var(--accent)}
+  .card.grey{border-color:var(--grey)} .card.grey .n{color:var(--greyb)}
+  /* Badges */
+  .badge{display:inline-block;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid}
+  .b-open{background:var(--red);border-color:var(--redb);color:#ffc4c0}
+  .b-part{background:var(--amber);border-color:var(--amberb);color:#ffe9a8}
+  .b-done{background:var(--green);border-color:var(--greenb);color:#b6f0bd}
+  .b-defer{background:#6e768133;border-color:var(--grey);color:var(--greyb)}
+  .b-p0{background:#ff6b6b22;border-color:var(--p0);color:#ffb0b0}
+  .b-p1{background:var(--red);border-color:var(--p1);color:#ffc4c0}
+  .b-p2{background:var(--amber);border-color:var(--p2);color:#ffe9a8}
+  .b-p3{background:#58a6ff22;border-color:var(--p3);color:#a9d1ff}
+  /* Tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--panel);
+    border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#cdd9e5;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#1a212a}
+  td .id{font-weight:700;color:#e6edf3}
+  /* Callouts */
+  .callout{border-left:4px solid var(--accent);background:var(--panel);border-radius:0 10px 10px 0;
+    padding:14px 18px;margin:18px 0}
+  .callout.warn{border-color:var(--amberb)}
+  .callout.crit{border-color:var(--redb)}
+  .callout.ok{border-color:var(--greenb)}
+  .callout h4{margin:0 0 6px;font-size:15px}
+  .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin:14px 0;font-size:13px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .heat{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin:16px 0}
+  .heat .risk{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--panel)}
+  .heat .risk.hot{border-color:var(--redb);background:#2a181833}
+  .heat .risk.warm{border-color:var(--amberb)}
+  .heat .risk .rid{font-weight:700;font-size:13px}
+  .heat .risk .rt{font-size:12.5px;color:var(--muted);margin-top:4px}
+  footer{margin-top:60px;border-top:1px solid var(--border);padding-top:20px;color:var(--muted);font-size:13px}
+  .tag{font-size:11.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);
+    border-radius:5px;padding:1px 7px;margin-left:6px}
+  details{background:var(--panel);border:1px solid var(--border);border-radius:10px;margin:12px 0;padding:4px 16px}
+  summary{cursor:pointer;padding:10px 0;font-weight:600}
+  .src{font-size:12.5px;color:var(--muted)}
+  @media(max-width:980px){.wrap{flex-direction:column}nav.toc{position:static;height:auto;width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}main{padding:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+  <strong style="font-size:14px">📋 Offene Punkte</strong><br>
+  <span class="src">Ablage-System · 2026-06-25</span>
+  <h2>Inhalt</h2>
+  <a href="#summary">0 · Executive Summary</a>
+  <a href="#methodik">1 · Methodik &amp; Quellen</a>
+  <a href="#stale">2 · Stale entlarvt (erledigt ≠ offen)</a>
+  <a href="#offen">3 · Genuin offene Punkte (priorisiert)</a>
+  <a href="#offen" class="lvl2">P0 · Sofort / User-Action</a>
+  <a href="#offen" class="lvl2">P1 · Security</a>
+  <a href="#offen" class="lvl2">P2/P3 · Mittel/Niedrig</a>
+  <a href="#cleanup">4 · Teilweise / Cleanup</a>
+  <a href="#dod">5 · DoD- &amp; QA-Restposten</a>
+  <a href="#compliance">6 · Compliance-Restposten</a>
+  <a href="#roadmap">7 · Obsidian-Roadmap G01–G60</a>
+  <a href="#risiken" class="lvl2">Risiken R01–R27</a>
+  <a href="#strategie" class="lvl2">Strategiefragen F-01..F-05</a>
+  <a href="#deferred">8 · Deferred (bewusst)</a>
+  <a href="#next">9 · Empfohlene Reihenfolge</a>
+</nav>
+
+<main>
+<header class="hero">
+  <h1>Offene Punkte &amp; Status-Reconciliation</h1>
+  <div class="sub">Ablage-System · Enterprise Document Processing · <strong>Stand 2026-06-25</strong> · master @ <code>40e526cbf</code> (origin gepusht)</div>
+</header>
+
+<p class="lead">Dieses Dokument konsolidiert <strong>alle</strong> aktuell als „offen / nicht resolved / noch nicht angegangen" geführten Punkte aus Repo <em>und</em> Obsidian — und entlarvt dabei <strong>veraltete (stale) Status</strong>: Einträge, die irgendwo noch als offen stehen, in Wirklichkeit aber bereits erledigt sind. Jeder kritische Punkt wurde <strong>gegen den echten Code/Git-Stand verifiziert</strong> (Datei:Zeile als Beleg).</p>
+
+<!-- ============ 0 SUMMARY ============ -->
+<h2 class="sec" id="summary">0 · Executive Summary</h2>
+
+<div class="cards">
+  <div class="card green"><div class="n">~23</div><div class="l">Punkte als <strong>bereits erledigt</strong> entlarvt (stale)</div></div>
+  <div class="card red"><div class="n">7</div><div class="l">genuin offen; davon 2× P0 User-Action (W1-022 behoben, Schema-5xx war stale)</div></div>
+  <div class="card amber"><div class="n">2</div><div class="l">teilweise / Cleanup-Reste (jose, G19, G07 in Session erledigt)</div></div>
+  <div class="card blue"><div class="n">6</div><div class="l">DoD-/QA-Restposten</div></div>
+  <div class="card grey"><div class="n">7</div><div class="l">bewusst deferred (begründet)</div></div>
+  <div class="card"><div class="n">60</div><div class="l">Roadmap-Gaps G01–G60 (Obsidian, 5 Tiers)</div></div>
+</div>
+
+<div class="callout ok">
+  <h4>✅ Kern-Erkenntnis: Der Code ist viel weiter als die Register</h4>
+  <p>Das umfangreichste Findings-Register <code>WAVE1_EXPLORE_REGISTER.md</code> ist vom <strong>2026-06-11</strong>. Seitdem lief bis 2026-06-25 die Pilot-Hardening-Offensive. <strong>Mindestens ~22 dort/anderswo als „offen" geführte Punkte sind inzwischen erledigt</strong> — inklusive des angeblichen <strong>P0-Blockers „DEBUG=true bypasst 2FA"</strong> (längst durch einen Config-Validator geschlossen). Die alten Register wurden nur nicht nachgezogen.</p>
+</div>
+
+<div class="callout crit">
+  <h4>🔴 Was JETZT wirklich blockiert (P0, je &lt;15 Min, nur DU kannst es)</h4>
+  <p><strong>G01 – Slack-Webhook-URL</strong> und <strong>G10 – Sentry-DSN</strong> sind beides Platzhalter. Solange sie fehlen, gehen <em>Alerts</em> und <em>Error-Reports</em> ins Nichts — d.&nbsp;h. ein Backend-Crash im Pilot bliebe unbemerkt (genau Risiko <strong>R01</strong>). Das ist der einzige „echte" Sofort-Blocker und braucht keine Entwicklung, nur deine zwei URLs.</p>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:var(--redb)"></span> 🔴 genuin offen</span>
+  <span><span class="dot" style="background:var(--amberb)"></span> 🟡 teilweise</span>
+  <span><span class="dot" style="background:var(--greenb)"></span> ✅ erledigt / stale</span>
+  <span><span class="dot" style="background:var(--greyb)"></span> ⚪ deferred (bewusst)</span>
+</div>
+
+<div class="callout ok">
+  <h4>🔧 Session-Update 2026-06-26 — autonome Umsetzung (uncommitted, Working-Tree)</h4>
+  <p><strong>Erledigt &amp; verifiziert:</strong> jose-Cleanup (<code>pyproject.toml</code>→PyJWT) · W1-022 Metrics-Token fail-closed in Prod (<strong>18 Unit-Tests grün</strong>) · G07 Login-Rate-Limit zentralisiert (<code>RateLimitTier.LOGIN</code>) · G19 GoBD-Signatur als stale entlarvt · Schemathesis-5xx als stale entlarvt (bereits in <code>bf00f38d9</code>) + 1 Resthärtung (<code>betrag</code>-Bool→422).</p>
+  <p><strong>G03 (Backend, additiv):</strong> httpOnly+SameSite-Cookies auf login/2FA/refresh, logout löscht sie, <code>get_current_user</code> akzeptiert Cookie ODER Header; CSRF via bestehende Middleware (<strong>90 Auth-Tests grün</strong>). <strong>RLS:</strong> App setzt jetzt zusätzlich <code>app.current_tenant_id</code> + <code>app.current_user_is_superuser</code> (von Migration-210-FORCE-Policies geprüft, vorher nie gesetzt). Alle 8 Dateien py_compile + import-clean.</p>
+  <p><strong>Noch offen:</strong> G03-Frontend-Umstellung · RLS-Var-Konsolidierung (Policy-Migration) + Live-DB-Audit + DB-gestützter RLS-Integrationstest (Container) · G01/G10-Secrets (deine URLs).</p>
+</div>
+
+<!-- ============ 1 METHODIK ============ -->
+<h2 class="sec" id="methodik">1 · Methodik &amp; Quellen</h2>
+<p>Drei parallele Explore-Agenten haben alle Statusquellen geharvestet, eine vierte Welle aus drei Verifizierern hat die wichtigsten „offen"-Behauptungen <strong>gegen den echten Code</strong> geprüft (Verdikt = ✅ erledigt / 🔴 offen / 🟡 teilweise, jeweils mit Datei:Zeile).</p>
+<table>
+  <tr><th>Quelle</th><th>Inhalt</th><th>Aktualität</th></tr>
+  <tr><td><code>.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md</code></td><td>50 Findings W1-001…W1-050 (+30 widerlegt)</td><td>⚠️ <strong>11.06. — teils überholt</strong></td></tr>
+  <tr><td><code>.claude/reviews/2026-06-03/MOCK_DATA_REGISTER.md</code></td><td>Mock/Fake-Data M1–M23</td><td>⚠️ 03.06. — teils überholt</td></tr>
+  <tr><td><code>.claude/memory/KNOWN_ISSUES.md · RECENT_CHANGES.md · PROJECT_STATUS.md</code></td><td>Blocker B1–B4, api-Hang, Bug-Log</td><td>✅ bis 25.06.</td></tr>
+  <tr><td><code>docs/qa-reports/*</code> (zuletzt 2026-06-22-a-z-loop-3, 2026-06-20-goal-session-remediation)</td><td>A-Z-Loop-DoD, Schemathesis-Baseline</td><td>✅ aktuell</td></tr>
+  <tr><td><code>.claude/plans/*</code></td><td>Feature-Roadmaps, Teil-Pläne</td><td>gemischt</td></tr>
+  <tr><td><strong>Obsidian</strong> <code>C:\Users\benfi\Obsidian\Storage\_Ablage_System\*</code></td><td>GAP_ANALYSIS (G01–G60), Risiken (R01–R27, F-01..05), Roadmap, Sprint 0–6, Pilot_Readiness</td><td>✅ Produkt-/Business-Wahrheit</td></tr>
+</table>
+
+<!-- ============ 2 STALE ============ -->
+<h2 class="sec" id="stale">2 · Stale entlarvt — als „offen" geführt, aber erledigt</h2>
+<p>Diese Punkte tauchen in mindestens einer Quelle noch als offen auf, sind aber <strong>per Code/Git verifiziert erledigt</strong>. Sie sollten in den jeweiligen Registern auf ✅ gesetzt werden.</p>
+<table>
+  <tr><th>ID</th><th>Punkt</th><th>Alt-Status</th><th>Verifiziert heute</th><th>Code-Beleg</th></tr>
+  <tr><td><span class="id">W1-001</span></td><td><strong>DEBUG=true bypasst 2FA</strong> (galt als „P0-Blocker")</td><td>offen (WAVE1)</td><td><span class="badge b-done">✅ erledigt</span></td><td><code>app/core/config.py:70-84</code> — Validator <code>_enforce_debug_off_in_production</code> erzwingt <code>DEBUG=False</code> in Prod</td></tr>
+  <tr><td><span class="id">W1-005</span></td><td><code>build:strict</code> „100+ TS-Fehler"</td><td>offen (WAVE1)</td><td><span class="badge b-done">✅ 0 Fehler</span></td><td><code>frontend/package.json:10</code>; <code>tsc -b</code> Exit 0</td></tr>
+  <tr><td><span class="id">W1-017</span></td><td>Platzhalter „Error" statt „Fehler"</td><td>offen (WAVE1)</td><td><span class="badge b-done">✅ deutsch</span></td><td>EmailConfigWizard/Form: „Fehler-Ordner"</td></tr>
+  <tr><td><span class="id">W1-018</span></td><td>Vitest hängt unter Windows (&gt;1 Datei)</td><td>offen (WAVE1)</td><td><span class="badge b-done">✅ Workaround</span></td><td><code>frontend/vitest.config.ts:20</code> <code>fileParallelism:false</code></td></tr>
+  <tr><td><span class="id">W1-020</span></td><td>OTEL-Collector deployt, SDK „tot"</td><td>offen (WAVE1)</td><td><span class="badge b-done">✅ verdrahtet</span></td><td><code>app/main.py:241-256</code> + <code>app/core/telemetry.py:44-100</code> (TracerProvider/Exporter)</td></tr>
+  <tr><td><span class="id">W1-010</span></td><td>Dashboard CashFlow hardcoded <code>0.0</code></td><td>offen (WAVE1)</td><td><span class="badge b-done">✅ echt</span></td><td><code>dashboard.py:820-827</code> → <code>AccountService.get_total_balance</code></td></tr>
+  <tr><td><span class="id">M10/11/12</span></td><td>Fraud/Anomaly/GL-Confidence „Mock"</td><td>offen (Mock-Reg.)</td><td><span class="badge b-done">✅ echte Logik</span></td><td><code>gl_posting_service.py:428-459,684</code> (0.85 = Schwelle, kein Hardcode)</td></tr>
+  <tr><td><span class="id">M14</span></td><td>RFC-3161-TSA handgebaut (GoBD-Risiko)</td><td>offen (Mock-Reg.)</td><td><span class="badge b-done">✅ RFC-konform</span></td><td><code>tsa_service.py:615</code> nutzt <code>asn1crypto</code></td></tr>
+  <tr><td><span class="id">G20 / OPEN-43</span></td><td>Frontend Art.30-DSGVO-Verarbeitungsverzeichnis</td><td>„offen" (Obsidian)</td><td><span class="badge b-done">✅ 25.06.</span></td><td><code>frontend/src/features/admin/gdpr/ProcessingActivitiesTable.tsx</code>; Merge <code>5aed97ea8</code></td></tr>
+  <tr><td><span class="id">DEBT-1</span></td><td><code>auto_file_document</code> setzt Phantom-Spalten</td><td>offen (KNOWN_ISSUES)</td><td><span class="badge b-done">✅ gefixt</span></td><td><code>auto_filing_service.py:171-202</code> (FolderDocument-Assoziation)</td></tr>
+  <tr><td><span class="id">G02 / G04</span></td><td>python-jose CVE-Migration / asyncio-Bug</td><td>offen (Obsidian Sprint-0)</td><td><span class="badge b-done">✅ erledigt</span></td><td><code>requirements.txt</code> auf PyJWT; <code>security_auth.py:24-28</code></td></tr>
+  <tr><td><span class="id">B1–B4</span></td><td>Ur-Blocker (company_id / PSD2-Guard / CI-Dockerfiles / Test-Wahrheit)</td><td>offen (Alt-Register)</td><td><span class="badge b-done">✅ erledigt/gemergt</span></td><td>G1/G2/G4/G5; RECENT_CHANGES</td></tr>
+  <tr><td><span class="id">M1/2/4/5/9/13/16/17</span></td><td>Diverse Dashboard-/Banking-/BPMN-Mocks</td><td>offen (Mock-Reg.)</td><td><span class="badge b-done">✅ echt/geguarded</span></td><td>Mig 266/269; <code>feature/mocks-to-real-p1</code></td></tr>
+  <tr><td><span class="id">api-Hang</span></td><td>ReDoS/DoS — <strong>Code-Fixes</strong> (4 Pattern-Evaluatoren, OCR-Caps, Fuzzy-Cap, NER-Cap)</td><td>offen (KNOWN_ISSUES)</td><td><span class="badge b-done">✅ gemergt</span></td><td>Merges <code>59d8217d5</code>/<code>966303ec0</code>/<code>7fefb4b21</code>/<code>d1f885cef</code> · <em>(empirischer Re-Fuzz s. §5)</em></td></tr>
+</table>
+
+<!-- ============ 3 OFFEN ============ -->
+<h2 class="sec" id="offen">3 · Genuin offene Punkte — priorisiert</h2>
+<p>Per Code verifiziert <strong>noch offen</strong>. Sortiert nach Dringlichkeit; jede Zeile mit Beleg, Aufwand-Schätzung und nächstem Schritt.</p>
+
+<h3>P0 · Sofort — nur User-Action nötig</h3>
+<table>
+  <tr><th>ID</th><th>Punkt</th><th>Prio</th><th>Aufwand</th><th>Nächster Schritt</th></tr>
+  <tr><td><span class="id">G01</span></td><td><strong>Slack-Webhook-URL fehlt</strong> — Alerts gehen ins Nichts (treibt Risiko R01)</td><td><span class="badge b-p0">P0</span></td><td>~10 Min</td><td>Echte Webhook-URL für <code>#ablage-alerts</code> in <code>.env</code> setzen, Test-Alert senden</td></tr>
+  <tr><td><span class="id">G10</span></td><td><strong>Sentry-DSN fehlt</strong> — Errors gehen ins Nichts</td><td><span class="badge b-p0">P0</span></td><td>~5 Min</td><td>DSN in <code>.env</code> eintragen, Test-Exception verifizieren</td></tr>
+</table>
+
+<h3>P1 · Security &amp; Tenant-Isolation (verifiziert offen)</h3>
+<table>
+  <tr><th>ID</th><th>Punkt</th><th>Beleg</th><th>Aufwand</th><th>Nächster Schritt</th></tr>
+  <tr><td><span class="id">G03</span></td><td>✅ <strong>JWT vollständig aus JS entfernt</strong> (uncommitted): Backend setzt/liest httpOnly-Cookies (login/2FA/refresh/logout + get_current_user + /auth/refresh-Cookie-Fallback + 5 WS-Endpoints + 3 Presence-Routes Cookie-Auth). Frontend: REST(axios)+WS+SSE+Direct-Fetch alle auf Cookie+CSRF, <code>auth.ts</code> speichert KEINE Token mehr (kein <code>auth_token</code> im Source). XSS kann den Session-Token nicht mehr stehlen.</td><td>~20 Dateien (auth.ts, client.ts, csrf.ts, websocket.ts, 6 API-Konsumenten, 6 Backend-Endpoints)</td><td>✅ verifiziert</td><td><strong>tsc 0 Fehler + 63 vitest-Tests grün</strong> + <strong>Backend-E2E 12/12 grün</strong> (TestClient gegen echte App+Postgres+Redis: login→httpOnly-Cookies, /auth/me nur via Cookie→200, CSRF→403 ohne Header, refresh via Cookie, logout löscht Cookies). Rest: optionaler Browser-Smoke-Test (Frontend+Backend zusammen) erst nach Deploy meines Codes</td></tr>
+  <tr><td><span class="id">W1-022</span></td><td>✅ <code>/metrics</code> Token-Bypass — <strong>in dieser Session behoben</strong> (uncommitted): <code>verify_metrics_token</code> wirft in Prod 503 ohne Token, Dev unverändert</td><td><code>metrics.py:72</code></td><td>erledigt</td><td><strong>Rest:</strong> <code>METRICS_SCRAPE_TOKEN</code> in Prometheus-Scrape-Config setzen + Test im Stack</td></tr>
+  <tr><td><span class="id">W1-002</span></td><td>Vault Default <code>=False</code>; Secrets klartext in <code>.env</code>; keine Rotation</td><td><code>config.py:768</code></td><td>2–3 T</td><td>Vault aktivieren, Secrets migrieren, Rotation als Beat-Task (s. VAULT-ROT)</td></tr>
+  <tr><td><span class="id">RLS-Rec</span></td><td>✅ <strong>RLS-Endausbau komplett</strong> (uncommitted): App-Seite (Vars mitsetzen) + <strong>kanonische Konsolidierung</strong> via Migration 271 — die 5×<code>tenant_isolation_*</code> + 5×<code>superuser_bypass_*</code> (Mig 210) auf <code>app.current_company_id</code>/<code>app.is_admin</code> umgeschrieben. <code>pg_policies</code>-Live-Audit gegen isolierten Postgres (alembic from-scratch → Head 271): <code>current_tenant_id</code> jetzt <strong>0 Policies</strong> (vorher 5), kanonisch 94.</td><td><code>company_context.py</code>, <code>session.py</code>, <code>dependencies.py</code>, <code>alembic/versions/271_*</code></td><td>✅ verifiziert</td><td><strong>Adversariale Tests grün:</strong> Tenant-Isolation (Kontext A↔B, Nicht-Superuser-Rolle) + Fail-closed (kein Kontext = 0 Zeilen) per SQL gegen echte DB; 4 <code>RLS_ENFORCE_DEFAULT</code>-Unit-Tests grün. Prod-Hinweis: App muss als <strong>Nicht-Superuser-Rolle</strong> verbinden (Live-DB-Audit ergab: App-Rolle <code>ablage_admin</code> ist Superuser → RLS aktuell komplett gebypassed!). <strong>Erledigt:</strong> Nicht-Superuser-Rolle <code>ablage_app</code> (NOSUPERUSER/NOBYPASSRLS + Grants) auf Dev-DB angelegt; Multi-Head geprüft = <strong>keiner</strong> (nur 271 hängt an 270). <strong>Deploy-Reihenfolge:</strong> 271 erst auf Live-DB anwenden, wenn der Container den 271-File hat (sonst bricht dessen alembic), + DATABASE_URL auf <code>ablage_app</code> + <code>RLS_ENFORCE_DEFAULT=on</code> gemeinsam.</td></tr>
+</table>
+
+<h3>P2/P3 · Mittel &amp; Niedrig</h3>
+<table>
+  <tr><th>ID</th><th>Punkt</th><th>Prio</th><th>Beleg</th><th>Nächster Schritt</th></tr>
+  <tr><td><span class="id">Schema-5xx</span></td><td>✅ <strong>STALE</strong> — die 10 5xx-Bugs sind bereits in master gefixt (Commit <code>bf00f38d9</code>, W1-004-Sweep); Baseline 2026-06-10 war veraltet</td><td><span class="badge b-done">✅ erledigt</span></td><td>3 Agenten verifizierten 10/10 (404/422/503, Mandanten-Isolation)</td><td>+ 1 Resthärtung in Session: <code>betrag</code>-Bool-Coercion in <code>integration_sync.py</code> → 422</td></tr>
+  <tr><td><span class="id">W1-016</span></td><td>349× <code>as any</code>/<code>as unknown</code> im Frontend — verletzt CRITICAL-RULE #4</td><td><span class="badge b-p2">P2</span></td><td>grep <code>frontend/src</code></td><td>Schrittweise typisieren; CI-Lint-Schwelle (kein hartes Gate sofort)</td></tr>
+  <tr><td><span class="id">W1-011</span></td><td>Externe Risiko-Quellen (NorthData/Schufa-B2B/Creditreform) nur Stubs (None)</td><td><span class="badge b-p2">P2</span></td><td><code>risk_scoring_service.py:185-307</code></td><td>Bewusst offen; bei Bedarf je Provider echte Anbindung (Status-Mgmt vorhanden)</td></tr>
+  <tr><td><span class="id">W1-019</span></td><td>8/46 documents.py-Endpoints ohne <code>response_model</code> (17%)</td><td><span class="badge b-p3">P3</span></td><td><code>app/api/v1/documents.py</code> (Stats/Access-Log)</td><td>Response-Schemas nachziehen (Politur)</td></tr>
+</table>
+
+<!-- ============ 4 CLEANUP ============ -->
+<h2 class="sec" id="cleanup">4 · Teilweise / Cleanup (verifiziert)</h2>
+<table>
+  <tr><th>ID</th><th>Punkt</th><th>Status</th><th>Beleg</th><th>Rest-Aufgabe</th></tr>
+  <tr><td><span class="id">R02/jose</span></td><td>python-jose entfernt — Inkonsistenz</td><td><span class="badge b-done">✅ 25.06. erledigt</span></td><td><code>pyproject.toml:56</code> auf <code>PyJWT[crypto]</code> umgestellt (mirror requirements.txt); kein <code>import jose</code> in <code>app/</code></td><td>— (in dieser Session behoben, nicht committet)</td></tr>
+  <tr><td><span class="id">G07</span></td><td>Login-Rate-Limit-Diskrepanz</td><td><span class="badge b-done">✅ Session</span></td><td><code>RateLimitTier.LOGIN</code> war ungenutzt &amp; widersprüchlich (5/15min vs. 5/minute)</td><td>Behoben: <code>LOGIN="5/minute"</code> als single source, Login-Decorator nutzt jetzt die Konstante (Verhalten unverändert). Hinweis: CLAUDE.md-Doku „5/15min" ist nun der stale Eintrag.</td></tr>
+  <tr><td><span class="id">G16</span></td><td>CSP <code>unsafe-inline</code> nur für Styles (Swagger), Scripts = <code>'self'</code></td><td><span class="badge b-part">🟡 akzeptabel</span></td><td><code>app/middleware/security_headers.py:164</code></td><td>Dokumentieren / optional Nonce-basiert härten</td></tr>
+  <tr><td><span class="id">G19</span></td><td>GoBD-Verfahrensdoku als <strong>signiertes</strong> PDF</td><td><span class="badge b-done">✅ verifiziert</span></td><td><code>procedure_doc_service.py:108</code> <code>generate_signed_pdf</code> + <code>compliance/document_signer.py</code> (RSA-PSS/SHA-256)</td><td><strong>STALE-Verdikt korrigiert:</strong> Signatur + MinIO-Persistenz + Mig-270-Spalten greifen. (Verifizierer hatte Alt-Modul <code>compliance/procedure_documentation_service.py</code> erwischt.)</td></tr>
+</table>
+
+<!-- ============ 5 DOD ============ -->
+<h2 class="sec" id="dod">5 · DoD- &amp; QA-Restposten (echt offen, dokumentiert)</h2>
+<table>
+  <tr><th>ID</th><th>Punkt</th><th>Status</th><th>Blocker / Hinweis</th></tr>
+  <tr><td><span class="id">HANG-RF</span></td><td>api-Hang <strong>empirischer End-to-End-Re-Fuzz</strong> (Schemathesis mit allen Guard-Fixes)</td><td><span class="badge b-part">🟡 deferred</span></td><td>Code-Fix fertig; braucht exklusives Stack-/RAM-Fenster (~2h). Unit-Beweis (10×safe_regex + 4×OCR) akzeptiert.</td></tr>
+  <tr><td><span class="id">LOOP-2</span></td><td><strong>2× saubere A-Z-Loop-Runs</strong> (formale DoD-Verifikation)</td><td><span class="badge b-open">🔴 offen</span></td><td>Nach api-Hang-Re-Fuzz + Perf-Contention-Klärung; dediziertes Fenster + Worker-Stop nötig.</td></tr>
+  <tr><td><span class="id">PAY-xfail</span></td><td>PaymentService: 2 strict-xfail (<code>user_id→company_id</code> Vollständigkeit)</td><td><span class="badge b-part">🟡 Rest</span></td><td>Mig 269 angewandt, 9/11 Methoden company-scoped; Follow-up.</td></tr>
+  <tr><td><span class="id">E2E-16</span></td><td>~16 E2E-Specs auf echte App-Fixes gegated</td><td><span class="badge b-open">🔴 offen</span></td><td>React.lazy/Suspense-Hang über ~22 Routes + fehlender CPU-OCR-Worker. <em>Flip auf grün wäre fake-green.</em></td></tr>
+  <tr><td><span class="id">MON-1</span></td><td>Monitor <code>CeleryNoActivity</code> feuert (wedged Solo-GPU-Worker ohne GPU im Dev)</td><td><span class="badge b-part">🟡 Backlog</span></td><td>Graceful CPU-OCR-Fallback (CPU-Worker der ocr-Queue zuordnen).</td></tr>
+  <tr><td><span class="id">R27</span></td><td>Celery <code>escalate_overdue_approvals</code> hängt (SMTP-Config / Timeout)</td><td><span class="badge b-open">🔴 prüfen</span></td><td>Obsidian-Risiko; 47h-Hang historisch (10.–12.05.). Aktuellen Stand verifizieren.</td></tr>
+</table>
+
+<!-- ============ 6 COMPLIANCE ============ -->
+<h2 class="sec" id="compliance">6 · Compliance-Restposten</h2>
+<div class="pill-row">
+  <span class="badge b-done">✅ Art.30-View (G20)</span>
+  <span class="badge b-done">✅ RFC-3161-TSA (M14)</span>
+  <span class="badge b-done">✅ ZUGFeRD-E-Mail-Extraktion</span>
+  <span class="badge b-done">✅ GoBD-Signatur-PDF (G19, RSA-PSS)</span>
+  <span class="badge b-open">🔴 KOSIT-Validator (G17/G18)</span>
+  <span class="badge b-open">🔴 TSE/Kasse (G34/G35)</span>
+  <span class="badge b-part">🟡 RLS fail-closed (Reconciliation offen)</span>
+  <span class="badge b-open">🔴 DATEV-Zertifizierung (G40, 6–12 Mt.)</span>
+</div>
+<table>
+  <tr><th>Thema</th><th>Status</th><th>Bemerkung</th></tr>
+  <tr><td>KOSIT / Mustang E-Invoicing-Validator (G17/G18, Vault „E-Invoicing 80%")</td><td><span class="badge b-open">🔴 offen</span></td><td>Healthcheck trifft echtes <code>/health</code>, aber Validator-Integration in den Verarbeitungspfad fehlt.</td></tr>
+  <tr><td>TSE (Technische Sicherheitseinrichtung) + Kasse-Modul</td><td><span class="badge b-open">🔴 net-new</span></td><td>Größeres Feature, außerhalb aktueller DoD. Plan-Skeleton existiert (<code>/kasse</code>).</td></tr>
+  <tr><td>RLS_ENFORCE_DEFAULT (Tenant-Isolation fail-closed)</td><td><span class="badge b-part">🟡 opt-in</span></td><td>Setting + Enforcement vorhanden (Default AUS); Policy-Reconciliation (3 Session-Vars) muss zuerst (s. §3 P1).</td></tr>
+  <tr><td>GoBD signiertes Verfahrensdoku-PDF (G19)</td><td><span class="badge b-done">✅ verifiziert</span></td><td>End-to-End belegt: <code>generate_signed_pdf</code> → <code>DocumentSigner</code> (RSA-PSS/SHA-256) → MinIO + Mig-270-Spalten persistiert.</td></tr>
+</table>
+
+<!-- ============ 7 ROADMAP ============ -->
+<h2 class="sec" id="roadmap">7 · Obsidian-Produkt-Roadmap G01–G60 (5 Tiers)</h2>
+<p>Der eigentliche Produkt-/Pilot-Backlog liegt in Obsidian (<code>_Ablage_System/GAP_ANALYSIS.md</code>). 60 Gaps in 5 Tiers. Erledigte Gaps sind grün markiert (mehrere davon = Stale in der Roadmap selbst).</p>
+
+<h3>Tier 1 — Sprint 0 „Stop the Bleeding" (vor Pilot) · ~80% fertig</h3>
+<table>
+  <tr><th>Gap</th><th>Inhalt</th><th>Status</th></tr>
+  <tr><td>G01</td><td>Slack-Webhook-URL</td><td><span class="badge b-p0">🔴 P0 User</span></td></tr>
+  <tr><td>G02</td><td>python-jose → PyJWT Migration</td><td><span class="badge b-done">✅</span></td></tr>
+  <tr><td>G03</td><td>JWT httpOnly-Cookie</td><td><span class="badge b-open">🔴 offen</span></td></tr>
+  <tr><td>G04</td><td>asyncio.run-Bug</td><td><span class="badge b-done">✅</span></td></tr>
+  <tr><td>G05</td><td>Backend-Auto-Start + Watchdog</td><td><span class="badge b-part">🟡 teilw. (Watchdog-Container existiert)</span></td></tr>
+  <tr><td>G06 / G07</td><td>Umlaut-Lint · Login-Rate-Limit</td><td><span class="badge b-part">🟡 Cleanup</span></td></tr>
+  <tr><td>G08</td><td>Backup-Restore-Test</td><td><span class="badge b-done">✅</span></td></tr>
+  <tr><td>G09</td><td>Pilot-Workflow E2E-Test</td><td><span class="badge b-open">🔴 geplant 3 T</span></td></tr>
+  <tr><td>G10</td><td>Sentry-DSN</td><td><span class="badge b-p0">🔴 P0 User</span></td></tr>
+</table>
+
+<h3>Tier 2 — Pre-Pilot-Hardening (Sprint 1–2, 2–4 Wochen)</h3>
+<table>
+  <tr><th>Gap</th><th>Inhalt</th><th>Status</th></tr>
+  <tr><td>G11</td><td>4 Onboarding-Systeme → 1 konsolidieren</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G12 / G13</td><td>Tooltip/Help-System · Glossar-Seite</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G14</td><td>Sandbox-Modus für Azubis</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G15</td><td>56 Silent-Catches → Logger</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G16</td><td>CSP-Hardening</td><td><span class="badge b-part">🟡 akzeptabel</span></td></tr>
+  <tr><td>G17 / G18</td><td>TSE / KOSIT-Validator</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G19</td><td>Verfahrensdoku signiertes PDF</td><td><span class="badge b-done">✅ verifiziert</span></td></tr>
+  <tr><td>G20</td><td>Art.30-DSGVO-View</td><td><span class="badge b-done">✅ 25.06.</span></td></tr>
+  <tr><td>G21</td><td>Pilot-Telemetrie-Dashboard</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G22–G25</td><td>i18n-Lint · Dependencies · Vault-Integration</td><td><span class="badge b-part">🟡 teilw.</span></td></tr>
+</table>
+
+<details>
+<summary>Tier 3 — Pilot-Begleitung &amp; Stabilisierung (Sprint 3–6, G26–G36)</summary>
+<table>
+  <tr><th>Gap</th><th>Inhalt</th><th>Status</th></tr>
+  <tr><td>G26–G28</td><td>Component-Tests · E2E-Tests · A11y-Gate</td><td><span class="badge b-part">🟡 E2E gegated</span></td></tr>
+  <tr><td>G29–G33</td><td>ML-Messreihe · Drift-Reports · Learning-Beat · A/B-Tests</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G34 / G35</td><td>DATEV-Belege · TSE-Klärung (Lawyer+Accountant)</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G36</td><td>Translation-Plan-Update</td><td><span class="badge b-open">🔴</span></td></tr>
+</table>
+</details>
+
+<details>
+<summary>Tier 4 — Markt-Vorbereitung (Monat 3–6, G37–G50)</summary>
+<table>
+  <tr><th>Gap</th><th>Inhalt</th><th>Status</th></tr>
+  <tr><td>G37–G39</td><td>Multi-Tenancy-Entscheidung + Refactor</td><td><span class="badge b-part">🟡 company_id/RLS angefangen</span></td></tr>
+  <tr><td>G40</td><td>DATEV-Zertifizierung (6–12 Monate)</td><td><span class="badge b-open">🔴 langfristig</span></td></tr>
+  <tr><td>G41–G45</td><td>4× God-Object-Splits (Dateien &gt;60 KB)</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G46</td><td>Externer Pentest (~3 Wochen)</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G47–G50</td><td>N+1-Fixes · Code-Splitting · DSGVO-DPA</td><td><span class="badge b-open">🔴</span></td></tr>
+</table>
+</details>
+
+<details>
+<summary>Tier 5 — Skalierungs-Vorbereitung (Monat 6–12, G51–G60)</summary>
+<table>
+  <tr><th>Gap</th><th>Inhalt</th><th>Status</th></tr>
+  <tr><td>G51</td><td>Bus-Faktor-Onboarding für Hire #2</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G52–G55</td><td>RAG-Produktivierung · GPU-Limits · DR-SLA</td><td><span class="badge b-open">🔴</span></td></tr>
+  <tr><td>G56–G60</td><td>Support-Modell · Pricing · ICP-Reframe · Code-Doku-Audit · Test-Coverage-Gate</td><td><span class="badge b-open">🔴 Strategie</span></td></tr>
+</table>
+</details>
+
+<h3 id="risiken">Risiko-Heatmap R01–R27 (Auszug der Hot-Zone)</h3>
+<div class="heat">
+  <div class="risk hot"><div class="rid">R01 · Backend-Crash unbemerkt</div><div class="rt">P=Hoch / I=Hoch — Mitigation = G01 Slack-Alert. Beim Audit war Backend offline, niemand wusste es.</div></div>
+  <div class="risk hot"><div class="rid">R02 · Security-Pilot-Blocker</div><div class="rt">P=Hoch / I=Hoch — jose-CVE ✅, JWT-Cookie 🔴 offen (G03), CSP 🟡. K4/K5/K6 zusätzlich gefixt (19.05.).</div></div>
+  <div class="risk hot"><div class="rid">R20 · Solo-Founder-Burnout</div><div class="rt">P=Hoch / I=Hoch — persönlich. Watch: &gt;50h/Woche.</div></div>
+  <div class="risk warm"><div class="rid">R27 · Celery-Eskalations-Task-Hang</div><div class="rt">P=Hoch / I=Mittel — <code>escalate_overdue_approvals</code> (SMTP). Status aktuell verifizieren.</div></div>
+  <div class="risk warm"><div class="rid">R06 · Backup-Restore-Alter</div><div class="rt">Watch: Test &lt;30 Tage alt halten (G08 ✅).</div></div>
+  <div class="risk warm"><div class="rid">R08 · Code-File-Größe</div><div class="rt">Watch: neue Dateien &gt;30 KB → God-Objects (G41–G45).</div></div>
+</div>
+
+<h3 id="strategie">Strategische Offene Fragen F-01..F-05 (Entscheidung post-Pilot)</h3>
+<table>
+  <tr><th>ID</th><th>Frage</th><th>Status</th></tr>
+  <tr><td>F-01</td><td>ICP validieren oder annehmen? (Handelsbetriebe 5–200 MA vs. Pivot Family-Office-Light)</td><td>Entscheidung nach 90-Tage-Pilot</td></tr>
+  <tr><td>F-02</td><td>Pricing-Modell (5–10 k€/Jahr × 30–50 Kunden; Wertfestsetzung/Maintenance offen)</td><td>TODO post-Pilot</td></tr>
+  <tr><td>F-03</td><td>Support-Modell (Solo nicht skalierbar; ab Kunde 3 Channel, ab 10 Hire #2)</td><td>TODO (G56, Sprint M3)</td></tr>
+  <tr><td>F-04</td><td>DATEV-Zertifizierungs-Pfad (Time-to-Cert 6–12 Mt.; Antrag Monat 6)</td><td>Geplant Monat 6 (G40)</td></tr>
+  <tr><td>F-05</td><td>Hire #2 — Profil &amp; Timing (Senior Backend bei Kunde #3, ~Monat 9–12)</td><td>Geplant (G51)</td></tr>
+</table>
+
+<!-- ============ 8 DEFERRED ============ -->
+<h2 class="sec" id="deferred">8 · Deferred — bewusst &amp; begründet (kein Handlungsbedarf jetzt)</h2>
+<table>
+  <tr><th>ID</th><th>Punkt</th><th>Begründung</th></tr>
+  <tr><td><span class="id">OPEN-51</span></td><td>Lokale <code>:latest</code>-Docker-Images</td><td>Alle externen Images gepinnt; lokale Builds → kein Supply-Chain-Risiko, nur Reproduzierbarkeit.</td></tr>
+  <tr><td><span class="id">OPEN-52</span></td><td>Watchdog-Privileg (<code>docker.sock</code>-Mount)</td><td>Load-bearing für Restart-Sidecar; kein Fix ohne alternative Healthcheck-Architektur.</td></tr>
+  <tr><td><span class="id">Worktrees</span></td><td>Fremde Worktrees / Branch-Hygiene</td><td><strong>Parallel-Session aktiv</strong> — <code>.claude/worktrees/w2-api</code> u.a. sind LIVE-Mounts. Cleanup erst nach Session-Ende (sonst Konflikt).</td></tr>
+  <tr><td><span class="id">VAULT-ROT</span></td><td>Vault-Secrets-Rotation (Beat-Task)</td><td>Net-new Infrastruktur; hängt an W1-002 (Vault aktivieren).</td></tr>
+  <tr><td><span class="id">K8s</span></td><td>Kubernetes-Migration + Hardening (W1-015)</td><td>Größeres Infra-Thema, erst vor echtem K8s-Deploy relevant.</td></tr>
+  <tr><td><span class="id">Dependabot</span></td><td>19 PRs triagiert, User-Merge ausstehend</td><td>Non-blocking; CI-grün pro PR + deine Merge-Entscheidung.</td></tr>
+  <tr><td><span class="id">DEPS-Cleanup</span></td><td><code>pyproject.toml</code> jose-Rest, status-Enum-Drift</td><td>Kosmetisch/Richtungsentscheidung; für <code>create_all</code> moot.</td></tr>
+</table>
+
+<!-- ============ 9 NEXT ============ -->
+<h2 class="sec" id="next">9 · Empfohlene Reihenfolge</h2>
+<div class="callout">
+  <h4>🎯 Pragmatischer Pfad</h4>
+  <ol>
+    <li><strong>Heute (&lt;15 Min, nur du):</strong> G01 Slack-Webhook + G10 Sentry-DSN setzen → R01 entschärft, Pilot-Observability live.</li>
+    <li><strong>Security-Block (P1, ~1 Woche):</strong> G03 httpOnly-Cookie → W1-022 Metrics-Token → RLS-Policy-Reconciliation → dann W1-002 Vault.</li>
+    <li><strong>DoD abschließen:</strong> dediziertes Stack-Fenster für api-Hang-Re-Fuzz + 2× saubere A-Z-Loop-Runs; parallel Schemathesis-5xx-Triage.</li>
+    <li><strong>Register pflegen:</strong> Stale-Liste (§2) in <code>WAVE1_EXPLORE_REGISTER.md</code> / <code>MOCK_DATA_REGISTER.md</code> auf ✅ setzen, damit künftige Reviews nicht erneut Erledigtes „finden".</li>
+    <li><strong>Pre-Pilot-Hardening (Tier 2):</strong> G11 Onboarding-Konsolidierung, G15 Silent-Catches, G19 GoBD-PDF nachverifizieren, G21 Telemetrie-Dashboard.</li>
+    <li><strong>Post-Pilot:</strong> Strategiefragen F-01..F-05 entscheiden, Tier 4/5 (Multi-Tenancy, DATEV-Cert, Pentest, God-Object-Splits).</li>
+  </ol>
+</div>
+
+<footer>
+  <p><strong>Methodik:</strong> 3 Explore-Agenten (Harvest: Repo-Memory, QA-Reports/Pläne, Obsidian) + 3 Verifizierer-Agenten (Code-Abgleich Security/Frontend/Compliance). Verdikte mit Datei:Zeile belegt. Reines Status-Dokument — keine Code-Änderungen vorgenommen.</p>
+  <p><strong>Quellen:</strong> <code>.claude/reviews/2026-06-11/WAVE1_EXPLORE_REGISTER.md</code> · <code>.claude/reviews/2026-06-03/MOCK_DATA_REGISTER.md</code> · <code>.claude/memory/{KNOWN_ISSUES,RECENT_CHANGES,PROJECT_STATUS}.md</code> · <code>docs/qa-reports/2026-06-2*-*.md</code> · <code>C:\Users\benfi\Obsidian\Storage\_Ablage_System\{GAP_ANALYSIS,Risiken_und_Offene_Fragen,Roadmap,Pilot_Readiness}.md</code></p>
+  <p>Generiert 2026-06-25 · Ablage-System „Feinpoliert und durchdacht"</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
