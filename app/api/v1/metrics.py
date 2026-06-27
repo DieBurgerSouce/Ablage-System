@@ -68,8 +68,20 @@ def verify_metrics_token(authorization: str | None = None) -> bool:
     """
     from app.core.config import settings
 
-    # Wenn kein Token konfiguriert, erlaube Zugriff (für Development)
+    # W1-022 Fail-Closed: Kein Token konfiguriert ->
+    #   - Development/Test: Zugriff erlaubt (bequemes lokales Scraping)
+    #   - Produktion: VERWEIGERN. Unkonfigurierte Metrics duerfen nicht
+    #     unauthentisiert exponiert werden (Info-Leak). Operator MUSS
+    #     METRICS_SCRAPE_TOKEN setzen (siehe prometheus.yml bearer_token).
     if not settings.METRICS_SCRAPE_TOKEN:
+        if settings.is_production:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Metrics-Endpoint nicht konfiguriert: "
+                    "METRICS_SCRAPE_TOKEN ist in Produktion erforderlich."
+                ),
+            )
         return True
 
     if not authorization:

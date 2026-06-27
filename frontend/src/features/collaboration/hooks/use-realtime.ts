@@ -177,15 +177,12 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
 
     updateStatus('connecting');
 
-    const token = sessionStorage.getItem('auth_token');
-    if (!token?.trim()) {
-      updateStatus('error');
-      return;
-    }
-
+    // Cookie-Auth (G03): Kein JS-Token mehr — das Auth-Cookie wird beim
+    // Same-Origin-WebSocket-Handshake automatisch mitgesendet. Fehlt das
+    // Cookie, schliesst der Server die Verbindung selbst (Code 4001).
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${wsProtocol}//${host}/api/v1/ws/realtime?token=${encodeURIComponent(token.trim())}`;
+    const wsUrl = `${wsProtocol}//${host}/api/v1/ws/realtime`;
 
     try {
       const ws = new WebSocket(wsUrl);

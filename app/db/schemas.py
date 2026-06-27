@@ -438,7 +438,9 @@ class LoginRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request."""
-    refresh_token: str = Field(..., min_length=32, max_length=512, description="JWT Refresh Token")
+    # G03: optional — bei Cookie-basierter Auth liegt das Refresh-Token im httpOnly-
+    # Cookie (vom Endpoint gelesen), nicht im Body. min_length greift nur, wenn gesetzt.
+    refresh_token: Optional[str] = Field(None, min_length=32, max_length=512, description="JWT Refresh Token")
 
 
 class TwoFactorRequiredResponse(BaseModel):

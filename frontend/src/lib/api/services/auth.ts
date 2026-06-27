@@ -64,7 +64,7 @@ export interface AuthResponse {
 export type LoginResult = AuthResponse | TwoFactorRequiredResponse;
 
 // Token-Refresh Mutex: Verhindert Race Condition bei parallelen 401-Responses
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
 export const authService = {
     login: async (email: string, password: string): Promise<LoginResult> => {
@@ -81,14 +81,10 @@ export const authService = {
         }
 
         if (loginResponse.data.access_token) {
-            // Phase 1.1: sessionStorage statt localStorage (XSS-Mitigation)
-            sessionStorage.setItem('auth_token', loginResponse.data.access_token);
-            sessionStorage.setItem('refresh_token', loginResponse.data.refresh_token || '');
-
-            // Fetch user info with the new token
-            const userResponse = await apiClient.get<UserResponse>('/auth/me', {
-                headers: { Authorization: `Bearer ${loginResponse.data.access_token.trim()}` }
-            });
+            // G03: KEINE Token mehr in JS speichern — das Backend hat die httpOnly-
+            // Auth-Cookies in der Login-Response gesetzt; Folge-Requests (inkl. /auth/me)
+            // authentifizieren sich darueber (withCredentials).
+            const userResponse = await apiClient.get<UserResponse>('/auth/me');
 
             const user: User = {
                 id: userResponse.data.id,
@@ -118,13 +114,8 @@ export const authService = {
         });
 
         if (response.data.access_token) {
-            sessionStorage.setItem('auth_token', response.data.access_token);
-            sessionStorage.setItem('refresh_token', response.data.refresh_token || '');
-
-            // Fetch user info
-            const userResponse = await apiClient.get<UserResponse>('/auth/me', {
-                headers: { Authorization: `Bearer ${response.data.access_token.trim()}` }
-            });
+            // G03: Cookies sind vom Backend gesetzt; kein Token-Storage in JS.
+            const userResponse = await apiClient.get<UserResponse>('/auth/me');
 
             const user: User = {
                 id: userResponse.data.id,
@@ -180,30 +171,30 @@ export const authService = {
         await apiClient.post('/mfa/backup', { code });
     },
 
-    logout: () => {
-        sessionStorage.removeItem('auth_token');
+    logout: async () => {
+        // G03: Backend-Logout widerruft Token + loescht die httpOnly-Cookies.
+        try {
+            await apiClient.post('/auth/logout', {});
+        } catch {
+            // Logout darf clientseitig nie haengen bleiben.
+        }
+        sessionStorage.removeItem('auth_token');  // Alt-Reste aufraeumen
         sessionStorage.removeItem('refresh_token');
         sessionStorage.removeItem('user');
         window.location.href = '/login';
     },
 
-    refreshToken: async (): Promise<string> => {
+    refreshToken: async (): Promise<void> => {
         // Mutex: Wenn bereits ein Refresh laeuft, auf dasselbe Promise warten
         if (refreshPromise) {
             return refreshPromise;
         }
 
-        const doRefresh = async (): Promise<string> => {
-            const storedRefreshToken = sessionStorage.getItem('refresh_token');
-            if (!storedRefreshToken) throw new Error('No refresh token available');
-
-            const response = await apiClient.post<LoginResponse>('/auth/refresh', { refresh_token: storedRefreshToken });
-            if (response.data.access_token) {
-                sessionStorage.setItem('auth_token', response.data.access_token);
-                sessionStorage.setItem('refresh_token', response.data.refresh_token || '');
-                return response.data.access_token;
-            }
-            throw new Error('Token-Refresh fehlgeschlagen');
+        const doRefresh = async (): Promise<void> => {
+            // G03: Das Refresh-Token steckt im httpOnly-Cookie; das Backend liest es
+            // dort, rotiert die Cookies und setzt sie per Set-Cookie neu. Kein Token
+            // aus JS noetig.
+            await apiClient.post('/auth/refresh', {});
         };
 
         refreshPromise = doRefresh().finally(() => {
@@ -224,7 +215,9 @@ export const authService = {
     },
 
     isAuthenticated: (): boolean => {
-        return !!sessionStorage.getItem('auth_token');
+        // G03: Auth-Status haengt am gespeicherten User-Objekt (Token liegt im
+        // httpOnly-Cookie, nicht in JS lesbar).
+        return !!sessionStorage.getItem('user');
     },
 
     // Password Reset Methods
@@ -257,5 +250,8 @@ export const authService = {
  * @returns Access Token oder null wenn nicht eingeloggt
  */
 export function getAuthToken(): string | null {
-    return sessionStorage.getItem('auth_token');
+    // G03 (deprecated): Auth laeuft ueber httpOnly-Cookies — es gibt keinen
+    // JS-lesbaren Token mehr. WebSocket/SSE authentifizieren ueber das (same-origin)
+    // mitgesendete Cookie.
+    return null;
 }

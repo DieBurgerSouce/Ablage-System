@@ -8,7 +8,7 @@ All error messages in German.
 from typing import Optional
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -94,6 +94,13 @@ async def set_rls_context(
         text("SET LOCAL app.is_admin = :is_admin"),
         {"is_admin": "true" if is_admin else "false"}
     )
+    # RLS-Reconciliation: Migration 210 superuser_bypass-Policies nutzen die Variable
+    # 'app.current_user_is_superuser' (nicht 'app.is_admin'). Konsistent mitsetzen, damit
+    # Superuser auf den FORCE-RLS-Tabellen nicht faelschlich 0 Zeilen sehen.
+    await session.execute(
+        text("SELECT set_config('app.current_user_is_superuser', :is_su, true)"),
+        {"is_su": "true" if is_admin else "false"}
+    )
 
 
 # ==================== Authentication Dependencies ====================
@@ -105,9 +112,86 @@ security = HTTPBearer(
     auto_error=True
 )
 
+# ==================== G03: httpOnly-Cookie-Auth (additiv) ====================
+# Access-/Refresh-Token koennen ZUSAETZLICH zum Authorization-Header als
+# httpOnly-Cookie transportiert werden -> kein XSS-Exfiltrationsrisiko (Token
+# nicht aus JS lesbar). Header-basierte API-Clients bleiben unveraendert.
+# Cookie-basierte (Browser-)Clients werden bei state-changing Requests
+# automatisch durch die CSRFMiddleware geschuetzt (Double-Submit-Cookie,
+# bearer_token_bypass=True -> nur Nicht-Bearer-Requests muessen CSRF mitsenden).
+ACCESS_COOKIE_NAME = "access_token"
+REFRESH_COOKIE_NAME = "refresh_token"
+
+# Optionaler Bearer (auto_error=False) -> erlaubt Fallback auf Cookie, ohne dass
+# FastAPI bei fehlendem Header vorzeitig abbricht.
+_bearer_optional = HTTPBearer(
+    scheme_name="JWT",
+    description="JWT Bearer token authentication",
+    auto_error=False,
+)
+
+
+def set_auth_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: Optional[str] = None,
+) -> None:
+    """Setzt Access-/Refresh-Token als httpOnly-Cookies (G03).
+
+    secure nur in Produktion (sonst wird das Cookie ueber http:// im Dev nie
+    gesetzt). SameSite=lax erlaubt normale Top-Level-Navigation, blockt aber
+    Cross-Site-POSTs. Max-Age = jeweilige Token-Lebensdauer aus den Settings.
+    """
+    secure = settings.is_production
+    response.set_cookie(
+        key=ACCESS_COOKIE_NAME,
+        value=access_token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        path="/",
+    )
+    if refresh_token is not None:
+        response.set_cookie(
+            key=REFRESH_COOKIE_NAME,
+            value=refresh_token,
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+            httponly=True,
+            secure=secure,
+            samesite="lax",
+            path="/",
+        )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """Entfernt die Auth-Cookies (Logout, G03)."""
+    response.delete_cookie(ACCESS_COOKIE_NAME, path="/")
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/")
+
+
+async def _get_access_token(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer_optional),
+) -> str:
+    """Access-Token aus Authorization-Header ODER httpOnly-Cookie (G03).
+
+    Header hat Vorrang (bestehende API-Clients unveraendert). Fehlt beides, wird
+    - wie zuvor bei HTTPBearer(auto_error=True) - mit 403 abgewiesen.
+    """
+    if credentials and credentials.credentials:
+        return credentials.credentials
+    cookie_token = request.cookies.get(ACCESS_COOKIE_NAME)
+    if cookie_token:
+        return cookie_token
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Not authenticated",
+    )
+
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    token: str = Depends(_get_access_token),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
@@ -128,8 +212,6 @@ async def get_current_user(
         async def endpoint(user: User = Depends(get_current_user)):
             ...
     """
-    token = credentials.credentials
-
     # Decode and validate token (async for Redis blacklist check)
     try:
         payload = await decode_token(token)

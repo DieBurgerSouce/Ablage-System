@@ -944,6 +944,8 @@ async def notification_websocket(
         "timestamp": "2026-01-02T06:00:00Z"
     }
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Browser-Clients senden ihn same-origin mit).
+    token = token or websocket.cookies.get("access_token")
     ws_manager = get_notification_ws_manager()
     user_id: Optional[str] = None
 

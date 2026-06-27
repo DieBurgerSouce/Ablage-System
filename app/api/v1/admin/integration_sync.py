@@ -7,7 +7,7 @@ from datetime import date, datetime, time
 from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
 
@@ -37,6 +37,17 @@ class DATEVWritebackEntryRequest(BaseModel):
     belegnummer: Optional[str] = None
     steuerschluessel: Optional[str] = None
     kostenstelle: Optional[str] = None
+
+    @field_validator("betrag", mode="before")
+    @classmethod
+    def _betrag_kein_boolean(cls, v: object) -> object:
+        # bool ist in Python ein int-Subtyp -> Pydantic wuerde True/False sonst
+        # still zu 1.0/0.0 coercen (betrag=false rutschte nur via gt=0 durch,
+        # betrag=true wurde zu 1.0 akzeptiert). Ein Wahrheitswert ist als
+        # Buchungsbetrag ungueltig -> 422 statt stiller Fehlinterpretation.
+        if isinstance(v, bool):
+            raise ValueError("Betrag muss eine Zahl sein, kein Wahrheitswert")
+        return v
 
 class DATEVWritebackBatchRequest(BaseModel):
     kontenrahmen: str = "SKR03"

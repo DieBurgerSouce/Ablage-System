@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Union
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -21,7 +21,9 @@ logger = structlog.get_logger(__name__)
 from app.api.dependencies import (
     get_db,
     get_current_user,
-    get_current_active_user
+    get_current_active_user,
+    set_auth_cookies,
+    clear_auth_cookies,
 )
 from app.db.models import User
 from app.db.schemas import (
@@ -155,7 +157,8 @@ async def register(
 # MAX_FAILED_ATTEMPTS=5 in app/core/account_lockout.py. Per-IP-Limit greift VOR
 # dem Per-Account-Lockout. Defense in Depth: 5/min IP-Limit + Account-Lockout
 # (5x falsch -> 60s Lock; 7x -> 15min; 8x -> 1h, exponentiell).
-@limiter.limit("5/minute", key_func=get_ip_identifier)
+# G07: Wert zentral in RateLimitTier.LOGIN (= "5/minute"), kein Magic-String mehr.
+@limiter.limit(RateLimitTier.LOGIN, key_func=get_ip_identifier)
 @router.post(
     "/login",
     summary="Benutzer-Login",
@@ -183,6 +186,7 @@ async def register(
 async def login(
     login_data: LoginRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ) -> Union[Token, TwoFactorRequiredResponse]:
     """
@@ -384,6 +388,8 @@ async def login(
         session_warning=session_warning is not None
     )
 
+    # G03: Token zusätzlich als httpOnly-Cookies (Body bleibt für API-Clients)
+    set_auth_cookies(response, tokens["access_token"], tokens.get("refresh_token"))
     return Token(**tokens, session_warning=session_warning)
 
 
@@ -401,6 +407,7 @@ async def login(
 async def verify_2fa_login_endpoint(
     data: TwoFactorVerifyRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ) -> Token:
     """
@@ -543,6 +550,8 @@ async def verify_2fa_login_endpoint(
         used_backup_code=used_backup
     )
 
+    # G03: Token zusätzlich als httpOnly-Cookies
+    set_auth_cookies(response, tokens["access_token"], tokens.get("refresh_token"))
     return Token(**tokens, session_warning=session_warning)
 
 
@@ -559,6 +568,7 @@ async def verify_2fa_login_endpoint(
 )
 async def refresh_token(
     request: Request,  # SECURITY FIX 27-3: Required for rate limiter
+    response: Response,
     refresh_data: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db)
 ) -> Token:
@@ -588,8 +598,17 @@ async def refresh_token(
     from datetime import timezone as tz
 
     try:
+        # G03: Refresh-Token aus Body ODER httpOnly-Cookie (Cookie-basierte Clients
+        # senden es nicht im Body, sondern als 'refresh_token'-Cookie).
+        refresh_token_value = refresh_data.refresh_token or request.cookies.get("refresh_token")
+        if not refresh_token_value:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh-Token fehlt",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         # Decode and validate refresh token (async for Redis blacklist check)
-        payload = await decode_token(refresh_data.refresh_token)
+        payload = await decode_token(refresh_token_value)
         verify_token_type(payload, "refresh")
 
         # Extract user ID and token metadata
@@ -663,6 +682,7 @@ async def refresh_token(
             rotation_applied=True
         )
 
+        set_auth_cookies(response, tokens["access_token"], tokens.get("refresh_token"))
         return Token(**tokens)
 
     except HTTPException:
@@ -686,6 +706,7 @@ async def refresh_token(
 )
 async def logout(
     request: Request,
+    response: Response,
     logout_data: LogoutRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
@@ -787,6 +808,8 @@ async def logout(
         session_revoked=session_revoked
     )
 
+    # G03: httpOnly-Auth-Cookies entfernen
+    clear_auth_cookies(response)
     return MessageResponse(
         message="Erfolgreich abgemeldet",
         detail="Alle Tokens wurden widerrufen. Bitte melden Sie sich erneut an."

@@ -43,9 +43,11 @@ describe('useChatWebSocket (features/rag) - Token Storage Integration', () => {
     vi.restoreAllMocks();
   });
 
-  it('sollte Token in WebSocket-URL einbetten bei connect()', () => {
-    sessionStorage.setItem('auth_token', 'token+with=special&chars');
+  // Cookie-Auth (G03): Kein JS-Token mehr — das httpOnly-Auth-Cookie wird beim
+  // Same-Origin-WebSocket-Handshake automatisch mitgesendet. connect() baut die
+  // Verbindung ohne token-Query-Parameter auf und liest keinen sessionStorage-Token.
 
+  it('sollte WebSocket bei connect() mit Cookie-Auth aufbauen (URL ohne token-Query-Parameter)', () => {
     const { result } = renderHook(() =>
       useChatWebSocket({ autoConnect: false })
     );
@@ -55,10 +57,14 @@ describe('useChatWebSocket (features/rag) - Token Storage Integration', () => {
     });
 
     expect(wsConstructorCalls).toHaveLength(1);
-    expect(wsConstructorCalls[0]).toContain('token=token%2Bwith%3Dspecial%26chars');
+    // Kein Token in der URL
+    expect(wsConstructorCalls[0]).not.toContain('token=');
+    expect(wsConstructorCalls[0]).not.toContain('auth_token');
+    // Die Session-ID steht im Pfad
+    expect(wsConstructorCalls[0]).toContain('session-456');
   });
 
-  it('sollte Fehler-Status setzen wenn kein Token vorhanden', () => {
+  it('sollte Verbindung auch ohne sessionStorage-Token aufbauen (kein Fehler-Status)', () => {
     const { result } = renderHook(() =>
       useChatWebSocket({ autoConnect: false })
     );
@@ -67,35 +73,17 @@ describe('useChatWebSocket (features/rag) - Token Storage Integration', () => {
       result.current.connect();
     });
 
-    // Kein WebSocket erstellt
-    expect(wsConstructorCalls).toHaveLength(0);
-    // Error-State gesetzt
-    expect(result.current.error).toBe('Nicht authentifiziert');
-    expect(result.current.status).toBe('error');
+    // Same-Origin-Handshake sendet das Auth-Cookie automatisch — Verbindung wird aufgebaut
+    expect(wsConstructorCalls).toHaveLength(1);
+    // Kein clientseitiger "kein Token"-Fehler mehr
+    expect(result.current.error).toBeNull();
+    expect(result.current.status).toBe('connecting');
   });
 
-  it('sollte Whitespace-Token ablehnen', () => {
-    sessionStorage.setItem('auth_token', '   ');
-
-    const { result } = renderHook(() =>
-      useChatWebSocket({ autoConnect: false })
-    );
-
-    act(() => {
-      result.current.connect('session-456');
-    });
-
-    expect(wsConstructorCalls).toHaveLength(0);
-    expect(result.current.error).toBe('Nicht authentifiziert');
-    expect(result.current.status).toBe('error');
-  });
-
-  it('sollte sessionStorage verwenden', () => {
+  it('sollte sessionStorage NICHT fuer auth_token lesen', () => {
     const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
     const localSpy = vi.spyOn(localStorage, 'getItem');
 
-    sessionStorage.setItem('auth_token', 'test-token');
-
     const { result } = renderHook(() =>
       useChatWebSocket({ autoConnect: false })
     );
@@ -104,30 +92,11 @@ describe('useChatWebSocket (features/rag) - Token Storage Integration', () => {
       result.current.connect('session-1');
     });
 
-    expect(sessionSpy).toHaveBeenCalledWith('auth_token');
-    expect(localSpy).not.toHaveBeenCalled();
+    // Cookie-Auth: Der Hook liest keinen Token mehr aus Storage
+    expect(sessionSpy).not.toHaveBeenCalledWith('auth_token');
+    expect(localSpy).not.toHaveBeenCalledWith('auth_token');
 
     sessionSpy.mockRestore();
     localSpy.mockRestore();
-  });
-
-  it('sollte Key auth_token verwenden', () => {
-    const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
-
-    sessionStorage.setItem('auth_token', 'test-token');
-
-    const { result } = renderHook(() =>
-      useChatWebSocket({ autoConnect: false })
-    );
-
-    act(() => {
-      result.current.connect('session-1');
-    });
-
-    const calls = sessionSpy.mock.calls.map((c) => c[0]);
-    expect(calls).toContain('auth_token');
-    expect(calls).not.toContain('access_token');
-
-    sessionSpy.mockRestore();
   });
 });

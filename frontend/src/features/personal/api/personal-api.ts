@@ -5,6 +5,7 @@
  */
 
 import type { EmployeeDetail, EmployeeCreate, EmployeeUpdate, EmployeeListResponse, EmployeeFilters, Department, DepartmentDetail, DepartmentCreate, DepartmentUpdate, DepartmentListResponse, DepartmentTreeItem, DepartmentFilters, Position, PositionDetail, PositionCreate, PositionUpdate, PositionListResponse, PositionFilters, JobFamilyStats } from '../types';
+import { csrfHeaders } from '@/lib/auth/csrf';
 
 const API_BASE = '/api/v1/personal';
 
@@ -25,20 +26,20 @@ async function apiRequest<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // Get auth token from sessionStorage (same as apiClient)
-  const token = sessionStorage.getItem('auth_token');
+  // G03: Cookie-Auth - der httpOnly-Auth-Cookie wird automatisch mitgesendet
+  // (credentials: 'include'). Kein Bearer-Token aus sessionStorage mehr.
   const companyId = sessionStorage.getItem('current_company_id');
+
+  // CSRF nur bei state-changing Requests spiegeln (Double-Submit-Pattern).
+  const method = (options.method || 'GET').toUpperCase();
+  const isStateChanging =
+    method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...(isStateChanging ? csrfHeaders() : {}),
     ...(options.headers as Record<string, string>),
   };
-
-  // Add auth token - MANDATORY
-  if (!token?.trim()) {
-    throw new Error('Nicht authentifiziert');
-  }
-  headers['Authorization'] = `Bearer ${token.trim()}`;
 
   // Add company context
   // CWE-113: CRLF-Zeichen aus Header-Werten entfernen

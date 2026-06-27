@@ -10,6 +10,8 @@
  * - Trend analysis
  */
 
+import { csrfHeaders } from '@/lib/auth/csrf';
+
 // ==================== Types ====================
 
 export type BIQueryType =
@@ -151,29 +153,26 @@ export interface BIChatResponse {
 const API_BASE = '/api/v1/rag/bi';
 
 /**
- * Get authentication token from storage.
- */
-function getAuthToken(): string | null {
-  return sessionStorage.getItem('auth_token');
-}
-
-/**
  * Make authenticated API request.
+ *
+ * G03: Cookie-Auth + CSRF. Der httpOnly-Auth-Cookie wird vom Browser
+ * automatisch mitgesendet (credentials: 'include'). Bei state-changing
+ * Requests wird zusaetzlich das CSRF-Double-Submit-Token gespiegelt.
  */
 async function fetchWithAuth<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getAuthToken();
-  if (!token?.trim()) {
-    throw new Error('Nicht authentifiziert');
-  }
+  const method = (options.method || 'GET').toUpperCase();
+  const isStateChanging =
+    method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
 
   const response = await fetch(url, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token.trim()}`,
+      ...(isStateChanging ? csrfHeaders() : {}),
       ...options.headers,
     },
   });

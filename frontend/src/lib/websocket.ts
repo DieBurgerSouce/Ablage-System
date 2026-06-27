@@ -214,20 +214,12 @@ class RealtimeWebSocketClient {
   // ---------------------------------------------------------------------------
 
   private createConnection(): void {
-    // Frischen Token aus sessionStorage holen (falls refreshed)
-    const freshToken = sessionStorage.getItem('auth_token');
-    if (freshToken?.trim()) {
-      this.token = freshToken;
-    }
-    if (!this.token?.trim()) {
-      wsLogger.error('Keine Authentifizierung fuer WebSocket-Verbindung');
-      this.setState('disconnected');
-      return;
-    }
-    const wsUrl = `${this.url}?token=${encodeURIComponent(this.token.trim())}`;
-
+    // Cookie-Auth (G03): Der Auth-Token wird nicht mehr als Query-Parameter
+    // uebergeben oder aus sessionStorage gelesen. Same-Origin-WebSocket-
+    // Handshakes senden das Auth-Cookie automatisch mit; fehlt das Cookie,
+    // schliesst der Server die Verbindung selbst (Code 4001).
     try {
-      this.ws = new WebSocket(wsUrl);
+      this.ws = new WebSocket(this.url);
       this.setupEventListeners();
     } catch (error) {
       wsLogger.error('WebSocket creation failed', error);

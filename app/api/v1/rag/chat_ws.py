@@ -9,6 +9,7 @@ Real-time Kommunikation für:
 """
 
 import json
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
@@ -111,7 +112,7 @@ async def check_session_access(
 async def chat_websocket(
     websocket: WebSocket,
     session_id: str,
-    token: str = Query(..., description="JWT Access Token"),
+    token: Optional[str] = Query(None, description="JWT Access Token"),
 ):
     """
     WebSocket Endpoint für Chat Real-time Collaboration.
@@ -137,6 +138,8 @@ async def chat_websocket(
     - `{"type": "ai_done", "message_id": ..., "full_content": ...}`
     - `{"type": "error", "message": ...}` - Fehler
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Browser-Clients senden ihn same-origin mit).
+    token = token or websocket.cookies.get("access_token")
     ws_manager = get_websocket_manager()
 
     # 1. Authentifizierung

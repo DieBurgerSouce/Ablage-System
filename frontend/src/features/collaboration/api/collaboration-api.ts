@@ -54,10 +54,9 @@ export const collaborationKeys = {
 async function getDocumentPresence(
   documentId: string,
 ): Promise<DocumentPresenceResponse> {
-  const token = sessionStorage.getItem('auth_token');
+  // G03: Auth über httpOnly-Cookie (apiClient withCredentials) statt Query-Token.
   const response = await apiClient.get<DocumentPresenceResponse>(
     `/ws/presence/${documentId}`,
-    { params: { token } },
   );
   return response.data;
 }

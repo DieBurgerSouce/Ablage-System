@@ -256,17 +256,12 @@ export function useChatWebSocket(
             return;
         }
 
-        // Token holen
-        const token = sessionStorage.getItem('auth_token');
-        if (!token?.trim()) {
-            callbacksRef.current.onError?.('Nicht authentifiziert');
-            return;
-        }
-
-        // WebSocket URL bauen
+        // Cookie-Auth (G03): Kein JS-Token mehr noetig — das Auth-Cookie wird beim
+        // Same-Origin-WebSocket-Handshake automatisch mitgesendet. Fehlt das
+        // Cookie, schliesst der Server die Verbindung selbst (Code 4001/4003).
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/api/v1/rag/ws/chat/${sessionId}?token=${encodeURIComponent(token.trim())}`;
+        const wsUrl = `${protocol}//${host}/api/v1/rag/ws/chat/${sessionId}`;
 
         let ws: WebSocket | null = null;
         let localPingInterval: ReturnType<typeof setInterval> | null = null;

@@ -219,6 +219,12 @@ def set_rls_company_context_sync(session: Session, company_id: UUID) -> None:
             text("SELECT set_config('app.current_company_id', :cid, true)"),
             {"cid": str(validated_uuid)}
         )
+        # RLS-Reconciliation (siehe set_rls_company_context): Migration-210-Policies
+        # nutzen 'app.current_tenant_id' -> konsistent mitsetzen.
+        session.execute(
+            text("SELECT set_config('app.current_tenant_id', :cid, true)"),
+            {"cid": str(validated_uuid)}
+        )
         logger.debug(
             "rls_context_set_sync",
             company_id=str(validated_uuid)

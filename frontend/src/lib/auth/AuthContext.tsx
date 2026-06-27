@@ -16,7 +16,9 @@ interface AuthContextType {
     isLoading: boolean;
     login: (email: string, password: string) => Promise<LoginResult>;
     verify2FA: (tempToken: string, code: string) => Promise<AuthResponse>;
-    logout: typeof authService.logout;
+    // G03: Context-Logout bleibt synchron (fire-and-forget); der Backend-Aufruf
+    // (Cookie-Invalidierung) im authService laeuft asynchron im Hintergrund.
+    logout: () => void;
     isAuthenticated: boolean;
     /** Session-Ablaufzeit als Unix Timestamp */
     sessionExpiresAt: number | null;

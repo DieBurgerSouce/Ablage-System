@@ -320,7 +320,10 @@ class RateLimitTier:
     """Rate limit configurations for different user tiers."""
 
     # Authentication endpoints
-    LOGIN = "5/15minutes"  # 5 attempts per 15 minutes
+    LOGIN = "5/minute"  # G07: Per-IP-Limit 5/min (konsistent mit MAX_FAILED_ATTEMPTS=5).
+    # 15-Minuten-/Stunden-Eskalation greift ueber den Per-Account-Lockout
+    # (app/core/account_lockout.py: 5x->60s, 7x->15min, 8x->1h). Single source of truth
+    # fuer den Login-Decorator in app/api/v1/auth.py.
     REGISTER = "3/hour"  # 3 registrations per hour per IP
     REFRESH = "20/minute"  # 20 refresh requests per minute
     PASSWORD_RESET = "3/hour"  # 3 password reset requests per hour

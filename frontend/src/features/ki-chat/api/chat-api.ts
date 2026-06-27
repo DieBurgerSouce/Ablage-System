@@ -13,6 +13,7 @@
  */
 
 import { apiClient } from '@/lib/api/client';
+import { csrfHeaders } from '@/lib/auth/csrf';
 import type {
   ChatSession,
   ChatMessage,
@@ -78,21 +79,19 @@ export async function sendChatMessageStream(
   onEvent: (event: StreamEvent) => void,
   onError: (error: string) => void
 ): Promise<void> {
-  const token = sessionStorage.getItem('auth_token');
-  if (!token?.trim()) {
-    onError('Nicht authentifiziert');
-    return;
-  }
-
+  // G03: Cookie-Auth + CSRF. Der httpOnly-Auth-Cookie wird automatisch
+  // mitgesendet (credentials: 'include'); state-changing POST-Stream spiegelt
+  // das CSRF-Double-Submit-Token.
   const baseURL = apiClient.defaults.baseURL || '';
 
   let response: Response;
   try {
     response = await fetch(`${baseURL}${BASE_PATH}/stream`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token.trim()}`,
+        ...csrfHeaders(),
       },
       body: JSON.stringify({
         ...payload,

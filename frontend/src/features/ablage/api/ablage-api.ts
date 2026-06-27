@@ -169,13 +169,9 @@ export async function uploadDocument(
             xhr.setRequestHeader('X-CSRF-Token', csrfToken);
         }
 
-        // JWT-Token aus sessionStorage lesen - MANDATORY (wie apiClient)
-        const authToken = sessionStorage.getItem('auth_token');
-        if (!authToken?.trim()) {
-            reject(new Error('Nicht authentifiziert'));
-            return;
-        }
-        xhr.setRequestHeader('Authorization', `Bearer ${authToken.trim()}`);
+        // G03: Cookie-Auth - der httpOnly-Auth-Cookie wird per
+        // xhr.withCredentials automatisch mitgesendet; das CSRF-Token wurde
+        // oben gesetzt (Double-Submit-Pattern). Kein Bearer-Header mehr noetig.
 
         xhr.send(formData);
     });
@@ -572,12 +568,9 @@ export async function processDocumentOCR(
             xhr.setRequestHeader('X-CSRF-Token', csrfToken);
         }
 
-        const authToken = sessionStorage.getItem('auth_token');
-        if (!authToken?.trim()) {
-            reject(new Error('Nicht authentifiziert'));
-            return;
-        }
-        xhr.setRequestHeader('Authorization', `Bearer ${authToken.trim()}`);
+        // G03: Cookie-Auth - der httpOnly-Auth-Cookie wird per
+        // xhr.withCredentials automatisch mitgesendet; das CSRF-Token wurde
+        // oben gesetzt (Double-Submit-Pattern). Kein Bearer-Header mehr noetig.
 
         xhr.send(formData);
     });

@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { showApiErrorToast } from './error-toast-handler';
 import { logger } from '@/lib/logger';
+import { readCookie } from '@/lib/auth/csrf';
 
 // API Base URL from environment variable with fallback
 // Use relative URL to go through nginx proxy (works in both dev and prod)
@@ -67,8 +68,15 @@ export const apiClient = axios.create({
         'Content-Type': 'application/json',
     },
     timeout: 10000,
-    withCredentials: false, // No cookies for cross-origin
+    // G03: httpOnly-Auth-Cookie + CSRF-Cookie mitsenden (same-origin via nginx-Proxy).
+    withCredentials: true,
 });
+
+// G03: CSRF-Double-Submit. Das nicht-httpOnly 'csrf_token'-Cookie (gesetzt von
+// app/middleware/csrf.py auf GET-Responses) wird ausgelesen und bei state-changing
+// Requests im X-CSRF-Token-Header gespiegelt. Noetig, weil ohne Bearer-Header der
+// CSRF-Bearer-Bypass entfaellt.
+const CSRF_UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 // Request Interceptor
 // SECURITY NOTE: sessionStorage ist sicherer als localStorage, da Tokens
@@ -85,10 +93,15 @@ export const apiClient = axios.create({
 // vermerkt — hier erfolgt KEIN funktionaler Code-Change.
 apiClient.interceptors.request.use(
     (config) => {
-        // Get token from sessionStorage (sicherer als localStorage)
-        const token = sessionStorage.getItem('auth_token');
-        if (token?.trim()) {
-            config.headers.Authorization = `Bearer ${token.trim()}`;
+        // G03: Auth laeuft ueber das httpOnly-Cookie (vom Backend gesetzt) — KEIN
+        // Bearer-Token mehr aus JS fuer REST-Calls. Stattdessen CSRF-Double-Submit
+        // bei state-changing Requests.
+        const method = (config.method || 'get').toUpperCase();
+        if (CSRF_UNSAFE_METHODS.has(method)) {
+            const csrfToken = readCookie('csrf_token');
+            if (csrfToken) {
+                config.headers['X-CSRF-Token'] = csrfToken;
+            }
         }
 
         // Multi-Company Support: X-Company-ID Header setzen
@@ -133,9 +146,9 @@ apiClient.interceptors.response.use(
             try {
                 // Dynamically import authService to avoid circular dependency
                 const { authService } = await import('./services/auth');
-                const newToken = await authService.refreshToken();
-
-                originalRequest.headers.Authorization = `Bearer ${newToken.trim()}`;
+                // G03: Refresh rotiert die httpOnly-Cookies serverseitig; der Retry
+                // authentifiziert sich ueber das neue Cookie (kein Bearer-Header noetig).
+                await authService.refreshToken();
                 return apiClient(originalRequest);
             } catch (refreshError) {
                 // Refresh failed - emit event for session expired modal

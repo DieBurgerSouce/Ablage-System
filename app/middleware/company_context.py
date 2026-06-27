@@ -416,6 +416,14 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
             sa.text("SELECT set_config('app.current_company_id', :cid, true)"),
             {"cid": str(validated_uuid)}
         )
+        # RLS-Reconciliation: Migration 210 nutzt FORCE-RLS-Policies gegen die Variable
+        # 'app.current_tenant_id' (slack_channels/user_company_roles/...). Wir spiegeln sie
+        # auf company_id, damit diese Policies konsistent mit allen uebrigen
+        # (app.current_company_id) funktionieren statt 0 Zeilen zu liefern.
+        await db.execute(
+            sa.text("SELECT set_config('app.current_tenant_id', :cid, true)"),
+            {"cid": str(validated_uuid)}
+        )
         record_security_rls_event("context_set")
         logger.debug(
             "rls_context_set",

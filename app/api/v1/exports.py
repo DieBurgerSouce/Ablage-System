@@ -697,7 +697,7 @@ async def _authenticate_websocket_user(token: str) -> tuple[User | None, str | N
 async def export_job_websocket(
     websocket: WebSocket,
     job_id: UUID,
-    token: str = Query(..., description="JWT Access Token"),
+    token: Optional[str] = Query(None, description="JWT Access Token"),
 ):
     """WebSocket für Echtzeit-Updates eines Export-Jobs.
 
@@ -710,6 +710,8 @@ async def export_job_websocket(
         job_id: BatchJob UUID
         token: JWT Access Token (Query Parameter)
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Browser-Clients senden ihn same-origin mit).
+    token = token or websocket.cookies.get("access_token")
     # U.2 SECURITY FIX: Authenticate user via JWT token
     user, error = await _authenticate_websocket_user(token)
     if not user:

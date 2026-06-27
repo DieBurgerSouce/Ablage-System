@@ -6,6 +6,7 @@
  */
 
 import { apiClient } from './client';
+import { csrfHeaders } from '@/lib/auth/csrf';
 
 // ============================================================================
 // TYPES - Basierend auf Backend Schemas (app/api/schemas/rag.py)
@@ -315,16 +316,13 @@ export const chatApi = {
         };
 
         try {
-            // Hole Token aus apiClient Interceptor-Logik (konsistent mit anderen API-Calls)
-            const token = sessionStorage.getItem('auth_token');
-            if (!token?.trim()) {
-                callbacks?.onError?.('Nicht authentifiziert');
-                return;
-            }
+            // G03: Cookie-Auth + CSRF. Der httpOnly-Auth-Cookie wird vom Browser
+            // automatisch mitgesendet (credentials: 'include'). Da es ein
+            // state-changing POST ist, wird das CSRF-Double-Submit-Token gespiegelt.
             const headers: HeadersInit = {
                 'Content-Type': 'application/json',
                 Accept: 'text/event-stream',
-                'Authorization': `Bearer ${token.trim()}`,
+                ...csrfHeaders(),
             };
 
             // Fetch with streaming (SSE)
@@ -336,7 +334,7 @@ export const chatApi = {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(request),
-                    credentials: 'include', // Für CORS mit Credentials (cross-origin)
+                    credentials: 'include', // Auth-Cookie + CSRF (same-origin)
                     signal: callbacks?.signal, // AbortSignal für Abbruch
                 }
             );

@@ -12,7 +12,7 @@ Bietet WebSocket-Verbindungen für:
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.security import HTTPBearer
 import jwt
 import structlog
@@ -182,6 +182,8 @@ async def websocket_realtime_endpoint(
     - `system.notification` - System-Benachrichtigung
     - `system.error` - Systemfehler
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Browser-Clients senden ihn same-origin mit).
+    token = token or websocket.cookies.get("access_token")
     # Validate token
     if not token:
         await websocket.close(code=4001, reason="Token erforderlich")
@@ -264,6 +266,7 @@ async def get_event_types():
 
 @router.get("/ws/presence/{document_id}")
 async def get_document_presence(
+    request: Request,
     document_id: str,
     token: Optional[str] = Query(None, description="JWT Token für Authentifizierung"),
 ):
@@ -276,6 +279,8 @@ async def get_document_presence(
     Returns:
         Liste von Usern mit Presence-Informationen
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Cookie-Auth via apiClient).
+    token = token or request.cookies.get("access_token")
     # Validate token
     if not token:
         raise HTTPException(status_code=401, detail="Token erforderlich")
@@ -296,6 +301,7 @@ async def get_document_presence(
 
 @router.get("/ws/presence/company/{company_id}")
 async def get_company_presence_endpoint(
+    request: Request,
     company_id: str,
     token: Optional[str] = Query(None, description="JWT Token für Authentifizierung"),
 ):
@@ -308,6 +314,8 @@ async def get_company_presence_endpoint(
     Returns:
         Liste von User-Presence-Informationen
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Cookie-Auth via apiClient).
+    token = token or request.cookies.get("access_token")
     # Validate token
     if not token:
         raise HTTPException(status_code=401, detail="Token erforderlich")
@@ -332,6 +340,7 @@ async def get_company_presence_endpoint(
 
 @router.get("/ws/rooms")
 async def get_user_rooms(
+    request: Request,
     token: Optional[str] = Query(None, description="JWT Token für Authentifizierung"),
 ):
     """
@@ -340,6 +349,8 @@ async def get_user_rooms(
     Returns:
         Liste von Rooms
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Cookie-Auth via apiClient).
+    token = token or request.cookies.get("access_token")
     # Validate token
     if not token:
         raise HTTPException(status_code=401, detail="Token erforderlich")

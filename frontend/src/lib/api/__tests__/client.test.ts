@@ -31,6 +31,12 @@ describe('API Client', () => {
         // Clear sessionStorage
         sessionStorage.clear();
 
+        // Clear cookies (CSRF-Token) zwischen Tests
+        document.cookie.split(';').forEach((c) => {
+            const name = c.split('=')[0].trim();
+            if (name) document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        });
+
         // Reset window.location
         Object.defineProperty(window, 'location', {
             value: { pathname: '/test-path' },
@@ -56,8 +62,8 @@ describe('API Client', () => {
             expect(apiClient.defaults.timeout).toBe(10000);
         });
 
-        it('hat withCredentials auf false', () => {
-            expect(apiClient.defaults.withCredentials).toBe(false);
+        it('hat withCredentials auf true (Cookie-Auth, G03)', () => {
+            expect(apiClient.defaults.withCredentials).toBe(true);
         });
 
         it('hat baseURL konfiguriert', () => {
@@ -69,29 +75,42 @@ describe('API Client', () => {
     // ==================== Request Interceptor ====================
 
     describe('Request Interceptor', () => {
-        it('fügt Authorization Header hinzu wenn Token vorhanden', async () => {
-            sessionStorage.setItem('auth_token', 'test-token-123');
+        it('setzt KEINEN Authorization Header (G03: Cookie-Auth statt JS-Token)', async () => {
+            // Selbst wenn ein Alt-Token im sessionStorage liegt, darf der REST-Client
+            // keinen Bearer-Header mehr setzen - Auth laeuft ueber das httpOnly-Cookie.
+            sessionStorage.setItem('auth_token', 'sollte-ignoriert-werden');
 
-            // Create a mock request config
             const config = {
                 headers: {},
                 url: '/test',
                 method: 'get',
             };
 
-            // Get the request interceptor
             const requestInterceptor = apiClient.interceptors.request.handlers[0];
             expect(requestInterceptor).toBeDefined();
 
-            // Run the interceptor
             const result = await requestInterceptor.fulfilled(config);
 
-            expect(result.headers.Authorization).toBe('Bearer test-token-123');
+            expect(result.headers.Authorization).toBeUndefined();
         });
 
-        it('sendet keine Authorization Header wenn kein Token', async () => {
-            // Ensure no token
-            sessionStorage.removeItem('auth_token');
+        it('fügt X-CSRF-Token bei state-changing Requests hinzu (aus csrf_token-Cookie)', async () => {
+            document.cookie = 'csrf_token=test-csrf-123';
+
+            const config = {
+                headers: {},
+                url: '/test',
+                method: 'post',
+            };
+
+            const requestInterceptor = apiClient.interceptors.request.handlers[0];
+            const result = await requestInterceptor.fulfilled(config);
+
+            expect(result.headers['X-CSRF-Token']).toBe('test-csrf-123');
+        });
+
+        it('fügt KEIN X-CSRF-Token bei GET-Requests hinzu', async () => {
+            document.cookie = 'csrf_token=test-csrf-123';
 
             const config = {
                 headers: {},
@@ -102,7 +121,7 @@ describe('API Client', () => {
             const requestInterceptor = apiClient.interceptors.request.handlers[0];
             const result = await requestInterceptor.fulfilled(config);
 
-            expect(result.headers.Authorization).toBeUndefined();
+            expect(result.headers['X-CSRF-Token']).toBeUndefined();
         });
     });
 
@@ -172,21 +191,11 @@ describe('API Client', () => {
     // ==================== CSRF Configuration Note ====================
 
     describe('Security Configuration', () => {
-        it('verwendet sessionStorage statt localStorage für Token', () => {
-            // This is a documentation test - sessionStorage is more secure
-            // because tokens are cleared when the tab closes and not shared between tabs
-
-            // Set a token
-            sessionStorage.setItem('auth_token', 'test-secure-token');
-
-            // Verify it's in sessionStorage
-            expect(sessionStorage.getItem('auth_token')).toBe('test-secure-token');
-
-            // Verify it's NOT in localStorage
-            expect(localStorage.getItem('auth_token')).toBeNull();
-
-            // Cleanup
-            sessionStorage.removeItem('auth_token');
+        it('REST-Auth nutzt httpOnly-Cookie statt JS-Token (G03)', () => {
+            // Der REST-Client liest den Token NICHT mehr aus dem Storage fuer den
+            // Authorization-Header; die Session laeuft ueber das httpOnly-Cookie +
+            // CSRF-Double-Submit. (Vollstaendige JS-Token-Entfernung fuer WS/SSE = Folgearbeit.)
+            expect(apiClient.defaults.withCredentials).toBe(true);
         });
     });
 });

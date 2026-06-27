@@ -1,12 +1,42 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { queryBI } from '@/features/rag/api/bi-api';
+import { queryBI, getEntityStatistics } from '@/features/rag/api/bi-api';
 
-describe('RAG BI API - Token Storage Integration', () => {
+/**
+ * G03: Diese Suite prueft das NEUE Cookie-/CSRF-Auth-Verhalten von fetchWithAuth
+ * (Umstellung von Bearer-Token auf httpOnly-Cookie):
+ *  - fetch wird mit credentials:'include' aufgerufen (Auth-Cookie automatisch)
+ *  - es wird KEIN Authorization: Bearer-Header mehr gesetzt
+ *  - sessionStorage wird NICHT mehr fuer auth_token gelesen
+ *  - bei state-changing Requests (POST) wird das X-CSRF-Token aus dem
+ *    csrf_token-Cookie gespiegelt; bei GET hingegen nicht
+ */
+describe('RAG BI API - Cookie/CSRF Auth Integration', () => {
   const mockFetch = vi.fn();
+
+  // Loescht das csrf_token-Cookie (happy-dom: via Ablaufdatum in der Vergangenheit)
+  function clearCsrfCookie() {
+    document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  }
+
+  // Standard-OK-Response fuer eine BI-Query
+  function okQueryResponse() {
+    return {
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          query_type: 'summary',
+          summary: 'ok',
+          data: null,
+          suggestions: [],
+          query_time_ms: 10,
+        }),
+    };
+  }
 
   beforeEach(() => {
     sessionStorage.clear();
     localStorage.clear();
+    clearCsrfCookie();
     vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
   });
@@ -14,77 +44,77 @@ describe('RAG BI API - Token Storage Integration', () => {
   afterEach(() => {
     sessionStorage.clear();
     localStorage.clear();
+    clearCsrfCookie();
     vi.unstubAllGlobals();
   });
 
-  it('sollte Token aus sessionStorage als Bearer-Header senden', async () => {
-    sessionStorage.setItem('auth_token', 'test-bi-token-123');
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ query_type: 'summary', summary: 'ok', data: null, suggestions: [], query_time_ms: 10 }),
-    });
+  it('sollte fetch mit credentials:"include" aufrufen (Cookie-Auth)', async () => {
+    mockFetch.mockResolvedValueOnce(okQueryResponse());
 
     await queryBI({ query: 'Umsatz' });
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const [, options] = mockFetch.mock.calls[0];
+    expect(options.credentials).toBe('include');
+  });
+
+  it('sollte KEINEN Authorization-Header setzen', async () => {
+    // Selbst ein veraltetes Token im sessionStorage darf nicht verwendet werden
+    sessionStorage.setItem('auth_token', 'veraltetes-token');
+    mockFetch.mockResolvedValueOnce(okQueryResponse());
+
+    await queryBI({ query: 'Umsatz' });
+
+    const [, options] = mockFetch.mock.calls[0];
+    expect(options.headers).not.toHaveProperty('Authorization');
+  });
+
+  it('sollte sessionStorage NICHT fuer auth_token lesen', async () => {
+    const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
+    mockFetch.mockResolvedValueOnce(okQueryResponse());
+
+    await queryBI({ query: 'Test' });
+
+    const keys = sessionSpy.mock.calls.map((c) => c[0]);
+    expect(keys).not.toContain('auth_token');
+
+    sessionSpy.mockRestore();
+  });
+
+  it('sollte bei POST das X-CSRF-Token aus dem csrf_token-Cookie senden', async () => {
+    document.cookie = 'csrf_token=csrf-bi-555';
+    mockFetch.mockResolvedValueOnce(okQueryResponse());
+
+    await queryBI({ query: 'Umsatz' });
+
+    const [, options] = mockFetch.mock.calls[0];
     expect(options.headers).toEqual(
-      expect.objectContaining({
-        Authorization: 'Bearer test-bi-token-123',
-      })
+      expect.objectContaining({ 'X-CSRF-Token': 'csrf-bi-555' })
     );
   });
 
-  it('sollte Fehler werfen wenn kein Token vorhanden', async () => {
-    await expect(queryBI({ query: 'Umsatz' })).rejects.toThrow('Nicht authentifiziert');
-    expect(mockFetch).not.toHaveBeenCalled();
+  it('sollte ohne csrf_token-Cookie keinen X-CSRF-Token-Header senden (POST)', async () => {
+    mockFetch.mockResolvedValueOnce(okQueryResponse());
+
+    await queryBI({ query: 'Umsatz' });
+
+    const [, options] = mockFetch.mock.calls[0];
+    expect(options.headers).not.toHaveProperty('X-CSRF-Token');
   });
 
-  it('sollte Whitespace-Token als nicht authentifiziert behandeln', async () => {
-    sessionStorage.setItem('auth_token', '   ');
-    await expect(queryBI({ query: 'Umsatz' })).rejects.toThrow('Nicht authentifiziert');
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
+  it('sollte bei GET (getEntityStatistics) keinen X-CSRF-Token-Header senden', async () => {
+    // Auch mit gesetztem Cookie: GET ist nicht state-changing -> kein CSRF-Header
+    document.cookie = 'csrf_token=csrf-bi-555';
+    mockFetch.mockResolvedValueOnce(okQueryResponse());
 
-  it('sollte sessionStorage verwenden, nicht localStorage', async () => {
-    const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
-    const localSpy = vi.spyOn(localStorage, 'getItem');
+    await getEntityStatistics('entity-1');
 
-    sessionStorage.setItem('auth_token', 'test-token');
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ query_type: 'summary', summary: '', data: null, suggestions: [], query_time_ms: 0 }),
-    });
-
-    await queryBI({ query: 'Test' });
-
-    expect(sessionSpy).toHaveBeenCalledWith('auth_token');
-    expect(localSpy).not.toHaveBeenCalled();
-
-    sessionSpy.mockRestore();
-    localSpy.mockRestore();
-  });
-
-  it('sollte Key auth_token verwenden, nicht access_token', async () => {
-    const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
-
-    sessionStorage.setItem('auth_token', 'correct-token');
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ query_type: 'summary', summary: '', data: null, suggestions: [], query_time_ms: 0 }),
-    });
-
-    await queryBI({ query: 'Test' });
-
-    const calls = sessionSpy.mock.calls.map((c) => c[0]);
-    expect(calls).toContain('auth_token');
-    expect(calls).not.toContain('access_token');
-
-    sessionSpy.mockRestore();
+    const [, options] = mockFetch.mock.calls[0];
+    expect(options.headers).not.toHaveProperty('X-CSRF-Token');
   });
 
   it('sollte Fehlerresponse korrekt verarbeiten', async () => {
-    sessionStorage.setItem('auth_token', 'test-token');
+    // Nicht auth-bezogen: detail-Fehlermeldung wird als Error geworfen
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,

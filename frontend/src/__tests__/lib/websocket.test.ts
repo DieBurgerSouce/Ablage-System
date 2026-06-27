@@ -65,111 +65,54 @@ describe('RealtimeWebSocketClient - Token Handling', () => {
     vi.unstubAllGlobals();
   });
 
-  it('sollte Token mit Sonderzeichen via encodeURIComponent in URL kodieren', () => {
-    const specialToken = 'token+with=special&chars#hash';
-    sessionStorage.setItem('auth_token', specialToken);
+  // Cookie-Auth (G03): Der Auth-Token wird nicht mehr als Query-Parameter
+  // uebergeben oder aus sessionStorage gelesen. Same-Origin-WebSocket-
+  // Handshakes senden das httpOnly-Cookie automatisch mit; fehlt das Cookie,
+  // schliesst der Server die Verbindung selbst (Code 4001).
 
+  it('sollte WebSocket-URL ohne token-Query-Parameter aufbauen (Cookie-Auth)', () => {
     const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect(specialToken);
+    client.connect('beliebiger-wert');
 
     expect(capturedUrls).toHaveLength(1);
-    expect(capturedUrls[0]).toContain(`token=${encodeURIComponent(specialToken)}`);
-    // Raw special characters must NOT appear unencoded in the query string
-    expect(capturedUrls[0]).not.toContain('token+with=special&chars#hash');
+    // Kein Token mehr in der URL
+    expect(capturedUrls[0]).not.toContain('token=');
+    expect(capturedUrls[0]).not.toContain('auth_token');
+    // Der Realtime-Endpoint wird korrekt angesteuert
+    expect(capturedUrls[0]).toContain('/api/v1/ws/realtime');
   });
 
-  it('sollte frischen Token aus sessionStorage bei Verbindungsaufbau holen', () => {
-    const initialToken = 'initial-token';
-    const freshToken = 'fresh-session-token';
-
-    // Fresh token in sessionStorage overrides the connect() parameter
-    sessionStorage.setItem('auth_token', freshToken);
-
-    const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect(initialToken);
-
-    expect(capturedUrls[0]).toContain(`token=${encodeURIComponent(freshToken)}`);
-  });
-
-  it('sollte sessionStorage verwenden, nicht localStorage', () => {
-    const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
-    const localSpy = vi.spyOn(localStorage, 'getItem');
-
-    sessionStorage.setItem('auth_token', 'session-token');
-    localStorage.setItem('auth_token', 'local-token');
-
-    const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect('test-token');
-
-    expect(sessionSpy).toHaveBeenCalledWith('auth_token');
-    expect(localSpy).not.toHaveBeenCalled();
-
-    sessionSpy.mockRestore();
-    localSpy.mockRestore();
-  });
-
-  it('sollte Key auth_token verwenden', () => {
-    const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
-
-    sessionStorage.setItem('auth_token', 'correct-token');
-
-    const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect('test-token');
-
-    const calledKeys = sessionSpy.mock.calls.map((c) => c[0]);
-    expect(calledKeys).toContain('auth_token');
-
-    sessionSpy.mockRestore();
-  });
-
-  it('sollte connect-Token als Fallback verwenden wenn kein sessionStorage-Token', () => {
-    // sessionStorage is empty - no auth_token set
-    const connectToken = 'connect-fallback-token';
-
-    const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect(connectToken);
-
-    expect(capturedUrls[0]).toContain(`token=${encodeURIComponent(connectToken)}`);
-  });
-
-  it('sollte Verbindung ablehnen wenn kein Token vorhanden', () => {
-    // Kein Token in sessionStorage, connect mit leerem String
+  it('sollte Verbindung auch ohne sessionStorage-Token aufbauen (kein Token-Guard mehr)', () => {
+    // sessionStorage ist leer — bei Cookie-Auth darf das die Verbindung NICHT verhindern
     const client = new RealtimeWebSocketClient('localhost:8000');
     client.connect('');
 
-    // Kein WebSocket sollte erstellt worden sein (Token-Guard)
-    expect(capturedUrls).toHaveLength(0);
-  });
-
-  it('sollte Whitespace-Token bei connect ablehnen', () => {
-    const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect('   ');
-
-    // Kein WebSocket sollte erstellt worden sein (Token-Guard faengt Whitespace ab)
-    expect(capturedUrls).toHaveLength(0);
-  });
-
-  it('sollte Whitespace-Token aus sessionStorage nicht uebernehmen (K2)', () => {
-    sessionStorage.setItem('auth_token', '  \t  ');
-
-    const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect('valid-connect-token');
-
-    // K2: freshToken?.trim() ist falsy → Whitespace wird NICHT uebernommen,
-    // connect-Token bleibt erhalten und wird verwendet
+    // Das httpOnly-Cookie wird beim Handshake automatisch mitgesendet;
+    // einen clientseitigen "kein Token"-Abbruch-Guard gibt es nicht mehr.
     expect(capturedUrls).toHaveLength(1);
-    expect(capturedUrls[0]).toContain(`token=${encodeURIComponent('valid-connect-token')}`);
+    expect(capturedUrls[0]).not.toContain('token=');
   });
 
-  it('sollte Unicode-Token korrekt kodieren', () => {
-    const unicodeToken = 'tökén-with-ümlautß';
-    sessionStorage.setItem('auth_token', unicodeToken);
+  it('sollte sessionStorage NICHT fuer auth_token lesen', () => {
+    const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
 
     const client = new RealtimeWebSocketClient('localhost:8000');
-    client.connect(unicodeToken);
+    client.connect('test-token');
 
-    expect(capturedUrls[0]).toContain(`token=${encodeURIComponent(unicodeToken)}`);
-    // Verify encoding actually happened (ö -> %C3%B6)
-    expect(capturedUrls[0]).toContain('%C3');
+    // Cookie-Auth: Der Client liest keinen Token mehr aus sessionStorage
+    expect(sessionSpy).not.toHaveBeenCalledWith('auth_token');
+
+    sessionSpy.mockRestore();
+  });
+
+  it('sollte localStorage NICHT fuer auth_token lesen', () => {
+    const localSpy = vi.spyOn(localStorage, 'getItem');
+
+    const client = new RealtimeWebSocketClient('localhost:8000');
+    client.connect('test-token');
+
+    expect(localSpy).not.toHaveBeenCalledWith('auth_token');
+
+    localSpy.mockRestore();
   });
 });

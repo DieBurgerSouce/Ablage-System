@@ -197,15 +197,11 @@ export function useChatWebSocket(
         (targetSessionId?: string) => {
             cleanup();
 
-            const token = sessionStorage.getItem('auth_token');
-            if (!token?.trim()) {
-                setError('Nicht authentifiziert');
-                setStatus('error');
-                return;
-            }
-
+            // Cookie-Auth (G03): Kein JS-Token mehr — das Auth-Cookie wird beim
+            // Same-Origin-WebSocket-Handshake automatisch mitgesendet. Fehlt das
+            // Cookie, schliesst der Server die Verbindung selbst (Code 4001).
             const sid = targetSessionId || initialSessionId || 'new';
-            const wsUrl = `${WS_BASE}/ws/chat/${sid}?token=${encodeURIComponent(token.trim())}`;
+            const wsUrl = `${WS_BASE}/ws/chat/${sid}`;
 
             setStatus('connecting');
             setError(null);

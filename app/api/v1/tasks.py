@@ -437,7 +437,7 @@ async def get_task_result(
 async def task_progress_websocket(
     websocket: WebSocket,
     task_id: str,
-    token: str = Query(..., description="JWT Access Token"),
+    token: Optional[str] = Query(None, description="JWT Access Token"),
 ):
     """WebSocket endpoint for real-time task progress updates.
 
@@ -463,6 +463,8 @@ async def task_progress_websocket(
             "error": str (if failed)
         }
     """
+    # G03: Token-Fallback aus httpOnly-Cookie (Browser-Clients senden ihn same-origin mit).
+    token = token or websocket.cookies.get("access_token")
     # U.3 SECURITY FIX: Authenticate user via JWT token
     user, error = await _authenticate_websocket_user(token)
     if not user:
