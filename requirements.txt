@@ -68,9 +68,9 @@ hunspell>=0.5.5  # Hunspell dictionary support for German spellchecking
 argostranslate>=1.9.1  # Offline translation for non-German documents
 
 # Testing
-pytest==7.4.4
-pytest-asyncio==0.23.3
-pytest-cov==4.1.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
 httpx==0.26.0
 
 # Development Tools
