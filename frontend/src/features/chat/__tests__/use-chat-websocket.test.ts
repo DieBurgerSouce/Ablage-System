@@ -168,7 +168,10 @@ describe('useChatWebSocket', () => {
       expect(MockWebSocket.instances).toHaveLength(0);
     });
 
-    it('verbindet sich nicht wenn kein Auth-Token vorhanden', () => {
+    it('verbindet sich auch ohne JS-Auth-Token (G03: Cookie-Auth)', () => {
+      // G03: Der Access-Token liegt im httpOnly-Cookie und wird beim Same-Origin-
+      // WebSocket-Handshake automatisch mitgesendet. Der Hook prueft KEIN JS-Token
+      // mehr — fehlt das Cookie, schliesst der SERVER die Verbindung (4001/4003).
       sessionStorage.removeItem('auth_token');
 
       renderHook(() =>
@@ -178,10 +181,13 @@ describe('useChatWebSocket', () => {
         })
       );
 
-      expect(MockWebSocket.instances).toHaveLength(0);
+      expect(MockWebSocket.instances).toHaveLength(1);
     });
 
-    it('ruft onError auf wenn kein Auth-Token vorhanden', () => {
+    it('ruft KEIN client-seitiges "Nicht authentifiziert" mehr (G03: Cookie-Auth)', () => {
+      // Vor G03 warf der Hook onError('Nicht authentifiziert'), wenn kein
+      // sessionStorage-Token vorlag. Mit Cookie-Auth entfaellt dieser Pfad —
+      // Authentifizierungsfehler kommen jetzt serverseitig ueber den Close-Code.
       sessionStorage.removeItem('auth_token');
       const onError = vi.fn();
 
@@ -193,7 +199,7 @@ describe('useChatWebSocket', () => {
         })
       );
 
-      expect(onError).toHaveBeenCalledWith('Nicht authentifiziert');
+      expect(onError).not.toHaveBeenCalledWith('Nicht authentifiziert');
     });
 
     it('baut WebSocket-Verbindung auf wenn enabled und sessionId und Token vorhanden', () => {
@@ -249,7 +255,11 @@ describe('useChatWebSocket', () => {
       expect(ws.url).toContain('wss://');
     });
 
-    it('kodiert Token in URL als Query-Parameter', () => {
+    it('kodiert KEINEN Token in die WS-URL (G03: Cookie-Auth, kein Token-Leak)', () => {
+      // Sicherheitsgewinn durch G03: Der Token steht NICHT mehr als Query-Param
+      // in der WebSocket-URL (URL-Logging/Referer-Leak). Auth laeuft ueber das
+      // httpOnly-Cookie. Dieser Test ist die Regressionswache gegen eine
+      // Rueckkehr des Token-in-URL-Musters.
       sessionStorage.setItem('auth_token', TEST_TOKEN);
 
       renderHook(() =>
@@ -260,7 +270,8 @@ describe('useChatWebSocket', () => {
       );
 
       const ws = getLatestInstance();
-      expect(ws.url).toContain(`token=${encodeURIComponent(TEST_TOKEN)}`);
+      expect(ws.url).not.toContain('token=');
+      expect(ws.url).toContain(`/api/v1/rag/ws/chat/${TEST_SESSION_ID}`);
     });
 
     it('setzt isConnected auf true nach erfolgreichem Verbindungsaufbau', async () => {
