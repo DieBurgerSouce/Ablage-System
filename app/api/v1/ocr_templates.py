@@ -13,7 +13,7 @@ from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db, get_company_id
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.ocr.auto_template_service import (
     AutoTemplateService,
@@ -60,7 +60,7 @@ class TemplateResponse(BaseModel):
 @router.get("/candidates", response_model=List[TemplateCandidateResponse])
 async def list_template_candidates(
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_user),
 ):
     """Liste aller Template-Kandidaten (Lieferanten mit genug ähnlichen Dokumenten)."""
@@ -84,7 +84,7 @@ async def list_template_candidates(
 async def detect_template_candidate(
     entity_id: UUID,
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_user),
 ):
     """Prüfe ob ein Lieferant ein Template-Kandidat ist."""
@@ -110,7 +110,7 @@ async def detect_template_candidate(
 async def auto_generate_template(
     request: AutoGenerateRequest,
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     current_user: User = Depends(get_current_user),
 ):
     """Generiere automatisch ein Template aus ähnlichen Dokumenten."""

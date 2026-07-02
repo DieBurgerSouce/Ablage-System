@@ -19,7 +19,8 @@ import {
   Menu,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -53,6 +54,26 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     await logout.mutateAsync();
     navigate({ to: '/portal/login' });
   };
+
+  // W2-22/F7: Auf 'portal-session-expired' reagieren (vom portal-api Interceptor
+  // bei abgelaufenem/ungueltigem Token dispatcht). Der Interceptor hat die
+  // Portal-Auth-Daten bereits geleert -> hier zu /portal/login navigieren und
+  // einen deutschen Hinweis anzeigen. Ohne diesen Listener bliebe der Kunde auf
+  // einer toten Oberflaeche mit einer 401-Welle.
+  useEffect(() => {
+    const handlePortalSessionExpired = () => {
+      toast.error('Sitzung abgelaufen', {
+        description: 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
+      });
+      navigate({ to: '/portal/login' });
+    };
+
+    window.addEventListener('portal-session-expired', handlePortalSessionExpired);
+
+    return () => {
+      window.removeEventListener('portal-session-expired', handlePortalSessionExpired);
+    };
+  }, [navigate]);
 
   const userName = user
     ? `${user.first_name || ''} ${user.last_name || ''}`.trim() ||

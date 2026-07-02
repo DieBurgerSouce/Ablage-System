@@ -29,6 +29,8 @@ from app.db.models import (
     ApprovalPriority,
     User,
 )
+# W2-14: User hat KEINE company_id-Spalte -> Tenancy via UserCompany-Join.
+from app.db.models_cash_company import UserCompany
 from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
@@ -824,8 +826,9 @@ class WorkflowEngineService:
         # Annahme: User hat ein role-Feld oder eine Relationship zu Roles
         stmt = (
             select(User)
+            .join(UserCompany, UserCompany.user_id == User.id)
             .where(
-                User.company_id == company_id,  # Multi-Tenant Security!
+                UserCompany.company_id == company_id,  # Multi-Tenant Security!
                 User.is_active.is_(True),
             )
         )

@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import (
     get_current_active_user,
     get_db,
-    get_current_company_id,
+    get_user_company_id_dep,
 )
 from app.db.models import User
 from app.db.models_learning_autonomy import (
@@ -138,7 +138,7 @@ class TrustCurveResponse(BaseModel):
 async def get_all_autonomy_levels(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> AllLevelsResponse:
     """
     Alle Autonomie-Level des aktuellen Users abrufen.
@@ -162,7 +162,7 @@ async def get_autonomy_level(
     action_type: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict:
     """
     Autonomie-Level für eine bestimmte Aktion abrufen.
@@ -193,7 +193,7 @@ async def record_confirmation(
     request: ConfirmationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ActionResultResponse:
     """
     Bestätigung eines Vorschlags aufzeichnen.
@@ -228,7 +228,7 @@ async def record_rejection(
     request: RejectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ActionResultResponse:
     """
     Ablehnung eines Vorschlags aufzeichnen.
@@ -262,7 +262,7 @@ async def record_correction(
     request: CorrectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ActionResultResponse:
     """
     Korrektur eines Vorschlags aufzeichnen.
@@ -297,7 +297,7 @@ async def record_undo(
     request: UndoRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ActionResultResponse:
     """
     Undo einer automatischen Ausführung aufzeichnen.
@@ -331,7 +331,7 @@ async def set_level_manually(
     request: SetLevelRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> SetLevelResponse:
     """
     Autonomie-Level für eine Aktion manuell setzen.
@@ -367,7 +367,7 @@ async def get_trust_curve(
     limit: int = Query(100, ge=1, le=1000, description="Anzahl der letzten Entscheidungen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TrustCurveResponse:
     """
     Vertrauenskurve für eine Aktion abrufen.

@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db, get_current_company_id
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 
@@ -369,7 +369,7 @@ async def list_learning_profiles(
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> List[LearningProfileResponse]:
     """Lernprofile der aktuellen Firma auflisten."""
     from app.db.models_ki_pipeline import LearningProfile
@@ -426,7 +426,7 @@ async def list_learning_profiles(
 async def get_learning_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> LearningStatisticsResponse:
     """Lernstatistiken der aktuellen Firma abrufen."""
     from app.services.extraction_learning_service import (
@@ -476,7 +476,7 @@ async def get_cross_doc_matches(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> List[CrossDocMatchResponse]:
     """Cross-Document-Matches für ein Dokument abrufen."""
     from app.services.cross_document_intelligence_service import (
@@ -533,7 +533,7 @@ async def get_discrepancies(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> List[DiscrepancyResponse]:
     """Diskrepanzen für ein Dokument abrufen."""
     from app.services.cross_document_intelligence_service import (
@@ -646,7 +646,7 @@ async def generate_summary(
     request: Optional[GenerateSummaryRequest] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> DocumentSummaryResponse:
     """Zusammenfassung für ein Dokument generieren/regenerieren."""
     from app.services.document_summary_service import (

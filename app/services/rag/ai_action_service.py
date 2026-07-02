@@ -514,6 +514,12 @@ class AIActionService:
         affected_items: List[UUID] = []
         details: Dict[str, object] = {}
 
+        # W2-13: User-Modell hat KEINE company_id-Spalte (Tenancy via UserCompany).
+        # Aktive Firma einmalig zentral aufloesen (Helper aus app.api.dependencies;
+        # lokaler Import vermeidet Service<->API Zirkular-Import).
+        from app.api.dependencies import get_user_company_id
+        company_id = await get_user_company_id(db, user)
+
         # Dispatch to specific action handlers
         if request.action_type == AIActionType.SEARCH_DOCUMENTS:
             message = "Suche ausgeführt."
@@ -545,7 +551,7 @@ class AIActionService:
                     update(Document)
                     .where(
                         Document.id == doc_uuid,
-                        Document.company_id == user.company_id,
+                        Document.company_id == company_id,
                     )
                     .values(
                         document_type=category,
@@ -617,7 +623,7 @@ class AIActionService:
                     update(Document)
                     .where(
                         Document.id == doc_uuid,
-                        Document.company_id == user.company_id,
+                        Document.company_id == company_id,
                     )
                     .values(
                         business_entity_id=entity_uuid,
@@ -657,7 +663,7 @@ class AIActionService:
             reminder = Reminder(
                 id=uuid4(),
                 user_id=user.id,
-                company_id=user.company_id,
+                company_id=company_id,
                 title=title,
                 description=description,
                 due_date=due_date,
@@ -690,7 +696,7 @@ class AIActionService:
                     update(Document)
                     .where(
                         Document.id == doc_uuid,
-                        Document.company_id == user.company_id,
+                        Document.company_id == company_id,
                     )
                     .values(
                         status=ProcessingStatus.COMPLETED.value,
@@ -721,7 +727,7 @@ class AIActionService:
                         update(Document)
                         .where(
                             Document.id == doc_uuid,
-                            Document.company_id == user.company_id,
+                            Document.company_id == company_id,
                         )
                         .values(
                             status=ProcessingStatus.PROCESSING.value,
@@ -775,7 +781,7 @@ class AIActionService:
                 notification = Notification(
                     id=uuid4(),
                     user_id=user.id,
-                    company_id=user.company_id,
+                    company_id=company_id,
                     title=subject,
                     message=notification_message,
                     notification_type="ai_action",
@@ -809,7 +815,7 @@ class AIActionService:
                     update(Document)
                     .where(
                         Document.id.in_(doc_uuids),
-                        Document.company_id == user.company_id,
+                        Document.company_id == company_id,
                     )
                     .values(
                         document_type=category,
@@ -836,7 +842,7 @@ class AIActionService:
             # Überfällige Rechnungen (via InvoiceTracking)
             overdue_result = await db.execute(
                 select(InvoiceTracking).where(
-                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.company_id == company_id,
                     InvoiceTracking.status == InvoiceStatus.OVERDUE.value,
                     InvoiceTracking.deleted_at.is_(None),
                 )
@@ -846,7 +852,7 @@ class AIActionService:
             # Ausstehende Validierungen (Dokumente im Pending-Status)
             pending_result = await db.execute(
                 select(sa_func.count()).select_from(Document).where(
-                    Document.company_id == user.company_id,
+                    Document.company_id == company_id,
                     Document.status == ProcessingStatus.PENDING.value,
                     Document.deleted_at.is_(None),
                 )
@@ -856,7 +862,7 @@ class AIActionService:
             # Skonto-Deadlines die bald ablaufen
             skonto_result = await db.execute(
                 select(InvoiceTracking).where(
-                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.company_id == company_id,
                     InvoiceTracking.skonto_deadline.isnot(None),
                     InvoiceTracking.skonto_used.is_(False),
                     InvoiceTracking.skonto_deadline >= now,
@@ -923,7 +929,7 @@ class AIActionService:
                     sa_func.coalesce(sa_func.sum(InvoiceTracking.amount), 0),
                     sa_func.count(InvoiceTracking.id),
                 ).where(
-                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.company_id == company_id,
                     InvoiceTracking.invoice_date >= range_1_start,
                     InvoiceTracking.invoice_date < range_1_end,
                     InvoiceTracking.deleted_at.is_(None),
@@ -939,7 +945,7 @@ class AIActionService:
                     sa_func.coalesce(sa_func.sum(InvoiceTracking.amount), 0),
                     sa_func.count(InvoiceTracking.id),
                 ).where(
-                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.company_id == company_id,
                     InvoiceTracking.invoice_date >= range_2_start,
                     InvoiceTracking.invoice_date < range_2_end,
                     InvoiceTracking.deleted_at.is_(None),
@@ -981,7 +987,7 @@ class AIActionService:
             # Rechnungen mit Skonto-Bedingungen (via InvoiceTracking)
             skonto_result = await db.execute(
                 select(InvoiceTracking).where(
-                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.company_id == company_id,
                     InvoiceTracking.skonto_deadline.isnot(None),
                     InvoiceTracking.skonto_used.is_(False),
                     InvoiceTracking.skonto_deadline >= now,
@@ -1041,7 +1047,7 @@ class AIActionService:
                 doc_result = await db.execute(
                     select(Document).where(
                         Document.id == doc_uuid,
-                        Document.company_id == user.company_id,
+                        Document.company_id == company_id,
                     )
                 )
                 doc = doc_result.scalar_one_or_none()
@@ -1051,7 +1057,7 @@ class AIActionService:
                     # Aktive DATEV-Verbindung für diese Company
                     conn_result = await db.execute(
                         select(DATEVConnection).where(
-                            DATEVConnection.company_id == user.company_id,
+                            DATEVConnection.company_id == company_id,
                             DATEVConnection.is_active.is_(True),
                             DATEVConnection.connection_status == "connected",
                         ).limit(1)

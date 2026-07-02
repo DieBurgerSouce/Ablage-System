@@ -26,7 +26,7 @@ from app.core.safe_errors import safe_error_log
 from app.core.types import JSONDict
 from app.db.models import User
 from app.db.models_smart_dashboard import DashboardTab
-from app.api.dependencies import get_db, get_current_active_user, get_current_company_id
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.services.smart_dashboard_service import SmartDashboardService
 from app.services.document_progress_service import DocumentProgressService
 
@@ -66,7 +66,7 @@ class SaveLayoutResponse(BaseModel):
 )
 async def get_kpis(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
@@ -122,7 +122,7 @@ async def get_tab_data(
     tab: str,
     role: Optional[str] = Query(None, description="Rollen-Filter"),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
@@ -233,7 +233,7 @@ async def get_widgets(
 async def save_layout(
     request: SaveLayoutRequest,
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
@@ -295,7 +295,7 @@ async def save_layout(
 )
 async def get_trends(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
@@ -396,7 +396,7 @@ async def get_document_progress(
 async def get_batch_progress(
     batch_id: Optional[UUID] = Query(None, description="Optionale Batch-ID"),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """

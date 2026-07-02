@@ -115,6 +115,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+    // W2-22/F1: Auf 'session-expired' reagieren (vom API-Interceptor bei
+    // fehlgeschlagenem Token-Refresh dispatcht). Der Interceptor hat den
+    // sessionStorage bereits geleert -> hier NUR den lokalen React-State
+    // zuruecksetzen (KEIN erneuter API-Call/Redirect). setUser(null) laesst
+    // isAuthenticated auf false fallen, womit der Route-Guard in __root.tsx
+    // <Navigate to="/login"> ausloest. Ohne diesen Handler bliebe
+    // isAuthenticated=true und es entstuende eine 401-Welle hinter dem Modal.
+    useEffect(() => {
+        const handleSessionExpired = () => {
+            if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+            if (activityTimeoutRef.current) {
+                clearTimeout(activityTimeoutRef.current);
+                activityTimeoutRef.current = null;
+            }
+            setUser(null);
+            setSessionExpiresAt(null);
+            setSessionTimeRemaining(null);
+            // User-Kontext aus Loki-Logging entfernen und gepufferte Logs flushen
+            logger.setUser(null);
+            logger.flush();
+        };
+
+        window.addEventListener('session-expired', handleSessionExpired);
+
+        return () => {
+            window.removeEventListener('session-expired', handleSessionExpired);
+        };
+    }, []);
+
     useEffect(() => {
         const initAuth = async () => {
             try {

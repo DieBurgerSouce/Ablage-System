@@ -20,7 +20,8 @@ from uuid import UUID, uuid4
 import structlog
 import re
 
-from sqlalchemy import select, func, and_, or_, update, delete
+from sqlalchemy import select, func, and_, or_, update, delete, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -726,7 +727,7 @@ class DocumentChainService:
                 Document.company_id == company_id,
                 Document.id != exclude_document_id,
                 Document.deleted_at.is_(None),
-                Document.document_metadata["extracted_data"][ref_type].astext == ref_value,
+                cast(Document.document_metadata, JSONB)["extracted_data"][ref_type].astext == ref_value,
             )
         )
 
@@ -778,7 +779,7 @@ class DocumentChainService:
                 Document.company_id == company_id,
                 Document.id != exclude_document_id,
                 Document.deleted_at.is_(None),
-                Document.document_metadata["extracted_data"]["customer_number"].astext == customer_number,
+                cast(Document.document_metadata, JSONB)["extracted_data"]["customer_number"].astext == customer_number,
             )
         )
 

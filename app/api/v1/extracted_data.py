@@ -196,23 +196,23 @@ async def search_extracted_data(
     # Dokumenttyp
     if document_type:
         filters.append(
-            models.Document.extracted_data["classification"]["document_type"].astext == document_type.value
+            cast(models.Document.extracted_data, JSONB)["classification"]["document_type"].astext == document_type.value
         )
 
     # Rechnungsnummer (ILIKE für Teilmatch)
     if invoice_number:
         filters.append(
             or_(
-                models.Document.extracted_data["invoice"]["invoice_number"].astext.ilike(f"%{invoice_number}%"),
-                models.Document.extracted_data["order"]["order_number"].astext.ilike(f"%{invoice_number}%"),
-                models.Document.extracted_data["contract"]["contract_number"].astext.ilike(f"%{invoice_number}%")
+                cast(models.Document.extracted_data, JSONB)["invoice"]["invoice_number"].astext.ilike(f"%{invoice_number}%"),
+                cast(models.Document.extracted_data, JSONB)["order"]["order_number"].astext.ilike(f"%{invoice_number}%"),
+                cast(models.Document.extracted_data, JSONB)["contract"]["contract_number"].astext.ilike(f"%{invoice_number}%")
             )
         )
 
     # Kundennummer
     if customer_number:
         filters.append(
-            models.Document.extracted_data["invoice"]["customer_number"].astext.ilike(f"%{customer_number}%")
+            cast(models.Document.extracted_data, JSONB)["invoice"]["customer_number"].astext.ilike(f"%{customer_number}%")
         )
 
     # IBAN
@@ -228,7 +228,7 @@ async def search_extracted_data(
             )
         filters.append(
             or_(
-                models.Document.extracted_data["invoice"]["sender_bank"]["iban"].astext.ilike(f"%{iban_clean}%"),
+                cast(models.Document.extracted_data, JSONB)["invoice"]["sender_bank"]["iban"].astext.ilike(f"%{iban_clean}%"),
                 func.jsonb_path_exists(
                     models.Document.extracted_data,
                     f'$.ibans[*] ? (@ like_regex "{iban_clean}")'
@@ -248,7 +248,7 @@ async def search_extracted_data(
             )
         filters.append(
             or_(
-                models.Document.extracted_data["invoice"]["sender_vat_id"].astext.ilike(f"%{vat_clean}%"),
+                cast(models.Document.extracted_data, JSONB)["invoice"]["sender_vat_id"].astext.ilike(f"%{vat_clean}%"),
                 func.jsonb_path_exists(
                     models.Document.extracted_data,
                     f'$.vat_ids[*] ? (@ like_regex "{vat_clean}")'
@@ -260,7 +260,7 @@ async def search_extracted_data(
     if min_amount is not None:
         filters.append(
             cast(
-                models.Document.extracted_data["invoice"]["gross_amount"].astext,
+                cast(models.Document.extracted_data, JSONB)["invoice"]["gross_amount"].astext,
                 Decimal
             ) >= min_amount
         )
@@ -268,7 +268,7 @@ async def search_extracted_data(
     if max_amount is not None:
         filters.append(
             cast(
-                models.Document.extracted_data["invoice"]["gross_amount"].astext,
+                cast(models.Document.extracted_data, JSONB)["invoice"]["gross_amount"].astext,
                 Decimal
             ) <= max_amount
         )
@@ -278,11 +278,11 @@ async def search_extracted_data(
         filters.append(
             or_(
                 cast(
-                    models.Document.extracted_data["invoice"]["invoice_date"].astext,
+                    cast(models.Document.extracted_data, JSONB)["invoice"]["invoice_date"].astext,
                     String
                 ) >= date_from.isoformat(),
                 cast(
-                    models.Document.extracted_data["order"]["order_date"].astext,
+                    cast(models.Document.extracted_data, JSONB)["order"]["order_date"].astext,
                     String
                 ) >= date_from.isoformat()
             )
@@ -292,11 +292,11 @@ async def search_extracted_data(
         filters.append(
             or_(
                 cast(
-                    models.Document.extracted_data["invoice"]["invoice_date"].astext,
+                    cast(models.Document.extracted_data, JSONB)["invoice"]["invoice_date"].astext,
                     String
                 ) <= date_to.isoformat(),
                 cast(
-                    models.Document.extracted_data["order"]["order_date"].astext,
+                    cast(models.Document.extracted_data, JSONB)["order"]["order_date"].astext,
                     String
                 ) <= date_to.isoformat()
             )
@@ -306,15 +306,15 @@ async def search_extracted_data(
     if needs_review is not None:
         filters.append(
             or_(
-                models.Document.extracted_data["invoice"]["needs_review"].astext == str(needs_review).lower(),
-                models.Document.extracted_data["order"]["needs_review"].astext == str(needs_review).lower()
+                cast(models.Document.extracted_data, JSONB)["invoice"]["needs_review"].astext == str(needs_review).lower(),
+                cast(models.Document.extracted_data, JSONB)["order"]["needs_review"].astext == str(needs_review).lower()
             )
         )
 
     # Hat Skonto
     if has_skonto is True:
         filters.append(
-            models.Document.extracted_data["invoice"]["discount_percent"].isnot(None)
+            cast(models.Document.extracted_data, JSONB)["invoice"]["discount_percent"].isnot(None)
         )
 
     # Filter anwenden
@@ -566,22 +566,22 @@ async def get_aggregations(
 
     if document_type:
         filters.append(
-            models.Document.extracted_data["classification"]["document_type"].astext == document_type.value
+            cast(models.Document.extracted_data, JSONB)["classification"]["document_type"].astext == document_type.value
         )
 
     if date_from:
         filters.append(
             or_(
-                cast(models.Document.extracted_data["invoice"]["invoice_date"].astext, String) >= date_from.isoformat(),
-                cast(models.Document.extracted_data["order"]["order_date"].astext, String) >= date_from.isoformat()
+                cast(cast(models.Document.extracted_data, JSONB)["invoice"]["invoice_date"].astext, String) >= date_from.isoformat(),
+                cast(cast(models.Document.extracted_data, JSONB)["order"]["order_date"].astext, String) >= date_from.isoformat()
             )
         )
 
     if date_to:
         filters.append(
             or_(
-                cast(models.Document.extracted_data["invoice"]["invoice_date"].astext, String) <= date_to.isoformat(),
-                cast(models.Document.extracted_data["order"]["order_date"].astext, String) <= date_to.isoformat()
+                cast(cast(models.Document.extracted_data, JSONB)["invoice"]["invoice_date"].astext, String) <= date_to.isoformat(),
+                cast(cast(models.Document.extracted_data, JSONB)["order"]["order_date"].astext, String) <= date_to.isoformat()
             )
         )
 

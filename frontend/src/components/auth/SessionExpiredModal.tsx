@@ -33,8 +33,24 @@ export function SessionExpiredModal() {
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-md">
+        // W2-22/F2: Modal ist bewusst NICHT dismissbar. Bei abgelaufener Session
+        // ist die App-Shell tot (kein gueltiger Token) -> ein Schliessen ohne
+        // Aktion wuerde auf einer toten Oberflaeche enden. Einziger Ausgang ist
+        // "Erneut anmelden" (-> /login). Schliessen via Klick ausserhalb,
+        // Escape-Taste oder X-Button wird daher unterbunden.
+        <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+                // Nur das (programmatische) Oeffnen erlauben; Schliessen ignorieren.
+                if (open) setIsOpen(true);
+            }}
+        >
+            <DialogContent
+                className="sm:max-w-md [&>button]:hidden"
+                onPointerDownOutside={(e) => e.preventDefault()}
+                onInteractOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => e.preventDefault()}
+            >
                 <DialogHeader>
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">

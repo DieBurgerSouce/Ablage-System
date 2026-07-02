@@ -71,12 +71,12 @@ export async function revokeOAuth(provider: string): Promise<{ message: string }
 // ==================== Sync ====================
 
 export async function triggerSync(): Promise<SyncResult> {
-  const response = await apiClient.post<SyncResult>('/calendar-sync/sync');
+  const response = await apiClient.post<SyncResult>('/calendar-sync/sync-now');
   return response.data;
 }
 
 export async function getSyncStatus(): Promise<SyncStatus> {
-  const response = await apiClient.get<SyncStatus>('/calendar-sync/sync/status');
+  const response = await apiClient.get<SyncStatus>('/calendar-sync/sync-status');
   return response.data;
 }
 

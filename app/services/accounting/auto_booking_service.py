@@ -21,7 +21,8 @@ import structlog
 from collections import Counter, defaultdict
 
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, or_, desc, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, User
@@ -411,11 +412,11 @@ class AutoBookingService:
         if entity_id:
             # JSON-Filterung (PostgreSQL spezifisch)
             query = query.where(
-                Document.extracted_data["entity_id"].astext == str(entity_id)
+                cast(Document.extracted_data, JSONB)["entity_id"].astext == str(entity_id)
             )
         elif supplier_name:
             query = query.where(
-                func.lower(Document.extracted_data["supplier_name"].astext).contains(
+                func.lower(cast(Document.extracted_data, JSONB)["supplier_name"].astext).contains(
                     supplier_name.lower()
                 )
             )

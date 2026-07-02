@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_db, get_current_company_id, get_user_company_id
+from app.api.dependencies import get_current_active_user, get_db, get_user_company_id_dep, get_user_company_id
 from app.db.models import User
 from app.services.active_learning.active_learning_service import ActiveLearningService
 from app.core.safe_errors import safe_error_log, safe_error_detail
@@ -120,7 +120,7 @@ async def get_queue(
     limit: int = Query(20, ge=1, le=100, description="Anzahl Eintraege"),
     offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[QueueItemResponse]:
     """Holt die aktuelle Review-Queue fuer die Company des Benutzers."""
@@ -181,7 +181,7 @@ async def get_queue(
 )
 async def get_next_item(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> Optional[QueueItemResponse]:
     """Holt das naechste Item mit der hoechsten Prioritaet."""
@@ -230,7 +230,7 @@ async def submit_review(
     item_id: UUID,
     body: ReviewSubmission,
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> QueueItemResponse:
     """Speichert die Korrektur eines Benutzers fuer ein Queue-Item."""
@@ -294,7 +294,7 @@ async def submit_review(
 async def skip_item(
     item_id: UUID,
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> QueueItemResponse:
     """Ueberspringt ein Queue-Item ohne Korrektur."""
@@ -355,7 +355,7 @@ async def skip_item(
 )
 async def get_stats(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> QueueStatsResponse:
     """Holt Statistiken der Review-Queue."""
@@ -428,7 +428,7 @@ async def get_metrics(
 async def populate_queue(
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl neuer Items"),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> PopulateResponse:
     """Befuellt die Queue manuell mit neuen Kandidaten."""
@@ -477,7 +477,7 @@ async def populate_queue(
 async def get_history(
     limit: int = Query(20, ge=1, le=100, description="Anzahl Eintraege"),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> List[QueueItemResponse]:
     """Holt den Review-Verlauf."""

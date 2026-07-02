@@ -247,7 +247,7 @@ class MatchDiscrepancy(Base):
 
     # Kategorie der Abweichung
     category = Column(
-        SQLAlchemyEnum(DiscrepancyCategory, name="discrepancy_category"),
+        SQLAlchemyEnum(DiscrepancyCategory, name="discrepancy_category", values_callable=lambda e: [m.value for m in e]),
         nullable=False
     )
 
@@ -270,7 +270,7 @@ class MatchDiscrepancy(Base):
 
     # Schweregrad
     severity = Column(
-        SQLAlchemyEnum(DiscrepancySeverity, name="discrepancy_severity"),
+        SQLAlchemyEnum(DiscrepancySeverity, name="discrepancy_severity", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=DiscrepancySeverity.WARNING
     )

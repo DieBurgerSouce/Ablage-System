@@ -29,7 +29,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import structlog
-from sqlalchemy import select, and_, or_, func, case, text
+from sqlalchemy import select, and_, or_, func, case, text, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
@@ -684,19 +685,19 @@ class NLQService:
                     # Operator-basiert
                     if entity.value.get("operator") == "gte":
                         stmt = stmt.where(
-                            Document.extracted_data["total_gross"].astext.cast(Decimal) >= entity.value["amount"]
+                            cast(Document.extracted_data, JSONB)["total_gross"].astext.cast(Decimal) >= entity.value["amount"]
                         )
                     elif entity.value.get("operator") == "lte":
                         stmt = stmt.where(
-                            Document.extracted_data["total_gross"].astext.cast(Decimal) <= entity.value["amount"]
+                            cast(Document.extracted_data, JSONB)["total_gross"].astext.cast(Decimal) <= entity.value["amount"]
                         )
                 else:
                     # Exakter Betrag (mit Toleranz)
                     tolerance = entity.value * Decimal("0.01")
                     stmt = stmt.where(
                         and_(
-                            Document.extracted_data["total_gross"].astext.cast(Decimal) >= entity.value - tolerance,
-                            Document.extracted_data["total_gross"].astext.cast(Decimal) <= entity.value + tolerance,
+                            cast(Document.extracted_data, JSONB)["total_gross"].astext.cast(Decimal) >= entity.value - tolerance,
+                            cast(Document.extracted_data, JSONB)["total_gross"].astext.cast(Decimal) <= entity.value + tolerance,
                         )
                     )
 

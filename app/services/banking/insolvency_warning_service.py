@@ -588,7 +588,7 @@ class InsolvencyWarningService:
 
         # Score-basierte Feinabstimmung (-0.5% pro Score-Punkt über 30)
         if risk_score > 30:
-            score_reduction = Decimal(str(1 - (risk_score - 30) * 0.005))
+            score_reduction = Decimal("1") - Decimal(risk_score - 30) * Decimal("0.005")
             score_reduction = max(Decimal("0.3"), score_reduction)  # Min 30%
         else:
             score_reduction = Decimal("1.0")

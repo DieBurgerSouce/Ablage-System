@@ -321,7 +321,7 @@ export function ClassificationDetail() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['streckengeschaeft', 'classification', classificationId],
     queryFn: async () => {
-      const response = await apiClient.get(`/streckengeschaeft/classifications/${classificationId}`, {
+      const response = await apiClient.get(`/streckengeschäft/classifications/${classificationId}`, {
         params: { include_audit_log: true },
       });
       return response.data;
@@ -331,7 +331,7 @@ export function ClassificationDetail() {
   const { data: proofsData } = useQuery({
     queryKey: ['streckengeschaeft', 'proofs', classificationId],
     queryFn: async () => {
-      const response = await apiClient.get(`/streckengeschaeft/classifications/${classificationId}/proofs`);
+      const response = await apiClient.get(`/streckengeschäft/classifications/${classificationId}/proofs`);
       return response.data;
     },
     enabled: !!classificationId,
@@ -339,7 +339,7 @@ export function ClassificationDetail() {
 
   const datevExportMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post('/streckengeschaeft/datev/export', {
+      const response = await apiClient.post('/streckengeschäft/datev/export', {
         classification_ids: [classificationId],
         kontenrahmen: 'SKR03',
         include_zm_data: true,

@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import (
     get_current_active_user,
     get_db,
-    get_company_id,
+    get_user_company_id_dep,
 )
 from app.db.models import User
 from app.db.models_integration_sync import INTEGRATION_TYPES
@@ -171,7 +171,7 @@ class HealthStatusResponse(BaseModel):
 @router.get("", response_model=IntegrationListResponse)
 async def list_integrations(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> IntegrationListResponse:
     """Alle Integrationen des aktuellen Mandanten auflisten.
@@ -203,7 +203,7 @@ async def list_integrations(
 @router.get("/dashboard", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> DashboardStatsResponse:
     """Aggregierte Dashboard-Statistiken für alle Integrationen.
@@ -232,7 +232,7 @@ async def get_dashboard_stats(
 @router.get("/health", response_model=HealthStatusResponse)
 async def get_health_status(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> HealthStatusResponse:
     """Health-Status aller Integrationen des aktuellen Mandanten.
@@ -269,7 +269,7 @@ async def get_sync_history(
     integration_type: str,
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl zurückgegebener Einträge"),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> SyncHistoryResponse:
     """Sync-Verlauf für eine bestimmte Integration.
@@ -330,7 +330,7 @@ async def get_sync_history(
 async def trigger_manual_sync(
     integration_type: str,
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> TriggerSyncResponse:
     """Manuellen Sync für eine bestimmte Integration auslösen.
@@ -387,7 +387,7 @@ async def update_integration_config(
     integration_type: str,
     request: UpdateConfigRequest,
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> Dict:
     """Konfiguration einer Integration aktualisieren.

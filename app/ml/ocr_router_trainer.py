@@ -129,7 +129,7 @@ class OCRRouterTrainingPipeline:
             data_dir: Directory for training data
         """
         self.model_dir = model_dir or Path("models/ocr_router")
-        self.data_dir = data_dir or Path("data/training")
+        self.data_dir = data_dir or Path("/tmp/ablage_ml/training")
 
         # Initialize ML trainer
         self.trainer = MLRouterTrainer(

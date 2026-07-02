@@ -30,6 +30,7 @@ import structlog
 from app.db.models import (
     OCRDocumentOutput,
     OCRTrainingSample,
+    TrainingSampleStatus,
 )
 # F-31-Luecke: VerificationStatus liegt NICHT in app.db.models, sondern in
 # models_integrity (Member VERIFIED, vom Export-Filter Z.344 genutzt) -> der
@@ -344,7 +345,7 @@ class TrainingDatasetExportService:
         # Nur verifizierte Samples
         if config.filter_verified_only:
             conditions.append(
-                OCRTrainingSample.verification_status == VerificationStatus.VERIFIED
+                OCRTrainingSample.status == TrainingSampleStatus.VERIFIED.value
             )
 
         # Ground Truth muss vorhanden sein
@@ -669,7 +670,7 @@ class TrainingDatasetExportService:
                         "metadata": {
                             "has_umlauts": any(c in "äöüÄÖÜß" for c in (sample.ground_truth_text or "")),
                             "text_length": len(sample.ground_truth_text or ""),
-                            "verification_status": sample.verification_status.value if sample.verification_status else None
+                            "verification_status": sample.status if sample.status else None
                         }
                     }
 

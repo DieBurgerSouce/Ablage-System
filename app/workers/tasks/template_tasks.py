@@ -16,7 +16,9 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from celery import shared_task
-from sqlalchemy import select, and_, delete, func
+from sqlalchemy import select, and_, cast, delete, func
+# W2: Document hat document_metadata (NICHT metadata); JSONB-Operator via cast.
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
@@ -312,7 +314,7 @@ def cleanup_temp_files(
             # Query temporäre Dokumente älter als cutoff
             query = select(Document).where(
                 and_(
-                    Document.metadata["is_temporary"].astext.cast(bool) == True,
+                    cast(Document.document_metadata, JSONB)["is_temporary"].astext.cast(bool) == True,
                     Document.created_at < cutoff_time,
                 )
             )
@@ -558,7 +560,7 @@ def collect_template_stats(self) -> Dict[str, Any]:
             today_renders = await db.execute(
                 select(func.count()).select_from(Document).where(
                     and_(
-                        Document.metadata["template_id"].isnot(None),
+                        Document.document_metadata["template_id"].isnot(None),
                         Document.created_at >= today_start,
                     )
                 )
@@ -570,7 +572,7 @@ def collect_template_stats(self) -> Dict[str, Any]:
             week_renders = await db.execute(
                 select(func.count()).select_from(Document).where(
                     and_(
-                        Document.metadata["template_id"].isnot(None),
+                        Document.document_metadata["template_id"].isnot(None),
                         Document.created_at >= week_start,
                     )
                 )

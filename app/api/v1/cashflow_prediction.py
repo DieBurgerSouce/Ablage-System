@@ -13,7 +13,7 @@ Endpoints:
 
 SECURITY:
 - Alle Endpoints erfordern Authentifizierung
-- Company-Isolation via get_current_company_id
+- Company-Isolation via get_user_company_id_dep (Mitgliedschafts-Lookup, 403 statt None)
 - Keine PII in Responses (Entity-Namen nur mit Berechtigung)
 
 Feinpoliert und durchdacht.
@@ -31,7 +31,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db, get_company_id
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from app.services.ai.cashflow_prediction_service import (
     CashflowPredictionService,
@@ -262,7 +262,7 @@ async def get_cashflow_forecast(
     ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Hole Cashflow-Prognose für die nächsten X Tage."""
     service = get_cashflow_prediction_service(db)
@@ -348,7 +348,7 @@ async def get_cashflow_warnings(
     ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Hole Liste von Cashflow-Warnungen."""
     service = get_cashflow_prediction_service(db)
@@ -415,7 +415,7 @@ async def simulate_scenario(
     request: ScenarioRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Führe What-If Szenario-Simulation durch."""
     service = get_cashflow_prediction_service(db)
@@ -533,7 +533,7 @@ async def simulate_scenario(
 async def get_prediction_metrics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Hole Vorhersagegenauigkeit-Metriken."""
     service = get_cashflow_prediction_service(db)
@@ -575,7 +575,7 @@ async def get_payment_delay_analysis(
     ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Hole Zahlungsverhaltens-Analyse."""
     service = get_cashflow_prediction_service(db)
@@ -619,7 +619,7 @@ async def get_payment_delay_analysis(
 async def get_cashflow_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """Hole kompakte Cashflow-Zusammenfassung."""
     service = get_cashflow_prediction_service(db)

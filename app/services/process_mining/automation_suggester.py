@@ -18,7 +18,8 @@ from decimal import Decimal
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, and_, func, desc
+from sqlalchemy import select, and_, func, desc, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models_process_mining import (
@@ -105,7 +106,7 @@ class AutomationSuggester:
         # Finde häufige manuelle Klassifikations-Korrekturen
         result = await self.db.execute(
             select(
-                ProcessEvent.event_metadata['document_type'].astext.label('doc_type'),
+                cast(ProcessEvent.event_metadata, JSONB)['document_type'].astext.label('doc_type'),
                 func.count(ProcessEvent.id).label('count'),
                 func.avg(ProcessEvent.duration_ms).label('avg_duration'),
             )
@@ -176,7 +177,7 @@ class AutomationSuggester:
         result = await self.db.execute(
             select(
                 ProcessEvent.entity_id,
-                ProcessEvent.event_metadata['strategy'].astext.label('strategy'),
+                cast(ProcessEvent.event_metadata, JSONB)['strategy'].astext.label('strategy'),
                 func.count(ProcessEvent.id).label('count'),
             )
             .where(

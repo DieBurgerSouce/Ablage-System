@@ -29,7 +29,8 @@ from typing import Dict, List, Optional, Union
 
 import structlog
 from prometheus_client import Counter, Histogram
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, BusinessEntity
@@ -151,11 +152,11 @@ class AnomalyDetectionService:
         from sqlalchemy.dialects.postgresql import JSONB
 
         query = select(
-            Document.extracted_data["total_gross"].astext.cast(Float)
+            cast(Document.extracted_data, JSONB)["total_gross"].astext.cast(Float)
         ).where(
             and_(
                 Document.extracted_data.isnot(None),
-                Document.extracted_data["total_gross"].isnot(None),
+                cast(Document.extracted_data, JSONB)["total_gross"].isnot(None),
                 Document.created_at >= cutoff,
             )
         )
@@ -294,7 +295,7 @@ class AnomalyDetectionService:
                 Document.id != document_id,
                 Document.extracted_data.isnot(None),
                 # JSONB Text-Extraktion mit ->> Operator
-                Document.extracted_data["invoice_number"].astext == data.invoice_number,
+                cast(Document.extracted_data, JSONB)["invoice_number"].astext == data.invoice_number,
             )
         )
         if company_id:

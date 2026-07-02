@@ -12,7 +12,8 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import structlog
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import and_, delete, func, or_, select, update, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -849,7 +850,7 @@ class WorkflowService:
 
         if category:
             conditions.append(
-                Workflow.trigger_config["category"].astext == category
+                cast(Workflow.trigger_config, JSONB)["category"].astext == category
             )
 
         query = (

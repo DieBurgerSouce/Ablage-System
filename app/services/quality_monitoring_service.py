@@ -309,15 +309,12 @@ class QualityMonitoringService:
         """Prüft globale Metriken über alle Backends."""
         alerts = []
 
-        from app.db.models import OCRTrainingSample
+        from app.db.models_ocr_feedback import OCRCorrectionFeedback
 
         since = datetime.now() - timedelta(days=7)
 
-        query = select(func.count()).select_from(OCRTrainingSample).where(
-            and_(
-                OCRTrainingSample.source == "correction",
-                OCRTrainingSample.updated_at >= since
-            )
+        query = select(func.count()).select_from(OCRCorrectionFeedback).where(
+            OCRCorrectionFeedback.created_at >= since
         )
 
         result = await self.db.execute(query)
@@ -373,13 +370,11 @@ class QualityMonitoringService:
         urgency = "low"
 
         from app.db.models import OCRTrainingSample, OCRQualitySnapshot
+        from app.db.models_ocr_feedback import OCRCorrectionFeedback
 
         since = datetime.now() - timedelta(days=30)
-        query = select(func.count()).select_from(OCRTrainingSample).where(
-            and_(
-                OCRTrainingSample.source == "correction",
-                OCRTrainingSample.updated_at >= since
-            )
+        query = select(func.count()).select_from(OCRCorrectionFeedback).where(
+            OCRCorrectionFeedback.created_at >= since
         )
         result = await self.db.execute(query)
         correction_count = result.scalar() or 0

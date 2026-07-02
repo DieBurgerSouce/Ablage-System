@@ -185,6 +185,8 @@ async def _check_redis() -> KomponentenStatus:
         # (localhost:6380) -> im Container nicht erreichbar -> faelschlich redis:false
         # -> /health/startup 503, obwohl die App via REDIS_URL laeuft.
         client = redis.from_url(
+            # W2-04 / Redis-Probe: volle URL inkl. AUTH (Passwort) statt Host/Port;
+            # Fallback auf Host/Port nur falls REDIS_URL leer ist (robuster als reines REDIS_URL)
             settings.REDIS_URL or f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
             decode_responses=True,
         )

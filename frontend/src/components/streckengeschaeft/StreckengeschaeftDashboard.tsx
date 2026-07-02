@@ -421,7 +421,7 @@ export function StreckengeschaeftDashboard() {
   const { data: stats } = useQuery({
     queryKey: ['streckengeschaeft', 'statistics'],
     queryFn: async () => {
-      const response = await apiClient.get<ClassificationStatistics>('/streckengeschaeft/statistics');
+      const response = await apiClient.get<ClassificationStatistics>('/streckengeschäft/statistics');
       return response.data; // Return actual data, not AxiosResponse
     },
   });
@@ -434,7 +434,7 @@ export function StreckengeschaeftDashboard() {
   } = useQuery({
     queryKey: ['streckengeschaeft', 'classifications', transactionTypeFilter, confidenceFilter],
     queryFn: async () => {
-      const response = await apiClient.get('/streckengeschaeft/classifications', {
+      const response = await apiClient.get('/streckengeschäft/classifications', {
         params: {
           transaction_type: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
           confidence_level: confidenceFilter !== 'all' ? confidenceFilter : undefined,
@@ -449,7 +449,7 @@ export function StreckengeschaeftDashboard() {
 
   const datevExportMutation = useMutation({
     mutationFn: async (classificationIds: string[]) => {
-      const response = await apiClient.post('/streckengeschaeft/datev/export', {
+      const response = await apiClient.post('/streckengeschäft/datev/export', {
         classification_ids: classificationIds,
         kontenrahmen: 'SKR03',
         include_zm_data: true,

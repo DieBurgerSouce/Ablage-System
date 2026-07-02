@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import (
     get_current_user,
     get_db,
-    get_company_id,
+    get_user_company_id_dep,
 )
 from app.db.models import User
 from app.db.models_proactive_assistant import (
@@ -181,7 +181,7 @@ def _hint_to_response(hint: object) -> HintResponse:
 @router.get("/dashboard", response_model=DashboardSummaryResponse)
 async def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> DashboardSummaryResponse:
     """
@@ -202,7 +202,7 @@ async def list_hints(
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> HintListResponse:
     """
@@ -235,7 +235,7 @@ async def update_hint_status(
     hint_id: UUID,
     request: HintStatusUpdateRequest,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> HintResponse:
     """
@@ -270,7 +270,7 @@ async def get_context_hints(
     document_id: Optional[UUID] = Query(None, description="Dokument-ID für Kontext"),
     entity_id: Optional[UUID] = Query(None, description="Entity-ID für Kontext"),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> List[HintResponse]:
     """
@@ -299,7 +299,7 @@ async def get_statistics(
     period_start: datetime = Query(..., description="Beginn des Zeitraums"),
     period_end: datetime = Query(..., description="Ende des Zeitraums"),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> HintStatisticsResponse:
     """
@@ -333,7 +333,7 @@ async def get_statistics(
 @router.post("/generate", response_model=GenerateHintsResponse, status_code=status.HTTP_201_CREATED)
 async def trigger_hint_generation(
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> GenerateHintsResponse:
     """
@@ -354,7 +354,7 @@ async def trigger_hint_generation(
 @router.get("/rules", response_model=List[HintRuleResponse])
 async def list_rules(
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> List[HintRuleResponse]:
     """
@@ -387,7 +387,7 @@ async def update_rule(
     rule_id: UUID,
     request: HintRuleUpdateRequest,
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     session: AsyncSession = Depends(get_db),
 ) -> HintRuleResponse:
     """
