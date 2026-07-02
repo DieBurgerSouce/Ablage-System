@@ -336,6 +336,12 @@ class Settings(BaseSettings):
     MODEL_PRELOAD_GPU_MODELS: bool = True  # Ob GPU-Modelle vorgeladen werden
     MODEL_PRELOAD_TIMEOUT_SECONDS: int = 600  # Timeout pro Model (10 Min)
 
+    # W2.1: Query-Embedding-Modell (multilingual-e5-large) beim Startup vorwaermen.
+    # Verhindert 504-Timeouts beim ersten HYBRID/SEMANTIC-Suchaufruf nach jedem
+    # Backend-Recreate (Lazy-Load des Modells dauert auf CPU >30s). Im Test-Kontext
+    # (settings.TESTING) wird das Vorwaermen unabhaengig von diesem Flag uebersprungen.
+    EMBEDDING_WARMUP_ENABLED: bool = True
+
     # Multi-Tenant / Row-Level-Security: Fail-Closed-Schalter (opt-in, Default AUS).
     # Wenn True, verweigert set_rls_company_context einen fehlenden/ungueltigen
     # Tenant-Kontext hart (statt ihn still zu ueberspringen = bisheriges fail-open).

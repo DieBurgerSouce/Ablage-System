@@ -984,6 +984,15 @@ class SearchResponse(BaseModel):
         None,
         description="Korrekturvorschlag bei Tippfehlern (pg_trgm-basiert)"
     )
+    degraded: bool = Field(
+        default=False,
+        description=(
+            "True, wenn die Suche wegen Zeitueberschreitung auf reine "
+            "Volltextsuche (FTS) heruntergestuft wurde (z.B. Kaltstart des "
+            "Embedding-Modells). Die Ergebnisse sind echt, jedoch ohne "
+            "semantischen Anteil."
+        )
+    )
 
 
 class SimilarDocumentsRequest(BaseModel):

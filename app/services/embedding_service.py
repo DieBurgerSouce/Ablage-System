@@ -746,6 +746,33 @@ class EmbeddingService:
 
         return embedding
 
+    def _warmup_sync(self) -> None:
+        """Blockierendes Vorladen (Threadpool-Ziel).
+
+        Laedt das SentenceTransformer-Modell und fuehrt einen einzelnen
+        Encode-Durchlauf aus, damit Tokenizer und (bei GPU) CUDA-Kernel
+        initialisiert sind. Danach ist der erste echte Such-Request schnell.
+        """
+        self._ensure_model_loaded()
+        if self._model is not None:
+            # "query:"-Praefix, damit derselbe Codepfad wie bei echten Suchanfragen
+            # aufgewaermt wird.
+            self._model.encode(
+                "query: warmup",
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+                show_progress_bar=False
+            )
+
+    async def warmup_async(self) -> None:
+        """Modell nicht-blockierend im Threadpool vorwaermen (Cold-Start-Fix).
+
+        Der Aufrufer sollte dies via ``asyncio.create_task`` als Background-Task
+        starten, damit Startup/Readiness nicht blockiert werden.
+        """
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self._warmup_sync)
+
     async def generate_batch_embeddings_async(
         self,
         texts: List[str],
@@ -998,6 +1025,38 @@ def get_embedding_service() -> EmbeddingService:
     if _embedding_service is None:
         _embedding_service = EmbeddingService()
     return _embedding_service
+
+
+async def warmup_query_embedding_model() -> bool:
+    """W2.1: Query-Embedding-Modell vorwaermen (Cold-Start-Fix).
+
+    Wird beim Application-Startup als Background-Task gestartet, damit der erste
+    HYBRID/SEMANTIC-Suchaufruf nach einem Backend-Recreate nicht in den
+    serverseitigen 30s-Timeout laeuft (Lazy-Load des Modells auf CPU >30s).
+
+    Wird im Test-Kontext (``settings.TESTING``) sowie bei deaktiviertem Flag
+    (``settings.EMBEDDING_WARMUP_ENABLED``) uebersprungen, um im Unit-Lauf keine
+    echten ML-Modelle zu laden (OOM-Vermeidung).
+
+    Returns:
+        True, wenn das Modell tatsaechlich vorgewaermt wurde, sonst False.
+    """
+    if settings.TESTING:
+        logger.info("embedding_warmup_skipped_testing")
+        return False
+
+    if not getattr(settings, "EMBEDDING_WARMUP_ENABLED", True):
+        logger.info("embedding_warmup_disabled_by_config")
+        return False
+
+    try:
+        service = get_embedding_service()
+        await service.warmup_async()
+        logger.info("embedding_warmup_complete")
+        return True
+    except Exception as e:
+        logger.warning("embedding_warmup_failed", **safe_error_log(e))
+        return False
 
 
 def get_jina_embedding_service() -> JinaEmbeddingService:

@@ -294,7 +294,12 @@ async def lifespan(app: FastAPI):
     model_preloader = get_model_preloader()
     preload_enabled = getattr(settings, "MODEL_PRELOAD_ENABLED", True)
 
-    if preload_enabled:
+    if settings.TESTING:
+        # W2.1: Im Test-Kontext keine echten ML-Modelle laden.
+        # Der Preload lief bisher auch im Unit-Lauf mit (Spur: model_preload_complete)
+        # und trug zum OOM-SIGKILL bei. Test-Guard verhindert das.
+        logger.info("model_preload_skipped_testing")
+    elif preload_enabled:
         include_gpu = gpu_manager.has_gpu() if gpu_manager else False
         logger.info(
             "model_preload_starting",
@@ -327,6 +332,22 @@ async def lifespan(app: FastAPI):
                 logger.warning("model_preload_blocking_wait_error", **safe_error_log(e))
     else:
         logger.info("model_preload_disabled_by_config")
+
+    # W2.1: Query-Embedding-Modell (multilingual-e5-large) im Hintergrund vorwaermen.
+    # Verhindert 504-Timeouts beim ersten HYBRID/SEMANTIC-Suchaufruf nach jedem
+    # Backend-Recreate: der Lazy-Load dauert auf CPU >30s und laeuft sonst in den
+    # serverseitigen 30s-Such-Timeout. Nicht-blockierend (Background-Task, Threadpool)
+    # und im Test-Kontext uebersprungen (OOM-Vermeidung im Unit-Lauf).
+    if not settings.TESTING and getattr(settings, "EMBEDDING_WARMUP_ENABLED", True):
+        try:
+            import asyncio
+            from app.services.embedding_service import warmup_query_embedding_model
+            asyncio.create_task(warmup_query_embedding_model())
+            logger.info("embedding_warmup_scheduled")
+        except Exception as e:
+            logger.warning("embedding_warmup_schedule_failed", **safe_error_log(e))
+    elif settings.TESTING:
+        logger.info("embedding_warmup_skipped_testing")
 
     # Initialize Realtime WebSocket Services
     try:
