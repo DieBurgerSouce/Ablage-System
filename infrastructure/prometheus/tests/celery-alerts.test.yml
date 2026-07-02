@@ -1,0 +1,58 @@
+# promtool Unit-Tests fuer die Celery-Alert-Regeln.
+#
+# Ausfuehren:
+#   promtool test rules infrastructure/prometheus/tests/celery-alerts.test.yml
+#
+# Fokus: CeleryNoActivity (W2.4). Der Alarm soll NUR bei einem Worker-Wedge
+# feuern (aktive Tasks vorhanden, aber keine Abschluesse), nicht bei legitimem
+# Idle. rule_files-Pfad relativ zu DIESER Datei.
+rule_files:
+  - ../rules/celery-alerts.yml
+
+evaluation_interval: 10m
+
+tests:
+  # ---------------------------------------------------------------------------
+  # Fall 1: Idle OHNE Backlog -> KEIN Alarm.
+  # tasks_total bleibt flach (rate==0), es gibt aber KEINE aktiven Tasks
+  # (Gauge = 0). Das ist der normale Wochenend-/Urlaubs-Leerlauf.
+  # ---------------------------------------------------------------------------
+  - interval: 10m
+    name: "CeleryNoActivity feuert NICHT bei legitimem Idle"
+    input_series:
+      # Flacher Zaehler ueber >6h (rate ueber [2h] == 0).
+      - series: 'ablage_celery_tasks_total{task_name="validate", queue="validation", status="succeeded"}'
+        values: '100+0x40'
+      # Keine aktiven Tasks -> Backlog-Gate greift nicht.
+      - series: 'ablage_celery_tasks_active{task_name="validate", queue="validation"}'
+        values: '0+0x40'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: CeleryNoActivity
+        exp_alerts: []
+
+  # ---------------------------------------------------------------------------
+  # Fall 2: Backlog OHNE Verarbeitung -> Alarm.
+  # tasks_total flach (kein Task wird abgeschlossen, rate==0), aber es sind
+  # aktive Tasks in-flight (Gauge > 0) -> haengender Worker (Wedge).
+  # ---------------------------------------------------------------------------
+  - interval: 10m
+    name: "CeleryNoActivity feuert bei Wedge (aktive Tasks, keine Abschluesse)"
+    input_series:
+      # Zaehler bleibt seit >6h stehen -> rate ueber [2h] == 0.
+      - series: 'ablage_celery_tasks_total{task_name="ocr_process", queue="ocr_normal", status="started"}'
+        values: '50+0x40'
+      # Zwei Tasks haengen dauerhaft aktiv.
+      - series: 'ablage_celery_tasks_active{task_name="ocr_process", queue="ocr_normal"}'
+        values: '2+0x40'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: CeleryNoActivity
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: celery
+            exp_annotations:
+              summary: "Keine Celery Task Aktivitaet trotz aktiver Tasks"
+              description: "Seit 4h wurden keine Celery-Tasks abgeschlossen, obwohl aktive Tasks anstehen. Moeglicher Worker-Wedge (haengender Task)."
+              runbook_url: "https://wiki.ablage-system.local/runbooks/celery-no-activity"

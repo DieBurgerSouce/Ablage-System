@@ -280,16 +280,29 @@ groups:
       # Inactivity Alerts
       # ===================================================================
 
-      # Warnung: Keine Task-Aktivitaet
+      # Warnung: Keine Task-Aktivitaet trotz anstehender Arbeit (Wedge)
       # 2026-05-12: Window 30m -> 2h, for 1h -> 4h. Single-User-Pilot hat lange
       # Idle-Phasen (Wochenende, Urlaub) — kuerzere Fenster waren Fehlalarm-Quelle.
+      # 2026-07-02 (W2.4): Backlog-Gate ergaenzt. Zwei Ursachen fuer den frueheren
+      # Dauer-Fehlalarm behoben:
+      #  (1) Der prefork-worker-cpu exponierte seine Task-Zaehler nur im (leeren)
+      #      Master-Prozess -> rate==0 TROTZ Arbeit. Fix: PROMETHEUS_MULTIPROC_DIR
+      #      + MultiProcessCollector (siehe celery_metrics.py).
+      #  (2) Legitimes Idle (nichts zu tun) erfuellte rate==0 ebenfalls. Jetzt
+      #      wird nur alarmiert, wenn in-flight-Arbeit ansteht (aktive Tasks),
+      #      aber nichts mehr abgeschlossen wird — genau der haengende-Task-Wedge.
+      # Hinweis: ablage_celery_queue_length existiert zwar als Metrik, wird aber
+      # NIRGENDS befuellt (update_queue_metrics ohne Aufrufer) und taugt daher
+      # nicht als Backlog-Signal. Verlaesslich befuellt ist ablage_celery_tasks_active
+      # (task_prerun/-postrun-Signale). Reiner Broker-Down mit Backlog wird von
+      # CeleryWorkerDown abgedeckt.
       - alert: CeleryNoActivity
-        expr: sum(rate(ablage_celery_tasks_total[2h])) == 0
+        expr: sum(rate(ablage_celery_tasks_total[2h])) == 0 and sum(ablage_celery_tasks_active) > 0
         for: 4h
         labels:
           severity: warning
           component: celery
         annotations:
-          summary: "Keine Celery Task Aktivitaet"
-          description: "Keine Task-Aktivitaet in der letzten Stunde. Moeglicherweise ein Problem."
+          summary: "Keine Celery Task Aktivitaet trotz aktiver Tasks"
+          description: "Seit 4h wurden keine Celery-Tasks abgeschlossen, obwohl aktive Tasks anstehen. Moeglicher Worker-Wedge (haengender Task)."
           runbook_url: "https://wiki.ablage-system.local/runbooks/celery-no-activity"

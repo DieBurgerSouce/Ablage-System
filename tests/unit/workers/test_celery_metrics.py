@@ -9,12 +9,15 @@ Testet:
 - Metrics HTTP Server
 """
 
+import os
 import pytest
 import time
 import threading
 from unittest.mock import Mock, patch, MagicMock
 from http.client import HTTPConnection
 
+from prometheus_client import CollectorRegistry
+from app.workers import celery_metrics
 from app.workers.celery_metrics import (
     # Metriken
     celery_tasks_total,
@@ -38,6 +41,8 @@ from app.workers.celery_metrics import (
     update_gpu_metrics,
     start_metrics_server,
     stop_metrics_server,
+    generate_metrics_output,
+    mark_worker_process_dead,
     # Registry
     CELERY_REGISTRY,
 )
@@ -399,3 +404,75 @@ class TestMetricsIntegration:
 
         # Task als fehlgeschlagen markieren
         record_task_failed(task_id, task_name, queue, "OutOfMemoryError")
+
+
+# ==================== Multiprocess-Mode Tests (W2.4) ====================
+
+
+class TestMultiprocessMetrics:
+    """Tests für den prefork-Multiprocess-Metriken-Pfad (worker-cpu).
+
+    Sichert zu, dass der /metrics-Handler nur bei gesetztem
+    PROMETHEUS_MULTIPROC_DIR den MultiProcessCollector nutzt und sich sonst
+    exakt wie bisher verhaelt (GPU-Worker solo + Backend).
+    """
+
+    def test_gauge_multiprocess_modes_configured(self):
+        """Aktive-Tasks-Gauge summiert livesum, Worker-Gauges nutzen max."""
+        # tasks_active muss ueber alle lebenden prefork-Kinder aufsummieren
+        assert celery_tasks_active._kwargs.get("multiprocess_mode") == "livesum"
+        # Master-/Global-Gauges: max de-dupliziert statt zu summieren
+        for gauge in (celery_worker_up, celery_worker_uptime_seconds, celery_queue_length):
+            assert gauge._kwargs.get("multiprocess_mode") == "max"
+
+    def test_generate_metrics_output_single_process_unchanged(self):
+        """Ohne Env: In-Memory-Registry, KEIN MultiProcessCollector."""
+        assert celery_metrics._MULTIPROC_ENABLED is False  # Default im Test
+        with patch("app.workers.celery_metrics.multiprocess") as mp:
+            output = generate_metrics_output()
+
+        assert isinstance(output, bytes)
+        assert b"ablage_celery" in output
+        mp.MultiProcessCollector.assert_not_called()
+
+    def test_generate_metrics_output_multiprocess_aggregates(self, monkeypatch):
+        """Mit Env: MultiProcessCollector auf frischer Registry."""
+        monkeypatch.setattr(celery_metrics, "_MULTIPROC_ENABLED", True)
+        with patch("app.workers.celery_metrics.multiprocess") as mp:
+            output = generate_metrics_output()
+
+        assert mp.MultiProcessCollector.call_count == 1
+        (called_registry,), _ = mp.MultiProcessCollector.call_args
+        # Eine frische, separate Registry (nicht die In-Memory-CELERY_REGISTRY)
+        assert isinstance(called_registry, CollectorRegistry)
+        assert called_registry is not CELERY_REGISTRY
+        assert isinstance(output, bytes)
+
+    def test_mark_worker_process_dead_disabled_is_noop(self):
+        """Ohne Env ruft mark_worker_process_dead nichts auf."""
+        assert celery_metrics._MULTIPROC_ENABLED is False
+        with patch("app.workers.celery_metrics.multiprocess") as mp:
+            mark_worker_process_dead(1234)
+        mp.mark_process_dead.assert_not_called()
+
+    def test_mark_worker_process_dead_enabled_uses_pid(self, monkeypatch):
+        """Mit Env markiert es exakt die uebergebene PID."""
+        monkeypatch.setattr(celery_metrics, "_MULTIPROC_ENABLED", True)
+        with patch("app.workers.celery_metrics.multiprocess") as mp:
+            mark_worker_process_dead(4242)
+        mp.mark_process_dead.assert_called_once_with(4242)
+
+    def test_mark_worker_process_dead_defaults_to_own_pid(self, monkeypatch):
+        """Ohne PID-Argument wird der eigene Prozess markiert."""
+        monkeypatch.setattr(celery_metrics, "_MULTIPROC_ENABLED", True)
+        with patch("app.workers.celery_metrics.multiprocess") as mp:
+            mark_worker_process_dead()
+        mp.mark_process_dead.assert_called_once_with(os.getpid())
+
+    def test_mark_worker_process_dead_swallows_errors(self, monkeypatch):
+        """Fehler beim Aufraeumen duerfen den Shutdown nicht abbrechen."""
+        monkeypatch.setattr(celery_metrics, "_MULTIPROC_ENABLED", True)
+        with patch("app.workers.celery_metrics.multiprocess") as mp:
+            mp.mark_process_dead.side_effect = OSError("mmap weg")
+            # darf NICHT werfen
+            mark_worker_process_dead(99)
