@@ -421,7 +421,7 @@ class ConfidenceCalibrator:
             data_dir: Verzeichnis für Modell-Persistenz
             default_method: Standard-Kalibrierungsmethode
         """
-        self.data_dir = data_dir or Path("data/calibration")
+        self.data_dir = data_dir or Path("/tmp/ablage_ml/calibration")
         self.default_method = default_method
 
         # Kalibrierungsmodelle pro Backend

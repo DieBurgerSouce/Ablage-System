@@ -8,7 +8,8 @@ from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime, timezone
 
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_, func, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import structlog
@@ -115,7 +116,7 @@ class DocumentRepository(BaseRepository[Document]):
 
         if backend:
             query = query.where(
-                Document.document_metadata["ocr_backend_requested"].astext == backend
+                cast(Document.document_metadata, JSONB)["ocr_backend_requested"].astext == backend
             )
 
         query = query.order_by(Document.created_at.asc())

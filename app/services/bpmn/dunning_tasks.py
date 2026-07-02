@@ -621,7 +621,8 @@ async def check_payment_received(
     """
     from app.db.session import async_session_maker
     from app.db.models import BankTransaction, InvoiceTracking, BusinessEntity
-    from sqlalchemy import select, and_, or_
+    from sqlalchemy import select, and_, or_, cast
+    from sqlalchemy.dialects.postgresql import JSONB
 
     invoice_id = variables.get("invoice_id")
     entity_id = variables.get("customer_id") or variables.get("entity_id")
@@ -720,7 +721,7 @@ async def check_payment_received(
                             *base_conditions,
                             or_(
                                 BankTransaction.reference_text.ilike(f"%{invoice_number}%"),
-                                BankTransaction.parsed_invoice_numbers.contains([invoice_number]),
+                                cast(BankTransaction.parsed_invoice_numbers, JSONB).contains([invoice_number]),
                             ),
                             BankTransaction.amount >= amount_lower,
                             BankTransaction.amount <= amount_upper,

@@ -26,10 +26,10 @@ import structlog
 from app.db.models import (
     OCRTrainingSample,
     OCRBackendBenchmark,
-    OCRValidationCorrection,
     OCRDocumentOutput,
     TrainingSampleStatus,
 )
+from app.db.models_ocr_feedback import OCRCorrectionFeedback  # echte Quelle (nicht in app.db.models-Namespace)
 
 logger = structlog.get_logger(__name__)
 
@@ -276,6 +276,7 @@ class BackendQualityReportService:
         )
 
         # Bestimme besten Backend für Tabellen (falls Daten vorhanden)
+        since = datetime.now(timezone.utc) - timedelta(days=30)  # Fix: war undefiniert in generate_comparison_report
         best_for_tables = await self._get_best_backend_for_tables(backends, since)
         if not best_for_tables:
             best_for_tables = best_overall  # Fallback auf Overall
@@ -609,10 +610,10 @@ class BackendQualityReportService:
         patterns: List[ErrorPattern] = []
 
         # Lade Korrekturen für dieses Backend
-        correction_query = select(OCRValidationCorrection).where(
+        correction_query = select(OCRCorrectionFeedback).where(
             and_(
-                OCRValidationCorrection.backend_used == backend_name,
-                OCRValidationCorrection.created_at >= since,
+                OCRCorrectionFeedback.backend == backend_name,
+                OCRCorrectionFeedback.created_at >= since,
             )
         ).limit(1000)
 
@@ -635,8 +636,8 @@ class BackendQualityReportService:
 
             if len(type_examples[corr_type]) < 3:
                 type_examples[corr_type].append({
-                    "original": corr.original_text[:50] if corr.original_text else "",
-                    "corrected": corr.corrected_text[:50] if corr.corrected_text else "",
+                    "original": corr.original_value[:50] if corr.original_value else "",
+                    "corrected": corr.corrected_value[:50] if corr.corrected_value else "",
                 })
 
         # Erstelle Pattern-Objekte

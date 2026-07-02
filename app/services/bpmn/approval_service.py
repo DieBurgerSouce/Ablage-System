@@ -16,7 +16,8 @@ from typing import Dict, List, Optional, Tuple, Any
 from uuid import UUID
 import structlog
 
-from sqlalchemy import select, and_, or_, func, update
+from sqlalchemy import select, and_, or_, func, update, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -792,7 +793,7 @@ class ParallelApprovalService:
         query = select(ProcessInstance).where(
             and_(
                 ProcessInstance.company_id == company_id,
-                ProcessInstance.variables.op("->")("_parallel_approvals").op("??")(approval_id),
+                cast(ProcessInstance.variables, JSONB).op("->")("_parallel_approvals").op("??")(approval_id),
             )
         )
         result = await self.session.execute(query)

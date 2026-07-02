@@ -15,7 +15,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import structlog
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.workers.celery_app import celery_app, CPUTask
@@ -118,7 +119,7 @@ async def get_users_with_digest_preference(
                 User.is_active == True,
                 User.email.isnot(None),
                 # JSONB-Abfrage für preferences->notifications->email_digest
-                User.preferences["notifications"]["email_digest"].astext == digest_type
+                cast(User.preferences, JSONB)["notifications"]["email_digest"].astext == digest_type
             )
         )
     )

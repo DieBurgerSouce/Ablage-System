@@ -172,8 +172,22 @@ class SQLSanitizer:
                 tables_used=tables_used,
             )
 
-        # 5. Inject company_id filter
-        sanitized = self._inject_company_filter(original_sql, company_id)
+        # 5. Inject company_id filter (fail-closed bei ungueltiger company_id)
+        try:
+            sanitized = self._inject_company_filter(original_sql, company_id)
+        except ValueError as exc:
+            violations.append("Ungueltige company_id - Multi-Tenant-Filter nicht moeglich")
+            logger.warning(
+                "sql_sanitization_invalid_company_id",
+                error=str(exc),
+            )
+            return SanitizationResult(
+                safe=False,
+                sanitized_sql="",
+                original_sql=original_sql,
+                violations=violations,
+                tables_used=tables_used,
+            )
 
         # 6. Add LIMIT
         if not re.search(r"\bLIMIT\b", sanitized, re.IGNORECASE):
@@ -225,7 +239,11 @@ class SQLSanitizer:
             - Handles existing WHERE clauses (AND conjunction)
             - Handles missing WHERE clauses (injects before ORDER BY/LIMIT)
         """
-        company_filter = f"company_id = '{company_id}'"
+        # SECURITY (W2-19): company_id wird in reines String-SQL interpoliert.
+        # Strikt validieren, dass es eine echte UUID ist (kein injizierbarer Wert),
+        # und nur die kanonische UUID-Stringform interpolieren. Fail-closed.
+        validated_company_id = UUID(str(company_id))
+        company_filter = f"company_id = '{validated_company_id}'"
 
         if re.search(r"\bWHERE\b", sql, re.IGNORECASE):
             # Add to existing WHERE clause

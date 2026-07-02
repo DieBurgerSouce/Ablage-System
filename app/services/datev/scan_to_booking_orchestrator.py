@@ -23,7 +23,8 @@ from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, and_, func, extract
+from sqlalchemy import select, and_, func, extract, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
@@ -487,7 +488,7 @@ class ScanToBookingOrchestrator:
                             "invoice",
                         ]),
                         Document.created_at >= cutoff,
-                        Document.document_metadata["booking_routing"].astext.isnot(None),
+                        cast(Document.document_metadata, JSONB)["booking_routing"].astext.isnot(None),
                     )
                 )
             )
@@ -592,7 +593,7 @@ class ScanToBookingOrchestrator:
                         ]),
                         Document.status == ProcessingStatus.COMPLETED,
                         # Noch kein Booking-Routing gesetzt
-                        Document.document_metadata["booking_routing"].astext.is_(None),
+                        cast(Document.document_metadata, JSONB)["booking_routing"].astext.is_(None),
                     )
                 ).limit(batch_size)
             )
@@ -772,7 +773,7 @@ class ScanToBookingOrchestrator:
                             ]),
                             Document.created_at >= start,
                             Document.created_at < end,
-                            Document.document_metadata["booking_routing"].astext.isnot(None),
+                            cast(Document.document_metadata, JSONB)["booking_routing"].astext.isnot(None),
                         )
                     )
                 )

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
 from app.db.models import User
-from app.api.dependencies import get_db, get_current_active_user, get_current_company_id
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.services.ai_ethics.bias_detector import BiasDetector
 from app.services.ai_ethics.explainability_service import ExplainabilityService
 from app.services.ai_ethics.ethical_guardrails import EthicalGuardrails
@@ -57,7 +57,7 @@ class GuardrailCheckRequest(BaseModel):
 )
 async def get_dashboard(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
@@ -115,7 +115,7 @@ async def get_dashboard(
 )
 async def get_bias_report(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
@@ -237,7 +237,7 @@ async def explain_decision(
 )
 async def get_fairness_metrics(
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
@@ -335,7 +335,7 @@ async def get_fairness_metrics(
 async def guardrail_check(
     request: GuardrailCheckRequest,
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """

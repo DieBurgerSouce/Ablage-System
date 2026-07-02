@@ -534,12 +534,16 @@ class InboxAggregator:
     ) -> List[str]:
         """Holt alle Rollen eines Benutzers."""
         from app.db.models import User
+        # W2-13: User hat KEINE company_id-Spalte -> Tenancy via UserCompany-Join.
+        from app.db.models_cash_company import UserCompany
 
         try:
             result = await db.execute(
-                select(User.is_superuser).where(
+                select(User.is_superuser)
+                .join(UserCompany, UserCompany.user_id == User.id)
+                .where(
                     User.id == user_id,
-                    User.company_id == company_id,
+                    UserCompany.company_id == company_id,
                 )
             )
             user_role = result.scalar_one_or_none()

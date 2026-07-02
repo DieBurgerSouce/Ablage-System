@@ -27,7 +27,8 @@ from uuid import UUID
 import hashlib
 
 import structlog
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -1182,7 +1183,7 @@ class ContractServiceV2:
 
         if tags:
             for tag in tags:
-                base_query = base_query.where(Contract.tags.contains([tag]))
+                base_query = base_query.where(cast(Contract.tags, JSONB).contains([tag]))
 
         # Gesamtanzahl
         count_query = select(func.count()).select_from(base_query.subquery())

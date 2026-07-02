@@ -14,7 +14,7 @@ Berücksichtigt:
 
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, List, Optional, Tuple
 
 import structlog
@@ -175,7 +175,7 @@ class DATEVInvoiceMapper:
             # Berechne Brutto aus Netto + MwSt
             net = Decimal(str(invoice.net_amount))
             vat_rate = Decimal(str(invoice.vat_rate or 19))
-            return net * (1 + vat_rate / 100)
+            return (net * (1 + vat_rate / 100)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         return None
 
     def _map_incoming(
@@ -398,7 +398,7 @@ class DATEVInvoiceMapper:
         """
         # Priorität 1: Direkt extrahierter Skonto-Betrag
         if invoice.discount_amount:
-            return Decimal(str(invoice.discount_amount)).quantize(Decimal("0.01"))
+            return Decimal(str(invoice.discount_amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # Priorität 2: Berechnung aus Prozentsatz
         if invoice.discount_percent and invoice.gross_amount:
@@ -406,7 +406,7 @@ class DATEVInvoiceMapper:
                 Decimal(str(invoice.gross_amount)) *
                 Decimal(str(invoice.discount_percent)) /
                 Decimal("100")
-            ).quantize(Decimal("0.01"))
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             return skonto
 
         return None

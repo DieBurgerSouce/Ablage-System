@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.api.dependencies import get_db, get_current_user
-from app.db.models import Document, User
+from app.db.models import Document, User, Company
 from app.middleware.company_context import require_company, get_current_company
 from app.services.ai.smart_tagging_service import (
     get_smart_tagging_service,
@@ -124,14 +124,14 @@ async def analyze_document(
     min_confidence: float = Query(default=0.5, ge=0.0, le=1.0, description="Minimale Konfidenz für Vorschläge"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
 ) -> SmartTaggingResultSchema:
     """Analysiert ein Dokument und schlaegt Smart Tags vor."""
     # Lade Dokument mit Company-Check
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
-            Document.company_id == company_id,
+            Document.company_id == company.id,
             Document.deleted_at.is_(None),
         )
     )
@@ -190,7 +190,7 @@ async def analyze_batch(
     request: AnalyzeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
 ) -> AnalyzeResponse:
     """Analysiert mehrere Dokumente und schlaegt Smart Tags vor."""
     service = get_smart_tagging_service()
@@ -203,7 +203,7 @@ async def analyze_batch(
         doc_result = await db.execute(
             select(Document).where(
                 Document.id == doc_id,
-                Document.company_id == company_id,
+                Document.company_id == company.id,
                 Document.deleted_at.is_(None),
             )
         )
@@ -269,14 +269,14 @@ async def get_suggestions(
     min_confidence: float = Query(default=0.5, ge=0.0, le=1.0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
 ) -> List[SmartTagSchema]:
     """Gibt Tag-Vorschläge zurück ohne sie anzuwenden."""
     # Lade Dokument mit Company-Check
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
-            Document.company_id == company_id,
+            Document.company_id == company.id,
             Document.deleted_at.is_(None),
         )
     )

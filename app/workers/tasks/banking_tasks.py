@@ -55,7 +55,7 @@ async def _match_transaction_to_document(
     Returns:
         Match-Ergebnis dict oder None
     """
-    from sqlalchemy import select, and_, or_, func
+    from sqlalchemy import select, and_, or_, func, cast
     from sqlalchemy.dialects.postgresql import JSONB
     from app.db.models import Document
 
@@ -67,8 +67,8 @@ async def _match_transaction_to_document(
                 and_(
                     Document.deleted_at.is_(None),
                     or_(
-                        Document.extracted_data["invoice_number"].astext == invoice_num,
-                        Document.extracted_data["rechnung"]["nummer"].astext == invoice_num,
+                        cast(Document.extracted_data, JSONB)["invoice_number"].astext == invoice_num,
+                        cast(Document.extracted_data, JSONB)["rechnung"]["nummer"].astext == invoice_num,
                     )
                 )
             ).limit(1)
@@ -100,8 +100,8 @@ async def _match_transaction_to_document(
                 and_(
                     Document.deleted_at.is_(None),
                     or_(
-                        Document.extracted_data["customer_number"].astext == customer_num,
-                        Document.extracted_data["kunde"]["nummer"].astext == customer_num,
+                        cast(Document.extracted_data, JSONB)["customer_number"].astext == customer_num,
+                        cast(Document.extracted_data, JSONB)["kunde"]["nummer"].astext == customer_num,
                     )
                 )
             ).limit(10)

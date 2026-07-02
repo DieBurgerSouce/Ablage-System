@@ -20,7 +20,8 @@ import re
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, and_, literal_column
+from sqlalchemy import select, or_, func, and_, literal_column, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import selectinload
 
 from app.db.models import User, BusinessEntity, Document
@@ -518,13 +519,13 @@ async def get_cross_company_entities(
     # Filter: Nur Multi-Company Entities
     if multi_company_only:
         query = query.where(
-            func.jsonb_array_length(BusinessEntity.company_presence) > 1
+            func.jsonb_array_length(cast(BusinessEntity.company_presence, JSONB)) > 1
         )
 
     # Filter: Bestimmte Firma
     if company_filter:
         query = query.where(
-            BusinessEntity.company_presence.contains([company_filter])
+            cast(BusinessEntity.company_presence, JSONB).contains([company_filter])
         )
 
     # Filter: Suchbegriff
@@ -631,7 +632,7 @@ async def get_cross_company_entities(
     # Aggregierte Statistiken - MULTI-TENANT: Dynamisch pro Firma
     multi_company_count_query = select(func.count()).where(
         BusinessEntity.deleted_at.is_(None),
-        func.jsonb_array_length(BusinessEntity.company_presence) > 1
+        func.jsonb_array_length(cast(BusinessEntity.company_presence, JSONB)) > 1
     )
     multi_company_result = await db.execute(multi_company_count_query)
     multi_company_count = multi_company_result.scalar() or 0

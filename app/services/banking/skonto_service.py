@@ -14,7 +14,7 @@ Standard-Konditionen (typisch Deutschland):
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 import structlog
@@ -247,10 +247,10 @@ class SkontoService:
 
         # Skonto anwenden
         invoice.skonto_used = True
-        invoice.paid_amount = float(payment_amount)
+        invoice.paid_amount = payment_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         invoice.paid_at = payment_date
         invoice.status = "paid"
-        invoice.outstanding_amount = 0.0
+        invoice.outstanding_amount = Decimal("0.00")
         invoice.updated_at = utc_now()
 
         await db.flush()
@@ -477,9 +477,9 @@ class SkontoService:
         # Berechnete Felder aktualisieren
         if invoice.invoice_date and invoice.skonto_percentage and invoice.skonto_days:
             invoice.skonto_deadline = invoice.invoice_date + timedelta(days=invoice.skonto_days)
-            invoice.skonto_amount = float(
+            invoice.skonto_amount = (
                 Decimal(str(invoice.amount)) * Decimal(str(invoice.skonto_percentage)) / Decimal("100")
-            )
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         if invoice.invoice_date and invoice.net_days:
             invoice.due_date = invoice.invoice_date + timedelta(days=invoice.net_days)

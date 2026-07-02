@@ -1116,7 +1116,7 @@ class BusinessContract(Base):
     contract_number: Mapped[str] = mapped_column(String(100), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     contract_type: Mapped[ContractType] = mapped_column(
-        SQLAlchemyEnum(ContractType), default=ContractType.OTHER
+        SQLAlchemyEnum(ContractType, values_callable=lambda e: [m.value for m in e]), default=ContractType.OTHER
     )
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -1294,7 +1294,7 @@ class ContractMilestone(Base):
     )
 
     milestone_type: Mapped[MilestoneType] = mapped_column(
-        SQLAlchemyEnum(MilestoneType), nullable=False
+        SQLAlchemyEnum(MilestoneType, values_callable=lambda e: [m.value for m in e]), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -1462,7 +1462,7 @@ class ContractAmendment(Base):
 
     # Status
     status: Mapped[AmendmentStatus] = mapped_column(
-        SQLAlchemyEnum(AmendmentStatus), default=AmendmentStatus.DRAFT
+        SQLAlchemyEnum(AmendmentStatus, values_callable=lambda e: [m.value for m in e]), default=AmendmentStatus.DRAFT
     )
     approved_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True

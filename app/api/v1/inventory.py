@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_current_company_id, get_db
+from app.api.dependencies import get_current_user, get_user_company_id_dep, get_db
 from app.core.safe_errors import safe_error_detail
 from app.db.models import User
 from app.db.models_inventory import MovementType
@@ -257,7 +257,7 @@ async def create_warehouse(
     data: WarehouseCreate,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Erstellt ein neues Lager"""
     service = WarehouseService(session)
@@ -283,7 +283,7 @@ async def list_warehouses(
     include_inactive: bool = False,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Listet alle Lager auf"""
     service = WarehouseService(session)
@@ -294,7 +294,7 @@ async def list_warehouses(
 async def get_default_warehouse(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt das Standardlager zurück"""
     service = WarehouseService(session)
@@ -306,7 +306,7 @@ async def get_warehouse(
     warehouse_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt ein einzelnes Lager zurück"""
     service = WarehouseService(session)
@@ -322,7 +322,7 @@ async def update_warehouse(
     data: WarehouseUpdate,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Aktualisiert ein Lager"""
     service = WarehouseService(session)
@@ -342,7 +342,7 @@ async def deactivate_warehouse(
     warehouse_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Deaktiviert ein Lager"""
     service = WarehouseService(session)
@@ -361,7 +361,7 @@ async def create_item(
     data: ItemCreate,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Erstellt einen neuen Artikel"""
     service = InventoryItemService(session)
@@ -388,7 +388,7 @@ async def list_items(
     offset: int = 0,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Listet Artikel mit optionaler Suche"""
     service = InventoryItemService(session)
@@ -407,7 +407,7 @@ async def list_items(
 async def list_categories(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Listet alle verwendeten Kategorien"""
     service = InventoryItemService(session)
@@ -419,7 +419,7 @@ async def get_low_stock_items(
     warehouse_id: Optional[uuid.UUID] = None,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Artikel unter Meldebestand zurück"""
     service = InventoryItemService(session)
@@ -431,7 +431,7 @@ async def get_item(
     item_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt einen einzelnen Artikel zurück"""
     service = InventoryItemService(session)
@@ -447,7 +447,7 @@ async def update_item(
     data: ItemUpdate,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Aktualisiert einen Artikel"""
     service = InventoryItemService(session)
@@ -463,7 +463,7 @@ async def deactivate_item(
     item_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Deaktiviert einen Artikel"""
     service = InventoryItemService(session)
@@ -482,7 +482,7 @@ async def get_item_stock(
     item_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Bestände eines Artikels nach Lagern zurück"""
     service = StockService(session)
@@ -495,7 +495,7 @@ async def get_warehouse_inventory(
     include_zero: bool = False,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt alle Bestände in einem Lager zurück"""
     service = StockService(session)
@@ -507,7 +507,7 @@ async def get_stock_value(
     warehouse_id: Optional[uuid.UUID] = None,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Berechnet den Gesamtwert des Lagerbestands"""
     service = StockService(session)
@@ -519,7 +519,7 @@ async def create_movement(
     data: MovementCreate,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Erstellt eine Warenbewegung"""
     service = StockService(session)
@@ -551,7 +551,7 @@ async def list_movements(
     offset: int = 0,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Listet Warenbewegungen"""
     service = StockService(session)
@@ -573,7 +573,7 @@ async def record_inventory_count(
     data: InventoryCountRequest,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Erfasst eine Inventurzaehlung"""
     service = StockService(session)
@@ -606,7 +606,7 @@ async def create_goods_receipt(
     data: GoodsReceiptCreate,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Erstellt Wareneingang aus Lieferschein"""
     service = GoodsReceiptService(session)
@@ -633,7 +633,7 @@ async def list_goods_receipts(
     offset: int = 0,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Listet Wareneingaenge"""
     service = GoodsReceiptService(session)
@@ -649,7 +649,7 @@ async def get_unprocessed_delivery_notes(
     limit: int = Query(50, le=200),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Lieferscheine ohne Wareneingang zurück"""
     service = GoodsReceiptService(session)
@@ -673,7 +673,7 @@ async def get_goods_receipt_statistics(
     warehouse_id: Optional[uuid.UUID] = None,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt Statistiken zu Wareneingaengen zurück"""
     service = GoodsReceiptService(session)
@@ -685,7 +685,7 @@ async def get_goods_receipt(
     receipt_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Gibt einen einzelnen Wareneingang zurück"""
     service = GoodsReceiptService(session)
@@ -701,7 +701,7 @@ async def auto_match_goods_receipt(
     min_confidence: float = Query(0.8, ge=0.5, le=1.0),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Führt Auto-Matching für Wareneingangszeilen durch"""
     service = GoodsReceiptService(session)
@@ -719,7 +719,7 @@ async def match_goods_receipt_line(
     data: LineMatchRequest,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Ordnet eine Zeile manuell einem Artikel zu"""
     service = GoodsReceiptService(session)
@@ -737,7 +737,7 @@ async def update_goods_receipt_line_quantity(
     data: LineQuantityUpdate,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Aktualisiert die empfangene Menge einer Zeile"""
     service = GoodsReceiptService(session)
@@ -754,7 +754,7 @@ async def process_goods_receipt(
     receipt_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: uuid.UUID = Depends(get_current_company_id),
+    company_id: uuid.UUID = Depends(get_user_company_id_dep),
 ):
     """Verarbeitet Wareneingang und bucht Bestände"""
     service = GoodsReceiptService(session)

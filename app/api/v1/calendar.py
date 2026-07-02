@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id
 from app.services.calendar_service import (
     get_calendar_service,
     DeadlineCategory,
@@ -201,7 +201,7 @@ async def list_deadlines(
             )
 
     # Company ID aus User holen
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -270,7 +270,7 @@ async def get_deadline_summary(
     """
     service = get_calendar_service()
 
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -343,7 +343,7 @@ async def get_deadline_alerts(
     """
     service = get_calendar_service()
 
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -410,7 +410,7 @@ async def get_calendar_month(
     """
     service = get_calendar_service()
 
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -498,7 +498,7 @@ async def get_today_deadlines(
     """
     service = get_calendar_service()
 
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

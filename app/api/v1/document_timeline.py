@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import (
     get_current_active_user,
     get_db,
-    get_company_id,
+    get_user_company_id_dep,
     verify_document_ownership,
 )
 from app.core.safe_errors import safe_error_log
@@ -231,7 +231,7 @@ async def get_document_timeline(
         ),
     ),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
     _ownership: bool = Depends(verify_document_ownership),
 ) -> DocumentTimelineResponse:
@@ -313,7 +313,7 @@ async def get_document_timeline(
 async def get_document_timeline_summary(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
     db: AsyncSession = Depends(get_db),
     _ownership: bool = Depends(verify_document_ownership),
 ) -> DocumentTimelineSummaryResponse:

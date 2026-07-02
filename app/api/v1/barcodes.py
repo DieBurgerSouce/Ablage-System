@@ -17,7 +17,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_active_user, get_current_company_id
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.api.schemas.barcode import (
     BarcodeDetectionResponse,
     BarcodeListResponse,
@@ -53,7 +53,7 @@ async def get_document_barcodes(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BarcodeListResponse:
     """Erkannte Barcodes/QR-Codes fuer ein Dokument abrufen."""
     try:
@@ -123,7 +123,7 @@ async def redetect_document_barcodes(
     request: Optional[BarcodeRedetectRequest] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BarcodeRedetectResponse:
     """Erneute Barcode-Erkennung fuer ein Dokument ausloesen."""
     try:
@@ -171,7 +171,7 @@ async def get_barcode(
     barcode_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> BarcodeDetectionResponse:
     """Einzelne Barcode-Erkennung abrufen."""
     try:

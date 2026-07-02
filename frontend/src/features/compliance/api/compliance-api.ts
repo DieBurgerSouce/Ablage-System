@@ -167,7 +167,7 @@ export const complianceService = {
    * Get retention statistics
    */
   async getRetentionStats(): Promise<RetentionStats> {
-    const response = await apiClient.get<RetentionStatsResponse>('/compliance/retention/stats');
+    const response = await apiClient.get<RetentionStatsResponse>('/compliance/retention/statistics');
     return transformRetentionStats(response.data);
   },
 
@@ -207,7 +207,7 @@ export const complianceService = {
    */
   async getProcedureDocumentation(): Promise<ProcedureDocumentation> {
     const response = await apiClient.get<ProcedureDocumentationResponse>(
-      '/compliance/procedure-documentation'
+      '/compliance/verfahrensdokumentation'
     );
     return transformProcedureDocumentation(response.data);
   },
@@ -216,7 +216,7 @@ export const complianceService = {
    * Download GoBD procedure documentation as PDF
    */
   async downloadProcedureDocumentationPdf(): Promise<Blob> {
-    const response = await apiClient.get<Blob>('/compliance/procedure-documentation/pdf', {
+    const response = await apiClient.get<Blob>('/compliance/verfahrensdokumentation/pdf', {
       responseType: 'blob',
     });
     return response.data;

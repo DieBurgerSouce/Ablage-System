@@ -1001,6 +1001,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=256M,mode=1777
+      - /home/ablage/.cache:size=256M,mode=0777  # W2-01: beschreibbarer CuPy/torch-Cache gegen Crash-Loop
     deploy:
       resources:
         limits:

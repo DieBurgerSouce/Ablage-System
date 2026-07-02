@@ -18,7 +18,8 @@ import uuid
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, and_, or_, func, desc, asc
+from sqlalchemy import select, and_, or_, func, desc, asc, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -307,7 +308,7 @@ async def list_transactions(
     # Filter: Folder (in detection_details gespeichert)
     if folder_id:
         query = query.where(
-            DocumentGroup.detection_details['folder_id'].astext == folder_id
+            cast(DocumentGroup.detection_details, JSONB)['folder_id'].astext == folder_id
         )
 
     # Filter: Search

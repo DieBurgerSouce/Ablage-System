@@ -103,6 +103,12 @@ def backup_full_task(self) -> Dict[str, Any]:
     bind=True,
     base=CPUTask,
     name="app.workers.tasks.backup_tasks.backup_postgres_task",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def backup_postgres_task(self) -> Dict[str, Any]:
     """Celery Task für PostgreSQL-Backup."""
@@ -138,6 +144,12 @@ def backup_postgres_task(self) -> Dict[str, Any]:
     bind=True,
     base=CPUTask,
     name="app.workers.tasks.backup_tasks.backup_redis_task",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def backup_redis_task(self) -> Dict[str, Any]:
     """Celery Task für Redis-Backup."""
@@ -173,6 +185,12 @@ def backup_redis_task(self) -> Dict[str, Any]:
     bind=True,
     base=CPUTask,
     name="app.workers.tasks.backup_tasks.apply_retention_task",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def apply_retention_task(self) -> Dict[str, Any]:
     """

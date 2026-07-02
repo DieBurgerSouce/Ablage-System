@@ -17,6 +17,7 @@ SECURITY:
 
 import secrets
 import structlog
+from urllib.parse import quote
 from datetime import timedelta
 from typing import Dict, List, Optional
 from uuid import UUID
@@ -35,6 +36,7 @@ from app.core.safe_errors import safe_error_detail
 from app.core.security_auth import create_access_token, get_password_hash
 from app.db.models import User
 from app.services.auth.sso import OIDCService, SAMLService, SSOConfigService
+from app.db.models_cash_company import UserCompany  # W2-05
 from app.services.auth.sso.sso_config_service import (
     SSOProviderConfig,
     SSOProviderPreset,
@@ -44,6 +46,21 @@ from app.services.auth.sso.sso_config_service import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/sso", tags=["SSO"])
+
+
+def _safe_redirect_param(value: Optional[str]) -> str:
+    """Sanitisiert IdP-/angreiferkontrollierte Werte fuer Redirect-URLs.
+
+    SECURITY (W2-20): Verhindert CRLF-/Header-/Redirect-Injection, indem
+    Zeilenumbrueche entfernt und der Wert URL-encoded wird, bevor er in den
+    Location-Header (RedirectResponse) interpoliert wird.
+    """
+    if not value:
+        return ""
+    # CRLF (und verwandte Steuerzeichen) strippen -> kein Header-Splitting
+    cleaned = value.replace("\r", "").replace("\n", "")
+    # URL-encode -> kein Ausbrechen aus dem Query-Parameter / Pfad
+    return quote(cleaned, safe="")
 
 
 # =============================================================================
@@ -580,7 +597,7 @@ async def oidc_callback(
         logger.warning("oidc_callback_error", error=error, description=error_description)
         # Redirect to login with error
         return RedirectResponse(
-            url=f"/login?error=sso_failed&message={error_description or error}",
+            url=f"/login?error=sso_failed&message={_safe_redirect_param(error_description or error)}",
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -654,7 +671,7 @@ async def oidc_callback(
     except ValueError as e:
         logger.error("oidc_callback_failed", error=str(e))
         return RedirectResponse(
-            url=f"/login?error=sso_failed&message={str(e)}",
+            url=f"/login?error=sso_failed&message={_safe_redirect_param(str(e))}",
             status_code=status.HTTP_302_FOUND,
         )
     finally:
@@ -802,7 +819,7 @@ async def saml_assertion_consumer_service(
     except ValueError as e:
         logger.error("saml_acs_failed", error=str(e))
         return RedirectResponse(
-            url=f"/login?error=sso_failed&message={str(e)}",
+            url=f"/login?error=sso_failed&message={_safe_redirect_param(str(e))}",
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -921,7 +938,7 @@ async def _provision_sso_user(
 
         # Update role if group mapping changed it
         if provider.group_mapping and groups:
-            user.role = role
+            user.is_superuser = (role == "admin")  # W2-05: User.role ist read-only property
 
         user.is_active = True
         await db.commit()
@@ -970,16 +987,24 @@ async def _provision_sso_user(
         username=username,
         hashed_password=get_password_hash(random_password),
         full_name=full_name,
-        company_id=provider.company_id,
-        role=role,
         is_active=True,
-        is_superuser=False,
+        is_superuser=(role == "admin"),  # W2-05: User hat keine company_id/role-Spalte
         # Mark as SSO user (optional: add sso_provider_id column to User model)
     )
 
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    # W2-05: Tenancy ueber UserCompany (User-Modell hat keine company_id-Spalte)
+    if provider.company_id:
+        db.add(UserCompany(
+            user_id=new_user.id,
+            company_id=provider.company_id,
+            role=role if role in ("owner", "admin", "member", "viewer") else "member",
+            is_current=True,
+        ))
+        await db.commit()
 
     logger.info(
         "sso_user_created",
@@ -1004,7 +1029,7 @@ def _generate_sso_session_token(user: User) -> str:
     token_data = {
         "sub": str(user.id),
         "email": user.email,
-        "company_id": str(user.company_id) if user.company_id else None,
+        "company_id": None,  # W2-05: User hat keine company_id (Tenancy via UserCompany)
         "role": getattr(user, "role", "viewer"),
         "sso_login": True,
     }

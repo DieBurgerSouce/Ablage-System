@@ -36,6 +36,7 @@ from app.db.models import (
     AuditLog,
     BusinessEntity,
     DocumentActivity,
+    Company,
 )
 from app.middleware.company_context import require_company
 
@@ -254,11 +255,12 @@ async def get_document_audit_trail(
     important_only: bool = Query(False, description="Nur wichtige Events"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
 ) -> AuditTrailResponse:
     """Gibt Audit Trail für ein Dokument zurück."""
 
     # Paginierung: page/per_page -> offset/limit (Response-Contract erwartet limit/offset)
+    company_id = company.id
     offset = (page - 1) * per_page
     limit = per_page
     # Prüfe ob Dokument existiert und Berechtigung
@@ -457,11 +459,12 @@ async def get_entity_audit_trail(
     date_until: Optional[datetime] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
 ) -> AuditTrailResponse:
     """Gibt Audit Trail für einen Geschäftspartner zurück."""
 
     # Paginierung: page/per_page -> offset/limit (Response-Contract erwartet limit/offset)
+    company_id = company.id
     offset = (page - 1) * per_page
     limit = per_page
     # Prüfe ob Entity existiert und Berechtigung
@@ -572,10 +575,11 @@ async def export_document_audit_trail(
     date_until: Optional[datetime] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
 ) -> Response:
     """Exportiert Audit Trail für ein Dokument."""
     # Hole alle Events (ohne Paginierung)
+    company_id = company.id
     result = await get_document_audit_trail(
         document_id=document_id,
         limit=10000,
@@ -688,9 +692,10 @@ async def get_audit_trail_stats(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: UUID = Depends(require_company),
+    company: Company = Depends(require_company),
 ) -> AuditTrailStatsSchema:
     """Gibt Statistiken über Audit Trail Events zurück."""
+    company_id = company.id
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Base Query

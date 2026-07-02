@@ -26,7 +26,7 @@ from app.api.dependencies import (
     get_current_active_user,
     get_db,
 )
-from app.middleware.company_context import get_current_company_id
+from app.api.dependencies import get_user_company_id_dep
 from app.db.models import User, ShipmentCarrier, ShipmentDirection, ShipmentStatusEnum
 from app.services.shipping import (
     CarrierService,
@@ -195,7 +195,7 @@ async def create_shipment(
     data: ShipmentCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ShipmentResponse:
     """Erstellt eine neue Sendung.
 
@@ -256,7 +256,7 @@ async def list_shipments(
     per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ShipmentListResponse:
     """Listet alle Sendungen mit optionalen Filtern."""
     service = get_carrier_service()
@@ -307,7 +307,7 @@ async def list_shipments(
 async def get_shipment_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ShipmentSummaryResponse:
     """Gibt eine Zusammenfassung aller Sendungen zurück."""
     service = get_carrier_service()
@@ -320,7 +320,7 @@ async def get_carrier_statistics(
     days: int = Query(90, ge=7, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[CarrierStatisticsResponse]:
     """Gibt Statistiken pro Carrier zurück."""
     service = get_carrier_service()
@@ -355,7 +355,7 @@ async def track_shipment(
     carrier: Optional[str] = Query(None, description="Carrier (optional)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> TrackingResponse:
     """Fragt Tracking-Informationen für eine Sendungsnummer ab.
 
@@ -414,7 +414,7 @@ async def get_shipment(
     shipment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ShipmentResponse:
     """Holt eine einzelne Sendung."""
     service = get_carrier_service()
@@ -435,7 +435,7 @@ async def update_shipment(
     data: ShipmentUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ShipmentResponse:
     """Aktualisiert eine Sendung."""
     service = get_carrier_service()
@@ -470,7 +470,7 @@ async def refresh_shipment_tracking(
     shipment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> ShipmentResponse:
     """Aktualisiert die Tracking-Daten einer Sendung."""
     service = get_carrier_service()
@@ -507,7 +507,7 @@ async def delete_shipment(
     shipment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """Löscht eine Sendung (Soft Delete)."""
     service = get_carrier_service()
@@ -524,7 +524,7 @@ async def delete_shipment(
 async def refresh_all_shipments(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(get_current_company_id),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> Dict[str, int]:
     """Aktualisiert alle aktiven Sendungen.
 

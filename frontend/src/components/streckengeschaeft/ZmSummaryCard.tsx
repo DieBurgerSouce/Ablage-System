@@ -221,7 +221,7 @@ export function ZmSummaryCard() {
   } = useQuery({
     queryKey: ['streckengeschaeft', 'zm', 'summary', selectedPeriod],
     queryFn: async () => {
-      const response = await apiClient.get<ZmSummary>(`/streckengeschaeft/zm/summary`, {
+      const response = await apiClient.get<ZmSummary>(`/streckengeschäft/zm/summary`, {
         params: { period: selectedPeriod },
       });
       return response.data;
@@ -231,7 +231,7 @@ export function ZmSummaryCard() {
   const { data: records } = useQuery({
     queryKey: ['streckengeschaeft', 'zm', 'records', selectedPeriod],
     queryFn: async () => {
-      const response = await apiClient.get(`/streckengeschaeft/zm/records`, {
+      const response = await apiClient.get(`/streckengeschäft/zm/records`, {
         params: { period: selectedPeriod },
       });
       return response.data;

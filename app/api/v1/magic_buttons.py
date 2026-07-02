@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, get_user_company_id
 from app.services.magic_buttons_service import (
     get_magic_buttons_service,
     MagicButtonType,
@@ -297,7 +297,7 @@ async def preview_daily_close(
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
     """Vorschau für Tages-Abschluss."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -334,7 +334,7 @@ async def execute_daily_close(
     db: AsyncSession = Depends(get_db),
 ) -> MagicResultResponse:
     """Führt Tages-Abschluss aus."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -379,7 +379,7 @@ async def preview_monthly_report(
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
     """Vorschau für Monats-Report."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -417,7 +417,7 @@ async def execute_monthly_report(
     db: AsyncSession = Depends(get_db),
 ) -> MagicResultResponse:
     """Erstellt Monats-Report."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -461,7 +461,7 @@ async def preview_clear_open_items(
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
     """Vorschau für Offene-Posten-Bereinigung."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -497,7 +497,7 @@ async def execute_clear_open_items(
     db: AsyncSession = Depends(get_db),
 ) -> MagicResultResponse:
     """Bereinigt offene Posten."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -541,7 +541,7 @@ async def preview_create_contact(
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
     """Vorschau für Kontakt-Erstellung."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -578,7 +578,7 @@ async def execute_create_contact(
     db: AsyncSession = Depends(get_db),
 ) -> MagicResultResponse:
     """Erstellt Kontakt aus Dokument."""
-    company_id = getattr(current_user, 'company_id', None)
+    company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

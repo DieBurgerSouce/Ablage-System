@@ -16,7 +16,8 @@ from uuid import UUID
 import hashlib
 
 import structlog
-from sqlalchemy import select, delete, update, and_, func
+from sqlalchemy import select, delete, update, and_, func, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from prometheus_client import Counter, Gauge, Histogram
 
@@ -287,7 +288,7 @@ async def _delete_user_data(
         user_id=None,
         ip_address="[ANONYMIZED]",
         audit_metadata=func.jsonb_set(
-            func.coalesce(AuditLog.audit_metadata, func.cast("{}", func.json())),
+            cast(func.coalesce(AuditLog.audit_metadata, func.cast("{}", func.json())), JSONB),
             '{gdpr_anonymized}',
             'true'
         ),

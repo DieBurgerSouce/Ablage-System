@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db, get_current_company_id
+from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.db.models import User
 from uuid import UUID
 from app.db.models_communication import (
@@ -180,7 +180,7 @@ async def get_communication_hub(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> CommunicationHubResponse:
     """
     Holt die vollständige 360°-Ansicht eines Geschäftspartners.
@@ -281,7 +281,7 @@ async def list_phone_notes(
     limit: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> List[PhoneNoteResponse]:
     """Listet alle Telefon-Notizen eines Geschäftspartners auf."""
     # SECURITY FIX: Multi-Tenant Check
@@ -313,7 +313,7 @@ async def create_phone_note(
     data: PhoneNoteCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> PhoneNoteResponse:
     """Erstellt eine neue Telefon-Notiz."""
     # SECURITY FIX: Multi-Tenant Check
@@ -381,7 +381,7 @@ async def get_phone_note(
     note_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> PhoneNoteResponse:
     """Holt eine spezifische Telefon-Notiz."""
     # SECURITY FIX: Multi-Tenant Check
@@ -424,7 +424,7 @@ async def update_phone_note(
     data: PhoneNoteUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> PhoneNoteResponse:
     """Aktualisiert eine bestehende Telefon-Notiz."""
     # SECURITY FIX: Multi-Tenant Check
@@ -487,7 +487,7 @@ async def delete_phone_note(
     note_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ):
     """Löscht eine Telefon-Notiz."""
     # SECURITY FIX: Multi-Tenant Check
@@ -521,7 +521,7 @@ async def complete_follow_up(
     note_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> PhoneNoteResponse:
     """Markiert ein Follow-up als abgeschlossen."""
     # SECURITY FIX: Multi-Tenant Check
@@ -560,7 +560,7 @@ async def get_quick_stats(
     entity_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> JSONDict:
     """Holt schnelle Statistiken für Badge-Anzeigen etc."""
     # SECURITY FIX: Multi-Tenant Check
@@ -604,7 +604,7 @@ async def get_timeline_only(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    company_id: Optional[UUID] = Depends(get_current_company_id),
+    company_id: Optional[UUID] = Depends(get_user_company_id_dep),
 ) -> List[TimelineItemResponse]:
     """Holt nur die Timeline."""
     # SECURITY FIX (P0): Multi-Tenant Check - CWE-639

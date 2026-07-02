@@ -79,7 +79,7 @@ class DocumentTemplate(Base):
     name = Column(String(255), nullable=False)
     code = Column(String(50), nullable=False)  # Kurzcode wie "INV-STANDARD"
     description = Column(Text, nullable=True)
-    category = Column(SQLAlchemyEnum(TemplateCategory, name="templatecategory"), default=TemplateCategory.OTHER)
+    category = Column(SQLAlchemyEnum(TemplateCategory, name="templatecategory", values_callable=lambda e: [m.value for m in e]), default=TemplateCategory.OTHER)
 
     # Vorlage
     content = Column(Text, nullable=False)  # Jinja2 Template
@@ -93,7 +93,7 @@ class DocumentTemplate(Base):
     margins = Column(CrossDBJSON, default=lambda: {"top": 20, "right": 15, "bottom": 20, "left": 15})  # mm
 
     # Ausgabeformat
-    output_format = Column(SQLAlchemyEnum(TemplateOutputFormat, name="templateoutputformat"), default=TemplateOutputFormat.PDF)
+    output_format = Column(SQLAlchemyEnum(TemplateOutputFormat, name="templateoutputformat", values_callable=lambda e: [m.value for m in e]), default=TemplateOutputFormat.PDF)
 
     # Variablen-Definition (Schema)
     variables = Column(CrossDBJSON, default=list, comment="Schema der Template-Variablen")

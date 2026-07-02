@@ -117,7 +117,7 @@ class RecurringInvoice(Base):
 
     # Intervall-Muster
     interval_type = Column(
-        SQLAlchemyEnum(RecurringIntervalType, name="recurring_interval_type"),
+        SQLAlchemyEnum(RecurringIntervalType, name="recurring_interval_type", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=RecurringIntervalType.MONTHLY,
     )
@@ -141,7 +141,7 @@ class RecurringInvoice(Base):
     # Erkennungs-Metriken
     detection_confidence = Column(Float, default=0.0)
     detection_method = Column(
-        SQLAlchemyEnum(DetectionMethod, name="detection_method"),
+        SQLAlchemyEnum(DetectionMethod, name="detection_method", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=DetectionMethod.MANUAL,
     )
@@ -155,7 +155,7 @@ class RecurringInvoice(Base):
 
     # Status
     status = Column(
-        SQLAlchemyEnum(RecurringInvoiceStatus, name="recurring_invoice_status"),
+        SQLAlchemyEnum(RecurringInvoiceStatus, name="recurring_invoice_status", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=RecurringInvoiceStatus.ACTIVE,
     )
@@ -245,7 +245,7 @@ class RecurringInvoiceOccurrence(Base):
 
     # Status
     status = Column(
-        SQLAlchemyEnum(OccurrenceStatus, name="occurrence_status"),
+        SQLAlchemyEnum(OccurrenceStatus, name="occurrence_status", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=OccurrenceStatus.EXPECTED,
     )
@@ -254,7 +254,7 @@ class RecurringInvoiceOccurrence(Base):
     match_confidence = Column(Float, nullable=True)
     matched_at = Column(DateTime(timezone=True), nullable=True)
     matched_by = Column(
-        SQLAlchemyEnum(OccurrenceMatchMethod, name="occurrence_match_method"),
+        SQLAlchemyEnum(OccurrenceMatchMethod, name="occurrence_match_method", values_callable=lambda e: [m.value for m in e]),
         nullable=True,
     )
 

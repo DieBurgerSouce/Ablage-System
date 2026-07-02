@@ -629,7 +629,7 @@ async def get_audit_chain_entries(
     ]
 
 
-@router.get("/audit-chain/{sequence_number}", response_model=AuditChainEntryResponse)
+@router.get("/audit-chain/{sequence_number:int}", response_model=AuditChainEntryResponse)  # W2-31: int-Converter verhindert Shadowing von /audit-chain/statistics
 async def get_audit_chain_entry(
     sequence_number: int,
     current_user: User = Depends(get_current_user),
