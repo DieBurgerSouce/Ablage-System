@@ -611,12 +611,19 @@ async def _extract_user_from_token(
     if hasattr(request.state, "user") and request.state.user:
         return request.state.user
 
-    # Try to get from Authorization header
+    # Token aus Authorization-Header ODER httpOnly-Cookie (G03).
+    # G03 migrierte die Auth auf httpOnly-Cookies: REST-Requests tragen den
+    # Access-Token als Cookie `access_token`, NICHT mehr als Bearer-Header aus
+    # JS. Ohne diesen Cookie-Fallback fand dieser Helper den User bei Cookie-
+    # Auth nicht -> get_current_company() lieferte None -> GET /companies/current
+    # gab 404 und der CompanySwitcher blieb leer. Reihenfolge wie in der
+    # primaeren Auth-Dependency (app/api/dependencies.py): Header zuerst,
+    # dann Cookie.
     auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        return None
-
-    token = auth_header[7:]  # Remove "Bearer " prefix
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+    else:
+        token = request.cookies.get("access_token", "")
     if not token:
         return None
 
