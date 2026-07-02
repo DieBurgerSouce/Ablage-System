@@ -111,6 +111,11 @@ async function cacheAuth(role: Role): Promise<void> {
         role: userData.role || (userData.is_superuser ? 'admin' : role.fallbackRole),
       },
       cached_at: new Date().toISOString(),
+      // G03: Die vom Login gesetzten httpOnly-Cookies (access_token + csrf_token)
+      // aus dem Request-Context mit-cachen. Die Fixture spielt sie in den
+      // Browser-Context zurueck (addCookies) -> geschuetzte Daten-Endpoints
+      // authentifizieren wieder ueber das Cookie statt ueber ein JS-Bearer-Token.
+      cookies: (await context.storageState()).cookies,
     };
 
     fs.writeFileSync(role.cacheFile, JSON.stringify(authData, null, 2));

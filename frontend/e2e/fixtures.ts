@@ -31,6 +31,21 @@ interface CachedAuth {
     role: string;
   };
   cached_at: string;
+  // G03: Auth laeuft ueber httpOnly-Cookies. Die vom Login gesetzten Cookies
+  // (access_token httpOnly + csrf_token) muessen im Browser-Context liegen,
+  // sonst liefern geschuetzte Daten-Endpoints 403. sessionStorage allein
+  // reicht seit der Cookie-Migration NICHT mehr (der apiClient sendet kein
+  // Bearer-Token mehr aus JS). Format = Playwright storageState().cookies.
+  cookies?: Array<{
+    name: string;
+    value: string;
+    domain: string;
+    path: string;
+    expires: number;
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'Strict' | 'Lax' | 'None';
+  }>;
 }
 
 /**
@@ -60,6 +75,8 @@ async function refreshAuthToken(currentAuth: CachedAuth): Promise<CachedAuth> {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || currentAuth.refresh_token,
         cached_at: new Date().toISOString(),
+        // G03: erneuerte httpOnly-Cookies aus dem Refresh-Response uebernehmen.
+        cookies: (await context.storageState()).cookies,
       };
 
       // Update cache file
@@ -163,6 +180,14 @@ export const test = base.extend<{
     // entfernt - der Frontend-API-Layer normalisiert den echten Backend-
     // Vertrag ({notifications, unreadCount, total}) jetzt selbst
     // (frontend/src/features/notifications/api/index.ts).
+
+    // G03: httpOnly-Auth-Cookies in den Browser-Context legen, BEVOR die App
+    // laedt. Ohne das Cookie liefert der apiClient (der seit G03 kein Bearer-
+    // Token mehr aus JS sendet) auf allen geschuetzten Daten-Endpoints 403 ->
+    // die Seite rendert eingeloggt (sessionStorage), zeigt aber keine Daten.
+    if (authData.cookies && authData.cookies.length > 0) {
+      await page.context().addCookies(authData.cookies);
+    }
 
     // Now navigate to the app - auth data will already be in sessionStorage
     // Kein 'networkidle': Das Dashboard laedt dauerhaft nach (Notifications,
