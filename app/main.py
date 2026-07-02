@@ -292,7 +292,16 @@ async def lifespan(app: FastAPI):
     # P1: Model Pre-Loading - Lädt OCR-Modelle im Background vor
     # Reduziert Cold-Start-Latenz für erste Anfragen um 10-30 Sekunden
     model_preloader = get_model_preloader()
-    preload_enabled = getattr(settings, "MODEL_PRELOAD_ENABLED", True)
+    # P1/OOM-Guard: Der Model-Preload ist eine Prod-Cold-Start-Optimierung.
+    # Unter TESTING lud der kontext-gemanagte TestClient (Starlette-Lifespan,
+    # z.B. tests/.../test_jobs_admin_permissions.py) das echte surya_docling-
+    # Modell in den pytest-Prozess -> Speicher-Akkumulation ueber die ~720-
+    # Dateien-Suite bis zum OOM-SIGKILL (Exit 137). Preload daher nur, wenn
+    # aktiviert UND nicht im Testbetrieb.
+    preload_enabled = (
+        getattr(settings, "MODEL_PRELOAD_ENABLED", True)
+        and not getattr(settings, "TESTING", False)
+    )
 
     if preload_enabled:
         include_gpu = gpu_manager.has_gpu() if gpu_manager else False

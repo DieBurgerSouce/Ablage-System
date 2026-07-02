@@ -13,6 +13,7 @@ Testet:
 
 import pytest
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from uuid import uuid4
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -55,6 +56,18 @@ def valid_user_payload():
         "email": "ws-user@ablage.local",
         "company_id": str(uuid4()),
     }
+
+
+@pytest.fixture
+def fake_request():
+    """Minimaler Request-Stub fuer den G03-Cookie-Fallback.
+
+    Die Presence-/Rooms-Endpunkte lesen seit dem Cookie-Auth-Umbau (Commit
+    13d6aeff7) `request.cookies.get("access_token")`. Der Stub liefert ein
+    leeres Cookie-Dict, damit der Fallback greift, ohne einen echten Token
+    zu setzen. Nur `.cookies.get()` wird vom Endpoint benoetigt.
+    """
+    return SimpleNamespace(cookies={})
 
 
 # =============================================================================
@@ -205,7 +218,7 @@ class TestDocumentPresence:
     """Tests fuer GET /ws/presence/{document_id}."""
 
     @pytest.mark.asyncio
-    async def test_get_document_presence_success(self, mock_ws_manager, valid_user_payload):
+    async def test_get_document_presence_success(self, mock_ws_manager, valid_user_payload, fake_request):
         """Dokument-Presence wird zurueckgegeben."""
         with patch(
             "app.api.v1.websocket.get_realtime_ws_manager",
@@ -218,6 +231,7 @@ class TestDocumentPresence:
             from app.api.v1.websocket import get_document_presence
 
             result = await get_document_presence(
+                request=fake_request,
                 document_id="doc-123",
                 token="valid-token",
             )
@@ -227,20 +241,21 @@ class TestDocumentPresence:
             assert len(result["viewers"]) == 1
 
     @pytest.mark.asyncio
-    async def test_get_document_presence_no_token(self):
+    async def test_get_document_presence_no_token(self, fake_request):
         """401 ohne Token."""
         from fastapi import HTTPException
         from app.api.v1.websocket import get_document_presence
 
         with pytest.raises(HTTPException) as exc_info:
             await get_document_presence(
+                request=fake_request,
                 document_id="doc-123",
                 token=None,
             )
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_document_presence_invalid_token(self):
+    async def test_get_document_presence_invalid_token(self, fake_request):
         """401 mit ungueltigem Token."""
         from fastapi import HTTPException
 
@@ -253,6 +268,7 @@ class TestDocumentPresence:
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_document_presence(
+                    request=fake_request,
                     document_id="doc-123",
                     token="invalid-token",
                 )
@@ -263,7 +279,7 @@ class TestCompanyPresence:
     """Tests fuer GET /ws/presence/company/{company_id}."""
 
     @pytest.mark.asyncio
-    async def test_get_company_presence_success(self, mock_ws_manager, valid_user_payload):
+    async def test_get_company_presence_success(self, mock_ws_manager, valid_user_payload, fake_request):
         """Company-Presence wird zurueckgegeben."""
         company_id = valid_user_payload["company_id"]
 
@@ -278,6 +294,7 @@ class TestCompanyPresence:
             from app.api.v1.websocket import get_company_presence_endpoint
 
             result = await get_company_presence_endpoint(
+                request=fake_request,
                 company_id=company_id,
                 token="valid-token",
             )
@@ -286,7 +303,7 @@ class TestCompanyPresence:
             assert result["online_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_get_company_presence_wrong_company(self, valid_user_payload):
+    async def test_get_company_presence_wrong_company(self, valid_user_payload, fake_request):
         """403 wenn User nicht zur Company gehoert."""
         from fastapi import HTTPException
 
@@ -299,19 +316,21 @@ class TestCompanyPresence:
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_company_presence_endpoint(
+                    request=fake_request,
                     company_id="other-company-id",
                     token="valid-token",
                 )
             assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_get_company_presence_no_token(self):
+    async def test_get_company_presence_no_token(self, fake_request):
         """401 ohne Token."""
         from fastapi import HTTPException
         from app.api.v1.websocket import get_company_presence_endpoint
 
         with pytest.raises(HTTPException) as exc_info:
             await get_company_presence_endpoint(
+                request=fake_request,
                 company_id="comp-123",
                 token=None,
             )
@@ -327,7 +346,7 @@ class TestUserRooms:
     """Tests fuer GET /ws/rooms."""
 
     @pytest.mark.asyncio
-    async def test_get_rooms_success(self, mock_ws_manager, valid_user_payload):
+    async def test_get_rooms_success(self, mock_ws_manager, valid_user_payload, fake_request):
         """User-Rooms werden zurueckgegeben."""
         with patch(
             "app.api.v1.websocket.get_realtime_ws_manager",
@@ -339,24 +358,24 @@ class TestUserRooms:
         ):
             from app.api.v1.websocket import get_user_rooms
 
-            result = await get_user_rooms(token="valid-token")
+            result = await get_user_rooms(request=fake_request, token="valid-token")
 
             assert result["user_id"] == valid_user_payload["id"]
             assert result["room_count"] == 0
             assert result["rooms"] == []
 
     @pytest.mark.asyncio
-    async def test_get_rooms_no_token(self):
+    async def test_get_rooms_no_token(self, fake_request):
         """401 ohne Token."""
         from fastapi import HTTPException
         from app.api.v1.websocket import get_user_rooms
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_user_rooms(token=None)
+            await get_user_rooms(request=fake_request, token=None)
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_rooms_invalid_token(self):
+    async def test_get_rooms_invalid_token(self, fake_request):
         """401 mit ungueltigem Token."""
         from fastapi import HTTPException
 
@@ -368,7 +387,7 @@ class TestUserRooms:
             from app.api.v1.websocket import get_user_rooms
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_user_rooms(token="invalid-token")
+                await get_user_rooms(request=fake_request, token="invalid-token")
             assert exc_info.value.status_code == 401
 
 
@@ -384,6 +403,13 @@ class TestWebSocketRealtimeEndpoint:
     async def test_websocket_no_token_closes(self):
         """WebSocket wird ohne Token geschlossen (code 4001)."""
         mock_ws = AsyncMock()
+        # G03: websocket_realtime_endpoint faellt auf
+        # `websocket.cookies.get("access_token")` zurueck. Ein blanker AsyncMock
+        # liefert dort ein truthy Mock-Objekt -> der 4001-Pfad wuerde
+        # uebersprungen. Ein echtes leeres Dict liefert None und haelt den Test
+        # ehrlich. Die anderen WS-Tests uebergeben truthy Tokens, sodass der
+        # `or`-Fallback dort gar nicht ausgewertet wird (kein Fix noetig).
+        mock_ws.cookies = {}
 
         with patch(
             "app.api.v1.websocket.get_realtime_ws_manager"
