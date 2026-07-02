@@ -24,6 +24,10 @@ FROM nginx:1.27-alpine3.20@sha256:679a5fd058f6ca754a561846fe27927e408074431d6355
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Security-Header-Snippet: wird von nginx.conf per `include` im server-Block UND in jedem
+# location-Block mit eigenem add_header eingebunden (sonst unterdrueckt nginx die CSP dort).
+COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
+
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
