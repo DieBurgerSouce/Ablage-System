@@ -156,6 +156,7 @@ infrastructure/alerting/smtp-password
 
 # Prometheus scrape tokens (mounted into prometheus container)
 infrastructure/prometheus/qdrant_metrics_token
+infrastructure/prometheus/metrics_scrape_token
 
 # Watchdog runtime logs (Sprint 0 / G05) - State liegt im Docker-Volume
 scripts/watchdog/logs/
