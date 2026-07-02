@@ -92,6 +92,10 @@ from app.db.schemas import (
     # Ablage / Kategorie-Ansicht (W1-019: response_model statt None)
     CategoryDocumentListResponse, CategoryAggregations,
     UpdatePaymentStatusResponse, BulkOperationResultAblage,
+    # Statistik & Such-Analytics (W1-019: response_model statt None)
+    DocumentStatsResponse, SearchAnalyticsStatsResponse,
+    DailySearchAnalyticsItem, PopularSearchTermItem, ZeroResultQueryItem,
+    SearchClickLogResponse, DocumentAccessLogPageResponse,
     # Common
     MessageResponse
 )
@@ -3452,7 +3456,7 @@ async def _fetch_document_stats_uncached(
     }
 
 
-@router.get("/stats/summary")
+@router.get("/stats/summary", response_model=DocumentStatsResponse)
 async def get_document_stats(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -3517,7 +3521,7 @@ async def get_document_stats(
 
 # ==================== Search Analytics ====================
 
-@router.get("/stats/search-analytics")
+@router.get("/stats/search-analytics", response_model=SearchAnalyticsStatsResponse)
 async def get_search_analytics(
     days: int = Query(30, ge=1, le=365, description="Analysezeitraum in Tagen"),
     current_user: User = Depends(get_current_active_user),
@@ -3547,7 +3551,7 @@ async def get_search_analytics(
     )
 
 
-@router.get("/stats/search-analytics/daily")
+@router.get("/stats/search-analytics/daily", response_model=List[DailySearchAnalyticsItem])
 async def get_daily_search_analytics(
     days: int = Query(30, ge=1, le=365, description="Analysezeitraum in Tagen"),
     current_user: User = Depends(get_current_active_user),
@@ -3573,7 +3577,7 @@ async def get_daily_search_analytics(
     return await service.get_daily_statistics(db=db, days=days)
 
 
-@router.get("/stats/search-analytics/popular-terms")
+@router.get("/stats/search-analytics/popular-terms", response_model=List[PopularSearchTermItem])
 async def get_popular_search_terms(
     days: int = Query(7, ge=1, le=90, description="Analysezeitraum in Tagen"),
     limit: int = Query(20, ge=1, le=100, description="Max. Anzahl Ergebnisse"),
@@ -3600,7 +3604,7 @@ async def get_popular_search_terms(
     return await service.get_popular_search_terms(db=db, days=days, limit=limit)
 
 
-@router.get("/stats/search-analytics/zero-results")
+@router.get("/stats/search-analytics/zero-results", response_model=List[ZeroResultQueryItem])
 async def get_zero_result_queries(
     days: int = Query(7, ge=1, le=90, description="Analysezeitraum in Tagen"),
     limit: int = Query(20, ge=1, le=100, description="Max. Anzahl Ergebnisse"),
@@ -3627,7 +3631,7 @@ async def get_zero_result_queries(
     return await service.get_zero_result_queries(db=db, days=days, limit=limit)
 
 
-@router.post("/stats/search-analytics/click")
+@router.post("/stats/search-analytics/click", response_model=SearchClickLogResponse)
 async def log_search_click(
     analytics_id: UUID = Query(..., description="ID des Such-Analytics-Eintrags"),
     position: int = Query(..., ge=1, description="Position des geklickten Ergebnisses"),
@@ -3656,7 +3660,7 @@ async def log_search_click(
 
 # ==================== Document Access Log (Audit Trail) ====================
 
-@router.get("/{document_id}/access-log")
+@router.get("/{document_id}/access-log", response_model=DocumentAccessLogPageResponse)
 async def get_document_access_log(
     document_id: UUID,
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
