@@ -127,14 +127,14 @@ try:
     from app.core.exceptions import ValidationError as _AblageValidationError
     _VALIDATION_EXCEPTION_TYPES = _VALIDATION_EXCEPTION_TYPES + (_AblageValidationError,)
 except ImportError:
-    pass
+    pass  # Projekt-ValidationError optional: bleibt aus der Klassifizierung
 
 # Optional: pydantic ValidationError
 try:
     from pydantic import ValidationError as _PydanticValidationError
     _VALIDATION_EXCEPTION_TYPES = _VALIDATION_EXCEPTION_TYPES + (_PydanticValidationError,)
 except ImportError:
-    pass
+    pass  # pydantic-ValidationError optional: bleibt aus der Klassifizierung
 
 
 # ---------------------------------------------------------------------------

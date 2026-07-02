@@ -643,7 +643,7 @@ class ExportConnectionManager:
             try:
                 await self._pubsub_task
             except asyncio.CancelledError:
-                pass
+                pass  # Erwarteter Abbruch des Listener-Tasks beim Stoppen
             self._pubsub_task = None
             self._stop_event.clear()
             logger.info("export_pubsub_listener_stopped")

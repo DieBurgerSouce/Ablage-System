@@ -764,8 +764,13 @@ def cache_multi_tier(
                         try:
                             from app.core.business_metrics import record_api_cache_operation
                             record_api_cache_operation("l2_hit", func.__name__)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(
+                                "cache_metrics_record_failed",
+                                **safe_error_log(e),
+                                operation="l2_hit",
+                                function=func.__name__,
+                            )
                         return result
 
                     # Stampede prevention: check if early recomputation needed
@@ -836,8 +841,13 @@ def cache_multi_tier(
                 try:
                     from app.core.business_metrics import record_api_cache_operation
                     record_api_cache_operation("miss", func.__name__)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "cache_metrics_record_failed",
+                        **safe_error_log(e),
+                        operation="miss",
+                        function=func.__name__,
+                    )
 
             except Exception as e:
                 # L2 write failed - not critical (L1 still populated)

@@ -354,7 +354,7 @@ def _collect_gpu_vram() -> Optional[float]:
             allocated = torch.cuda.memory_allocated(0)
             return round(allocated / (1024 ** 3), 2)
     except ImportError:
-        pass
+        pass  # torch optional (CPU-only-Umgebung): keine VRAM-Metrik
     except Exception as e:
         logger.debug("gpu_vram_collection_failed", **safe_error_log(e))
     return None
@@ -373,7 +373,7 @@ def _collect_gpu_utilization() -> Optional[float]:
         if result.returncode == 0:
             return float(result.stdout.strip())
     except FileNotFoundError:
-        pass
+        pass  # nvidia-smi nicht vorhanden (kein NVIDIA-Treiber): keine GPU-Auslastung
     except Exception as e:
         logger.debug("gpu_utilization_collection_failed", **safe_error_log(e))
     return None
@@ -422,7 +422,7 @@ def _collect_memory_usage() -> Optional[float]:
         memory = psutil.virtual_memory()
         return round(memory.percent, 1)
     except ImportError:
-        pass
+        pass  # psutil optional: keine Arbeitsspeicher-Metrik
     except Exception as e:
         logger.debug("memory_usage_collection_failed", **safe_error_log(e))
     return None
@@ -434,7 +434,7 @@ def _collect_cpu_usage() -> Optional[float]:
         import psutil
         return round(psutil.cpu_percent(interval=0.1), 1)
     except ImportError:
-        pass
+        pass  # psutil optional: keine CPU-Metrik
     except Exception as e:
         logger.debug("cpu_usage_collection_failed", **safe_error_log(e))
     return None

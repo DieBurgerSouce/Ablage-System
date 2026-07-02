@@ -343,7 +343,8 @@ async def get_trends(
         try:
             industry_enum = Industry(industry)
         except ValueError:
-            pass
+            # Unbekannte Branche wird auf OTHER zurueckgesetzt
+            logger.debug("unknown_industry_filter", industry=industry)
 
     service = await get_benchmark_service(db)
     trend_data = await service.get_trend_comparison(
@@ -381,7 +382,8 @@ async def get_benchmark_summary(
         try:
             industry_enum = Industry(industry)
         except ValueError:
-            pass
+            # Unbekannte Branche wird auf OTHER zurueckgesetzt
+            logger.debug("unknown_industry_filter", industry=industry)
 
     service = await get_benchmark_service(db)
     report = await service.get_company_benchmark(

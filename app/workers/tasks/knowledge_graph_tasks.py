@@ -118,8 +118,13 @@ async def _build_graph_incremental() -> Dict[str, Any]:
                             nodes=len(graph.nodes),
                             edges=len(graph.edges),
                         )
-                    except Exception:
-                        pass  # Einzelne Fehlschlaege nicht loggen
+                    except Exception as e:
+                        # Einzelne Verifikations-Fehlschlaege nur auf debug (kein Flood im Beat-Lauf)
+                        logger.debug(
+                            "entity_graph_verify_failed",
+                            entity_id=str(entity.id),
+                            **safe_error_log(e),
+                        )
 
             except Exception as e:
                 logger.warning(

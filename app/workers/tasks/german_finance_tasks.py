@@ -662,8 +662,13 @@ def compare_forecast_accuracy_task(
                                 )
                                 if comparison.get("status") == "verfügbar":
                                     eval_result["forecasts_compared"] += 1
-                            except ValueError:
-                                pass
+                            except ValueError as e:
+                                # Forecast noch nicht vergleichbar (z.B. zu wenig Ist-Daten)
+                                logger.debug(
+                                    "forecast_comparison_skipped",
+                                    forecast_id=str(fid),
+                                    **safe_error_log(e),
+                                )
 
                         eval_result["companies_evaluated"] += 1
 

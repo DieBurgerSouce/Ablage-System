@@ -1427,8 +1427,13 @@ def check_cancellation_deadlines_task(
                             priority=priority.value,
                         )
                         stats["warnings_created"] += 1
-                    except Exception:
-                        pass  # Notification-Fehler nicht kritisch
+                    except Exception as e:
+                        # Benachrichtigung fehlgeschlagen (nicht fatal): naechster Vertrag laeuft weiter
+                        logger.warning(
+                            "contract_deadline_notification_failed",
+                            contract_id=str(contract.id),
+                            **safe_error_log(e),
+                        )
 
             return stats
 

@@ -2101,7 +2101,7 @@ async def cache_stats() -> CacheStatsResponse:
         cache_service = get_ocr_cache_service()
         ocr_cache_stats = await cache_service.get_stats()
     except ImportError:
-        pass
+        pass  # OCR-Cache-Service optional: keine OCR-Cache-Statistik
     except Exception as e:
         logger.warning("cache_stats_ocr_failed", **safe_error_log(e))
         ocr_cache_stats = {"error": safe_error_detail(e, "Vorgang")[:100]}
@@ -2155,7 +2155,7 @@ async def cache_stats() -> CacheStatsResponse:
 
         session_cache_stats = get_session_stats()
     except ImportError:
-        pass  # Module not installed
+        pass  # Session-Store-Modul optional: keine Session-Cache-Statistik
     except Exception as e:
         logger.debug(
             "session_cache_stats_failed",
@@ -2519,7 +2519,7 @@ async def degradation_status(
             degradation_reasons.append(f"Circuit Breaker offen: {', '.join(open_circuits)}")
             recovery_actions.append("Warten auf Circuit Breaker Recovery (automatisch)")
     except ImportError:
-        pass
+        pass  # Circuit-Breaker-Modul optional: kein Circuit-Breaker-Degradationscheck
 
     # Check Disk Space
     disk_status = _check_disk_space()

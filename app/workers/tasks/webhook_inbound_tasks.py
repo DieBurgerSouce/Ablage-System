@@ -209,8 +209,13 @@ def process_inbound_webhook(
         if self.request.retries >= self.max_retries:
             try:
                 asyncio.run(_mark_failed(event_db_id, str(e)))
-            except Exception:
-                pass
+            except Exception as mark_err:
+                # Status-Update auf 'failed' fehlgeschlagen: Original-Fehler wird trotzdem erneut geworfen
+                logger.debug(
+                    "webhook_mark_failed_error",
+                    event_db_id=event_db_id,
+                    **safe_error_log(mark_err),
+                )
 
         raise
 

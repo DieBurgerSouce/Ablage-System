@@ -425,4 +425,4 @@ def set_ocr_span_attributes(
         if vram_used_gb is not None:
             span.set_attribute("gpu.vram_used_gb", vram_used_gb)
     except Exception:
-        pass  # Ignore tracing errors
+        pass  # Tracing-Fehler bewusst ignorieren (Telemetrie darf die App nie stoeren)

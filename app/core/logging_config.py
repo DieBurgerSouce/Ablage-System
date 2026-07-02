@@ -155,7 +155,7 @@ class PerformanceProcessor:
                 }
                 event_dict["gpu"] = gpu_metrics
         except ImportError:
-            pass
+            pass  # torch optional: kein GPU-Block im Log-Kontext (kein Logging im Prozessor)
 
         return event_dict
 

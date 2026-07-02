@@ -130,7 +130,7 @@ class SafeJSONEncoder(json.JSONEncoder):
             if isinstance(obj, np.ndarray):
                 return obj.tolist()
         except ImportError:
-            pass
+            pass  # numpy optional: Nicht-numpy-Objekte fallen unten durch die Standardbehandlung
 
         # datetime Objekte
         if isinstance(obj, datetime):

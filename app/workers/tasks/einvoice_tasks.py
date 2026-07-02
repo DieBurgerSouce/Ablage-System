@@ -366,7 +366,7 @@ def _generate_zugferd_xml(doc: Document, profile) -> Optional[str]:
         # factur-x braucht strukturierte Daten - hier nur Basic-Template
 
     except ImportError:
-        pass
+        pass  # facturx optional: Fallback ist das manuelle ZUGFeRD-Template unten
 
     # Manuelles ZUGFeRD XML Template (Minimal-Version)
     xml_template = f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -955,8 +955,12 @@ def einvoice_check_all_transmissions_task(self) -> dict:
                 try:
                     einvoice_check_transmission_status_task.delay(str(transmission.id))
                     checked += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "einvoice_status_check_enqueue_failed",
+                        transmission_id=str(transmission.id),
+                        **safe_error_log(e),
+                    )
 
             return {
                 "success": True,

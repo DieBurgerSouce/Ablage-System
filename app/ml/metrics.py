@@ -980,7 +980,7 @@ class MLMetrics:
                     GPU_UTILIZATION.labels(device=device).set(utilization)
 
         except ImportError:
-            pass
+            pass  # torch optional (CPU-only-Umgebung): keine GPU-Metriken
         except Exception as e:
             logger.debug("gpu_metriken_update_fehlgeschlagen", **safe_error_log(e))
 

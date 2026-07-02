@@ -435,8 +435,12 @@ class LLMRegistry:
             try:
                 if await provider.is_available():
                     available.append(name)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "llm_provider_availability_check_failed",
+                    provider=name,
+                    **safe_error_log(e),
+                )
         return available
 
     def list_all_models(self) -> List[ModelConfig]:

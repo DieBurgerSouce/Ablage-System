@@ -30,7 +30,7 @@ def is_oom_error(exception: Exception) -> bool:
         ):
             return True
     except ImportError:
-        pass
+        pass  # torch nicht installiert -> nur die String-Heuristik unten greift
 
     error_msg = str(exception).lower()
     return any(indicator in error_msg for indicator in OOM_INDICATORS)

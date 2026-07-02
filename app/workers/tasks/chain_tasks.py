@@ -667,7 +667,7 @@ def validate_document_chains(
                                         try:
                                             amounts.append(float(amount))
                                         except (ValueError, TypeError):
-                                            pass
+                                            pass  # Ungueltige Betragswerte werden uebersprungen
 
                             if len(amounts) >= 2:
                                 # Prüfen ob Betraege stark abweichen

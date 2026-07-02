@@ -547,8 +547,9 @@ async def _update_backend_weights(
             try:
                 existing_data = json.loads(existing_raw)
                 existing_weights = existing_data.get("weights", {})
-            except (json.JSONDecodeError, TypeError):
-                pass
+            except (json.JSONDecodeError, TypeError) as e:
+                # Gespeicherte Gewichte korrupt -> werden verworfen und neu aufgebaut
+                logger.warning("backend_weights_corrupt_reset", **safe_error_log(e))
 
         # EMA-Update: alpha = 0.1 (langsame Anpassung)
         alpha = 0.1

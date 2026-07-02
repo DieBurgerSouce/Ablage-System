@@ -558,8 +558,13 @@ def process_document_task(
                         doc_metadata["perceptual_hash"] = phash
                         document.document_metadata = doc_metadata
                         await session.commit()
-                    except Exception:
-                        pass  # pHash-Berechnung ist optional
+                    except Exception as e:
+                        # pHash-Berechnung ist optional (Duplikat-Erkennung); Fehler nicht fatal
+                        logger.debug(
+                            "perceptual_hash_failed",
+                            document_id=str(document.id),
+                            **safe_error_log(e),
+                        )
                 elif document.mime_type == "application/pdf":
                     try:
                         import imagehash as _imagehash
@@ -575,8 +580,13 @@ def process_document_task(
                             document.document_metadata = doc_metadata
                             await session.commit()
                         pdf_doc.close()
-                    except Exception:
-                        pass  # pHash-Berechnung ist optional
+                    except Exception as e:
+                        # pHash-Berechnung ist optional (Duplikat-Erkennung); Fehler nicht fatal
+                        logger.debug(
+                            "perceptual_hash_failed",
+                            document_id=str(document.id),
+                            **safe_error_log(e),
+                        )
 
                 # Post-OCR: Vollständiger Duplikat-Check (Text steht jetzt zur Verfügung)
                 try:
