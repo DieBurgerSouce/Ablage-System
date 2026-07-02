@@ -162,7 +162,24 @@ Invoke-Stage 'e2e' {
         if ($LASTEXITCODE -ne 0) { Write-Host 'Seed-Guard fehlgeschlagen - e2e abgebrochen'; return }
     }
     Push-Location (Join-Path $RepoRoot 'frontend')
-    try { $env:BASE_URL = $FrontendUrl; npx playwright test --project=chromium }
+    try {
+        $env:BASE_URL = $FrontendUrl
+        npx playwright test --project=chromium
+        $chromiumCode = $LASTEXITCODE
+        # W2.3: pwa-offline-Specs + Perf-Benchmark laufen ISOLIERT mit EINEM
+        # Worker. Sie sind aus dem chromium-Projekt per grepInvert ausgeschlossen
+        # (playwright.config.ts). Grund: Jeder frische Browser-Context registriert
+        # den Service Worker und zieht die Precache-Shell; unter der 4-Worker-Last
+        # des chromium-Laufs fuehrte das zu browserContext.newPage-Timeouts
+        # (A-Z-Loop 7). Der Seed-Guard oben lief bereits einmal fuer beide Laeufe.
+        npx playwright test --project=pwa --workers=1
+        $pwaCode = $LASTEXITCODE
+        # Stufe ist nur GRUEN, wenn BEIDE Projekte gruen sind — sonst wuerde der
+        # letzte Aufruf (pwa) einen chromium-Fehler maskieren.
+        if ($chromiumCode -ne 0) { $global:LASTEXITCODE = $chromiumCode }
+        elseif ($pwaCode -ne 0) { $global:LASTEXITCODE = $pwaCode }
+        else { $global:LASTEXITCODE = 0 }
+    }
     finally { Pop-Location }
 }
 
