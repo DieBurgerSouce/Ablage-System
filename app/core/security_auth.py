@@ -13,11 +13,12 @@ SECURITY UTILITIES (Phase 10):
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, Type
 import asyncio
 import hashlib
 import secrets
 import re
+import time
 from urllib.parse import quote
 
 import bcrypt
@@ -80,9 +81,45 @@ else:
 # Verhindert Race Conditions bei Multi-Worker Deployments mit In-Memory-Fallback
 _blacklist_lock: asyncio.Lock = asyncio.Lock()
 
+# ROBUSTHEIT (W2.2): Backoff-Fenster für Redis-Reconnect.
+# Statt eines PERMANENTEN Latches nach dem ersten Verbindungsfehler wird die
+# Nichtverfügbarkeit nur für dieses Fenster gehalten; danach wird ein erneuter
+# Reconnect versucht. Verhindert, dass ein einziger transienter Fehler ALLE
+# Auth-Requests bis zum Prozess-Neustart auf 503 zwingt (fail-closed).
+REDIS_RECONNECT_BACKOFF_SECONDS = 30.0
+
+# Transiente Redis-Fehler, die genau EINEN sofortigen Retry rechtfertigen
+# (kurzer Netzwerk-/Latenz-Blip auf einer geteilten Redis). Nicht-transiente
+# Fehler werden NICHT wiederholt, sondern greifen direkt den fail-closed-Pfad.
+# redis.exceptions.ConnectionError/TimeoutError erben NICHT von den Builtins,
+# daher werden beide Varianten explizit aufgeführt.
+try:
+    from redis.exceptions import (
+        ConnectionError as _RedisConnectionError,
+        TimeoutError as _RedisTimeoutError,
+    )
+    _TRANSIENT_REDIS_ERRORS: Tuple[Type[BaseException], ...] = (
+        _RedisConnectionError,
+        _RedisTimeoutError,
+        ConnectionError,
+        TimeoutError,
+        asyncio.TimeoutError,
+    )
+except Exception:  # pragma: no cover - redis nicht installiert (reine Unit-Umgebung)
+    _TRANSIENT_REDIS_ERRORS = (
+        ConnectionError,
+        TimeoutError,
+        asyncio.TimeoutError,
+    )
+
 # Redis client instance (lazy-loaded)
 _redis_client: Optional[Any] = None
 _redis_available: Optional[bool] = None
+# Monotone Deadline (time.monotonic), bis zu der KEIN Reconnect versucht wird.
+# None = kein aktives Backoff. Wird vom Code zusammen mit _redis_available=False
+# gesetzt; ein extern/manuell gesetztes _redis_available=False (z.B. in Tests)
+# bleibt ohne Backoff und damit hart unavailable (kein Auto-Reconnect).
+_redis_backoff_until: Optional[float] = None
 
 
 # ==================== Redis Token Blacklist ====================
@@ -93,17 +130,38 @@ async def _get_redis_client() -> Optional[Any]:
 
     Uses lazy loading and caches availability status.
 
+    ROBUSTHEIT (W2.2): Statt eines PERMANENTEN Latches nach dem ersten
+    Verbindungsfehler wird die Nichtverfügbarkeit nur noch für ein
+    Backoff-Fenster (REDIS_RECONNECT_BACKOFF_SECONDS) gehalten. Danach wird ein
+    erneuter Reconnect versucht. Vorher zwang ein einziger transienter Fehler
+    ALLE Auth-Requests bis zum Prozess-Neustart auf 503 (fail-closed). Es wird
+    die monotone Uhr verwendet (kein Wall-Clock-Drift/Flake). Die fail-closed-
+    Semantik der Aufrufer bleibt unverändert — dies ist ein Robustheits-Fix.
+
     Returns:
         Redis client or None if unavailable
     """
-    global _redis_client, _redis_available
+    global _redis_client, _redis_available, _redis_backoff_until
 
-    # Return cached result if already checked
-    if _redis_available is False:
-        return None
-
+    # Bereits verbundener Client wird direkt zurückgegeben.
     if _redis_client is not None:
         return _redis_client
+
+    if _redis_available is False:
+        # Vom Code gesetztes Backoff-Fenster: nach Ablauf erneut verbinden
+        # (kein permanenter Latch mehr). Ohne gesetztes Backoff (z.B. in Tests
+        # manuell _redis_available=False) bleibt es hart None — keine
+        # unerwarteten Reconnect-Versuche.
+        if _redis_backoff_until is None:
+            return None
+        if time.monotonic() < _redis_backoff_until:
+            return None
+        # Backoff abgelaufen -> Zustand zurücksetzen und Reconnect versuchen.
+        _redis_available = None
+        _redis_backoff_until = None
+    else:
+        # _redis_available ist None/True: keine veraltete Backoff-Deadline halten.
+        _redis_backoff_until = None
 
     try:
         from app.core.redis_state import RedisStateManager
@@ -115,20 +173,25 @@ async def _get_redis_client() -> Optional[Any]:
         if await manager.ping():
             _redis_client = manager._redis
             _redis_available = True
+            _redis_backoff_until = None
             logger.info("token_blacklist_redis_connected")
             return _redis_client
         else:
             _redis_available = False
+            _redis_backoff_until = time.monotonic() + REDIS_RECONNECT_BACKOFF_SECONDS
             logger.warning("token_blacklist_redis_ping_failed",
-                          message="Fallback auf In-Memory-Blacklist")
+                          backoff_seconds=REDIS_RECONNECT_BACKOFF_SECONDS,
+                          message="Fallback/fail-closed bis Reconnect nach Backoff")
             return None
 
     except Exception as e:
         _redis_available = False
+        _redis_backoff_until = time.monotonic() + REDIS_RECONNECT_BACKOFF_SECONDS
         # SECURITY: Nur Fehlertyp loggen, nicht Details (könnten Credentials enthalten)
         logger.warning("token_blacklist_redis_unavailable",
                       error_type=type(e).__name__,
-                      message="Fallback auf In-Memory-Blacklist")
+                      backoff_seconds=REDIS_RECONNECT_BACKOFF_SECONDS,
+                      message="Fallback/fail-closed bis Reconnect nach Backoff")
         return None
 
 
@@ -216,15 +279,45 @@ async def is_token_blacklisted_redis(jti: str) -> bool:
     redis_check_failed = False
 
     if redis is not None:
+        key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
+        # ROBUSTHEIT (W2.2): Genau EIN sofortiger Retry bei transientem
+        # Redis-Fehler (ConnectionError/TimeoutError). Unter Parallellast auf
+        # einer geteilten (Dev-)Redis genügt sonst ein einzelner Timeout, um
+        # einen 503 auszulösen. Die Fail-closed-SEMANTIK bleibt vollständig
+        # erhalten: scheitert AUCH der Retry — oder ist der Fehler nicht
+        # transient — wird wie bisher fail-closed 503 geworfen. Das ist ein
+        # Robustheits-Fix, KEIN Sicherheits-Downgrade.
         try:
-            key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
-            exists = await redis.exists(key)
-            if exists:
+            if await redis.exists(key):
                 return True
-        except Exception as e:
-            redis_check_failed = True
+        except _TRANSIENT_REDIS_ERRORS as first_error:
             # SECURITY: Nur Fehlertyp loggen, nicht Details (könnten Credentials enthalten)
-            logger.warning("token_blacklist_check_redis_error", error_type=type(e).__name__)
+            logger.warning(
+                "token_blacklist_check_redis_error",
+                error_type=type(first_error).__name__,
+                attempt=1,
+                will_retry=True,
+            )
+            try:
+                if await redis.exists(key):
+                    return True
+            except Exception as retry_error:
+                redis_check_failed = True
+                logger.warning(
+                    "token_blacklist_check_redis_error",
+                    error_type=type(retry_error).__name__,
+                    attempt=2,
+                    will_retry=False,
+                )
+        except Exception as e:
+            # Nicht-transienter Fehler: kein Retry -> direkt fail-closed-Pfad.
+            redis_check_failed = True
+            logger.warning(
+                "token_blacklist_check_redis_error",
+                error_type=type(e).__name__,
+                attempt=1,
+                will_retry=False,
+            )
     else:
         redis_check_failed = True
 
