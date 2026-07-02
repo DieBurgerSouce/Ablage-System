@@ -13,6 +13,8 @@ from uuid import UUID  # Import UUID type explicitly for type annotations
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from app.core.types import JSONDict
+
 
 # Enums (matching SQLAlchemy models)
 class ProcessingStatus(str, Enum):
@@ -4277,6 +4279,154 @@ class BulkOperationResultAblage(BaseModel):
     failed_ids: List[uuid.UUID] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
     message: str  # Deutsche Nachricht
+
+
+# ============================================================================
+# STATISTIK & SUCH-ANALYTICS SCHEMAS (W1-019: response_model statt None)
+# ============================================================================
+# Diese Schemas bilden das Ist-Verhalten der Statistik-/Analytics-Endpoints in
+# app/api/v1/documents.py ab (kein Verhaltens-Change, nur API-Contract-Politur).
+
+
+class DocumentStatsResponse(BaseModel):
+    """Aggregierte Dokumentstatistiken fuer den aktuellen Benutzer.
+
+    Wird von ``GET /documents/stats/summary`` geliefert (ggf. aus Redis-Cache).
+    """
+    total_documents: int = Field(..., description="Gesamtzahl der Dokumente")
+    by_status: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Anzahl der Dokumente je Verarbeitungsstatus",
+    )
+    by_document_type: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Anzahl der Dokumente je Dokumenttyp",
+    )
+    average_ocr_confidence: Optional[float] = Field(
+        None, description="Durchschnittliche OCR-Konfidenz (None bei fehlenden Werten)"
+    )
+    documents_with_embeddings: int = Field(
+        ..., description="Anzahl Dokumente mit vorhandenem Embedding"
+    )
+    embedding_coverage_percent: float = Field(
+        ..., description="Anteil der Dokumente mit Embedding in Prozent"
+    )
+
+
+class SearchTypeBreakdownItem(BaseModel):
+    """Kennzahlen je Suchtyp innerhalb der Suchstatistik."""
+    count: int = Field(..., description="Anzahl der Suchen dieses Typs")
+    avg_time_ms: int = Field(..., description="Durchschnittliche Ausfuehrungszeit in ms")
+
+
+class TopSearchQueryItem(BaseModel):
+    """Haeufiger Suchbegriff mit Trefferzahl."""
+    query: str = Field(..., description="Suchbegriff")
+    count: int = Field(..., description="Anzahl der Suchen")
+
+
+class SearchFilterUsage(BaseModel):
+    """Nutzungszaehler der einzelnen Suchfilter."""
+    document_type: int = Field(..., description="Suchen mit Dokumenttyp-Filter")
+    date_range: int = Field(..., description="Suchen mit Datums-Filter")
+    tags: int = Field(..., description="Suchen mit Tag-Filter")
+    status: int = Field(..., description="Suchen mit Status-Filter")
+
+
+class SearchAnalyticsStatsResponse(BaseModel):
+    """Aggregierte Such-Statistiken ueber einen Zeitraum.
+
+    Wird von ``GET /documents/stats/search-analytics`` geliefert.
+    """
+    period_days: int = Field(..., description="Analysezeitraum in Tagen")
+    total_searches: int = Field(..., description="Gesamtzahl der Suchen")
+    unique_users: int = Field(..., description="Anzahl eindeutiger Nutzer")
+    avg_results_per_search: float = Field(
+        ..., description="Durchschnittliche Trefferzahl je Suche"
+    )
+    avg_execution_time_ms: int = Field(
+        ..., description="Durchschnittliche Ausfuehrungszeit in ms"
+    )
+    total_result_clicks: int = Field(..., description="Gesamtzahl der Ergebnis-Klicks")
+    click_through_rate: float = Field(..., description="Klickrate in Prozent")
+    zero_result_searches: int = Field(..., description="Anzahl Suchen ohne Treffer")
+    zero_result_rate: float = Field(
+        ..., description="Anteil Suchen ohne Treffer in Prozent"
+    )
+    search_type_breakdown: Dict[str, SearchTypeBreakdownItem] = Field(
+        default_factory=dict, description="Aufschluesselung je Suchtyp"
+    )
+    top_queries: List[TopSearchQueryItem] = Field(
+        default_factory=list, description="Haeufigste Suchbegriffe (max. 10)"
+    )
+    filter_usage: SearchFilterUsage = Field(..., description="Nutzung der Suchfilter")
+
+
+class DailySearchAnalyticsItem(BaseModel):
+    """Tages-Aggregat der Suchstatistik (pro Tag und Suchtyp)."""
+    date: Optional[str] = Field(
+        None, description="Tag im ISO-Format (None wenn unbekannt)"
+    )
+    search_type: str = Field(..., description="Suchtyp")
+    total_searches: int = Field(..., description="Anzahl Suchen an diesem Tag")
+    unique_users: int = Field(..., description="Anzahl eindeutiger Nutzer")
+    avg_results: Optional[int] = Field(None, description="Durchschnittliche Trefferzahl")
+    avg_execution_time_ms: Optional[int] = Field(
+        None, description="Durchschnittliche Ausfuehrungszeit in ms"
+    )
+    avg_clicks: float = Field(..., description="Durchschnittliche Klicks je Suche")
+    zero_result_searches: int = Field(..., description="Anzahl Suchen ohne Treffer")
+
+
+class PopularSearchTermItem(BaseModel):
+    """Beliebter Suchbegriff mit Kennzahlen."""
+    query: str = Field(..., description="Suchbegriff")
+    search_count: int = Field(..., description="Anzahl der Suchen")
+    avg_results: int = Field(..., description="Durchschnittliche Trefferzahl")
+    avg_clicks: float = Field(..., description="Durchschnittliche Klicks je Suche")
+    unique_searchers: int = Field(..., description="Anzahl eindeutiger Nutzer")
+
+
+class ZeroResultQueryItem(BaseModel):
+    """Suchanfrage ohne Treffer."""
+    query: str = Field(..., description="Suchbegriff")
+    search_count: int = Field(..., description="Anzahl der Suchen")
+    search_type: str = Field(..., description="Suchtyp")
+    last_searched: Optional[str] = Field(
+        None, description="Letzte Suche im ISO-Format"
+    )
+
+
+class SearchClickLogResponse(BaseModel):
+    """Bestaetigung fuer die Protokollierung eines Suchergebnis-Klicks."""
+    status: str = Field(..., description="Statuskennung, z.B. 'ok'")
+
+
+class DocumentAccessLogEntry(BaseModel):
+    """Einzelner Eintrag im Zugriffs-Log eines Dokuments (Audit Trail)."""
+    id: str = Field(..., description="ID des Audit-Log-Eintrags")
+    action: str = Field(..., description="Ausgefuehrte Aktion")
+    timestamp: Optional[str] = Field(None, description="Zeitpunkt im ISO-Format")
+    user_id: Optional[str] = Field(None, description="ID des ausfuehrenden Nutzers")
+    ip_address: Optional[str] = Field(None, description="Anonymisierte IP-Adresse")
+    success: bool = Field(..., description="Ob die Aktion erfolgreich war")
+    details: Optional[JSONDict] = Field(None, description="Zusaetzliche Metadaten")
+
+
+class DocumentAccessLogPageResponse(BaseModel):
+    """Paginiertes Zugriffs-Log eines Dokuments (Audit Trail).
+
+    Wird von ``GET /documents/{document_id}/access-log`` geliefert.
+    Name bewusst distinkt zu ``archive.DocumentAccessLogResponse`` (andere Form).
+    """
+    document_id: str = Field(..., description="ID des Dokuments")
+    access_log: List[DocumentAccessLogEntry] = Field(
+        default_factory=list, description="Liste der Zugriffs-Eintraege"
+    )
+    total: int = Field(..., description="Gesamtzahl der Eintraege")
+    page: int = Field(..., description="Aktuelle Seite (1-basiert)")
+    per_page: int = Field(..., description="Eintraege pro Seite")
+    has_more: bool = Field(..., description="Ob weitere Seiten existieren")
 
 
 # ============================================================================
