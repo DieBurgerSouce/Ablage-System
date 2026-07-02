@@ -158,7 +158,14 @@ Invoke-Stage 'unit' {
             docker compose @ComposeFiles exec -T @unitEnv backend timeout -k 30 2700 pytest $chunk -q --no-header -p no:cacheprovider --continue-on-collection-errors
         }
         $cc = $LASTEXITCODE; if ($null -eq $cc) { $cc = 0 }
+        # pytest Exit 5 = "keine Tests gesammelt". Pro Chunk ist das KEIN Fehler:
+        # tests/unit/orchestration importiert das Host-Paket .claude/orchestration
+        # (im Container nicht gemountet) -> collectet nichts; tests/unit/scripts hat
+        # nur Container-fremde Tests. Im urspruenglichen Ein-Prozess-Lauf gingen
+        # diese in der Gesamt-Collection auf (Exit 0/1). Exit 5 daher als GRUEN
+        # werten (mit Hinweis) - echte Test-Fehler sind Exit 1, Timeout 124.
         if ($cc -eq 0) { Write-Host "  [unit-chunk GRUEN] $label" -ForegroundColor Green }
+        elseif ($cc -eq 5) { Write-Host "  [unit-chunk GRUEN (0 Tests gesammelt, Exit 5)] $label" -ForegroundColor DarkGray }
         else { Write-Host "  [unit-chunk ROT $cc] $label" -ForegroundColor Red; $red++ }
     }
     Write-Host ("unit: {0}/{1} Chunks gruen, {2} rot" -f ($chunks.Count - $red), $chunks.Count, $red)

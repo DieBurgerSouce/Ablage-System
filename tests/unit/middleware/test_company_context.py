@@ -73,6 +73,7 @@ def create_mock_request(
     authorization: str = None,
     x_company_id: str = None,
     user_in_state: MockUser = None,
+    cookie_token: str = None,
 ) -> MagicMock:
     """Create a mock Request object."""
     headers_dict = {}
@@ -83,6 +84,11 @@ def create_mock_request(
 
     mock_request = MagicMock(spec=Request)
     mock_request.headers = Headers(headers_dict)
+    # G03: _extract_user_from_token liest den Access-Token als Fallback aus dem
+    # httpOnly-Cookie `access_token`. Ohne echtes Dict liefert MagicMock.cookies
+    # .get() ein truthy Mock -> der Code versuchte, es zu dekodieren (401 statt
+    # None). Echtes Dict -> .get() liefert None/"" wie bei einem realen Request.
+    mock_request.cookies = {"access_token": cookie_token} if cookie_token else {}
 
     # Mock request.state
     state = MagicMock()
@@ -568,12 +574,14 @@ class TestSetRLSCompanyContext:
 
         await set_rls_company_context(mock_db, company_id)
 
-        mock_db.execute.assert_called_once()
-        # Verify that the company_id was passed as parameter
-        call_args = mock_db.execute.call_args
-        # Check that the cid parameter contains our company_id
-        params = call_args[0][1] if len(call_args[0]) > 1 else call_args[1]
-        assert str(company_id) in str(params)
+        # RLS-Reconciliation (Mig 271): set_rls_company_context spiegelt die
+        # company_id auf ZWEI Session-Variablen — app.current_company_id UND
+        # app.current_tenant_id (fuer Alt-Policies aus Mig 210). Daher 2 execute-
+        # Aufrufe (frueher 1). In BEIDEN muss die company_id als Parameter stehen.
+        assert mock_db.execute.call_count == 2
+        for call_args in mock_db.execute.call_args_list:
+            params = call_args[0][1] if len(call_args[0]) > 1 else call_args[1]
+            assert str(company_id) in str(params)
 
     @pytest.mark.asyncio
     async def test_invalid_uuid_prevented(self):
