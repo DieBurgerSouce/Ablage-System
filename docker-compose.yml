@@ -974,6 +974,7 @@ services:
     networks:
       - backend-network
       - data-network
+      - monitoring-network  # Für Prometheus Metrics Scraping
 
   # Celery Beat Scheduler (Distributed via RedBeat)
   # RedBeat speichert Schedule in Redis - nur eine Beat-Instanz haelt den Lock.
