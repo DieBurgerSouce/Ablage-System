@@ -1062,16 +1062,60 @@ async def search_documents(
             timeout=SEARCH_TIMEOUT_SECONDS
         )
     except asyncio.TimeoutError:
-        logger.warning(
-            "search_timeout",
-            query=q[:50],
-            search_type=search_type.value,
-            timeout_seconds=SEARCH_TIMEOUT_SECONDS
-        )
-        raise HTTPException(
-            status_code=504,
-            detail="Suche hat zu lange gedauert. Bitte versuchen Sie eine präzisere Anfrage."
-        )
+        # W2.1: Beim ersten Suchaufruf nach einem Backend-Recreate laedt das
+        # Embedding-Modell lazy (>30s auf CPU) -> der semantische/HYBRID-Zweig
+        # laeuft in den Timeout. Statt hart mit 504 abzubrechen, degradieren wir
+        # einmalig auf reine Volltextsuche (FTS liefert echte Ergebnisse); das
+        # Modell-Vorwaermen laeuft parallel im Hintergrund. Nur die reine FTS-Suche
+        # selbst kann nicht weiter degradiert werden -> dann 504.
+        if search_type != SearchType.FTS:
+            logger.warning(
+                "search_degraded_to_fts",
+                query=q[:50],
+                search_type=search_type.value,
+                timeout_seconds=SEARCH_TIMEOUT_SECONDS
+            )
+            try:
+                result = await asyncio.wait_for(
+                    service.search(
+                        db=db,
+                        query=q,
+                        user_id=current_user.id,
+                        search_type=SearchType.FTS,
+                        filters=filters,
+                        page=page,
+                        per_page=per_page,
+                        sort_by=sort_by,
+                        sort_order=sort_order,
+                        highlight=highlight,
+                        similarity_threshold=similarity_threshold,
+                        use_synonyms=use_synonyms
+                    ),
+                    timeout=SEARCH_TIMEOUT_SECONDS
+                )
+                result.degraded = True
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "search_timeout",
+                    query=q[:50],
+                    search_type=SearchType.FTS.value,
+                    timeout_seconds=SEARCH_TIMEOUT_SECONDS
+                )
+                raise HTTPException(
+                    status_code=504,
+                    detail="Suche hat zu lange gedauert. Bitte versuchen Sie eine präzisere Anfrage."
+                )
+        else:
+            logger.warning(
+                "search_timeout",
+                query=q[:50],
+                search_type=search_type.value,
+                timeout_seconds=SEARCH_TIMEOUT_SECONDS
+            )
+            raise HTTPException(
+                status_code=504,
+                detail="Suche hat zu lange gedauert. Bitte versuchen Sie eine präzisere Anfrage."
+            )
 
     # Log analytics asynchronously (non-blocking)
     try:
