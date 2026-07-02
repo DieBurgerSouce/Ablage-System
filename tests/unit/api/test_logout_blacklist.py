@@ -79,6 +79,10 @@ class TestLogoutAccessTokenBlacklisting:
 
         # Mock database session
         mock_db = AsyncMock()
+        # G03 (Commit 13d6aeff7): logout() erhielt einen response: Response-Parameter
+        # (2. Position) fuer clear_auth_cookies -> delete_cookie. Der Direktaufruf
+        # braucht daher ein Response-Objekt; MagicMock deckt delete_cookie ab.
+        mock_response = MagicMock()
 
         with patch("app.api.v1.auth.decode_token", side_effect=mock_decode):
             with patch("app.api.v1.auth.blacklist_token", side_effect=mock_blacklist):
@@ -87,7 +91,7 @@ class TestLogoutAccessTokenBlacklisting:
                     mock_session_mgr.return_value.revoke_session_by_jti = AsyncMock()
 
                     logout_data = LogoutRequest(refresh_token=None)
-                    result = await logout(mock_request, logout_data, mock_user, mock_db)
+                    result = await logout(mock_request, mock_response, logout_data, mock_user, mock_db)
 
         # Access token JTI sollte auf Blacklist sein
         assert mock_tokens["access_jti"] in blacklisted_tokens
@@ -122,6 +126,10 @@ class TestLogoutAccessTokenBlacklisting:
         mock_request = MagicMock()
         mock_request.headers.get.return_value = "Bearer access-token-123"
         mock_db = AsyncMock()
+        # G03 (Commit 13d6aeff7): logout() erhielt einen response: Response-Parameter
+        # (2. Position) fuer clear_auth_cookies -> delete_cookie. Der Direktaufruf
+        # braucht daher ein Response-Objekt; MagicMock deckt delete_cookie ab.
+        mock_response = MagicMock()
 
         with patch("app.api.v1.auth.decode_token", side_effect=mock_decode):
             with patch("app.api.v1.auth.blacklist_token", side_effect=mock_blacklist):
@@ -130,7 +138,7 @@ class TestLogoutAccessTokenBlacklisting:
 
                     # Logout mit Refresh Token
                     logout_data = LogoutRequest(refresh_token="refresh-token-456")
-                    await logout(mock_request, logout_data, mock_user, mock_db)
+                    await logout(mock_request, mock_response, logout_data, mock_user, mock_db)
 
         # Beide Token JTIs sollten auf Blacklist sein
         assert mock_tokens["access_jti"] in blacklisted_tokens
@@ -158,6 +166,10 @@ class TestLogoutAccessTokenBlacklisting:
         mock_request = MagicMock()
         mock_request.headers.get.return_value = "Bearer access-token-123"
         mock_db = AsyncMock()
+        # G03 (Commit 13d6aeff7): logout() erhielt einen response: Response-Parameter
+        # (2. Position) fuer clear_auth_cookies -> delete_cookie. Der Direktaufruf
+        # braucht daher ein Response-Objekt; MagicMock deckt delete_cookie ab.
+        mock_response = MagicMock()
 
         with patch("app.api.v1.auth.decode_token", side_effect=mock_decode):
             with patch("app.api.v1.auth.blacklist_token", side_effect=mock_blacklist_failing):
@@ -166,7 +178,7 @@ class TestLogoutAccessTokenBlacklisting:
 
                     logout_data = LogoutRequest(refresh_token=None)
                     # Sollte NICHT fehlschlagen
-                    result = await logout(mock_request, logout_data, mock_user, mock_db)
+                    result = await logout(mock_request, mock_response, logout_data, mock_user, mock_db)
 
         # Logout sollte trotzdem erfolgreich sein
         assert result.message == "Erfolgreich abgemeldet"
@@ -265,6 +277,10 @@ class TestSessionRevocation:
         mock_request = MagicMock()
         mock_request.headers.get.return_value = "Bearer access-token"
         mock_db = AsyncMock()
+        # G03 (Commit 13d6aeff7): logout() erhielt einen response: Response-Parameter
+        # (2. Position) fuer clear_auth_cookies -> delete_cookie. Der Direktaufruf
+        # braucht daher ein Response-Objekt; MagicMock deckt delete_cookie ab.
+        mock_response = MagicMock()
 
         with patch("app.api.v1.auth.decode_token", side_effect=mock_decode):
             with patch("app.api.v1.auth.blacklist_token", AsyncMock()):
@@ -274,7 +290,7 @@ class TestSessionRevocation:
                     mock_session_mgr.return_value = mock_mgr_instance
 
                     logout_data = LogoutRequest(refresh_token=None)
-                    await logout(mock_request, logout_data, mock_user, mock_db)
+                    await logout(mock_request, mock_response, logout_data, mock_user, mock_db)
 
         assert session_revoked is True
         assert revoked_jti == "session-jti-123"
@@ -296,6 +312,10 @@ class TestLogoutWithoutAuthHeader:
         mock_request = MagicMock()
         mock_request.headers.get.return_value = ""  # Kein Auth Header
         mock_db = AsyncMock()
+        # G03 (Commit 13d6aeff7): logout() erhielt einen response: Response-Parameter
+        # (2. Position) fuer clear_auth_cookies -> delete_cookie. Der Direktaufruf
+        # braucht daher ein Response-Objekt; MagicMock deckt delete_cookie ab.
+        mock_response = MagicMock()
 
         with patch("app.api.v1.auth.decode_token", AsyncMock()):
             with patch("app.api.v1.auth.blacklist_token", AsyncMock()):
@@ -303,7 +323,7 @@ class TestLogoutWithoutAuthHeader:
                     mock_session_mgr.return_value.revoke_session_by_jti = AsyncMock()
 
                     logout_data = LogoutRequest(refresh_token=None)
-                    result = await logout(mock_request, logout_data, mock_user, mock_db)
+                    result = await logout(mock_request, mock_response, logout_data, mock_user, mock_db)
 
         # Logout sollte trotzdem erfolgreich sein
         assert result.message == "Erfolgreich abgemeldet"
@@ -355,6 +375,10 @@ class TestLogoutResponseMessage:
         mock_request = MagicMock()
         mock_request.headers.get.return_value = ""
         mock_db = AsyncMock()
+        # G03 (Commit 13d6aeff7): logout() erhielt einen response: Response-Parameter
+        # (2. Position) fuer clear_auth_cookies -> delete_cookie. Der Direktaufruf
+        # braucht daher ein Response-Objekt; MagicMock deckt delete_cookie ab.
+        mock_response = MagicMock()
 
         with patch("app.api.v1.auth.decode_token", AsyncMock()):
             with patch("app.api.v1.auth.blacklist_token", AsyncMock()):
@@ -362,7 +386,7 @@ class TestLogoutResponseMessage:
                     mock_session_mgr.return_value.revoke_session_by_jti = AsyncMock()
 
                     logout_data = LogoutRequest(refresh_token=None)
-                    result = await logout(mock_request, logout_data, mock_user, mock_db)
+                    result = await logout(mock_request, mock_response, logout_data, mock_user, mock_db)
 
         # Deutsche Meldungen
         assert "abgemeldet" in result.message.lower()
