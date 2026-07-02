@@ -33,6 +33,15 @@ RESETTABLE_TABLES = [
     "bpmn_process_instances",
     "bpmn_process_tasks",
     "import_logs",
+    # Approval-Matrix-Tabellen: der api-Fuzz (Schemathesis) legt hier Zeilen mit
+    # leeren name/department-Werten an, die die Response-Schemas (min_length=1)
+    # verletzen -> die GET-Listen-Endpoints liefern danach 500. Ohne Reset
+    # persistiert dieser Muell ueber Laeufe hinweg und bricht die integ-Stufe
+    # (test_get_endpoints_no_500). CASCADE raeumt Kind-Tabellen (members/steps).
+    # Der E2E-Seed legt keine Approval-Zeilen an -> kein Verlust legitimer Daten.
+    "approval_matrices",
+    "approval_groups",
+    "approval_chain_templates",
 ]
 
 
