@@ -8,7 +8,7 @@ Migration: 232_banking_multi_tenant.py
 
 import pytest
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from uuid import uuid4, UUID
 
 from sqlalchemy import select
@@ -374,6 +374,63 @@ class TestBankingMultiTenantMigration:
         # Company B should only see its payments
         payments_b, count_b = await service.list_payments(db, company_b.id)
         assert count_b == 1
+
+    async def test_skonto_opportunities_isolation(
+        self,
+        db: AsyncSession,
+        company_a: Company,
+        company_b: Company,
+    ):
+        """Test 9b: Skonto-Chancen sind company-scoped (Mig 269).
+
+        Firma A hat eine Skonto-faehige Rechnung. Firma B darf diese NICHT
+        sehen (Mandanten-Isolation), Firma A schon.
+        """
+        from app.db.models import Document
+
+        skonto_date = date.today() + timedelta(days=5)
+
+        # Skonto-faehige Rechnung fuer Firma A. owner_id bleibt NULL (FK auf
+        # users.id); der Scope laeuft ausschliesslich ueber company_id, ein
+        # Besitzer ist fuer die Sichtbarkeit nicht mehr relevant.
+        doc_a = Document(
+            id=uuid4(),
+            company_id=company_a.id,
+            document_type="invoice",
+            filename="skonto_a.pdf",
+            original_filename="skonto_a.pdf",
+            file_path="/test/skonto_a.pdf",
+            extracted_data={
+                "invoice_number": "RE-A-001",
+                "sender": {"name": "Lieferant A"},
+                "amounts": {"gross": 1000.00},
+                "payment_terms": {
+                    "skonto": {
+                        "date": skonto_date.isoformat(),
+                        "percent": 2.0,
+                    }
+                },
+            },
+            created_at=datetime.utcnow(),
+        )
+        db.add(doc_a)
+        await db.commit()
+
+        service = PaymentService()
+
+        # Firma A sieht ihre Skonto-Chance
+        opps_a = await service.get_skonto_opportunities(
+            db, company_a.id, days_ahead=14
+        )
+        assert len(opps_a) == 1
+        assert opps_a[0]["invoice_number"] == "RE-A-001"
+        assert opps_a[0]["potential_savings"] == 20.0
+
+        # Firma B darf die Skonto-Chance von Firma A NICHT sehen
+        opps_b = await service.get_skonto_opportunities(
+            db, company_b.id, days_ahead=14
+        )
+        assert len(opps_b) == 0
 
     # =========================================================================
     # Test 10-15: Dunning Service Multi-Tenancy

@@ -1369,15 +1369,17 @@ async def get_skonto_opportunities(
     days_ahead: int = Query(14, ge=1, le=60, description="Tage vorausschauen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[dict]:
     """
     Finde Skonto-Möglichkeiten.
 
-    Zeigt Rechnungen bei denen Skonto noch genutzt werden kann.
+    Zeigt Rechnungen der Firma, bei denen Skonto noch genutzt werden kann
+    (mandantenscoped über company_id).
     """
     return await payment_service.get_skonto_opportunities(
         db=db,
-        user_id=current_user.id,
+        company_id=company_id,
         days_ahead=days_ahead,
     )
 

@@ -930,6 +930,15 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
     """
     Sende Alerts für ablaufende Skonto-Fristen.
 
+    Mandanten-Semantik (Migration 269 / company-scope):
+    Skonto-Chancen werden pro FIRMA ermittelt (nicht mehr pro einzelnem
+    Besitzer). Der Task iteriert über alle aktiven Firmen und benachrichtigt
+    je Firma ALLE aktiven zugeordneten Nutzer (Auflösung via ``UserCompany``).
+    Damit erhält jeder berechtigte Firmennutzer dieselben firmenweiten
+    Skonto-Hinweise und die Mandanten-Isolation bleibt gewahrt — eine Firma
+    wird niemals über die Rechnungen einer anderen informiert. Die
+    Skonto-Berechnung erfolgt einmal pro Firma statt einmal pro Nutzer.
+
     Args:
         days_ahead: Tage voraus prüfen
 
@@ -946,110 +955,137 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
         async def do_alerts():
             from app.db.session import get_async_session
             from app.services.banking.payment_service import PaymentService
-            from app.db.models import User
-            from sqlalchemy import select
+            from app.db.models import User, Company, UserCompany
+            from sqlalchemy import select, and_
 
             payment_service = PaymentService()
 
             stats = {
-                "users_checked": 0,
+                "companies_checked": 0,
                 "opportunities_found": 0,
                 "total_savings": 0.0,
             }
 
             async with get_async_session() as db:
-                result = await db.execute(
-                    select(User).where(User.is_active == True)
+                # Aktive Firmen ermitteln — Skonto ist seit Mig 269 company-scoped
+                company_result = await db.execute(
+                    select(Company).where(
+                        and_(
+                            Company.is_active == True,  # noqa: E712
+                            Company.deleted_at.is_(None),
+                        )
+                    )
                 )
-                users = result.scalars().all()
+                companies = company_result.scalars().all()
 
-                for user in users:
+                for company in companies:
                     try:
                         opportunities = await payment_service.get_skonto_opportunities(
                             db=db,
-                            user_id=user.id,
+                            company_id=company.id,
                             days_ahead=days_ahead,
                         )
 
-                        stats["users_checked"] += 1
+                        stats["companies_checked"] += 1
                         stats["opportunities_found"] += len(opportunities)
-                        user_savings = sum(
-                            float(o.get("savings", 0))
+                        company_savings = sum(
+                            float(o.get("potential_savings", 0))
                             for o in opportunities
                         )
-                        stats["total_savings"] += user_savings
+                        stats["total_savings"] += company_savings
 
-                        # Sende Notifications für ablaufende Skonti
-                        if opportunities and user.email:
-                            from app.services.notification_service import (
-                                NotificationService,
-                                NotificationType,
-                                NotificationPriority,
+                        if not opportunities:
+                            continue
+
+                        # Formatiere Opportunities-Liste (einmal pro Firma).
+                        # Schluessel gemaess Rueckgabe-Vertrag von
+                        # get_skonto_opportunities (invoice_number/gross_amount/
+                        # potential_savings/skonto_date).
+                        opportunities_list = "\n".join([
+                            f"- {o.get('invoice_number') or 'N/A'}: "
+                            f"{o.get('gross_amount', 0):.2f} EUR "
+                            f"(Skonto: {o.get('potential_savings', 0):.2f} EUR, "
+                            f"Frist: {o.get('skonto_date') or 'N/A'})"
+                            for o in opportunities[:10]  # Max 10 anzeigen
+                        ])
+                        if len(opportunities) > 10:
+                            opportunities_list += f"\n... und {len(opportunities) - 10} weitere"
+
+                        # Empfaenger: alle aktiven Nutzer der Firma (via UserCompany)
+                        recipients_result = await db.execute(
+                            select(User)
+                            .join(UserCompany, UserCompany.user_id == User.id)
+                            .where(
+                                and_(
+                                    UserCompany.company_id == company.id,
+                                    User.is_active == True,  # noqa: E712
+                                )
                             )
+                        )
+                        recipients = recipients_result.scalars().all()
 
-                            # Formatiere Opportunities-Liste
-                            opportunities_list = "\n".join([
-                                f"- {o.get('invoice_number', 'N/A')}: "
-                                f"{o.get('amount', 0):.2f} EUR "
-                                f"(Skonto: {o.get('savings', 0):.2f} EUR, "
-                                f"Frist: {o.get('deadline', 'N/A')})"
-                                for o in opportunities[:10]  # Max 10 anzeigen
-                            ])
-                            if len(opportunities) > 10:
-                                opportunities_list += f"\n... und {len(opportunities) - 10} weitere"
+                        from app.services.notification_service import (
+                            NotificationService,
+                            NotificationType,
+                            NotificationPriority,
+                        )
 
-                            notification_service = NotificationService()
+                        notification_service = NotificationService()
+                        for recipient in recipients:
+                            if not recipient.email:
+                                continue
                             await notification_service.notify(
                                 notification_type=NotificationType.SKONTO_EXPIRING,
                                 context={
                                     "opportunities_list": opportunities_list,
-                                    "total_savings": f"{user_savings:.2f}",
+                                    "total_savings": f"{company_savings:.2f}",
                                 },
-                                user_id=str(user.id),
-                                email=user.email,
+                                user_id=str(recipient.id),
+                                email=recipient.email,
                                 priority=NotificationPriority.HIGH,
                             )
 
-                            # Sende auch Slack-Benachrichtigung für dringende Fristen (<=3 Tage)
-                            if days_ahead <= 3:
-                                try:
-                                    from app.services.slack_service import (
-                                        SlackService,
-                                        SlackNotificationType,
-                                        SlackMessagePriority,
-                                    )
-                                    slack = SlackService()
-                                    urgency = "KRITISCH" if days_ahead <= 1 else "DRINGEND"
-                                    slack_priority = (
-                                        SlackMessagePriority.URGENT
-                                        if days_ahead <= 1
-                                        else SlackMessagePriority.HIGH
-                                    )
-                                    await slack.send_notification(
-                                        notification_type=SlackNotificationType.SKONTO_EXPIRING,
-                                        title=f"{urgency}: Skonto-Fristen laufen ab",
-                                        message=(
-                                            f"*{len(opportunities)} Rechnung(en)* mit ablaufenden "
-                                            f"Skonto-Fristen in den nächsten {days_ahead} Tag(en).\n\n"
-                                            f"Potenzielle Ersparnis: *{user_savings:.2f} EUR*"
-                                        ),
-                                        context={
-                                            "rechnungen": len(opportunities),
-                                            "ersparnis_eur": user_savings,
-                                            "tage_voraus": days_ahead,
-                                        },
-                                        priority=slack_priority,
-                                    )
-                                except Exception as slack_error:
-                                    logger.debug(
-                                        "skonto_slack_notification_failed",
-                                        error=str(slack_error),
-                                    )
+                        # Slack-Benachrichtigung einmal pro Firma bei dringenden
+                        # Fristen (<=3 Tage) — geht an den gemeinsamen Team-Kanal.
+                        if days_ahead <= 3:
+                            try:
+                                from app.services.slack_service import (
+                                    SlackService,
+                                    SlackNotificationType,
+                                    SlackMessagePriority,
+                                )
+                                slack = SlackService()
+                                urgency = "KRITISCH" if days_ahead <= 1 else "DRINGEND"
+                                slack_priority = (
+                                    SlackMessagePriority.URGENT
+                                    if days_ahead <= 1
+                                    else SlackMessagePriority.HIGH
+                                )
+                                await slack.send_notification(
+                                    notification_type=SlackNotificationType.SKONTO_EXPIRING,
+                                    title=f"{urgency}: Skonto-Fristen laufen ab",
+                                    message=(
+                                        f"*{len(opportunities)} Rechnung(en)* mit ablaufenden "
+                                        f"Skonto-Fristen in den nächsten {days_ahead} Tag(en).\n\n"
+                                        f"Potenzielle Ersparnis: *{company_savings:.2f} EUR*"
+                                    ),
+                                    context={
+                                        "rechnungen": len(opportunities),
+                                        "ersparnis_eur": company_savings,
+                                        "tage_voraus": days_ahead,
+                                    },
+                                    priority=slack_priority,
+                                )
+                            except Exception as slack_error:
+                                logger.debug(
+                                    "skonto_slack_notification_failed",
+                                    error=str(slack_error),
+                                )
 
                     except Exception as e:
                         logger.warning(
-                            "skonto_alert_user_error",
-                            user_id=str(user.id),
+                            "skonto_alert_company_error",
+                            company_id=str(company.id),
                             **safe_error_log(e),
                         )
 
