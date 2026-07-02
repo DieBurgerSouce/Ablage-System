@@ -18,8 +18,30 @@ export default defineConfig({
       includeAssets: ['vite.svg', 'icons/*.png', 'icons/*.svg', 'screenshots/*.png'],
       manifest: false, // We use our own manifest.json
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB to accommodate large bundles
+        // W2.3 (2026-07): Precache NUR auf die App-Shell begrenzt.
+        // Vorher precachte `**/*.{js,...}` ALLE Build-Chunks — inkl. der ~300
+        // lazy-geladenen Route-/Komponenten-Chunks (der Entry-Chunk allein ~7 MiB).
+        // Jeder frische Browser-Context mit SW-Registrierung zog damit das
+        // KOMPLETTE Bundle-Set durch nginx; unter 4 parallelen Playwright-Workern
+        // fuehrte das zu Chromium-Ressourcen-Starvation (browserContext.newPage-
+        // Timeout im pwa-offline-Fixture, A-Z-Loop 7). Jetzt precachen wir nur die
+        // zum Offline-Boot noetigen Dateien: index.html, Offline-Fallback, den
+        // Entry-Chunk (`index-*.js`), den React-Vendor-Chunk, das App-CSS und
+        // Fonts. Die Route-Chunks werden stattdessen zur LAUFZEIT per
+        // runtimeCaching (CacheFirst 'app-chunks', s.u.) gecacht.
+        // Trade-off (bewusst akzeptiert): Eine noch NICHT besuchte Route ist
+        // offline erst nach ihrem ersten Online-Aufruf verfuegbar — die App-Shell
+        // selbst bleibt aber voll offline-faehig. 300 Chunks vorab zu cachen ist
+        // weder noetig noch (Bandbreite/Install-Zeit) vertretbar.
+        globPatterns: [
+          'index.html',
+          'offline.html',
+          'assets/index-*.js',        // Entry-Chunk (App-Shell-Einstieg)
+          'assets/react-vendor-*.js', // React-Runtime-Vendor-Chunk
+          'assets/*.css',             // App-CSS (gebuendelt)
+          'fonts/*.{woff,woff2}',
+        ],
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB — deckt den grossen Entry-Chunk ab
         // Enable navigation preload for faster page loads
         navigationPreload: true,
         runtimeCaching: [
@@ -80,14 +102,23 @@ export default defineConfig({
             },
           },
           {
-            // StaleWhileRevalidate for static assets
-            urlPattern: /\.(?:js|css)$/i,
-            handler: 'StaleWhileRevalidate',
+            // W2.3: Route-/Komponenten-Chunks (lazy geladen, NICHT in der
+            // Precache-Shell). CacheFirst, weil content-gehashte Chunks
+            // immutabel sind (die URL aendert sich bei Inhaltsaenderung) — so
+            // bleibt eine einmal besuchte Route offline verfuegbar, ohne bei
+            // jedem Aufruf zu revalidieren. Precachte Shell-Chunks (index-*.js,
+            // react-vendor-*.js, *.css) treffen diese Regel nicht: fuer sie
+            // greift die Precache-Route vorrangig.
+            urlPattern: /\/assets\/.*\.(?:js|css)$/i,
+            handler: 'CacheFirst',
             options: {
-              cacheName: 'static-resources',
+              cacheName: 'app-chunks',
               expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+                maxEntries: 300, // deckt alle lazy Route-Chunks ab
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Tage
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
               },
             },
           },
