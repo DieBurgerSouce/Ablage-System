@@ -6,6 +6,7 @@ und Credential-Verschluesselung.
 """
 
 import pytest
+import socket
 from datetime import datetime, timezone
 from email.message import Message
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -327,6 +328,23 @@ class TestParsedEmail:
 class TestIMAPSSLConnections:
     """Tests fuer IMAP SSL/STARTTLS Verbindungen."""
 
+    @pytest.fixture(autouse=True)
+    def _mock_ssrf_dns(self):
+        """SSRF-DNS-Precheck neutralisieren.
+
+        _create_imap_connection loest den Host per socket.getaddrinfo auf (SSRF-
+        Guard, fail-closed). Ohne Netz/DNS im Container schlaegt das fuer
+        imap.example.com fehl -> ConnectionError VOR dem gemockten IMAPClient.
+        Wir mocken die Aufloesung auf eine oeffentliche IP (nicht SSRF-blockiert),
+        damit der Guard passiert und die eigentliche Verbindungs-Logik (Port/
+        STARTTLS/Fehlerbehandlung) mit dem gemockten Client getestet wird.
+        """
+        with patch("socket.getaddrinfo") as mock_gai:
+            mock_gai.return_value = [
+                (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 993))
+            ]
+            yield mock_gai
+
     @pytest_asyncio.fixture
     async def mock_db(self) -> AsyncMock:
         """Create mock database session."""
@@ -520,6 +538,20 @@ class TestSenderMatching:
 @pytest.mark.asyncio
 class TestErrorRecovery:
     """Tests fuer Fehlerbehandlung und Recovery."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_ssrf_dns(self):
+        """SSRF-DNS-Precheck neutralisieren (siehe TestIMAPSSLConnections).
+
+        Ohne DNS-Mock scheitert _create_imap_connection am getaddrinfo-Precheck
+        (imap.example.com nicht aufloesbar) statt an der eigentlich getesteten
+        Login-Fehlerbehandlung ('IMAP-Verbindung fehlgeschlagen').
+        """
+        with patch("socket.getaddrinfo") as mock_gai:
+            mock_gai.return_value = [
+                (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 993))
+            ]
+            yield mock_gai
 
     @pytest_asyncio.fixture
     async def mock_db(self) -> AsyncMock:
