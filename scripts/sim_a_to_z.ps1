@@ -57,7 +57,10 @@ function Invoke-Stage {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $code = 1
     try {
-        & $Body 2>&1 | Tee-Object -FilePath $log | Out-Host
+        # *>&1 statt 2>&1: Stufen wie 'monitor' schreiben ihre Diagnose (Alert-
+        # Namen!) via Write-Host in den Information-Stream; mit 2>&1 landete
+        # davon nichts im Log -> Rot-Ursachen waren forensisch nicht belegbar.
+        & $Body *>&1 | Tee-Object -FilePath $log | Out-Host
         $code = $LASTEXITCODE
         if ($null -eq $code) { $code = 0 }
     } catch {
@@ -150,6 +153,14 @@ Invoke-Stage 'api' {
 }
 
 Invoke-Stage 'e2e' {
+    # Seed-Guard: Laeuft e2e OHNE die 'up'-Stufe (kein reset-state + Seed), darf
+    # der Lauf nicht gegen einen leeren Mandanten gehen (Loop 6: 3 Fails, weil
+    # nur e2e,a11y,vitest,monitor gefahren wurde). Der Seed ist idempotent.
+    if ($Stages -notcontains 'up') {
+        Get-Content (Join-Path $RepoRoot 'scripts/seed_e2e.py') -Raw |
+            docker compose @ComposeFiles exec -T backend python -
+        if ($LASTEXITCODE -ne 0) { Write-Host 'Seed-Guard fehlgeschlagen - e2e abgebrochen'; return }
+    }
     Push-Location (Join-Path $RepoRoot 'frontend')
     try { $env:BASE_URL = $FrontendUrl; npx playwright test --project=chromium }
     finally { Pop-Location }

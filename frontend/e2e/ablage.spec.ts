@@ -21,8 +21,9 @@ test.describe('Ablage - Kunden (Customers)', () => {
   });
 
   test('should display customer list', async ({ authenticatedPage: page }) => {
-    // Verify page title
-    await expect(page.getByRole('heading', { name: /Kunden/i })).toBeVisible();
+    // Verify page title. exact:true, weil /Kunden/i im leeren Mandanten auch
+    // das Empty-State-h3 "Keine Kunden vorhanden" matcht -> strict mode violation.
+    await expect(page.getByRole('heading', { name: 'Kunden', exact: true })).toBeVisible();
 
     // Verify search input exists
     await expect(page.getByPlaceholder(/Suche/i)).toBeVisible();
