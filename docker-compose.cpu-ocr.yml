@@ -13,6 +13,20 @@
 # NICHT in Produktion verwenden.
 services:
   worker:
+    # A-Z-Test-Loop: Der GPU-Worker laeuft in Produktion mit --pool=solo.
+    # Solo setzt task_time_limit (600s, celery_app.py) NICHT durch -> ein
+    # haengender Task blockiert den einzigen Prozess unbegrenzt (historischer
+    # 47h-Wedge; der /metrics-Healthcheck blieb dabei gruen und verdeckte es).
+    # Fuer den Test-Loop daher prefork mit concurrency=2: bei Zeitueberschreitung
+    # wird das Pool-Kind per SIGKILL beendet, der Worker bleibt verarbeitungs-
+    # faehig. NUR Test-Override — die Produktions-Compose bleibt unveraendert
+    # (Solo + echte GPU). Queues exakt wie im Basis-command uebernommen.
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q ocr_high,ocr_normal,embedding_high,embedding_normal,embedding_low,validation,metadata,maintenance,metrics,backup,dlq
     environment:
       CUDA_VISIBLE_DEVICES: ""
       DEFAULT_OCR_BACKEND: "surya"
+      # prefork verarbeitet Tasks in Kindprozessen -> ohne Multiprocess-Mode
+      # waeren die (bisher via solo im Master sichtbaren) Task-Metriken jetzt
+      # unsichtbar. Denselben mmap-Aggregationspfad wie beim worker-cpu setzen
+      # (liegt im /tmp-tmpfs, read-only Rootfs; celery_metrics.py legt ihn an).
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc

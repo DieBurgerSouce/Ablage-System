@@ -879,6 +879,14 @@ services:
       TORCH_HOME: /home/ablage/.cache/torch
       # CPU-only: keine GPU
       CUDA_VISIBLE_DEVICES: ""
+      # Prometheus Multiprocess-Metriken (prefork concurrency=4): jeder
+      # Kindprozess schreibt seine Task-Zaehler in mmap-Dateien in dieses
+      # Verzeichnis, der /metrics-Handler im Master aggregiert sie via
+      # MultiProcessCollector. Liegt im bestehenden /tmp-tmpfs (read-only
+      # Rootfs) und ist beim Containerstart leer; celery_metrics.py legt es
+      # per makedirs an. Ohne diese Variable blieb ablage_celery_tasks_total
+      # flach (nur Master-Prozess sichtbar) -> CeleryNoActivity-Fehlalarm.
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
       # Qdrant Vector Database
       QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}

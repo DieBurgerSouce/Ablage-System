@@ -12,6 +12,7 @@ Exponiert Celery Task-Metriken für Prometheus auf Port 8001:
 Feinpoliert und durchdacht - Enterprise Celery Monitoring.
 """
 
+import os
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -22,10 +23,41 @@ from prometheus_client import (
     Counter, Histogram, Gauge, Info,
     CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
 )
+from prometheus_client import multiprocess
 
 from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
+
+# =============================================================================
+# MULTIPROCESS-MODE (prefork worker-cpu)
+# =============================================================================
+# Der prefork-worker-cpu (concurrency>1) verarbeitet Tasks in KIND-Prozessen,
+# waehrend der /metrics-HTTP-Server nur im MASTER-Prozess laeuft. Ohne
+# Multiprocess-Mode sieht Prometheus daher nur den (leeren) Master-Zaehler ->
+# ablage_celery_tasks_total bleibt flach -> CeleryNoActivity feuert dauerhaft.
+#
+# Ist PROMETHEUS_MULTIPROC_DIR gesetzt, schreibt prometheus_client die Werte
+# jedes Prozesses in mmap-Dateien in diesem Verzeichnis; der /metrics-Handler
+# aggregiert sie via MultiProcessCollector. Das Verzeichnis MUSS existieren,
+# BEVOR die Metrik-Objekte instanziiert werden (label-lose Metriken oeffnen
+# ihre mmap-Datei bereits beim Anlegen).
+#
+# OHNE die Env-Variable bleibt alles unveraendert (GPU-Worker solo + Backend
+# nutzen dieselbe Datei und laufen weiter im In-Memory-Registry-Modus).
+_MULTIPROC_DIR: Optional[str] = os.environ.get("PROMETHEUS_MULTIPROC_DIR") or None
+_MULTIPROC_ENABLED: bool = _MULTIPROC_DIR is not None
+
+if _MULTIPROC_ENABLED:
+    try:
+        os.makedirs(_MULTIPROC_DIR, exist_ok=True)  # type: ignore[arg-type]
+        logger.info("celery_metrics_multiprocess_enabled", multiproc_dir=_MULTIPROC_DIR)
+    except OSError as e:
+        logger.error(
+            "celery_metrics_multiproc_dir_create_failed",
+            context="Metriken",
+            **safe_error_log(e),
+        )
 
 # =============================================================================
 # PROMETHEUS REGISTRY (separiert vom Haupt-Backend)
@@ -59,6 +91,9 @@ celery_tasks_active = Gauge(
     "ablage_celery_tasks_active",
     "Anzahl aktiver Celery Tasks",
     ["task_name", "queue"],
+    # livesum: aktive Tasks ueber alle LEBENDEN prefork-Kinder aufsummieren
+    # (nur im Multiprocess-Mode relevant, sonst ignoriert).
+    multiprocess_mode="livesum",
     registry=CELERY_REGISTRY
 )
 
@@ -87,6 +122,9 @@ celery_gpu_memory_bytes = Gauge(
     "ablage_celery_gpu_memory_bytes",
     "GPU Speicherverbrauch in Bytes",
     ["type"],  # allocated, reserved, total
+    # max: Master-/Einzelprozess-Gauge; im Multiprocess-Mode kein Aufsummieren
+    # ueber Prozesse (worker-cpu hat ohnehin keine GPU -> No-Op).
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
@@ -94,6 +132,7 @@ celery_gpu_memory_bytes = Gauge(
 celery_gpu_utilization_percent = Gauge(
     "ablage_celery_gpu_utilization_percent",
     "GPU Auslastung in Prozent",
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
@@ -117,6 +156,7 @@ celery_gpu_lock_wait_seconds = Histogram(
 celery_gpu_lock_held = Gauge(
     "ablage_celery_gpu_lock_held",
     "GPU Lock aktuell gehalten (1) oder frei (0)",
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
@@ -135,6 +175,9 @@ celery_worker_info = Info(
 celery_worker_up = Gauge(
     "ablage_celery_worker_up",
     "Worker Status (1=aktiv, 0=inaktiv)",
+    # Worker-Level-Gauges werden nur im Master gesetzt (worker_ready) -> max
+    # liefert im Multiprocess-Mode den einen Master-Wert statt Duplikat-Serien.
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
@@ -142,6 +185,7 @@ celery_worker_up = Gauge(
 celery_worker_uptime_seconds = Gauge(
     "ablage_celery_worker_uptime_seconds",
     "Worker Uptime in Sekunden",
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
@@ -156,12 +200,14 @@ celery_worker_tasks_processed_total = Counter(
 celery_worker_pool_size = Gauge(
     "ablage_celery_worker_pool_size",
     "Worker Pool Größe",
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
 celery_worker_prefetch_count = Gauge(
     "ablage_celery_worker_prefetch_count",
     "Worker Prefetch Multiplier",
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
@@ -173,6 +219,9 @@ celery_queue_length = Gauge(
     "ablage_celery_queue_length",
     "Anzahl Tasks in Queue",
     ["queue_name"],
+    # max: Queue-Laenge ist ein globaler Wert (Redis LLEN); mehrere Prozesse
+    # melden denselben Stand -> max de-dupliziert statt faelschlich zu summieren.
+    multiprocess_mode="max",
     registry=CELERY_REGISTRY
 )
 
@@ -334,9 +383,56 @@ def shutdown_worker_metrics() -> None:
     celery_worker_up.set(0)
 
 
+def mark_worker_process_dead(pid: Optional[int] = None) -> None:
+    """Prefork-Kindprozess als beendet markieren (nur Multiprocess-Mode).
+
+    Ohne PROMETHEUS_MULTIPROC_DIR ein No-Op. Entfernt die 'live*'-mmap-
+    Beitraege des Prozesses (z.B. aktive Tasks), damit livesum-Gauges beim
+    Recyceln/Beenden eines prefork-Workers korrekt schrumpfen und keine
+    verwaisten Dateien akkumulieren. Task-Zaehler (Counter) bleiben erhalten,
+    ihre Summe geht also nicht verloren.
+
+    Args:
+        pid: Zu markierende Prozess-ID (Default: eigener Prozess).
+    """
+    if not _MULTIPROC_ENABLED:
+        return
+    try:
+        multiprocess.mark_process_dead(pid if pid is not None else os.getpid())
+    except Exception as e:
+        logger.warning(
+            "celery_metrics_mark_process_dead_failed",
+            context="Metriken",
+            **safe_error_log(e),
+        )
+
+
 # =============================================================================
 # HTTP SERVER FÜR PROMETHEUS SCRAPING
 # =============================================================================
+
+def generate_metrics_output() -> bytes:
+    """Erzeugt den Prometheus-Exposition-Body fuer GET /metrics.
+
+    Im Multiprocess-Mode (PROMETHEUS_MULTIPROC_DIR gesetzt, z.B. prefork
+    worker-cpu) werden die mmap-Dateien ALLER Prozesse (Master + Kinder) via
+    MultiProcessCollector zu einem konsistenten Snapshot aggregiert — sonst
+    saehe Prometheus nur den leeren Master-Zaehler. Ohne die Env-Variable
+    (GPU-Worker solo / Backend) bleibt das Verhalten unveraendert: die
+    In-Memory-CELERY_REGISTRY wird serialisiert.
+    """
+    if _MULTIPROC_ENABLED:
+        # Handler laeuft im Master-Thread -> Master-Uptime auffrischen.
+        update_worker_uptime()
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        return generate_latest(registry)
+
+    # Single-Prozess: GPU- und Uptime-Metriken vor dem Scrape aktualisieren.
+    update_gpu_metrics()
+    update_worker_uptime()
+    return generate_latest(CELERY_REGISTRY)
+
 
 class MetricsHandler(BaseHTTPRequestHandler):
     """HTTP Handler für Prometheus Metriken."""
@@ -344,12 +440,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         """GET /metrics - Prometheus Metriken."""
         if self.path == "/metrics":
-            # GPU und Uptime Metriken aktualisieren
-            update_gpu_metrics()
-            update_worker_uptime()
-
-            # Metriken generieren
-            output = generate_latest(CELERY_REGISTRY)
+            output = generate_metrics_output()
 
             self.send_response(200)
             self.send_header("Content-Type", CONTENT_TYPE_LATEST)

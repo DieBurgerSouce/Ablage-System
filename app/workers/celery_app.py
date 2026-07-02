@@ -9,7 +9,7 @@ from celery import Celery, Task
 from celery.schedules import crontab
 from celery.signals import (
     task_prerun, task_postrun, task_failure, task_retry, task_success,
-    worker_ready, worker_shutdown, celeryd_init
+    worker_ready, worker_shutdown, worker_process_shutdown, celeryd_init
 )
 from contextlib import contextmanager
 from typing import Dict, Optional
@@ -23,7 +23,7 @@ from app.workers.celery_metrics import (
     record_task_started, record_task_succeeded, record_task_failed,
     record_task_retried, record_gpu_oom, init_worker_metrics,
     shutdown_worker_metrics, start_metrics_server, stop_metrics_server,
-    set_gpu_lock_status, update_gpu_metrics
+    set_gpu_lock_status, update_gpu_metrics, mark_worker_process_dead
 )
 
 # --- A-Z-Deep F-01 Fix: ProcessDefinition-Mapper-Crashloop (prefork) ---
@@ -3608,6 +3608,22 @@ def cleanup_gpu_on_worker_shutdown(sender: object = None, **kwargs: object) -> N
     gc.collect()
 
     logger.info("worker_shutdown_complete")
+
+
+@worker_process_shutdown.connect
+def cleanup_metrics_on_process_shutdown(
+    pid: Optional[int] = None,
+    exitcode: Optional[int] = None,
+    **kwargs: object,
+) -> None:
+    """Prefork-Kindprozess-Shutdown: Prometheus-Multiprocess-Dateien aufraeumen.
+
+    Feuert in JEDEM prefork-Kindprozess (worker-cpu), wenn dieser beendet oder
+    recycelt wird. Markiert den Prozess via mark_process_dead, damit seine
+    'live*'-mmap-Beitraege (aktive Tasks) nicht als verwaiste Serien
+    weiterzaehlen. Ohne PROMETHEUS_MULTIPROC_DIR (GPU-Worker solo) ein No-Op.
+    """
+    mark_worker_process_dead(pid)
 
 
 # =============================================================================
