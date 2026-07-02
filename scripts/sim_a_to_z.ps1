@@ -124,7 +124,46 @@ Invoke-Stage 'gates' {
 # triton-JIT. Scoped auf den pytest-Prozess (App-Container/GPU fuer gates/e2e
 # bleibt unberuehrt). Non-GPU-Stufen ohnehin (integ: -m 'not gpu').
 Invoke-Stage 'docker'   { python -m pytest tests/docker -q --no-header }
-Invoke-Stage 'unit'     { docker compose @ComposeFiles exec -T -e 'CUDA_VISIBLE_DEVICES=' backend timeout -k 30 7200 pytest tests/unit -q --no-header -p no:cacheprovider --continue-on-collection-errors }
+Invoke-Stage 'unit' {
+    # OOM-Haertung (Exit 137): Die ~720-Dateien-Suite als EIN pytest-Prozess
+    # akkumulierte so viel Speicher (verstaerkt durch den Modell-Preload, jetzt
+    # zusaetzlich via TESTING-Guard in app/main.py unterbunden), dass die Stufe
+    # per SIGKILL starb. Gegenmittel: pro Top-Level-Unterverzeichnis EIN frischer
+    # pytest-Prozess (Speicher wird zwischen den Chunks freigegeben) + ein Lauf
+    # fuer die losen Dateien direkt in tests/unit. KEIN Skip, KEINE Suite-
+    # Verkleinerung - nur Prozess-Hygiene. Flags identisch zum Bestand;
+    # MODEL_PRELOAD_ENABLED=false ist Defense-in-Depth zum App-seitigen Guard.
+    $unitEnv = @('-e','CUDA_VISIBLE_DEVICES=','-e','MODEL_PRELOAD_ENABLED=false')
+    # Unterverzeichnisse IM Container ermitteln (der Bind-Mount kann vom Host-
+    # Worktree abweichen -> immer der Baum, gegen den pytest tatsaechlich laeuft).
+    $subOut = docker compose @ComposeFiles exec -T backend find tests/unit -mindepth 1 -maxdepth 1 -type d
+    $subdirs = @($subOut | ForEach-Object { "$_".Trim() } | Where-Object { $_ -like 'tests/unit/*' -and $_ -notlike '*__pycache__*' } | Sort-Object)
+    if (-not $subdirs) {
+        Write-Host 'unit: Unterverzeichnisse nicht ermittelbar -> Fallback auf Ein-Prozess-Lauf'
+        docker compose @ComposeFiles exec -T @unitEnv backend timeout -k 30 7200 pytest tests/unit -q --no-header -p no:cacheprovider --continue-on-collection-errors
+        return
+    }
+    # --ignore-Liste fuer den Lose-Dateien-Chunk (alle Unterverzeichnisse ausblenden).
+    $ignoreArgs = @()
+    foreach ($d in $subdirs) { $ignoreArgs += "--ignore=$d" }
+    $chunks = @($subdirs) + '__loose__'
+    Write-Host "unit: Chunks = $($subdirs -join ', '), tests/unit (lose Dateien)"
+    $red = 0
+    foreach ($chunk in $chunks) {
+        if ($chunk -eq '__loose__') {
+            $label = 'tests/unit (lose Dateien)'
+            docker compose @ComposeFiles exec -T @unitEnv backend timeout -k 30 2700 pytest tests/unit @ignoreArgs -q --no-header -p no:cacheprovider --continue-on-collection-errors
+        } else {
+            $label = $chunk
+            docker compose @ComposeFiles exec -T @unitEnv backend timeout -k 30 2700 pytest $chunk -q --no-header -p no:cacheprovider --continue-on-collection-errors
+        }
+        $cc = $LASTEXITCODE; if ($null -eq $cc) { $cc = 0 }
+        if ($cc -eq 0) { Write-Host "  [unit-chunk GRUEN] $label" -ForegroundColor Green }
+        else { Write-Host "  [unit-chunk ROT $cc] $label" -ForegroundColor Red; $red++ }
+    }
+    Write-Host ("unit: {0}/{1} Chunks gruen, {2} rot" -f ($chunks.Count - $red), $chunks.Count, $red)
+    $global:LASTEXITCODE = $red
+}
 Invoke-Stage 'security' { docker compose @ComposeFiles exec -T -e 'CUDA_VISIBLE_DEVICES=' backend timeout -k 30 3600 pytest tests/security -q --no-header -p no:cacheprovider --continue-on-collection-errors }
 Invoke-Stage 'integ'    { docker compose @ComposeFiles exec -T -e 'CUDA_VISIBLE_DEVICES=' backend timeout -k 30 5400 pytest tests/integration -q --no-header -p no:cacheprovider -m 'not gpu' --continue-on-collection-errors }
 
