@@ -525,8 +525,11 @@ class DocumentProgressService:
                     avg_per_step = elapsed / completed_count
                     estimated_remaining = avg_per_step * remaining_steps
                     return now + timedelta(seconds=estimated_remaining)
-            except (KeyError, ValueError):
-                pass
+            except (KeyError, ValueError) as e:
+                logger.debug(
+                    "progress_eta_estimate_fallback",
+                    error_type=type(e).__name__,
+                )
 
         # Fallback: 30 Sekunden pro Schritt
         return now + timedelta(seconds=30 * remaining_steps)

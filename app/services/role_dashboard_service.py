@@ -194,8 +194,11 @@ class RoleDashboardService:
             ).scalar_one_or_none()
             if last_row:
                 letzter_export = last_row.isoformat()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "role_dashboard_last_export_query_failed",
+                error_type=type(e).__name__,
+            )
 
         return {
             "letzter_export": letzter_export,

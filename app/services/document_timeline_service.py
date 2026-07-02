@@ -957,8 +957,11 @@ class DocumentTimelineService:
             if event.user_id:
                 try:
                     user_ids.append(UUID(event.user_id))
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(
+                        "timeline_invalid_user_id_skipped",
+                        error_type=type(e).__name__,
+                    )
 
         if not user_ids:
             return events

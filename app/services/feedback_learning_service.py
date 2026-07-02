@@ -539,8 +539,12 @@ class FeedbackLearningService:
                             ):
                                 correction_type = "umlaut"
                         metrics.record_surya_correction_processed(correction_type)
-                    except Exception:
-                        pass  # Metriken sind nicht kritisch
+                    except Exception as e:
+                        # Metriken sind nicht kritisch -> Verarbeitung laeuft weiter
+                        logger.debug(
+                            "surya_correction_metric_skipped",
+                            error_type=type(e).__name__,
+                        )
 
                 except Exception as e:
                     logger.error(

@@ -765,8 +765,12 @@ class BackupService:
                             collection_name=collection,
                             snapshot_name=snapshot_name,
                         )
-                    except Exception:
-                        pass  # Nicht kritisch
+                    except Exception as e:
+                        logger.debug(
+                            "qdrant_snapshot_cleanup_skipped",
+                            collection=collection,
+                            error_type=type(e).__name__,
+                        )
 
                 except UnexpectedResponse as e:
                     logger.error(

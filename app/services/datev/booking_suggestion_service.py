@@ -407,8 +407,8 @@ class BookingSuggestionService:
                 try:
                     amount = Decimal(str(extracted_data[field]))
                     return amount, 0.95
-                except (InvalidOperation, ValueError):
-                    pass
+                except (InvalidOperation, ValueError) as e:
+                    logger.debug("datev_amount_parse_skipped", field=field, error_type=type(e).__name__)
 
         # Aus OCR-Text
         patterns = [
@@ -445,8 +445,8 @@ class BookingSuggestionService:
                 try:
                     parsed = datetime.fromisoformat(str(extracted_data[field]))
                     return parsed.date(), 0.90
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug("datev_date_parse_skipped", field=field, error_type=type(e).__name__)
 
         # Aus OCR-Text
         patterns = [

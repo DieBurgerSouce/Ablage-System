@@ -207,8 +207,11 @@ class KanbanService:
                         if amount_str:
                             try:
                                 amount = Decimal(str(amount_str))
-                            except Exception:
-                                pass
+                            except (ArithmeticError, ValueError, TypeError) as e:
+                                logger.debug(
+                                    "kanban_amount_parse_skipped",
+                                    error_type=type(e).__name__,
+                                )
 
                 assigned_to_name: Optional[str] = None
                 if item.assignee:
@@ -572,8 +575,11 @@ class KanbanService:
             if amount_str:
                 try:
                     amount = Decimal(str(amount_str))
-                except Exception:
-                    pass
+                except (ArithmeticError, ValueError, TypeError) as e:
+                    logger.debug(
+                        "kanban_amount_parse_skipped",
+                        error_type=type(e).__name__,
+                    )
 
         assigned_to_name: Optional[str] = None
         if item.assignee:

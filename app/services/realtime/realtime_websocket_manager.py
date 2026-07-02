@@ -162,6 +162,7 @@ class RealtimeWebSocketManager:
             try:
                 await self._ping_task
             except asyncio.CancelledError:
+                # Erwartet: Ping-Task wurde gerade gecancelt (Shutdown)
                 pass
             self._ping_task = None
 

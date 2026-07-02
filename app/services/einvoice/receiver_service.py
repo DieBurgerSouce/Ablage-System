@@ -605,14 +605,16 @@ class EInvoiceReceiverService:
             try:
                 return date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
             except ValueError:
+                # Kein gueltiges Format-102-Datum; naechstes Format wird versucht
                 pass
 
         # ISO Format: YYYY-MM-DD
         if len(date_str) >= 10 and date_str[4] == "-":
             try:
                 return date.fromisoformat(date_str[:10])
-            except ValueError:
-                pass
+            except ValueError as e:
+                # Datum in keinem bekannten Format; Wert selbst nicht loggen (Belegdaten)
+                logger.debug("einvoice_date_parse_failed", error_type=type(e).__name__)
 
         return None
 

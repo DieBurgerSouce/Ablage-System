@@ -188,6 +188,7 @@ class AuditArchiveService:
                 )
                 # Default-Retention wird pro Objekt gesetzt, nicht auf Bucket-Ebene
             except ImportError:
+                # minio.retention nicht verfuegbar -> Object-Lock optional
                 pass
 
             self._bucket_initialized = True
@@ -424,9 +425,12 @@ class AuditArchiveService:
                 retention = client.get_object_retention(AUDIT_ARCHIVE_BUCKET, object_key)
                 if retention and retention.retain_until_date:
                     retention_active = retention.retain_until_date > datetime.now(timezone.utc)
-            except Exception:
-                # Object Lock nicht aktiv oder Fehler
-                pass
+            except Exception as e:
+                # Object Lock nicht aktiv oder Abruf fehlgeschlagen -> Retention gilt als inaktiv
+                logger.debug(
+                    "audit_retention_check_skipped",
+                    **safe_error_log(e),
+                )
 
             is_valid = (actual_hash == expected_hash) and chain_intact
 

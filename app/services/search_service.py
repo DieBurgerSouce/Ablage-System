@@ -648,8 +648,12 @@ class SearchService:
             row = result.first()
             if row and row.original_filename:
                 return row.original_filename
-        except Exception:
-            pass  # pg_trgm evtl. nicht auf original_filename
+        except Exception as e:
+            # pg_trgm evtl. nicht auf original_filename verfuegbar -> naechster Fallback
+            logger.debug(
+                "search_fuzzy_filename_fallback",
+                **safe_error_log(e),
+            )
 
         # 2. Suche in Tags
         try:
@@ -673,8 +677,11 @@ class SearchService:
             row = result.first()
             if row and row.name:
                 return row.name
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "search_fuzzy_tag_fallback",
+                **safe_error_log(e),
+            )
 
         # 3. Fallback: SymSpell Woerterbuch-Korrektur
         try:
@@ -683,8 +690,11 @@ class SearchService:
             corrected = spellchecker.correct_word(query_word)
             if corrected.lower() != query_word.lower():
                 return corrected
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "search_spellcheck_fallback",
+                **safe_error_log(e),
+            )
 
         return None
 

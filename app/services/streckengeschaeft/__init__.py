@@ -1945,9 +1945,12 @@ class DatevExportService:
                 if p.is_drop_shipment:
                     try:
                         amount += Decimal(str(p.line_total or 0))
-                    except (ValueError, TypeError, InvalidOperation):
-                        # Skip invalid amounts, log for debugging
-                        pass
+                    except (ValueError, TypeError, InvalidOperation) as e:
+                        # Ungueltige Betraege werden uebersprungen
+                        logger.debug(
+                            "streckengeschaeft_line_total_parse_skipped",
+                            error_type=type(e).__name__,
+                        )
 
             # DATEV erwartet Beträge mit Komma als Dezimaltrennzeichen
             amount_str = f"{amount:.2f}".replace('.', ',')

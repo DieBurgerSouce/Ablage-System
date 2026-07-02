@@ -502,8 +502,11 @@ class ProactiveActionQueueService:
                     due_date = datetime.fromisoformat(str(due_date_str)).replace(
                         tzinfo=timezone.utc
                     )
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug(
+                        "action_queue_due_date_parse_skipped",
+                        error_type=type(e).__name__,
+                    )
 
             # Nur Rechnungen mit vergangenem Fälligkeitsdatum
             if due_date is not None and due_date > now_utc:
@@ -1213,8 +1216,12 @@ class ProactiveActionQueueService:
             if val is not None:
                 try:
                     return float(val)
-                except (TypeError, ValueError):
-                    pass
+                except (TypeError, ValueError) as e:
+                    logger.debug(
+                        "action_queue_amount_parse_skipped",
+                        field=key,
+                        error_type=type(e).__name__,
+                    )
         return None
 
     def _build_progress(self, items: List[ProactiveActionItem]) -> ActionQueueProgress:

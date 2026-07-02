@@ -762,8 +762,9 @@ class SemanticValidationService:
                         actual_value=str(due_date),
                         suggestion="Prüfen Sie Rechnungs- und Fälligkeitsdatum",
                     ))
-            except (ValueError, TypeError):
-                pass  # Datumsformat bereits in Format-Validation geprüft
+            except (ValueError, TypeError) as e:
+                # Datumsformat eigentlich in Format-Validation geprueft; hier nur Sichtbarkeit
+                logger.debug("semantic_date_consistency_check_skipped", error_type=type(e).__name__)
 
         # 2. Zahlungsziel-Plausibilität
         payment_terms = extracted_data.get("payment_terms")

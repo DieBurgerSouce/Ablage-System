@@ -773,8 +773,14 @@ class FolderImportService:
                 },
                 source="folder_import",
             )
-        except Exception:
-            pass  # EventBus failures must not block imports
+        except Exception as exc:
+            # EventBus-Publish ist best-effort und darf den Import nicht blockieren
+            logger.warning(
+                "import_event_publish_failed",
+                event="IMPORT_STARTED",
+                source_type="folder",
+                **safe_error_log(exc),
+            )
 
         try:
             # Duplikat-Check
@@ -844,8 +850,13 @@ class FolderImportService:
                     },
                     source="folder_import",
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "import_event_publish_failed",
+                    event="IMPORT_COMPLETED",
+                    source_type="folder",
+                    **safe_error_log(exc),
+                )
 
             # Datei verschieben oder löschen
             moved = False
@@ -886,8 +897,13 @@ class FolderImportService:
                     },
                     source="folder_import",
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "import_event_publish_failed",
+                    event="IMPORT_FAILED",
+                    source_type="folder",
+                    **safe_error_log(exc),
+                )
 
             # In Error-Ordner verschieben wenn konfiguriert
             if config.error_subfolder:
@@ -1083,8 +1099,13 @@ class FolderImportService:
                     },
                     source="folder_import",
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "import_event_publish_failed",
+                    event="IMPORT_RULE_APPLIED",
+                    source_type="folder",
+                    **safe_error_log(exc),
+                )
 
             # Aktionen anwenden
             await self._execute_rule_actions(

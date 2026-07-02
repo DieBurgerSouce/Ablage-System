@@ -190,8 +190,11 @@ class ImageDiffService:
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             return buf.getvalue()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "image_diff_pdf_open_fallback",
+                error_type=type(e).__name__,
+            )
 
         # Fallback: als Bild oeffnen
         try:

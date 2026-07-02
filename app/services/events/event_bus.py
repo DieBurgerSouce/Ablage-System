@@ -363,6 +363,7 @@ class EventBus:
             try:
                 await self._listener_task
             except asyncio.CancelledError:
+                # Erwartet: Listener-Task wurde gerade gecancelt (Shutdown)
                 pass
             self._listener_task = None
 

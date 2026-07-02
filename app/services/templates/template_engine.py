@@ -289,7 +289,8 @@ class TemplateEngineService:
         try:
             self.templates_dir.mkdir(exist_ok=True)
         except OSError:
-            pass  # F-31: read-only FS
+            # F-31: read-only FS -> Verzeichnis existiert bereits oder ist nicht anlegbar; legitim silent
+            pass
 
         # Jinja2-Environment
         self.jinja_env = Environment(

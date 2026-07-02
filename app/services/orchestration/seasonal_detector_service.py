@@ -537,8 +537,11 @@ class SeasonalDetectorService:
                         confidence=0.9,
                         data_points=len(monthly_stats),
                     ))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "seasonal_variability_calc_skipped",
+                error_type=type(e).__name__,
+            )
 
         return patterns
 

@@ -183,8 +183,11 @@ class DuplicateDetectionService:
                     tfidf_matrix[0:1], tfidf_matrix[1:2]
                 )[0][0]
                 return float(score)
-            except Exception:
-                pass  # Fallback bei unerwarteten Fehlern
+            except Exception as e:
+                logger.debug(
+                    "tfidf_similarity_fallback",
+                    error_type=type(e).__name__,
+                )
 
         # Fallback: SequenceMatcher
         return SequenceMatcher(None, t1, t2).ratio()

@@ -421,8 +421,8 @@ class SupplierTemplateService:
                 try:
                     if re.search(pattern, ocr_text, re.IGNORECASE):
                         pattern_matches += 1
-                except re.error:
-                    pass
+                except re.error as e:
+                    logger.warning("supplier_template_header_pattern_invalid", **safe_error_log(e))
 
             if template.header_patterns:
                 pattern_score = pattern_matches / len(template.header_patterns)
@@ -616,8 +616,8 @@ class SupplierTemplateService:
                 if not re.match(field_def["validation_regex"], value):
                     validation_passed = False
                     confidence *= 0.5  # Reduce confidence on validation failure
-            except re.error:
-                pass
+            except re.error as e:
+                logger.warning("supplier_template_validation_regex_invalid", **safe_error_log(e))
 
         return ExtractionResult(
             field_name=field_name,
@@ -719,8 +719,8 @@ class SupplierTemplateService:
                 value = match.group(1) if match.groups() else match.group(0)
                 return value.strip(), 0.9
 
-        except re.error:
-            pass
+        except re.error as e:
+            logger.warning("supplier_template_pattern_invalid", **safe_error_log(e))
 
         return None, 0.0
 

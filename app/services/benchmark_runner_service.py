@@ -630,6 +630,7 @@ class BenchmarkRunnerService:
             if torch.cuda.is_available():
                 return int(torch.cuda.memory_allocated() / 1024 / 1024)
         except ImportError:
+            # torch nicht installiert -> GPU-Speicher nicht messbar
             pass
         return None
 
