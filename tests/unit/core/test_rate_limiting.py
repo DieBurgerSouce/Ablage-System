@@ -68,8 +68,10 @@ class TestRateLimitTier:
 
     def test_login_rate_limit(self):
         """Test login rate limit configuration."""
+        # G07: Per-IP-Login-Limit bewusst auf "5/minute" gesetzt (von "10/minute"
+        # verschaerft), konsistent mit MAX_FAILED_ATTEMPTS=5. Frueher "5/15minutes".
         from app.core.rate_limiting import RateLimitTier
-        assert RateLimitTier.LOGIN == "5/15minutes"
+        assert RateLimitTier.LOGIN == "5/minute"
 
     def test_register_rate_limit(self):
         """Test registration rate limit configuration."""

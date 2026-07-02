@@ -231,14 +231,15 @@ class TestRLSPolicy:
 
         await set_rls_company_context(mock_db, test_company_id)
 
-        # Pruefe ob execute aufgerufen wurde
-        mock_db.execute.assert_called_once()
-        call_args = mock_db.execute.call_args
-
-        # SQL sollte set_config enthalten
-        sql_text = str(call_args[0][0])
-        assert "set_config" in sql_text
-        assert "app.current_company_id" in sql_text
+        # RLS-Reconciliation (Mig 271): company_id wird auf ZWEI Session-Vars
+        # gespiegelt (app.current_company_id + app.current_tenant_id fuer Alt-
+        # Policies aus Mig 210) -> 2 execute-Aufrufe (frueher 1). Beide nutzen
+        # set_config; die erste setzt app.current_company_id.
+        assert mock_db.execute.call_count == 2
+        sql_texts = [str(c[0][0]) for c in mock_db.execute.call_args_list]
+        assert all("set_config" in s for s in sql_texts)
+        assert any("app.current_company_id" in s for s in sql_texts)
+        assert any("app.current_tenant_id" in s for s in sql_texts)
 
 
 class TestCompanySwitch:

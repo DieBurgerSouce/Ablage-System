@@ -347,8 +347,9 @@ class TestSlidingWindowBehavior:
         """Fenster-Dauer sollte zur Tier-Konfiguration passen."""
         from app.core.rate_limiting import RateLimitTier
 
-        # Login: 5/15minutes = 15 Minuten Fenster
-        assert "15minutes" in RateLimitTier.LOGIN
+        # Login: G07 -> "5/minute" (1-Minuten-Fenster, verschaerft von 10/minute,
+        # konsistent mit MAX_FAILED_ATTEMPTS=5). Frueher "5/15minutes".
+        assert "minute" in RateLimitTier.LOGIN
 
         # OCR Hourly: /hour = 60 Minuten Fenster
         assert "hour" in RateLimitTier.OCR_FREE_HOURLY
