@@ -586,14 +586,20 @@ class PaymentService:
     async def get_skonto_opportunities(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         days_ahead: int = 14,
     ) -> List[Dict[str, Any]]:
         """Finde Skonto-Möglichkeiten.
 
+        Company-scoped (Migration 269): Es werden die Rechnungen der gesamten
+        Firma betrachtet, nicht nur die eines einzelnen Besitzers. Damit sieht
+        jeder berechtigte Firmennutzer dieselben Skonto-Chancen und die
+        Mandanten-Isolation bleibt gewahrt (eine Firma sieht niemals die
+        Rechnungen einer anderen).
+
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID (Mandanten-Scope)
             days_ahead: Tage vorausschauen
 
         Returns:
@@ -603,10 +609,10 @@ class PaymentService:
 
         cutoff_date = date.today() + timedelta(days=days_ahead)
 
-        # Suche Rechnungen mit Skonto
+        # Suche Rechnungen mit Skonto (mandantenscoped über company_id)
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
