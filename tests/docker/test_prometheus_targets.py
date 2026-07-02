@@ -8,12 +8,23 @@ and collecting metrics correctly.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
 if TYPE_CHECKING:
     from .helpers.docker_client import DockerClient
+
+# Repo-Root: tests/docker/test_prometheus_targets.py -> parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_PROMETHEUS_YML = _REPO_ROOT / "infrastructure" / "prometheus" / "prometheus.yml"
+
+# W1-022: Diese Backend-Jobs scrapen die token-geschuetzten /internal-Endpoints
+# (app/api/v1/metrics.py::verify_metrics_token) und MUESSEN daher einen
+# bearer_token_file-Eintrag tragen.
+_TOKEN_PROTECTED_BACKEND_JOBS = ("ablage-backend", "ablage-backup", "ab-testing")
+_EXPECTED_TOKEN_FILE = "/etc/prometheus/metrics_scrape_token"
 
 
 @pytest.mark.docker
@@ -171,6 +182,68 @@ class TestPrometheusTargets:
                 f"Prometheus targets with scrape errors:\n"
                 + "\n".join(f"  {t}" for t in error_targets)
             )
+
+
+@pytest.mark.prometheus
+class TestPrometheusScrapeConfig:
+    """W1-022: Config-Parse-Tests fuer die Backend-Metrics-Absicherung.
+
+    Diese Tests laufen rein host-seitig (nur PyYAML, kein Docker-Stack) und
+    verifizieren, dass die token-geschuetzten Backend-Jobs in prometheus.yml
+    einen bearer_token_file-Eintrag tragen. So faellt eine versehentlich
+    entfernte Token-Verdrahtung ohne laufenden Stack auf.
+    """
+
+    def _load_scrape_configs(self) -> dict[str, dict[str, Any]]:
+        """Parse prometheus.yml und indexiere die scrape_configs nach job_name."""
+        yaml = pytest.importorskip("yaml")
+        assert _PROMETHEUS_YML.is_file(), (
+            f"prometheus.yml nicht gefunden unter {_PROMETHEUS_YML}"
+        )
+        with _PROMETHEUS_YML.open(encoding="utf-8") as fh:
+            config = yaml.safe_load(fh)
+
+        scrape_configs = config.get("scrape_configs", [])
+        return {sc.get("job_name"): sc for sc in scrape_configs if sc.get("job_name")}
+
+    def test_prometheus_yml_parses(self) -> None:
+        """prometheus.yml ist valides YAML mit scrape_configs."""
+        jobs = self._load_scrape_configs()
+        assert jobs, "Keine scrape_configs in prometheus.yml gefunden"
+
+    def test_backend_jobs_have_bearer_token(self) -> None:
+        """Alle token-geschuetzten Backend-Jobs verweisen auf die Token-Datei."""
+        jobs = self._load_scrape_configs()
+
+        missing = [j for j in _TOKEN_PROTECTED_BACKEND_JOBS if j not in jobs]
+        assert not missing, (
+            f"Erwartete Backend-Jobs fehlen in prometheus.yml: {missing}"
+        )
+
+        without_token = []
+        wrong_token_file = []
+        for job_name in _TOKEN_PROTECTED_BACKEND_JOBS:
+            job = jobs[job_name]
+            # Prometheus unterstuetzt bearer_token_file oder
+            # authorization.credentials_file — beide werden akzeptiert.
+            token_file = job.get("bearer_token_file")
+            if token_file is None:
+                authz = job.get("authorization") or {}
+                token_file = authz.get("credentials_file")
+
+            if not token_file:
+                without_token.append(job_name)
+            elif token_file != _EXPECTED_TOKEN_FILE:
+                wrong_token_file.append(f"{job_name}: {token_file}")
+
+        assert not without_token, (
+            "W1-022: Diese Backend-Jobs scrapen /internal ohne bearer_token_file "
+            f"(in Prod fail-closed -> 503/401): {without_token}"
+        )
+        assert not wrong_token_file, (
+            "Backend-Jobs zeigen auf einen unerwarteten Token-Datei-Pfad "
+            f"(erwartet {_EXPECTED_TOKEN_FILE}): {wrong_token_file}"
+        )
 
 
 @pytest.mark.docker

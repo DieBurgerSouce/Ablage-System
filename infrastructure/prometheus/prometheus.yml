@@ -27,10 +27,16 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # Ablage-System Backend API
-  # Verwendet /internal Endpoint der ohne User-Auth funktioniert
-  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
+  # Verwendet /internal Endpoint der ohne User-Auth funktioniert.
+  # W1-022: /metrics ist in Produktion fail-closed (verify_metrics_token in
+  # app/api/v1/metrics.py verlangt bei gesetztem METRICS_SCRAPE_TOKEN einen
+  # Bearer-Token). Die Token-Datei wird via docker-compose ins Prometheus-Image
+  # gemountet (analog qdrant). In Dev (kein METRICS_SCRAPE_TOKEN gesetzt)
+  # ignoriert das Backend den Header -> Scrape funktioniert weiterhin.
+  # Datei NICHT committen (siehe .gitignore + infrastructure/prometheus/README.md).
   - job_name: 'ablage-backend'
     metrics_path: '/api/v1/metrics/internal'
+    bearer_token_file: /etc/prometheus/metrics_scrape_token
     static_configs:
       - targets: ['backend:8000']
     relabel_configs:
@@ -117,10 +123,11 @@ scrape_configs:
   #       replacement: 'rtx4080'
 
   # Ablage-System Backup Metrics (separate registry)
-  # Verwendet /internal/backup Endpoint mit Token-Auth (kein Superuser noetig)
-  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
+  # Verwendet /internal/backup Endpoint mit Token-Auth (kein Superuser noetig).
+  # W1-022: bearer_token_file wie bei ablage-backend (Prod fail-closed).
   - job_name: 'ablage-backup'
     metrics_path: '/api/v1/metrics/internal/backup'
+    bearer_token_file: /etc/prometheus/metrics_scrape_token
     scrape_interval: 60s
     static_configs:
       - targets: ['backend:8000']
@@ -144,10 +151,11 @@ scrape_configs:
         replacement: 'qdrant-vector-db'
 
   # A/B Testing Metrics (Vector Search)
-  # Verwendet /internal/ab-testing Endpoint mit Token-Auth (kein Superuser noetig)
-  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
+  # Verwendet /internal/ab-testing Endpoint mit Token-Auth (kein Superuser noetig).
+  # W1-022: bearer_token_file wie bei ablage-backend (Prod fail-closed).
   - job_name: 'ab-testing'
     metrics_path: '/api/v1/metrics/internal/ab-testing'
+    bearer_token_file: /etc/prometheus/metrics_scrape_token
     scrape_interval: 30s
     static_configs:
       - targets: ['backend:8000']

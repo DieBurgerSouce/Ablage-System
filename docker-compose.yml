@@ -611,6 +611,11 @@ services:
       # OpenTelemetry Tracing
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-jaeger:4317}
       TRACING_ENABLED: ${TRACING_ENABLED:-true}
+      # W1-022: Metrics-Scrape-Token. Leer in Dev (Backend erlaubt dann
+      # unauthentisiertes /internal-Scraping); in Prod PFLICHT, sonst liefert
+      # /api/v1/metrics/internal* 503. Muss dem bearer_token_file von
+      # Prometheus entsprechen (infrastructure/prometheus/metrics_scrape_token).
+      METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
     volumes:
       - ./app:/app/app:ro
       - ./alembic:/app/alembic:ro
@@ -1091,6 +1096,11 @@ services:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infrastructure/prometheus/rules:/etc/prometheus/rules:ro
       - ./infrastructure/prometheus/qdrant_metrics_token:/etc/prometheus/qdrant_metrics_token:ro
+      # W1-022: Bearer-Token fuer die Backend-Metrics-Jobs (ablage-backend,
+      # ablage-backup, ab-testing). Muss in Prod denselben Wert wie
+      # METRICS_SCRAPE_TOKEN (.env) enthalten. Datei ist gitignored und wird
+      # vom Operator erzeugt (siehe infrastructure/prometheus/README.md).
+      - ./infrastructure/prometheus/metrics_scrape_token:/etc/prometheus/metrics_scrape_token:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"  # Nur localhost - Zugriff über Nginx Proxy
