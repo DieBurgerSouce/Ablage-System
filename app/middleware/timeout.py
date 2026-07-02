@@ -232,7 +232,7 @@ class GracefulTimeoutMiddleware(TimeoutMiddleware):
             try:
                 await asyncio.sleep(self.grace_period)
             except asyncio.CancelledError:
-                pass
+                pass  # Grace-Period-Sleep abgebrochen: direkt mit Timeout-Antwort fortfahren
 
             return JSONResponse(
                 status_code=504,

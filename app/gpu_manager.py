@@ -1225,7 +1225,7 @@ class GPUMemoryGuard:
             try:
                 await self._monitor_task
             except asyncio.CancelledError:
-                pass
+                pass  # Erwarteter Abbruch des Monitor-Tasks beim Stoppen
             self._monitor_task = None
 
         logger.info("gpu_memory_monitor_stopped")

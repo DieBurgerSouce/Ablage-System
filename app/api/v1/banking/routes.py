@@ -1808,7 +1808,8 @@ async def list_dunnings(
         try:
             effective_level = DunningLevel(dunning_level)
         except ValueError:
-            pass  # Ungültige Level werden ignoriert
+            # Ungueltiger Level-Filter wird ignoriert (kein Filter angewendet)
+            logger.debug("dunning_level_filter_invalid", dunning_level=dunning_level)
 
     # Behandle "active" als Spezialfall für alle aktiven (nicht abgeschlossenen) Mahnungen
     effective_status: Optional[DunningStatus] = None
@@ -1822,7 +1823,8 @@ async def list_dunnings(
             try:
                 effective_status = DunningStatus(status_filter)
             except ValueError:
-                pass  # Unbekannte Status werden ignoriert
+                # Unbekannter Status-Filter wird ignoriert (kein Filter angewendet)
+                logger.debug("dunning_status_filter_invalid", status_filter=status_filter)
 
     dunnings, total = await dunning_service.list_dunnings(
         db=db,

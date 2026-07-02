@@ -313,7 +313,7 @@ def _cleanup_fallback_blacklist() -> int:
         try:
             _token_blacklist_fallback.expire()  # Trigger expiration check
         except AttributeError:
-            pass  # expire() may not exist in all cachetools versions
+            pass  # expire() existiert nicht in allen cachetools-Versionen (Kompatibilitaet)
         return 0
 
     # Manual cleanup for Dict fallback

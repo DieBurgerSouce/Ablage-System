@@ -30,20 +30,20 @@ try:
     from PIL import Image
     PIL_AVAILABLE = True
 except ImportError:
-    pass
+    pass  # Pillow optional: ohne PIL werden Bildanalyse-Features uebersprungen
 
 try:
     import numpy as np
     NUMPY_AVAILABLE = True
 except ImportError:
-    pass
+    pass  # numpy optional: ohne numpy werden numerische Bildanalysen uebersprungen
 
 try:
     import cv2
 
     CV2_AVAILABLE = True
 except ImportError:
-    pass
+    pass  # OpenCV optional: ohne cv2 werden CV-basierte Layout-Checks uebersprungen
 
 
 class DocumentComplexity(str, Enum):

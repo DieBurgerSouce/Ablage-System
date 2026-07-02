@@ -256,7 +256,7 @@ async def get_duplicate_stats(
                 try:
                     similarities.append(float(sim))
                 except (ValueError, TypeError):
-                    pass
+                    pass  # Ungueltige Similarity-Werte werden aus dem Durchschnitt ausgelassen
 
         avg_similarity = sum(similarities) / len(similarities) if similarities else 0.0
 

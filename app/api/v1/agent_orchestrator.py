@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
+from app.core.safe_errors import safe_error_log
 from app.db.models import User
 from app.services.ai.financial_orchestrator import (
     FinancialOrchestrator,
@@ -477,8 +478,8 @@ async def get_status(
         default = registry.default
         default_provider = default.name
         llm_available = await default.is_available()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("orchestrator_llm_availability_check_failed", **safe_error_log(e))
 
     return OrchestratorStatusResponse(
         status="operational" if llm_available else "degraded",

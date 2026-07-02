@@ -867,7 +867,7 @@ class CertificateAuthority:
                         spiffe_id = name.value
                         break
         except x509.ExtensionNotFound:
-            pass
+            pass  # Kein SAN im Zertifikat -> spiffe_id bleibt None
 
         # Determine certificate type from extended key usage
         cert_type = CertificateType.CLIENT
@@ -885,7 +885,7 @@ class CertificateAuthority:
             else:
                 cert_type = CertificateType.CLIENT
         except x509.ExtensionNotFound:
-            pass
+            pass  # Kein ExtendedKeyUsage -> Default-Typ CLIENT bleibt bestehen
 
         return CertificateInfo(
             serial_number=cert.serial_number,
