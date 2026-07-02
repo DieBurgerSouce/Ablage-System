@@ -1155,6 +1155,7 @@ class BackendManager:
                         if torch.cuda.is_available():
                             torch.cuda.empty_cache()
                     except ImportError:
+                        # torch nicht installiert -> kein CUDA-Cache zum Leeren
                         pass
 
                     remaining = fallback_chain[chain_index:]

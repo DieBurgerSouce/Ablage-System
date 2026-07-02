@@ -332,8 +332,9 @@ class GDPdUExportService:
                 try:
                     os.remove(zip_path)
                     os.rmdir(zip_path.parent)
-                except OSError:
-                    pass  # Ignoriere Fehler beim Aufraeuumen
+                except OSError as e:
+                    # Best-effort-Cleanup; verwaiste Temp-Dateien nur sichtbar machen
+                    logger.debug("gdpdu_temp_cleanup_failed", error_type=type(e).__name__)
 
     async def get_export_preview(
         self,

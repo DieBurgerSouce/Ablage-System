@@ -232,8 +232,9 @@ class SelfLearningOCRService:
                     if stored_mode:
                         try:
                             self._learning_mode = LearningMode(stored_mode)
-                        except ValueError:
-                            pass  # Behalte Default bei invalidem Wert
+                        except ValueError as e:
+                            # Behalte Default bei invalidem persistierten Wert
+                            logger.debug("learning_mode_invalid_default", error_type=type(e).__name__)
                 else:
                     self._backend_adjustments = {}
                     self._field_adjustments = {}

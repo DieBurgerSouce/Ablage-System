@@ -311,8 +311,11 @@ class AutoMatchingService:
         if amount is not None:
             try:
                 return Decimal(str(amount))
-            except Exception:
-                pass
+            except (ArithmeticError, ValueError, TypeError) as e:
+                logger.debug(
+                    "auto_matching_amount_extract_skipped",
+                    error_type=type(e).__name__,
+                )
         return None
 
     def _determine_match_type(

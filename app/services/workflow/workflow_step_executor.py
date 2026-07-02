@@ -534,9 +534,13 @@ class WorkflowStepExecutor:
                 )
                 await self.db.execute(stmt)
                 assigned_tags.append(tag_id)
-            except Exception:
-                # Tag bereits zugewiesen
-                pass
+            except Exception as e:
+                # Tag bereits zugewiesen (Unique-Constraint) -> Duplikat wird uebersprungen
+                logger.debug(
+                    "workflow_tag_assign_skipped",
+                    tag_id=tag_id,
+                    error_type=type(e).__name__,
+                )
 
         await self.db.commit()
 

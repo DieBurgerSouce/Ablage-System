@@ -614,8 +614,11 @@ class OCRPipeline:
         if preprocessed_image_path != image_path:
             try:
                 Path(preprocessed_image_path).unlink(missing_ok=True)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug(
+                    "ocr_temp_cleanup_skipped",
+                    error_type=type(e).__name__,
+                )
 
         # Step 2.5: Confidence Thresholding
         needs_review = False

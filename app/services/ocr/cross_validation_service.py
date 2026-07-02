@@ -795,8 +795,8 @@ class CrossValidationService:
                             ),
                             details=details,
                         )
-                except (InvalidOperation, TypeError, ValueError):
-                    pass
+                except (InvalidOperation, TypeError, ValueError) as e:
+                    logger.debug("duplicate_check_amount_compare_skipped", error_type=type(e).__name__)
 
             # Teilmatch: Rechnungsnummer + Entity (anderer Betrag)
             if entity_id is not None and candidate_entity_id == entity_id:

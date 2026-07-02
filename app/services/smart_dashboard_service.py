@@ -878,8 +878,11 @@ class SmartDashboardService:
                     "speicher_gesamt_gb": round(total_mem, 2), "speicher_verwendet_gb": round(allocated, 2),
                     "auslastung_prozent": round((allocated / total_mem) * 100, 1) if total_mem > 0 else 0,
                 }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "smart_dashboard_gpu_metrics_unavailable",
+                error_type=type(e).__name__,
+            )
         return {"verfügbar": False, "name": None, "speicher_gesamt_gb": 0, "speicher_verwendet_gb": 0, "auslastung_prozent": 0}
 
     @staticmethod

@@ -781,8 +781,14 @@ class EmailImportService:
                 },
                 source="email_import",
             )
-        except Exception:
-            pass  # EventBus failures must not block imports
+        except Exception as exc:
+            # EventBus-Publish ist best-effort und darf den Import nicht blockieren
+            logger.warning(
+                "import_event_publish_failed",
+                event="IMPORT_STARTED",
+                source_type="email",
+                **safe_error_log(exc),
+            )
 
         try:
             # Duplikat-Check via File-Hash
@@ -857,8 +863,13 @@ class EmailImportService:
                     },
                     source="email_import",
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "import_event_publish_failed",
+                    event="IMPORT_COMPLETED",
+                    source_type="email",
+                    **safe_error_log(exc),
+                )
 
             await self.db.commit()
 
@@ -881,8 +892,13 @@ class EmailImportService:
                     },
                     source="email_import",
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "import_event_publish_failed",
+                    event="IMPORT_FAILED",
+                    source_type="email",
+                    **safe_error_log(exc),
+                )
 
             return {"success": False, **safe_error_log(e)}
 
@@ -1219,8 +1235,13 @@ class EmailImportService:
                     },
                     source="email_import",
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "import_event_publish_failed",
+                    event="IMPORT_RULE_APPLIED",
+                    source_type="email",
+                    **safe_error_log(exc),
+                )
 
             # Aktionen anwenden
             await self._execute_rule_actions(

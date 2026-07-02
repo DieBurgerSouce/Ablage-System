@@ -444,8 +444,11 @@ class CaseComparator:
                 if "amount" in decision_value:
                     try:
                         amount = Decimal(str(decision_value["amount"]))
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug(
+                            "case_comparator_amount_parse_skipped",
+                            error_type=type(e).__name__,
+                        )
 
                 similar_cases.append(SimilarCase(
                     decision_id=candidate.id,

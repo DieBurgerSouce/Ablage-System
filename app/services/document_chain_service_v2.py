@@ -603,8 +603,8 @@ class ExtendedDocumentChainServiceV2:
                     if amount_str:
                         amount = Decimal(str(amount_str))
                         total_amount += amount
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("chain_amount_parse_skipped", error_type=type(e).__name__)
 
                 # Entity-Info
                 if doc.business_entity_id:
@@ -943,8 +943,8 @@ class ExtendedDocumentChainServiceV2:
                     if amount_str:
                         amount = Decimal(str(amount_str))
                         total_amount += amount
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("chain_amount_parse_skipped", error_type=type(e).__name__)
 
             # Node-Status basierend auf Discrepancies
             node_status = "normal"
@@ -1400,8 +1400,8 @@ class ExtendedDocumentChainServiceV2:
                 if d_amt > 0 and c_amt > 0:
                     diff_pct = abs(d_amt - c_amt) / max(d_amt, c_amt)
                     amount_score = max(0.0, 1.0 - float(diff_pct))
-            except (ValueError, TypeError, ZeroDivisionError):
-                pass
+            except (ValueError, TypeError, ZeroDivisionError) as e:
+                logger.debug("chain_amount_similarity_skipped", error_type=type(e).__name__)
         scores["amount_similarity"] = amount_score
 
         # 3. Date Proximity (0-1, max 30 Tage)

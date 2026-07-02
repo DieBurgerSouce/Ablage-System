@@ -588,8 +588,11 @@ class AutoMatchingService:
                     details["amount_similarity"] = round(amount_ratio, 3)
                     scores.append(amount_ratio)
                     weights.append(0.25)
-            except (InvalidOperation, ValueError, ZeroDivisionError):
-                pass
+            except (InvalidOperation, ValueError, ZeroDivisionError) as e:
+                logger.debug(
+                    "auto_matching_amount_similarity_skipped",
+                    error_type=type(e).__name__,
+                )
 
         # 3. PO-Nummer / Referenz-Vergleich
         source_ref = self._get_reference(source)

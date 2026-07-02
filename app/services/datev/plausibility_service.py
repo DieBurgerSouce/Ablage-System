@@ -322,8 +322,8 @@ class PlausibilityService:
                         ),
                         details=details,
                     )
-            except (InvalidOperation, ArithmeticError):
-                pass
+            except (InvalidOperation, ArithmeticError) as e:
+                logger.warning("datev_ust_plausibility_check_skipped", error_type=type(e).__name__)
 
         return PlausibilityCheck(
             check_name="ust_validity",

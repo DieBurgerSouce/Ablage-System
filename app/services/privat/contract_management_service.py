@@ -925,8 +925,8 @@ class PrivatContractManagementService:
                     int(match.group(2)),
                     int(match.group(1)),
                 )
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("contract_date_parse_skipped", field="dd.mm.yyyy", error_type=type(e).__name__)
 
         # DD.MM.YY
         match = re.search(r"(\d{1,2})\.(\d{1,2})\.(\d{2})\b", text)
@@ -935,8 +935,8 @@ class PrivatContractManagementService:
                 year = int(match.group(3))
                 year = year + 2000 if year < 50 else year + 1900
                 return date(year, int(match.group(2)), int(match.group(1)))
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("contract_date_parse_skipped", field="dd.mm.yy", error_type=type(e).__name__)
 
         # DD. Monat YYYY
         match = re.search(
@@ -950,8 +950,8 @@ class PrivatContractManagementService:
                 month = _MONTH_MAP.get(match.group(2).lower())
                 if month:
                     return date(int(match.group(3)), month, int(match.group(1)))
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("contract_date_parse_skipped", field="dd.month.yyyy", error_type=type(e).__name__)
 
         return None
 
@@ -963,8 +963,8 @@ class PrivatContractManagementService:
             if match:
                 try:
                     return int(match.group(1))
-                except (ValueError, IndexError):
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.debug("contract_duration_parse_skipped", unit="months", error_type=type(e).__name__)
 
         # Jahre -> Monate
         for pattern in _PERIOD_PATTERNS["years"]:
@@ -972,8 +972,8 @@ class PrivatContractManagementService:
             if match:
                 try:
                     return int(match.group(1)) * 12
-                except (ValueError, IndexError):
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.debug("contract_duration_parse_skipped", unit="years", error_type=type(e).__name__)
 
         return None
 
@@ -992,8 +992,8 @@ class PrivatContractManagementService:
                         return value * 7
                     # Pattern 2: Tage
                     return value
-                except (ValueError, IndexError):
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.debug("contract_cancellation_parse_skipped", error_type=type(e).__name__)
 
         return None
 
@@ -1006,8 +1006,8 @@ class PrivatContractManagementService:
                 try:
                     value_str = match.group(1).replace(",", ".")
                     return Decimal(value_str)
-                except (InvalidOperation, IndexError):
-                    pass
+                except (InvalidOperation, IndexError) as e:
+                    logger.debug("contract_cost_parse_skipped", period=period, error_type=type(e).__name__)
 
         return None
 

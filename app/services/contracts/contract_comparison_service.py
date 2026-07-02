@@ -239,8 +239,8 @@ class ContractComparisonService:
                         if old_val > 0:
                             pct_change = ((new_val - old_val) / old_val) * 100
                             difference["percentage_change"] = round(pct_change, 2)
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug("contract_value_pct_change_skipped", error_type=type(e).__name__)
 
                 differences.append(difference)
 
@@ -463,8 +463,8 @@ class ContractComparisonService:
                 return "increased"
             elif new_num < old_num:
                 return "decreased"
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug("contract_change_type_numeric_skipped", error_type=type(e).__name__)
 
         return "modified"
 

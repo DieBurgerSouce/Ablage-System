@@ -853,8 +853,12 @@ class SmartEscalationService:
                                 "until": until_str,
                                 "deputy_id": absence_settings.get("deputy_id"),
                             }
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.warning(
+                            "escalation_absence_until_parse_skipped",
+                            field="absence.until",
+                            error_type=type(e).__name__,
+                        )
                 else:
                     # Keine End-Zeit = unbefristet abwesend
                     return {

@@ -353,8 +353,12 @@ class AutoFilingService:
             try:
                 if safe_search(str(regex_pattern), doc_text, re.IGNORECASE):
                     matches += 1
-            except re.error:
-                pass
+            except re.error as e:
+                logger.warning(
+                    "auto_filing_regex_invalid",
+                    rule_id=getattr(rule, "id", None),
+                    error_type=type(e).__name__,
+                )
 
         # Keywords prüfen
         keywords = config.get("keywords", [])

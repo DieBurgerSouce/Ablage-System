@@ -704,8 +704,11 @@ class BPMNParser:
             if priority_str:
                 try:
                     task.priority = int(priority_str)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(
+                        "bpmn_task_priority_parse_skipped",
+                        error_type=type(e).__name__,
+                    )
 
             # Candidate Groups
             candidate_groups = elem.get(f"{camunda_prefix}candidateGroups")

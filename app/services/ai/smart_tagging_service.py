@@ -528,8 +528,11 @@ class SmartTaggingService:
                                 priority=70,
                             ))
                             break
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug(
+                            "smart_tagging_amount_parse_skipped",
+                            error_type=type(e).__name__,
+                        )
 
         # Langes Zahlungsziel
         if invoice_tracking:

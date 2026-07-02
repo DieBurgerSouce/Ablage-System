@@ -466,8 +466,8 @@ class IntelligentDocumentMatcher:
                 if key in extracted_data and extracted_data[key]:
                     try:
                         return Decimal(str(extracted_data[key]))
-                    except (ValueError, TypeError, ArithmeticError):
-                        pass
+                    except (ValueError, TypeError, ArithmeticError) as e:
+                        logger.debug("matcher_amount_parse_skipped", error_type=type(e).__name__)
 
         # Fallback: Aus OCR-Text extrahieren
         patterns = [
@@ -481,8 +481,8 @@ class IntelligentDocumentMatcher:
                 try:
                     amount_str = match.group(1).replace('.', '').replace(',', '.')
                     return Decimal(amount_str)
-                except (ValueError, TypeError, ArithmeticError):
-                    pass
+                except (ValueError, TypeError, ArithmeticError) as e:
+                    logger.debug("matcher_amount_ocr_parse_skipped", error_type=type(e).__name__)
 
         return None
 

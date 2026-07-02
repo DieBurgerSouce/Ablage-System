@@ -575,8 +575,9 @@ class EInvoiceValidatorService:
                         message="PDF/A-3 verbietet JavaScript"
                     )
                     return
-            except Exception:
-                pass  # Ignoriere Fehler bei diesem optionalen Check
+            except Exception as e:
+                # Optionaler JavaScript-Check; Fehler bricht die PDF/A-Validierung nicht ab
+                logger.debug("einvoice_pdfa_js_check_skipped", **safe_error_log(e))
 
             # 6. Prüfe Encryption (PDF/A erlaubt nur bestimmte Encryption)
             if reader.is_encrypted:

@@ -20,6 +20,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
+import structlog
 
 # Schluessel/Zertifikat muessen PERSISTENT + SCHREIBBAR liegen (sonst gehen Alt-
 # Signaturen nach Neustart verloren). /app/certs ist im Deployment read-only (extern
@@ -31,6 +32,8 @@ SIGNATURE_ALG = "RSA-PSS-SHA256"
 _KEY_FILE = "gobd_signer_key.pem"
 _CERT_FILE = "gobd_signer_cert.pem"
 _PSS = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
+
+logger = structlog.get_logger(__name__)
 
 
 class DocumentSigner:
@@ -103,8 +106,11 @@ class DocumentSigner:
         )
         try:
             self._key_path.chmod(0o600)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning(
+                "gobd_signer_key_chmod_failed",
+                error_type=type(e).__name__,
+            )
         self._cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
         return key, cert
 

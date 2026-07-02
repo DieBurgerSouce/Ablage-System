@@ -992,8 +992,13 @@ class StructuredExtractionService:
             try:
                 invoice.currency = Currency(currency_code)
                 logger.debug("currency_extracted_from_context", currency=currency_code)
-            except ValueError:
-                pass  # Unbekannte Währung - Default bleibt EUR
+            except ValueError as e:
+                # Unbekannte Waehrung - Default bleibt EUR
+                logger.debug(
+                    "currency_unknown_default_eur",
+                    currency=currency_code,
+                    error_type=type(e).__name__,
+                )
 
         # Fallback: Erste Währung im Text
         if invoice.currency == Currency.EUR:

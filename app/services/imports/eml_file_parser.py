@@ -274,8 +274,9 @@ def parse_msg_file(content: bytes) -> ParsedEmail:
     if msg.date:
         try:
             parsed_date = msg.date if isinstance(msg.date, datetime) else None
-        except Exception:
-            pass
+        except Exception as e:
+            # Datum ist optionale Metadaten; bei Fehler bleibt parsed_date=None
+            logger.debug("eml_date_parse_skipped", error_type=type(e).__name__)
 
     return ParsedEmail(
         subject=msg.subject or "",
