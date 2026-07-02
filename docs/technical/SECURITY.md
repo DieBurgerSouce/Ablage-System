@@ -191,7 +191,9 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" always;
+    # G16-Haertung: script-src ohne 'unsafe-inline' (keine Inline-Scripts im Build).
+    # style-src 'unsafe-inline' bleibt (React-Inline-Styles + Swagger-UI).
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none';" always;
 }
 ```
 

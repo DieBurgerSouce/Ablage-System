@@ -147,7 +147,7 @@
     </p>
 
     <div class="actions">
-      <button class="primary" onclick="tryReconnect()">
+      <button class="primary" id="reconnect-btn" type="button">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
           <path d="M3 3v5h5"/>
@@ -157,7 +157,7 @@
         Erneut verbinden
       </button>
 
-      <button class="secondary" onclick="goBack()">
+      <button class="secondary" id="back-btn" type="button">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m12 19-7-7 7-7"/>
           <path d="M19 12H5"/>
@@ -171,53 +171,7 @@
     </div>
   </div>
 
-  <script>
-    function updateStatus() {
-      const statusEl = document.getElementById('status');
-      if (navigator.onLine) {
-        statusEl.className = 'status online';
-        statusEl.innerHTML = 'Verbindung wiederhergestellt - Seite wird neu geladen...';
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
-        statusEl.className = 'status';
-        statusEl.innerHTML = '<span class="loading">Offline - Warte auf Verbindung...</span>';
-      }
-    }
-
-    function tryReconnect() {
-      const statusEl = document.getElementById('status');
-      statusEl.innerHTML = '<span class="loading">Verbindung wird geprueft...</span>';
-
-      fetch('/', { method: 'HEAD', cache: 'no-store' })
-        .then(() => {
-          statusEl.className = 'status online';
-          statusEl.innerHTML = 'Verbindung wiederhergestellt!';
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 500);
-        })
-        .catch(() => {
-          statusEl.className = 'status';
-          statusEl.innerHTML = 'Noch keine Verbindung verfuegbar';
-        });
-    }
-
-    function goBack() {
-      if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        window.location.href = '/';
-      }
-    }
-
-    // Listen for online/offline events
-    window.addEventListener('online', updateStatus);
-    window.addEventListener('offline', updateStatus);
-
-    // Initial check
-    updateStatus();
-  </script>
+  <!-- Logik ausgelagert nach /offline.js (CSP-Haertung: script-src 'self', kein 'unsafe-inline') -->
+  <script src="/offline.js" defer></script>
 </body>
 </html>

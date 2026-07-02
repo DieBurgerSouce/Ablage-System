@@ -3730,7 +3730,8 @@ more_clear_headers Server;
 
 # Security headers map
 map $sent_http_content_type $content_security_policy {
-    default "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';";
+    # G16-Haertung: script-src ohne 'unsafe-inline'. style-src 'unsafe-inline' bleibt (React + Swagger-UI).
+    default "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none';";
 }
 
 server {
