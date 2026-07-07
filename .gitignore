@@ -104,6 +104,11 @@ Trainings_Data/
 !requirements*.txt
 infrastructure/vault/config/certs/
 
+# LAN-TLS-Zertifikate (M-14, scripts/generate-lan-tls.sh) - NIEMALS committen!
+# Verzeichnis selbst bleibt via .gitkeep im Repo (nginx-ssl-Mount).
+infrastructure/nginx/ssl/*
+!infrastructure/nginx/ssl/.gitkeep
+
 # Nginx security files (never commit!)
 infrastructure/nginx/.htpasswd
 infrastructure/nginx/dhparam.pem

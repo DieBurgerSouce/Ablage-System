@@ -118,6 +118,14 @@ COPY --chown=ablage:ablage app/ ./app/
 COPY --chown=ablage:ablage test_documents/ ./test_documents/
 COPY --chown=ablage:ablage *.py ./
 
+# M-08 (Phase 0 Betriebsreife): Auto-Migration beim Container-Start.
+# alembic/ + alembic.ini ins Image (bisher nur via compose-Mount vorhanden),
+# damit der Entrypoint auch ohne Bind-Mounts migrieren kann.
+COPY --chown=ablage:ablage alembic/ ./alembic/
+COPY --chown=ablage:ablage alembic.ini ./alembic.ini
+COPY --chown=ablage:ablage docker/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
+
 # Set permissions (SECURITY FIX: 775 statt 777 für write-Verzeichnisse)
 RUN chmod -R 755 /app && \
     chmod -R 775 /app/uploads /app/outputs /app/logs /app/cache
@@ -141,6 +149,12 @@ EXPOSE 8000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
+
+# M-08: Entrypoint wartet auf Postgres und fuehrt `alembic upgrade head`
+# unter Postgres-Advisory-Lock (Key 815001) aus — parallele Container
+# (Backend-Replikate, worker/beat mit demselben Image) migrieren nie doppelt.
+# Abschaltbar per RUN_MIGRATIONS=false. Danach: exec CMD.
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the application
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

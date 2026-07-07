@@ -20,6 +20,10 @@ services:
       - certbot_conf:/etc/letsencrypt
       - certbot_www:/var/www/certbot
 
+      # M-14 (Phase 0): LAN-TLS-Zertifikate der lokalen CA
+      # (erzeugt via scripts/generate-lan-tls.sh)
+      - ./ssl:/etc/nginx/ssl:ro
+
       # Static files
       - ../../frontend/dist:/var/www/ablage-system:ro
 

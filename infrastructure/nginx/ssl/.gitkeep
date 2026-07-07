@@ -1,0 +1,2 @@
+# LAN-TLS-Zertifikate (M-14): erzeugt durch scripts/generate-lan-tls.sh
+# Inhalte (ca.crt, ca.key, ablage.crt, ablage.key) sind gitignored.
