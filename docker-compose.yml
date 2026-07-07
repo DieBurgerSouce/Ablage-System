@@ -553,6 +553,11 @@ services:
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
       SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE:-0.1}
       SENTRY_ENABLE_TRACING: ${SENTRY_ENABLE_TRACING:-true}
+      # Alerts & LAN-Origin an die App durchreichen (Phase 0 Neuausrichtung, M-01/R8)
+      SLACK_ENABLED: ${SLACK_ENABLED:-false}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_DEFAULT_CHANNEL: ${SLACK_DEFAULT_CHANNEL:-ablage-alerts}
+      CORS_ORIGINS: '${CORS_ORIGINS:-[]}'
       ENVIRONMENT: ${ENVIRONMENT:-production}
       VERSION: ${VERSION:-0.1.0}
       # Database (Secrets aus .env)
@@ -733,6 +738,10 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
       # JWT/Auth (fehlte - gleiche wie Backend)
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      # Slack-Alerts (Phase 0 Neuausrichtung, M-01)
+      SLACK_ENABLED: ${SLACK_ENABLED:-false}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_DEFAULT_CHANNEL: ${SLACK_DEFAULT_CHANNEL:-ablage-alerts}
       # Development/Production Mode
       DEBUG: ${DEBUG:-false}
       # Non-secret configuration
@@ -874,6 +883,10 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
       # JWT/Auth
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      # Slack-Alerts (Phase 0 Neuausrichtung, M-01)
+      SLACK_ENABLED: ${SLACK_ENABLED:-false}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_DEFAULT_CHANNEL: ${SLACK_DEFAULT_CHANNEL:-ablage-alerts}
       # Development/Production Mode
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -998,6 +1011,10 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      # Slack-Alerts (Phase 0 Neuausrichtung, M-01)
+      SLACK_ENABLED: ${SLACK_ENABLED:-false}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_DEFAULT_CHANNEL: ${SLACK_DEFAULT_CHANNEL:-ablage-alerts}
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CUDA_VISIBLE_DEVICES: ""
