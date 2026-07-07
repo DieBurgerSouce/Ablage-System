@@ -11,13 +11,19 @@
 import { createFileRoute, Outlet, Link, useLocation, redirect } from '@tanstack/react-router'
 import { Users, Package, BarChart3, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { frozenModuleGuard } from '@/lib/frozen-modules'
 import { authService } from '@/lib/api/services/auth'
 
 export const Route = createFileRoute('/admin/lexware')({
   beforeLoad: async () => {
+    // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts);
+    // Lexware-Migration ist abgeschlossen, Bestand bleibt lesbar im Archiv.
+    frozenModuleGuard('lexware')
     // Security: Nur Admins dürfen auf Lexware-Import zugreifen
+    // (Optional Chaining: im per frozenModuleGuard unreachable gewordenen Code
+    // narrowt tsc nicht mehr — bleibt für ein späteres Auftauen erhalten.)
     const user = authService.getCurrentUser()
-    if (!user || !user.is_superuser) {
+    if (!user?.is_superuser) {
       throw redirect({
         to: '/admin',
         replace: true,

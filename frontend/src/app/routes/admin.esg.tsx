@@ -5,6 +5,7 @@
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { cn } from '@/lib/utils';
 import { UnifiedErrorBoundary } from '@/components/errors/UnifiedErrorBoundary';
 import {
@@ -17,6 +18,8 @@ import {
 } from 'lucide-react';
 
 export const Route = createFileRoute('/admin/esg')({
+    // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts)
+    beforeLoad: () => frozenModuleGuard('ai_speculative'),
     component: ESGLayout,
 });
 

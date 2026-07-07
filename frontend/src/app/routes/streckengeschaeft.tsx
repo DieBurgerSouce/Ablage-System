@@ -6,6 +6,7 @@
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -17,6 +18,8 @@ import {
 } from 'lucide-react';
 
 export const Route = createFileRoute('/streckengeschaeft')({
+  // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts)
+  beforeLoad: () => frozenModuleGuard('streckengeschaeft'),
   component: StreckengeschaeftLayout,
 });
 

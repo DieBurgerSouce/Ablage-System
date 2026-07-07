@@ -5,11 +5,14 @@
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { cn } from '@/lib/utils';
 import { Link2, BookOpen, FileText, Brain, RefreshCw } from 'lucide-react';
 import { DATEVErrorBoundary } from '@/features/datev/components/ErrorBoundary';
 
 export const Route = createFileRoute('/admin/datev-connect')({
+    // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts)
+    beforeLoad: () => frozenModuleGuard('datev'),
     component: DATEVConnectLayout,
 });
 

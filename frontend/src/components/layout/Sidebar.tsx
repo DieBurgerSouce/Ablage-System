@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe, Lightbulb, LayoutGrid, PieChart, Euro, FileBarChart2, Pen, Webhook, Command, Bot, GitCompareArrows, Blocks, FileCode } from 'lucide-react'
 import { useState } from 'react'
+import { isPathFrozen } from '@/lib/frozen-modules'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
 import { SettingsModal } from '@/components/settings'
@@ -146,25 +147,29 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/compliance" icon={Shield} label="Compliance" onNavigate={onNavigate} />
                 <SidebarLink to="/teams" icon={Users2} label="Teams" onNavigate={onNavigate} />
 
-                {/* Finanzbuchhaltung Section */}
-                <button
-                    onClick={() => setShowFinanceMenu(!showFinanceMenu)}
-                    className="w-full flex items-center justify-between px-3 py-2 min-h-[44px] rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    aria-expanded={showFinanceMenu}
-                    aria-label={showFinanceMenu ? "Finanzbuchhaltung ausblenden" : "Finanzbuchhaltung anzeigen"}
-                >
-                    <span className="flex items-center gap-3">
-                        <Euro className="w-4 h-4" />
-                        Finanzbuchhaltung
-                    </span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showFinanceMenu ? 'rotate-180' : ''}`} />
-                </button>
-                {showFinanceMenu && (
-                    <div className="ml-2 space-y-0.5 border-l border-sidebar-border pl-2">
-                        <SidebarLink to="/german-finance/ust" icon={Calculator} label="USt-Voranmeldung" onNavigate={onNavigate} />
-                        <SidebarLink to="/german-finance/bwa" icon={FileBarChart2} label="BWA" onNavigate={onNavigate} />
-                        <SidebarLink to="/german-finance/cashflow" icon={TrendingUp} label="Cashflow-Prognose" onNavigate={onNavigate} />
-                    </div>
+                {/* Finanzbuchhaltung Section — komplett ausgeblendet, wenn Modul eingefroren (Odoo-Umstellung) */}
+                {!isPathFrozen('/german-finance').frozen && (
+                    <>
+                        <button
+                            onClick={() => setShowFinanceMenu(!showFinanceMenu)}
+                            className="w-full flex items-center justify-between px-3 py-2 min-h-[44px] rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            aria-expanded={showFinanceMenu}
+                            aria-label={showFinanceMenu ? "Finanzbuchhaltung ausblenden" : "Finanzbuchhaltung anzeigen"}
+                        >
+                            <span className="flex items-center gap-3">
+                                <Euro className="w-4 h-4" />
+                                Finanzbuchhaltung
+                            </span>
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showFinanceMenu ? 'rotate-180' : ''}`} />
+                        </button>
+                        {showFinanceMenu && (
+                            <div className="ml-2 space-y-0.5 border-l border-sidebar-border pl-2">
+                                <SidebarLink to="/german-finance/ust" icon={Calculator} label="USt-Voranmeldung" onNavigate={onNavigate} />
+                                <SidebarLink to="/german-finance/bwa" icon={FileBarChart2} label="BWA" onNavigate={onNavigate} />
+                                <SidebarLink to="/german-finance/cashflow" icon={TrendingUp} label="Cashflow-Prognose" onNavigate={onNavigate} />
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {/* Ablage-Struktur Section */}
@@ -509,6 +514,12 @@ interface SidebarLinkProps {
 
 function SidebarLink({ to, icon: Icon, label, onNavigate, dataTour, featureId }: SidebarLinkProps) {
     const { markDiscovered } = useFeatureDiscovery();
+
+    // Eingefrorene Module (Odoo-Umstellung 08/2026) gar nicht erst anbieten
+    // — zentraler Filter für ALLE Sidebar-Einträge (siehe lib/frozen-modules.ts).
+    if (isPathFrozen(to).frozen) {
+        return null;
+    }
 
     const handleClick = () => {
         if (featureId && NEW_FEATURES.includes(featureId)) {

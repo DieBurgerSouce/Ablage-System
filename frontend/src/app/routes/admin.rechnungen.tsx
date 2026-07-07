@@ -7,10 +7,13 @@
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Receipt, List } from 'lucide-react';
 
 export const Route = createFileRoute('/admin/rechnungen')({
+  // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts)
+  beforeLoad: () => frozenModuleGuard('invoice_tracking'),
   component: RechnungenLayout,
 });
 

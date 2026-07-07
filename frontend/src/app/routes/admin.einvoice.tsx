@@ -8,10 +8,14 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { FileCode } from 'lucide-react';
 import { EInvoiceView } from '@/features/einvoice/components/EInvoiceView';
 
 export const Route = createFileRoute('/admin/einvoice')({
+    // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts);
+    // ZUGFeRD-PARSING im E-Mail-Import bleibt aktiv (nur Erzeugung eingefroren).
+    beforeLoad: () => frozenModuleGuard('einvoice'),
     component: EInvoicePage,
 });
 

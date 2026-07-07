@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Repeat,
@@ -33,6 +34,8 @@ interface RecurringInvoicesSearch {
 }
 
 export const Route = createFileRoute('/recurring-invoices')({
+  // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts)
+  beforeLoad: () => frozenModuleGuard('finance'),
   validateSearch: (search: Record<string, unknown>): RecurringInvoicesSearch => ({
     detail: search.detail as string | undefined,
     tab: search.tab as string | undefined,

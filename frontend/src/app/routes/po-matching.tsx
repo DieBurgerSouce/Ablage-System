@@ -7,6 +7,7 @@
  */
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POMatchList } from '@/features/po-matching/components/POMatchList';
 import { POMatchDetail } from '@/features/po-matching/components/POMatchDetail';
@@ -19,6 +20,8 @@ interface POMatchingSearch {
 }
 
 export const Route = createFileRoute('/po-matching')({
+  // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts)
+  beforeLoad: () => frozenModuleGuard('finance'),
   validateSearch: (search: Record<string, unknown>): POMatchingSearch => ({
     tab: (search.tab as string) || undefined,
     matchId: (search.matchId as string) || undefined,
