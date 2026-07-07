@@ -14,36 +14,31 @@ services:
       POSTGRES_MAX_CONNECTIONS: "300"
       POSTGRES_SHARED_BUFFERS: "4GB"
     # PostgreSQL Performance-Tuning via Command-Line Args
-    # SSL/TLS Configuration:
-    # To enable SSL, mount server certificates to /var/lib/postgresql/server.crt and server.key
-    # Example: ./infrastructure/postgres/certs/server.crt:/var/lib/postgresql/server.crt:ro
-    entrypoint: >
-      bash -c "
-        cp /tmp/ssl/server.crt /var/lib/postgresql/server.crt &&
-        cp /tmp/ssl/server.key /var/lib/postgresql/server.key &&
-        chown postgres:postgres /var/lib/postgresql/server.crt /var/lib/postgresql/server.key &&
-        chmod 600 /var/lib/postgresql/server.key &&
-        chmod 644 /var/lib/postgresql/server.crt &&
-        exec docker-entrypoint.sh postgres
-        -c shared_buffers=4GB
-        -c max_connections=300
-        -c effective_cache_size=12GB
-        -c maintenance_work_mem=1GB
-        -c wal_buffers=64MB
-        -c checkpoint_completion_target=0.9
-        -c wal_level=replica
-        -c max_wal_senders=3
-        -c wal_keep_size=1GB
-        -c ssl=on
-        -c ssl_cert_file=/var/lib/postgresql/server.crt
-        -c ssl_key_file=/var/lib/postgresql/server.key
-        -c hba_file=/etc/postgresql/pg_hba.conf
-      "
+    #
+    # M-42 (Phase 0 Betriebsreife): SSL-Default ENTFERNT. Der fruehere
+    # entrypoint-Override kopierte gitignorte Zertifikate aus
+    # ./infrastructure/postgres/certs/ — auf einem frischen Clone fehlen die
+    # Dateien und Postgres crashte beim Start. Das Container-interne
+    # data-network braucht kein TLS (siehe Kommentar am backend-DATABASE_URL);
+    # Postgres ist zudem nur auf 127.0.0.1:5434 gebunden.
+    # TLS bei Bedarf reaktivieren: Zertifikate erzeugen, die drei ssl-Flags
+    # (-c ssl=on -c ssl_cert_file=... -c ssl_key_file=...) + Cert-Mounts wieder
+    # ergaenzen und infrastructure/postgres/pg_hba.conf auf hostssl stellen.
+    command: >
+      postgres
+      -c shared_buffers=4GB
+      -c max_connections=300
+      -c effective_cache_size=12GB
+      -c maintenance_work_mem=1GB
+      -c wal_buffers=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c wal_keep_size=1GB
+      -c hba_file=/etc/postgresql/pg_hba.conf
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ./infrastructure/postgres/certs/server.crt:/tmp/ssl/server.crt:ro
-      - ./infrastructure/postgres/certs/server.key:/tmp/ssl/server.key:ro
       - ./infrastructure/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     ports:
       - "127.0.0.1:5434:5432"  # Port 5434 (5433 von Hyper-V reserviert)
@@ -639,6 +634,10 @@ services:
       # laeuft (Image enthaelt tests/ nicht). Read-only, beeinflusst den Prod-Pfad nicht.
       - ./tests:/app/tests:ro
       - ./pytest.ini:/app/pytest.ini:ro
+      # M-07 (Phase 0): scripts/ read-only mounten (wie bei worker/worker-cpu),
+      # damit die dokumentierten CLIs (scripts/create_admin.py, scripts/seed_e2e.py)
+      # im backend-Container out-of-the-box laufen.
+      - ./scripts:/app/scripts:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage
@@ -1050,7 +1049,13 @@ services:
     container_name: ablage-frontend
     ports:
       - "80:80"
-      - "443:443"  # HTTPS Port
+      - "443:443"  # HTTPS Port (M-14: TLS-Terminierung im LAN)
+    # M-14 (Phase 0): LAN-TLS-Zertifikate read-only bereitstellen.
+    # Erzeugung: scripts/generate-lan-tls.sh -> infrastructure/nginx/ssl/
+    # (Verzeichnis ist committed via .gitkeep, Zertifikate sind gitignored;
+    # ohne Zertifikate startet nginx weiter ueber :80 — kein Fresh-Clone-Bruch.)
+    volumes:
+      - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
     # FAANG-AUDIT FIX: Frontend wartet auf gesundes Backend
     depends_on:
       backend:
