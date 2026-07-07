@@ -16,9 +16,11 @@ import xmlrpc.client
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from decimal import Decimal, ROUND_HALF_UP
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 from functools import partial
 
+from app.schemas.odoo import OdooVendorBillDraft
 from app.services.erp.base_connector import (
     ERPConnector,
     ERPConnectionConfig,
@@ -235,6 +237,20 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         if not self._check_rate_limit():
             raise Exception("Rate limit erreicht")
 
+        # Kopie, damit das kwargs-Dict des Aufrufers nie mutiert wird
+        call_kwargs: Dict[str, Any] = dict(kwargs) if kwargs else {}
+
+        if self.config.odoo_company_id is not None:
+            # Odoo-Multi-Company: Company-Context injizieren, damit alle
+            # Operationen auf die konfigurierte Company beschraenkt sind.
+            # Vorhandenen context des Aufrufers respektieren und nur
+            # fehlende Schluessel ergaenzen (setdefault = nicht ueberschreiben).
+            company_id = self.config.odoo_company_id
+            context: Dict[str, Any] = dict(call_kwargs.get("context") or {})
+            context.setdefault("allowed_company_ids", [company_id])
+            context.setdefault("company_id", company_id)
+            call_kwargs["context"] = context
+
         try:
             result = await self._run_blocking(
                 self._models.execute_kw,
@@ -244,7 +260,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 model,
                 method,
                 args,
-                kwargs or {}
+                call_kwargs
             )
             return result
 
@@ -256,6 +272,60 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 error=self._sanitize_error(e),
             )
             raise
+
+    async def iter_records(
+        self,
+        model: str,
+        domain: List[Any],
+        fields: List[str],
+        *,
+        batch_size: int = 200,
+        order: str = "write_date asc, id asc",
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """
+        Iteriert paginiert ueber alle Datensaetze eines Odoo-Modells.
+
+        Fuer den Vollarchiv-Pull-Spiegel (Odoo -> Ablage) gedacht:
+        search_read-Schleife mit offset/limit und stabiler Sortierung
+        (Default: write_date + id aufsteigend als Tiebreaker), bis ein
+        leeres Batch zurueckkommt. Ein Batch kleiner als batch_size
+        beendet die Schleife ebenfalls (spart einen RPC-Roundtrip,
+        relevant wegen SaaS-Drosselung).
+
+        Fehler aus _execute_kw propagieren bewusst (kein stilles
+        Verschlucken): ein abgebrochener Spiegel-Lauf darf vom Aufrufer
+        nicht als vollstaendig gewertet werden (Sync-Cursor!).
+
+        Args:
+            model: Odoo-Modell (z.B. "account.move")
+            domain: Odoo-Suchdomain
+            fields: Zu lesende Felder
+            batch_size: Datensaetze pro RPC-Call
+            order: Stabile Sortierung (write_date + id)
+
+        Yields:
+            Einzelne Datensaetze als Dict
+        """
+        offset = 0
+        while True:
+            batch = await self._execute_kw(
+                model,
+                "search_read",
+                [domain],
+                {
+                    "fields": fields,
+                    "limit": batch_size,
+                    "offset": offset,
+                    "order": order,
+                },
+            )
+            if not batch:
+                break
+            for record in batch:
+                yield record
+            if len(batch) < batch_size:
+                break
+            offset += len(batch)
 
     # ==========================================================================
     # Customer Operations
@@ -709,6 +779,402 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 error=self._sanitize_error(e)
             )
             return []
+
+    async def download_attachment(
+        self,
+        attachment_id: int,
+    ) -> Optional[Tuple[bytes, Dict[str, Any]]]:
+        """
+        Laedt den Binaerinhalt eines ir.attachment herunter.
+
+        Liest name/mimetype/checksum/res_model/res_id/datas und
+        dekodiert das base64-Feld datas. Odoo liefert fuer leere
+        Binaerfelder False (nicht None) - z.B. bei type='url'-Attachments
+        oder fehlendem Filestore-Blob; in dem Fall wird b"" als Inhalt
+        zurueckgegeben (der Aufrufer entscheidet, ob er leere
+        Attachments ueberspringt). Der checksum in den Metadaten dient
+        der Hash-Verifikation im GoBD-Spiegel.
+
+        Args:
+            attachment_id: ID des ir.attachment
+
+        Returns:
+            Tuple (Inhalt als bytes, Metadaten-Dict ohne datas)
+            oder None bei Fehler/nicht gefunden
+        """
+        try:
+            import base64
+
+            records = await self._execute_kw(
+                "ir.attachment",
+                "read",
+                [[attachment_id]],
+                {"fields": [
+                    "name", "mimetype", "checksum", "res_model", "res_id", "datas"
+                ]}
+            )
+            if not records:
+                logger.warning(
+                    "odoo_attachment_not_found",
+                    attachment_id=attachment_id,
+                )
+                return None
+
+            metadata = dict(records[0])
+            datas = metadata.pop("datas", None)
+            # Odoo liefert False fuer leere Binaerfelder (nicht None)
+            content = base64.b64decode(datas) if datas else b""
+
+            logger.info(
+                "odoo_attachment_downloaded",
+                attachment_id=attachment_id,
+                size=len(content),
+            )
+            return content, metadata
+
+        except Exception as e:
+            logger.error(
+                "odoo_download_attachment_error",
+                attachment_id=attachment_id,
+                error=self._sanitize_error(e)
+            )
+            return None
+
+    async def list_attachments(
+        self,
+        res_model: str,
+        res_id: int,
+        *,
+        include_field_attachments: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """
+        Listet Anhaenge eines Odoo-Datensatzes (fuer den Spiegel-Sync).
+
+        ACHTUNG Odoo-Falle: Die Standard-Suche auf ir.attachment filtert
+        implizit res_field = False - Binaerfeld-Attachments (z.B. in
+        Feldern gerenderte Rechnungs-PDFs) sind damit unsichtbar. Sobald
+        die Domain selbst einen res_field-Term enthaelt, deaktiviert
+        Odoo diesen impliziten Filter. Mit include_field_attachments=True
+        wird deshalb eine Tautologie-OR-Domain vorangestellt
+        ("res_field = False ODER res_field != False"), die ALLE
+        Attachments des Datensatzes liefert.
+
+        Args:
+            res_model: Odoo-Modell des Traegers (z.B. "account.move")
+            res_id: ID des Traeger-Datensatzes
+            include_field_attachments: Auch Binaerfeld-Attachments
+                (res_field != False) einschliessen
+
+        Returns:
+            Liste der Anhaenge mit Metadaten (inkl. checksum fuer die
+            Hash-Verifikation im GoBD-Spiegel)
+        """
+        try:
+            domain: List[Any] = [
+                ["res_model", "=", res_model],
+                ["res_id", "=", res_id],
+            ]
+            if include_field_attachments:
+                # Expliziter res_field-Term deaktiviert Odoos impliziten
+                # res_field=False-Filter; die OR-Tautologie matcht alle.
+                domain = [
+                    "|",
+                    ["res_field", "=", False],
+                    ["res_field", "!=", False],
+                ] + domain
+
+            attachments = await self._execute_kw(
+                "ir.attachment",
+                "search_read",
+                [domain],
+                {"fields": [
+                    "id", "name", "mimetype", "file_size", "checksum",
+                    "res_field", "create_date", "write_date",
+                ]}
+            )
+            return attachments
+
+        except Exception as e:
+            logger.error(
+                "odoo_list_attachments_error",
+                res_model=res_model,
+                res_id=res_id,
+                error=self._sanitize_error(e)
+            )
+            return []
+
+    # ==========================================================================
+    # Vendor-Bill-Push & Partner-Matching (Phase 2 Neuausrichtung)
+    # ==========================================================================
+
+    async def create_vendor_bill_draft(
+        self,
+        bill: OdooVendorBillDraft,
+        *,
+        pdf_content: Optional[bytes] = None,
+        pdf_filename: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Legt eine Entwurfs-Lieferantenrechnung in Odoo an.
+
+        account.move.create mit move_type="in_invoice"; create OHNE
+        state-Feld ergibt implizit einen Entwurf (draft) - Buchung,
+        Zahlung und Mahnung passieren in Odoo. Der Betrag geht als
+        eine Brutto-Sammelzeile (quantity 1); Steuer-/Kontenzuordnung
+        erfolgt beim Pruefen des Entwurfs in Odoo.
+
+        Optional wird das Original-PDF via attach_document angehaengt
+        und per write als message_main_attachment_id gesetzt (Haupt-
+        Anhang in der Odoo-Belegvorschau). Ein Attachment-Fehler ist
+        nicht fatal: Die Entwurfsrechnung existiert dann bereits und
+        wird trotzdem zurueckgemeldet.
+
+        Args:
+            bill: Validierte Entwurfsdaten (OdooVendorBillDraft)
+            pdf_content: Original-PDF als Bytes (optional)
+            pdf_filename: Dateiname des PDFs (optional)
+
+        Returns:
+            move_id als str oder None bei Fehler
+        """
+        try:
+            # Decimal NUR am XML-RPC-Rand in float wandeln: xmlrpc.client
+            # kann Decimal nicht marshallen (TypeError). Vorher kaufmaennisch
+            # auf 2 Nachkommastellen quantisieren, damit die float-Konvertierung
+            # keinen Rundungsdrift einschleppt.
+            price_unit = float(
+                bill.amount_total_brutto.quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            )
+
+            move_data: Dict[str, Any] = {
+                "move_type": "in_invoice",
+                "partner_id": bill.partner_id,
+                "invoice_date": bill.invoice_date.isoformat(),
+                "ref": bill.ref,
+                "invoice_line_ids": [
+                    (0, 0, {
+                        "name": bill.line_name,
+                        "quantity": 1.0,
+                        "price_unit": price_unit,
+                    })
+                ],
+            }
+            if bill.narration:
+                move_data["narration"] = bill.narration
+
+            move_id = await self._execute_kw(
+                "account.move",
+                "create",
+                [move_data]
+            )
+
+            if not move_id:
+                logger.error(
+                    "odoo_vendor_bill_create_failed",
+                    partner_id=bill.partner_id,
+                )
+                return None
+
+            if pdf_content is not None:
+                await self._attach_main_pdf(
+                    move_id=int(move_id),
+                    pdf_content=pdf_content,
+                    pdf_filename=pdf_filename or f"eingangsrechnung_{move_id}.pdf",
+                )
+
+            logger.info(
+                "odoo_vendor_bill_draft_created",
+                move_id=move_id,
+                partner_id=bill.partner_id,
+                has_pdf=pdf_content is not None,
+            )
+            return str(move_id)
+
+        except Exception as e:
+            logger.error(
+                "odoo_create_vendor_bill_error",
+                partner_id=bill.partner_id,
+                error=self._sanitize_error(e)
+            )
+            return None
+
+    async def _attach_main_pdf(
+        self,
+        move_id: int,
+        pdf_content: bytes,
+        pdf_filename: str,
+    ) -> None:
+        """
+        Haengt das PDF an den Move und setzt message_main_attachment_id.
+
+        Fehler hier sind bewusst nicht fatal (die Entwurfsrechnung
+        existiert bereits) - sie werden geloggt, der Aufrufer erhaelt
+        die move_id trotzdem.
+        """
+        attached = await self.attach_document(
+            entity=ERPEntity.INVOICE,
+            erp_id=str(move_id),
+            document_data=pdf_content,
+            filename=pdf_filename,
+            mime_type="application/pdf",
+        )
+        if not attached:
+            logger.warning(
+                "odoo_vendor_bill_pdf_attach_failed",
+                move_id=move_id,
+            )
+            return
+
+        try:
+            # attach_document liefert nur bool (Basisklassen-Signatur) ->
+            # juengstes Attachment des Moves nachschlagen, um es als
+            # Haupt-Anhang zu setzen.
+            attachment_ids = await self._execute_kw(
+                "ir.attachment",
+                "search",
+                [[
+                    ["res_model", "=", "account.move"],
+                    ["res_id", "=", move_id],
+                ]],
+                {"order": "id desc", "limit": 1}
+            )
+            if attachment_ids:
+                await self._execute_kw(
+                    "account.move",
+                    "write",
+                    [[move_id], {"message_main_attachment_id": attachment_ids[0]}]
+                )
+        except Exception as e:
+            logger.warning(
+                "odoo_vendor_bill_main_attachment_error",
+                move_id=move_id,
+                error=self._sanitize_error(e),
+            )
+
+    async def find_partner(
+        self,
+        *,
+        vat: Optional[str] = None,
+        iban: Optional[str] = None,
+        supplier_ref: Optional[str] = None,
+        name: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Partner-Matching-Kaskade fuer den Eingangsrechnungs-Push.
+
+        Fuehrt EINZELNE Suchen in fester Reihenfolge aus und bricht beim
+        ersten nicht-leeren Ergebnis ab:
+          1. USt-IdNr. (res.partner.vat, =ilike; normalisiert:
+             Leerzeichen raus, Grossbuchstaben)
+          2. IBAN (res.partner.bank.sanitized_acc_number; normalisiert
+             auf alphanumerisch/upper) -> Aufloesung auf res.partner
+          3. Lieferantennummer (res.partner.ref, exakter Vergleich)
+          4. Name (ilike, limit 5) - nur als letzter Fallback, wenn die
+             Stufen 1-3 leer blieben
+
+        Exakte Identifikatoren (1-3) laufen bewusst OHNE
+        supplier_rank-Filter: Ein VAT-/IBAN-/ref-Treffer ist auch dann
+        der richtige Partner, wenn er bisher nur Kunde war. Die
+        unscharfe Namenssuche (4) ist auf Lieferanten
+        (supplier_rank > 0) eingeschraenkt.
+
+        Jedes Ergebnis-Dict wird um "match_source" ergaenzt
+        ("vat" | "iban" | "ref" | "name"). Die Eindeutigkeits-
+        Entscheidung (nur eindeutiger Treffer pusht) trifft der
+        aufrufende Service.
+
+        Returns:
+            Liste von Partner-Dicts (ggf. leer)
+        """
+        fields = [
+            "id", "name", "vat", "ref",
+            "supplier_rank", "customer_rank", "email",
+        ]
+
+        try:
+            if vat:
+                vat_normalized = vat.replace(" ", "").upper()
+                partners = await self._execute_kw(
+                    "res.partner",
+                    "search_read",
+                    [[["vat", "=ilike", vat_normalized]]],
+                    {"fields": fields}
+                )
+                if partners:
+                    return self._tag_match_source(partners, "vat")
+
+            if iban:
+                iban_normalized = "".join(
+                    c for c in iban if c.isalnum()
+                ).upper()
+                banks = await self._execute_kw(
+                    "res.partner.bank",
+                    "search_read",
+                    [[["sanitized_acc_number", "=", iban_normalized]]],
+                    {"fields": ["partner_id"]}
+                )
+                partner_ids: List[int] = []
+                for bank in banks:
+                    partner_ref = bank.get("partner_id")
+                    # search_read liefert m2o als [id, display_name] (oder False)
+                    if partner_ref:
+                        partner_ids.append(int(partner_ref[0]))
+                # Reihenfolge stabil deduplizieren
+                partner_ids = list(dict.fromkeys(partner_ids))
+                if partner_ids:
+                    partners = await self._execute_kw(
+                        "res.partner",
+                        "read",
+                        [partner_ids],
+                        {"fields": fields}
+                    )
+                    if partners:
+                        return self._tag_match_source(partners, "iban")
+
+            if supplier_ref:
+                partners = await self._execute_kw(
+                    "res.partner",
+                    "search_read",
+                    [[["ref", "=", supplier_ref]]],
+                    {"fields": fields}
+                )
+                if partners:
+                    return self._tag_match_source(partners, "ref")
+
+            if name:
+                partners = await self._execute_kw(
+                    "res.partner",
+                    "search_read",
+                    [[
+                        ["name", "ilike", name],
+                        ["supplier_rank", ">", 0],
+                    ]],
+                    {"fields": fields, "limit": 5}
+                )
+                if partners:
+                    return self._tag_match_source(partners, "name")
+
+            return []
+
+        except Exception as e:
+            # PII-Regel: vat/iban/name NIE mitloggen
+            logger.error(
+                "odoo_find_partner_error",
+                error=self._sanitize_error(e)
+            )
+            return []
+
+    @staticmethod
+    def _tag_match_source(
+        partners: List[Dict[str, Any]],
+        source: str,
+    ) -> List[Dict[str, Any]]:
+        """Ergaenzt jedes Partner-Dict um die Match-Quelle der Kaskade."""
+        for partner in partners:
+            partner["match_source"] = source
+        return partners
 
     # ==========================================================================
     # Additional Odoo-Specific Methods
