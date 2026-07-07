@@ -9,7 +9,8 @@ Phase 6: Odoo Integration Deepening
 Feinpoliert und durchdacht - Type-Safe Odoo Integration.
 """
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Dict, List, Optional, Union
 from uuid import UUID
@@ -317,6 +318,30 @@ class OdooFeedbackPayload(BaseModel):
         ..., description="Feedback-Daten"
     )
     target_field: Optional[str] = Field(None, max_length=100, description="Zielfeld in Odoo")
+
+
+# =============================================================================
+# Vendor-Bill-Push Schemas (Phase 2 Neuausrichtung: Ablage -> Odoo)
+# =============================================================================
+
+
+class OdooVendorBillDraft(BaseModel):
+    """Entwurfs-Lieferantenrechnung fuer den Push nach Odoo.
+
+    Wird vom Eingangskanal (Scan/E-Mail -> OCR -> GoBD-Archiv) befuellt
+    und via OdooConnector.create_vendor_bill_draft als account.move
+    (move_type=in_invoice, implizit draft) angelegt. Der Betrag geht als
+    eine Brutto-Sammelzeile; Steuer-/Kontenzuordnung erfolgt in Odoo.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    partner_id: int = Field(..., gt=0, description="Odoo Partner-ID des Lieferanten")
+    invoice_date: date = Field(..., description="Rechnungsdatum")
+    ref: str = Field(..., min_length=1, max_length=255, description="Lieferanten-Rechnungsnummer")
+    amount_total_brutto: Decimal = Field(..., gt=0, description="Bruttobetrag der Rechnung")
+    currency: str = Field(default="EUR", pattern="^[A-Z]{3}$", description="ISO-4217-Waehrungscode")
+    line_name: str = Field(..., min_length=1, max_length=500, description="Text der Brutto-Sammelzeile")
+    narration: Optional[str] = Field(None, max_length=2000, description="Interne Notiz (Odoo narration)")
 
 
 # =============================================================================

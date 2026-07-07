@@ -67,6 +67,11 @@ class ERPConnectionConfig:
     username: str = ""
     api_key: str = ""  # Wird verschlüsselt gespeichert
 
+    # Odoo-Multi-Company: Wenn gesetzt, injiziert der OdooConnector bei jedem
+    # Call einen Company-Context (allowed_company_ids + company_id).
+    # None = heutiges Verhalten (kein Context-Zwang, alle Companies des Users).
+    odoo_company_id: Optional[int] = None
+
     # Sync-Einstellungen
     sync_direction: ERPSyncDirection = ERPSyncDirection.BIDIRECTIONAL
     sync_interval_minutes: int = 15
