@@ -58,6 +58,7 @@ import { Route as InventoryRouteImport } from './app/routes/inventory'
 import { Route as InboxRouteImport } from './app/routes/inbox'
 import { Route as HoldingRouteImport } from './app/routes/holding'
 import { Route as GermanFinanceRouteImport } from './app/routes/german-finance'
+import { Route as FrozenRouteImport } from './app/routes/frozen'
 import { Route as FraudRouteImport } from './app/routes/fraud'
 import { Route as ForgotPasswordRouteImport } from './app/routes/forgot-password'
 import { Route as FinanzenRouteImport } from './app/routes/finanzen'
@@ -555,6 +556,11 @@ const HoldingRoute = HoldingRouteImport.update({
 const GermanFinanceRoute = GermanFinanceRouteImport.update({
   id: '/german-finance',
   path: '/german-finance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FrozenRoute = FrozenRouteImport.update({
+  id: '/frozen',
+  path: '/frozen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FraudRoute = FraudRouteImport.update({
@@ -1887,6 +1893,7 @@ export interface FileRoutesByFullPath {
   '/finanzen': typeof FinanzenRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
+  '/frozen': typeof FrozenRoute
   '/german-finance': typeof GermanFinanceRouteWithChildren
   '/holding': typeof HoldingRouteWithChildren
   '/inbox': typeof InboxRoute
@@ -2188,6 +2195,7 @@ export interface FileRoutesByTo {
   '/executive': typeof ExecutiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
+  '/frozen': typeof FrozenRoute
   '/german-finance': typeof GermanFinanceRouteWithChildren
   '/holding': typeof HoldingRouteWithChildren
   '/inbox': typeof InboxRoute
@@ -2466,6 +2474,7 @@ export interface FileRoutesById {
   '/finanzen': typeof FinanzenRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
+  '/frozen': typeof FrozenRoute
   '/german-finance': typeof GermanFinanceRouteWithChildren
   '/holding': typeof HoldingRouteWithChildren
   '/inbox': typeof InboxRoute
@@ -2772,6 +2781,7 @@ export interface FileRouteTypes {
     | '/finanzen'
     | '/forgot-password'
     | '/fraud'
+    | '/frozen'
     | '/german-finance'
     | '/holding'
     | '/inbox'
@@ -3073,6 +3083,7 @@ export interface FileRouteTypes {
     | '/executive'
     | '/forgot-password'
     | '/fraud'
+    | '/frozen'
     | '/german-finance'
     | '/holding'
     | '/inbox'
@@ -3350,6 +3361,7 @@ export interface FileRouteTypes {
     | '/finanzen'
     | '/forgot-password'
     | '/fraud'
+    | '/frozen'
     | '/german-finance'
     | '/holding'
     | '/inbox'
@@ -3655,6 +3667,7 @@ export interface RootRouteChildren {
   FinanzenRoute: typeof FinanzenRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FraudRoute: typeof FraudRoute
+  FrozenRoute: typeof FrozenRoute
   GermanFinanceRoute: typeof GermanFinanceRouteWithChildren
   HoldingRoute: typeof HoldingRouteWithChildren
   InboxRoute: typeof InboxRoute
@@ -4062,6 +4075,13 @@ declare module '@tanstack/react-router' {
       path: '/german-finance'
       fullPath: '/german-finance'
       preLoaderRoute: typeof GermanFinanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/frozen': {
+      id: '/frozen'
+      path: '/frozen'
+      fullPath: '/frozen'
+      preLoaderRoute: typeof FrozenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fraud': {
@@ -6793,6 +6813,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanzenRoute: FinanzenRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   FraudRoute: FraudRoute,
+  FrozenRoute: FrozenRoute,
   GermanFinanceRoute: GermanFinanceRouteWithChildren,
   HoldingRoute: HoldingRouteWithChildren,
   InboxRoute: InboxRoute,

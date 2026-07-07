@@ -3,6 +3,7 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
+import { frozenModuleGuard } from '@/lib/frozen-modules';
 import { EuerExportPanel } from '@/features/accounting/components/EuerExportPanel';
 import { useCurrentCompany } from '@/components/company/use-company-context';
 
@@ -35,5 +36,7 @@ function EuerExportPage() {
 }
 
 export const Route = createFileRoute('/admin/euer-export')({
+    // Eingefroren seit Odoo-Umstellung 08/2026 (siehe lib/frozen-modules.ts)
+    beforeLoad: () => frozenModuleGuard('accounting'),
     component: EuerExportPage,
 });
