@@ -1095,6 +1095,19 @@ class Settings(BaseSettings):
         description="Aktiviert den automatischen Bank-Sync-Beat (periodischer FinTS-Abgleich)"
     )
 
+    # =============================================================================
+    # Modul-Einfrieren (Odoo-Neuausrichtung 2026, Plan §4c.1)
+    # =============================================================================
+    # Odoo 18 uebernimmt ab 01.08.2026 die ERP-Prozesse; die ERP-Doppel-Module des
+    # Ablage-Systems sind per Default eingefroren (Router nicht registriert -> 404,
+    # Celery-Includes/Beat-Eintraege entfernt). Reaktivierung einzelner Module per
+    # Komma-Liste (z.B. "banking,datev") oder "*" fuer alle. Bekannte Modul-Keys
+    # und Details: app/core/module_registry.py.
+    ACTIVE_OPTIONAL_MODULES: str = Field(
+        default="",
+        description="Komma-Liste eingefrorener Module, die reaktiviert werden sollen (siehe app/core/module_registry.py)"
+    )
+
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""

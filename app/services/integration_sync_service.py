@@ -16,6 +16,12 @@ from sqlalchemy import and_, case, desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.core.module_registry import (
+    MODULE_BANKING,
+    MODULE_DATEV,
+    MODULE_LEXWARE,
+    is_module_active,
+)
 from app.core.safe_errors import safe_error_log
 from app.db.models_integration_sync import (
     INTEGRATION_TYPES,
@@ -37,6 +43,16 @@ _SYNC_TASK_MAP: Dict[str, str] = {
     "banking": "app.workers.tasks.banking_tasks.sync_banking_manual",
     "slack": "app.workers.tasks.import_tasks.sync_slack_status",
     "email": "app.workers.tasks.import_tasks.run_email_import_all",
+}
+
+# FROZEN-Guard (Odoo-Neuausrichtung 2026): Diese Integrationen dispatchen in
+# Task-Module eingefrorener Module (app/core/module_registry.py). Ohne Guard
+# wuerde trigger_sync Tasks senden, die der Worker nicht mehr laedt.
+# slack/email sind Kern-Integrationen und bleiben ungeguarded.
+_SYNC_MODULE_GUARDS: Dict[str, str] = {
+    "datev": MODULE_DATEV,
+    "lexware": MODULE_LEXWARE,
+    "banking": MODULE_BANKING,
 }
 
 # Zeitraum für Fehler-Rate-Berechnung im Health-Check
@@ -318,6 +334,21 @@ class IntegrationSyncService:
             raise ValueError(
                 f"Ungültiger Integrations-Typ: '{integration_type}'. "
                 f"Erlaubt: {', '.join(INTEGRATION_TYPES)}"
+            )
+
+        # FROZEN-Guard (Odoo-Neuausrichtung): kein Dispatch in eingefrorene Module
+        frozen_module_key = _SYNC_MODULE_GUARDS.get(integration_type)
+        if frozen_module_key is not None and not is_module_active(frozen_module_key):
+            logger.info(
+                "module_frozen_sync_trigger_skipped",
+                integration_type=integration_type,
+                module=frozen_module_key,
+                company_id=str(company_id),
+            )
+            raise RuntimeError(
+                f"Integration '{integration_type}' ist eingefroren — dieses Modul "
+                "übernimmt künftig Odoo. Reaktivierung über ACTIVE_OPTIONAL_MODULES "
+                "(siehe app/core/module_registry.py)."
             )
 
         # Konfiguration prüfen

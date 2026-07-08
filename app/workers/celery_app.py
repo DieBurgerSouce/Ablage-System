@@ -12,12 +12,24 @@ from celery.signals import (
     worker_ready, worker_shutdown, worker_process_shutdown, celeryd_init
 )
 from contextlib import contextmanager
-from typing import Dict, Optional
+from typing import Dict, FrozenSet, List, Optional, Tuple
 import torch
 from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
+from app.core.module_registry import (
+    MODULE_ACCOUNTING,
+    MODULE_AI_SPECULATIVE,
+    MODULE_BANKING,
+    MODULE_DATEV,
+    MODULE_DOCUMENT_CHAINS,
+    MODULE_EINVOICE,
+    MODULE_FINANCE,
+    MODULE_LEXWARE,
+    MODULE_RISK_FINANZKI,
+    is_module_active,
+)
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.workers.celery_metrics import (
     record_task_started, record_task_succeeded, record_task_failed,
@@ -262,12 +274,87 @@ def distributed_gpu_lock(timeout: int = _GPU_LOCK_ACQUIRE_TIMEOUT):
         release_gpu_lock(lock_value)
 
 
-# Create Celery app
-celery_app = Celery(
-    "ablage_system",
-    broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND,
-    include=[
+# =============================================================================
+# FROZEN (Odoo uebernimmt ab 01.08.2026): Task-Module eingefrorener Domaenen
+# =============================================================================
+# Odoo-Neuausrichtung Phase 1 (Plan par.4c.1, app/core/module_registry.py):
+# Task-Module eingefrorener Module fliegen aus der Celery-include-Liste;
+# ihre Beat-Eintraege werden nach dem conf-Setup gepoppt (siehe Block nach
+# dem FINTS-Pop-Muster weiter unten). Reaktivierung: ACTIVE_OPTIONAL_MODULES.
+# WICHTIG: Der all_models-Import oben bleibt unangetastet (ORM braucht ALLE
+# Klassen, auch die eingefrorener Module — kein Mapper-Crash, keine Migration).
+# AKTIV bleiben muessen u.a.: erp_sync_tasks, odoo_tasks, import_tasks,
+# email/folder-Import, ocr*, embedding*, backup*, workflow*, approval*,
+# alert*, entity_linking*, auto_filing*, privat*, maintenance/metrics/dlq.
+FROZEN_MODULE_TASK_INCLUDES: Dict[str, Tuple[str, ...]] = {
+    MODULE_BANKING: (
+        "app.workers.tasks.banking_tasks",        # Dunning/Mahnlauf, FinTS, SEPA, Reconcile, Skonto-Alerts
+        "app.workers.tasks.banking_psd2_tasks",   # PSD2-Konten-Sync
+        "app.workers.tasks.liquidity_tasks",      # Liquiditaets-Monitoring (Cashflow-Alerts)
+    ),
+    MODULE_ACCOUNTING: (
+        "app.workers.tasks.gl_posting_tasks",     # GL Auto-Posting, Trial Balance, EUeR
+        "app.workers.tasks.german_finance_tasks", # USt-VA, BWA, Cashflow-Forecast
+    ),
+    MODULE_FINANCE: (
+        "app.workers.tasks.cashflow_prediction_tasks",  # Monte-Carlo/Entity-Forecasts
+    ),
+    MODULE_DATEV: (
+        "app.workers.tasks.datev_connect_tasks",  # DATEV-Sync/-Push/-Festschreibung
+    ),
+    MODULE_EINVOICE: (
+        "app.workers.tasks.einvoice_tasks",       # Batch-Validierung erzeugter E-Rechnungen
+    ),
+    MODULE_LEXWARE: (
+        "app.workers.tasks.lexware_sync_tasks",   # Lexware-Entity-Sync
+    ),
+    MODULE_DOCUMENT_CHAINS: (
+        "app.workers.tasks.chain_tasks",              # Belegketten-Validierung
+        "app.workers.tasks.chain_intelligence_tasks", # Belegketten-Intelligence
+    ),
+    MODULE_RISK_FINANZKI: (
+        "app.workers.tasks.risk_scoring_tasks",       # Risk-Scores (externe Quellen eh Stubs)
+        "app.workers.tasks.fraud_detection_tasks",    # Fraud-Scans/Model-Training
+    ),
+    MODULE_AI_SPECULATIVE: (
+        "app.workers.tasks.zero_touch_tasks",
+        "app.workers.tasks.proactive_assistant_tasks",
+        "app.workers.tasks.ceo_dashboard_tasks",
+        "app.workers.tasks.nlq_tasks",
+        "app.workers.tasks.knowledge_graph_tasks",
+        "app.workers.tasks.ai_conversation_tasks",
+        "app.workers.tasks.ai_ethics_tasks",
+        "app.workers.tasks.autonomous_trust_tasks",
+        "app.workers.tasks.smart_dashboard_tasks",
+    ),
+}
+# Bewusst NICHT entfernt (Module mit gemischten/aktiven Aufgaben — nur einzelne
+# Beat-Keys werden unten gepoppt): notification_tasks (Digest bleibt),
+# insights_tasks (Briefing bleibt), predictive_tasks (System-Health bleibt),
+# booking_tasks (Vorschlags-API bleibt), extended_alerts_tasks (alert*-Kern),
+# fx_rate_tasks, sla_tasks, tax_package_tasks (unklar -> bleiben drin).
+
+
+def _compute_frozen_task_modules() -> FrozenSet[str]:
+    """Task-Module aller aktuell eingefrorenen Module (fuer include+Beat-Filter)."""
+    frozen: set = set()
+    for module_key, task_modules in FROZEN_MODULE_TASK_INCLUDES.items():
+        if not is_module_active(module_key):
+            frozen.update(task_modules)
+    return frozenset(frozen)
+
+
+_FROZEN_TASK_MODULES: FrozenSet[str] = _compute_frozen_task_modules()
+
+if _FROZEN_TASK_MODULES:
+    logger.info(
+        "module_frozen_task_includes_removed",
+        count=len(_FROZEN_TASK_MODULES),
+        task_modules=sorted(_FROZEN_TASK_MODULES),
+    )
+
+# Vollstaendige include-Liste; eingefrorene Task-Module werden unten gefiltert.
+_CELERY_INCLUDE_ALL: List[str] = [
         "app.workers.tasks.ocr_tasks",
         "app.workers.tasks.embedding_tasks",
         "app.workers.tasks.backup_tasks",
@@ -382,7 +469,14 @@ celery_app = Celery(
         "app.workers.tasks.clustering_tasks",
         "app.workers.tasks.encryption_tasks",
         "app.workers.tasks.summary_tasks",
-    ]
+]
+
+# Create Celery app (include = Vollliste minus Task-Module eingefrorener Module)
+celery_app = Celery(
+    "ablage_system",
+    broker=settings.CELERY_BROKER_URL,
+    backend=settings.CELERY_RESULT_BACKEND,
+    include=[m for m in _CELERY_INCLUDE_ALL if m not in _FROZEN_TASK_MODULES],
 )
 
 # Celery configuration
@@ -3148,6 +3242,65 @@ celery_app.conf.update(
 # echte Reconciliation oder Zahlungs-Benachrichtigungen ausloesen (M9-Risiko).
 if not getattr(settings, "FINTS_AUTO_SYNC_ENABLED", False):
     celery_app.conf.beat_schedule.pop("banking-fints-sync-daily", None)
+
+
+# =============================================================================
+# FROZEN (Odoo uebernimmt ab 01.08.2026): Beat-Pruning eingefrorener Module
+# =============================================================================
+# Gleiches Muster wie der FINTS-Pop oben: Eintraege werden NACH dem conf-Setup
+# aus dem Beat-Schedule entfernt. Zwei Stufen:
+#   1) Sicherheitsnetz: JEDER Beat-Eintrag, dessen Task in einem aus der
+#      include-Liste entfernten Task-Modul liegt, wird gepoppt — sonst wuerde
+#      Beat Tasks dispatchen, die der Worker nicht laedt.
+#   2) FROZEN_MODULE_EXTRA_BEAT_KEYS: einzelne Beat-Keys aus AKTIV bleibenden
+#      Task-Modulen (notification/insights/predictive/booking), deren Zweck in
+#      einer eingefrorenen Domaene liegt (z.B. Mahn-E-Mail-Retry).
+# erp-sync-, odoo-, backup- und embedding-Eintraege stehen bewusst in KEINEM
+# Mapping und bleiben unangetastet. Reaktivierung: ACTIVE_OPTIONAL_MODULES.
+FROZEN_MODULE_EXTRA_BEAT_KEYS: Dict[str, Tuple[str, ...]] = {
+    MODULE_BANKING: (
+        "notification-retry-failed-dunning-emails",  # notification_tasks (aktiv), Zweck: Mahnwesen
+        "insights-skonto-daily",                     # insights_tasks (aktiv), Zweck: Skonto-Empfehlungen
+        "insights-urgent-skonto",                    # insights_tasks (aktiv), Zweck: Skonto-Fristen
+    ),
+    MODULE_DATEV: (
+        "datev-batch-auto-booking",                  # booking_tasks (aktiv), Zweck: DATEV-Auto-Kontierung
+    ),
+    MODULE_FINANCE: (
+        "insights-cashflow-daily",                   # insights_tasks (aktiv), Zweck: Cashflow-Prognosen
+    ),
+    MODULE_RISK_FINANZKI: (
+        "insights-fraud-scan-daily",                 # insights_tasks (aktiv), Zweck: Fraud-Scan
+        "predictive-payment-train-model-weekly",     # predictive_tasks (aktiv), Zweck: Payment-Prediction
+        "predictive-payment-batch-predict-daily",    # predictive_tasks (aktiv), Zweck: Payment-Prediction
+        "predictive-payment-evaluate-model-weekly",  # predictive_tasks (aktiv), Zweck: Payment-Prediction
+    ),
+}
+
+# Stufe 1: Beats entfernter Task-Module (Sicherheitsnetz gegen unregistrierte Tasks)
+for _beat_key in list(celery_app.conf.beat_schedule.keys()):
+    _beat_task_path = str(celery_app.conf.beat_schedule[_beat_key].get("task", ""))
+    if _beat_task_path.rsplit(".", 1)[0] in _FROZEN_TASK_MODULES:
+        celery_app.conf.beat_schedule.pop(_beat_key, None)
+        logger.info(
+            "module_frozen_beat_removed",
+            beat_key=_beat_key,
+            task=_beat_task_path,
+            reason="task_module_not_included",
+        )
+
+# Stufe 2: explizite Beat-Keys aus aktiv bleibenden Task-Modulen
+for _module_key, _extra_beat_keys in FROZEN_MODULE_EXTRA_BEAT_KEYS.items():
+    if is_module_active(_module_key):
+        continue
+    for _beat_key in _extra_beat_keys:
+        if celery_app.conf.beat_schedule.pop(_beat_key, None) is not None:
+            logger.info(
+                "module_frozen_beat_removed",
+                beat_key=_beat_key,
+                module=_module_key,
+                reason="frozen_domain_beat",
+            )
 
 
 class GPUTask(Task):
