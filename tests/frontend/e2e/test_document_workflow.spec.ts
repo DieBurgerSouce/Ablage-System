@@ -343,19 +343,15 @@ test.describe('Document Workflow - Vollstaendiger Dokumenten-Prozess', () => {
       }
     });
 
-    test('sollte DATEV-Export unterstuetzen', async ({ page }) => {
+    test('DATEV-Export ist eingefroren (Redirect auf /frozen)', async ({ page }) => {
+      // Modul eingefroren (Odoo-Neuausrichtung 2026-07): DATEV-Export
+      // übernimmt Odoo. /admin/datev/* leitet per beforeLoad-Guard auf
+      // /frozen?module=datev um; die fruehere Export-UI-Pruefung entfaellt.
+      // Reaktivierung: ACTIVE_OPTIONAL_MODULES=datev + Erwartung zurueckdrehen.
       await page.goto('/admin/datev/export');
 
-      // DATEV-Export-Seite
-      const datevExport = page.locator('[data-testid="datev-export"], .datev-export-form, h1:has-text("DATEV")');
-
-      if (await datevExport.first().isVisible({ timeout: 5000 }).catch(() => false)) {
-        await expect(datevExport.first()).toBeVisible();
-
-        // Export-Button sollte vorhanden sein
-        const exportButton = page.getByRole('button', { name: /Export|Exportieren/i });
-        await expect(exportButton.first()).toBeVisible();
-      }
+      await expect(page).toHaveURL(/\/frozen\?module=datev/, { timeout: 10000 });
+      await expect(page.getByText('Modul eingefroren')).toBeVisible({ timeout: 10000 });
     });
   });
 
