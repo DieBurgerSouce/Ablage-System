@@ -33,8 +33,16 @@ import os
 import re
 import secrets
 import sys
+from pathlib import Path
 from typing import Optional, Tuple
 from uuid import uuid4
+
+# sys.path-Bootstrap: Beim Direktaufruf "python scripts/create_admin.py" ist
+# sys.path[0] das scripts/-Verzeichnis — Projekt-Root ergaenzen, damit "app.*"
+# ohne PYTHONPATH importierbar ist (DoD: First-Admin ohne Vorwissen anlegbar).
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from sqlalchemy import select, text
 
@@ -141,7 +149,14 @@ async def _get_or_create_company(session) -> Tuple[Company, bool]:
 
 
 async def _ensure_membership(session, *, user: User, company: Company) -> bool:
-    """UserCompany-Mitgliedschaft (owner, alle Rechte) sicherstellen."""
+    """UserCompany-Mitgliedschaft (owner, alle Rechte) sicherstellen.
+
+    Achtung Partial-Unique ``uq_user_companies_one_current``: pro Benutzer darf
+    genau EINE Mitgliedschaft ``is_current=True`` tragen. Hat der Benutzer
+    bereits eine aktive Firma (z. B. Bestands-User in einer nicht-leeren DB),
+    wird die neue Mitgliedschaft mit ``is_current=False`` angelegt und die
+    bestehende Zuordnung nicht angefasst.
+    """
     existing = (
         await session.execute(
             select(UserCompany).where(
@@ -152,13 +167,23 @@ async def _ensure_membership(session, *, user: User, company: Company) -> bool:
     ).scalar_one_or_none()
     if existing is not None:
         return False
+
+    has_current = (
+        await session.execute(
+            select(UserCompany.id).where(
+                UserCompany.user_id == user.id,
+                UserCompany.is_current.is_(True),
+            )
+        )
+    ).first() is not None
+
     session.add(
         UserCompany(
             id=uuid4(),
             user_id=user.id,
             company_id=company.id,
             role="owner",
-            is_current=True,
+            is_current=not has_current,
             can_manage_cash=True,
             can_approve_expenses=True,
             can_export_datev=True,
