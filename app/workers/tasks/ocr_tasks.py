@@ -843,6 +843,51 @@ def process_document_task(
                         error=str(workflow_error)
                     )
 
+                # Odoo-Vendor-Bill-Push (Neuausrichtung Phase 4):
+                # Eingangsrechnungen aus E-Mail-/Ordner-Import als ENTWURFS-
+                # Lieferantenrechnung nach Odoo pushen.
+                # Reihenfolge (verifiziert): Der Import persistiert das Original
+                # bereits VOR dem OCR in MinIO + Document-Zeile (inkl. SHA256) —
+                # der Push haengt hier als LETZTER Schritt des Abschlussblocks
+                # ("Archiv immer zuerst, Push danach"). Die formale GoBD-
+                # Archivierung (is_archived via ArchiveService) ist ein separater
+                # Schritt und wird bewusst NICHT von hier ausgeloest.
+                # Klassifikation/Extraktion laufen asynchron (s. o., countdown
+                # 1-2 s) und liegen hier noch NICHT vor -> der Task startet
+                # verzoegert und prueft die invoice-Klassifikation selbst
+                # (Retry bis extracted_data vorliegt).
+                odoo_push_task_id = None
+                try:
+                    from app.services.erp.odoo_vendor_bill_push_service import (
+                        should_enqueue_vendor_bill_push,
+                    )
+
+                    if await should_enqueue_vendor_bill_push(session, document):
+                        from app.workers.tasks.erp_sync_tasks import (
+                            push_vendor_bill_draft,
+                        )
+
+                        odoo_push_result = push_vendor_bill_draft.apply_async(
+                            args=[document_id],
+                            countdown=settings.ODOO_VENDOR_BILL_PUSH_DELAY_SECONDS,
+                        )
+                        odoo_push_task_id = odoo_push_result.id
+                        logger.info(
+                            "odoo_vendor_bill_push_queued",
+                            task_id=task_id,
+                            document_id=document_id,
+                            odoo_push_task_id=odoo_push_task_id,
+                            delay_seconds=settings.ODOO_VENDOR_BILL_PUSH_DELAY_SECONDS,
+                        )
+                except Exception as e:
+                    # Push-Queueing darf OCR-Erfolg nicht blockieren
+                    logger.warning(
+                        "odoo_vendor_bill_push_queue_failed",
+                        task_id=task_id,
+                        document_id=document_id,
+                        **safe_error_log(e)
+                    )
+
                 return {
                     "success": True,
                     "document_id": document_id,
@@ -857,6 +902,7 @@ def process_document_task(
                     "extraction_task_id": extraction_task_id,
                     "rag_chunking_task_id": rag_chunking_task_id,
                     "filing_pipeline_task_id": filing_pipeline_task_id,
+                    "odoo_push_task_id": odoo_push_task_id,
                 }
 
             except SoftTimeLimitExceeded:

@@ -19,12 +19,13 @@ from typing import Dict, List, Optional, Sequence
 from uuid import UUID
 
 import structlog
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
 from app.db.models import Document
 from app.db.models_approval_extended import AutoFilingRule
+from app.db.models_folder import FolderDocument
 
 logger = structlog.get_logger(__name__)
 
@@ -229,22 +230,56 @@ class AutoFilingService:
         # Kategorie setzen: echte Spalte ist `data_category` (NICHT `category` -
         # letzteres existiert nicht am Document-Modell und wurde stillschweigend
         # ignoriert, d.h. die Auto-Ablage hatte bisher KEINE Wirkung).
+        applied_action = False
         if suggestion.target_category:
             document.data_category = suggestion.target_category
-        elif suggestion.target_folder_id:
-            # Document hat KEINE folder_id-Spalte (Folder-Modell deaktiviert, W1-030);
-            # `document.folder_id = ...` war ein stiller No-Op. Ohne Kategorie kann
-            # derzeit nicht real abgelegt werden -> ehrlich filed=False statt Schein-Erfolg.
-            logger.warning(
-                "auto_filing_folder_unsupported",
-                document_id=str(document_id),
-                target_folder_id=str(suggestion.target_folder_id),
+            applied_action = True
+
+        # W1-030-Fix: Ordner-Ablage ueber die ECHTE folder_documents-Assoziation
+        # (app/db/models_folder.py: FolderDocument). Document hat KEINE
+        # folder_id-Spalte — das urspruengliche `document.folder_id = ...`
+        # schrieb auf ein Phantom-Attribut (stiller No-Op); der spaetere Guard
+        # gab ehrlich filed=False zurueck, legte aber weiterhin nichts ab.
+        # Jetzt: idempotenter Insert in folder_documents inkl. Pflege des
+        # is_primary-Flags (genau EIN Hauptordner pro Dokument, wie in
+        # app/services/auto_filing_service.py und folder_service.py).
+        if suggestion.target_folder_id:
+            existing_assoc = await db.execute(
+                select(FolderDocument).where(
+                    and_(
+                        FolderDocument.folder_id == suggestion.target_folder_id,
+                        FolderDocument.document_id == document_id,
+                    )
+                )
             )
+            if existing_assoc.scalar_one_or_none() is None:
+                # Bisherige Primaer-Zuordnung zuruecksetzen (genau ein Hauptordner)
+                await db.execute(
+                    update(FolderDocument)
+                    .where(
+                        and_(
+                            FolderDocument.document_id == document_id,
+                            FolderDocument.is_primary.is_(True),
+                        )
+                    )
+                    .values(is_primary=False)
+                )
+                db.add(
+                    FolderDocument(
+                        folder_id=suggestion.target_folder_id,
+                        document_id=document_id,
+                        is_primary=True,
+                        added_by_id=None,  # System-Aktion (Auto-Filing)
+                    )
+                )
+            applied_action = True
+
+        if not applied_action:
             return FilingResult(
                 document_id=document_id,
                 filed=False,
                 suggestion=suggestion,
-                message="Ordner-Ablage noch nicht unterstuetzt (kein Folder-Modell); kein Kategorie-Vorschlag vorhanden",
+                message="Regel ohne Ablage-Ziel (weder Kategorie noch Ordner konfiguriert)",
             )
 
         await db.flush()

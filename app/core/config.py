@@ -691,6 +691,30 @@ class Settings(BaseSettings):
     )
 
     # =============================================================================
+    # Odoo Vendor-Bill-Push (Neuausrichtung Phase 4: Ablage -> Odoo)
+    # =============================================================================
+    # Rollout-Schalter: Eingangsrechnungen aus E-Mail-/Ordner-Import nach dem
+    # OCR-Abschluss automatisch als ENTWURFS-Lieferantenrechnung nach Odoo
+    # pushen (Grundsatz: Archiv immer zuerst, Push danach; kein eindeutiger
+    # Partner-Treffer -> Review-Queue statt Push).
+    ODOO_VENDOR_BILL_PUSH_ENABLED: bool = Field(
+        default=False,
+        description=(
+            "Automatischen Push von Eingangsrechnungen als Odoo-Entwurfs-"
+            "Lieferantenrechnung aktivieren (Rollout-Schalter Phase 4)"
+        ),
+    )
+    ODOO_VENDOR_BILL_PUSH_DELAY_SECONDS: int = Field(
+        default=90,
+        ge=0, le=3600,
+        description=(
+            "Verzoegerung des Push-Tasks nach OCR-Abschluss in Sekunden, "
+            "damit die asynchron laufende Klassifikation/Extraktion "
+            "(extracted_data) typischerweise bereits vorliegt"
+        ),
+    )
+
+    # =============================================================================
     # Microsoft Teams Integration
     # =============================================================================
     # Webhook-URL: Erstellen in Teams-Kanal -> Connectors -> Incoming Webhook
