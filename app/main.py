@@ -1150,6 +1150,26 @@ register_exception_handlers(app)
 app.state.limiter = limiter
 
 # Include API routers
+# Odoo-Neuausrichtung 2026: Einfrier-Mechanik fuer ERP-Doppel-Module (Plan par.4c.1).
+# Eingefrorene Router werden unten im FROZEN-Block via include_module_router
+# registriert (nur wenn per ACTIVE_OPTIONAL_MODULES reaktiviert, sonst 404).
+from app.core.module_registry import (
+    MODULE_ACCOUNTING,
+    MODULE_AI_SPECULATIVE,
+    MODULE_BANKING,
+    MODULE_DATEV,
+    MODULE_DOCUMENT_CHAINS,
+    MODULE_EINVOICE,
+    MODULE_FINANCE,
+    MODULE_HOLDING,
+    MODULE_INVOICE_TRACKING,
+    MODULE_KASSE,
+    MODULE_LEXWARE,
+    MODULE_RISK_FINANZKI,
+    MODULE_STRECKENGESCHAEFT,
+    include_module_router,
+)
+from app.api.v1.system_modules import router as system_modules_router  # Modul-Status (IMMER aktiv)
 from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr, agents
 from app.api.v1.ocr_confidence import router as ocr_confidence_router
 from app.api.v1.admin import router as admin_router
@@ -1450,25 +1470,14 @@ app.include_router(training_router, prefix="/api/v1")
 app.include_router(tunes_router, prefix="/api/v1/tunes", tags=["tunes"])
 app.include_router(extracted_data_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
-app.include_router(einvoice_router, prefix="/api/v1")
-app.include_router(banking_router, prefix="/api/v1")
-app.include_router(reconciliation_router, prefix="/api/v1")  # Payment Reconciliation API
 app.include_router(document_comparison_router, prefix="/api/v1")  # Document Version Comparison API
 app.include_router(saved_searches_router, prefix="/api/v1")  # Saved Searches API
 app.include_router(period_comparison_router, prefix="/api/v1")  # Period Comparison API (YoY/MoM/QoQ)
-app.include_router(fints_router, prefix="/api/v1")
-app.include_router(sepa_router, prefix="/api/v1")
-app.include_router(banking_dashboard_router, prefix="/api/v1")
-app.include_router(psd2_banking_router, prefix="/api/v1")  # Phase 6: PSD2/FinTS Banking Integration
-app.include_router(datev_router, prefix="/api/v1")
 app.include_router(finance_router, prefix="/api/v1")
-app.include_router(recurring_invoices_router, prefix="/api/v1")  # Phase 2.2: Abo-Verwaltung
 app.include_router(exports_router, prefix="/api/v1")
 app.include_router(scheduled_exports_router, prefix="/api/v1")
 app.include_router(companies_router, prefix="/api/v1")
-app.include_router(cash_router, prefix="/api/v1")
 app.include_router(expenses_router, prefix="/api/v1")
-app.include_router(streckengeschaeft_router, prefix="/api/v1")
 app.include_router(privat_router, prefix="/api/v1")
 app.include_router(privat_analytics_router, prefix="/api/v1")
 app.include_router(privat_tax_router, prefix="/api/v1/privat")  # Phase 3.1: Tax Optimization
@@ -1485,32 +1494,20 @@ app.include_router(tax_advisor_router, prefix="/api/v1")
 app.include_router(dashboards_router, prefix="/api/v1")
 app.include_router(dashboard_widgets_router, prefix="/api/v1")  # Phase 7: Dashboard Widgets
 app.include_router(imports_router, prefix="/api/v1")
-app.include_router(ai_autonomy_router, prefix="/api/v1")
-app.include_router(autonomous_trust_router, prefix="/api/v1")  # Phase 2.1: Multi-Level Trust
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(workflows_router, prefix="/api/v1")
 app.include_router(push_notifications_router, prefix="/api/v1")
 app.include_router(notification_rules_router, prefix="/api/v1")
 app.include_router(orchestration_router, prefix="/api/v1")
-app.include_router(ai_router, prefix="/api/v1")
-app.include_router(lexware_router, prefix="/api/v1")
-app.include_router(invoices_router, prefix="/api/v1")
-app.include_router(invoice_pipeline_router, prefix="/api/v1")  # Feature #3: Vollautomatischer Rechnungsworkflow
-app.include_router(predictions_router, prefix="/api/v1")  # Phase 3: Predictive Payment AI
 app.include_router(approvals_router, prefix="/api/v1")
 app.include_router(oneclick_router, prefix="/api/v1")
-app.include_router(document_chains_router, prefix="/api/v1")
-app.include_router(po_matching_router, prefix="/api/v1")  # 3-Way PO-Matching
 app.include_router(hygiene_router, prefix="/api/v1")
 app.include_router(tax_advisor_packages_router, prefix="/api/v1")
-app.include_router(accounting_router, prefix="/api/v1")
-app.include_router(budgets_router, prefix="/api/v1")  # Phase 2.1: Budgetierung & Controlling
 app.include_router(calendar_router, prefix="/api/v1")
 app.include_router(magic_buttons_router, prefix="/api/v1")
 app.include_router(contracts_router, prefix="/api/v1")
 app.include_router(document_templates_router, prefix="/api/v1")
 app.include_router(supplier_ranking_router, prefix="/api/v1")
-app.include_router(payment_behavior_router, prefix="/api/v1")
 app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(slack_router, prefix="/api/v1")
 app.include_router(ms_teams_router, prefix="/api/v1")
@@ -1520,12 +1517,6 @@ app.include_router(predictive_actions_router, prefix="/api/v1")
 app.include_router(smart_escalation_router, prefix="/api/v1")
 app.include_router(tenant_rate_limits_router, prefix="/api/v1")
 app.include_router(subscriptions_router, prefix="/api/v1")
-app.include_router(holding_router, prefix="/api/v1")
-app.include_router(predictive_cashflow_router, prefix="/api/v1")
-app.include_router(cashflow_prediction_router, prefix="/api/v1")  # Monte Carlo Cashflow Prediction
-app.include_router(entity_cashflow_router, prefix="/api/v1")  # Phase 2.2: Entity-based Cashflow Prediction
-app.include_router(fraud_detection_router, prefix="/api/v1")
-app.include_router(risk_intelligence_router, prefix="/api/v1")
 app.include_router(ocr_learning_router, prefix="/api/v1")
 app.include_router(ocr_templates_router, prefix="/api/v1")
 app.include_router(bpmn_router, prefix="/api/v1")
@@ -1545,18 +1536,13 @@ app.include_router(delegations_router, prefix="/api/v1")
 app.include_router(activity_timeline_router, prefix="/api/v1")
 app.include_router(rules_router, prefix="/api/v1")
 app.include_router(proactive_insights_router, prefix="/api/v1")
-app.include_router(proactive_assistant_router, prefix="/api/v1")  # Feature #1: Proaktiver Assistent
 app.include_router(compare_router, prefix="/api/v1")
 app.include_router(routing_router, prefix="/api/v1")
 app.include_router(hardware_router, prefix="/api/v1")
 app.include_router(saved_filters_router, prefix="/api/v1")
 app.include_router(alerts_router, prefix="/api/v1")
 app.include_router(inventory_router, prefix="/api/v1")
-app.include_router(finance_assistant_router, prefix="/api/v1")  # Vision 2.0: KI-Finanzassistent
-app.include_router(ai_conversations_router, prefix="/api/v1")  # Vision 2.0: KI-Konversationen Persistenz
 app.include_router(assistant_router, prefix="/api/v1")  # Conversational Assistant mit Ollama
-app.include_router(zero_touch_router, prefix="/api/v1")  # Vision 2.0: Zero-Touch OCR
-app.include_router(nlq_router, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
 app.include_router(smart_search_router, prefix="/api/v1")  # Feature #1: Smart Search / Natural Language Search
 app.include_router(spotlight_router, prefix="/api/v1")  # Spotlight Cmd+K Schnellsuche
 app.include_router(semantic_search_router, prefix="/api/v1")  # M4: Semantische Suche
@@ -1564,10 +1550,7 @@ app.include_router(barcodes_router, prefix="/api/v1")  # M5: Barcode/QR Pipeline
 app.include_router(lifecycle_engine_router, prefix="/api/v1")  # M1: Document Lifecycle Engine
 app.include_router(custom_fields_router, prefix="/api/v1")  # M3: Custom Field System
 app.include_router(smart_inbox_router, prefix="/api/v1")  # Vision 2.0: Smart Inbox
-app.include_router(ceo_dashboard_router, prefix="/api/v1")  # Vision 2.0: CEO Dashboard
-app.include_router(knowledge_graph_router, prefix="/api/v1")  # Vision 2.0: Knowledge Graph
 app.include_router(audit_chain_router, prefix="/api/v1")  # Vision 2.0: Merkle Audit Trail
-app.include_router(ai_ethics_router, prefix="/api/v1")  # Vision 2.0: KI-Ethik-Layer
 app.include_router(event_sourcing_router, prefix="/api/v1")  # Vision 2.0: Event Sourcing
 app.include_router(graphql_api_router, prefix="/api/v1")  # Vision 2.0: GraphQL
 app.include_router(sync_router, prefix="/api/v1")  # Vision 2.0: Offline Sync
@@ -1579,33 +1562,22 @@ app.include_router(visual_diff_router, prefix="/api/v1")  # Vision 2.0: Visual D
 app.include_router(life_events_router, prefix="/api/v1")  # Vision 2.0: Life Events
 app.include_router(projects_router, prefix="/api/v1")  # Vision 2026: Project Management
 app.include_router(gobd_compliance_router, prefix="/api/v1")  # Vision 2026: GoBD Compliance
-app.include_router(ai_decisions_router, prefix="/api/v1")  # Vision 2026: AI Decision Explorer
 app.include_router(daily_insights_router, prefix="/api/v1")  # Vision 2026 Q4: Daily Insights Engine
-app.include_router(steuerberater_packages_router, prefix="/api/v1")  # Vision 2026 Q4: Steuerberater Packages
-app.include_router(enhanced_banking_router, prefix="/api/v1")  # Vision 2026 Q4: Enhanced Banking
-app.include_router(handelsregister_monitoring_router, prefix="/api/v1")  # Vision 2026 Q4: Handelsregister Monitoring
 app.include_router(smart_tagging_router, prefix="/api/v1")  # Vision 2026+ Q1: Smart Auto-Tagging
 app.include_router(calendar_sync_router, prefix="/api/v1")  # Phase 5: Calendar iCal/CalDAV Sync
 app.include_router(role_dashboards_router, prefix="/api/v1")  # Phase 5.3: Rollen-basierte Dashboard APIs
 app.include_router(email_file_import_router, prefix="/api/v1", tags=["E-Mail-Import"])  # Phase 6D: E-Mail-Datei-Import
 app.include_router(scanner_router, prefix="/api/v1")  # Phase 5: Scanner Device Integration
-app.include_router(integration_sync_router, prefix="/api/v1")  # Phase 5: DATEV/Lexware Bidirectional Sync
 app.include_router(audit_trail_visualization_router, prefix="/api/v1")  # Vision 2026+ Q1: Audit Trail Visualization
 app.include_router(communication_hub_router, prefix="/api/v1")  # Vision 2026+ Q1: Kommunikations-Hub
 app.include_router(supplier_ocr_templates_router, prefix="/api/v1")  # Vision 2026+ Q1: Lieferanten OCR-Templates
 app.include_router(visual_workflow_builder_router, prefix="/api/v1")  # Vision 2026+ Q2: Visual Workflow Builder
 app.include_router(supplier_verification_router, prefix="/api/v1")  # Vision 2026+ Q2: Lieferanten-Verifizierung
-app.include_router(liquidity_scenarios_router, prefix="/api/v1")  # Vision 2026+ Q2: Liquiditäts-Szenarien
-app.include_router(ai_mentor_router, prefix="/api/v1")  # Vision 2026+ Q3: AI-Mentor (Feature #9)
-app.include_router(industry_benchmarks_router, prefix="/api/v1")  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
 app.include_router(onboarding_router, prefix="/api/v1")  # Vision 2026+ Q3: Tenant Onboarding Wizard (Feature #11)
 
 # Vision 2.0 Phase 2: Erweiterte Integrationen
 app.include_router(process_mining_router, prefix="/api/v1")  # Vision 2.0: Process Mining
 app.include_router(consent_router, prefix="/api/v1")  # Vision 2.0: Consent Management (DSGVO)
-app.include_router(credit_router, prefix="/api/v1")  # Vision 2.0: Creditreform Integration
-app.include_router(datev_booking_router, prefix="/api/v1")  # Vision 2.0: DATEV Buchungsvorschläge
-app.include_router(datev_connect_router, prefix="/api/v1")  # DATEV Connect Integration (Migration 145)
 app.include_router(classification_router, prefix="/api/v1")  # Vision 2.0 Phase 3: Multi-Label Classification
 
 # Vision 2.0 Phase 5: Privacy & Predictive Maintenance (100% Completion)
@@ -1613,9 +1585,6 @@ app.include_router(privacy_analytics_router, prefix="/api/v1")  # Vision 2.0 Pha
 app.include_router(predictive_health_router, prefix="/api/v1")  # Vision 2.0 Phase 5: Predictive Maintenance
 
 # Vision 2.0 Phase 6: Autonomy Framework, Financial Insights & XAI
-app.include_router(action_queue_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Action Approval Queue
-app.include_router(financial_insights_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Financial Insights
-app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explainable AI
 app.include_router(document_lifecycle_router, prefix="/api/v1")  # Document Lifecycle SLA
 app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
 app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
@@ -1627,12 +1596,6 @@ app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/E
 
 # Phase 5.2: Kundenportal Self-Service
 app.include_router(portal_router, prefix="/api/v1")
-
-# Phase 7.4: ESG-Reporting (Environmental, Social, Governance)
-app.include_router(esg_router, prefix="/api/v1")
-
-# Executive Dashboard Reporting
-app.include_router(reporting_router, prefix="/api/v1")
 
 # Phase 2: Kanban Document Workflow
 app.include_router(kanban_router, prefix="/api/v1")
@@ -1654,22 +1617,17 @@ app.include_router(document_context_router, prefix="/api/v1")  # Phase 2: Docume
 # Phase 1: Enterprise & Compliance
 app.include_router(integrity_router, prefix="/api/v1")  # Dokument-Integrität (Hash-Chain, Merkle-Tree)
 app.include_router(signatures_router, prefix="/api/v1")  # QES/eIDAS Elektronische Signaturen
-app.include_router(year_end_router, prefix="/api/v1")  # Jahresabschluss-Assistent
 app.include_router(document_hints_router, prefix="/api/v1")  # Feature #5: Proaktive Dokument-Hinweise
 app.include_router(collaboration_router, prefix="/api/v1")  # Feature #4: Echtzeit-Kollaboration
-app.include_router(digital_twin_router, prefix="/api/v1")  # Feature #6: Digitaler Zwilling
 app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqualitäts-Cockpit
 app.include_router(presence_router, prefix="/api/v1")  # Feature: Collaborative Presence Indicators
-app.include_router(trust_dashboard_router, prefix="/api/v1")  # Feature #7: Trust/Security Dashboard
 app.include_router(ml_dashboard_router, prefix="/api/v1")  # Feature #10: ML Progress Dashboard
 app.include_router(document_timeline_router, prefix="/api/v1")  # Feature #11: Document Timeline
 app.include_router(folders_router, prefix="/api/v1")  # Phase 1.1: Geschäftliche Ordnerhierarchie
-app.include_router(learning_autonomy_router, prefix="/api/v1")  # Phase 2.2: Lernende Autonomie
 app.include_router(comment_threads_router, prefix="/api/v1")  # Phase 3.1: Kommentar-Threads
 app.include_router(summarization_router, prefix="/api/v1")  # Phase 4.1: AI-Zusammenfassungen
 app.include_router(booking_suggestions_router, prefix="/api/v1")  # Phase 5.1: Buchungsvorschläge
 app.include_router(similar_documents_router, prefix="/api/v1")  # Ähnliche Dokumente API
-app.include_router(smart_dashboard_router, prefix="/api/v1")  # Feature #2+#6: Smart Dashboard + Live-Feedback
 app.include_router(analytics_team_router, prefix="/api/v1")  # Phase 5: Analytics Team Stats
 app.include_router(approval_enhanced_router, prefix="/api/v1")  # Feature #3+#7: Approval Depth + Automation 2.0
 app.include_router(approval_extended_router, prefix="/api/v1")  # Feature #3: Approval Escalation & SLA
@@ -1678,14 +1636,12 @@ app.include_router(ki_pipeline_router, prefix="/api/v1")  # Feature #4: KI-Pipel
 app.include_router(annotations_enhanced_router, prefix="/api/v1")  # Feature #8: Kommentare & Annotationen
 app.include_router(annotations_extended_router, prefix="/api/v1")  # Feature #8: Bounding-Box, Replies, Tasks
 app.include_router(terminology_router, prefix="/api/v1")  # Feature #10: Deutsche Praezision
-app.include_router(german_finance_router, prefix="/api/v1")  # Feature #11: Deutsche Finanz-Features
 app.include_router(adhoc_reports_router, prefix="/api/v1")  # Feature #12: Ad-Hoc Reporting
 app.include_router(saga_monitoring_router, prefix="/api/v1")  # Phase 2.2: Saga Monitoring
 app.include_router(approval_matrix_router, prefix="/api/v1")  # M2: Approval Matrix
 app.include_router(duplicate_detection_router, prefix="/api/v1")  # Phase 4.1: Duplikat-Erkennung
 app.include_router(explainability_router, prefix="/api/v1")  # Phase 4.3: Erklaerbare AI-Entscheidungen
 app.include_router(morning_briefing_router, prefix="/api/v1")  # Phase 4.1: Morning Briefing Cockpit
-app.include_router(ai_chat_router, prefix="/api/v1")  # Phase 4.1: Eingebetteter KI-Assistent
 app.include_router(dashboard_builder_router, prefix="/api/v1")  # Phase 7.3: Dashboard-Builder
 app.include_router(clustering_router, prefix="/api/v1")  # Phase 2.1: Dokumenten-Clustering
 app.include_router(anomalies_router, prefix="/api/v1")  # Phase 2.3: Anomalie-Erkennung
@@ -1695,9 +1651,107 @@ app.include_router(encryption_router, prefix="/api/v1")  # Phase 1.4: Field-Leve
 app.include_router(feature_toggles_router, prefix="/api/v1")  # Phase 7.1: Feature Toggle Admin UI
 app.include_router(integrations_dashboard_router, prefix="/api/v1")  # Phase 4.4: Integrations-Sync Dashboard
 app.include_router(access_analytics_router, prefix="/api/v1")  # Priority 4: Zugriffs-Analytik Dashboard
-app.include_router(agent_orchestrator_router, prefix="/api/v1")  # Multi-Agent KI-Orchestrator mit CoT
-app.include_router(command_center_router, prefix="/api/v1")  # Command Center Startseite
 
+
+# System-Modul-Status: IMMER registriert (nie einfrieren) - Frontend-Gating
+app.include_router(system_modules_router, prefix="/api/v1")
+
+# =============================================================================
+# FROZEN (Odoo uebernimmt ab 01.08.2026): eingefrorene ERP-Doppel-Module
+# =============================================================================
+# Diese Router werden nur registriert, wenn ihr Modul ueber
+# ACTIVE_OPTIONAL_MODULES reaktiviert wurde (Default: eingefroren -> 404).
+# Modul-Keys, Hintergrund + Reaktivierung: app/core/module_registry.py (Plan par.4a).
+# Celery-Gegenstueck (Include-Filter + Beat-Pruning): app/workers/celery_app.py.
+# Die Reihenfolge innerhalb der Gruppen entspricht der frueheren Registrierung.
+
+# === FROZEN (Odoo uebernimmt): banking (Bank/Reconciliation/FinTS/PSD2/SEPA/Dunning) ===
+include_module_router(app, banking_router, MODULE_BANKING, prefix="/api/v1")
+include_module_router(app, reconciliation_router, MODULE_BANKING, prefix="/api/v1")  # Payment Reconciliation API
+include_module_router(app, fints_router, MODULE_BANKING, prefix="/api/v1")
+include_module_router(app, sepa_router, MODULE_BANKING, prefix="/api/v1")
+include_module_router(app, banking_dashboard_router, MODULE_BANKING, prefix="/api/v1")
+include_module_router(app, psd2_banking_router, MODULE_BANKING, prefix="/api/v1")  # Phase 6: PSD2/FinTS Banking Integration
+include_module_router(app, enhanced_banking_router, MODULE_BANKING, prefix="/api/v1")  # Vision 2026 Q4: Enhanced Banking
+
+# === FROZEN (Odoo uebernimmt): accounting (GL/USt-VA/EUeR/BWA/Budget/Jahresabschluss) ===
+include_module_router(app, accounting_router, MODULE_ACCOUNTING, prefix="/api/v1")
+include_module_router(app, budgets_router, MODULE_ACCOUNTING, prefix="/api/v1")  # Phase 2.1: Budgetierung & Controlling
+include_module_router(app, year_end_router, MODULE_ACCOUNTING, prefix="/api/v1")  # Jahresabschluss-Assistent
+include_module_router(app, german_finance_router, MODULE_ACCOUNTING, prefix="/api/v1")  # Feature #11: Deutsche Finanz-Features
+
+# === FROZEN (Odoo uebernimmt): finance (Recurring/PO-Matching/Cashflow/Invoice-Pipeline) ===
+include_module_router(app, recurring_invoices_router, MODULE_FINANCE, prefix="/api/v1")  # Phase 2.2: Abo-Verwaltung
+include_module_router(app, invoice_pipeline_router, MODULE_FINANCE, prefix="/api/v1")  # Feature #3: Vollautomatischer Rechnungsworkflow
+include_module_router(app, po_matching_router, MODULE_FINANCE, prefix="/api/v1")  # 3-Way PO-Matching
+include_module_router(app, cashflow_prediction_router, MODULE_FINANCE, prefix="/api/v1")  # Monte Carlo Cashflow Prediction
+include_module_router(app, entity_cashflow_router, MODULE_FINANCE, prefix="/api/v1")  # Phase 2.2: Entity-based Cashflow Prediction
+
+# === FROZEN (Odoo uebernimmt): invoice_tracking (offene Posten) ===
+include_module_router(app, invoices_router, MODULE_INVOICE_TRACKING, prefix="/api/v1")
+
+# === FROZEN (Odoo uebernimmt): datev (Export/Connect/Buchungsvorschlaege/StB-Pakete/Sync) ===
+include_module_router(app, datev_router, MODULE_DATEV, prefix="/api/v1")
+include_module_router(app, steuerberater_packages_router, MODULE_DATEV, prefix="/api/v1")  # Vision 2026 Q4: Steuerberater Packages
+include_module_router(app, integration_sync_router, MODULE_DATEV, prefix="/api/v1")  # Phase 5: DATEV/Lexware Bidirectional Sync
+include_module_router(app, datev_booking_router, MODULE_DATEV, prefix="/api/v1")  # Vision 2.0: DATEV Buchungsvorschläge
+include_module_router(app, datev_connect_router, MODULE_DATEV, prefix="/api/v1")  # DATEV Connect Integration (Migration 145)
+
+# === FROZEN (Odoo uebernimmt): einvoice (E-Rechnungs-Erzeugung, Audit M-06!) ===
+include_module_router(app, einvoice_router, MODULE_EINVOICE, prefix="/api/v1")
+
+# === FROZEN (Odoo uebernimmt): streckengeschaeft ===
+include_module_router(app, streckengeschaeft_router, MODULE_STRECKENGESCHAEFT, prefix="/api/v1")
+
+# === FROZEN (Odoo uebernimmt): lexware ===
+include_module_router(app, lexware_router, MODULE_LEXWARE, prefix="/api/v1")
+
+# === FROZEN (Odoo uebernimmt): holding (Intercompany) ===
+include_module_router(app, holding_router, MODULE_HOLDING, prefix="/api/v1")
+
+# === FROZEN (Odoo uebernimmt): kasse (Kassenbuch) ===
+include_module_router(app, cash_router, MODULE_KASSE, prefix="/api/v1")
+
+# === FROZEN (Odoo uebernimmt): document_chains (Belegketten) ===
+include_module_router(app, document_chains_router, MODULE_DOCUMENT_CHAINS, prefix="/api/v1")
+
+# === FROZEN (Odoo uebernimmt): risk_finanzki (Risk/Fraud/Payment-Prediction/Cashflow-KI) ===
+include_module_router(app, predictions_router, MODULE_RISK_FINANZKI, prefix="/api/v1")  # Phase 3: Predictive Payment AI
+include_module_router(app, payment_behavior_router, MODULE_RISK_FINANZKI, prefix="/api/v1")
+include_module_router(app, predictive_cashflow_router, MODULE_RISK_FINANZKI, prefix="/api/v1")
+include_module_router(app, fraud_detection_router, MODULE_RISK_FINANZKI, prefix="/api/v1")
+include_module_router(app, risk_intelligence_router, MODULE_RISK_FINANZKI, prefix="/api/v1")
+include_module_router(app, handelsregister_monitoring_router, MODULE_RISK_FINANZKI, prefix="/api/v1")  # Vision 2026 Q4: Handelsregister Monitoring
+include_module_router(app, liquidity_scenarios_router, MODULE_RISK_FINANZKI, prefix="/api/v1")  # Vision 2026+ Q2: Liquiditäts-Szenarien
+include_module_router(app, credit_router, MODULE_RISK_FINANZKI, prefix="/api/v1")  # Vision 2.0: Creditreform Integration
+include_module_router(app, financial_insights_router, MODULE_RISK_FINANZKI, prefix="/api/v1")  # Vision 2.0 Phase 6: Financial Insights
+
+# === FROZEN (Odoo uebernimmt): ai_speculative (spekulative AI/Analytics-Router, Go-Live-Audit) ===
+include_module_router(app, ai_autonomy_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")
+include_module_router(app, autonomous_trust_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Phase 2.1: Multi-Level Trust
+include_module_router(app, ai_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")
+include_module_router(app, proactive_assistant_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Feature #1: Proaktiver Assistent
+include_module_router(app, finance_assistant_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0: KI-Finanzassistent
+include_module_router(app, ai_conversations_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0: KI-Konversationen Persistenz
+include_module_router(app, zero_touch_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0: Zero-Touch OCR
+include_module_router(app, nlq_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
+include_module_router(app, ceo_dashboard_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0: CEO Dashboard
+include_module_router(app, knowledge_graph_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0: Knowledge Graph
+include_module_router(app, ai_ethics_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0: KI-Ethik-Layer
+include_module_router(app, ai_decisions_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2026: AI Decision Explorer
+include_module_router(app, ai_mentor_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2026+ Q3: AI-Mentor (Feature #9)
+include_module_router(app, industry_benchmarks_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
+include_module_router(app, action_queue_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0 Phase 6: Action Approval Queue
+include_module_router(app, xai_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Vision 2.0 Phase 6: Explainable AI
+include_module_router(app, esg_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")
+include_module_router(app, reporting_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")
+include_module_router(app, digital_twin_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Feature #6: Digitaler Zwilling
+include_module_router(app, trust_dashboard_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Feature #7: Trust/Security Dashboard
+include_module_router(app, learning_autonomy_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Phase 2.2: Lernende Autonomie
+include_module_router(app, smart_dashboard_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Feature #2+#6: Smart Dashboard + Live-Feedback
+include_module_router(app, ai_chat_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Phase 4.1: Eingebetteter KI-Assistent
+include_module_router(app, agent_orchestrator_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Multi-Agent KI-Orchestrator mit CoT
+include_module_router(app, command_center_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # Command Center Startseite
 
 # ==================== Health & Status Endpoints ====================
 
