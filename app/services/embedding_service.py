@@ -61,6 +61,36 @@ class MultiModelEmbeddingInfo(TypedDict, total=False):
 logger = structlog.get_logger(__name__)
 
 
+def _resolve_embedding_device() -> "torch.device":
+    """Loest das Embedding-Device gemaess ``EMBEDDING_DEVICE`` auf (M-35).
+
+    - ``"cpu"``:  erzwingt CPU (API-Prozess — GPU bleibt exklusiv fuer OCR)
+    - ``"cuda"``: erzwingt GPU; faellt mit Warnung auf CPU zurueck, wenn
+      keine GPU verfuegbar ist (Critical Rule 3: graceful CPU fallback)
+    - ``"auto"``: bisheriges Verhalten (``ENABLE_GPU`` + CUDA verfuegbar)
+    """
+    mode = str(getattr(settings, "EMBEDDING_DEVICE", "auto") or "auto").strip().lower()
+
+    if mode == "cpu":
+        logger.info("embedding_device_forced_cpu", setting=mode)
+        return torch.device("cpu")
+
+    if mode == "cuda":
+        if torch.cuda.is_available():
+            logger.info("embedding_device_forced_cuda", setting=mode)
+            return torch.device("cuda")
+        logger.warning(
+            "embedding_device_cuda_unavailable_fallback_cpu",
+            setting=mode,
+        )
+        return torch.device("cpu")
+
+    # "auto" (Default) = Bestandsverhalten
+    if settings.ENABLE_GPU and torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
 # ============================================================================
 # Jina Embedding Service (Deutsch-spezialisiert, 8k Token-Kontext)
 # ============================================================================
@@ -104,16 +134,15 @@ class JinaEmbeddingService:
         self.trust_remote_code = settings.JINA_TRUST_REMOTE_CODE
         self.batch_size = settings.EMBEDDING_BATCH_SIZE
 
-        # Device-Auswahl
-        if settings.ENABLE_GPU and torch.cuda.is_available():
-            self.device = torch.device("cuda")
+        # Device-Auswahl (M-35: EMBEDDING_DEVICE steuert cpu|cuda|auto)
+        self.device = _resolve_embedding_device()
+        if self.device.type == "cuda":
             logger.info(
                 "jina_embedding_service_gpu_enabled",
                 device=torch.cuda.get_device_name(0),
                 model=self.model_name
             )
         else:
-            self.device = torch.device("cpu")
             logger.info("jina_embedding_service_cpu_mode", model=self.model_name)
 
         self._initialized = True
@@ -371,16 +400,15 @@ class EmbeddingService:
         self.max_length = settings.EMBEDDING_MAX_LENGTH
         self.batch_size = settings.EMBEDDING_BATCH_SIZE
 
-        # Device-Auswahl
-        if settings.ENABLE_GPU and torch.cuda.is_available():
-            self.device = torch.device("cuda")
+        # Device-Auswahl (M-35: EMBEDDING_DEVICE steuert cpu|cuda|auto)
+        self.device = _resolve_embedding_device()
+        if self.device.type == "cuda":
             logger.info(
                 "embedding_service_gpu_enabled",
                 device=torch.cuda.get_device_name(0),
                 vram_total_gb=torch.cuda.get_device_properties(0).total_memory / 1024**3
             )
         else:
-            self.device = torch.device("cpu")
             logger.info("embedding_service_cpu_mode")
 
         self._initialized = True
