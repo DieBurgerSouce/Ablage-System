@@ -1,7 +1,12 @@
 /**
  * E2E Tests: Dunning Workflow (Mahnwesen)
  *
- * Testet das vollständige Mahnwesen:
+ * MODUL EINGEFROREN (Odoo-Neuausrichtung 2026-07): Das Mahnwesen übernimmt
+ * Odoo. Die Banking-/Mahnungs-Routen leiten auf /frozen um, der
+ * /api/v1/dunning-Router liefert 404 — das describe ist daher geskippt.
+ * Reaktivierung: ACTIVE_OPTIONAL_MODULES=banking + Skip entfernen.
+ *
+ * Testete das vollständige Mahnwesen:
  * - Mahnstufen 1-3 + Inkasso
  * - Eskalations-Timeline
  * - Mahngebühren-Berechnung
@@ -26,7 +31,7 @@ const DUNNING_LEVELS = [
   { level: 4, label: /Inkasso|Rechtsanwalt|rechtliche Schritte/i },
 ];
 
-test.describe('Dunning Workflow - Mahnwesen', () => {
+test.describe.skip('Dunning Workflow - Mahnwesen', () => {
   test.describe('API Endpunkte', () => {
     test('sollte Dunning-Liste ohne 500-Fehler laden', async ({ request }) => {
       const response = await request.get('/api/v1/dunning/');

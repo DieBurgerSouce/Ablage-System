@@ -1,16 +1,15 @@
 /**
  * E2E Tests: Lexware Import
  *
- * - Import-Endpoints existieren (kein 404) und sind gegated
- * - PII-Sicherheit (CRITICAL, Rule #8): keine unmaskierte IBAN im sichtbaren UI
- * - Lexware-Admin-Seite rendert ohne Crash
+ * MODUL EINGEFROREN (Odoo-Neuausrichtung 2026-07): Lexware-Import übernimmt
+ * Odoo. Der Backend-Router /api/v1/lexware ist deregistriert (404),
+ * /admin/lexware leitet auf /frozen um (frozen-modules.ts, Key 'lexware').
+ * Die API-/Routen-Erwartungen sind daher INVERTIERT (Freeze-Beweis).
+ * Reaktivierung: ACTIVE_OPTIONAL_MODULES=lexware + Erwartungen zurückdrehen.
  *
- * CRITICAL RULE: NEVER log/expose customer numbers, IBANs, VAT-IDs from Lexware
- * imports. Siehe .claude/Docs/Integrations/Lexware.md.
- *
- * Verifiziert gegen die laufende API: der Lexware-Router haengt unter
- * /api/v1/lexware (app/api/v1/lexware.py). GET /linking-statistics existiert;
- * /import/customers ist POST-only (GET -> 405). Beide sind != 404.
+ * WEITER AKTIV: PII-Sicherheit (CRITICAL, Rule #8) auf der Kundenliste
+ * (/kunden gehört zum aktiven Archiv-Kern; bereits importierte Lexware-Daten
+ * bleiben sichtbar): keine unmaskierte IBAN im sichtbaren UI.
  */
 
 import { test, expect } from '@playwright/test';
@@ -18,19 +17,18 @@ import { test as authTest, expect as authExpect } from './fixtures';
 
 const API_BASE = process.env.VITE_API_URL || 'http://localhost:8000';
 
-test.describe('Lexware Import - API', () => {
-  test('GET /api/v1/lexware/linking-statistics existiert (kein 404)', async ({ request }) => {
+test.describe('Lexware Import - API (eingefroren: Router liefert 404)', () => {
+  // Erwartung invertiert (2026-07): vor dem Freeze wurde != 404 verlangt.
+  test('GET /api/v1/lexware/linking-statistics ist eingefroren (404)', async ({ request }) => {
     const resp = await request.get(`${API_BASE}/api/v1/lexware/linking-statistics`);
-    // Existiert -> gegated (401/403); existiert NICHT -> 404. Wir verlangen != 404.
-    expect(resp.status()).not.toBe(404);
-    expect([200, 401, 403]).toContain(resp.status());
+    expect(resp.status()).toBe(404);
   });
 
-  test('POST-Endpoint /api/v1/lexware/import/customers existiert (GET -> 405)', async ({ request }) => {
+  test('POST-Endpoint /api/v1/lexware/import/customers ist eingefroren (404)', async ({ request }) => {
     const resp = await request.get(`${API_BASE}/api/v1/lexware/import/customers`);
-    // POST-only Route: GET liefert 405 (Method Not Allowed), nicht 404.
-    expect(resp.status()).not.toBe(404);
-    expect([405, 401, 403]).toContain(resp.status());
+    // Vor dem Freeze: POST-only -> GET 405. Seit dem Freeze ist der ganze
+    // Router deregistriert -> 404 (nicht 405).
+    expect(resp.status()).toBe(404);
   });
 });
 
@@ -51,14 +49,14 @@ authTest.describe('Lexware Import - PII-Sicherheit (CRITICAL)', () => {
   });
 });
 
-authTest.describe('Lexware Import - Admin-Seite', () => {
-  authTest('Lexware-Import-Seite rendert ohne Crash', async ({ authenticatedPage: page }) => {
+authTest.describe('Lexware Import - Admin-Seite (eingefroren)', () => {
+  // Erwartung angepasst (2026-07): /admin/lexware leitet per beforeLoad-Guard
+  // auf die statische /frozen-Seite um (frozenModuleGuard('lexware')).
+  authTest('Lexware-Admin-Seite leitet auf /frozen um', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/lexware');
-    await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
+    await page.waitForLoadState('domcontentloaded');
 
-    const content = (await page.textContent('body')) || '';
-    authExpect(content).not.toMatch(/Internal Server Error|Traceback/);
-    // Admin-Seite muss erreichbar sein (Admin ist Superuser) und nicht zur Login-Seite umleiten.
-    authExpect(page.url()).not.toMatch(/\/login/);
+    await authExpect(page).toHaveURL(/\/frozen\?module=lexware/, { timeout: 15000 });
+    await authExpect(page.getByText('Modul eingefroren')).toBeVisible({ timeout: 15000 });
   });
 });

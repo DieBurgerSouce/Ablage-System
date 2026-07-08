@@ -1,7 +1,15 @@
 /**
  * E2E Tests: Invoice Workflow (Invoice -> Skonto -> Payment -> Dunning)
  *
- * Testet den vollstaendigen Rechnungs-Workflow:
+ * MODUL EINGEFROREN (Odoo-Neuausrichtung 2026-07): Rechnungsverfolgung,
+ * Skonto, Teilzahlungen und Mahnwesen übernimmt Odoo. Alle hier getesteten
+ * Routen (/admin/banking/*, /admin/mahnungen/*) leiten auf /frozen um,
+ * die Backend-Router (invoices/banking/dunning) liefern 404 — beide
+ * describes sind daher geskippt.
+ * Reaktivierung: ACTIVE_OPTIONAL_MODULES=banking,invoice_tracking
+ * + Skips entfernen.
+ *
+ * Testete den vollstaendigen Rechnungs-Workflow:
  * - Rechnungserfassung und -anzeige
  * - Skonto-Tracking und Fristen
  * - Teilzahlungen (Partial Payments)
@@ -31,7 +39,7 @@ const TEST_INVOICE = {
   debtor: 'Test GmbH',
 };
 
-test.describe('Invoice Workflow - Rechnungsverwaltung', () => {
+test.describe.skip('Invoice Workflow - Rechnungsverwaltung', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
@@ -481,7 +489,8 @@ test.describe('Invoice Workflow - Rechnungsverwaltung', () => {
   });
 });
 
-test.describe('Invoice Workflow - Accessibility', () => {
+// Ebenfalls geskippt: navigiert ausschliesslich auf gefrorene /admin/banking/*-Routen.
+test.describe.skip('Invoice Workflow - Accessibility', () => {
   test('Tabellen sollten sortierbar per Tastatur sein', async ({ page }) => {
     await page.goto('/admin/banking/transactions');
     await page.waitForLoadState('networkidle');

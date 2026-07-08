@@ -1,7 +1,16 @@
 /**
  * E2E Tests: Document Chain
  *
- * Testet die Dokumentenketten-Visualisierung:
+ * MODUL EINGEFROREN (Odoo-Neuausrichtung 2026-07): Auftragsketten
+ * (document_chains: Angebot -> Auftrag -> Lieferschein -> Rechnung)
+ * übernimmt Odoo. /document-chains leitet auf /frozen um, der zugehoerige
+ * Backend-Router liefert 404 — das describe ist daher geskippt.
+ * (Die aktive Dokument-Detailseite /documents/:id/relationships gehoert zur
+ * weiterlaufenden Lineage-Ansicht und wird von test_lineage_flowchart
+ * abgedeckt.)
+ * Reaktivierung: ACTIVE_OPTIONAL_MODULES=document_chains + Skip entfernen.
+ *
+ * Testete die Dokumentenketten-Visualisierung:
  * - Auftragsketten (Angebot -> Auftrag -> Lieferschein -> Rechnung)
  * - Auto-Matching
  * - Abweichungserkennung
@@ -24,7 +33,7 @@ test.use({
   storageState: path.join(__dirname, '.auth', 'user.json'),
 });
 
-test.describe('Document Chain - Dokumentenketten', () => {
+test.describe.skip('Document Chain - Dokumentenketten', () => {
   test.describe('Document Relationships Page', () => {
     test.beforeEach(async ({ page }) => {
       // First navigate to documents to find one with relationships

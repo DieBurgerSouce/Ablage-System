@@ -1,6 +1,13 @@
 /**
  * E2E: DATEV-Export mit Kontierungs-Validator-Gate (W3-F4)
  *
+ * MODUL EINGEFROREN (Odoo-Neuausrichtung 2026-07): DATEV-Export übernimmt
+ * Odoo (StB erhält DATEV künftig aus Odoo). Der Backend-Router /api/v1/datev
+ * liefert 404, /admin/datev/* leitet auf /frozen um (frozen-modules.ts,
+ * Key 'datev'). Beide describes sind daher geskippt; den Freeze-Zustand
+ * selbst beweist frozen-modules.spec.ts.
+ * Reaktivierung: ACTIVE_OPTIONAL_MODULES=datev + Skips entfernen.
+ *
  * Prueft das F4-Verhalten: Der "Export starten"-Button ist gesperrt, bis eine
  * Vorschau (Vorpruefung) erstellt wurde und Dokumente enthaelt. Kein blinder
  * Export moeglich.
@@ -18,7 +25,7 @@ import { adminToken } from './utils/auth-cache';
 
 const API_BASE = process.env.VITE_API_URL || 'http://localhost:8000';
 
-test.describe('DATEV-Export - Validator-Gate (W3-F4)', () => {
+test.describe.skip('DATEV-Export - Validator-Gate (W3-F4)', () => {
   test('Export-Button ist ohne Vorschau gesperrt', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/datev/export');
     await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => { /* networkidle ggf. unerreichbar: WS-Reconnect-Loop (App-Bug: ws/realtime 500) + Query-Retries auf 404-Endpoints pollen dauerhaft */ });
@@ -47,7 +54,7 @@ test.describe('DATEV-Export - Validator-Gate (W3-F4)', () => {
   });
 });
 
-apiTest.describe('DATEV-Export - API-Invarianten', () => {
+apiTest.describe.skip('DATEV-Export - API-Invarianten', () => {
   apiTest('DATEV-Konfigurationsliste laedt (GET /datev/config)', async ({ request }) => {
     const resp = await request.get(`${API_BASE}/api/v1/datev/config`, {
       headers: { Authorization: `Bearer ${adminToken()}` },

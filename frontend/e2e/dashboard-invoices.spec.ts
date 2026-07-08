@@ -3,9 +3,12 @@
  *
  * Prueft:
  * - Das rollenbasierte Dashboard (/) laedt fuer den Admin ohne Fehlerzustand
- *   und ohne 5xx-API-Antworten im Hintergrund
- * - Rechnungs-API: GET /invoices (Liste) und /invoices/statistics/summary
- *   liefern 200 (kein 500) — Grundlage der Dashboard-Widgets
+ *   und ohne 5xx-API-Antworten im Hintergrund (Dashboard bleibt AKTIV)
+ * - Rechnungs-API: MODUL EINGEFROREN (Odoo-Neuausrichtung 2026-07) —
+ *   Rechnungsverfolgung übernimmt Odoo. Der Router /api/v1/invoices ist
+ *   deregistriert; die frueheren 200-Erwartungen sind auf 404 INVERTIERT
+ *   (Freeze-Beweis). Reaktivierung: ACTIVE_OPTIONAL_MODULES=invoice_tracking
+ *   + Erwartungen zurückdrehen.
  *
  * Idempotent: rein lesend.
  */
@@ -41,32 +44,33 @@ test.describe('Dashboard - UI', () => {
   });
 });
 
-apiTest.describe('Rechnungsverfolgung - API', () => {
-  apiTest('GET /invoices liefert 200 fuer Admin und Viewer (company-scoped)', async ({ request }) => {
+apiTest.describe('Rechnungsverfolgung - API (eingefroren: Router liefert 404)', () => {
+  // Erwartungen invertiert (2026-07): vor dem Freeze lieferten diese
+  // Endpoints 200. Auch AUTHENTIFIZIERT muss jetzt 404 kommen (Router
+  // deregistriert), nie 500.
+  apiTest('GET /invoices ist eingefroren (404 fuer Admin und Viewer)', async ({ request }) => {
     for (const token of [adminToken(), viewerToken()]) {
       const resp = await request.get(`${API_BASE}/api/v1/invoices`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       apiExpect(resp.status()).not.toBe(500);
-      apiExpect(resp.status()).toBe(200);
+      apiExpect(resp.status()).toBe(404);
     }
   });
 
-  apiTest('GET /invoices/statistics/summary liefert 200 mit Kennzahlen', async ({ request }) => {
+  apiTest('GET /invoices/statistics/summary ist eingefroren (404)', async ({ request }) => {
     const resp = await request.get(`${API_BASE}/api/v1/invoices/statistics/summary`, {
       headers: { Authorization: `Bearer ${adminToken()}` },
     });
     apiExpect(resp.status()).not.toBe(500);
-    apiExpect(resp.status()).toBe(200);
-    const body = await resp.json();
-    apiExpect(typeof body).toBe('object');
+    apiExpect(resp.status()).toBe(404);
   });
 
-  apiTest('Skonto-Deadlines antworten ohne 500', async ({ request }) => {
+  apiTest('Skonto-Deadlines sind eingefroren (404, kein 500)', async ({ request }) => {
     const resp = await request.get(`${API_BASE}/api/v1/invoices/skonto/upcoming`, {
       headers: { Authorization: `Bearer ${adminToken()}` },
     });
     apiExpect(resp.status()).not.toBe(500);
-    apiExpect(resp.status()).toBe(200);
+    apiExpect(resp.status()).toBe(404);
   });
 });

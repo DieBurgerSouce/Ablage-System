@@ -69,6 +69,12 @@ test.describe('Multi-Tenant Isolation', () => {
     });
 
     test('sollte 403 oder 404 bei Zugriff auf fremde Transaktion zurückgeben', async ({ request }) => {
+      // HINWEIS (Odoo-Neuausrichtung 2026-07): Das Banking-Modul ist
+      // eingefroren — /api/v1/banking liefert seit dem Freeze deterministisch
+      // 404 (Router deregistriert). Der Test bleibt als Leak-Guard gueltig
+      // ("nie 200 fuer fremde IDs"), beweist aber aktuell den Freeze statt
+      // der Tenant-Isolation. Bei Reaktivierung (ACTIVE_OPTIONAL_MODULES=
+      // banking) prueft er wieder die echte Isolation.
       const fakeId = '00000000-0000-0000-0000-000000000003';
       const response = await request.get(`/api/v1/banking/transactions/${fakeId}`);
       expect([403, 404, 422]).toContain(response.status());

@@ -1,6 +1,13 @@
 /**
  * E2E: Banking-Journey CSV-Import -> Transaktionsliste -> Abgleich
  *
+ * MODUL EINGEFROREN (Odoo-Neuausrichtung 2026-07): Banking/Zahlungsabgleich
+ * übernimmt Odoo. Der Backend-Router /api/v1/banking liefert 404, die
+ * /admin/banking/*-Routen leiten auf /frozen um (frontend/src/lib/
+ * frozen-modules.ts, Key 'banking'). Beide describes sind daher geskippt;
+ * den Freeze-Zustand selbst beweist frozen-modules.spec.ts.
+ * Reaktivierung: ACTIVE_OPTIONAL_MODULES=banking + Skips entfernen.
+ *
  * Journey:
  * 1. Sicherstellen, dass ein Bankkonto existiert (API, idempotent: nur
  *    anlegen wenn keines da ist)
@@ -49,7 +56,7 @@ async function ensureBankAccount(request: APIRequestContext): Promise<void> {
   apiExpect([200, 201]).toContain(createResp.status());
 }
 
-apiTest.describe('Banking - API-Vorbedingungen', () => {
+apiTest.describe.skip('Banking - API-Vorbedingungen', () => {
   apiTest('Bankkonto existiert (oder wird idempotent angelegt)', async ({ request }) => {
     await ensureBankAccount(request);
   });
@@ -63,7 +70,7 @@ apiTest.describe('Banking - API-Vorbedingungen', () => {
   });
 });
 
-test.describe('Banking - CSV-Import-Journey', () => {
+test.describe.skip('Banking - CSV-Import-Journey', () => {
   // Reaktiviert 2026-06-21: Der React.lazy-Suspense-Hang der /admin/banking/*-
   // Kinderrouten ist behoben — sie nutzen jetzt lazyRoute
   // (src/lib/lazyRoute.tsx), das den dynamischen Import via setState erzwingt;
