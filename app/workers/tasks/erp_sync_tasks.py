@@ -620,3 +620,105 @@ def cleanup_old_history(days: int = 90) -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_cleanup())
 
 
+# =============================================================================
+# Vendor-Bill-Push (Neuausrichtung Phase 4: Ablage -> Odoo)
+# =============================================================================
+
+
+@celery_app.task(
+    name="app.workers.tasks.erp_sync_tasks.push_vendor_bill_draft",
+    bind=True,
+    max_retries=8,
+    queue="erp",
+)
+def push_vendor_bill_draft(self, document_id: str) -> Dict[str, Any]:
+    """Pusht ein archiviertes Eingangsrechnungs-Dokument als Odoo-Entwurf.
+
+    Wird vom OCR-Abschluss-Hook (ocr_tasks.py) mit Countdown gequeued.
+    Da Klassifikation + strukturierte Extraktion asynchron NACH dem
+    OCR-Abschluss laufen, wartet dieser Task per Retry, bis
+    ``extracted_data`` vorliegt, und delegiert dann an
+    ``odoo_vendor_bill_push_service.push_document`` (Idempotenz,
+    Partner-Matching, Review-Queue-Fehlerpfad dort).
+
+    Retry-Semantik:
+    - Extraktion noch nicht da -> Retry nach 60 s
+    - Transienter Fehler (Odoo/Storage nicht erreichbar) -> Retry nach 300 s;
+      erst beim LETZTEN Versuch erzeugt der Service die Review-Aufgabe
+      ("Odoo down -> Retry + Aufgabe").
+
+    Args:
+        document_id: Dokument-UUID als String
+
+    Returns:
+        Dict mit Push-Ergebnis (status, odoo_move_id, ...)
+    """
+    import asyncio
+
+    from app.db.models import Document
+    from app.services.erp.odoo_vendor_bill_push_service import (
+        is_extraction_ready,
+        push_document,
+    )
+
+    is_final_attempt = self.request.retries >= self.max_retries
+
+    async def _push() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            result = await db.execute(
+                select(Document).where(Document.id == UUID(document_id))
+            )
+            document = result.scalar_one_or_none()
+            if document is None:
+                return {
+                    "status": "error",
+                    "reason": "Dokument nicht gefunden",
+                    "retry": False,
+                }
+
+            # Extraktion abwarten (laeuft asynchron nach OCR-Abschluss).
+            # Beim finalen Versuch trotzdem pushen lassen: der Service
+            # entscheidet dann anhand document_type (z. B. skipped).
+            if not is_extraction_ready(document) and not is_final_attempt:
+                return {"status": "extraction_pending", "retry": True}
+
+            push_result = await push_document(
+                db,
+                UUID(document_id),
+                is_final_attempt=is_final_attempt,
+            )
+            return {
+                "status": push_result.status,
+                "odoo_move_id": push_result.odoo_move_id,
+                "partner_match_source": push_result.partner_match_source,
+                "reason": push_result.reason,
+                "retry": bool(
+                    push_result.status == "error"
+                    and push_result.retryable
+                    and not is_final_attempt
+                ),
+            }
+
+    outcome = asyncio.run(_push())
+
+    should_retry = bool(outcome.pop("retry", False))
+    if should_retry:
+        countdown = 60 if outcome.get("status") == "extraction_pending" else 300
+        logger.info(
+            "odoo_vendor_bill_push_retry",
+            document_id=document_id,
+            status=outcome.get("status"),
+            retries=self.request.retries,
+            countdown=countdown,
+        )
+        raise self.retry(countdown=countdown)
+
+    logger.info(
+        "odoo_vendor_bill_push_task_done",
+        document_id=document_id,
+        status=outcome.get("status"),
+        odoo_move_id=outcome.get("odoo_move_id"),
+    )
+    return outcome
+
+
