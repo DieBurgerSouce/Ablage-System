@@ -28,6 +28,10 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # location-Block mit eigenem add_header eingebunden (sonst unterdrueckt nginx die CSP dort).
 COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 
+# Gemeinsamer Server-Body (:80 und :443) — die 443-Site aus /etc/nginx/ssl/*.conf
+# (erzeugt von scripts/generate-lan-tls.sh) bindet dasselbe Snippet ein.
+COPY nginx-server-common.conf /etc/nginx/snippets/server-common.conf
+
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 

@@ -193,6 +193,36 @@ else
 fi
 
 # ============================================================================
+# 2b) HTTPS-Site fuer den Frontend-nginx erzeugen (443-ablage.conf)
+#     Wird via `include /etc/nginx/ssl/*.conf;` aus nginx.conf geladen und
+#     bindet denselben Server-Body wie :80 ein (server-common.conf im Image).
+# ============================================================================
+
+if [[ ! -f 443-ablage.conf ]] || [[ "${FORCE}" == "1" ]]; then
+    cat > 443-ablage.conf << EOF
+# Automatisch erzeugt von scripts/generate-lan-tls.sh — nicht committen (gitignored).
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN} _;
+
+    ssl_certificate     /etc/nginx/ssl/ablage.crt;
+    ssl_certificate_key /etc/nginx/ssl/ablage.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:ablage_ssl:10m;
+    ssl_session_timeout 1h;
+
+    include /etc/nginx/snippets/server-common.conf;
+}
+EOF
+    log_success "HTTPS-Site erzeugt (443-ablage.conf)"
+else
+    log_info "443-ablage.conf existiert bereits (--force zum Neuerstellen)"
+fi
+
+# ============================================================================
 # 3) Verifikation + Zusammenfassung
 # ============================================================================
 
