@@ -83,7 +83,9 @@ services:
       # Query nicht ab und erzeugt "dbname?sslmode=... = host=..." -> ini-Syntax-
       # fehler + Crash-Loop. Server-TLS stattdessen via SERVER_TLS_SSLMODE
       # (entrypoint.sh Z.174, offiziell unterstuetzt).
-      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # RLS light (Phase 7): Pooler laeuft auf dem App-Pfad -> gleiche
+      # Parametrisierung wie backend/worker (Default = heutiger Superuser)
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
       SERVER_TLS_SSLMODE: ${DB_SSL_MODE:-prefer}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 500
@@ -572,7 +574,10 @@ services:
       # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
       # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
       # mit ssl-Object setzen statt URL-Parameter.
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # RLS light (Phase 7): App-Rolle via POSTGRES_APP_USER/POSTGRES_APP_PASSWORD
+      # aktivierbar (.env.example + scripts/db/create_app_role.sql); Default =
+      # heutiger Superuser => nichts bricht.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (SECURITY: Passwort ist erforderlich!)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -739,7 +744,9 @@ services:
       # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
       # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
       # mit ssl-Object setzen statt URL-Parameter.
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # RLS light (Phase 7): App-Rolle via POSTGRES_APP_USER/POSTGRES_APP_PASSWORD
+      # aktivierbar (.env.example); Default = heutiger Superuser => nichts bricht.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (mit optionalem Passwort)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -874,7 +881,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ablage-worker-cpu
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --pool=prefork -n cpu_worker@%h -Q validation,metadata,maintenance,metrics,backup,dlq,workflow,approval,orchestration,tracking,privat
+    # M-10 Queue-Konsumenten-Abgleich (Neuausrichtung Phase 7):
+    #   + notification   (Collaboration-Digests, SLA-Warnungen)
+    #   + notifications  (Mentions/Annotationen, Report-Mails, Vertrags-Reminder)
+    #   + erp            (Odoo-Spiegel/-Push, erp_sync_tasks — Phase 3/4!)
+    #   + default        (import_tasks E-Mail/Hotfolder!, smart_inbox,
+    #                     odoo-Webhook, template-Render — waren konsumentenlos)
+    # "datev" bleibt bewusst ohne Konsument: Beat-Eintraege sind durch den
+    # Modul-Freeze gepruned, die verbliebenen booking_tasks-Routen haben keine
+    # aktiven Dispatcher. "gpu" wurde in celery_app.py auf ocr_normal normalisiert.
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --pool=prefork -n cpu_worker@%h -Q validation,metadata,maintenance,metrics,backup,dlq,workflow,approval,orchestration,tracking,privat,notification,notifications,erp,default
     environment:
       # Vault Configuration
       VAULT_ENABLED: ${VAULT_ENABLED:-false}
@@ -889,7 +905,8 @@ services:
       # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
       # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
       # mit ssl-Object setzen statt URL-Parameter.
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # RLS light (Phase 7): parametrisiert wie backend/worker (Default = Superuser)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -1022,7 +1039,8 @@ services:
       # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
       # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
       # mit ssl-Object setzen statt URL-Parameter.
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # RLS light (Phase 7): parametrisiert wie backend/worker (Default = Superuser)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       MINIO_ENDPOINT: minio:9000
