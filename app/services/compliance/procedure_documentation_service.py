@@ -9,6 +9,7 @@ Die Verfahrensdokumentation besteht aus:
 3. Technische Systemdokumentation (Architektur)
 4. Betriebsdokumentation (Ablaufbeschreibungen)
 5. Internes Kontrollsystem (IKS)
+6. Systemlandschaft und Rollenverteilung (Stand 08/2026, Odoo-Umstellung)
 
 Ausgabeformate:
 - PDF (für Steuerberater/Prüfer)
@@ -52,6 +53,7 @@ class DocumentSection(str, Enum):
     TECHNICAL = "technical"  # Technische Systemdokumentation
     OPERATIONS = "operations"  # Betriebsdokumentation
     CONTROLS = "controls"  # Internes Kontrollsystem
+    SYSTEM_LANDSCAPE = "system_landscape"  # Systemlandschaft und Rollenverteilung
 
 
 @dataclass
@@ -94,7 +96,9 @@ class ProcedureDocumentationService:
     """Service zur Generierung der GoBD Verfahrensdokumentation."""
 
     SYSTEM_VERSION = "1.1"
-    DOCUMENT_VERSION = "2026.01"
+    # 2026.07: Odoo-Umstellung — neuer Abschnitt 6 "Systemlandschaft und
+    # Rollenverteilung (Stand 08/2026)"; Änderungsvermerk siehe Abschnitt 6.6.
+    DOCUMENT_VERSION = "2026.07"
 
     async def generate_documentation(
         self,
@@ -160,6 +164,11 @@ class ProcedureDocumentationService:
         if DocumentSection.CONTROLS in include_sections:
             sections[DocumentSection.CONTROLS] = await self._generate_controls_section(
                 db, company_id, statistics
+            )
+
+        if DocumentSection.SYSTEM_LANDSCAPE in include_sections:
+            sections[DocumentSection.SYSTEM_LANDSCAPE] = (
+                await self._generate_system_landscape_section(db, company_id)
             )
 
         # Change History (letzte Änderungen)
@@ -623,6 +632,121 @@ Alle Änderungen am System werden dokumentiert:
 5. Dokumentation aktualisieren
 """
 
+    async def _generate_system_landscape_section(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+    ) -> str:
+        """Generiert die Beschreibung der Systemlandschaft und Rollenverteilung.
+
+        Dokumentiert die seit der Odoo-Umstellung (08/2026) geltende
+        Aufgabenteilung zwischen dem führenden ERP-System (Odoo) und diesem
+        Dokumentenmanagementsystem als hash-gesicherter qualifizierter
+        Zweitablage (GoBD-Einordnung des Odoo-Spiegels).
+        """
+        return """# 6. Systemlandschaft und Rollenverteilung (Stand 08/2026)
+
+## 6.1 Beteiligte Systeme
+
+Seit dem 01.08.2026 ist Odoo 18 (SaaS-Betrieb, Company „Spargelmesser
+Firmenich GmbH & Co. KG") das führende System für die Geschäftsprozesse
+und für die Aufbewahrung der dort erzeugten Belege (einschließlich der
+ZUGFeRD-/E-Rechnungs-Originale). Das Ablage-System wird daneben als
+revisionssicheres Archiv- und Erfassungssystem betrieben.
+
+| System | Betriebsform | Rolle |
+|--------|--------------|-------|
+| Odoo 18 (ERP) | SaaS | Führendes System: Verkauf, Einkauf, Fakturierung, offene Posten, Bankabgleich, Mahnwesen, E-Rechnung, DATEV-Übergabe; Aufbewahrung der in Odoo erzeugten Belege inkl. ZUGFeRD-Originale |
+| Ablage-System (dieses DMS) | On-Premises | Hash-gesicherte qualifizierte Zweitablage aller Odoo-Belege; Erfassungskanal für Papier- und E-Mail-Eingang; Aufbewahrungsort für Nicht-Odoo-Dokumente |
+| Lexware (Altsystem) | Lokal | Alt-Archiv der Belege bis zur Umstellung; ausschließlich Lesezugriff bis zum Auslauf |
+
+Die Auskunftserteilung bei Betriebsprüfungen (Datenzugriff Z1–Z3) erfolgt
+über Odoo bzw. den DATEV-Bestand der Steuerberatung. Das Archiv des
+Ablage-Systems dient als Recherche-, Sicherungs- und SaaS-Exit-Ebene
+(vollständige lokale Kopie aller Belege). Die früher im Ablage-System
+vorgesehenen ERP-Doppelfunktionen (u. a. Mahnwesen, Banking, DATEV-Export)
+sind eingefroren und deaktiviert (Modul-Registry).
+
+## 6.2 Datenflüsse zwischen den Systemen
+
+### 6.2.1 Spiegel-Pull (Odoo → Ablage-System)
+
+Alle in Odoo erzeugten oder geänderten Belege werden automatisch in das
+Ablage-System gespiegelt und dort GoBD-konform archiviert:
+
+- **Abrufintervall:** alle 30 Minuten (Celery-Beat, inkrementeller Cursor
+  auf dem Odoo-Änderungsdatum)
+- **Hash-Verifikation:** SHA-256-Prüfung jedes Anhangs gegen die von Odoo
+  gelieferte Prüfsumme (`ir.attachment.checksum`)
+- **Idempotenz/Dedupe:** bereits gespiegelte Belege werden anhand der
+  externen Odoo-IDs erkannt; es entstehen keine Duplikate
+- **Archivierung:** Aufnahme in die Merkle-Audit-Chain, optional
+  qualifizierter Zeitstempel nach RFC 3161 (TSA)
+- **Aufbewahrung:** gemäß den Fristen nach § 147 AO und § 14b UStG
+
+### 6.2.2 Beleg-Push (Ablage-System → Odoo)
+
+Der Papier- und E-Mail-Eingang wird im Ablage-System erfasst und als
+Entwurfs-Lieferantenrechnung an Odoo übergeben:
+
+1. **Erfassung:** Papierbelege über den Scanner-Hotfolder
+   („Scan-to-Ablage"), elektronische Rechnungen über die zentrale
+   Rechnungs-Mailadresse (IMAP-Import)
+2. **Verarbeitung:** lokale OCR-Texterkennung (On-Premises, kein
+   Cloud-Dienst), automatische Klassifizierung und Datenextraktion
+3. **Archivierung:** automatische GoBD-Archivierung über den täglichen
+   Auto-Archivierungslauf (Karenzzeit: 3 Tage für Korrekturen)
+4. **Übergabe:** Anlage einer Entwurfs-Lieferantenrechnung in Odoo mit
+   Partner-Matching; nur eindeutige Zuordnungen werden übertragen
+5. **Review-Queue:** nicht eindeutig zuordenbare Rechnungen erzeugen die
+   Aufgabe „Eingangsrechnung ohne Odoo-Zuordnung prüfen" und werden
+   manuell nachbearbeitet
+6. **Idempotenz/Dedupe:** Duplikatprüfung verhindert doppelte
+   Rechnungsentwürfe in Odoo
+
+## 6.3 Verantwortlichkeiten
+
+| Aufgabe | Verantwortlich |
+|---------|----------------|
+| Systemadministration, Benutzerverwaltung, Freigaben | Administrator (Systemverantwortlicher) |
+| Belegerfassung (Scan/E-Mail), Bearbeitung der Review-Queue | Büro-Team (Sachbearbeitung) |
+| Buchführung, Jahresabschluss, DATEV-Übergabe | Externe Steuerberatung (über Odoo/DATEV) |
+
+## 6.4 Unveränderbarkeit
+
+- Archivierte Dokumente sind über das Archiv-Kennzeichen (`is_archived`)
+  gegen Änderung und Löschung geschützt
+- Hash-Ketten (Audit-Chain nach Blockchain-Prinzip, Merkle-Baum) sichern
+  die lückenlose Nachvollziehbarkeit
+- Tägliche automatische Integritätsprüfung des Archivbestands
+- Löschschutz auf Datenbankebene (RESTRICT-Constraints): archivierte
+  Belege können nicht entfernt werden
+
+## 6.5 Aufbewahrungsfristen je Kategorie
+
+| Kategorie | Führendes System | Zweitablage | Aufbewahrung |
+|-----------|------------------|-------------|--------------|
+| Odoo-Belege (Ein-/Ausgangsrechnungen inkl. ZUGFeRD) | Odoo | Ablage-System (Spiegel) | 10 Jahre (§ 147 AO, § 14b UStG) |
+| Papier-/E-Mail-Eingang (Buchungsbelege) | Ablage-System | — | 10 Jahre (§ 147 AO) |
+| Handels-/Geschäftsbriefe, Korrespondenz | Ablage-System | — | 6 Jahre (§ 147 AO) |
+| Verträge, Personalunterlagen | Ablage-System | — | gemäß gesetzlicher bzw. vertraglicher Frist |
+| Alt-Archiv (Lexware-Belege, WA/WE-Altbestand 2008–2026) | Ablage-System | — | bis zum Fristablauf der jeweiligen Belegjahre |
+| Private Unterlagen | Ablage-System | — | keine gesetzliche Frist (getrennt vom Geschäftsbereich) |
+
+Die je Firma konkret konfigurierten Aufbewahrungsrichtlinien sind in
+Abschnitt 5.3 aufgeführt.
+
+## 6.6 Änderungsvermerk
+
+**Revision 2026.07 (Juli 2026, Odoo-Umstellung):** Abschnitt 6
+„Systemlandschaft und Rollenverteilung" neu aufgenommen. Odoo 18 ist ab
+01.08.2026 führendes System für Geschäftsprozesse und die Aufbewahrung der
+dort erzeugten Belege; das Ablage-System wird als hash-gesicherte
+qualifizierte Zweitablage, als Erfassungskanal (Scan/E-Mail → OCR →
+Archiv → Odoo-Entwurfsrechnung) und als Archiv für Nicht-Odoo-Dokumente
+betrieben. Die ERP-Doppelfunktionen des Ablage-Systems wurden eingefroren.
+"""
+
     # ================== Helper Methods ==================
 
     async def _get_company(
@@ -877,7 +1001,7 @@ Alle Änderungen am System werden dokumentiert:
                 lines.append("")
 
         # Change History
-        lines.append("# 6. Änderungshistorie")
+        lines.append("# 7. Änderungshistorie")
         lines.append("")
         lines.append("| Datum | Version | Beschreibung | Autor |")
         lines.append("|-------|---------|--------------|-------|")
