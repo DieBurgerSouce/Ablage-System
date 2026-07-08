@@ -33,6 +33,7 @@ from app.db.models import (
     ERPEntityMapping,
     ERPSyncStatus,
     ERPConflictStatus,
+    OdooSyncStatus,
 )
 from app.api.dependencies import get_current_user, get_db, require_admin
 from app.middleware.company_context import require_company
@@ -857,3 +858,80 @@ async def get_erp_stats(
         "pending_conflicts": pending_conflicts,
         "syncs_last_24h": recent_syncs,
     }
+
+
+# =============================================================================
+# Odoo-Spiegel-Monitoring (Neuausrichtung Phase 3, Plan par.4c.2)
+# =============================================================================
+
+
+class OdooMirrorStatusResponse(BaseModel):
+    """Status-Zeile des Odoo->Ablage Vollarchiv-Spiegels."""
+
+    connection_id: str
+    connection_name: str
+    data_type: str
+
+    last_sync_cursor: Optional[str]
+    last_sync_at: Optional[str]
+    last_successful_sync_at: Optional[str]
+
+    total_records_synced: int
+    last_record_count: Optional[int]
+    last_run: Optional[dict]
+
+    consecutive_failures: int
+    is_paused: bool
+    last_error: Optional[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get(
+    "/mirror-status",
+    response_model=List[OdooMirrorStatusResponse],
+    summary="Status des Odoo-Vollarchiv-Spiegels",
+)
+async def get_mirror_status(
+    current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
+    db: AsyncSession = Depends(get_db),
+) -> List[OdooMirrorStatusResponse]:
+    """Liest die Spiegel-Status-Eintraege (data_type mirror_*) der Firma.
+
+    Zeigt je Verbindung: Cursor, letzte Laufzeit, Zaehler des letzten
+    Laufs (sync_state["last_run"]) und consecutive_failures.
+    """
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
+    result = await db.execute(
+        select(OdooSyncStatus, ERPConnection.name)
+        .join(ERPConnection, OdooSyncStatus.connection_id == ERPConnection.id)
+        .where(
+            and_(
+                ERPConnection.company_id == company.id,
+                OdooSyncStatus.data_type.like("mirror_%"),
+            )
+        )
+        .order_by(ERPConnection.name, OdooSyncStatus.data_type)
+    )
+    rows = result.all()
+
+    return [
+        OdooMirrorStatusResponse(
+            connection_id=str(sync_status.connection_id),
+            connection_name=connection_name,
+            data_type=sync_status.data_type,
+            last_sync_cursor=sync_status.last_sync_cursor,
+            last_sync_at=_format_datetime(sync_status.last_sync_at),
+            last_successful_sync_at=_format_datetime(
+                sync_status.last_successful_sync_at
+            ),
+            total_records_synced=sync_status.total_records_synced or 0,
+            last_record_count=sync_status.last_record_count,
+            last_run=(sync_status.sync_state or {}).get("last_run"),
+            consecutive_failures=sync_status.consecutive_failures or 0,
+            is_paused=bool(sync_status.is_paused),
+            last_error=sync_status.last_error,
+        )
+        for sync_status, connection_name in rows
+    ]
