@@ -59,6 +59,7 @@ POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}"
 
 # MinIO (Muster minio_backup.sh)
 MINIO_ALIAS="${MINIO_ALIAS:-ablage}"
+MINIO_CONTAINER_NAME="${MINIO_CONTAINER_NAME:-ablage-minio}"
 MINIO_ENDPOINT="${MINIO_ENDPOINT_HOST:-http://127.0.0.1:9000}"
 MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-}"
 MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-}"
@@ -115,8 +116,10 @@ stage_postgres() {
     mkdir -p "${RESTIC_STAGE_DIR}/postgres"
     log "INFO" "pg_dump gestartet: ${POSTGRES_DB} -> ${dump_file}"
 
+    # -h 127.0.0.1: TCP statt Unix-Socket — die pg_hba-local-Zeile ist peer-auth
+    # (OS-User "postgres" != DB-Rolle ablage_admin), TCP nutzt scram + PGPASSWORD.
     if ! docker exec -e PGPASSWORD="${POSTGRES_PASSWORD}" "${PG_CONTAINER_NAME}" \
-        pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        pg_dump -h 127.0.0.1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
         --format=custom --no-owner --no-privileges --compress=6 \
         2>>"${LOG_FILE}" > "${dump_file}"; then
         die "pg_dump fehlgeschlagen"
@@ -140,17 +143,44 @@ MINIO_SOURCE_DIR=""
 stage_minio() {
     local stage_dir="${RESTIC_STAGE_DIR}/minio"
 
-    if command -v mc &>/dev/null; then
+    # mc-Kommando bestimmen (Kaskade wie minio_backup.sh): Host-mc, wenn der
+    # Endpoint vom Host erreichbar ist; sonst minio/mc-Container im Netz des
+    # MinIO-Containers (MinIO published aus Sicherheitsgruenden keinen Host-Port).
+    local mc_mode=""
+    if command -v mc &>/dev/null && mc alias set "${MINIO_ALIAS}" "${MINIO_ENDPOINT}" "${MINIO_ACCESS_KEY}" "${MINIO_SECRET_KEY}" --api S3v4 >/dev/null 2>>"${LOG_FILE}" \
+        && mc ls "${MINIO_ALIAS}/" >/dev/null 2>>"${LOG_FILE}"; then
+        mc_mode="host"
+    elif docker ps --format '{{.Names}}' | grep -qx "${MINIO_CONTAINER_NAME}"; then
+        mc_mode="container"
+    fi
+
+    if [[ -n "${mc_mode}" ]]; then
         if [[ -z "${MINIO_ACCESS_KEY}" || -z "${MINIO_SECRET_KEY}" ]]; then
             die "MINIO_ROOT_USER/MINIO_ROOT_PASSWORD nicht gesetzt (fuer mc mirror noetig)"
         fi
         mkdir -p "${stage_dir}"
-        log "INFO" "MinIO-Export via mc mirror -> ${stage_dir}"
-        if ! mc alias set "${MINIO_ALIAS}" "${MINIO_ENDPOINT}" "${MINIO_ACCESS_KEY}" "${MINIO_SECRET_KEY}" --api S3v4 >/dev/null 2>>"${LOG_FILE}"; then
-            die "mc alias set fehlgeschlagen (Endpoint: ${MINIO_ENDPOINT})"
-        fi
+
+        # Einheitlicher mc-Aufruf: Host-Binary oder Wegwerf-Container mit
+        # --network container:<minio> (127.0.0.1:9000 im Container-Netz) und
+        # Stage als /stage-Mount. MSYS_NO_PATHCONV verhindert Git-Bash-Pfad-Mangling.
+        run_mc() {
+            if [[ "${mc_mode}" == "host" ]]; then
+                mc "$@"
+            else
+                MSYS_NO_PATHCONV=1 docker run --rm \
+                    --network "container:${MINIO_CONTAINER_NAME}" \
+                    -e MC_HOST_${MINIO_ALIAS}="http://${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}@127.0.0.1:9000" \
+                    -v "${stage_dir}:/stage" \
+                    --entrypoint mc minio/mc "$@"
+            fi
+        }
+        # Stage-Zielpfad haengt vom Modus ab (Host-Pfad vs. Container-Mount)
+        local stage_target="${stage_dir}"
+        [[ "${mc_mode}" == "container" ]] && stage_target="/stage"
+
+        log "INFO" "MinIO-Export via mc mirror (${mc_mode}) -> ${stage_dir}"
         local buckets
-        buckets="$(mc ls "${MINIO_ALIAS}/" 2>>"${LOG_FILE}" | awk '{print $NF}' | tr -d '/' || true)"
+        buckets="$(run_mc ls "${MINIO_ALIAS}/" 2>>"${LOG_FILE}" | awk '{print $NF}' | tr -d '/\r' || true)"
         if [[ -z "${buckets}" ]]; then
             log "WARN" "Keine MinIO-Buckets gefunden - MinIO-Quelle wird uebersprungen"
             return 0
@@ -160,7 +190,7 @@ stage_minio() {
             mkdir -p "${stage_dir}/${bucket}"
             # --remove: Stage spiegelt den Ist-Zustand; Historie liegt in den
             # restic-Snapshots selbst (nicht im Stage-Verzeichnis).
-            if ! mc mirror --overwrite --remove "${MINIO_ALIAS}/${bucket}" "${stage_dir}/${bucket}" >>"${LOG_FILE}" 2>&1; then
+            if ! run_mc mirror --overwrite --remove "${MINIO_ALIAS}/${bucket}" "${stage_target}/${bucket}" >>"${LOG_FILE}" 2>&1; then
                 die "mc mirror fehlgeschlagen fuer Bucket '${bucket}'"
             fi
             log "INFO" "  Bucket '${bucket}' gespiegelt ($(find "${stage_dir}/${bucket}" -type f | wc -l) Objekte)"
@@ -205,7 +235,7 @@ stage_config() {
     # Alembic-Version aus der DB (fuer den Restore-Abgleich 'alembic upgrade head')
     local alembic_version
     alembic_version="$(docker exec -e PGPASSWORD="${POSTGRES_PASSWORD}" "${PG_CONTAINER_NAME}" \
-        psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -t -A \
+        psql -h 127.0.0.1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -t -A \
         -c "SELECT version_num FROM alembic_version;" 2>>"${LOG_FILE}" || true)"
     if [[ -n "${alembic_version}" ]]; then
         printf 'alembic_version=%s\nzeitpunkt=%s\n' "${alembic_version}" "${TIMESTAMP}" \
