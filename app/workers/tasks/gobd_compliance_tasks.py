@@ -11,7 +11,7 @@ GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, TypedDict
 
 import structlog
@@ -745,4 +745,280 @@ async def _generate_daily_breach_report(db) -> DailyBreachReport:
                     report["closed_last_24h"] += 1
 
     return report
+
+
+# =============================================================================
+# GoBD-Auto-Archivierung des Eingangskanals (Neuausrichtung Welle D, Defekt 3)
+# =============================================================================
+#
+# Die formale GoBD-Archivierung (GoBDArchiveService.archive_document ->
+# DocumentArchive + SHA256 + Retention + Audit-Chain) passierte bisher NUR
+# ueber manuelle API-Aufrufe (api/v1/archive.py). Fuer den Vollarchiv-
+# Anspruch (Plan §2: jedes Eingangs-Dokument wird zeitnah revisionssicher
+# archiviert) archiviert dieser Beat-Task (taeglich 03:30) automatisch alle
+# Eingangskanal-Dokumente, die
+#   (a) noch KEINEN DocumentArchive-Eintrag haben,
+#   (b) aus dem Eingangskanal stammen (import_source in email/folder/
+#       wa_we_altbestand) — odoo_mirror ist AUSGENOMMEN, der Spiegel
+#       archiviert seine Dokumente selbst (odoo_mirror_service),
+#   (c) aelter als GOBD_AUTO_ARCHIVE_GRACE_DAYS sind (Karenz, s. u.),
+#   (d) fertig verarbeitet sind (status == "completed", OCR abgeschlossen).
+#
+# KARENZ-BEGRUENDUNG (GOBD_AUTO_ARCHIVE_GRACE_DAYS, Default 3 Tage):
+# archive_document setzt Document.is_archived=True und legt einen
+# DocumentArchive-Eintrag mit content_hash (SHA256) und RESTRICT-FK an.
+# Die documents-Tabelle selbst hat KEINEN Unveraenderbarkeits-Trigger
+# (Migration 151/234 betrifft domain_events und gobd_audit_chain), aber ab
+# der Archivierung ist der INHALT faktisch eingefroren: die taegliche
+# batch_integrity_check_task schlaegt bei nachtraeglichem Inhaltstausch fehl
+# (Manipulationsverdacht-Alert), eine erneute Archivierung wirft ArchiveError,
+# und der RESTRICT-FK verhindert das Loeschen des Dokuments. Die Karenz gibt
+# dem Buero-Team deshalb ein Fenster fuer manuelle Korrekturen (falsche Datei,
+# Neuscan), BEVOR der Zustand hash-fixiert wird.
+
+
+class AutoArchiveResult(TypedDict):
+    enabled: bool
+    candidates: int
+    archived: int
+    skipped_no_content: int
+    errors: int
+    error_details: List[Dict[str, str]]
+
+
+# Eingangskanal-Quellen, die automatisch archiviert werden.
+# "odoo_mirror" fehlt hier BEWUSST (Mirror archiviert selbst).
+AUTO_ARCHIVE_IMPORT_SOURCES = ("email", "folder", "wa_we_altbestand")
+
+# Fallback-Kategorie: neutrale Beleg-Kategorie (10 Jahre §147 AO),
+# wie scripts/import_wa_we.py.
+AUTO_ARCHIVE_FALLBACK_CATEGORY = "receipt"
+
+# Klassifikation -> GoBD-Retention-Kategorie. Gleiche Logik wie
+# odoo_mirror_service.category_for_move_type: Rechnungen des EINGANGSkanals
+# sind Eingangsrechnungen ("invoice_incoming"); die Odoo-Belege mit echter
+# out_/in_-Unterscheidung spiegelt/archiviert der Mirror selbst. Alle
+# Zielwerte existieren in retention_service.DEFAULT_RETENTION_PERIODS.
+GOBD_CATEGORY_BY_DOCUMENT_TYPE: Dict[str, str] = {
+    "invoice": "invoice_incoming",
+    "credit_note": "invoice_incoming",
+    "receipt": "receipt",
+    "contract": "contract",
+    "delivery_note": "delivery_note",
+    "order": "order",
+    "purchase_order": "order",
+    "offer": "quotation",
+    "bank_statement": "bank_statement",
+    "tax_document": "tax_document",
+    "letter": "correspondence",
+}
+
+
+def gobd_category_for_document_type(document_type: Optional[str]) -> str:
+    """GoBD-Retention-Kategorie fuer eine Dokument-Klassifikation.
+
+    Unbekannte/fehlende Klassifikationen fallen konservativ auf die
+    neutrale Beleg-Kategorie "receipt" (10 Jahre §147 AO).
+    """
+    return GOBD_CATEGORY_BY_DOCUMENT_TYPE.get(
+        (document_type or "").strip().lower(), AUTO_ARCHIVE_FALLBACK_CATEGORY
+    )
+
+
+def archive_document_date(document) -> date:
+    """Belegdatum fuer die Fristberechnung.
+
+    Bevorzugt ``document_metadata.periode`` ("JJJJ-MM", z. B. WA/WE-
+    Altbestand -> Monatsletzter), sonst das Anlagedatum des Dokuments.
+    """
+    import calendar
+
+    meta = document.document_metadata or {}
+    periode = meta.get("periode") if isinstance(meta, dict) else None
+    if isinstance(periode, str) and len(periode) == 7 and periode[4] == "-":
+        try:
+            year, month = int(periode[:4]), int(periode[5:7])
+            return date(year, month, calendar.monthrange(year, month)[1])
+        except (ValueError, IndexError):
+            pass
+    created = getattr(document, "created_at", None)
+    if created is not None:
+        return created.date()
+    return datetime.now(timezone.utc).date()
+
+
+def build_auto_archive_stmt(cutoff: datetime, batch_limit: int):
+    """Selektions-Query fuer archivierungsfaellige Eingangs-Dokumente.
+
+    Als eigene Funktion testbar (Karenz-Cutoff, odoo_mirror-Ausschluss,
+    bereits-archiviert-Skip via NOT EXISTS auf document_archives).
+    """
+    from sqlalchemy import exists as sa_exists
+
+    from app.db.models import Document, DocumentArchive, ProcessingStatus
+
+    already_archived = (
+        select(DocumentArchive.id)
+        .where(DocumentArchive.document_id == Document.id)
+    )
+
+    return (
+        select(Document)
+        .where(
+            Document.deleted_at.is_(None),
+            Document.status == ProcessingStatus.COMPLETED.value,
+            Document.created_at < cutoff,
+            Document.document_metadata["import_source"]
+            .as_string()
+            .in_(list(AUTO_ARCHIVE_IMPORT_SOURCES)),
+            ~sa_exists(already_archived),
+        )
+        .order_by(Document.created_at.asc())
+        .limit(batch_limit)
+    )
+
+
+async def _run_gobd_auto_archive(db, batch_limit: int) -> AutoArchiveResult:
+    """Interne Funktion: selektiert + archiviert mit Fehler-Isolation pro Dokument."""
+    from app.core.config import settings
+    from app.services.compliance.archive_service import GoBDArchiveService
+    from app.services.storage_service import get_storage_service
+
+    result: AutoArchiveResult = {
+        "enabled": True,
+        "candidates": 0,
+        "archived": 0,
+        "skipped_no_content": 0,
+        "errors": 0,
+        "error_details": [],
+    }
+
+    grace_days = int(settings.GOBD_AUTO_ARCHIVE_GRACE_DAYS)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=grace_days)
+
+    documents = (
+        (await db.execute(build_auto_archive_stmt(cutoff, batch_limit)))
+        .scalars()
+        .all()
+    )
+    result["candidates"] = len(documents)
+
+    if not documents:
+        return result
+
+    storage = get_storage_service()
+    archive_service = GoBDArchiveService()
+
+    for document in documents:
+        try:
+            if not document.file_path:
+                result["skipped_no_content"] += 1
+                logger.warning(
+                    "gobd_auto_archive_no_storage_path",
+                    document_id=str(document.id),
+                )
+                continue
+
+            content = await storage.download_document(document.file_path)
+
+            meta = document.document_metadata or {}
+            import_source = (
+                meta.get("import_source") if isinstance(meta, dict) else None
+            )
+
+            await archive_service.archive_document(
+                db=db,
+                document_id=document.id,
+                company_id=document.company_id,
+                category=gobd_category_for_document_type(document.document_type),
+                document_content=content,
+                document_date=archive_document_date(document),
+                archived_by_id=None,  # Systemlauf (Beat), kein User
+                metadata={
+                    "auto_archived": True,
+                    "trigger": "gobd_auto_archive_task",
+                    "import_source": import_source,
+                },
+                # TSA bewusst aus: der Auto-Lauf nutzt SHA256 + Audit-Chain
+                # (wie import_wa_we); qualifizierte Zeitstempel bleiben dem
+                # manuellen/konfigurierten Pfad vorbehalten.
+                use_tsa=False,
+            )
+            # Pro Dokument committen: Teilfortschritt bleibt bei Abbruch
+            # erhalten; ein fehlerhaftes Dokument kippt nicht den Batch.
+            await db.commit()
+            result["archived"] += 1
+
+        except Exception as exc:
+            await db.rollback()
+            result["errors"] += 1
+            if len(result["error_details"]) < 20:
+                result["error_details"].append(
+                    {
+                        "document_id": str(document.id),
+                        "error": safe_error_detail(exc, "Archivierung"),
+                    }
+                )
+            logger.error(
+                "gobd_auto_archive_document_failed",
+                document_id=str(document.id),
+                **safe_error_log(exc),
+            )
+
+    return result
+
+
+@celery_app.task(
+    name="app.workers.tasks.gobd_compliance_tasks.gobd_auto_archive_task",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=600,
+    time_limit=1800,
+    soft_time_limit=1700,
+)
+def gobd_auto_archive_task(self, batch_limit: int = 500) -> AutoArchiveResult:
+    """Archiviert Eingangskanal-Dokumente automatisch GoBD-konform.
+
+    Wird taeglich um 03:30 via Celery Beat ausgefuehrt (Details/Karenz-
+    Begruendung im Modul-Kommentar oben).
+
+    Args:
+        batch_limit: Max. Dokumente pro Lauf (Default 500); der Rest folgt
+            im naechsten Lauf.
+
+    Returns:
+        Dictionary mit Archivierungs-Statistiken
+    """
+    import asyncio
+
+    from app.core.config import settings
+
+    if not settings.GOBD_AUTO_ARCHIVE_ENABLED:
+        logger.info("gobd_auto_archive_disabled")
+        return {
+            "enabled": False,
+            "candidates": 0,
+            "archived": 0,
+            "skipped_no_content": 0,
+            "errors": 0,
+            "error_details": [],
+        }
+
+    async def _run():
+        async with async_session_factory() as db:
+            return await _run_gobd_auto_archive(db, batch_limit)
+
+    try:
+        result = asyncio.run(_run())
+        logger.info(
+            "gobd_auto_archive_completed",
+            candidates=result["candidates"],
+            archived=result["archived"],
+            skipped_no_content=result["skipped_no_content"],
+            errors=result["errors"],
+        )
+        return result
+    except Exception as e:
+        logger.error("gobd_auto_archive_failed", **safe_error_log(e))
+        raise self.retry(exc=e)
 

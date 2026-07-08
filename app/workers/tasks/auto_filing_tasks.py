@@ -31,6 +31,25 @@ from app.workers.celery_app import celery_app
 logger = structlog.get_logger(__name__)
 
 
+def persist_pipeline_result(
+    document: Document, result_dict: Dict[str, object]
+) -> None:
+    """Persistiert das Pipeline-Ergebnis in ``Document.document_metadata``.
+
+    Neuausrichtung Welle D, Defekt 2: Vorher wurde nach ``document.ai_metadata``
+    geschrieben — dieses Attribut existiert am Document-Modell NICHT (das
+    Lesen hätte einen AttributeError geworfen, ein DB-Write fand nie statt).
+    Die Review-Queue-API liest ``document_metadata->pipeline_result``.
+
+    WICHTIG (JSONB-Muster wie odoo_vendor_bill_push_service): Neuzuweisung
+    des kompletten Dicts, damit SQLAlchemy die Änderung am JSON-Feld erkennt
+    (kein MutableDict auf CrossDBJSON).
+    """
+    existing_meta: Dict[str, object] = dict(document.document_metadata or {})
+    existing_meta["pipeline_result"] = result_dict
+    document.document_metadata = existing_meta
+
+
 @celery_app.task(
     name="app.workers.tasks.auto_filing_tasks.auto_file_new_documents_task",
     bind=True,
@@ -552,10 +571,10 @@ def trigger_auto_filing_pipeline_task(
                 if pipeline_result.assigned_project_id and hasattr(document, "project_id"):
                     document.project_id = pipeline_result.assigned_project_id
 
-            # Pipeline-Ergebnis in ai_metadata speichern
-            existing_meta: Dict[str, object] = document.ai_metadata or {}
-            existing_meta["pipeline_result"] = result_dict
-            document.ai_metadata = existing_meta
+            # Pipeline-Ergebnis in document_metadata speichern (Defekt-2-Fix:
+            # ai_metadata existiert nicht am Modell; Review-Queue liest
+            # document_metadata->pipeline_result)
+            persist_pipeline_result(document, result_dict)
 
             await db.commit()
 

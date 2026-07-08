@@ -41,15 +41,16 @@ def mock_user():
 
 @pytest.fixture
 def mock_document():
-    """Mock Document mit AI-Metadata und Pipeline-Result."""
+    """Mock Document mit Pipeline-Result in document_metadata."""
     doc = MagicMock()
     doc.id = uuid4()
     doc.filename = "rechnung_2026.pdf"
     doc.company_id = uuid4()
     doc.category = "rechnung"
     doc.created_at = datetime.now(timezone.utc)
-    # get_review_queue liest document_metadata (kanonische Column), confirm_filing
-    # liest ai_metadata. Beide auf denselben Pipeline-Result setzen.
+    # Defekt-2-Fix (Welle D): get_review_queue UND confirm_filing arbeiten
+    # beide auf document_metadata (die kanonische Column) — ai_metadata
+    # existiert am Document-Modell nicht.
     pipeline_metadata = {
         "pipeline_result": {
             "requires_review": True,
@@ -72,7 +73,6 @@ def mock_document():
         }
     }
     doc.document_metadata = pipeline_metadata
-    doc.ai_metadata = pipeline_metadata
     return doc
 
 
@@ -222,7 +222,6 @@ class TestGetReviewQueue:
         doc.created_at = datetime.now(timezone.utc)
         # get_review_queue liest document_metadata (kanonische Column)
         doc.document_metadata = None
-        doc.ai_metadata = None
 
         count_result = MagicMock()
         count_result.scalar.return_value = 1
@@ -402,6 +401,107 @@ class TestConfirmFiling:
 
             assert result.status == "bestaetigt"
             assert result.applied_category is None
+
+
+# =============================================================================
+# Defekt-2-Regression (Welle D): confirm_filing schreibt document_metadata
+# =============================================================================
+
+
+class _PlainDocument:
+    """Minimales Dokument-Objekt OHNE ai_metadata-Attribut.
+
+    Repliziert das echte ORM-Verhalten: Document hat KEIN ai_metadata —
+    der alte Code (document.ai_metadata) haette hier einen AttributeError
+    geworfen (=> HTTP 500) und review_confirmed waere nie persistiert worden.
+    """
+
+    def __init__(self, company_id):
+        self.id = uuid4()
+        self.filename = "eingangsrechnung.pdf"
+        self.company_id = company_id
+        self.document_metadata = {
+            "import_source": "email",
+            "pipeline_result": {
+                "requires_review": True,
+                "review_reasons": ["Kein eindeutiger Partner-Treffer"],
+            },
+        }
+
+
+class TestConfirmFilingSchreibtDocumentMetadata:
+    """Defekt 2: Der Confirm-Write muss in document_metadata landen."""
+
+    def _setup_confirm_patches(self):
+        mock_query = MagicMock()
+        mock_query.where.return_value = mock_query
+        return patch("app.api.v1.review_queue.select", return_value=mock_query), \
+               patch("app.api.v1.review_queue.and_", side_effect=lambda *args: args)
+
+    @pytest.mark.asyncio
+    async def test_confirm_filing_ohne_ai_metadata_attribut(self, mock_db, mock_user):
+        """Funktioniert mit Objekt ohne ai_metadata (wie das echte ORM-Modell)."""
+        doc = _PlainDocument(company_id=mock_user.company_id)
+
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = doc
+        mock_db.execute = AsyncMock(return_value=result_mock)
+
+        p1, p2 = self._setup_confirm_patches()
+        with p1, p2:
+            from app.api.v1.review_queue import confirm_filing, ConfirmFilingRequest
+
+            result = await confirm_filing(
+                document_id=doc.id,
+                request=ConfirmFilingRequest(is_correction=False),
+                db=mock_db,
+                current_user=mock_user,
+            )
+
+        assert result.status == "bestaetigt"
+        # Write landet in document_metadata.pipeline_result (Queue-Filter
+        # liest genau diese Felder) ...
+        pipeline_result = doc.document_metadata["pipeline_result"]
+        assert pipeline_result["review_confirmed"] is True
+        assert pipeline_result["confirmed_by"] == str(mock_user.id)
+        assert pipeline_result["is_correction"] is False
+        # ... bestehende Metadaten bleiben erhalten ...
+        assert doc.document_metadata["import_source"] == "email"
+        assert pipeline_result["requires_review"] is True
+        # ... und es wird KEIN totes ai_metadata-Attribut mehr erzeugt.
+        assert not hasattr(doc, "ai_metadata")
+
+    @pytest.mark.asyncio
+    async def test_confirm_filing_weist_metadata_dict_neu_zu(self, mock_db, mock_user):
+        """JSONB-Muster: komplette Neuzuweisung statt In-Place-Mutation.
+
+        CrossDBJSON hat kein MutableDict — nur eine Neuzuweisung des
+        Attributs macht die Aenderung fuer SQLAlchemy sichtbar
+        (Muster aus odoo_vendor_bill_push_service._apply_push_metadata).
+        """
+        doc = _PlainDocument(company_id=mock_user.company_id)
+        original_meta = doc.document_metadata
+        original_pipeline = original_meta["pipeline_result"]
+
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = doc
+        mock_db.execute = AsyncMock(return_value=result_mock)
+
+        p1, p2 = self._setup_confirm_patches()
+        with p1, p2:
+            from app.api.v1.review_queue import confirm_filing, ConfirmFilingRequest
+
+            await confirm_filing(
+                document_id=doc.id,
+                request=ConfirmFilingRequest(is_correction=False),
+                db=mock_db,
+                current_user=mock_user,
+            )
+
+        assert doc.document_metadata is not original_meta
+        assert doc.document_metadata["pipeline_result"] is not original_pipeline
+        # Die Original-Dicts wurden nicht in-place mutiert
+        assert "review_confirmed" not in original_pipeline
 
 
 # =============================================================================

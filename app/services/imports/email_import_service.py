@@ -1018,24 +1018,25 @@ class EmailImportService:
         Returns:
             Document-ID
         """
-        from app.services.document_service import DocumentService
-        from app.services.storage_service import StorageService
-
-        # Storage Service für MinIO Upload
-        storage = StorageService()
-
-        # Datei in MinIO speichern
-        storage_path = await storage.upload_document(
-            content=attachment.content,
-            filename=attachment.filename,
-            user_id=user_id,
-            mime_type=attachment.mime_type,
+        # Kanonischer Anlage-Pfad (Neuausrichtung Welle D, Defekt 1):
+        # StorageService.upload_document -> Document-ORM -> OCR-Task.
+        # Der frühere Aufruf DocumentService(self.db).create(...) war eine
+        # Landmine — diese Klasse hat weder db-Konstruktor noch create().
+        # auto_classify wirkt über den bestehenden OCR-Abschluss-Hook
+        # (Quick Classification nutzt den OCR-Text, siehe ocr_tasks.py).
+        from app.services.imports.document_creation import (
+            create_import_document,
+            resolve_import_company_id,
         )
 
-        # Document Service für DB-Eintrag
-        doc_service = DocumentService(self.db)
+        # Document.company_id ist NOT NULL: Config-Company, sonst
+        # aktive Firma des Config-Users (UserCompany).
+        company_id = await resolve_import_company_id(
+            self.db, user_id, config.company_id
+        )
 
-        # Metadaten aus Email extrahieren
+        # Metadaten aus Email extrahieren (unverändert wie zuvor —
+        # Absender-Matching/ZUGFeRD/Import-Regeln laufen im Aufrufer)
         metadata = {
             "import_source": "email",
             "email_from": email.from_address,
@@ -1044,21 +1045,23 @@ class EmailImportService:
             "email_message_id": email.message_id,
         }
 
-        # Dokument erstellen
-        document = await doc_service.create(
+        # Dokument erstellen (MinIO + DB + optional OCR)
+        document_id = await create_import_document(
+            self.db,
             user_id=user_id,
+            company_id=company_id,
+            content=attachment.content,
             filename=attachment.filename,
-            storage_path=storage_path,
+            original_filename=attachment.filename,
             mime_type=attachment.mime_type,
             file_size=attachment.size,
             file_hash=attachment.file_hash,
-            folder_id=config.default_folder_id,
-            metadata=metadata,
-            auto_classify=config.auto_classify,
+            import_metadata=metadata,
+            default_folder_id=config.default_folder_id,
             auto_ocr=config.auto_ocr,
         )
 
-        return document.id
+        return document_id
 
     async def _match_and_link_entity(
         self,
