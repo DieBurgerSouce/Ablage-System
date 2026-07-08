@@ -391,7 +391,12 @@ services:
   # Qdrant Vector Database - Parallele Vector-DB fuer A/B Testing
   # Rust-basiert, 48% bessere p99-Latenz als pgvector
   # SECURITY: API-Key Authentifizierung aktiviert
+  # Neuausrichtung Phase 6 (2026-07): Suche laeuft konsolidiert auf pgvector.
+  # Qdrant ist STILLGELEGT und startet nur noch ueber das Compose-Profil
+  # "qdrant-legacy" (docker compose --profile qdrant-legacy up -d qdrant).
+  # Volumes/Code bleiben erhalten (eingefroren, kein Rueckbau).
   qdrant:
+    profiles: ["qdrant-legacy"]
     image: qdrant/qdrant:v1.7.4
     container_name: ablage-qdrant
     environment:
@@ -443,9 +448,10 @@ services:
 
   # BGE-Reranker Cross-Encoder via HuggingFace Text Embeddings Inference
   # CPU-only (GPU reserviert fuer OCR), verbessert Suchrelevanz signifikant
-  # HINWEIS: Optional - Starten mit: docker-compose --profile gpu up -d
+  # Neuausrichtung Phase 6 (2026-07): gehoert zur stillgelegten Qdrant-Strecke;
+  # startet nur noch ueber das Compose-Profil "qdrant-legacy".
   reranker:
-    profiles: ["gpu"]
+    profiles: ["qdrant-legacy"]
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
     container_name: ablage-reranker
     command: --model-id BAAI/bge-reranker-v2-m3 --port 8090
@@ -582,11 +588,15 @@ services:
       API_PORT: 8000
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DEBUG: ${DEBUG:-false}
+      # M-35 (Neuausrichtung Phase 6): Query-Embeddings im API-Prozess auf CPU
+      # (e5-large-Query ~50-150 ms) — GPU bleibt exklusiv fuer OCR frei.
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
       # Qdrant Vector Database
-      # W1-023: Default true wie bei worker/worker-cpu — Qdrant startet immer
-      # mit (kein profile) und das Backend wartet ohnehin auf dessen Health;
-      # false/true-Drift fuehrte zu inkonsistentem Verhalten Backend vs. Worker.
-      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
+      # Neuausrichtung Phase 6 (2026-07): Suche konsolidiert auf pgvector —
+      # Qdrant stillgelegt (Service nur noch via Profil "qdrant-legacy",
+      # depends_on entfernt). Default daher false auf ALLEN Services
+      # (ersetzt W1-023-Default true, der an den Immer-Start gekoppelt war).
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-false}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
@@ -659,8 +669,9 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      qdrant:
-        condition: service_healthy
+      # qdrant: entfernt (Neuausrichtung Phase 6) — Service liegt hinter dem
+      # Compose-Profil "qdrant-legacy"; compose kennt kein konditionales
+      # depends_on, daher Referenz gestrichen statt konditionalisiert.
       # vault: (disabled for development - VAULT_ENABLED=false)
       #   condition: service_healthy
     user: "1000:1000"
@@ -755,8 +766,13 @@ services:
       HF_HOME: /home/ablage/.cache/huggingface
       TRANSFORMERS_CACHE: /home/ablage/.cache/huggingface
       TORCH_HOME: /home/ablage/.cache/torch
+      # M-35 (Neuausrichtung Phase 6): GPU-Worker behaelt "auto" — Batch-
+      # Embeddings (Beat semantic-batch-embed) laufen weiter auf der GPU.
+      EMBEDDING_DEVICE: ${WORKER_EMBEDDING_DEVICE:-auto}
       # Qdrant Vector Database
-      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
+      # Neuausrichtung Phase 6 (2026-07): pgvector-only — Defaults false,
+      # Qdrant-Service nur noch via Profil "qdrant-legacy".
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-false}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
@@ -764,16 +780,16 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
       QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
-      # A/B Testing (pgvector vs Qdrant)
-      VECTOR_AB_TESTING_ENABLED: ${VECTOR_AB_TESTING_ENABLED:-true}
+      # A/B Testing (pgvector vs Qdrant) — stillgelegt (Phase 6)
+      VECTOR_AB_TESTING_ENABLED: ${VECTOR_AB_TESTING_ENABLED:-false}
       VECTOR_AB_TRAFFIC_SPLIT: ${VECTOR_AB_TRAFFIC_SPLIT:-10}
       VECTOR_AB_METRICS_ENABLED: ${VECTOR_AB_METRICS_ENABLED:-true}
       VECTOR_AB_CONTROL_BACKEND: ${VECTOR_AB_CONTROL_BACKEND:-pgvector}
       VECTOR_AB_TREATMENT_BACKEND: ${VECTOR_AB_TREATMENT_BACKEND:-qdrant}
       VECTOR_AB_CONTROL_EMBEDDING: ${VECTOR_AB_CONTROL_EMBEDDING:-intfloat/multilingual-e5-large}
       VECTOR_AB_TREATMENT_EMBEDDING: ${VECTOR_AB_TREATMENT_EMBEDDING:-intfloat/multilingual-e5-large}
-      # Dual-Write (pgvector + Qdrant Synchronisation)
-      VECTOR_DUAL_WRITE_ENABLED: ${VECTOR_DUAL_WRITE_ENABLED:-true}
+      # Dual-Write (pgvector + Qdrant Synchronisation) — stillgelegt (Phase 6)
+      VECTOR_DUAL_WRITE_ENABLED: ${VECTOR_DUAL_WRITE_ENABLED:-false}
       VECTOR_DUAL_WRITE_ASYNC: ${VECTOR_DUAL_WRITE_ASYNC:-true}
       VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
       # Ollama LLM Service (host.docker.internal für Host-Zugriff)
@@ -799,8 +815,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      qdrant:
-        condition: service_healthy
+      # qdrant: entfernt (Neuausrichtung Phase 6) — Service liegt hinter dem
+      # Compose-Profil "qdrant-legacy" (kein konditionales depends_on moeglich).
       # vault: (disabled for development - VAULT_ENABLED=false)
       #   condition: service_healthy
       # FAANG-AUDIT FIX: Worker wartet auf gesundes Backend
@@ -905,7 +921,9 @@ services:
       # flach (nur Master-Prozess sichtbar) -> CeleryNoActivity-Fehlalarm.
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
       # Qdrant Vector Database
-      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
+      # Neuausrichtung Phase 6 (2026-07): pgvector-only — Defaults false,
+      # Qdrant-Service nur noch via Profil "qdrant-legacy".
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-false}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
@@ -913,16 +931,16 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
       QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
-      # A/B Testing (pgvector vs Qdrant)
-      VECTOR_AB_TESTING_ENABLED: ${VECTOR_AB_TESTING_ENABLED:-true}
+      # A/B Testing (pgvector vs Qdrant) — stillgelegt (Phase 6)
+      VECTOR_AB_TESTING_ENABLED: ${VECTOR_AB_TESTING_ENABLED:-false}
       VECTOR_AB_TRAFFIC_SPLIT: ${VECTOR_AB_TRAFFIC_SPLIT:-10}
       VECTOR_AB_METRICS_ENABLED: ${VECTOR_AB_METRICS_ENABLED:-true}
       VECTOR_AB_CONTROL_BACKEND: ${VECTOR_AB_CONTROL_BACKEND:-pgvector}
       VECTOR_AB_TREATMENT_BACKEND: ${VECTOR_AB_TREATMENT_BACKEND:-qdrant}
       VECTOR_AB_CONTROL_EMBEDDING: ${VECTOR_AB_CONTROL_EMBEDDING:-intfloat/multilingual-e5-large}
       VECTOR_AB_TREATMENT_EMBEDDING: ${VECTOR_AB_TREATMENT_EMBEDDING:-intfloat/multilingual-e5-large}
-      # Dual-Write (pgvector + Qdrant Synchronisation)
-      VECTOR_DUAL_WRITE_ENABLED: ${VECTOR_DUAL_WRITE_ENABLED:-true}
+      # Dual-Write (pgvector + Qdrant Synchronisation) — stillgelegt (Phase 6)
+      VECTOR_DUAL_WRITE_ENABLED: ${VECTOR_DUAL_WRITE_ENABLED:-false}
       VECTOR_DUAL_WRITE_ASYNC: ${VECTOR_DUAL_WRITE_ASYNC:-true}
       VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
       # Ollama LLM Service (host.docker.internal für Host-Zugriff)
@@ -948,8 +966,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      qdrant:
-        condition: service_healthy
+      # qdrant: entfernt (Neuausrichtung Phase 6) — Service liegt hinter dem
+      # Compose-Profil "qdrant-legacy" (kein konditionales depends_on moeglich).
       # FAANG-AUDIT FIX: CPU-Worker wartet auf gesundes Backend
       backend:
         condition: service_healthy

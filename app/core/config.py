@@ -433,6 +433,13 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 1024
     EMBEDDING_BATCH_SIZE: int = 16  # Optimiert für RTX 4080 16GB VRAM
     EMBEDDING_MAX_LENGTH: int = 512  # Max tokens per text
+    # M-35 (Neuausrichtung Phase 6): Query-Embeddings im API-Prozess auf CPU,
+    # damit die GPU exklusiv fuer OCR frei bleibt. Batch-Embeddings laufen
+    # weiter im GPU-Worker (dort WORKER_EMBEDDING_DEVICE=auto via compose).
+    EMBEDDING_DEVICE: str = Field(
+        default="auto",
+        description="cpu|cuda|auto — Query-Embedding-Device; auto = bisheriges Verhalten",
+    )
 
     # Dynamisches Batching (GPU-Speicher-basiert)
     EMBEDDING_DYNAMIC_BATCH_ENABLED: bool = True  # Dynamische Batch-Größe
