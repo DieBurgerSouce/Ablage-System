@@ -470,3 +470,72 @@ class TestAutoMatchDocumentsTask:
         sig = inspect.signature(auto_match_documents_task.run.__func__)
         params = list(sig.parameters.keys())
         assert "self" in params
+
+
+# ==================== Pipeline-Result-Persistenz (Defekt 2, Welle D) ====================
+
+
+class _PlainPipelineDocument:
+    """Minimales Dokument-Objekt OHNE ai_metadata (wie das echte ORM-Modell)."""
+
+    def __init__(self, document_metadata=None):
+        self.id = uuid4()
+        self.document_metadata = document_metadata
+
+
+class TestPersistPipelineResult:
+    """Defekt 2: Pipeline-Ergebnis muss in document_metadata landen.
+
+    Vorher schrieb trigger_auto_filing_pipeline_task nach document.ai_metadata —
+    ein Attribut, das am Document-Modell nicht existiert (kein DB-Write; das
+    Lesen haette einen AttributeError geworfen). Die Review-Queue-API filtert
+    per SQL auf document_metadata->pipeline_result.
+    """
+
+    def test_schreibt_pipeline_result_in_document_metadata(self):
+        from app.workers.tasks.auto_filing_tasks import persist_pipeline_result
+
+        doc = _PlainPipelineDocument(document_metadata=None)
+        result_dict = {"requires_review": True, "status": "requires_review"}
+
+        persist_pipeline_result(doc, result_dict)
+
+        assert doc.document_metadata == {"pipeline_result": result_dict}
+        assert not hasattr(doc, "ai_metadata")
+
+    def test_bestehende_metadaten_bleiben_erhalten(self):
+        from app.workers.tasks.auto_filing_tasks import persist_pipeline_result
+
+        doc = _PlainPipelineDocument(
+            document_metadata={"import_source": "folder", "tags": ["a"]}
+        )
+        persist_pipeline_result(doc, {"auto_processed": True})
+
+        assert doc.document_metadata["import_source"] == "folder"
+        assert doc.document_metadata["tags"] == ["a"]
+        assert doc.document_metadata["pipeline_result"] == {"auto_processed": True}
+
+    def test_neuzuweisung_statt_inplace_mutation(self):
+        """JSONB-Muster: CrossDBJSON hat kein MutableDict — nur die
+        Neuzuweisung des kompletten Dicts macht die Aenderung fuer
+        SQLAlchemy sichtbar."""
+        from app.workers.tasks.auto_filing_tasks import persist_pipeline_result
+
+        original = {"import_source": "email"}
+        doc = _PlainPipelineDocument(document_metadata=original)
+
+        persist_pipeline_result(doc, {"requires_review": False})
+
+        assert doc.document_metadata is not original
+        assert "pipeline_result" not in original
+
+    def test_wiederholter_lauf_ueberschreibt_pipeline_result(self):
+        """Re-Run der Pipeline ersetzt das alte Ergebnis (idempotent)."""
+        from app.workers.tasks.auto_filing_tasks import persist_pipeline_result
+
+        doc = _PlainPipelineDocument(
+            document_metadata={"pipeline_result": {"requires_review": True}}
+        )
+        persist_pipeline_result(doc, {"requires_review": False})
+
+        assert doc.document_metadata["pipeline_result"] == {"requires_review": False}

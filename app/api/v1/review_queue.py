@@ -6,7 +6,8 @@ Endpunkte fuer:
 - GET /review-queue - Liste aller Dokumente die Review brauchen
 - POST /documents/{id}/confirm-filing - Zuordnung bestaetigen/korrigieren
 
-Pipeline-Integration: Liest ai_metadata.pipeline_result.requires_review
+Pipeline-Integration: Liest document_metadata.pipeline_result.requires_review
+(geschrieben von trigger_auto_filing_pipeline_task bzw. dem Odoo-Push-Fehlerpfad).
 """
 
 from __future__ import annotations
@@ -249,15 +250,20 @@ async def confirm_filing(
                 document.project_id = UUID(request.project_id)
             applied_project_id = request.project_id
 
-        # Pipeline-Result als bestaetigt markieren
-        ai_metadata: Dict[str, object] = document.ai_metadata or {}
-        pipeline_result: Dict[str, object] = ai_metadata.get("pipeline_result") or {}
-        if isinstance(pipeline_result, dict):
-            pipeline_result["review_confirmed"] = True
-            pipeline_result["confirmed_by"] = str(current_user.id)
-            pipeline_result["is_correction"] = request.is_correction
-        ai_metadata["pipeline_result"] = pipeline_result
-        document.ai_metadata = ai_metadata
+        # Pipeline-Result als bestaetigt markieren (Defekt-2-Fix: vorher
+        # ai_metadata — existiert nicht am Modell, haette AttributeError/500
+        # geworfen und das Dokument waere nie aus der Queue verschwunden).
+        # JSONB-Muster: komplettes Dict neu zuweisen, damit SQLAlchemy die
+        # Aenderung an CrossDBJSON erkennt (kein MutableDict).
+        doc_metadata: Dict[str, object] = dict(document.document_metadata or {})
+        pipeline_result: Dict[str, object] = dict(
+            doc_metadata.get("pipeline_result") or {}
+        )
+        pipeline_result["review_confirmed"] = True
+        pipeline_result["confirmed_by"] = str(current_user.id)
+        pipeline_result["is_correction"] = request.is_correction
+        doc_metadata["pipeline_result"] = pipeline_result
+        document.document_metadata = doc_metadata
 
         # Bei Korrektur: Daten fuer OCR-Learning speichern (best-effort)
         correction_recorded = False

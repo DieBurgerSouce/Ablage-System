@@ -974,8 +974,16 @@ class FolderImportService:
         Returns:
             Document-ID
         """
-        from app.services.document_service import DocumentService
-        from app.services.storage_service import StorageService
+        # Kanonischer Anlage-Pfad (Neuausrichtung Welle D, Defekt 1):
+        # StorageService.upload_document -> Document-ORM -> OCR-Task.
+        # Der frühere Aufruf DocumentService(self.db).create(...) war eine
+        # Landmine — diese Klasse hat weder db-Konstruktor noch create().
+        # auto_classify wirkt über den bestehenden OCR-Abschluss-Hook
+        # (Quick Classification nutzt den OCR-Text, siehe ocr_tasks.py).
+        from app.services.imports.document_creation import (
+            create_import_document,
+            resolve_import_company_id,
+        )
 
         # Datei lesen
         with open(file_path, "rb") as f:
@@ -989,40 +997,36 @@ class FolderImportService:
             ext = file_path.suffix
             filename = f"{uuid4()}{ext}"
 
-        # Storage Service für MinIO Upload
-        storage = StorageService()
-        storage_path = await storage.upload_document(
-            content=content,
-            filename=filename,
-            user_id=user_id,
-            mime_type=mime_type,
+        # Document.company_id ist NOT NULL: Config-Company, sonst
+        # aktive Firma des Config-Users (UserCompany).
+        company_id = await resolve_import_company_id(
+            self.db, user_id, config.company_id
         )
 
-        # Document Service für DB-Eintrag
-        doc_service = DocumentService(self.db)
-
-        # Metadaten
+        # Metadaten (unverändert wie zuvor)
         metadata = {
             "import_source": "folder",
             "original_path": str(file_path),
             "original_filename": file_path.name,
         }
 
-        # Dokument erstellen
-        document = await doc_service.create(
+        # Dokument erstellen (MinIO + DB + optional OCR)
+        document_id = await create_import_document(
+            self.db,
             user_id=user_id,
+            company_id=company_id,
+            content=content,
             filename=filename,
-            storage_path=storage_path,
+            original_filename=file_path.name,
             mime_type=mime_type,
             file_size=file_size,
             file_hash=file_hash,
-            folder_id=config.default_folder_id,
-            metadata=metadata,
-            auto_classify=config.auto_classify,
+            import_metadata=metadata,
+            default_folder_id=config.default_folder_id,
             auto_ocr=config.auto_ocr,
         )
 
-        return document.id
+        return document_id
 
     async def _apply_import_rules(
         self,

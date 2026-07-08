@@ -1156,6 +1156,30 @@ class Settings(BaseSettings):
         description="Odoo-Company-ID (res.company) fuer den Vollarchiv-Spiegel, falls die Verbindung keinen eigenen Wert hat"
     )
 
+    # =============================================================================
+    # GoBD-Auto-Archivierung des Eingangskanals (Neuausrichtung Welle D)
+    # =============================================================================
+    # Der Beat-Task gobd_auto_archive_task (taeglich 03:30) archiviert fertig
+    # verarbeitete Eingangs-Dokumente (E-Mail-/Folder-Import, WA/WE-Altbestand)
+    # automatisch GoBD-konform (DocumentArchive + SHA256 + Retention).
+    # Odoo-Spiegel-Dokumente sind AUSGENOMMEN — der Mirror archiviert selbst.
+    GOBD_AUTO_ARCHIVE_ENABLED: bool = Field(
+        default=True,
+        description=(
+            "Automatische GoBD-Archivierung von Eingangskanal-Dokumenten "
+            "(E-Mail-/Folder-Import) aktivieren"
+        ),
+    )
+    GOBD_AUTO_ARCHIVE_GRACE_DAYS: int = Field(
+        default=3,
+        ge=0, le=365,
+        description=(
+            "Karenzzeit in Tagen zwischen Dokument-Anlage und automatischer "
+            "GoBD-Archivierung (Fenster fuer manuelle Korrekturen — ab der "
+            "Archivierung ist der Inhalt hash-fixiert)"
+        ),
+    )
+
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""

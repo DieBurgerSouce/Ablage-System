@@ -2598,6 +2598,17 @@ celery_app.conf.update(
             "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),  # Woechentlich Sonntag 03:00 Uhr
             "options": {"queue": "maintenance"},
         },
+        # =================================================================
+        # GoBD-Auto-Archivierung des Eingangskanals (Neuausrichtung Welle D)
+        # =================================================================
+        # Taeglich 03:30: Eingangs-Dokumente (email/folder/wa_we_altbestand)
+        # ohne DocumentArchive-Eintrag nach Karenzzeit GoBD-archivieren
+        # (odoo_mirror archiviert selbst; Schalter GOBD_AUTO_ARCHIVE_ENABLED)
+        "gobd-auto-archive-daily": {
+            "task": "app.workers.tasks.gobd_compliance_tasks.gobd_auto_archive_task",
+            "schedule": crontab(hour=3, minute=30),
+            "options": {"queue": "maintenance"},
+        },
     },
 
     # Queue routing
@@ -3229,6 +3240,10 @@ celery_app.conf.update(
         "partition.archive_old": {"queue": "maintenance", "priority": 1},
         "partition.update_stats": {"queue": "maintenance", "priority": 1},
         "partition.health_check": {"queue": "maintenance", "priority": 3},
+        # =================================================================
+        # GoBD-Auto-Archivierung des Eingangskanals (Neuausrichtung Welle D)
+        # =================================================================
+        "app.workers.tasks.gobd_compliance_tasks.gobd_auto_archive_task": {"queue": "maintenance", "priority": 4},
     },
 
     # Priority settings
