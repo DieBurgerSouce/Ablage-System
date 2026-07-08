@@ -618,26 +618,29 @@ class TestRetryFailedDunningEmailsTask:
         # Batch-Retry-Task braucht selbst nicht viele Retries
         assert retry_failed_dunning_emails.max_retries >= 1
 
-    def test_retry_failed_dunning_emails_in_beat_schedule(self):
-        """Sollte im Beat Schedule sein (stuendlich)."""
+    def test_retry_failed_dunning_emails_not_in_beat_schedule(self):
+        """Beat-Eintrag ist durch den Mahnwesen-Freeze entfernt (Odoo-Neuausrichtung 2026-07).
+
+        Der Task-Code bleibt bestehen (Modul notification_tasks ist aktiv), aber der
+        Beat-Eintrag wird in celery_app.py explizit gepoppt, weil das Mahnwesen an
+        Odoo (account_followup) uebergeht. Reaktivierung: ACTIVE_OPTIONAL_MODULES.
+        """
         from app.workers.celery_app import celery_app
 
         beat_schedule = celery_app.conf.beat_schedule
 
-        assert "notification-retry-failed-dunning-emails" in beat_schedule
-        config = beat_schedule["notification-retry-failed-dunning-emails"]
-        assert config["task"] == "app.workers.tasks.notification_tasks.retry_failed_dunning_emails"
+        assert "notification-retry-failed-dunning-emails" not in beat_schedule
 
-    def test_retry_failed_dunning_emails_hourly_schedule(self):
-        """Sollte stuendlich laufen (3600 Sekunden)."""
+    def test_no_beat_entry_dispatches_dunning_retry(self):
+        """Kein verbleibender Beat-Eintrag zeigt auf retry_failed_dunning_emails (Freeze)."""
         from app.workers.celery_app import celery_app
 
-        beat_schedule = celery_app.conf.beat_schedule
-        config = beat_schedule["notification-retry-failed-dunning-emails"]
-        schedule = config["schedule"]
-
-        # Should be 3600 seconds (hourly)
-        assert schedule == 3600.0
+        offending = [
+            name
+            for name, config in celery_app.conf.beat_schedule.items()
+            if config.get("task") == "app.workers.tasks.notification_tasks.retry_failed_dunning_emails"
+        ]
+        assert offending == []
 
 
 class TestDunningEmailTaskRoutes:

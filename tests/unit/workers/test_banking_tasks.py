@@ -334,13 +334,21 @@ class TestCheckExpiredMahnstoppTask:
 class TestCeleryAppBeatScheduleIntegration:
     """Tests fuer celery_app.py Beat Schedule Integration."""
 
-    def test_banking_tasks_in_main_beat_schedule(self):
-        """Sollte Banking Tasks im Haupt-Beat-Schedule von celery_app.py haben."""
+    def test_banking_beats_pruned_by_default_freeze(self):
+        """Banking-Beats sind im Default-Freeze entfernt (Odoo-Neuausrichtung 2026-07).
+
+        Banking/Mahnwesen uebernimmt Odoo (account_online_synchronization +
+        account_followup); das banking-Modul ist per module_registry eingefroren
+        und celery_app.py entfernt Include + Beats. Reaktivierung ueber
+        ACTIVE_OPTIONAL_MODULES="banking".
+        """
+        from app.core.module_registry import is_module_active
         from app.workers.celery_app import celery_app
 
-        beat_schedule = celery_app.conf.beat_schedule
+        assert not is_module_active("banking"), "banking muss im Default gefroren sein"
 
-        required_banking_tasks = [
+        beat_schedule = celery_app.conf.beat_schedule
+        pruned_banking_tasks = [
             "banking-process-dunning-daily",
             "banking-daily-mahnlauf",
             "banking-reactivate-snoozed-tasks",
@@ -352,30 +360,18 @@ class TestCeleryAppBeatScheduleIntegration:
             "banking-tan-cleanup-hourly",
         ]
 
-        for task_name in required_banking_tasks:
-            assert task_name in beat_schedule, \
-                f"Task {task_name} fehlt im Haupt-Beat-Schedule von celery_app.py"
+        for task_name in pruned_banking_tasks:
+            assert task_name not in beat_schedule, \
+                f"Beat {task_name} muesste durch den banking-Freeze entfernt sein"
 
-    def test_banking_tasks_have_correct_task_names(self):
-        """Sollte korrekte Task-Namen in celery_app.py Beat-Schedule haben."""
+    def test_no_beat_entry_dispatches_banking_tasks(self):
+        """Kein verbleibender Beat-Eintrag zeigt auf das eingefrorene banking_tasks-Modul."""
         from app.workers.celery_app import celery_app
 
-        beat_schedule = celery_app.conf.beat_schedule
-
-        expected_task_mappings = {
-            "banking-process-dunning-daily": "app.workers.tasks.banking_tasks.process_automatic_dunning",
-            "banking-daily-mahnlauf": "app.workers.tasks.banking_tasks.daily_mahnlauf",
-            "banking-reactivate-snoozed-tasks": "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks",
-            "banking-check-expired-mahnstopp": "app.workers.tasks.banking_tasks.check_expired_mahnstopp",
-            "banking-pre-due-reminders-morning": "app.workers.tasks.banking_tasks.send_pre_due_reminders",
-            "banking-skonto-alerts-morning": "app.workers.tasks.banking_tasks.send_skonto_alerts",
-            "banking-dunning-daily-report": "app.workers.tasks.banking_tasks.generate_dunning_daily_report",
-            "banking-update-cash-flow-4h": "app.workers.tasks.banking_tasks.update_cash_flow_forecasts",
-            "banking-tan-cleanup-hourly": "app.workers.tasks.banking_tasks.cleanup_tan_challenges",
-        }
-
-        for schedule_name, expected_task in expected_task_mappings.items():
-            assert schedule_name in beat_schedule, f"Schedule {schedule_name} fehlt"
-            actual_task = beat_schedule[schedule_name]["task"]
-            assert actual_task == expected_task, \
-                f"Schedule {schedule_name} hat falschen Task: {actual_task} != {expected_task}"
+        offending = [
+            name
+            for name, config in celery_app.conf.beat_schedule.items()
+            if str(config.get("task", "")).startswith("app.workers.tasks.banking_tasks.")
+        ]
+        assert offending == [], \
+            f"Beat-Eintraege dispatchen ins gefrorene banking_tasks-Modul: {offending}"
