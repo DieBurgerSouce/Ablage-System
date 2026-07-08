@@ -39,8 +39,14 @@ if not raw_url:
     print("[entrypoint] FEHLER: DATABASE_URL (oder ABLAGE_DATABASE_URL) ist nicht gesetzt.", flush=True)
     sys.exit(1)
 
+# RLS light (Phase 7): Migrationen brauchen DDL-Rechte. Laeuft die App als
+# ablage_app (NOSUPERUSER/NOBYPASSRLS, kein CREATE auf public), liefert
+# MIGRATION_DATABASE_URL die Owner-Verbindung NUR fuer Wait/Lock/alembic —
+# das eigentliche CMD (uvicorn/celery) behaelt die App-DATABASE_URL.
+mig_url = os.getenv("MIGRATION_DATABASE_URL") or raw_url
+
 # SQLAlchemy-Schema "postgresql+asyncpg://" -> asyncpg-DSN "postgresql://"
-dsn = raw_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+dsn = mig_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 import asyncpg  # noqa: E402  (erst nach dem DSN-Check importieren)
 
@@ -82,7 +88,10 @@ async def run_alembic_with_lock() -> None:
         # Session-Lock: blockiert, bis kein anderer Container mehr migriert.
         await conn.execute("SELECT pg_advisory_lock($1)", lock_key)
         print("[entrypoint] Lock erhalten — fuehre 'alembic upgrade head' aus ...", flush=True)
-        result = subprocess.run(["alembic", "upgrade", "head"], cwd="/app")
+        # alembic/env.py bezieht die URL aus den App-Settings -> beide Env-Namen
+        # auf die Migrations-URL zwingen (nur fuer diesen Subprozess).
+        mig_env = dict(os.environ, DATABASE_URL=mig_url, ABLAGE_DATABASE_URL=mig_url)
+        result = subprocess.run(["alembic", "upgrade", "head"], cwd="/app", env=mig_env)
         if result.returncode != 0:
             print(
                 f"[entrypoint] FEHLER: 'alembic upgrade head' fehlgeschlagen (Exit-Code {result.returncode}).",

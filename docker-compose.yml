@@ -578,6 +578,9 @@ services:
       # aktivierbar (.env.example + scripts/db/create_app_role.sql); Default =
       # heutiger Superuser => nichts bricht.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # RLS light: Migrationen (docker/entrypoint.sh) laufen IMMER als Owner-Rolle
+      # mit DDL-Rechten; die App-Verbindung (DATABASE_URL oben) bleibt ablage_app.
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (SECURITY: Passwort ist erforderlich!)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -747,6 +750,8 @@ services:
       # RLS light (Phase 7): App-Rolle via POSTGRES_APP_USER/POSTGRES_APP_PASSWORD
       # aktivierbar (.env.example); Default = heutiger Superuser => nichts bricht.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # Migration macht ausschliesslich der backend-Entrypoint (RLS light: Owner-URL dort).
+      RUN_MIGRATIONS: "false"
       # Redis (mit optionalem Passwort)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -907,6 +912,8 @@ services:
       # mit ssl-Object setzen statt URL-Parameter.
       # RLS light (Phase 7): parametrisiert wie backend/worker (Default = Superuser)
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # Migration macht ausschliesslich der backend-Entrypoint (RLS light: Owner-URL dort).
+      RUN_MIGRATIONS: "false"
       # Redis
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -1041,6 +1048,8 @@ services:
       # mit ssl-Object setzen statt URL-Parameter.
       # RLS light (Phase 7): parametrisiert wie backend/worker (Default = Superuser)
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # Migration macht ausschliesslich der backend-Entrypoint (RLS light: Owner-URL dort).
+      RUN_MIGRATIONS: "false"
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       MINIO_ENDPOINT: minio:9000
