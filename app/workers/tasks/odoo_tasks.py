@@ -825,3 +825,157 @@ def retry_failed_syncs() -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_retry())
 
 
+# =============================================================================
+# Odoo -> Ablage Vollarchiv-Spiegel (Neuausrichtung Phase 3, Plan par.4c.2)
+# =============================================================================
+
+
+async def _notify_mirror_stalled(
+    connection_name: str,
+    connection_id: str,
+    consecutive_failures: int,
+    last_error: Optional[str],
+) -> None:
+    """Warnt bei Spiegel-Stillstand (Log immer, Slack best-effort)."""
+    logger.warning(
+        "odoo_mirror_stalled",
+        connection_id=connection_id,
+        consecutive_failures=consecutive_failures,
+        last_error=last_error,
+    )
+    try:
+        from app.services.slack_service import (
+            SlackMessagePriority,
+            SlackNotificationType,
+            SlackService,
+        )
+
+        slack = SlackService()
+        if slack.is_enabled:
+            await slack.send_notification(
+                notification_type=SlackNotificationType.SYSTEM_ALERT,
+                title="Odoo-Spiegel gestoert",
+                message=(
+                    f"Der Odoo-Vollarchiv-Spiegel fuer Verbindung "
+                    f"'{connection_name}' schlaegt seit "
+                    f"{consecutive_failures} Laeufen in Folge fehl."
+                ),
+                priority=SlackMessagePriority.HIGH,
+                context={
+                    "connection_id": connection_id,
+                    "consecutive_failures": consecutive_failures,
+                    "last_error": (last_error or "")[:300],
+                },
+            )
+    except Exception as notify_error:
+        # Benachrichtigung ist best-effort und darf den Task nicht kippen
+        logger.warning(
+            "odoo_mirror_stalled_notification_failed",
+            connection_id=connection_id,
+            **safe_error_log(notify_error),
+        )
+
+
+@celery_app.task(
+    name="app.workers.tasks.odoo_tasks.odoo_mirror_incremental",
+    bind=True,
+    max_retries=0,
+)
+def odoo_mirror_incremental(self) -> Dict[str, Any]:
+    """Inkrementeller Odoo->Ablage Vollarchiv-Spiegel (GoBD-Zweitablage).
+
+    Iteriert alle aktiven ERP-Verbindungen vom Typ "odoo" und ruft den
+    OdooMirrorService. Verbindungen ohne aufloesbare odoo_company_id
+    (OdooSyncStatus.sync_state["odoo_company_id"] bzw. Setting
+    ODOO_MIRROR_COMPANY_ID) werden vom Service uebersprungen
+    (Multi-Company-Sicherheit). Ab MIRROR_FAILURE_ALERT_THRESHOLD
+    Fehl-Laeufen in Folge gibt es eine Slack-/Log-Warnung.
+
+    Returns:
+        Zusammenfassung pro Verbindung (fetched/created/skipped/errors/cursor)
+    """
+    import asyncio
+
+    async def _run() -> Dict[str, Any]:
+        from app.db.models import ERPConnection, OdooSyncStatus
+        from app.services.erp.odoo_mirror_service import (
+            MIRROR_DATA_TYPE,
+            MIRROR_FAILURE_ALERT_THRESHOLD,
+            OdooMirrorService,
+        )
+
+        async with get_async_session_context() as db:
+            result = await db.execute(
+                select(ERPConnection).where(
+                    and_(
+                        ERPConnection.erp_type == "odoo",
+                        ERPConnection.is_active == True,  # noqa: E712
+                    )
+                )
+            )
+            connections = list(result.scalars().all())
+
+            service = OdooMirrorService()
+            summary: Dict[str, Dict[str, Any]] = {}
+
+            for connection in connections:
+                connection_id = str(connection.id)
+                try:
+                    run_result = await service.run_incremental(db, connection)
+                    summary[connection_id] = {
+                        "fetched": run_result.fetched,
+                        "created": run_result.created,
+                        "skipped_duplicates": run_result.skipped_duplicates,
+                        "errors": run_result.errors,
+                        "new_cursor": run_result.new_cursor,
+                    }
+                except Exception as run_error:
+                    # Fehler-Isolation auch zwischen Verbindungen
+                    await db.rollback()
+                    logger.exception(
+                        "odoo_mirror_connection_failed",
+                        connection_id=connection_id,
+                        **safe_error_log(run_error),
+                    )
+                    summary[connection_id] = {
+                        "errors": 1,
+                        "error": safe_error_detail(run_error, "Odoo-Spiegel"),
+                    }
+
+                # Stillstands-Warnung anhand des persistierten Status
+                status_result = await db.execute(
+                    select(OdooSyncStatus).where(
+                        and_(
+                            OdooSyncStatus.connection_id == connection.id,
+                            OdooSyncStatus.data_type == MIRROR_DATA_TYPE,
+                        )
+                    )
+                )
+                sync_status = status_result.scalar_one_or_none()
+                if (
+                    sync_status is not None
+                    and (sync_status.consecutive_failures or 0)
+                    >= MIRROR_FAILURE_ALERT_THRESHOLD
+                ):
+                    await _notify_mirror_stalled(
+                        connection_name=connection.name,
+                        connection_id=connection_id,
+                        consecutive_failures=sync_status.consecutive_failures,
+                        last_error=sync_status.last_error,
+                    )
+
+            logger.info(
+                "odoo_mirror_incremental_completed",
+                connections=len(connections),
+                created=sum(s.get("created", 0) for s in summary.values()),
+                errors=sum(s.get("errors", 0) for s in summary.values()),
+            )
+            return {
+                "success": True,
+                "connections": len(connections),
+                "results": summary,
+            }
+
+    return asyncio.get_event_loop().run_until_complete(_run())
+
+

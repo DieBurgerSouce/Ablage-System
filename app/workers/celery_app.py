@@ -1891,6 +1891,14 @@ celery_app.conf.update(
             "schedule": 1800.0,  # Alle 30 Minuten
             "options": {"queue": "erp"},
         },
+        # Alle 30 Minuten: Odoo->Ablage Vollarchiv-Spiegel (GoBD-Zweitablage,
+        # Neuausrichtung Phase 3). Lebt in odoo_tasks (AKTIV, siehe
+        # FROZEN-Invarianten: odoo-* bleibt vom Beat-Pruning unangetastet).
+        "odoo-mirror-incremental": {
+            "task": "app.workers.tasks.odoo_tasks.odoo_mirror_incremental",
+            "schedule": 1800.0,  # Alle 30 Minuten
+            "options": {"queue": "erp"},
+        },
         # =================================================================
         # ERP Sync Tasks (Generische ERP-Integration)
         # =================================================================
@@ -3029,6 +3037,8 @@ celery_app.conf.update(
         "app.workers.tasks.odoo_tasks.process_odoo_webhook": {"queue": "default", "priority": 7},
         # Fehlgeschlagene Syncs wiederholen
         "app.workers.tasks.odoo_tasks.retry_failed_syncs": {"queue": "erp", "priority": 4},
+        # Odoo->Ablage Vollarchiv-Spiegel (GoBD-Zweitablage, Phase 3)
+        "app.workers.tasks.odoo_tasks.odoo_mirror_incremental": {"queue": "erp", "priority": 4},
         # AI Feedback Push
         "app.workers.tasks.odoo_tasks.push_ai_feedback": {"queue": "erp", "priority": 3},
         # Risk Score Push

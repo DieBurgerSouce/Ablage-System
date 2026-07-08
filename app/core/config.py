@@ -1108,6 +1108,23 @@ class Settings(BaseSettings):
         description="Komma-Liste eingefrorener Module, die reaktiviert werden sollen (siehe app/core/module_registry.py)"
     )
 
+    # =============================================================================
+    # Odoo-Vollarchiv-Spiegel (Odoo-Neuausrichtung 2026, Plan §4c.2 / Phase 3)
+    # =============================================================================
+    # Der Beat-Task odoo_mirror_incremental spiegelt gebuchte Odoo-Belege
+    # (account.move + Anhaenge) als hash-gesicherte GoBD-Zweitablage.
+    ODOO_MIRROR_USE_TSA: bool = Field(
+        default=False,
+        description="RFC-3161-TSA-Zeitstempel bei der GoBD-Archivierung gespiegelter Odoo-Belege anfordern"
+    )
+    # Fallback fuer den Odoo-Company-Context des Spiegels (z.B. 2 = Spargelmesser).
+    # Per-Connection-Wert in OdooSyncStatus.sync_state["odoo_company_id"] hat Vorrang;
+    # ohne aufloesbare Company-ID laeuft der Spiegel NICHT (Multi-Company-Sicherheit).
+    ODOO_MIRROR_COMPANY_ID: Optional[int] = Field(
+        default=None,
+        description="Odoo-Company-ID (res.company) fuer den Vollarchiv-Spiegel, falls die Verbindung keinen eigenen Wert hat"
+    )
+
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""
