@@ -1870,10 +1870,11 @@ celery_app.conf.update(
             "options": {"queue": "metadata"},
         },
         # Wöchentlich: Fraud-Detection-Model trainieren (Sonntag 04:00)
+        # M-10: queue "gpu" -> ocr_normal (kein Worker konsumiert "gpu")
         "fraud-train-model-weekly": {
             "task": "app.workers.tasks.fraud_detection_tasks.train_fraud_model_task",
             "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
-            "options": {"queue": "gpu"},
+            "options": {"queue": "ocr_normal"},
         },
         # Täglich: Fraud-Statistiken generieren
         "fraud-generate-statistics-daily": {
@@ -2678,7 +2679,11 @@ celery_app.conf.update(
         "app.workers.tasks.ml_tasks.trigger_model_retrain": {"queue": "maintenance", "priority": 2},
         # MLOps Pipeline tasks (Model Lifecycle Management)
         "app.workers.tasks.mlops_tasks.check_retraining_threshold": {"queue": "maintenance", "priority": 2},
-        "app.workers.tasks.mlops_tasks.run_retraining": {"queue": "gpu", "priority": 4},
+        # M-10 (Neuausrichtung Phase 7): Queue "gpu" hatte KEINEN Konsumenten
+        # (kein Worker-`-Q gpu` in docker-compose.yml) — run_retraining wird
+        # aber aktiv via check_retraining_threshold dispatcht und waere in der
+        # Queue verrottet. Normalisiert auf ocr_normal (GPU-Worker, solo+Lock).
+        "app.workers.tasks.mlops_tasks.run_retraining": {"queue": "ocr_normal", "priority": 4},
         "app.workers.tasks.mlops_tasks.evaluate_model": {"queue": "metadata", "priority": 3},
         "app.workers.tasks.mlops_tasks.rollback_if_degraded": {"queue": "maintenance", "priority": 8},  # Hohe Priorität für Rollback
         "app.workers.tasks.mlops_tasks.cleanup_old_versions": {"queue": "maintenance", "priority": 1},
@@ -3015,8 +3020,10 @@ celery_app.conf.update(
         "app.workers.tasks.fraud_detection_tasks.iban_verification_task": {"queue": "metadata", "priority": 7},
         # Abgelaufene IBAN-Requests prüfen
         "app.workers.tasks.fraud_detection_tasks.check_expired_iban_requests_task": {"queue": "maintenance", "priority": 3},
-        # Model-Training (GPU Queue, niedrigere Priorität)
-        "app.workers.tasks.fraud_detection_tasks.train_fraud_model_task": {"queue": "gpu", "priority": 3},
+        # Model-Training (GPU-Task; M-10: Queue "gpu" ohne Konsument ->
+        # ocr_normal normalisiert; Modul ist eingefroren, greift erst bei
+        # Reaktivierung via ACTIVE_OPTIONAL_MODULES=risk_finanzki)
+        "app.workers.tasks.fraud_detection_tasks.train_fraud_model_task": {"queue": "ocr_normal", "priority": 3},
         # Statistiken generieren
         "app.workers.tasks.fraud_detection_tasks.generate_fraud_statistics_task": {"queue": "maintenance", "priority": 2},
         # =================================================================
@@ -3311,6 +3318,20 @@ for _module_key, _extra_beat_keys in FROZEN_MODULE_EXTRA_BEAT_KEYS.items():
                 module=_module_key,
                 reason="frozen_domain_beat",
             )
+
+
+# =============================================================================
+# Neuausrichtung Phase 7: Remote-Sync ersetzt durch restic_backup.sh
+# =============================================================================
+# "backup-remote-sync-daily" stiess backup_tasks.sync_to_remote_task an, das
+# ueber BackupService.sync_to_remote() (backup_service.py ~Z.1147) per
+# UNVERSCHLUESSELTEM rsync zum Remote-Ziel synchronisierte. Das 3-2-1-Backup
+# laeuft jetzt client-seitig verschluesselt ueber scripts/backup/
+# restic_backup.sh (lokales Repo + Hetzner Storage Box, Host-Cron; Doku:
+# scripts/backup/DR_RUNBOOK.md "3-2-1-Backup mit restic"). Task-Code und
+# BackupService bleiben unangetastet (eingefrorenes Terrain) — nur der
+# automatische Beat-Anstoss entfaellt; manueller Aufruf bleibt moeglich.
+celery_app.conf.beat_schedule.pop("backup-remote-sync-daily", None)
 
 
 class GPUTask(Task):

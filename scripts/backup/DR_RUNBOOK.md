@@ -1,8 +1,217 @@
 # Disaster Recovery Runbook - Ablage-System
 
-> **Zuletzt aktualisiert**: 2026-05-04 (Sprint 0 / G08)
+> **Zuletzt aktualisiert**: 2026-07-08 (Neuausrichtung Phase 7: restic 3-2-1, Beat-Ausfallsicherheit, CPU-OCR-Standby)
 > **Verantwortlich**: Ben (Solo-Founder)
 > **Grafana Dashboard**: [Backup Monitoring](/d/ablage-backup-monitoring/backup-monitoring)
+
+---
+
+## 3-2-1-Backup mit restic (Neuausrichtung Phase 7, Entscheidung 11)
+
+**Script:** `scripts/backup/restic_backup.sh` (laeuft auf dem HOST, nicht im Container)
+
+**Strategie:** 3 Kopien (Produktion + lokales restic-Repo + Cloud-Repo), 2 Medientypen
+(Server-Disk + NAS/USB), 1 Offsite (Hetzner Storage Box, **client-seitig verschluesselt** —
+Hetzner sieht nur Chiffrat). restic dedupliziert und verschluesselt alle Snapshots.
+
+**ERSETZT den unverschluesselten rsync-Remote-Sync:** Der Beat-Eintrag
+`backup-remote-sync-daily` (→ `backup_tasks.sync_to_remote_task` →
+`BackupService.sync_to_remote()`, rsync ohne Verschluesselung) ist in
+`app/workers/celery_app.py` deaktiviert (Beat-Key gepoppt). Der Task-Code selbst
+bleibt unveraendert und manuell aufrufbar; der automatische Offsite-Weg ist ab
+jetzt ausschliesslich restic. Die lokalen Skripte (`backup_all.sh`, `pg_backup.sh`,
+`minio_backup.sh`) und der Beat `backup-full-daily` laufen unveraendert weiter —
+restic ist die zusaetzliche 3-2-1-Schicht darueber.
+
+**Quellen je Snapshot** (Tags `ablage`, `daily`):
+
+| Quelle | Inhalt | Methode |
+|--------|--------|---------|
+| PostgreSQL | frischer `pg_dump` (custom format, verifiziert via `pg_restore --list`) | `docker exec` (Muster `pg_backup.sh`) |
+| MinIO | Bucket-Export | `mc mirror` in Stage-Dir (Muster `minio_backup.sh`); Fallback: neuester `/backup/minio/`-Snapshot |
+| Konfig | `.env`, `infrastructure/nginx/ssl/`, `alembic_version.txt` (aus DB) | Kopie ins Stage-Dir |
+
+**Retention je Repo:** `--keep-daily 14 --keep-weekly 8 --keep-monthly 24 --prune`
+(≈ 2 Wochen taeglich, 2 Monate woechentlich, 2 Jahre monatlich).
+
+### Einrichtung (einmalig)
+
+```bash
+# 1. restic installieren (Host). Debian/Ubuntu:
+sudo apt install restic
+# oder aktuelles Binary: https://github.com/restic/restic/releases
+restic version   # muss funktionieren
+
+# 2. Passwort-Datei anlegen (NIE ins Repo committen!)
+sudo install -m 600 /dev/null /etc/restic-ablage.pass
+openssl rand -base64 32 | sudo tee /etc/restic-ablage.pass > /dev/null
+
+# 3. SCHLUESSEL-AUFBEWAHRUNG OFFLINE (PFLICHT!):
+#    Das restic-Passwort auf Papier/USB-Stick ausserhalb des Servers verwahren
+#    (Tresor). Ohne Passwort sind BEIDE Repos endgueltig unlesbar - ein
+#    Server-Totalverlust darf das Passwort nicht mitnehmen.
+
+# 4. Hetzner Storage Box vorbereiten (Robot-Konsole):
+#    - Storage Box bestellen, SSH-Support + externe Erreichbarkeit aktivieren
+#    - SSH-Key hinterlegen:
+ssh-keygen -t ed25519 -f ~/.ssh/id_storagebox -N ""
+#    Public Key in der Robot-Konsole eintragen ODER (Port 23 andocken):
+ssh-copy-id -p 23 -i ~/.ssh/id_storagebox u123456@u123456.your-storagebox.de
+#    - ~/.ssh/config-Eintrag (restic nutzt sftp ueber diese Host-Definition):
+cat >> ~/.ssh/config <<'EOF'
+Host storagebox
+    HostName u123456.your-storagebox.de
+    User u123456
+    Port 23
+    IdentityFile ~/.ssh/id_storagebox
+EOF
+
+# 5. ENV setzen (z. B. /etc/ablage-restic.env, von Cron gesourct):
+#    RESTIC_REPO_LOCAL=/mnt/nas/restic-ablage        # NAS-Mount oder USB-Pfad
+#    RESTIC_REPO_REMOTE=sftp:storagebox:/restic-ablage
+#    RESTIC_PASSWORD_FILE=/etc/restic-ablage.pass
+#    DB_PASSWORD=...  MINIO_ROOT_USER=...  MINIO_ROOT_PASSWORD=...
+
+# 6. Erstlauf (initialisiert beide Repos automatisch; Cloud-Erstupload dauert!)
+bash scripts/backup/restic_backup.sh
+```
+
+### Cron (Host)
+
+```cron
+# Taeglich 03:15: restic-Backup in beide Repos (nach backup-full-daily 02:30)
+15 3 * * * . /etc/ablage-restic.env && /app/Ablage_System/scripts/backup/restic_backup.sh >> /backup/logs/cron_restic.log 2>&1
+
+# Woechentlich Sonntag 05:30: Repo-Integritaet pruefen (restic check)
+30 5 * * 0 . /etc/ablage-restic.env && /app/Ablage_System/scripts/backup/restic_backup.sh --check >> /backup/logs/cron_restic.log 2>&1
+```
+
+**Fehler-Semantik:** Ein nicht erreichbares Repo (NAS ab, Internet weg) stoppt das
+andere NICHT — Exit 1 signalisiert Teilerfolg, Exit 2 fatale Fehler (nichts
+gesichert), 0 = beide Repos ok. Log: `/backup/logs/restic_backup.log`.
+
+### Quartals-Restore-Test (restic, PFLICHT alle 3 Monate)
+
+Ziel: Beweis, dass aus dem restic-Repo ein **lauffaehiges System** entsteht —
+nicht nur, dass Dateien zurueckkommen.
+
+```bash
+# Auf dem ZWEITSYSTEM (oder VM; Docker + docker compose + restic installiert):
+
+# 1. Snapshot waehlen und wiederherstellen (Repo-Zugang + Passwortdatei noetig)
+restic -r sftp:storagebox:/restic-ablage --password-file /etc/restic-ablage.pass snapshots
+restic -r sftp:storagebox:/restic-ablage --password-file /etc/restic-ablage.pass \
+    restore latest --target /restore
+
+# 2. Repository klonen + wiederhergestellte Konfig einsetzen
+git clone <repository-url> /app/Ablage_System && cd /app/Ablage_System
+cp /restore/backup/restic-stage/config/.env .env
+cp -r /restore/backup/restic-stage/config/nginx-ssl/* infrastructure/nginx/ssl/ 2>/dev/null || true
+
+# 3. Stack hochfahren (Postgres zuerst) und DB einspielen
+docker compose up -d postgres && sleep 15
+docker exec -i -e PGPASSWORD="$DB_PASSWORD" ablage-postgres \
+    pg_restore -U ablage_admin -d ablage_system --clean --if-exists --no-owner \
+    < /restore/backup/restic-stage/postgres/ablage_system.dump
+
+# 4. MinIO starten und Buckets zurueckspielen
+docker compose up -d minio && sleep 10
+for bucket in /restore/backup/restic-stage/minio/*/; do
+  mc mirror "$bucket" "local/$(basename "$bucket")"
+done
+
+# 5. Restliche Services starten
+docker compose up -d
+
+# 6. Alembic-Stand abgleichen (Soll steht in config/alembic_version.txt)
+docker compose exec backend alembic current
+cat /restore/backup/restic-stage/config/alembic_version.txt
+```
+
+**Abnahme-Checkliste (im Runbook-Protokoll unten dokumentieren):**
+
+- [ ] `restic restore` ohne Fehler (beide Repos stichprobenartig im Wechsel testen)
+- [ ] `docker compose ps` — alle Services healthy
+- [ ] **Login** ueber das Frontend mit echtem Benutzer erfolgreich
+- [ ] **Stichproben-Dokumentabruf**: 3 Dokumente oeffnen (aelter/mittel/neu), PDF laedt, OCR-Text vorhanden
+- [ ] Suche liefert Treffer (1 Volltext-, 1 semantische Query)
+- [ ] `alembic current` == `alembic_version.txt` aus dem Snapshot
+- [ ] Dauer notieren (RTO), Snapshot-Alter notieren (RPO)
+
+**Restore-Test-Protokoll (restic):**
+
+| Datum | Repo | Snapshot-Alter | Dauer | Login | Dokumentabruf | Ergebnis |
+|-------|------|---------------:|------:|:-----:|:-------------:|----------|
+| _(erster Test nach Einrichtung eintragen)_ | | | | | | |
+
+---
+
+## Beat-Ausfallsicherheit (M-11, pragmatisch — KEINE zweite Beat-Instanz)
+
+**Ist-Zustand (verifiziert in `app/workers/celery_app.py` + `docker-compose.yml`):**
+
+1. **RedBeat-Lock:** Beat laeuft mit `redbeat.RedBeatScheduler`
+   (`redbeat_redis_url` = Broker, `redbeat_lock_timeout=300`). Der Schedule liegt
+   in Redis, eine Beat-Instanz haelt den Lock (TTL 5 min, wird automatisch
+   erneuert). Crasht Beat, laeuft der Lock nach spaetestens 5 min ab — ein neu
+   gestarteter Beat uebernimmt nahtlos, ohne Doppel-Dispatch. Es koennten
+   mehrere Beat-Prozesse laufen (nur einer aktiv); auf dem Single-Host bleibt
+   es bewusst bei EINER Instanz + `restart: unless-stopped`.
+2. **Docker-Restart-Policy:** `ablage-beat` hat `restart: unless-stopped` —
+   Prozess-Crashs und Host-Reboots starten Beat automatisch neu.
+3. **Watchdog:** Der `watchdog`-Sidecar ueberwacht das **Backend** (`/health`,
+   3 Failures → `docker restart ablage-backend` + Slack). Beat selbst wird NICHT
+   vom Watchdog ueberwacht — Ausfall faellt ueber die Backup-/Celery-Alerts auf
+   (Prometheus: `backup_last_success_timestamp` > 26 h = Kritisch,
+   CeleryNoActivity).
+
+**Manueller Wiederanlauf (wenn Beat haengt oder keine periodischen Tasks laufen):**
+
+```bash
+# 1. Diagnose: laeuft Beat? Wer haelt den RedBeat-Lock?
+docker compose ps beat
+docker compose logs --tail=50 beat
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" GET redbeat::lock
+
+# 2. Neustart (Lock wird nach max. 5 min TTL frei, meist sofort sauber uebergeben)
+docker compose restart beat
+
+# 3. Haengt der Lock (Beat tot, Lock lebt noch): einfach bis 5 min warten
+#    ODER Lock gezielt loeschen und Beat starten:
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" DEL redbeat::lock
+docker compose up -d beat
+
+# 4. Verifikation: dispatcht Beat wieder? (update-system-metrics kommt alle 5 min)
+docker compose logs --tail=20 beat | grep -i "Scheduler\|beat"
+docker compose logs --since=10m worker-cpu | grep -i "received"
+```
+
+**Bewusste Entscheidung:** Eine zweite Beat-Instanz (RedBeat wuerde es erlauben)
+bringt auf dem Single-Host (RTX-4080-Maschine, Entscheidung 10: SPOF akzeptiert)
+keine echte Redundanz und wird NICHT betrieben. Ausgleich: Restart-Policy +
+Lock-TTL + Alerting + dieses Runbook.
+
+---
+
+## OCR-CPU-Standby (M-09)
+
+Faellt die GPU aus (Treiber, Hardware, Thermik), kann OCR temporaer auf CPU
+weiterlaufen: `docker-compose.cpu-ocr.yml` ist das fertige Override
+(`CUDA_VISIBLE_DEVICES=""`, `DEFAULT_OCR_BACKEND=surya`, prefork-Pool mit
+Timeout-Durchsetzung statt solo):
+
+```bash
+# GPU-Ausfall: Worker auf CPU-OCR umstellen (deutlich langsamer, aber lauffaehig)
+docker compose -f docker-compose.yml -f docker-compose.cpu-ocr.yml up -d worker
+
+# Zurueck auf GPU-Betrieb:
+docker compose up -d worker
+```
+
+Hinweis: Das Override ist fuer Test-Loop/Notbetrieb gedacht („NICHT in
+Produktion verwenden" gilt fuer den DAUERbetrieb) — als Standby-Prozedur bei
+GPU-Ausfall ist es der dokumentierte Weg; OCR-Durchsatz sinkt auf CPU-Niveau
+(<10 s/Seite statt <2 s).
 
 ---
 
