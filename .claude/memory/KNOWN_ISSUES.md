@@ -2,6 +2,27 @@
 
 ## Active Issues
 
+### 🟢 OCR lief nie automatisch — GELÖST 2026-07-09 (Commit `2497ae5e0`, Branch `feature/neuausrichtung-2026-07`)
+
+> Ersetzt den früheren Befund „CeleryNoActivity = wedged solo-GPU-Worker ohne GPU im Dev" (DoD-Loop-Bilanz unten) und „graceful CPU-OCR-Fallback als Backlog". Die RTX 4080 IST durchgereicht (`torch.cuda.is_available()=True`); das Problem war NICHT GPU-bezogen.
+
+| Aspekt | Detail |
+|--------|--------|
+| **Symptom** | Jeder Upload blieb `status='pending'`, 0 Dokumente je `completed`. Task verschwand nach Enqueue sofort aus `ocr_high` (`LLEN`=0), tauchte aber NIE als „Task received" im Worker-Log auf; `unacked` blieb >0 (reserviert, nie ausgeführt). `celery inspect` → „No nodes replied". |
+| **Root Cause** | `broker_transport_options` mit `priority_steps=range(10)` + `queue_order_strategy='priority'` → kombu legt pro `priority>0` Redis-Sub-Queues an (`ocr_high:9`). Der `--pool=solo`-GPU-Worker holt aber nur die **Basis-Queues** (`-Q ocr_high,...`). `process_document_task` (Route-Priorität 9) landete in `ocr_high:9` → nie konsumiert. Ebenso Embedding (prio 8) u.v.m.; **581.512 Beat-Periodics** in `*:N` gestaut (Redis 595→17 MB nach Purge). |
+| **Fix** | `priority_steps` + `queue_order_strategy` entfernt (ohne `priority_steps` → kombu-Default `[0]` → `_q_for_pri` liefert IMMER Basis-Queue). **`sep=':'` behalten** — serialisiert AUCH `_kombu.binding.*`; Entfernen bricht Bindings (`ValueError: not enough values to unpack` im `deliver→lookup`, Worker crasht bei jedem Publish). Verseuchte Bindings gelöscht + neu aufgebaut. Details: Claude-Memory `ablage-celery-priority-subqueue-trap`. |
+| **Verifiziert** | Normaler priority-9-Upload → `ocr_high` → solo-Worker → Surya-GPU-OCR → `completed` (echter Text, Umlaute) → Embedding(1024-dim)+RAG-Chunking → volltext-durchsuchbar. 0 `pending`, alle Container healthy. |
+
+### 🟡 Orphan-Queue `monitoring` akkumuliert — OFFEN (Scope-Entscheidung Ben, NEU 2026-07-09)
+
+> Gleiche Fehlerklasse wie oben, aber **pre-existierend** (nicht durch den OCR-Fix eingeführt — die Tasks hatten nie einen Consumer). Nach dem OCR-Fix landen sie statt in `monitoring:N` in der Basis-Queue `monitoring`, die weiterhin **kein Worker abonniert** → wächst langsam unbegrenzt.
+
+| Aspekt | Detail |
+|--------|--------|
+| **Ort** | `app/workers/tasks/predictive_tasks.py` — 3 Tasks mit `@shared_task(queue="monitoring")`: `collect_metrics_for_prediction` (Z.34), `generate_predictive_alerts` (Z.139), `run_predictions` (Z.222). Aktiv per Beat geplant (`celery_app.py:1717–1727`), NICHT via Freeze entfernt. Weder GPU- (`-Q ocr_high,...`) noch CPU-Worker (`-Q ...,erp,default`) hören `monitoring`. |
+| **Fix-Optionen** | (A) task_routes/Decorator auf konsumierte Queue umbiegen (z.B. `maintenance`, wie das analoge `privat_tasks.generate_predictive_alerts` in `celery_app.py:2783`) → Tasks **laufen dann erstmals** (nie getestet, Risiko kurz vor Odoo-Go-Live). (B) Beat-Einträge einfrieren (spekulatives Predictive-Feature) → Tasks laufen gar nicht. |
+| **Empfehlung** | Ben entscheidet Richtung. Bis dahin bewusst NICHT verändert (kein unilaterales Aktivieren ungetesteter Tasks / keine Freeze-Scope-Entscheidung). |
+
 ### 🟡 api-Hang/DoS via gefuzzter Request (NEU 2026-06-21, A-Z-Loop-2; geguarded + auf master gemergt 2026-06-22)
 
 > Gefunden beim best-effort A-Z-Loop (Schemathesis `not_a_server_error`, MAX_EXAMPLES=5). **Pre-existierend** (existiert auf master genauso, nicht von der Pilot-Hardening-Arbeit eingeführt). **HOCH-PRIORITÄR** (DoS-Klasse).
