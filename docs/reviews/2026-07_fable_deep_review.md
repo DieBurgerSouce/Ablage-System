@@ -33,12 +33,18 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | F-03 | Mirror | GoBD-Spiegel verifiziert Hash nie gegen `ir.attachment.checksum` (R3) | P1 | ✅ Gefixt + getestet |
 | F-04 | Mirror | Kein Overlap-Lock; `documents` ohne checksum-Unique → Duplikat-Pfad + Fehl-Alarme unter Concurrency | P2 | 📋 Dokumentiert |
 | F-05 | Mirror | Unparsebarer Cursor → Full-Rescan der Historie (1 RPC/Move) → Odoo-SaaS-Drosselung (R2) | P2 | 📋 Dokumentiert |
-| F-06 | Push | Partner-Matching Name-`ilike` ohne Wildcard-Escaping/Mindestlänge/Nachprüfung → Falsch-Partner | P1 | 🔧 in Arbeit |
-| F-07 | Push | Doppel-Push: `odoo_move_id` erst nach Odoo-create committet → Retry/verlorene RPC-Antwort → zweiter Entwurf | P1 | 🔧 in Arbeit |
-| F-08 | Push | `currency_id` wird nie an Odoo gesendet → Fremdwährung bucht in EUR-Default | P1 | 🔧 in Arbeit |
-| F-09 | Freeze | Celery-Eager-Import (`tasks/__init__.py`) registriert alle 22 gefrorenen Task-Module → include-Freeze wirkungslos (nur Beat-Prune schützt) | P2→P1-latent | 🔎 Verifiziere |
-| F-10 | Freeze | Beat `extended-alerts-cashflow-daily` fährt täglich den gefrorenen CashflowPredictionService | P2 | 🔎 Verifiziere |
-| F-11 | Freeze | Aktiver `predictive-actions`-Router schreibt in gefrorene InvoiceTracking-Domäne (`dunning_level++`) | P2 | 🔎 Verifiziere |
+| F-06 | Push | Partner-Matching Name-`ilike` ohne Wildcard-Escaping/Mindestlänge/Nachprüfung → Falsch-Partner | P1 | ✅ Gefixt + getestet |
+| F-07 | Push | Doppel-Push: `odoo_move_id` erst nach Odoo-create committet → Retry/verlorene RPC-Antwort → zweiter Entwurf | P1 | ✅ Gefixt + getestet |
+| F-08 | Push | `currency_id` wird nie an Odoo gesendet → Fremdwährung bucht in EUR-Default | P1 | ✅ Gefixt + getestet |
+| F-09 | Freeze | Celery-Eager-Import (`tasks/__init__.py`) registriert alle 22 gefrorenen Task-Module → include-Freeze wirkungslos (nur Beat-Prune schützt) | P2 | 📋 Dokumentiert (live bestätigt) |
+| F-10 | Freeze | Beat `extended-alerts-cashflow-daily` fährt täglich den gefrorenen CashflowPredictionService | P2 | ✅ Gefixt + getestet |
+| F-11 | Freeze | Aktiver `predictive-actions`-Router schreibt in gefrorene InvoiceTracking-Domäne (`dunning_level++`) | P2 | 📋 Dokumentiert (Bens Scope) |
+| F-12 | Ops | Tote `monitoring`-Queue: 3 aktive Beats feuern, kein Konsument → 207 Msgs gestaut, Feature tot | P1 | ✅ Gefixt + live bewiesen |
+| S-01 | Security | RLS light **wirksam** (Backend=ablage_app, kein Superuser/Bypass, Kern-Tabellen RLS forced) | — | ✅ Widerlegt (verifiziert) |
+| S-02 | Security | pgbouncer-Cross-Tenant-Leak **ausgeschlossen** (App direkt an postgres; GUC transaktions-lokal) | — | ✅ Widerlegt (verifiziert) |
+| S-03 | Security | CORS-Reflection + CSRF-Schwächung **ausgeschlossen** (fail-closed; CSRF-Fix nur Rotation) | — | ✅ Widerlegt (verifiziert) |
+| S-04 | Security | M-06-Rest: 3 einvoice-POSTs im Code ohne `current_user` (nur durch Freeze/404 geschützt) | P2 | 📋 Defense-in-Depth |
+| F-13 | Ops | `ablage_celery_queue_length`-Metrik nie emittiert (`update_queue_metrics` ungenutzt) → Queue-Backlog-Alerts tot → **Wurzel des F-12-Blindflecks** | P2 | 📋 Dokumentiert (live bestätigt) |
 
 *(Register wird pro Iteration ergänzt.)*
 
@@ -151,4 +157,116 @@ SELECT indexdef FROM pg_indexes WHERE tablename='documents' AND indexdef ILIKE '
 
 ---
 
-*Weitere Findings aus den Angriffsflächen A (Freeze), C (Push), D (Security), E (Ops) folgen, sobald die parallelen Beweise vorliegen. atk-mirror: H1/H2/H4 adversarial widerlegt (Move-Atomarität + serverseitiger Draft-Filter + kein lokaler Uhr-Bezug im Cursor).*
+### F-06 — Partner-Matching kann den falschen Lieferanten treffen · **P1** · ✅ GEFIXT
+
+**Hypothese (atk-push H1):** Die Name-`ilike`-Stufe der Matching-Kaskade pusht auf eine rechtlich andere Firma.
+
+**Beweis:** `odoo_connector.py:1146–1157` — `["name", "ilike", name]`, limit 5, **kein** Wildcard-Escaping, **keine** Mindestlänge. Odoo-`ilike` wrappt zu `%name%` und behandelt `%`/`_` im Wert als SQL-Wildcards. Substring-Falle: OCR liest „Meier GmbH", Odoo hat nur „Meier GmbH & Co. KG" → genau 1 Treffer → Push auf die falsche Firma. Der Service nimmt bei `len==1` `partners[0]` ohne jede Nachprüfung (`odoo_vendor_bill_push_service.py:715`). Trifft den **Normalfall** (jeder erstmals gescannte Lieferant ohne USt-Id/IBAN/Ref fällt auf die Namenssuche durch).
+
+**Fix (dreifach, defense-in-depth):**
+1. `odoo_connector._escape_like()` escaped `\`, `%`, `_` vor dem `ilike`.
+2. Namen < 3 Zeichen lösen keine Namenssuche mehr aus (`_MIN_NAME_SEARCH_LEN`).
+3. Service: bei `match_source == "name"` normalisierte Namensgleichheit (`_names_match` — lowercase, Interpunktion→Space, Whitespace kollabiert) verlangt; sonst → Review. „Meier GmbH" ≠ „Meier GmbH & Co. KG". USt-Id/IBAN/Ref/Mapping (eindeutige IDs) unberührt. Konsistent mit Plan-R6 („nur eindeutige Treffer pushen"); Erstlieferant → Review → Bestätigung → `ERPEntityMapping` (Stufe 1) beim nächsten Mal.
+
+**Verifikation:** 3 neue Tests (Escaping-Domain, Kurzname-Skip, Service-Namens-Mismatch→Review + Gegenprobe). TDD-Rot bewiesen.
+
+---
+
+### F-07 — Doppel-Push bei Retry/verlorener RPC-Antwort · **P1** · ✅ GEFIXT
+
+**Hypothese (atk-push H3):** Ein Celery-Retry erzeugt einen zweiten Odoo-Entwurf.
+
+**Beweis:** `odoo_vendor_bill_push_service.py:770` `create` → erst `:793–794` `_apply_push_metadata` + `db.commit()`. Fehlerfenster: (1) Odoo-create OK, dann `db.commit()` scheitert/Worker-Crash → `odoo_move_id` nicht persistiert → Retry (`max_retries=8`) → Idempotenz-Gate (`:536–548`) greift nicht → zweiter Entwurf. (2) Odoo committet serverseitig, RPC-Antwort geht verloren → `create_vendor_bill_draft` liefert `None` → als retryable gewertet → zweiter Entwurf. Kein Pre-Create-Existenzcheck; `ref` existiert, wird aber nicht zur Dedup genutzt.
+
+**Fix:** `create_vendor_bill_draft` sucht **vor** dem `create` einen existierenden `account.move` mit `move_type=in_invoice ∧ partner_id ∧ ref` und adoptiert ihn (`return str(existing_id)`) statt ein Duplikat zu erzeugen. `ref` ist stabil (`invoice_number` bzw. `ABLAGE-<doc8>`) → idempotent über Retries. **Tradeoff dokumentiert:** Bei Adoption wird das PDF nicht erneut angehängt (hängt am ersten Entwurf) — Doppel-Bill ist das größere Übel als ein fehlender Zweit-Anhang.
+
+**Verifikation:** neuer Test `test_existing_draft_is_deduped_not_recreated` (Search findet Entwurf → kein create/attach) + 4 bestehende create-Tests an den führenden Dedup-Search angepasst. TDD-Rot bewiesen.
+
+---
+
+### F-08 — Fremdwährung bucht als EUR · **P1** · ✅ GEFIXT
+
+**Hypothese (atk-push H2c):** Eine Nicht-EUR-Rechnung wird mit falschem Betrag gebucht.
+
+**Beweis:** `create_vendor_bill_draft` (`odoo_connector.py:951–966`) sendet **kein** `currency_id`; `_build_currency` (`:290`) berechnet die Währung, sie landet aber nur im Draft-Objekt, nie im `move_data`. Folge: Eine USD-Rechnung bucht die USD-Zahl in Odoos Default-Währung (EUR für Spargelmesser) → falscher Betrag.
+
+**Fix:** Service leitet nicht-EUR-Rechnungen (`_build_currency(invoice) != "EUR"`) in die Review-Queue (`status=error`, `retryable=False`) statt sie falsch zu buchen. EUR bleibt korrekt (Odoo-Default = EUR für die deutsche Company). Minimal, konservativ, ohne `res.currency`-Mapping-Infrastruktur.
+
+**Verifikation:** neuer Test `test_fremdwaehrung_geht_in_review_kein_push` (USD → error+Review, kein create). TDD-Rot bewiesen.
+
+---
+
+**Gesamtverifikation Push-Fixes:** `docker compose exec backend pytest tests/unit/services/erp/ -q` → **248 passed**. TDD-Gegenprobe (git-stash der 2 Service-Dateien): alle 5 neuen Kern-Tests fallen ohne den jeweiligen Fix (`assert None == '55'`, `pushed != ambiguous`, `pushed != error`, …).
+
+**atk-push weitere (P2, dokumentiert, nicht merge-blockierend):** H2a Gutschrift-als-`in_invoice` (Klassifikations-abhängig), H2b fehlende `tax_ids` auf der Brutto-Sammelzeile → mögliche USt-Aufblähung (auf Staging verifizieren), H5 „Archiv zuerst" gilt nur für Original-Bytes (formale GoBD-Einbuchung entkoppelt), H6-verwandt: Push-Connector setzt `odoo_company_id` nicht (Multi-Company-Odoo → Cross-Company-Fehlgriff; für Single-Company-Spargelmesser heute unkritisch). H4 (Kreislaufschutz) fail-closed, H6 (Cross-Tenant) widerlegt.
+
+---
+
+### F-09/F-10/F-11 — Freeze-Restlecks (atk-freeze) · **P2** · 🔎 zu verifizieren
+
+- **F-09:** `tasks/__init__.py` importiert alle 22 gefrorenen Task-Module eager → sie sind auf den Workern **registriert** (`celery inspect registered` zeigt `banking_tasks.*`), der include-Filter läuft ins Leere. Einzige Barriere ist die Beat-Prunung. Kein aktiver `.delay()`-Caller heute (atk-freeze H4 negativ) → P2, aber „P1 sobald ein aktiver Caller existiert". Die Code-Annahme „Worker lädt entfernte Module nicht" (`celery_app.py:3299`) ist **falsch**.
+- **F-10:** Beat `extended-alerts-cashflow-daily` überlebte die Prunung, fährt täglich 06:00 den gefrorenen `CashflowPredictionService` (`extended_alerts_service.py:250`) → irreführende Liquiditäts-Alerts auf veralteten Daten, keine Mutation.
+- **F-11:** Aktiver, plain registrierter `predictive-actions`-Router (`main.py:1537`) schreibt in die gefrorene InvoiceTracking-Domäne: `POST /predictive-actions/{id}/accept` → `_execute_dunning_action` (`predictive_action_service.py:907`) setzt `invoice.dunning_level++`. Begrenzt (nur DB-Zähler, kein Versand), aber mutierend in gefrorenem Terrain.
+
+**Freeze-Kern selbst solide (atk-freeze widerlegt H2/H3/H5):** keine gefrorenen Sub-Router unter aktiven Parents, Beat-Prunung robust (außer F-10), Live-GET auf gefrorene Pfade durchgängig 404.
+
+**F-10 gefixt:** `extended-alerts-cashflow-daily` in `FROZEN_MODULE_EXTRA_BEAT_KEYS[MODULE_FINANCE]` ergänzt (`celery_app.py`). Live: nach Reload nicht mehr im effektiven `beat_schedule`. Regressionstest `test_frozen_finance_cashflow_beats_are_pruned` (22 grün).
+
+**F-09/F-11 dokumentiert, nicht gefixt (bewusst):**
+- **F-09** live bestätigt: `celery inspect registered` auf worker-cpu zeigt **107 gefrorene Tasks** (banking/fraud/datev/…) trotz include-Filter — Ursache ist der Eager-Import in `tasks/__init__.py`. **Kein Fix**, weil (a) der Freeze sein Sicherheitsziel erreicht (Endpoints 404, Beats gepruned — beides verifiziert), (b) kein aktiver `.delay()`-Caller existiert (atk-freeze H4 negativ), (c) ein Fix (Eager-Imports gaten) riskiert Import-Bruch an anderer Stelle in gefrorenem Terrain. **Empfehlung:** Kommentar `celery_app.py:3299` („Worker lädt entfernte Module nicht") korrigieren — er ist faktisch falsch; die echte Barriere ist die Beat-Prunung.
+- **F-11** live bestätigt: `predictive_action_service.py:930` setzt `invoice.dunning_level`. **Kein Fix**, weil Plan §10.8 `predictive-actions` **bewusst aktiv** lässt (Bens Scope-Entscheidung) und der Blast-Radius ein DB-Zähler auf eingefrorenen Daten ohne Außenwirkung ist. **Für Ben markiert:** der Dunning-*Schreib*-Pfad war bei der Aktiv-Entscheidung vermutlich nicht bedacht — falls unerwünscht, `_execute_dunning_action` hinter `is_module_active(MODULE_INVOICE_TRACKING)` gaten.
+
+---
+
+### Angriffsfläche E (Ops) — F-12: tote `monitoring`-Queue · **P1** · ✅ GEFIXT
+
+**Hypothese (DoD §8.9):** Eine geroutete Queue hat keinen Konsumenten → Tasks verschwinden lautlos.
+
+**Beweis (live):** 3 Tasks in `predictive_tasks.py` (`collect_metrics_for_prediction` Z. 34, `run_predictions` Z. 139, `generate_predictive_alerts` Z. 222) tragen `queue="monitoring"` im Dekorator. Drei **aktive** Beats feuern sie (`predictive-collect-metrics` alle 60 s, die beiden anderen alle 300 s). **Kein** Worker konsumiert `monitoring` (weder GPU- noch CPU-`-Q`; `celery inspect active_queues` = 0 Treffer). Ergebnis:
+```
+$ redis-cli LLEN monitoring   → 207   (wächst jede Minute; consumed queues = 0)
+```
+Die System-Health-Prediction lief **nie** und Redis füllte sich unbegrenzt — exakt die Fehlerklasse von Commit `2497ae5e0`. Die anderen Dekorator-Queues (`ai`, `webhooks`, `ml`, `exports`, `banking`, `gpu`) sind LLEN=0 **ohne** aktiven Producer (tote Deklarationen, harmlos); `monitoring` war das einzige Leck mit aktiven Beats.
+
+**Fix:** `monitoring` zur `worker-cpu`-`-Q`-Liste ergänzt (`docker-compose.yml`), konsistent mit dem Queue↔Worker-Muster (M-10). **Verifikation live:** nach `docker compose up -d --no-deps worker-cpu` konsumiert worker-cpu `monitoring`, Backlog **207 → 0**, `collect_metrics_for_prediction` läuft mit echten Ergebnissen (`success: True, cpu_usage_percent: 14.8`), alle Container weiter healthy.
+
+---
+
+### Angriffsfläche D (Security) — S-01…S-04: die schweren P0-Kandidaten widerlegt
+
+Alle vier Kronjuwel-Hypothesen wurden gegen den Live-Stack geprüft und **entkräftet** — das ist die Evidenz, dass geprüft wurde, nicht bloß gelesen:
+
+**S-01 — RLS light ist real wirksam** (nicht nur Happy-Path). SQL gegen die Live-DB als effektive App-Rolle:
+```
+current_user = ablage_app · rolsuper=False · rolbypassrls=False
+documents / invoices / approval_requests / document_versions:  rls_enabled=True, rls_forced=True
+documents owner = ablage_admin  (≠ ablage_app → kein Owner-Bypass; forced schließt ihn ohnehin)
+RLS-enabled: 92 / 490 Tabellen  (= „RLS light"-Kern-Scope laut Plan §7, kein Vollausbau)
+```
+Das Backend verbindet als Nicht-Superuser ohne BYPASSRLS, die Kern-Tabellen haben RLS **enabled UND forced** — selbst der Tabellen-Owner unterläge den Policies. Der schwerste RLS-Verdacht (Superuser-Bypass/Owner-Bypass) ist widerlegt.
+
+**S-02 — pgbouncer-Cross-Tenant-Leak ausgeschlossen** (zwei unabhängige Gründe):
+1. Das Backend verbindet **direkt** zu `postgres:5432`, **nicht** über pgbouncer (dessen `POOL_MODE=transaction` ist für den RLS-Pfad irrelevant).
+2. Der RLS-Kontext nutzt `set_config('app.current_company_id', :cid, true)` — der dritte Parameter `true` = **transaktions-lokal** → wird am Transaktionsende zurückgesetzt und kann selbst über einen Transaction-Pooler nicht auf die nächste Verbindung/den nächsten Tenant leaken.
+
+**S-03 — CORS-Reflection + CSRF-Schwächung ausgeschlossen:**
+- CORS ist fail-closed: `CORS_ORIGINS=[]`, ein fremder Origin (`https://evil.example`) erhält **keinen** `access-control-allow-origin`-Header (nicht reflektiert); das isolierte `allow-credentials: true` ist ohne passenden Origin browserseitig wirkungslos.
+- Der CSRF-Fix `4fd5238c4` hat **nur** die Token-*Rotation* auf echte 2xx eingegrenzt (307-Redirect-Bug), **keine** Multipart-/Pfad-Exemption eingebaut, die die Validierung schwächt. Der Verdacht einer zu breiten CSRF-Ausnahme ist widerlegt.
+
+**S-04 — M-06-Rest (P2, Defense-in-Depth):** Die 3 einvoice-POSTs (`generate_zugferd` L217, `generate_xrechnung` L292, `validate_einvoice` L370) haben im **Code** weiterhin nur `db=Depends(...)`, kein `current_user`. Aktuell durch den Freeze geschützt (Router nicht registriert → live 404 verifiziert), aber bei Reaktivierung via `ACTIVE_OPTIONAL_MODULES=einvoice` wieder unauthentifiziert erreichbar. **Kein Fix** (Regel „gefrorene Module nicht anfassen"); **Empfehlung** an Ben: `current_user`-Dependency nachrüsten, falls einvoice je reaktiviert wird.
+
+Weitere Security-Beobachtungen (P2, aus explore-secops-Landkarte): kein `:80→:443`-Redirect (http bleibt bedienbar); `Secure`-Cookie nur in prod (`ENVIRONMENT=production` gesetzt → greift); RLS-Schutz hängt am korrekt gesetzten `.env` auf dem Deploy-Host (verifiziert aktiv, aber ein Fresh-Clone ohne `.env` fiele auf Superuser zurück — Deploy-Hygiene-Note).
+
+### Ops-Detailverifikation (selbst geprüft) — restic, Alerts, F-13
+
+**restic-Skript (`scripts/backup/restic_backup.sh`) — solide (atk-ops-H4 widerlegt):** `set -euo pipefail`; `bash -n` sauber; pg_dump via **explizitem** `if ! docker exec … pg_dump …; then die` (kein maskierendes Pipe), plus Leer-Datei-Check (`[[ ! -s ]]`) und `pg_restore --list`-Integritätsprüfung vor der Weiterverarbeitung; `forget --prune` läuft **nach** erstelltem Snapshot (Fehler wird geloggt, Snapshot bleibt); `restic check` als separater Wochenlauf. Der einst „grün aber kaputt" gewesene Commit `fa0b53ae1` ist jetzt genuin robust. **P2-Note:** `restic check` ist nicht Teil jedes Backups — ein content-korrupter-aber-geschriebener Snapshot fällt erst beim Wochen-Check auf (durch restic-Content-Addressing + pg_restore-Vorcheck geringes Restrisiko).
+
+**Slack-Alert bei Worker-Ausfall (DoD §8.9) — real:** `promtool check rules` → SUCCESS (celery-alerts 20 Regeln, docker-alerts 13). `CeleryWorkerDown: ablage_celery_worker_up == 0 or absent(...)` — die `absent()`-Klausel feuert auch bei komplett verschwundener Metrik. Metrik **live vorhanden**: `curl prometheus/api/v1/query?query=ablage_celery_worker_up` → 2 Serien (beide Worker = 1). Der Worker-Ausfall-Alert ist also gedeckt und würde feuern.
+
+**F-13 — Queue-Backlog-Alerts sind tot (P2, erklärt den F-12-Blindfleck):**
+```
+$ curl prometheus/api/v1/query?query=ablage_celery_queue_length   → result count: 0   (Metrik fehlt komplett)
+```
+Ursache: `app/workers/celery_metrics.py:330` `update_queue_metrics()` setzt die Gauge `ablage_celery_queue_length`, wird aber **nirgends aufgerufen** (`grep` findet nur die Definition). Damit können `CeleryQueueBacklog` (>50), `CeleryQueueBacklogCritical` (>200) und `CeleryQueueBlocked` **nie feuern** — genau deshalb blieb der 207-Nachrichten-Stau in `monitoring` (F-12) unbemerkt. Zusätzlich iteriert `update_queue_metrics` nur über `inspect.active_queues()` (= konsumierte Queues) → eine orphan Queue wäre selbst bei verdrahteter Metrik unsichtbar (doppelter Blindfleck). **Empfehlung:** `update_queue_metrics` periodisch aufrufen (Beat oder Metrics-Server-Thread) **und** über eine feste Queue-Liste statt nur `active_queues()` iterieren, damit auch konsumentenlose Queues erfasst werden. **Kein Fix jetzt** (Monitoring-Architektur-Entscheidung; F-12-Kerndefekt bereits behoben; F-12-Fix bringt `monitoring` immerhin in `active_queues`).
+
+**entrypoint-Lock (`docker/entrypoint.sh`) — laut Landkarte robust** (pg_advisory_lock(815001), `RUN_MIGRATIONS=false` auf worker/worker-cpu/beat, `MIGRATION_DATABASE_URL` = DDL-Owner ≠ App-Rolle). Eine adversariale Race-Tiefenprüfung (Migrator-Tod bei gehaltenem Lock) steht als Rest-Item in Iteration 2.
