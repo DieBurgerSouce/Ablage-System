@@ -64,6 +64,11 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | F-14 | Ops | entrypoint: Nicht-Migratoren warten nicht auf den Migrator → Fresh-Clone-Race (halb-migriertes Schema) | P2 | 📋 Dokumentiert (atk-ops: durch `depends_on: healthy` gemildert) |
 | S-05 | Security | Dev-Stack in `DEBUG=True` → Cookies ohne `Secure`, kein App-HSTS über :443; Security-Flags an `DEBUG` statt `is_production` | P2 | 📋 Deploy-Posture |
 | S-06 | Ops | `datev`-Queue geroutet, kein Konsument (inert durch Freeze; DoD-9 formal verletzt) | P2 | 📋 Dokumentiert |
+| F-17 | Freeze | ai_speculative-Freeze unvollständig: ml_dashboard/adhoc_reports/predictive_actions FE-frozen, aber BE plain registriert (aktiv) | P2 | 📋 Dokumentiert (koordinierter FE+BE-Fix) |
+| F-18 | Security | `GET /reports/adhoc/data-sources` **unauth** → leakt interne Tabellennamen (on-prem, nur Schema-Metadaten) | P2 | 📋 Dokumentiert |
+| F-19 | Push | F-07-Dedup: PDF-lose Move-Adoption + ref-Kollision (gleiche invoice_number/Partner) → stille AP-Unterbuchung | P2 | 📋 Dokumentiert (Archiv erhält beide) |
+| F-20 | Ops | F-12 aktiviert `generate_all_alerts` ohne per-Typ-Dedup → In-Memory-Alert-Store wächst (latenter Vor-Bug, kein User-Spam) | P2 | 📋 Dokumentiert |
+| R-06 | Test | F-02-Freeze-Test war hardcodiert (10/13 Keys) → neue Module ungedeckt | P2 | ✅ Gefixt (Coverage-Assertion) |
 
 *(Register wird pro Iteration ergänzt.)*
 
@@ -336,7 +341,38 @@ Selbst ein DB-Level-`DELETE`/`UPDATE` auf der Audit-Chain wird abgewiesen — di
 - **F-03 Hash-Gate (R2):** Fail-open nur bei fehlendem Odoo-`checksum` — der aber für inhaltsbehaftete `ir.attachment` von Odoo immer gesetzt wird (leerer Inhalt ist vor dem Gate per `if not content: continue` gefiltert). Akzeptabler by-design-Fall (was Odoo nicht liefert, kann nicht verifiziert werden; Odoo=vertrauenswürdige read-only-Quelle).
 - **F-12 Kapazität (R5):** 3 monitoring-Tasks sind schnell (collect_metrics 0,1 s), worker-cpu `--concurrency=4` hat Reserve — vernachlässigbare Last.
 
-*(atk-regress/atk-fresh-Vollreports bestätigen/ergänzen dies — Einarbeitung folgt.)*
+**atk-regress-Vollreport (Selbstprüfung meiner 7 Fixes): keine P0/P1-Regression, 119/119 Tests grün.** Bestätigt R1 (F-01-Split sauber, kein zweiter Misch-Router), R2 (F-03-Gate keine Vuln — checksum im selben atomaren Read, kein TOCTOU), R4 (F-06 fail-closed, keine Unicode-Umgehung), R5 (F-12-Kapazität vernachlässigbar). Drei P2-Restpunkte, **keiner verliert ein archiviertes Dokument** (Ablage-Archiv bleibt führend):
+- **F-19 (R3, P2):** F-07-Dedup adoptiert bei (partner_id, ref)-Treffer blind. (a) Schlägt in Versuch 1 der PDF-Attach + der lokale Commit fehl, adoptiert der Retry den PDF-losen Move und hängt das PDF nie nach (Odoo-Beleg ohne Bild; Archiv hat es). (b) Zwei *verschiedene* Rechnungen desselben Partners mit gleicher `invoice_number` → die zweite wird still als Move der ersten adoptiert → ihr offener Posten erreicht Odoo nie als eigener Entwurf. **Netto trotzdem Verbesserung** (Einzel-Beleg statt Doppel-Bill mit Doppelzahlungsrisiko). Empfehlung: `message_main_attachment_id` prüfen + nachhängen; Dedup-Key um `invoice_date`/`amount` erweitern oder same-(partner,ref)/anderer-Inhalt in Review.
+- **F-20 (R5, P2):** F-12 schaltet `generate_all_alerts` scharf, das pro Lauf einen frisch-UUID-Alert **ohne per-Typ-Dedup** in ein In-Memory-`_active_alerts`-Dict legt (`predictive_alerts_service:296`). Ein persistenter Zustand akkumuliert alle 5 Min einen Duplikat-Alert pro Prefork-Prozess. **Kein User-Spam** (der Task dispatcht kein Slack/Mail, nur speichern+loggen), aber der Store wächst unbounded + ist über die 4 Prozesse inkonsistent. Latenter Vor-Bug, den F-12 nur einschaltet — F-12 selbst ist korrekt. Empfehlung: Dedup nach `alert_type` vor `append`.
+- **R2-Nit:** F-03-Fail-open-Zweig (content vorhanden, checksum fehlt) ist stumm — Empfehlung `logger.warning`.
+- **R-06 (P2, GEFIXT):** Der F-02-Freeze-Contract-Test nutzte eine hardcodierte 10-Präfix-Liste und hätte ein Leck in einem neu hinzugefügten gefrorenen Modul **nicht** gefangen. **Behoben** (Commit `35fd3b3cd`): Coverage-Assertion `test_frozen_module_coverage_is_complete` prüft alle 13 `KNOWN_OPTIONAL_MODULES` gegen die Testdeckung; die 3 nicht-präfix-verifizierten Module (finance/risk_finanzki/ai_speculative) sind mit Begründung dokumentiert. 4/4 grün.
+
+**atk-fresh-Vollreport (frische Angriffswinkel): SAUBER — keine P0/P1.** Alle 6 Hypothesen live geprüft:
+- **OCR-Hook→Push (H1):** Kette sauber — Push ist letzter Schritt nach `status=COMPLETED`, korrekt gated (Flag+Quelle+Verbindung), Extraction-Race via `is_extraction_ready`+Retry, kein Push ohne persistiertes Original. **Observation (P2):** „Archiv zuerst" = MinIO+DB-Persistenz, nicht die *formale* GoBD-Einbuchung — ein Beleg kann gepusht sein, bevor `is_archived` gesetzt ist (gewollt, Archiv=führende Rohquelle; für GoBD-Prüfer notiert).
+- **Mirror-Partner-Resolution + GoBD-Immutability (H2):** `_resolve_partner_entity`→None bricht die Archivierung nicht (business_entity_id nullable). GoBD-Audit-Chain **DB-immutable, live bestätigt** (Trigger `trg_audit_chain_immutable` blockt DELETE immer, UPDATE nur auf Verifikations-Felder — Mig 234 hat den Mig-229-Blanket-Konflikt korrekt entfernt). **Observation:** `gobd_audit_chain`/`domain_events` aktuell leer → Kette mit Echtdaten ungetestet, **Go-Live-Smoke-Test empfohlen**.
+- **Frozen-Route-Bypass (H3):** ERP-Doppel-Freeze **wasserdicht** (alle 25 ERP-Präfixe live 404, inkl. M-06-einvoice; FE/BE-Modul-Keys identisch). **F-17/F-18 (P2):** ai_speculative-Freeze unvollständig — ml_dashboard/adhoc_reports/predictive_actions FE-frozen aber BE plain registriert; `GET /reports/adhoc/data-sources` unauth 200 (leakt Tabellennamen). Selbst verifiziert; **koordinierter FE+BE-Fix nötig** (aktive FE-Route/Sidebar/Hooks existieren → kein BE-Only-Alleingang; predictive_actions ist Bens bewusste Aktiv-Entscheidung F-11).
+- **Auth-Härte (H4):** live bestätigt — abgelaufenes Token 401, Login-Rate-Limit 429 ab #6, Refresh-Rotation-Replay blockiert (alter Token geblacklistet), change-password prüft altes PW (F-27).
+- **Privat-Verschlüsselung (H5):** kein Klartext am Ruhepunkt (AES-256-GCM ersetzt file_content), Klartext/Key nie geloggt/persistiert, Salt+Nonce pro Eintrag. **P2-Hardening:** PBKDF2 100k Iterationen < OWASP-2023 (600k) → erhöhen.
+- **Mig-Konsistenz (H6):** `alembic_version=271`, Single-Head, keine Phantom-Spalten (alle Mirror/Push-Spalten live vorhanden, ORM↔DB deckungsgleich).
+
+---
+
+## Executive-Verdict
+
+**Merge-ready: JA — für den reviewten Branch, mit klarer Go-Live-Bedingung.**
+
+Der Adversarial-Deep-Review (2 Iterationen, 7 parallele Angriffs-Agenten + durchgängige Live-Verifikation gegen den 21-Container-Stack) hat **9 echte Defekte gefunden und gefixt** (7 P1 + 1 P2 + 1 Test-Härtung), die die orchestrierte 2-Tage-Umsetzung übersehen hatte — genau die Klasse „grün getestet, aber tot", die den Review motivierte (z. B. F-12: 207 Nachrichten in einer toten Queue; F-03: GoBD-Spiegel ohne Hash-Verifikation; F-01: gefrorener Cashflow-Forecast live erreichbar). Alle Fixes sind mit TDD-Rot-Beweis getestet, committet, und wo möglich live nachgewiesen.
+
+**Die schweren P0-Kandidaten wurden allesamt widerlegt** (RLS-Owner/Superuser-Bypass, pgbouncer-Cross-Tenant-Leak, CORS-Reflection, CSRF-Regress) — belegt durch echte Checks, nicht durch Codelesen. Das Sicherheits- und Compliance-Fundament ist belastbar: GoBD-Audit-Chain DB-immutable (live: DELETE blockiert), Auth-Rotation/Rate-Limit/Expiry live bestätigt, Privat-Verschlüsselung leckfrei, ERP-Freeze wasserdicht (inkl. M-06), Alembic 271 Single-Head ohne Phantom-Spalten.
+
+### Merge-Bedingung (1 Go-Live-Blocker, kein Merge-Blocker)
+**F-15 + F-16 (gekoppelt, P1, per Ben-Entscheidung deferred):** Die `documents`-RLS-Policies sind permissiv (DoD-8-Verletzung), und **kein Background-Worker setzt RLS-Kontext** → die worker-initiierte Dokument-Anlage (OdooMirrorService, Importe) wird von der aktiven RLS **abgelehnt**. Das ist heute nicht live (Mirror hat noch keine Verbindung), **muss aber vor der Scharfschaltung von Mirror/Import (~Mitte Aug) in einem dedizierten RLS-Task gelöst sein** (Worker setzen Kontext → dann Escapes entfernen, gegen echte RLS getestet). Der HTTP-Upload-Pfad ist nicht betroffen. Die 7 gefixten P1 sind davon unabhängig merge-fähig.
+
+### Restliste (P2, dokumentiert, nicht merge-blockierend)
+Mirror: Overlap-Lock (F-04), Cursor-Full-Rescan-Härtung (F-05). Freeze: Celery-Eager-Import (F-09), predictive-actions-Dunning-Write (F-11, Bens Scope), ai_speculative FE/BE-Inkonsistenz + adhoc-unauth (F-17/F-18). Push: Dedup-Härtung (F-19), atk-push-P2s (Gutschrift/tax_ids/odoo_company_id). Ops: Queue-Length-Metrik tot (F-13), entrypoint-Race (F-14), datev-Queue (S-06), Alert-Dedup (F-20), restic-Härtungen. Security: M-06-Rest-Auth (S-04), DEBUG→is_production-Posture (S-05), PBKDF2 100k→600k. **Empfohlene Pre-Go-Live-Tests:** GoBD-Audit-Chain-Smoke (aktuell leer), Slack-Alert-End-to-End, Login-Regression über https-Origin in `ENVIRONMENT=production`.
+
+### Nicht prüfbar (ehrliche Lücke)
+Echter Odoo-Prod-Push und der reale Mirror-Pull sind vor Go-Live/API-Key nicht testbar — die Push-/Mirror-Logik ist gegen Mock-XML-RPC + die Live-DB verifiziert, die **Odoo-Gegenseite** (tatsächliche `account.move`-Anlage, `currency_id`/`tax_ids`-Verhalten, Attachment) bleibt bis Go-Live unbewiesen (atk-push-Blindflecken). Der GoBD-Spiegel lief noch nie gegen eine echte Verbindung (F-16 ist genau dieser ungetestete Pfad).
 
 ### Ops-Detailverifikation (selbst geprüft) — restic, Alerts, F-13
 
