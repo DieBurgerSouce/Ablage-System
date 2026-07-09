@@ -32,6 +32,10 @@ from app.services.erp.base_connector import (
 
 logger = structlog.get_logger(__name__)
 
+#: Mindestlaenge eines Absender-Namens fuer die ilike-Namenssuche (F-06).
+#: Kuerzere Namen (z. B. "AG") matchen zu breit und werden nicht gesucht.
+_MIN_NAME_SEARCH_LEN = 3
+
 
 class OdooConnector(ERPConnector[Dict[str, Any]]):
     """
@@ -938,6 +942,31 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             move_id als str oder None bei Fehler
         """
         try:
+            # Idempotenz gegen Doppel-Push (F-07): Ein Celery-Retry nach
+            # verlorener RPC-Antwort oder fehlgeschlagenem lokalem Commit darf
+            # keinen zweiten Entwurf anlegen. Existiert bereits ein in_invoice
+            # mit gleichem Partner UND gleicher Referenz, wird er adoptiert
+            # statt ein Duplikat zu erzeugen. Der PDF-Anhang wird dann nicht
+            # erneut gesetzt (er haengt am ersten Entwurf).
+            existing = await self._execute_kw(
+                "account.move",
+                "search",
+                [[
+                    ["move_type", "=", "in_invoice"],
+                    ["partner_id", "=", bill.partner_id],
+                    ["ref", "=", bill.ref],
+                ]],
+                {"limit": 1},
+            )
+            if existing:
+                existing_id = existing[0]
+                logger.info(
+                    "odoo_vendor_bill_draft_deduped",
+                    move_id=existing_id,
+                    partner_id=bill.partner_id,
+                )
+                return str(existing_id)
+
             # Decimal NUR am XML-RPC-Rand in float wandeln: xmlrpc.client
             # kann Decimal nicht marshallen (TypeError). Vorher kaufmaennisch
             # auf 2 Nachkommastellen quantisieren, damit die float-Konvertierung
@@ -1143,12 +1172,17 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 if partners:
                     return self._tag_match_source(partners, "ref")
 
-            if name:
+            # Name-Suche (letzte Stufe): Wildcards escapen (F-06) und sehr
+            # kurze Namen ueberspringen (matchen zu breit -> Falsch-Partner).
+            # Die endgueltige Eindeutigkeitspruefung bei genau 1 Treffer
+            # passiert im Push-Service (normalisierte Namensgleichheit).
+            name_clean = name.strip() if name else ""
+            if len(name_clean) >= _MIN_NAME_SEARCH_LEN:
                 partners = await self._execute_kw(
                     "res.partner",
                     "search_read",
                     [[
-                        ["name", "ilike", name],
+                        ["name", "ilike", self._escape_like(name_clean)],
                         ["supplier_rank", ">", 0],
                     ]],
                     {"fields": fields, "limit": 5}
@@ -1175,6 +1209,17 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         for partner in partners:
             partner["match_source"] = source
         return partners
+
+    @staticmethod
+    def _escape_like(value: str) -> str:
+        """Escaped SQL-LIKE-Wildcards (\\, %, _) fuer eine ilike-Domain.
+
+        Ohne Escaping wuerde ein OCR-Name mit ``%``/``_`` von Odoos ``ilike``
+        als Wildcard interpretiert und breit (falsch) matchen (F-06). Der
+        Backslash ist der PostgreSQL-Default-Escape-Char; er muss zuerst
+        verdoppelt werden.
+        """
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     # ==========================================================================
     # Additional Odoo-Specific Methods

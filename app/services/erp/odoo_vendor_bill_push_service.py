@@ -268,6 +268,26 @@ def _sender_name(invoice: Dict[str, object]) -> Optional[str]:
     return None
 
 
+def _normalize_company_name(value: Optional[str]) -> str:
+    """Normalisiert einen Firmennamen fuer den Gleichheitsvergleich (F-06).
+
+    Kleinschreibung, Interpunktion zu Leerzeichen, Mehrfach-Whitespace
+    kollabiert. So bleibt "Meier GmbH" != "Meier GmbH & Co. KG"
+    (verschiedene Rechtsformen), toleriert aber Tippsetzungs-/OCR-Rauschen
+    wie doppelte Leerzeichen.
+    """
+    if not value:
+        return ""
+    cleaned = re.sub(r"[^\w]+", " ", value.strip().lower(), flags=re.UNICODE)
+    return " ".join(cleaned.split())
+
+
+def _names_match(ocr_name: Optional[str], partner_name: Optional[str]) -> bool:
+    """True, wenn OCR- und Odoo-Firmenname normalisiert identisch sind."""
+    normalized = _normalize_company_name(ocr_name)
+    return bool(normalized) and normalized == _normalize_company_name(partner_name)
+
+
 def _parse_invoice_date(invoice: Dict[str, object]) -> date:
     """Rechnungsdatum aus extracted_data ("YYYY-MM-DD"), Fallback heute."""
     raw = invoice.get("invoice_date")
@@ -607,6 +627,29 @@ async def push_document(
         )
         return result
 
+    # --- Waehrungs-Gate (F-08): nur EUR automatisch pushen ---
+    # create_vendor_bill_draft sendet kein currency_id -> Odoo bucht in der
+    # Firmen-Default-Waehrung (EUR fuer Spargelmesser). Eine Fremdwaehrungs-
+    # rechnung wuerde die Fremdzahl faelschlich als EUR verbuchen. Solche
+    # Belege gehen in die Review-Queue statt automatisch falsch gebucht zu
+    # werden (Archiv ist bereits die fuehrende Quelle).
+    currency = _build_currency(invoice)
+    if currency != "EUR":
+        result = PushResult(
+            status="error",
+            reason=f"Fremdwaehrung {currency} — manuelle Buchung in Odoo (kein Auto-Push)",
+            retryable=False,  # Waehrung aendert sich durch Retry nicht
+        )
+        _apply_push_metadata(document, result)
+        _apply_review_task(document, result.reason or "")
+        await db.commit()
+        logger.info(
+            "odoo_vendor_bill_push_foreign_currency",
+            document_id=str(document_id),
+            currency=currency,
+        )
+        return result
+
     # --- Connector aufbauen + Erreichbarkeit pruefen ---
     # find_partner faengt Odoo-Fehler intern ab und liefert dann [] — ohne
     # den expliziten connect()-Check wuerde "Odoo down" faelschlich als
@@ -714,6 +757,28 @@ async def push_document(
 
         partner_id = int(partners[0]["id"])
         match_source = str(partners[0].get("match_source") or "cascade")
+
+        # Falsch-Partner-Schutz (F-06): Ein Name-ilike-Treffer kann eine
+        # rechtlich andere Firma sein ("Meier GmbH" matcht als Substring in
+        # "Meier GmbH & Co. KG"). Bei genau EINEM Namens-Treffer wird daher
+        # normalisierte Namensgleichheit verlangt; sonst -> Review statt eines
+        # potenziell falschen Push. USt-Id-/IBAN-/Ref-/Mapping-Treffer sind
+        # eindeutige Identifikatoren und brauchen diese Nachpruefung nicht.
+        if match_source == "name" and not _names_match(
+            _sender_name(invoice), str(partners[0].get("name") or "")
+        ):
+            result = PushResult(
+                status="ambiguous",
+                reason="Namens-Treffer nicht eindeutig (Odoo-Name weicht ab) — Review statt Push",
+            )
+            _apply_push_metadata(document, result)
+            _apply_review_task(document, result.reason or "")
+            await db.commit()
+            logger.info(
+                "odoo_vendor_bill_push_name_mismatch",
+                document_id=str(document_id),
+            )
+            return result
 
         # Lernschleife R6: bestaetigten Kaskaden-Treffer als Mapping speichern,
         # damit der naechste Beleg derselben Entity direkt matcht.

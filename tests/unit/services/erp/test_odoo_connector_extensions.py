@@ -440,7 +440,8 @@ class TestCreateVendorBillDraft:
     ):
         """Payload: move_type/lines korrekt, Decimal kaufmaennisch -> float."""
         connector = OdooConnector(odoo_config)
-        mock_models_proxy.execute_kw.return_value = 42
+        # [] = kein existierender Entwurf (F-07-Dedup-Search), dann create -> 42
+        mock_models_proxy.execute_kw.side_effect = [[], 42]
         await _connect(connector, mock_common_proxy, mock_models_proxy)
 
         move_id = await connector.create_vendor_bill_draft(_make_bill())
@@ -473,7 +474,8 @@ class TestCreateVendorBillDraft:
     ):
         """Optionale Notiz landet als narration im Payload."""
         connector = OdooConnector(odoo_config)
-        mock_models_proxy.execute_kw.return_value = 43
+        # [] = kein Duplikat (F-07-Dedup), dann create -> 43
+        mock_models_proxy.execute_kw.side_effect = [[], 43]
         await _connect(connector, mock_common_proxy, mock_models_proxy)
 
         await connector.create_vendor_bill_draft(
@@ -490,6 +492,7 @@ class TestCreateVendorBillDraft:
         """PDF-Pfad: attach_document + write auf message_main_attachment_id."""
         connector = OdooConnector(odoo_config)
         mock_models_proxy.execute_kw.side_effect = [
+            [],      # account.move search (F-07-Dedup: kein Duplikat)
             42,      # account.move create
             99,      # ir.attachment create (via attach_document)
             [99],    # ir.attachment search (juengstes Attachment)
@@ -505,25 +508,26 @@ class TestCreateVendorBillDraft:
         assert move_id == "42"
         calls = _rpc_calls(mock_models_proxy)
         assert [(c[0], c[1]) for c in calls] == [
+            ("account.move", "search"),
             ("account.move", "create"),
             ("ir.attachment", "create"),
             ("ir.attachment", "search"),
             ("account.move", "write"),
         ]
 
-        # attach_document-Payload
-        attachment_data = calls[1][2][0]
+        # attach_document-Payload (Index 2: nach search+create)
+        attachment_data = calls[2][2][0]
         assert attachment_data["res_model"] == "account.move"
         assert attachment_data["res_id"] == 42
         assert attachment_data["name"] == "re-2026-0815.pdf"
         assert attachment_data["mimetype"] == "application/pdf"
         assert base64.b64decode(attachment_data["datas"]) == pdf
 
-        # Suche nach juengstem Attachment
-        assert calls[2][3] == {"order": "id desc", "limit": 1}
+        # Suche nach juengstem Attachment (Index 3)
+        assert calls[3][3] == {"order": "id desc", "limit": 1}
 
-        # write setzt den Haupt-Anhang
-        assert calls[3][2] == [[42], {"message_main_attachment_id": 99}]
+        # write setzt den Haupt-Anhang (Index 4)
+        assert calls[4][2] == [[42], {"message_main_attachment_id": 99}]
 
     @pytest.mark.asyncio
     async def test_create_error_returns_none(
@@ -543,7 +547,8 @@ class TestCreateVendorBillDraft:
         """Attachment-Fehler ist nicht fatal: move_id kommt trotzdem zurueck."""
         connector = OdooConnector(odoo_config)
         mock_models_proxy.execute_kw.side_effect = [
-            42,
+            [],                              # F-07-Dedup-Search: kein Duplikat
+            42,                              # account.move create
             Exception("Attachment Error"),  # attach_document faengt intern
         ]
         await _connect(connector, mock_common_proxy, mock_models_proxy)
@@ -553,8 +558,34 @@ class TestCreateVendorBillDraft:
         )
 
         assert move_id == "42"
-        # Nach dem Attachment-Fehler folgt kein search/write mehr
-        assert len(_rpc_calls(mock_models_proxy)) == 2
+        # search + create + fehlgeschlagenes Attachment; danach kein search/write
+        assert len(_rpc_calls(mock_models_proxy)) == 3
+
+    @pytest.mark.asyncio
+    async def test_existing_draft_is_deduped_not_recreated(
+        self, odoo_config, mock_common_proxy, mock_models_proxy
+    ):
+        """F-07: existierender in_invoice mit gleichem Partner+Ref -> adoptiert."""
+        connector = OdooConnector(odoo_config)
+        # Dedup-Search findet Entwurf 55 -> kein create
+        mock_models_proxy.execute_kw.return_value = [55]
+        await _connect(connector, mock_common_proxy, mock_models_proxy)
+
+        move_id = await connector.create_vendor_bill_draft(
+            _make_bill(), pdf_content=b"%PDF-1.7"
+        )
+
+        assert move_id == "55"
+        calls = _rpc_calls(mock_models_proxy)
+        # Nur die Dedup-Suche lief; KEIN create, KEIN attach
+        assert len(calls) == 1
+        model, method, rpc_args, _ = calls[0]
+        assert (model, method) == ("account.move", "search")
+        assert rpc_args == [[
+            ["move_type", "=", "in_invoice"],
+            ["partner_id", "=", 77],
+            ["ref", "=", "RE-2026-0815"],
+        ]]
 
 
 # =============================================================================
@@ -687,3 +718,30 @@ class TestFindPartner:
         await _connect(connector, mock_common_proxy, mock_models_proxy)
 
         assert await connector.find_partner(vat="DE123456789") == []
+
+    @pytest.mark.asyncio
+    async def test_name_search_escapes_like_wildcards(
+        self, odoo_config, mock_common_proxy, mock_models_proxy
+    ):
+        """F-06: %/_ im OCR-Namen werden escaped, matchen nicht als Wildcard."""
+        connector = OdooConnector(odoo_config)
+        mock_models_proxy.execute_kw.return_value = []
+        await _connect(connector, mock_common_proxy, mock_models_proxy)
+
+        await connector.find_partner(name="A%B_firma\\x")
+
+        _, _, rpc_args, _ = _rpc_calls(mock_models_proxy)[-1]
+        # Backslash zuerst verdoppelt, dann % und _ escaped
+        assert rpc_args[0][0] == ["name", "ilike", "A\\%B\\_firma\\\\x"]
+
+    @pytest.mark.asyncio
+    async def test_short_name_skips_search(
+        self, odoo_config, mock_common_proxy, mock_models_proxy
+    ):
+        """F-06: sehr kurze Namen (< 3 Zeichen) loesen keine Namenssuche aus."""
+        connector = OdooConnector(odoo_config)
+        await _connect(connector, mock_common_proxy, mock_models_proxy)
+
+        # Nur ein kurzer Name als Kriterium -> keine ilike-Suche, [] zurueck
+        assert await connector.find_partner(name="AG") == []
+        assert len(_rpc_calls(mock_models_proxy)) == 0

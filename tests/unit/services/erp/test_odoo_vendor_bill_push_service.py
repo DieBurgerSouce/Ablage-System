@@ -428,6 +428,71 @@ class TestPartnerMatching:
         assert doc.document_metadata["pipeline_result"]["requires_review"] is True
 
     @pytest.mark.asyncio
+    async def test_name_match_ohne_namensgleichheit_geht_in_review(
+        self, monkeypatch, connection
+    ):
+        """F-06: genau 1 Name-Treffer, aber Odoo-Name weicht ab -> Review, kein Push."""
+        connector = _make_connector(
+            partners=[{"id": 9, "name": "Muster Lieferant GmbH & Co. KG",
+                       "match_source": "name"}],
+            move_id="999",
+        )
+        # OCR-sender.company = "Muster Lieferant GmbH" (Fixture) != Odoo-Name
+        doc = _make_document()
+        _patch_service(
+            monkeypatch, document=doc, connection=connection, connector=connector
+        )
+        db = _make_db()
+
+        result = await push_document(db, doc.id)
+
+        assert result.status == "ambiguous"
+        connector.create_vendor_bill_draft.assert_not_awaited()
+        assert doc.document_metadata["pipeline_result"]["requires_review"] is True
+
+    @pytest.mark.asyncio
+    async def test_name_match_mit_namensgleichheit_pusht(
+        self, monkeypatch, connection
+    ):
+        """F-06-Gegenprobe: normalisiert gleicher Name -> Push."""
+        connector = _make_connector(
+            partners=[{"id": 9, "name": "Muster  Lieferant GmbH",
+                       "match_source": "name"}],
+            move_id="999",
+        )
+        doc = _make_document()  # sender.company = "Muster Lieferant GmbH"
+        _patch_service(
+            monkeypatch, document=doc, connection=connection, connector=connector
+        )
+        db = _make_db()
+
+        result = await push_document(db, doc.id)
+
+        assert result.status == "pushed"
+        assert result.odoo_move_id == "999"
+
+    @pytest.mark.asyncio
+    async def test_fremdwaehrung_geht_in_review_kein_push(
+        self, monkeypatch, connection
+    ):
+        """F-08: nicht-EUR-Rechnung wird nicht gepusht (wuerde als EUR gebucht)."""
+        connector = _make_connector(
+            partners=[{"id": 7, "match_source": "vat"}], move_id="777"
+        )
+        doc = _make_document(extracted_data=_extracted_data(currency="USD"))
+        _patch_service(
+            monkeypatch, document=doc, connection=connection, connector=connector
+        )
+        db = _make_db()
+
+        result = await push_document(db, doc.id)
+
+        assert result.status == "error"
+        assert "USD" in (result.reason or "")
+        connector.create_vendor_bill_draft.assert_not_awaited()
+        assert doc.document_metadata["pipeline_result"]["requires_review"] is True
+
+    @pytest.mark.asyncio
     async def test_lernschleife_legt_mapping_an(self, monkeypatch, connection):
         """Kaskaden-Treffer + BusinessEntity ohne Mapping -> ERPEntityMapping neu."""
         entity_id = uuid4()
