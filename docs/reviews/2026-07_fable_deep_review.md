@@ -22,6 +22,20 @@ Muster: **Unit-Tests bewiesen Code, nicht Verhalten.** Der Review prüft deshalb
 
 ---
 
+## Zwischenstand (Iteration 1 abgeschlossen, Iteration 2 läuft)
+
+**7 P1 gefixt + getestet + committet** (jeder Fix mit Regressionstest, TDD-Rot bewiesen): F-01 (Freeze-Leck finance.py), F-02 (Freeze-Regressionstest), F-03 (GoBD-Hash-Gate), F-06 (Push Falsch-Partner), F-07 (Push Doppel-Push), F-08 (Push Fremdwährung), F-12 (tote monitoring-Queue). **1 P2 gefixt** (F-10 Cashflow-Beat).
+
+**Die schweren P0-Kandidaten wurden live widerlegt** (Evidenz, dass geprüft wurde): RLS light real wirksam (ablage_app kein Superuser, Kern-Tabellen RLS forced), kein pgbouncer-Cross-Tenant-Leak (App direkt an postgres + transaktions-lokale GUC), CORS fail-closed, CSRF-Fix ohne Schwächung. Migrations-Konsistenz bestätigt (Live-DB `alembic_version=271`, Single-Head, keine neue Migration im Branch).
+
+**Verifikation:** 289 Unit/Contract-Tests grün über alle betroffenen Bereiche; `tsc -b` 0 Fehler; 21 Container weiter healthy; Live-OpenAPI/curl/SQL-Beweise dokumentiert.
+
+**Offene P2** (dokumentiert, nicht merge-blockierend): F-04/F-05 (Mirror Overlap-Lock/Cursor-Full-Rescan), F-09 (Celery-Eager-Import), F-11 (predictive-actions Dunning-Write — Bens Scope), F-13 (Queue-Length-Metrik tot), F-14 (entrypoint-Race), S-04 (M-06-Rest), + atk-push-P2s (Gutschrift/tax_ids/odoo_company_id).
+
+**Verdikt:** steht nach Iteration 2 (DoD: 2 Runden in Folge 0 neue P0/P1).
+
+---
+
 ## Findings-Register
 
 Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-Bruch, Odoo-Korruption) · **P1** = merge-blockierend (falsche Daten, tote Kernfunktion) · **P2** = dokumentieren, nicht blockieren.
@@ -40,11 +54,16 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | F-10 | Freeze | Beat `extended-alerts-cashflow-daily` fährt täglich den gefrorenen CashflowPredictionService | P2 | ✅ Gefixt + getestet |
 | F-11 | Freeze | Aktiver `predictive-actions`-Router schreibt in gefrorene InvoiceTracking-Domäne (`dunning_level++`) | P2 | 📋 Dokumentiert (Bens Scope) |
 | F-12 | Ops | Tote `monitoring`-Queue: 3 aktive Beats feuern, kein Konsument → 207 Msgs gestaut, Feature tot | P1 | ✅ Gefixt + live bewiesen |
-| S-01 | Security | RLS light **wirksam** (Backend=ablage_app, kein Superuser/Bypass, Kern-Tabellen RLS forced) | — | ✅ Widerlegt (verifiziert) |
+| S-01 | Security | RLS-Rollen-Setup **korrekt** (Backend=ablage_app, kein Superuser/Bypass, direkt an postgres) — ABER `documents`-Policies permissiv (siehe F-15) | — | ⚠️ Teilweise (korrigiert) |
+| F-15 | Security | `documents`-RLS: permissive OR-Policies mit `current_user_id IS NULL`/`company_id IS NULL`-Escapes → ohne Kontext alle Dokumente sichtbar (DoD-8-Verletzung) | P1 | ⛔ RE-GATE (Fix unsicher standalone) |
+| F-16 | Security/Regression | Kein Background-Worker setzt RLS-Kontext → worker-initiierte Dokument-Anlage (Mirror/Import) wird von RLS **abgelehnt**; Escapes sind load-bearing für Worker-Reads | P1 | ⛔ RE-GATE (mit F-15 gekoppelt) |
 | S-02 | Security | pgbouncer-Cross-Tenant-Leak **ausgeschlossen** (App direkt an postgres; GUC transaktions-lokal) | — | ✅ Widerlegt (verifiziert) |
 | S-03 | Security | CORS-Reflection + CSRF-Schwächung **ausgeschlossen** (fail-closed; CSRF-Fix nur Rotation) | — | ✅ Widerlegt (verifiziert) |
 | S-04 | Security | M-06-Rest: 3 einvoice-POSTs im Code ohne `current_user` (nur durch Freeze/404 geschützt) | P2 | 📋 Defense-in-Depth |
 | F-13 | Ops | `ablage_celery_queue_length`-Metrik nie emittiert (`update_queue_metrics` ungenutzt) → Queue-Backlog-Alerts tot → **Wurzel des F-12-Blindflecks** | P2 | 📋 Dokumentiert (live bestätigt) |
+| F-14 | Ops | entrypoint: Nicht-Migratoren warten nicht auf den Migrator → Fresh-Clone-Race (halb-migriertes Schema) | P2 | 📋 Dokumentiert (atk-ops: durch `depends_on: healthy` gemildert) |
+| S-05 | Security | Dev-Stack in `DEBUG=True` → Cookies ohne `Secure`, kein App-HSTS über :443; Security-Flags an `DEBUG` statt `is_production` | P2 | 📋 Deploy-Posture |
+| S-06 | Ops | `datev`-Queue geroutet, kein Konsument (inert durch Freeze; DoD-9 formal verletzt) | P2 | 📋 Dokumentiert |
 
 *(Register wird pro Iteration ergänzt.)*
 
@@ -236,14 +255,50 @@ Die System-Health-Prediction lief **nie** und Redis füllte sich unbegrenzt — 
 
 Alle vier Kronjuwel-Hypothesen wurden gegen den Live-Stack geprüft und **entkräftet** — das ist die Evidenz, dass geprüft wurde, nicht bloß gelesen:
 
-**S-01 — RLS light ist real wirksam** (nicht nur Happy-Path). SQL gegen die Live-DB als effektive App-Rolle:
+**S-01 — RLS-Rollen-Setup korrekt, aber `documents`-Policies permissiv (KORRIGIERT).** Ursprünglich als „voll wirksam" eingestuft — das war für `documents` **falsch** (atk-sec H1 hat es aufgedeckt, hier selbst nachverifiziert). Korrekt bleibt das Rollen-Setup:
 ```
-current_user = ablage_app · rolsuper=False · rolbypassrls=False
-documents / invoices / approval_requests / document_versions:  rls_enabled=True, rls_forced=True
-documents owner = ablage_admin  (≠ ablage_app → kein Owner-Bypass; forced schließt ihn ohnehin)
-RLS-enabled: 92 / 490 Tabellen  (= „RLS light"-Kern-Scope laut Plan §7, kein Vollausbau)
+current_user = ablage_app · rolsuper=False · rolbypassrls=False · ablage_app besitzt 0 RLS-Tabellen (alle → ablage_admin)
+RLS-enabled: 92 / 490 Tabellen  (RLS-light-Kern-Scope), davon FORCED nur 5
+companies:  ohne Kontext 0 Zeilen → mit User-Kontext 1  (Policy filtert korrekt ✔)
 ```
-Das Backend verbindet als Nicht-Superuser ohne BYPASSRLS, die Kern-Tabellen haben RLS **enabled UND forced** — selbst der Tabellen-Owner unterläge den Policies. Der schwerste RLS-Verdacht (Superuser-Bypass/Owner-Bypass) ist widerlegt.
+Das Backend verbindet als Nicht-Superuser ohne BYPASSRLS und besitzt keine RLS-Tabelle → kein Owner-/Superuser-Bypass. Für `companies` filtert RLS **korrekt**. **Aber siehe F-15** — für `documents` nicht.
+
+**F-15 — `documents`-RLS durch permissive OR-Policies neutralisiert · P1 · ⛔ GATE:**
+```
+$ SELECT policyname, permissive, cmd FROM pg_policies WHERE tablename='documents';   → 8 Policies, ALLE PERMISSIVE
+  documents_owner_select (SELECT):  owner_id=current_user_id OR current_user_id IS NULL OR current_user_id='' OR is_admin
+  documents_tenant_isolation (ALL): is_rls_bypass_enabled() OR company_id IS NULL OR company_id=get_current_company_id()
+  tenant_isolation_documents (ALL): company_id = current_company_id           ← die STRIKTE, per OR neutralisiert
+$ (ablage_app, RESET ALL) SELECT count(*) FROM documents;   → 3   (DoD-8 verlangt 0!)
+$ SELECT count(*) FROM documents WHERE company_id IS NULL;   → 0   (Cross-Tenant-Escape latent, keine Daten)
+```
+PostgreSQL verknüpft PERMISSIVE-Policies mit **OR** → eine Zeile ist sichtbar, sobald *irgendeine* Policy zustimmt. Die Escapes `current_user_id IS NULL` (Query ohne User-Kontext, z. B. Worker) und `company_id IS NULL` (NULL-Company-Dokumente) hebeln die strikte `tenant_isolation_documents` aus. **Folge:** Eine Query ohne gesetzten User-Kontext sieht **alle** Dokumente; das verletzt die **DoD-8 des Branches** („App-Rolle ohne Company-Kontext liest 0 Zeilen auf RLS-Kerntabellen").
+
+**Severity P1, aber kein aktiver Datenabfluss:** Der **primäre** Schutz ist die App-Ebene (`verify_document_ownership` `dependencies.py:1016`, `validate_company_access` :358 — beide vorhanden, verifiziert); RLS ist die zweite Verteidigungslinie („light"). Der `company_id IS NULL`-Escape hat aktuell 0 Daten. Es ist der gerissene Gürtel bei intakten Hosenträgern — merge-relevant, weil der Branch DoD-8 als erfüllt ausweist, es für `documents` aber nicht ist.
+
+**Fix erfordert eine neue Alembic-Migration (272)** — Ben hat das Escape-Entfernen genehmigt. **Bei der Umsetzung stellte sich der Fix als unsicher standalone heraus (siehe F-16):** Die Escapes sind **load-bearing** für die Background-Worker.
+
+---
+
+### F-16 — Background-Worker setzen keinen RLS-Kontext → Dokument-Anlage RLS-abgelehnt · P1 · ⛔ RE-GATE
+
+**Bei der Vorbereitung des F-15-Fixes entdeckt** (der Grund, warum F-15 nicht einfach „chirurgisch" gefixt werden kann):
+
+**Beweise (live gegen ablage_app, alles rolled back):**
+```
+grep set_rls_company_context / rls_bypass in  odoo_mirror_service, odoo_tasks, imports/*, document_creation  → LEER (kein Worker setzt Kontext)
+(ablage_app, RESET ALL) no-context INSERT documents(company_id=<non-null>)  → RLS WITH CHECK LEHNT AB (ProgrammingError)
+(ablage_app, RESET ALL) no-context SELECT documents                          → 3   (= alle; nur via owner_select-Escape `current_user_id IS NULL`)
+Kontext-Setzung existiert NUR in der HTTP-Middleware (company_context.py:67/133) — nicht in Workern.
+```
+
+**Zwei gekoppelte Konsequenzen:**
+1. **F-16 selbst (Regression aus der RLS-light-Aktivierung 2026-07-09):** Der OdooMirrorService legt Dokumente mit non-null `company_id` **ohne** RLS-Kontext an → gegen die echte DB werden diese INSERTs **abgelehnt**. Der Mirror würde bei Go-Live fehlschlagen. Unentdeckt, weil die 26 Mirror-Tests die DB mocken und noch keine aktive Odoo-Verbindung existiert. Gleiches Risiko für die worker-initiierten Folder-/E-Mail-Importe (kein Kontext im kanonischen `create_import_document`). Der HTTP-Upload-Pfad funktioniert (Middleware setzt Kontext — genau der in `4fd5238c4` reparierte Pfad); die **Worker-Pfade wurden bei der RLS-Aktivierung nicht mitgezogen**.
+2. **F-15-Fix unsicher:** Weil die Worker keinen Kontext setzen, **lesen** sie Dokumente ausschließlich über die `current_user_id IS NULL`-Escape. Entfernt man sie (F-15), sehen alle kontextlosen Worker-Reads 0 Zeilen → OCR/Mirror/Import-Pipeline bricht. Die Escape ist damit **load-bearing**, nicht bloß ein Loch.
+
+**Der korrekte Fix ist gekoppelt und größer als eine Migration:** Erst müssen die dokument-berührenden Worker RLS-Kontext setzen (`set_rls_company_context_sync(session, company_id)` für Mirror/Import mit bekannter Company, bzw. `rls_bypass_context_sync` für systemische Tasks), **dann** können die Escapes entfernt werden. Das ist ein querschnittlicher Eingriff (Mirror, Importe, ggf. OCR-Tasks) mit hoher Blast-Radius, den die Mock-Tests nicht abdecken → braucht Verifikation gegen echte RLS.
+
+**Entscheidung (Ben, RE-GATE):** **Dediziertes RLS-Task vor Go-Live.** F-15 + F-16 werden hier NICHT gefixt (kein gehetzter Pre-Merge-Eingriff); sie sind gekoppelte **Go-Live-Blocker** auf der Restliste. Die 7 in Iteration 1 gefixten P1 sind davon unabhängig und bleiben merge-fähig. **Wichtig für die Reihenfolge:** F-16 muss gelöst sein, **bevor** OdooMirrorService und die worker-initiierten Importe scharf geschaltet werden (~Mitte Aug) — sonst schlagen deren Dokument-INSERTs gegen die aktive RLS fehl. Der HTTP-Upload-Pfad ist nicht betroffen.
 
 **S-02 — pgbouncer-Cross-Tenant-Leak ausgeschlossen** (zwei unabhängige Gründe):
 1. Das Backend verbindet **direkt** zu `postgres:5432`, **nicht** über pgbouncer (dessen `POOL_MODE=transaction` ist für den RLS-Pfad irrelevant).
@@ -255,7 +310,33 @@ Das Backend verbindet als Nicht-Superuser ohne BYPASSRLS, die Kern-Tabellen habe
 
 **S-04 — M-06-Rest (P2, Defense-in-Depth):** Die 3 einvoice-POSTs (`generate_zugferd` L217, `generate_xrechnung` L292, `validate_einvoice` L370) haben im **Code** weiterhin nur `db=Depends(...)`, kein `current_user`. Aktuell durch den Freeze geschützt (Router nicht registriert → live 404 verifiziert), aber bei Reaktivierung via `ACTIVE_OPTIONAL_MODULES=einvoice` wieder unauthentifiziert erreichbar. **Kein Fix** (Regel „gefrorene Module nicht anfassen"); **Empfehlung** an Ben: `current_user`-Dependency nachrüsten, falls einvoice je reaktiviert wird.
 
-Weitere Security-Beobachtungen (P2, aus explore-secops-Landkarte): kein `:80→:443`-Redirect (http bleibt bedienbar); `Secure`-Cookie nur in prod (`ENVIRONMENT=production` gesetzt → greift); RLS-Schutz hängt am korrekt gesetzten `.env` auf dem Deploy-Host (verifiziert aktiv, aber ein Fresh-Clone ohne `.env` fiele auf Superuser zurück — Deploy-Hygiene-Note).
+Weitere Security-Beobachtungen (P2, aus explore-secops-Landkarte): kein `:80→:443`-Redirect (http bleibt bedienbar); RLS-Schutz hängt am korrekt gesetzten `.env` auf dem Deploy-Host (verifiziert aktiv, aber ein Fresh-Clone ohne `.env` fiele auf Superuser zurück — Deploy-Hygiene-Note).
+
+---
+
+### Iteration 2 — atk-sec/atk-ops-Vollreports + Selbst-Regressionsprüfung
+
+**S-05 — Dev-Stack in `DEBUG=True` (P2, Deploy-Posture):** atk-sec verifizierte `is_production=False` im laufenden Container. `DEBUG` schaltet mehrere Security-Toggles ab: `cookie_secure=not DEBUG` (`main.py:1131`) + `enable_hsts=not DEBUG` (`main.py:1098`) → über :443 werden Session-/CSRF-Cookies **ohne `Secure`** gesetzt und die App emittiert **kein HSTS** (nur nginx tut es); zusätzlich IP-Blocking aus (`main.py:1058`), Rate-Limit-Bypass (`main.py:1152`). **Im Pilot-Produktivbetrieb** (`ENVIRONMENT=production` → `is_production=True`, `DEBUG=False`) greifen Secure/HSTS/IP-Blocking/Rate-Limit alle. **Kein Code-Merge-Blocker**, aber: (a) Pilot zwingend mit `ENVIRONMENT=production` fahren; (b) Hardening-Empfehlung — Security-Flags an `is_production` statt `DEBUG` binden (Inkonsistenz: CSRF-Cookie `not DEBUG` vs. Auth-Cookie `is_production`). **CORS-Reflection und CSRF-Regress von atk-sec erneut widerlegt** (deckt sich mit S-03).
+
+**F-09/S-04 — atk-sec-Eskalationssicht (dokumentiert):** atk-sec stuft die registriert-bleibenden gefrorenen Celery-Tasks (F-09, 178 Tasks via `inspect registered`) und die 3 unauth einvoice-POSTs (S-04) als **P1** ein, nennt aber selbst die starken Milderungen: Redis passwortgeschützt + nur intern (kein `send_task` von außen), und die einvoice-POSTs sind live 404 (Freeze). Ich belasse beide als **P2** (kein aktiver Exploit-Pfad; Fix von F-09 riskiert Import-Bruch in gefrorenem Terrain, Fix von S-04 hieße gefrorenen Code editieren) — mit der klaren **Empfehlung**, S-04 (`current_user` an `einvoice.py:234/310/388`) **vor** jeder einvoice-Reaktivierung nachzurüsten und F-09 durch bedingten Import statt include-Pop sauber zu schließen.
+
+**S-06 — `datev`-Queue ohne Konsument (P2):** atk-ops bestätigt: von 18 gerouteten Queues hat nur `datev` keinen Konsumenten. Inert (datev_connect-Tasks gefroren, Dispatcher hinter dem 404-Router), Redis LLEN=0. DoD-9 formal verletzt, aber ohne Live-Auslöser. Zündet erst bei `ACTIVE_OPTIONAL_MODULES=datev` **ohne** `datev`-Konsument. **Empfehlung:** Kommentar `docker-compose.yml:895-897` korrigieren + CI-Guard „aktives Modul routet in unkonsumierte Queue".
+
+**Ops-Kern von atk-ops bestätigt gesund:** Beat→tote-Queue **widerlegt** (0/217), entrypoint-Lock gesund (Owner ablage_admin vs App ablage_app live via `pg_stat_activity` bewiesen; `depends_on: service_healthy` lässt Nicht-Migratoren doch warten — mildert F-14), Beat-HA via RedBeat-Redis-Lock **widerlegt** (kein Doppellauf), Worker-Down-Alert-Kette Metrik→Regel→Route→Slack vollständig (nur End-to-End-Feuern steht als Pre-Go-Live-Test aus). restic-Kern gesund (Pipe-Masking abwesend), P2-Härtungen: MinIO-Fehler bricht ganzen Lauf (`:211`), Secrets via Kommandozeile (`:121/:172`), `check` nicht im Daily.
+
+**GoBD-Audit-Chain-Unveränderbarkeit — SOLID (live bewiesen):** Frischer Winkel, positiv bestätigt. Es gibt **9 DB-Immutability-Trigger** (BEFORE UPDATE/DELETE) auf `gobd_audit_chain` (`trg_audit_chain_immutable`), `audit_logs` (`tr_audit_logs_no_update`/`_no_delete`), `domain_events`, `dlp_audit_logs`, `classification_audit_log`. Live-Probe:
+```
+$ (rolled back) DELETE FROM audit_logs;   → BLOCKIERT (527 Zeilen, asyncpg-Error vom Trigger)
+```
+Selbst ein DB-Level-`DELETE`/`UPDATE` auf der Audit-Chain wird abgewiesen — die GoBD-Kernanforderung (Unveränderbarkeit) ist auf Datenbankebene durchgesetzt, nicht nur applikativ.
+
+**Selbst-Regressionsprüfung meiner 7 Fixes (kritisch, eigene Bewertung):**
+- **F-07 Dedup-ohne-PDF (R3):** Adoptiert ein Dedup-Treffer den Move ohne Re-Attach → nur im seltenen Doppel-Fehlerfenster (create OK + PDF-Attach schlägt fehl + lokaler Commit schlägt fehl → Retry adoptiert PDF-losen Move). Das kleinere Übel gegenüber einem Duplikat-Bill. **Dokumentierter Tradeoff, keine Regression.** ref-Kollision (gleiche invoice_number + gleicher Partner) unterdrückt den zweiten Push — semantisch „selbe Rechnung", der `ABLAGE-<doc8>`-Fallback ist pro Dokument eindeutig.
+- **F-06 `_names_match` (R4):** `re.sub(r"[^\w]+"," ", …, UNICODE)` behandelt Umlaute korrekt; Homoglyphen/Zero-Width führen zu **Review** (fail-closed, sichere Richtung), nie zu falschem Push.
+- **F-03 Hash-Gate (R2):** Fail-open nur bei fehlendem Odoo-`checksum` — der aber für inhaltsbehaftete `ir.attachment` von Odoo immer gesetzt wird (leerer Inhalt ist vor dem Gate per `if not content: continue` gefiltert). Akzeptabler by-design-Fall (was Odoo nicht liefert, kann nicht verifiziert werden; Odoo=vertrauenswürdige read-only-Quelle).
+- **F-12 Kapazität (R5):** 3 monitoring-Tasks sind schnell (collect_metrics 0,1 s), worker-cpu `--concurrency=4` hat Reserve — vernachlässigbare Last.
+
+*(atk-regress/atk-fresh-Vollreports bestätigen/ergänzen dies — Einarbeitung folgt.)*
 
 ### Ops-Detailverifikation (selbst geprüft) — restic, Alerts, F-13
 
@@ -269,4 +350,4 @@ $ curl prometheus/api/v1/query?query=ablage_celery_queue_length   → result cou
 ```
 Ursache: `app/workers/celery_metrics.py:330` `update_queue_metrics()` setzt die Gauge `ablage_celery_queue_length`, wird aber **nirgends aufgerufen** (`grep` findet nur die Definition). Damit können `CeleryQueueBacklog` (>50), `CeleryQueueBacklogCritical` (>200) und `CeleryQueueBlocked` **nie feuern** — genau deshalb blieb der 207-Nachrichten-Stau in `monitoring` (F-12) unbemerkt. Zusätzlich iteriert `update_queue_metrics` nur über `inspect.active_queues()` (= konsumierte Queues) → eine orphan Queue wäre selbst bei verdrahteter Metrik unsichtbar (doppelter Blindfleck). **Empfehlung:** `update_queue_metrics` periodisch aufrufen (Beat oder Metrics-Server-Thread) **und** über eine feste Queue-Liste statt nur `active_queues()` iterieren, damit auch konsumentenlose Queues erfasst werden. **Kein Fix jetzt** (Monitoring-Architektur-Entscheidung; F-12-Kerndefekt bereits behoben; F-12-Fix bringt `monitoring` immerhin in `active_queues`).
 
-**entrypoint-Lock (`docker/entrypoint.sh`) — laut Landkarte robust** (pg_advisory_lock(815001), `RUN_MIGRATIONS=false` auf worker/worker-cpu/beat, `MIGRATION_DATABASE_URL` = DDL-Owner ≠ App-Rolle). Eine adversariale Race-Tiefenprüfung (Migrator-Tod bei gehaltenem Lock) steht als Rest-Item in Iteration 2.
+**entrypoint-Lock (`docker/entrypoint.sh`) — Kern robust, ein P2-Race:** `pg_advisory_lock(815001)` macht die Migration **exactly-once über alle Container** (nur `backend` migriert, `worker`/`worker-cpu`/`beat` haben `RUN_MIGRATIONS=false`); Migrations-Subprozess nutzt die DDL-Owner-URL, das CMD behält die App-Rolle; bei alembic-Fehler `sys.exit(rc)` (Container startet nicht mit kaputtem Schema). **F-14 (P2):** Die Nicht-Migratoren warten **nicht** auf den Migrator — sie überspringen die Migration und `exec celery` sofort. Auf Fresh-Clone/Schema-Change könnte ein Worker/Beat gegen ein halb-migriertes Schema starten (Fenster: Sekunden). Gemildert: normaler Restart = Migration ist No-op (bereits head); Worker fragen beim Start die DB nicht aktiv ab; erster Task kommt verzögert (Beat-Intervall/API nach Migration); transienter Fehler → Retry. **Empfehlung:** Nicht-Migratoren den Advisory-Lock **blockierend** acquiren + sofort releasen (wartet, bis der Migrator fertig ist) statt die Migration nur zu überspringen.
