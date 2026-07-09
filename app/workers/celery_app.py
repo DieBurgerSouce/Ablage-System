@@ -517,16 +517,29 @@ celery_app.conf.update(
     redbeat_lock_timeout=300,  # Lock TTL 5 min (re-acquired automatically)
 
     # ==========================================================================
-    # PRIORITY QUEUE CONFIGURATION
+    # QUEUE / TRANSPORT CONFIGURATION
     # ==========================================================================
-    # Redis supports priority queues with broker_transport_options
-    # Priority range: 0 (highest) to 9 (lowest)
+    # Redis-Priority-Sub-Queues sind BEWUSST DEAKTIVIERT (siehe Kommentar unten):
+    # der Single-GPU-solo-Worker holt nur Basis-Queues ab. task_routes lenkt Tasks
+    # weiterhin auf getrennte Basis-Queues (ocr_high, ocr_normal, ...); die dort
+    # gesetzte 'priority' ist ohne priority_steps ein wirkungsloses No-op.
     # Workers should be started with: celery -A app.workers.celery_app worker -Q ocr_high,ocr_normal,embedding_high,embedding_normal,validation,metadata,backup,maintenance,metrics
 
     broker_transport_options={
-        "priority_steps": list(range(10)),  # 0-9 priority levels
+        # HINWEIS (Neuausrichtung 2026-07): priority_steps + queue_order_strategy
+        # ENTFERNT. Mit dem Single-GPU-solo-Worker waren die Redis-Priority-
+        # Sub-Queues de facto kaputt: Tasks mit priority>0 (z. B.
+        # process_document_task=9, embedding=8) landeten via kombu in Sub-Queues
+        # wie 'ocr_high:9', die der solo-Worker NICHT abholte -> JEDER Upload
+        # blieb 'pending' (OCR lief nie automatisch); zusaetzlich stauten sich
+        # ~580k Beat-Periodics in *:N-Sub-Queues. Ohne priority_steps liefert
+        # kombu._q_for_pri IMMER den Basis-Queue-Namen (default priority_steps=[0])
+        # -> alle Tasks in ocr_high/default/... , die der Worker konsumiert.
+        # 'sep' bleibt ':' — es serialisiert AUCH die kombu-Binding-Tabelle
+        # (_kombu.binding.*, self.sep.join([routing_key, pattern, queue])); ein
+        # Wechsel wuerde bestehende Bindings unlesbar machen (ValueError beim
+        # Unpack). 'sep' erzeugt OHNE priority_steps keine Sub-Queues mehr.
         "sep": ":",
-        "queue_order_strategy": "priority",  # Process high priority first
         "visibility_timeout": 43200,  # 12 hours (for long-running OCR tasks)
         # Redis Sentinel support: master_name used when broker URL is sentinel://
         **({"master_name": settings.REDIS_SENTINEL_MASTER_NAME}
