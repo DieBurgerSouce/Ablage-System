@@ -895,7 +895,7 @@ services:
     # "datev" bleibt bewusst ohne Konsument: Beat-Eintraege sind durch den
     # Modul-Freeze gepruned, die verbliebenen booking_tasks-Routen haben keine
     # aktiven Dispatcher. "gpu" wurde in celery_app.py auf ocr_normal normalisiert.
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --pool=prefork -n cpu_worker@%h -Q validation,metadata,maintenance,metrics,backup,dlq,workflow,approval,orchestration,tracking,privat,notification,notifications,erp,default
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --pool=prefork -n cpu_worker@%h -Q validation,metadata,maintenance,metrics,backup,dlq,workflow,approval,orchestration,tracking,privat,notification,notifications,erp,default,monitoring
     environment:
       # Vault Configuration
       VAULT_ENABLED: ${VAULT_ENABLED:-false}
