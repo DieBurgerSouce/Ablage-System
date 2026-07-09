@@ -341,8 +341,14 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Token-Rotation nach erfolgreichem state-changing Request
-        # Verhindert Token-Reuse-Angriffe
-        if response.status_code < 400:
+        # Verhindert Token-Reuse-Angriffe.
+        # WICHTIG: NUR bei echten 2xx-Erfolgen rotieren, NICHT bei 3xx-Redirects.
+        # Ein Trailing-Slash-Redirect (FastAPI 307 /documents -> /documents/) wird
+        # vom Browser mit demselben (alten) X-CSRF-Token-Header WIEDERHOLT. Wuerde
+        # der 307 den Cookie rotieren, traefe der Folge-Request den neuen Cookie
+        # gegen den alten Header -> 403 (genau der Upload-Bug). 2xx-Grenze schuetzt
+        # den Redirect-Follow, ohne den Reuse-Schutz fuer echte Erfolge aufzugeben.
+        if 200 <= response.status_code < 300:
             new_csrf_token = self._generate_csrf_token()
             response.set_cookie(
                 key=CSRF_COOKIE_NAME,

@@ -84,14 +84,18 @@ async def set_rls_context(
         )
         raise ValueError(f"Ungültige User-ID für RLS-Context: {str(user_id)[:8]}...")
 
-    # SECURITY FIX: Use parameterized queries to prevent SQL injection
-    # Previous code used f-string interpolation which was vulnerable
+    # SECURITY + KORREKTHEIT: set_config() statt 'SET LOCAL x = :param'.
+    # PostgreSQL/asyncpg akzeptiert bei 'SET LOCAL' KEINE Bind-Parameter
+    # (ProgrammingError) -> die alte Variante war doppelt kaputt: nie aufgerufen
+    # UND syntaktisch unausfuehrbar. set_config(...,:v,true) ist parametrisiert
+    # (injection-sicher) und transaktions-lokal (is_local=true) - identisch zum
+    # bewaehrten company_context-Muster.
     await session.execute(
-        text("SET LOCAL app.current_user_id = :user_id"),
+        text("SELECT set_config('app.current_user_id', :user_id, true)"),
         {"user_id": str(validated_user_id)}
     )
     await session.execute(
-        text("SET LOCAL app.is_admin = :is_admin"),
+        text("SELECT set_config('app.is_admin', :is_admin, true)"),
         {"is_admin": "true" if is_admin else "false"}
     )
     # RLS-Reconciliation: Migration 210 superuser_bypass-Policies nutzen die Variable
@@ -266,6 +270,16 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
         )
+
+    # RLS-USER-KONTEXT (Root-Cause-Fix RLS-light): Setzt app.current_user_id /
+    # app.is_admin / app.current_user_is_superuser auf der Request-Session, BEVOR
+    # user-scoped Policies (companies, user_companies, invoices, documents-alt)
+    # abgefragt werden. Unter dem frueheren Superuser-App-User war das folgenlos
+    # (BYPASSRLS); als NOBYPASSRLS-Rolle 'ablage_app' lieferten diese Policies
+    # sonst 0 Zeilen -> "keine Firma ausgewaehlt". Muss VOR
+    # _resolve_accessible_company_ids stehen (fragt user_companies ab).
+    # Dependency-Cache garantiert: dieselbe get_db-Session wie der Endpoint.
+    await set_rls_context(db, str(user.id), bool(user.is_superuser))
 
     # B1 Multi-Tenant: zugängliche Firmen-IDs am User-Objekt hinterlegen, damit
     # synchrone Checks (validate_company_access) ohne erneuten DB-Zugriff funktionieren.
