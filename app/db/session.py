@@ -14,7 +14,7 @@ RLS Support:
 """
 
 from contextlib import asynccontextmanager, contextmanager
-from threading import Lock
+from threading import RLock
 from typing import AsyncGenerator, Generator, Optional
 from uuid import UUID
 
@@ -32,7 +32,12 @@ logger = structlog.get_logger(__name__)
 # Cached sync engine for Celery tasks - Thread-safe singleton
 _sync_engine: Optional[Engine] = None
 _sync_session_maker: Optional[sessionmaker] = None
-_sync_engine_lock = Lock()
+# RLock (reentrant) statt Lock: _get_sync_session_maker() haelt diesen Lock und
+# ruft darin _get_sync_engine() auf, das denselben Lock erneut acquiren will.
+# Mit nicht-reentrantem Lock() deadlockt der Thread beim Cold-Start mit sich
+# selbst (Stack: _get_sync_session_maker -> _get_sync_engine -> with _sync_engine_lock).
+# Das blockierte den Solo-GPU-Worker beim ersten sync-Task -> OCR lief nie.
+_sync_engine_lock = RLock()
 
 
 def _get_sync_engine() -> Engine:
