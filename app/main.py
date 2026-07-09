@@ -1226,6 +1226,7 @@ from app.api.v1.period_comparison import router as period_comparison_router
 from app.api.v1.banking_fints import fints_router, sepa_router, dashboard_router as banking_dashboard_router
 from app.api.v1.datev import router as datev_router
 from app.api.v1.finance import router as finance_router
+from app.api.v1.finance import liquidity_router as finance_liquidity_router
 from app.api.v1.recurring_invoices import router as recurring_invoices_router  # Phase 2.2: Abo-Verwaltung
 from app.api.v1.exports import router as exports_router
 from app.api.v1.scheduled_exports import router as scheduled_exports_router
@@ -1494,7 +1495,10 @@ app.include_router(rag_router, prefix="/api/v1")
 app.include_router(document_comparison_router, prefix="/api/v1")  # Document Version Comparison API
 app.include_router(saved_searches_router, prefix="/api/v1")  # Saved Searches API
 app.include_router(period_comparison_router, prefix="/api/v1")  # Period Comparison API (YoY/MoM/QoQ)
-app.include_router(finance_router, prefix="/api/v1")
+app.include_router(finance_router, prefix="/api/v1")  # AKTIV: Jahres-Archiv (/finance/years, /documents, /deadlines, /anomalies)
+# FROZEN (Odoo uebernimmt Cashflow/Liquiditaet): /finance/liquidity/* teilen sich
+# den /finance-Prefix, sind aber eigene MODULE_FINANCE-Domaene -> gegated (F-01).
+include_module_router(app, finance_liquidity_router, MODULE_FINANCE, prefix="/api/v1")
 app.include_router(exports_router, prefix="/api/v1")
 app.include_router(scheduled_exports_router, prefix="/api/v1")
 app.include_router(companies_router, prefix="/api/v1")

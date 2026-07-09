@@ -310,7 +310,12 @@ class TestDraftUndDedupe:
         connector.list_attachments.return_value = [{"id": 501, "name": "a.pdf"}]
         connector.download_attachment.return_value = (
             b"%PDF-1.7 inhalt",
-            {"name": "a.pdf", "mimetype": "application/pdf", "checksum": "sha1x"},
+            # checksum = echter SHA-1 von b"%PDF-1.7 inhalt" (GoBD-Integritaetsgate)
+            {
+                "name": "a.pdf",
+                "mimetype": "application/pdf",
+                "checksum": "6d972887c8e83c01f21c23f3723e695b9a02a71e",
+            },
         )
 
         with _patch_status(service, sync_status), \
@@ -340,7 +345,12 @@ class TestDraftUndDedupe:
         connector.list_attachments.return_value = [{"id": 501, "name": "a.pdf"}]
         connector.download_attachment.return_value = (
             b"%PDF-1.7 inhalt",
-            {"name": "a.pdf", "mimetype": "application/pdf", "checksum": "sha1x"},
+            # checksum = echter SHA-1 von b"%PDF-1.7 inhalt" (GoBD-Integritaetsgate)
+            {
+                "name": "a.pdf",
+                "mimetype": "application/pdf",
+                "checksum": "6d972887c8e83c01f21c23f3723e695b9a02a71e",
+            },
         )
 
         with _patch_status(service, sync_status), \
@@ -403,6 +413,77 @@ class TestDraftUndDedupe:
         # Cursor darf NICHT auf den kaputten Move fortschreiten
         assert result.new_cursor is None
         db.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_checksum_mismatch_blocks_gobd_archival(
+        self, service, connection, db
+    ):
+        """GoBD-Integritaetsgate (R3): Odoo-checksum (SHA-1) != Bytes -> Move-Fehler.
+
+        Ein still-korrupter Transfer (Bytes stimmen nicht mit dem von Odoo
+        gemeldeten ir.attachment.checksum ueberein) darf NICHT mit einem
+        gueltig aussehenden GoBD-Hash der korrupten Bytes archiviert werden.
+        Erwartung: RuntimeError -> per-Move-Rollback, Cursor-Schutz, KEINE
+        Persistenz.
+        """
+        sync_status = _make_sync_status(connection)
+        connector = FakeConnector(moves=[_move(1, write_date="2026-08-10 10:00:00")])
+        connector.list_attachments.return_value = [{"id": 501, "name": "a.pdf"}]
+        # Inhalt b"%PDF-1.7 inhalt", aber Odoo meldet einen FREMDEN Checksum:
+        connector.download_attachment.return_value = (
+            b"%PDF-1.7 inhalt",
+            {
+                "name": "a.pdf",
+                "mimetype": "application/pdf",
+                "checksum": "0000000000000000000000000000000000000000",
+            },
+        )
+
+        with _patch_status(service, sync_status), \
+                patch.object(service, "_mapping_exists", AsyncMock(return_value=False)), \
+                patch.object(
+                    service, "_find_document_by_checksum", AsyncMock(return_value=None)
+                ) as find_by_checksum, \
+                patch.object(service, "_persist_attachment", AsyncMock()) as persist:
+            result = await service.run_incremental(db, connection, connector=connector)
+
+        assert result.errors == 1
+        assert result.created == 0
+        # Gate schlaegt VOR Dedupe/Persistenz zu:
+        find_by_checksum.assert_not_awaited()
+        persist.assert_not_awaited()
+        # Cursor darf NICHT fortschreiten -> naechster Lauf laedt erneut
+        assert result.new_cursor is None
+        db.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_matching_checksum_passes_gate(self, service, connection, db):
+        """Gegenprobe: passender SHA-1 -> Move laeuft normal in die Persistenz."""
+        sync_status = _make_sync_status(connection)
+        connector = FakeConnector(moves=[_move(1, write_date="2026-08-10 10:00:00")])
+        connector.list_attachments.return_value = [{"id": 501, "name": "a.pdf"}]
+        connector.download_attachment.return_value = (
+            b"%PDF-1.7 inhalt",
+            {
+                "name": "a.pdf",
+                "mimetype": "application/pdf",
+                "checksum": "6d972887c8e83c01f21c23f3723e695b9a02a71e",
+            },
+        )
+
+        with _patch_status(service, sync_status), \
+                patch.object(service, "_mapping_exists", AsyncMock(return_value=False)), \
+                patch.object(
+                    service, "_find_document_by_checksum", AsyncMock(return_value=None)
+                ), \
+                patch.object(
+                    service, "_persist_attachment", AsyncMock(return_value=uuid4())
+                ) as persist:
+            result = await service.run_incremental(db, connection, connector=connector)
+
+        assert result.errors == 0
+        assert result.created == 1
+        persist.assert_awaited_once()
 
 
 # =============================================================================

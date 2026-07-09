@@ -75,6 +75,16 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/finance", tags=["Finance"])
 
+# Gefrorener Teil-Router (Odoo-Neuausrichtung, Plan §4a): Die Liquiditäts-/
+# Cashflow-Forecast-Endpunkte (/finance/liquidity/*) gehören zur eingefrorenen
+# MODULE_FINANCE-Domäne (Odoo `account_online_synchronization`) und werden über
+# den gefrorenen banking.ts-Layer konsumiert. Sie teilen sich zwar den
+# /finance-Prefix mit dem AKTIVEN Jahres-Archiv (/years, /documents, ...), sind
+# aber eine eigene Domäne — deshalb ein zweiter Router, der in app/main.py über
+# include_module_router(..., MODULE_FINANCE) gegated registriert wird (→ 404,
+# solange finance eingefroren ist). Das aktive Archiv bleibt am `router`.
+liquidity_router = APIRouter(prefix="/finance", tags=["Finance"])
+
 
 # =============================================================================
 # YEAR ENDPOINTS
@@ -1847,7 +1857,7 @@ class AnomalyDetectionResponse(BaseModel):
     message: str
 
 
-@router.get(
+@liquidity_router.get(
     "/liquidity/forecast",
     response_model=LiquidityForecastResponse,
     summary="Liquiditaetsprognose abrufen",
@@ -1990,7 +2000,7 @@ async def get_liquidity_forecast(
         )
 
 
-@router.get(
+@liquidity_router.get(
     "/liquidity/bottlenecks",
     response_model=BottleneckPredictionResponse,
     summary="Liquiditaetsengpaesse vorhersagen",
@@ -2082,7 +2092,7 @@ async def predict_bottlenecks(
         )
 
 
-@router.get(
+@liquidity_router.get(
     "/liquidity/waterfall",
     response_model=WaterfallChartResponse,
     summary="Wasserfall-Chart Daten abrufen",
@@ -2166,7 +2176,7 @@ async def get_waterfall_data(
         )
 
 
-@router.get(
+@liquidity_router.get(
     "/liquidity/anomalies",
     response_model=AnomalyDetectionResponse,
     summary="Zahlungsanomalien erkennen",

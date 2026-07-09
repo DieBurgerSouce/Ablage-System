@@ -335,6 +335,31 @@ class OdooMirrorService:
                 )
                 continue
 
+            # GoBD-Integritaetsgate (Plan-Risiko R3): Der von Odoo gemeldete
+            # ir.attachment.checksum (SHA-1) muss die uebertragenen Bytes
+            # bestaetigen, BEVOR sie unveraenderbar archiviert werden. Ein
+            # still-korrupter XML-RPC-Transfer, der noch base64-dekodiert, darf
+            # nicht mit einem gueltig aussehenden GoBD-Hash der korrupten Bytes
+            # eingebucht werden. Mismatch -> RuntimeError -> per-Move-Rollback +
+            # Cursor-Schutz (naechster Lauf laedt den Anhang erneut).
+            odoo_checksum = attachment_meta.get("checksum")
+            if odoo_checksum:
+                computed_sha1 = hashlib.sha1(content).hexdigest()
+                if computed_sha1.lower() != str(odoo_checksum).strip().lower():
+                    logger.error(
+                        "odoo_mirror_checksum_mismatch",
+                        connection_id=str(connection.id),
+                        odoo_move_id=move_id,
+                        odoo_attachment_id=attachment_id,
+                        odoo_checksum=str(odoo_checksum),
+                        computed_sha1=computed_sha1,
+                    )
+                    raise RuntimeError(
+                        f"Odoo-Anhang {attachment_id}: Checksum-Mismatch "
+                        f"(Odoo sha1={odoo_checksum}, lokal={computed_sha1}) - "
+                        "korrupter Transfer, wird nicht GoBD-archiviert"
+                    )
+
             sha256 = hashlib.sha256(content).hexdigest()
 
             # Dedupe-Stufe (b): Inhalt existiert bereits als Dokument der
