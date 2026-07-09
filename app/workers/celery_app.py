@@ -3313,6 +3313,7 @@ FROZEN_MODULE_EXTRA_BEAT_KEYS: Dict[str, Tuple[str, ...]] = {
     ),
     MODULE_FINANCE: (
         "insights-cashflow-daily",                   # insights_tasks (aktiv), Zweck: Cashflow-Prognosen
+        "extended-alerts-cashflow-daily",            # extended_alerts_tasks (aktiv), Zweck: Cashflow-Forecast (F-10)
     ),
     MODULE_RISK_FINANZKI: (
         "insights-fraud-scan-daily",                 # insights_tasks (aktiv), Zweck: Fraud-Scan

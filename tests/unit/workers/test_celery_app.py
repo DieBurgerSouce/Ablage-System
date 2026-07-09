@@ -245,6 +245,25 @@ class TestBeatSchedule:
         # May have scheduled tasks like cleanup, backup, etc.
         assert beat_schedule is not None or True  # May be empty in some configs
 
+    def test_frozen_finance_cashflow_beats_are_pruned(self):
+        """F-10: Bei eingefrorenem MODULE_FINANCE laufen KEINE Cashflow-Beats.
+
+        Regressionsschutz: ``extended-alerts-cashflow-daily`` (fuehrt taeglich
+        den gefrorenen CashflowPredictionService) muss - wie das laengst
+        gepoppte Geschwister ``insights-cashflow-daily`` - aus dem effektiven
+        Beat-Schedule entfernt sein, solange finance eingefroren ist.
+        """
+        import pytest
+        from app.core.module_registry import MODULE_FINANCE, is_module_active
+        from app.workers.celery_app import celery_app
+
+        if is_module_active(MODULE_FINANCE):
+            pytest.skip("finance ist aktiv (ACTIVE_OPTIONAL_MODULES) — Beats erwartet")
+
+        beat_schedule = celery_app.conf.beat_schedule or {}
+        assert "extended-alerts-cashflow-daily" not in beat_schedule
+        assert "insights-cashflow-daily" not in beat_schedule
+
 
 class TestRedisLockClient:
     """Tests for Redis lock client initialization."""
