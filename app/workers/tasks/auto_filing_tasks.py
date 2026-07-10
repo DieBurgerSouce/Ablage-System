@@ -25,7 +25,6 @@ from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.models import Company, Document
 from app.db.models_approval_extended import AutoFilingRule
-from app.db.session import get_sync_session
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
@@ -76,7 +75,7 @@ def auto_file_new_documents_task(
     logger.info("Starte automatische Dokumentenablage...")
 
     async def _process() -> Dict[str, object]:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.automation.auto_filing_service import (
             AutoFilingService,
         )
@@ -86,7 +85,7 @@ def auto_file_new_documents_task(
         total_skipped = 0
         errors: List[str] = []
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Companies ermitteln
             if company_id:
                 company_ids = [UUID(company_id)]
@@ -182,7 +181,7 @@ def train_filing_model_task(
     logger.info("Starte Filing-Modell-Training...")
 
     async def _train() -> Dict[str, object]:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.automation.auto_filing_service import (
             AutoFilingService,
         )
@@ -190,7 +189,7 @@ def train_filing_model_task(
         training_results: List[Dict[str, object]] = []
         errors: List[str] = []
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Companies ermitteln
             if company_id:
                 company_ids = [UUID(company_id)]
@@ -282,12 +281,12 @@ def auto_match_documents_task(
     )
 
     async def _match() -> Dict[str, object]:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.automation.auto_matching_service import (
             AutoMatchingService,
         )
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = AutoMatchingService(db)
 
             saved_matches = await service.auto_match_and_save(
@@ -354,7 +353,7 @@ def batch_match_documents_task(
     logger.info("Starte Batch-Dokumenten-Matching...")
 
     async def _batch_match() -> Dict[str, object]:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.automation.auto_matching_service import (
             AutoMatchingService,
         )
@@ -363,7 +362,7 @@ def batch_match_documents_task(
         total_matches = 0
         errors: List[str] = []
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Companies ermitteln
             if company_id:
                 company_ids = [UUID(company_id)]
@@ -503,14 +502,14 @@ def trigger_auto_filing_pipeline_task(
             )
 
     async def _run_pipeline() -> Dict[str, object]:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.pipeline.document_pipeline_orchestrator import (
             DocumentPipelineOrchestrator,
         )
 
         _publish_progress("pipeline_start", "running")
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             orchestrator = DocumentPipelineOrchestrator(db)
 
             # Pipeline ausführen

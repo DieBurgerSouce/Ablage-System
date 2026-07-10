@@ -19,7 +19,7 @@ from celery import shared_task
 from prometheus_client import Counter
 
 from app.core.safe_errors import safe_error_log, safe_error_detail
-from app.db.session import async_session_factory
+from app.db.session import get_worker_session_context
 from app.db.models import Company
 from app.workers.celery_app import celery_app
 from sqlalchemy import select
@@ -109,7 +109,7 @@ def verify_audit_chain_task(
     import asyncio
 
     async def _verify():
-        async with async_session_factory() as db:
+        async with get_worker_session_context() as db:
             return await _verify_audit_chains(
                 db,
                 uuid.UUID(company_id) if company_id else None,
@@ -272,7 +272,7 @@ def batch_integrity_check_task(
     import asyncio
 
     async def _check():
-        async with async_session_factory() as db:
+        async with get_worker_session_context() as db:
             return await _batch_integrity_check(
                 db,
                 uuid.UUID(company_id) if company_id else None,
@@ -432,7 +432,7 @@ def generate_chain_statistics_task(self, company_id: str) -> dict:
     import asyncio
 
     async def _stats():
-        async with async_session_factory() as db:
+        async with get_worker_session_context() as db:
             from app.services.compliance import audit_chain_service
             return await audit_chain_service.get_chain_statistics(
                 db, uuid.UUID(company_id)
@@ -473,7 +473,7 @@ def check_retention_warnings_task(self) -> RetentionWarningResult:
     import asyncio
 
     async def _check():
-        async with async_session_factory() as db:
+        async with get_worker_session_context() as db:
             return await _check_retention_warnings(db)
 
     try:
@@ -583,7 +583,7 @@ def check_breach_deadlines_task(self) -> BreachDeadlineResult:
     import asyncio
 
     async def _check():
-        async with async_session_factory() as db:
+        async with get_worker_session_context() as db:
             return await _check_all_breach_deadlines(db)
 
     try:
@@ -688,7 +688,7 @@ def daily_breach_report_task(self) -> DailyBreachReport:
     import asyncio
 
     async def _report():
-        async with async_session_factory() as db:
+        async with get_worker_session_context() as db:
             return await _generate_daily_breach_report(db)
 
     try:
@@ -1005,7 +1005,7 @@ def gobd_auto_archive_task(self, batch_limit: int = 500) -> AutoArchiveResult:
         }
 
     async def _run():
-        async with async_session_factory() as db:
+        async with get_worker_session_context() as db:
             return await _run_gobd_auto_archive(db, batch_limit)
 
     try:

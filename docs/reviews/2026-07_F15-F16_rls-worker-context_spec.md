@@ -137,7 +137,11 @@ Ort: neues `tests/integration/test_rls_worker_context.py` (nutzt die reale Test-
 **✅ Phase 2b-Prozessoren (fertig, committet) — 19 aktive document-berührende Module auf Bypass:**
 `ocr_tasks`, `ocr_learning_tasks`, `ocr_template_tasks`, `document_intelligence_tasks`, `document_tasks`, `annotation_tasks`, `anomaly_tasks`, `contract_tasks`, `contract_v2_tasks`, `embedding_tasks`, `semantic_search_tasks`, `rag_tasks`, `entity_linking_tasks`, `extraction_tasks`, `erp_sync_tasks`, `notification_tasks`, `smart_inbox_tasks`, `template_tasks`, `training_tasks` → alle `get_async_session_context()` → `get_worker_session_context()` (Bypass). **Verifiziert:** alle 19 importieren im Container, GPU-Worker + worker-cpu nach Restart healthy, ocr_tasks (18) + erp/notification/embedding/… (33) registriert, monitoring-Queue intakt. **Frozen Module bewusst ausgelassen** (einvoice/fraud/risk/chain/zero_touch/ki_pipeline — laufen nicht). Der Read-Fix greift real erst nach der Migration (bis dahin lesen sie via Escape); die Umstellung ändert das Ist-Verhalten nicht (Bypass ↔ Escape gewähren beide Zugriff).
 
-**⏳ Phase 2c (staged — 2 Sonderfälle + Migration, GATE):**
-- **`gobd_compliance_tasks`** (7× `async_session_factory`, andere Commit-Semantik als die Fresh-Engine-Factory → nicht blind ersetzen, sondern session-level Bypass je Site injizieren) und **`auto_filing_tasks`** (sync-Session `get_sync_session` → `rls_bypass_context_sync`). Bewusst separat, um die kritische GoBD-Archiv-Task nicht ungetestet umzubauen — im Migrations-Prep-Batch mit Smoke.
-- **GATE → Ben:** F-15-Migration 272 (USING-Escapes entfernen; erwägen: `documents_insert WITH CHECK` verschärfen). Danach DoD-8-Read-Gate grün + Pipeline-Smoke grün.
-- Andere FORCE-Tabellen (invoices, approval_requests, document_versions) auf dasselbe Escape-Muster prüfen.
+**✅ Phase 2c (fertig, committet) — die 2 vermeintlichen Sonderfälle:**
+Beide waren gar keine echten Sonderfälle: `gobd_compliance_tasks` nutzte `async_session_factory` = **Alias** für `get_async_session_context` (session.py:216) → 7× auf `get_worker_session_context()` umgestellt (Drop-in, gleiche Commit-Semantik). `auto_filing_tasks` nutzte tatsächlich **async** `get_async_session_context` (5 inline-Sites, der `get_sync_session`-Import war toter Code) → umgestellt + toter Import entfernt. Verifiziert: beide importieren, worker-cpu healthy, gobd + auto_filing-Tasks registriert.
+
+**⇒ Die gesamte Worker-Seite ist damit fertig** (Helfer + beide Ersteller + 19 Prozessoren + gobd + auto_filing + echtes-RLS-Test). Vor dem Go-Live-Wartungsfenster bleibt nur noch:
+
+**⏳ EINZIGER Rest — die Migration selbst (GATE → Ben):**
+- F-15-Migration 272: USING-Escapes aus den `documents`-Policies entfernen; erwägen, `documents_insert WITH CHECK` zu verschärfen (INSERT-seitige Mandantentrennung, siehe Nebenbefund). Danach DoD-8-Read-Gate grün + Pipeline-Smoke grün.
+- Andere FORCE-Tabellen (invoices, approval_requests, document_versions) auf dasselbe Escape-Muster prüfen (separater Schritt).
