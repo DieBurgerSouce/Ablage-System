@@ -20,7 +20,7 @@ from celery import shared_task
 from sqlalchemy import select, and_, update, delete, func
 
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import (
     EmailImportConfig,
     FolderImportConfig,
@@ -180,7 +180,7 @@ def sync_all_email_configs(self) -> EmailSyncBatchResult:
             "errors": [],
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Alle aktiven Configs laden die jetzt sync brauchen
             now = datetime.now(timezone.utc)
 
@@ -275,7 +275,7 @@ def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100)
     from app.services.imports import EmailImportService
 
     async def _sync() -> EmailSyncResult:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = EmailImportService(db)
             result = await service.sync_emails(
                 config_id=UUID(config_id),
@@ -333,7 +333,7 @@ def poll_all_folder_configs(self) -> FolderPollBatchResult:
             "errors": [],
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             now = datetime.now(timezone.utc)
 
             # Configs laden die nicht via Watchdog überwacht werden
@@ -425,7 +425,7 @@ def poll_folder_config(self, config_id: str, user_id: str) -> FolderPollResult:
     from app.services.imports import FolderImportService
 
     async def _poll() -> FolderPollResult:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = FolderImportService(db)
             result = await service.poll_folder(
                 config_id=UUID(config_id),
@@ -480,7 +480,7 @@ def retry_failed_imports(self) -> RetryBatchResult:
             "failed": 0,
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Fehlgeschlagene Imports laden (max 3 Retries)
             result = await db.execute(
                 select(ImportLog).where(
@@ -573,7 +573,7 @@ def retry_import_task(log_id: str) -> RetryImportResult:
     import asyncio
 
     async def _retry() -> RetryImportResult:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             result = await db.execute(
                 select(ImportLog).where(ImportLog.id == UUID(log_id))
             )
@@ -663,7 +663,7 @@ def retry_single_email(
                 "error": "imapclient nicht installiert",
             }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Import-Log laden
             log_result = await db.execute(
                 select(ImportLog).where(ImportLog.id == UUID(log_id))
@@ -812,7 +812,7 @@ def retry_single_file(
     from pathlib import Path
 
     async def _retry_file() -> FileRetryResult:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Import-Log laden
             log_result = await db.execute(
                 select(ImportLog).where(ImportLog.id == UUID(log_id))
@@ -955,7 +955,7 @@ def cleanup_old_import_logs(retention_days: int = 90) -> CleanupResult:
     async def _cleanup() -> CleanupResult:
         cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Zaehlen
             count_result = await db.execute(
                 select(func.count()).where(
@@ -1002,7 +1002,7 @@ def reset_daily_folder_stats() -> ResetStatsResult:
     import asyncio
 
     async def _reset() -> ResetStatsResult:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             result = await db.execute(
                 update(FolderImportConfig)
                 .where(FolderImportConfig.files_processed_today > 0)
@@ -1058,7 +1058,7 @@ def apply_rules_to_pending_imports(self, company_id: str) -> ApplyRulesResult:
     async def _apply_rules_pending_async(company_id_str: str) -> ApplyRulesResult:
         from app.services.imports.import_rule_service import ImportRuleService
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             company_uuid: Optional[_uuid.UUID] = None
             if company_id_str:
                 try:
@@ -1202,7 +1202,7 @@ def scan_import_folder(self, folder_path: str, company_id: str) -> ScanFolderRes
     async def _scan_folder_async(path: str) -> ScanFolderResult:
         from app.services.imports.folder_import_service import FolderImportService
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Passende Config anhand watch_path suchen
             result = await db.execute(
                 select(FolderImportConfig).where(
@@ -1299,7 +1299,7 @@ def check_email_connection_health() -> ConnectionHealthResult:
             "errors": [],
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             result = await db.execute(
                 select(EmailImportConfig).where(
                     EmailImportConfig.is_active == True

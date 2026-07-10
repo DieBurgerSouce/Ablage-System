@@ -128,13 +128,13 @@ Ort: neues `tests/integration/test_rls_worker_context.py` (nutzt die reale Test-
 
 ## 7. Umsetzungs-Status
 
-**✅ Phase 1 (fertig, committet):**
+**✅ Phase 1 + 2a (fertig, committet) — die beiden Go-Live-ERSTELLER + Fundament:**
 - `get_worker_session_context(company_id=None)`-Helfer in `app/db/session.py` (session-level GUC `is_local=false` — empirisch belegt: transaktions-lokal würde nach dem ersten Per-Move-Commit des Mirrors verloren gehen; leak-frei, weil die Factory Engine/Verbindung pro Aufruf disposed).
-- Mirror-Ersteller umgestellt: `odoo_tasks.py` (mirror-incremental-Task) nutzt jetzt `get_worker_session_context()` (Bypass — systemischer companyübergreifender Sync).
-- Echtes-RLS-Integrationstest `tests/integration/test_rls_worker_context.py` (3 grün): Bypass-Flag+Read, Company-Kontext-commit-fest, **kein Bleed** in frische Factory-Session (Sicherheit). Mirror-Unit-Tests weiter grün (28).
+- **Mirror-Ersteller:** `odoo_tasks.py` (mirror-incremental) nutzt `get_worker_session_context()` (Bypass — systemischer companyübergreifender Sync).
+- **Import-Ersteller:** `import_tasks.py` (alle 13 Session-Sites, systemische email/folder-Import-Verarbeitung → Bypass; company_id variiert pro Item, daher Bypass statt Company-Kontext).
+- Echtes-RLS-Integrationstest `tests/integration/test_rls_worker_context.py` (3 grün): Bypass-Flag+Read, Company-Kontext-commit-fest, **kein Bleed** in frische Factory-Session. Mirror-Unit-Tests grün (28), Worker booten (worker-cpu healthy, Tasks registriert).
 
-**⏳ Phase 2 (staged, GATE für die Migration):**
-- Import-Ersteller umstellen: der `import_tasks.py`-Session-Block, der über die Import-Services `create_import_document(company_id=…)` erreicht → `get_worker_session_context(company_id=…)`.
-- ~20 document-berührende Prozessor-Task-Module auf `get_worker_session_context()` (Bypass): ocr_tasks, gobd_compliance_tasks, auto_filing, annotation, barcode, cleanup, customer_detection, document_intelligence, … (Konsistenzregel: „Worker, die RLS-Tabellen berühren, nutzen den Worker-Helfer"). **Sicher vor der Migration** (ändert das Ist-Verhalten nicht — Reads via Escape ↔ via Bypass; macht die Pipeline nur migrations-fest).
+**⏳ Phase 2b (staged — Prozessoren + Migration, GATE):**
+- ~18 document-berührende PROZESSOR-Task-Module auf `get_worker_session_context()` (Bypass): **ocr_tasks** (die zentrale Pipeline — bewusst noch nicht angefasst, um den gerade per `2497ae5e0` reparierten Live-Pfad nicht für eine erst nach der Migration verifizierbare Änderung zu riskieren), gobd_compliance_tasks, auto_filing, annotation, barcode, cleanup, customer_detection, document_intelligence, … (Konsistenzregel: „Worker, die RLS-Tabellen berühren, nutzen den Worker-Helfer"). **Sicher, aber erst zur Migration verifizierbar** (bis dahin lesen sie ohnehin via Escape) → als fokussierter Batch DIREKT VOR der Migration mit End-to-End-Smoke.
 - **GATE → Ben:** F-15-Migration 272 (USING-Escapes entfernen; erwägen: `documents_insert WITH CHECK` verschärfen). Danach DoD-8-Read-Gate grün + Pipeline-Smoke grün.
 - Andere FORCE-Tabellen (invoices, approval_requests, document_versions) auf dasselbe Escape-Muster prüfen.
