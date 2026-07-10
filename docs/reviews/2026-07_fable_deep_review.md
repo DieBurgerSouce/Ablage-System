@@ -55,8 +55,8 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | F-11 | Freeze | Aktiver `predictive-actions`-Router schreibt in gefrorene InvoiceTracking-Domäne (`dunning_level++`) | P2 | 📋 Dokumentiert (Bens Scope) |
 | F-12 | Ops | Tote `monitoring`-Queue: 3 aktive Beats feuern, kein Konsument → 207 Msgs gestaut, Feature tot | P1 | ✅ Gefixt + live bewiesen |
 | S-01 | Security | RLS-Rollen-Setup **korrekt** (Backend=ablage_app, kein Superuser/Bypass, direkt an postgres) — ABER `documents`-Policies permissiv (siehe F-15) | — | ⚠️ Teilweise (korrigiert) |
-| F-15 | Security | `documents`-RLS: permissive OR-Policies mit `current_user_id IS NULL`/`company_id IS NULL`-Escapes → ohne Kontext alle Dokumente sichtbar (DoD-8-Verletzung) | P1 | ⛔ RE-GATE (Fix unsicher standalone) |
-| F-16 | Security/Regression | Kein Background-Worker setzt RLS-Kontext → worker-initiierte Dokument-Anlage (Mirror/Import) wird von RLS **abgelehnt**; Escapes sind load-bearing für Worker-Reads | P1 | ⛔ RE-GATE (mit F-15 gekoppelt) |
+| F-15 | Security | `documents`-RLS: permissive OR-Policies mit `current_user_id IS NULL`/`company_id IS NULL`-Escapes → ohne Kontext alle Dokumente sichtbar (DoD-8-Verletzung) | P1 | ✅ GEFIXT (Migration 272 angewandt + verifiziert 2026-07-11: no-context 4→0) |
+| F-16 | Security/Regression | Kein Background-Worker setzt RLS-Kontext → worker-initiierte Dokument-Anlage (Mirror/Import) las nur via Escape; nach F-15 = 0 Zeilen | P1 | ✅ GEFIXT (Worker-Kontext komplett; Bypass-Read live 4, Test 4 grün) |
 | S-02 | Security | pgbouncer-Cross-Tenant-Leak **ausgeschlossen** (App direkt an postgres; GUC transaktions-lokal) | — | ✅ Widerlegt (verifiziert) |
 | S-03 | Security | CORS-Reflection + CSRF-Schwächung **ausgeschlossen** (fail-closed; CSRF-Fix nur Rotation) | — | ✅ Widerlegt (verifiziert) |
 | S-04 | Security | M-06-Rest: 3 einvoice-POSTs im Code ohne `current_user` (nur durch Freeze/404 geschützt) | P2 | 📋 Defense-in-Depth |
@@ -284,7 +284,16 @@ PostgreSQL verknüpft PERMISSIVE-Policies mit **OR** → eine Zeile ist sichtbar
 
 **Severity P1, aber kein aktiver Datenabfluss:** Der **primäre** Schutz ist die App-Ebene (`verify_document_ownership` `dependencies.py:1016`, `validate_company_access` :358 — beide vorhanden, verifiziert); RLS ist die zweite Verteidigungslinie („light"). Der `company_id IS NULL`-Escape hat aktuell 0 Daten. Es ist der gerissene Gürtel bei intakten Hosenträgern — merge-relevant, weil der Branch DoD-8 als erfüllt ausweist, es für `documents` aber nicht ist.
 
-**Fix erfordert eine neue Alembic-Migration (272)** — Ben hat das Escape-Entfernen genehmigt. **Bei der Umsetzung stellte sich der Fix als unsicher standalone heraus (siehe F-16):** Die Escapes sind **load-bearing** für die Background-Worker.
+**Fix erfordert eine neue Alembic-Migration (272)** — Ben hat das Escape-Entfernen genehmigt. **Bei der Umsetzung stellte sich der Fix als unsicher standalone heraus (siehe F-16):** Die Escapes sind **load-bearing** für die Background-Worker. Erst nach der kompletten Worker-Kontext-Umstellung (F-16) war das Entfernen sicher.
+
+> **✅ ANGEWANDT + VERIFIZIERT (2026-07-11):** Migration 272 (`31ece1731`) von Ben ausgeführt (`alembic upgrade head`, 271 → 272). Live gegen die echte DB unter `ablage_app` (kein Bypass) verifiziert:
+> - **DoD-8 erfüllt:** kontextloser `SELECT count(*) FROM documents` = **0** (vorher 4).
+> - **User-Kontext:** owner sieht seine **3** Dokumente; Company-Kontext sieht die **4** der Company.
+> - **Worker-Bypass:** `is_rls_bypass_enabled()`-Session liest weiter **4** (Pipeline intakt); echter Worker-Prozess (worker-cpu) liest 4 via Bypass.
+> - **owner_select-Escape entfernt** (pg_policies-Qual ohne `current_user_id IS NULL`).
+> - Integrationstest `test_rls_worker_context.py` **4 grün** — der DoD-8-Test skippt nicht mehr, sondern assertet aktiv 0.
+> - Worker + Beat neu gestartet, beide Worker antworten auf Broadcast-Ping (`OK/pong`), Beat prunt gefrorene Beats wie erwartet.
+> **Downgrade** verfügbar (Migration 272 `downgrade` stellt die Escapes wieder her). **Nebenbefund bleibt offen:** `documents_insert WITH CHECK true` (INSERT-seitige Mandantentrennung) + andere FORCE-Tabellen (invoices/approval_requests/document_versions) prüfen — separate Härtung.
 
 ---
 
@@ -306,7 +315,7 @@ Kontext-Setzung existiert NUR in der HTTP-Middleware (company_context.py:67/133)
 
 **Der korrekte Fix ist gekoppelt und größer als eine Migration:** Erst müssen die dokument-berührenden Worker RLS-Kontext setzen (`set_rls_company_context_sync(session, company_id)` für Mirror/Import mit bekannter Company, bzw. `rls_bypass_context_sync` für systemische Tasks), **dann** können die Escapes entfernt werden. Das ist ein querschnittlicher Eingriff (Mirror, Importe, ggf. OCR-Tasks) mit hoher Blast-Radius, den die Mock-Tests nicht abdecken → braucht Verifikation gegen echte RLS.
 
-**Entscheidung (Ben, RE-GATE):** **Dediziertes RLS-Task vor Go-Live.** F-15 + F-16 werden hier NICHT gefixt (kein gehetzter Pre-Merge-Eingriff); sie sind gekoppelte **Go-Live-Blocker** auf der Restliste. Die 7 in Iteration 1 gefixten P1 sind davon unabhängig und bleiben merge-fähig. **Wichtig für die Reihenfolge:** F-16 muss gelöst sein, **bevor** OdooMirrorService und die worker-initiierten Importe scharf geschaltet werden (~Mitte Aug) — sonst schlagen deren Dokument-INSERTs gegen die aktive RLS fehl. Der HTTP-Upload-Pfad ist nicht betroffen.
+**Entscheidung (Ben, RE-GATE) → inzwischen VOLLSTÄNDIG ERLEDIGT:** Ursprünglich als dediziertes RLS-Task vor Go-Live deferred. **Am 2026-07-11 komplett umgesetzt und verifiziert:** Die gesamte Worker-Seite setzt jetzt RLS-Kontext (`get_worker_session_context` — Helfer + beide Ersteller + 21 Prozessor-Module inkl. gobd/auto_filing), **und** Migration 272 wurde von Ben angewandt (Escapes entfernt). Live gegen echte RLS verifiziert (DoD-8: no-context 4→0, User/Company-Kontext gescoped, Bypass intakt, Test 4 grün, Worker konsumieren nach Restart). F-16 war die Voraussetzung für F-15 und ist als Erstes gelöst worden. **Reihenfolge eingehalten:** vor Mirror/Import-Scharfschaltung (~Mitte Aug) fertig. Der HTTP-Upload-Pfad war ohnehin nie betroffen. **Rest-Härtung (kein Blocker):** `documents_insert WITH CHECK true` + FORCE-Tabellen invoices/approval_requests/document_versions.
 
 **S-02 — pgbouncer-Cross-Tenant-Leak ausgeschlossen** (zwei unabhängige Gründe):
 1. Das Backend verbindet **direkt** zu `postgres:5432`, **nicht** über pgbouncer (dessen `POOL_MODE=transaction` ist für den RLS-Pfad irrelevant).
@@ -411,7 +420,7 @@ Der Adversarial-Deep-Review lief **4 Iterationen** mit **11 parallelen Angriffs-
 **Die schweren P0-Kandidaten wurden allesamt widerlegt** (RLS-Owner/Superuser-Bypass, pgbouncer-Cross-Tenant-Leak, CORS-Reflection, CSRF-Regress, Privat-ACL-Leak, Doppel-Archivierung, Such-Cross-Tenant) — durch echte Checks. Das Sicherheits-/Compliance-Fundament ist belastbar: GoBD-Audit-Chain **DB-immutable** (live: DELETE blockiert), Auth-Rotation/Rate-Limit/Expiry live bestätigt, Privat-Verschlüsselung leckfrei, ERP-Freeze wasserdicht (inkl. M-06), ZUGFeRD-Parser XXE-sicher, Alembic 271 Single-Head ohne Phantom-Spalten.
 
 ### Go-Live-Bedingungen (kein Merge-Blocker, aber vor Scharfschaltung zwingend)
-1. **F-15 + F-16 (gekoppelt, P1, per Ben-Entscheidung als dediziertes RLS-Task deferred):** Die `documents`-RLS-Policies sind permissiv (DoD-8-Verletzung), und **kein Background-Worker setzt RLS-Kontext** → worker-initiierte Dokument-Anlage (OdooMirrorService, Folder-/E-Mail-Import, WA/WE-Import) wird von der aktiven RLS **abgelehnt**. Heute nicht live (Mirror ohne Verbindung), **muss aber vor Mirror/Import-Scharfschaltung (~Mitte Aug) gelöst sein**: Worker setzen Kontext → dann Escapes entfernen, gegen echte RLS getestet. HTTP-Upload nicht betroffen. Die gefixten P1 sind davon unabhängig merge-fähig.
+1. **F-15 + F-16 (gekoppelt, P1) → ✅ ERLEDIGT 2026-07-11 (kein offener Go-Live-Punkt mehr):** Die gesamte Worker-Seite setzt jetzt RLS-Kontext (`get_worker_session_context` — Helfer + beide Ersteller + 21 Prozessor-Module inkl. gobd/auto_filing), **und** Migration 272 wurde angewandt (Escapes aus den `documents`-Policies entfernt). Live gegen echte RLS verifiziert: DoD-8 no-context-Read **4→0**, User-Kontext sieht eigene (3), Company-Kontext gescoped (4), Worker-Bypass intakt (4), Integrationstest 4 grün (DoD-8-Test assertet aktiv 0), Worker nach Restart konsumierend. HTTP-Upload war nie betroffen. **Rest-Härtung (kein Blocker):** `documents_insert WITH CHECK true` verschärfen + FORCE-Tabellen invoices/approval_requests/document_versions auf dasselbe Escape-Muster prüfen.
 2. **F-22 (Reaktivierungs-Sperre):** `MODULE_AI_SPECULATIVE` darf **nie** ohne Fix des NLQ-RAG-`user_id`-Filters (`nlq_service._process_chat_query`) reaktiviert werden — sonst sofort P0 (Cross-Tenant-Chunk-Leak). Aktuell 404 (gefroren).
 
 ### Restliste (P2, dokumentiert, nicht merge-blockierend)

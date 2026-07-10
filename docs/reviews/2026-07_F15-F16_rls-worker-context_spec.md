@@ -140,8 +140,16 @@ Ort: neues `tests/integration/test_rls_worker_context.py` (nutzt die reale Test-
 **✅ Phase 2c (fertig, committet) — die 2 vermeintlichen Sonderfälle:**
 Beide waren gar keine echten Sonderfälle: `gobd_compliance_tasks` nutzte `async_session_factory` = **Alias** für `get_async_session_context` (session.py:216) → 7× auf `get_worker_session_context()` umgestellt (Drop-in, gleiche Commit-Semantik). `auto_filing_tasks` nutzte tatsächlich **async** `get_async_session_context` (5 inline-Sites, der `get_sync_session`-Import war toter Code) → umgestellt + toter Import entfernt. Verifiziert: beide importieren, worker-cpu healthy, gobd + auto_filing-Tasks registriert.
 
-**⇒ Die gesamte Worker-Seite ist damit fertig** (Helfer + beide Ersteller + 19 Prozessoren + gobd + auto_filing + echtes-RLS-Test). Vor dem Go-Live-Wartungsfenster bleibt nur noch:
+**⇒ Die gesamte Worker-Seite ist damit fertig** (Helfer + beide Ersteller + 19 Prozessoren + gobd + auto_filing + echtes-RLS-Test).
 
-**⏳ EINZIGER Rest — die Migration selbst (GATE → Ben):**
-- F-15-Migration 272: USING-Escapes aus den `documents`-Policies entfernen; erwägen, `documents_insert WITH CHECK` zu verschärfen (INSERT-seitige Mandantentrennung, siehe Nebenbefund). Danach DoD-8-Read-Gate grün + Pipeline-Smoke grün.
-- Andere FORCE-Tabellen (invoices, approval_requests, document_versions) auf dasselbe Escape-Muster prüfen (separater Schritt).
+**✅ ABGESCHLOSSEN — Migration 272 angewandt + verifiziert (2026-07-11):**
+Ben hat `alembic upgrade head` ausgeführt (271 → 272, `31ece1731`). Live gegen echte RLS unter `ablage_app` verifiziert:
+- **F-15-Read-Gate grün:** kontextloser `SELECT count(*) FROM documents` = **0** (vorher 4 = DoD-8 erfüllt); User-Kontext (owner) sieht **3**; Company-Kontext sieht **4**; Bypass-Session liest **4**.
+- **owner_select-Escape entfernt** (pg_policies-Qual ohne `current_user_id IS NULL`); `tenant_isolation` ohne `company_id IS NULL`.
+- **Integrationstest `test_rls_worker_context.py` 4 grün** — der DoD-8-Test (`test_f15_dod8_no_context_read_is_zero_once_migrated`) skippt nicht mehr, sondern assertet aktiv 0.
+- **Pipeline-Smoke grün:** Worker+Beat neu gestartet, beide Worker antworten auf Broadcast-Ping (`OK/pong`), echter worker-cpu-Prozess liest 4 documents via Bypass, Beat prunt gefrorene Beats.
+- **Downgrade** verfügbar (Migration 272 `downgrade` stellt die Escapes wieder her).
+
+**⏳ Rest-Härtung (separat, kein Go-Live-Blocker):**
+- `documents_insert WITH CHECK true` verschärfen (INSERT-seitige Mandantentrennung, siehe Nebenbefund §2).
+- Andere FORCE-Tabellen (invoices, approval_requests, document_versions) auf dasselbe Escape-Muster prüfen.
