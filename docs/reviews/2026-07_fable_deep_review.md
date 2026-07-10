@@ -382,22 +382,50 @@ Selbst ein DB-Level-`DELETE`/`UPDATE` auf der Audit-Chain wird abgewiesen — di
 
 ---
 
+## Iteration 4 — Completeness-Check (Cross-Checks + finaler Sweep)
+
+Eigene Cross-Checks der bisher am wenigsten geprüften, risikoreichen Pfade (positive Konvergenz-Evidenz):
+- **ZUGFeRD/E-Rechnungs-Parsing XXE-sicher:** Der im E-Mail-Import aktiv gebliebene Parser (`einvoice/parser_service.py` → `zugferd_mapper.py`, bleibt trotz einvoice-Router-Freeze aktiv, Plan §4a) nutzt `SECURE_XML_PARSER = etree.XMLParser(resolve_entities=False, no_network=True)` (Z. 28) mit explizitem Anti-XXE-Kommentar und parst ausschließlich darüber (`fromstring(..., parser=SECURE_XML_PARSER)`, Z. 156). Das Repo nutzt `defusedxml` systematisch (SAML, CAMT053-Bank, SEPA, BPMN). **Kein XXE.**
+- **Such-ACL scoped:** aktive Such-Router geben `user_id` durch; Doc-Suche owner-scoped via `accessible_docs`-CTE (`search_service.py`). **Kein Cross-User/Company-Leak** (selbst verifiziert).
+- **Privat auth-gated:** `/api/v1/privat/life-events/types` → 403 unauth; 123 Auth/ACL-Dependencies in den Privat-Routern.
+- **Beat-Konsument-Invariant** nach F-10/F-12: 0/216 Beat-Einträge in toter Queue (selbst gegengeprüft).
+
+Completeness-Sweep der ungeprüften Pfade (selbst verifiziert) — **alle sauber oder von bestehenden Findings abgedeckt**:
+- **Mirror-Attachment-Filename kein Pfad-Traversal:** `_safe_filename` (`odoo_mirror_service.py:806`) = `os.path.basename` (behandelt `/` und `\`) + Whitelist-`re.sub(r"[^\w.\- ()]","_")` + `.`/`..`-Reject + 255-Trunc; Storage-Key ist ohnehin content-adressiert (`{owner}/{sha256}`), nutzt den Namen nicht als Pfad.
+- **Config-Secrets sauber:** keine committeten `.env` mit echten Secrets (nur `.env.example` + `.secrets.baseline`), keine hardcodierten Secret-Defaults in `config.py`, aktives `detect-secrets` + `tests/security/test_secrets_exposure.py`.
+- **WA/WE-Import (`scripts/import_wa_we.py`) solide:** idempotent (SHA256-`checksum`-Dedupe → Zweitlauf 0 Importe), `--dry-run`-Default (kein Schreibzugriff ohne `--execute`), deterministischer Platzhalter-Filter (172643 Bytes), Dateinamen-Regex, `py_compile` OK. **Aber:** Der Import legt Dokumente als Skript **ohne RLS-Kontext** an → fällt unter **F-16** (gegen aktive RLS würden auch diese INSERTs abgelehnt; vor `--execute` bei Go-Live muss F-16 gelöst sein).
+- **Migration-from-scratch:** Live-DB steht auf 271 (Single-Head), keine neue Migration im Branch (bereits in Iteration 2 bestätigt).
+
+**Ergebnis Iteration 4: 0 neue P0/P1.** (atk-final-Vollreport corroboriert — Einarbeitung bei Eintreffen; die unabhängige F-21-Verifikation ist durch die 3 grünen Guard-Tests + die 23-grün-Suite bereits belegt.)
+
+---
+
 ## Executive-Verdict
 
-**Merge-ready: JA — für den reviewten Branch, mit klarer Go-Live-Bedingung.**
+**Merge-ready: JA — für den reviewten Branch, mit klaren Go-Live-Bedingungen.**
 
-Der Adversarial-Deep-Review (2 Iterationen, 7 parallele Angriffs-Agenten + durchgängige Live-Verifikation gegen den 21-Container-Stack) hat **9 echte Defekte gefunden und gefixt** (7 P1 + 1 P2 + 1 Test-Härtung), die die orchestrierte 2-Tage-Umsetzung übersehen hatte — genau die Klasse „grün getestet, aber tot", die den Review motivierte (z. B. F-12: 207 Nachrichten in einer toten Queue; F-03: GoBD-Spiegel ohne Hash-Verifikation; F-01: gefrorener Cashflow-Forecast live erreichbar). Alle Fixes sind mit TDD-Rot-Beweis getestet, committet, und wo möglich live nachgewiesen.
+Der Adversarial-Deep-Review lief **4 Iterationen** mit **11 parallelen Angriffs-/Verifikations-Agenten** + durchgängiger Live-Verifikation gegen den 21-Container-Stack (curl/pytest/SQL/celery-inspect — nie nur Codelesen). Er hat **10 echte Defekte gefunden und gefixt** (8 P1 + 1 P2 + 1 Test-Härtung), die die orchestrierte 2-Tage-Umsetzung übersehen hatte — genau die Klasse „grün getestet, aber tot", die den Review motivierte: F-12 (207 Nachrichten in einer toten Queue, System-Health-Prediction still tot), F-03 (GoBD-Spiegel ohne Hash-Verifikation), F-01 (gefrorener Cashflow-Forecast live erreichbar), F-06/07/08 (Vendor-Bill-Push: Falsch-Partner, Doppel-Push, Fremdwährung-als-EUR), F-21 (Privat-ACL-Crash → Shared-Spaces tot). Jeder Fix mit TDD-Rot-Beweis getestet, committet, wo möglich live nachgewiesen.
 
-**Die schweren P0-Kandidaten wurden allesamt widerlegt** (RLS-Owner/Superuser-Bypass, pgbouncer-Cross-Tenant-Leak, CORS-Reflection, CSRF-Regress) — belegt durch echte Checks, nicht durch Codelesen. Das Sicherheits- und Compliance-Fundament ist belastbar: GoBD-Audit-Chain DB-immutable (live: DELETE blockiert), Auth-Rotation/Rate-Limit/Expiry live bestätigt, Privat-Verschlüsselung leckfrei, ERP-Freeze wasserdicht (inkl. M-06), Alembic 271 Single-Head ohne Phantom-Spalten.
+**Konvergenz erreicht:** Die P1-Fundrate fiel monoton — Iteration 1: 7 P1, Iteration 2: 2 P1 (gekoppelt, deferred), Iteration 3: 1 P1 (sofort gefixt), **Iteration 4: 0 neue P0/P1**. Der Frontend-Agent (Iter 3) und der Completeness-Sweep (Iter 4, inkl. eigener Cross-Checks: ZUGFeRD-XXE, MinIO-Traversal, Config-Secrets, WA/WE-Import) fanden keine neuen Merge-Blocker.
 
-### Merge-Bedingung (1 Go-Live-Blocker, kein Merge-Blocker)
-**F-15 + F-16 (gekoppelt, P1, per Ben-Entscheidung deferred):** Die `documents`-RLS-Policies sind permissiv (DoD-8-Verletzung), und **kein Background-Worker setzt RLS-Kontext** → die worker-initiierte Dokument-Anlage (OdooMirrorService, Importe) wird von der aktiven RLS **abgelehnt**. Das ist heute nicht live (Mirror hat noch keine Verbindung), **muss aber vor der Scharfschaltung von Mirror/Import (~Mitte Aug) in einem dedizierten RLS-Task gelöst sein** (Worker setzen Kontext → dann Escapes entfernen, gegen echte RLS getestet). Der HTTP-Upload-Pfad ist nicht betroffen. Die 7 gefixten P1 sind davon unabhängig merge-fähig.
+**Die schweren P0-Kandidaten wurden allesamt widerlegt** (RLS-Owner/Superuser-Bypass, pgbouncer-Cross-Tenant-Leak, CORS-Reflection, CSRF-Regress, Privat-ACL-Leak, Doppel-Archivierung, Such-Cross-Tenant) — durch echte Checks. Das Sicherheits-/Compliance-Fundament ist belastbar: GoBD-Audit-Chain **DB-immutable** (live: DELETE blockiert), Auth-Rotation/Rate-Limit/Expiry live bestätigt, Privat-Verschlüsselung leckfrei, ERP-Freeze wasserdicht (inkl. M-06), ZUGFeRD-Parser XXE-sicher, Alembic 271 Single-Head ohne Phantom-Spalten.
+
+### Go-Live-Bedingungen (kein Merge-Blocker, aber vor Scharfschaltung zwingend)
+1. **F-15 + F-16 (gekoppelt, P1, per Ben-Entscheidung als dediziertes RLS-Task deferred):** Die `documents`-RLS-Policies sind permissiv (DoD-8-Verletzung), und **kein Background-Worker setzt RLS-Kontext** → worker-initiierte Dokument-Anlage (OdooMirrorService, Folder-/E-Mail-Import, WA/WE-Import) wird von der aktiven RLS **abgelehnt**. Heute nicht live (Mirror ohne Verbindung), **muss aber vor Mirror/Import-Scharfschaltung (~Mitte Aug) gelöst sein**: Worker setzen Kontext → dann Escapes entfernen, gegen echte RLS getestet. HTTP-Upload nicht betroffen. Die gefixten P1 sind davon unabhängig merge-fähig.
+2. **F-22 (Reaktivierungs-Sperre):** `MODULE_AI_SPECULATIVE` darf **nie** ohne Fix des NLQ-RAG-`user_id`-Filters (`nlq_service._process_chat_query`) reaktiviert werden — sonst sofort P0 (Cross-Tenant-Chunk-Leak). Aktuell 404 (gefroren).
 
 ### Restliste (P2, dokumentiert, nicht merge-blockierend)
-Mirror: Overlap-Lock (F-04), Cursor-Full-Rescan-Härtung (F-05). Freeze: Celery-Eager-Import (F-09), predictive-actions-Dunning-Write (F-11, Bens Scope), ai_speculative FE/BE-Inkonsistenz + adhoc-unauth (F-17/F-18). Push: Dedup-Härtung (F-19), atk-push-P2s (Gutschrift/tax_ids/odoo_company_id). Ops: Queue-Length-Metrik tot (F-13), entrypoint-Race (F-14), datev-Queue (S-06), Alert-Dedup (F-20), restic-Härtungen. Security: M-06-Rest-Auth (S-04), DEBUG→is_production-Posture (S-05), PBKDF2 100k→600k. **Empfohlene Pre-Go-Live-Tests:** GoBD-Audit-Chain-Smoke (aktuell leer), Slack-Alert-End-to-End, Login-Regression über https-Origin in `ENVIRONMENT=production`.
+Mirror: Overlap-Lock (F-04), Cursor-Full-Rescan-Härtung (F-05), Dedupe-Scope owner-vs-company (F-23). Freeze: Celery-Eager-Import (F-09), predictive-actions-Dunning-Write (F-11, Bens Scope), **FE/BE-Freeze-Drift bei 5 Modulen + adhoc-unauth-Metadaten (F-17/F-18)** — koordinierter FE+BE-Fix. Push: Dedup-Härtung (F-19), atk-push-P2s (Gutschrift/tax_ids/odoo_company_id). Ops: Queue-Length-Metrik tot (F-13), entrypoint-Race (F-14), datev-Queue (S-06), Alert-Dedup (F-20), restic-Härtungen. Security: M-06-Rest-Auth (S-04), DEBUG→is_production-Posture (S-05), PBKDF2 100k→600k. **Empfohlene Pre-Go-Live-Tests:** GoBD-Audit-Chain-Smoke (Kette aktuell leer), Slack-Alert-End-to-End, Login-Regression über https-Origin in `ENVIRONMENT=production`.
+
+### Pre-existierend (nicht Neuausrichtung, für Ben separat)
+`GET /api/v1/privat/spaces` (list_spaces) → 404 trotz codiert+registriert; fehlt in der Live-OpenAPI. `git diff master..HEAD` für privat = leer → existiert auf master genauso, unabhängig von diesem Branch.
 
 ### Nicht prüfbar (ehrliche Lücke)
-Echter Odoo-Prod-Push und der reale Mirror-Pull sind vor Go-Live/API-Key nicht testbar — die Push-/Mirror-Logik ist gegen Mock-XML-RPC + die Live-DB verifiziert, die **Odoo-Gegenseite** (tatsächliche `account.move`-Anlage, `currency_id`/`tax_ids`-Verhalten, Attachment) bleibt bis Go-Live unbewiesen (atk-push-Blindflecken). Der GoBD-Spiegel lief noch nie gegen eine echte Verbindung (F-16 ist genau dieser ungetestete Pfad).
+Echter Odoo-Prod-Push und realer Mirror-Pull sind vor Go-Live/API-Key nicht testbar — Push-/Mirror-Logik ist gegen Mock-XML-RPC + Live-DB verifiziert, die **Odoo-Gegenseite** (tatsächliche `account.move`-Anlage, `currency_id`/`tax_ids`-Verhalten, Attachment) bleibt bis Go-Live unbewiesen (atk-push-Blindflecken). Der GoBD-Spiegel lief nie gegen eine echte Verbindung — genau der F-16-Pfad.
+
+---
+
+**Zusammenfassung Fixes (10 Commits, `e4f9b74d7`…`6b09cbb83`):** F-01/F-02/F-03/F-06/F-07/F-08/F-10/F-12/F-21 + R6-Testhärtung. Verifikation: 290+ Unit/Contract-Tests grün, `tsc -b` 0, 20/21 Container healthy (redis_exporter ohne Healthcheck — pre-existent), Live-OpenAPI/curl/SQL-Beweise dokumentiert. **Nicht gepusht** (Push-Protection wartet auf Ben).
 
 ### Ops-Detailverifikation (selbst geprüft) — restic, Alerts, F-13
 
