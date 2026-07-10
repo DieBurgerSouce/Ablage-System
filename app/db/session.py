@@ -141,6 +141,56 @@ async def get_async_session_context() -> AsyncGenerator[AsyncSession, None]:
         await engine.dispose()
 
 
+@asynccontextmanager
+async def get_worker_session_context(
+    company_id: Optional[UUID] = None,
+) -> AsyncGenerator[AsyncSession, None]:
+    """Worker-Session mit gesetztem RLS-Kontext (F-16).
+
+    Für Celery-Tasks und Skripte, die RLS-geschützte Tabellen (``documents``,
+    ...) berühren. Hintergrund-Prozesse gehen nicht durch die HTTP-Middleware,
+    die sonst den RLS-Company-Kontext setzt — ohne diesen Helfer würden ihre
+    Reads/Inserts an den ``documents``-Policies scheitern (bzw. hingen an den
+    permissiven Escapes, die F-15 entfernt).
+
+    Zwei Modi:
+    - **Ersteller** (Mirror, Import) kennen die Company → ``company_id`` setzen
+      → Session läuft company-gescoped (INSERT-``WITH CHECK`` passt).
+    - **systemische Prozessoren** (Verarbeitung per Objekt-ID, Company erst nach
+      dem Read bekannt) → ohne ``company_id`` → RLS-Bypass.
+
+    WICHTIG: Bewusst ein eigener Helfer statt einer pauschalen Änderung von
+    ``get_async_session_context`` — diese Factory wird auch von einigen
+    API-Endpunkten genutzt, die NICHT bypassen dürfen. Der GUC wird
+    **session-level** (``is_local=false``) gesetzt, damit er Per-Move-/Batch-
+    Commits innerhalb der Task überlebt; leak-frei, weil die Factory Engine +
+    Verbindung pro Aufruf disposed (kein Cross-Task-Reuse, direkte
+    Postgres-Verbindung ohne Transaction-Pooler).
+
+    Args:
+        company_id: Company der Ersteller-Operation; ``None`` = systemischer
+            Bypass für Prozessoren.
+    """
+    async with get_async_session_context() as session:
+        if company_id is not None:
+            # UUID-Validierung gegen Injection (analog set_rls_company_context_sync)
+            cid = str(UUID(str(company_id)))
+            await session.execute(
+                text("SELECT set_config('app.current_company_id', :cid, false)"),
+                {"cid": cid},
+            )
+            # Mig-210-Policies nutzen app.current_tenant_id -> konsistent mitsetzen
+            await session.execute(
+                text("SELECT set_config('app.current_tenant_id', :cid, false)"),
+                {"cid": cid},
+            )
+        else:
+            await session.execute(
+                text("SELECT set_config('app.rls_bypass', 'true', false)")
+            )
+        yield session
+
+
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency for async database sessions.
 

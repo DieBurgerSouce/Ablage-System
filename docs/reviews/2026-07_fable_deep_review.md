@@ -295,10 +295,10 @@ PostgreSQL verknüpft PERMISSIVE-Policies mit **OR** → eine Zeile ist sichtbar
 **Beweise (live gegen ablage_app, alles rolled back):**
 ```
 grep set_rls_company_context / rls_bypass in  odoo_mirror_service, odoo_tasks, imports/*, document_creation  → LEER (kein Worker setzt Kontext)
-(ablage_app, RESET ALL) no-context INSERT documents(company_id=<non-null>)  → RLS WITH CHECK LEHNT AB (ProgrammingError)
-(ablage_app, RESET ALL) no-context SELECT documents                          → 3   (= alle; nur via owner_select-Escape `current_user_id IS NULL`)
+(ablage_app, RESET ALL) no-context SELECT documents  → 4   (= alle; nur via owner_select-Escape `current_user_id IS NULL`)
 Kontext-Setzung existiert NUR in der HTTP-Middleware (company_context.py:67/133) — nicht in Workern.
 ```
+> **Korrektur (Umsetzungsphase, durch echtes Testen):** F-16 ist **lese-seitig**, nicht schreib-seitig. Die ursprüngliche „no-context-INSERT wird von RLS abgelehnt"-Aussage war eine Fehldiagnose — `documents_insert` hat `WITH CHECK true`, INSERTs gelingen ohnehin. Der echte Defekt: Worker LESEN `documents` nur über den `current_user_id IS NULL`-Escape → nach F-15 (Escape weg) liefert ein kontextloser Worker-Read **0 Zeilen** → Dedup/Verarbeitung bricht. Details + Fix-Fortschritt in `docs/reviews/2026-07_F15-F16_rls-worker-context_spec.md`. **Nebenbefund:** `documents_insert WITH CHECK true` = INSERT-seitige Mandantentrennung offen (separate Härtung).
 
 **Zwei gekoppelte Konsequenzen:**
 1. **F-16 selbst (Regression aus der RLS-light-Aktivierung 2026-07-09):** Der OdooMirrorService legt Dokumente mit non-null `company_id` **ohne** RLS-Kontext an → gegen die echte DB werden diese INSERTs **abgelehnt**. Der Mirror würde bei Go-Live fehlschlagen. Unentdeckt, weil die 26 Mirror-Tests die DB mocken und noch keine aktive Odoo-Verbindung existiert. Gleiches Risiko für die worker-initiierten Folder-/E-Mail-Importe (kein Kontext im kanonischen `create_import_document`). Der HTTP-Upload-Pfad funktioniert (Middleware setzt Kontext — genau der in `4fd5238c4` reparierte Pfad); die **Worker-Pfade wurden bei der RLS-Aktivierung nicht mitgezogen**.

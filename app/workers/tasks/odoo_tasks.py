@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_async_session_context, get_worker_session_context
 from app.schemas.odoo import OdooWebhookStatus, OdooFeedbackStatus
 
 logger = structlog.get_logger(__name__)
@@ -904,7 +904,12 @@ def odoo_mirror_incremental(self) -> Dict[str, Any]:
             OdooMirrorService,
         )
 
-        async with get_async_session_context() as db:
+        # F-16: Der Mirror ist ein systemischer, companyübergreifender Sync
+        # (lädt ERPConnections mehrerer Companies + legt GoBD-Spiegel-Dokumente
+        # an). Ohne RLS-Bypass würde er unter der App-Rolle weder die
+        # Connections finden noch die documents-INSERTs durchbekommen. Bypass
+        # ist hier korrekt (vertrauenswürdige Hintergrund-Pipeline).
+        async with get_worker_session_context() as db:
             result = await db.execute(
                 select(ERPConnection).where(
                     and_(

@@ -14,9 +14,16 @@
 **F-16 — kein Background-Worker setzt RLS-Kontext (Regression aus der RLS-light-Aktivierung 2026-07-09):**
 ```
 grep set_rls_company_context / rls_bypass in app/workers/ + app/services/  → 0 aufrufende Stellen
-(ablage_app, RESET ALL) INSERT INTO documents(company_id=<non-null>)  → RLS WITH CHECK LEHNT AB
+(ablage_app, RESET ALL) SELECT count(*) FROM documents  → 4   (sichtbar NUR via owner_select-Escape current_user_id IS NULL)
+(ablage_app) SELECT is_rls_bypass_enabled() bei unset    → false
 ```
-Nur die HTTP-Middleware (`company_context.py:67/133`) setzt Kontext. **Kopplung:** Die Escapes sind *load-bearing* — Worker LESEN `documents` nur über `current_user_id IS NULL`. F-15 (Escapes entfernen) ohne F-16 (Worker-Kontext) bricht die gesamte OCR/Mirror/Import-Pipeline. Reihenfolge daher zwingend: **erst Worker-Kontext, dann Escapes entfernen.**
+Nur die HTTP-Middleware (`company_context.py:67/133`) setzt Kontext.
+
+> **Korrektur (durch echtes Testen ermittelt):** F-16 ist **LESE-seitig**, nicht schreib-seitig. Die frühere Behauptung „no-context-INSERT wird abgelehnt" war eine Fehldiagnose — `documents_insert` hat `WITH CHECK true`, INSERTs gelingen also ohnehin. Der echte Defekt: Worker LESEN `documents` heute nur über den `current_user_id IS NULL`-Escape der SELECT-Policy. Entfernt F-15 diesen Escape, liefert ein kontextloser Worker-Read **0 Zeilen** → Dedup (`_find_document_by_checksum` → hält jeden Anhang für neu → Duplikate) und jede document-per-ID-Verarbeitung brechen.
+
+**Kopplung:** Die Escapes sind *load-bearing für Worker-Reads*. F-15 (Escapes entfernen) ohne F-16 (Worker-Kontext) bricht die OCR/Mirror/Import-Pipeline auf der Leseseite. Reihenfolge zwingend: **erst Worker-Kontext, dann Escapes entfernen.**
+
+> **Nebenbefund (separate Härtung):** `documents_insert WITH CHECK true` lässt **jede** Session ein Dokument mit **beliebiger** company_id einfügen — die INSERT-seitige Mandantentrennung ist offen (der App-Layer setzt company_id korrekt, aber RLS erzwingt es beim Schreiben nicht). Für die F-15-Migration erwägen, `documents_insert` auf `owner_id = current_user_id OR is_rls_bypass_enabled()` o. ä. zu verschärfen — separat vom Read-Fix.
 
 ---
 
@@ -116,3 +123,18 @@ Ort: neues `tests/integration/test_rls_worker_context.py` (nutzt die reale Test-
 **Aufwand grob:** Helfer + Harness 0,5 PT; Ersteller 0,5 PT; Prozessoren-Umstellung (~20 Module, mechanisch + review) 1–1,5 PT; Migration + DoD-Verifikation 0,5 PT; Puffer für echte-RLS-Überraschungen 0,5 PT. **≈ 3–4 PT.** Passt in Bens „vor Mitte August"-Fenster.
 
 **Nicht vergessen:** Der WA/WE-Import (`scripts/import_wa_we.py --execute`) ist ebenfalls ein Ersteller ohne Kontext → muss vor seinem einmaligen Lauf denselben Company-Kontext setzen (bzw. über den instrumentierten Import-Pfad laufen).
+
+---
+
+## 7. Umsetzungs-Status
+
+**✅ Phase 1 (fertig, committet):**
+- `get_worker_session_context(company_id=None)`-Helfer in `app/db/session.py` (session-level GUC `is_local=false` — empirisch belegt: transaktions-lokal würde nach dem ersten Per-Move-Commit des Mirrors verloren gehen; leak-frei, weil die Factory Engine/Verbindung pro Aufruf disposed).
+- Mirror-Ersteller umgestellt: `odoo_tasks.py` (mirror-incremental-Task) nutzt jetzt `get_worker_session_context()` (Bypass — systemischer companyübergreifender Sync).
+- Echtes-RLS-Integrationstest `tests/integration/test_rls_worker_context.py` (3 grün): Bypass-Flag+Read, Company-Kontext-commit-fest, **kein Bleed** in frische Factory-Session (Sicherheit). Mirror-Unit-Tests weiter grün (28).
+
+**⏳ Phase 2 (staged, GATE für die Migration):**
+- Import-Ersteller umstellen: der `import_tasks.py`-Session-Block, der über die Import-Services `create_import_document(company_id=…)` erreicht → `get_worker_session_context(company_id=…)`.
+- ~20 document-berührende Prozessor-Task-Module auf `get_worker_session_context()` (Bypass): ocr_tasks, gobd_compliance_tasks, auto_filing, annotation, barcode, cleanup, customer_detection, document_intelligence, … (Konsistenzregel: „Worker, die RLS-Tabellen berühren, nutzen den Worker-Helfer"). **Sicher vor der Migration** (ändert das Ist-Verhalten nicht — Reads via Escape ↔ via Bypass; macht die Pipeline nur migrations-fest).
+- **GATE → Ben:** F-15-Migration 272 (USING-Escapes entfernen; erwägen: `documents_insert WITH CHECK` verschärfen). Danach DoD-8-Read-Gate grün + Pipeline-Smoke grün.
+- Andere FORCE-Tabellen (invoices, approval_requests, document_versions) auf dasselbe Escape-Muster prüfen.
