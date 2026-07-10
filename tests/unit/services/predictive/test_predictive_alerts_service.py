@@ -205,6 +205,78 @@ class TestAlertGeneration:
         assert len(alerts) == 1
         assert alerts[0].severity == PredictiveAlertSeverity.WARNING
 
+    @pytest.mark.asyncio
+    async def test_generate_all_alerts_dedupes_same_type(self) -> None:
+        """F-20: Zwei Läufe mit demselben Dauerzustand -> nur EIN aktiver Alert.
+
+        Ohne Dedupe stapelte jeder Lauf einen weiteren identischen Alert mit
+        frischer UUID (_active_alerts wuchs unbounded).
+        """
+        prediction = PredictionResult(
+            metric=MetricType.DISK_USAGE,
+            current_value=80.0,
+            predicted_value=95.0,
+            threshold=90.0,
+            eta_minutes=30.0,
+            trend=0.5,
+            severity=PredictionSeverity.WARNING,
+            recommendation="Aufräumen",
+            confidence=0.9,
+        )
+        mock_health = MagicMock()
+        mock_health.get_all_predictions = AsyncMock(return_value=[prediction])
+        mock_quality = MagicMock()
+        mock_quality.get_all_degradation_alerts = AsyncMock(return_value=[])
+
+        service = PredictiveAlertsService(
+            health_predictor=mock_health,
+            quality_forecaster=mock_quality,
+        )
+
+        await service.generate_all_alerts()
+        await service.generate_all_alerts()  # gleicher Zustand erneut
+
+        active = service.get_active_alerts()
+        disk_alerts = [
+            a for a in active
+            if a.alert_type == PredictiveAlertType.DISK_EXHAUSTION
+        ]
+        assert len(disk_alerts) == 1, (
+            "Dauerzustand darf sich nicht mit frischen UUIDs stapeln (F-20)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_dedupe_preserves_acknowledged_alerts(self) -> None:
+        """F-20: Ein BESTÄTIGTER Alert bleibt erhalten; ein neuer Lauf legt daneben
+        einen frischen unbestätigten an (Nutzer-Historie nicht überschrieben)."""
+        prediction = PredictionResult(
+            metric=MetricType.DISK_USAGE,
+            current_value=80.0,
+            predicted_value=95.0,
+            threshold=90.0,
+            eta_minutes=30.0,
+            trend=0.5,
+            severity=PredictionSeverity.WARNING,
+            recommendation="Aufräumen",
+            confidence=0.9,
+        )
+        mock_health = MagicMock()
+        mock_health.get_all_predictions = AsyncMock(return_value=[prediction])
+        mock_quality = MagicMock()
+        mock_quality.get_all_degradation_alerts = AsyncMock(return_value=[])
+        service = PredictiveAlertsService(
+            health_predictor=mock_health, quality_forecaster=mock_quality
+        )
+
+        first = await service.generate_all_alerts()
+        first[0].acknowledged = True  # Nutzer bestätigt
+        await service.generate_all_alerts()  # neuer Lauf
+
+        active = service.get_active_alerts()
+        disk = [a for a in active if a.alert_type == PredictiveAlertType.DISK_EXHAUSTION]
+        assert any(a.acknowledged for a in disk), "bestätigter Alert muss erhalten bleiben"
+        assert any(not a.acknowledged for a in disk), "neuer unbestätigter Alert kommt hinzu"
+
 
 class TestAlertManagement:
     """Tests fuer Alert-Verwaltung."""

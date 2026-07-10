@@ -67,7 +67,7 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | F-17 | Freeze | FE/BE-Freeze-Drift: 5 Module FE-frozen aber BE aktiv | P2 | ✅ Gefixt (Ben-Intent: ml_dashboard/ki_pipeline/predictive_health BE-eingefroren; adhoc/expenses aktiv, FE bereinigt) |
 | F-18 | Security | `GET /reports/adhoc/data-sources` **unauth** → leakt interne Tabellennamen | P2 | ✅ Gefixt (auth-pflichtig, live 200→403) |
 | F-19 | Push | F-07-Dedup: ref-Kollision (gleiche invoice_number/Partner) → stille AP-Unterbuchung | P2 | ✅ Ref-Kollision gefixt (invoice_date im Dedupe-Schlüssel); PDF-lose Adoption bleibt dokumentierter Randfall |
-| F-20 | Ops | F-12 aktiviert `generate_all_alerts` ohne per-Typ-Dedup → In-Memory-Alert-Store wächst (latenter Vor-Bug, kein User-Spam) | P2 | 📋 Dokumentiert |
+| F-20 | Ops | F-12 aktiviert `generate_all_alerts` ohne per-Typ-Dedup → In-Memory-Alert-Store wächst (latenter Vor-Bug, kein User-Spam) | P2 | ✅ Gefixt + getestet (Dedupe je source+alert_type, bestätigte bleiben) |
 | R-06 | Test | F-02-Freeze-Test war hardcodiert (10/13 Keys) → neue Module ungedeckt | P2 | ✅ Gefixt (Coverage-Assertion) |
 | F-21 | Security/Bug | Privat-ACL-Gates fragen `PrivatSpaceAccess.is_active` (existiert nicht) → AttributeError/500 auf Nicht-Owner-Zweig → DoD-8 (403) verletzt + Shared-Spaces tot | P1 | ✅ Gefixt + getestet |
 | F-22 | Security | NLQ-RAG (`nlq_service._process_chat_query`) ruft `semantic_search` **ohne user_id** → Cross-Tenant-Chunk-Leak — aktuell hinter gefrorenem ai_speculative (404) | P2→P0-bei-Reaktivierung | 📋 Reaktivierungs-Sperre |

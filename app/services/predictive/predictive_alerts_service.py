@@ -292,8 +292,23 @@ class PredictiveAlertsService:
         except Exception as e:
             logger.error("quality_forecast_failed", **safe_error_log(e))
 
-        # Speichere neue Alerts
+        # Speichere neue Alerts — pro (source, alert_type) nur EINEN aktiven,
+        # UNBESTAETIGTEN Alert halten (F-20). Ohne diese Dedupe stapelte jeder
+        # Lauf (alle paar Minuten) bei einem Dauerzustand — z. B. Disk konstant
+        # 80 % — einen weiteren identischen Alert mit frischer UUID; _active_alerts
+        # wuchs unbounded und war ueber die prefork-Prozesse inkonsistent. Ein
+        # re-generierter Alert desselben Typs ersetzt jetzt den alten unbestaetigten;
+        # bereits BESTAETIGTE Alerts bleiben unangetastet (Nutzer-Historie).
         for alert in new_alerts:
+            stale_ids = [
+                aid
+                for aid, existing in self._active_alerts.items()
+                if existing.source == alert.source
+                and existing.alert_type == alert.alert_type
+                and not existing.acknowledged
+            ]
+            for aid in stale_ids:
+                del self._active_alerts[aid]
             self._active_alerts[alert.id] = alert
 
         logger.info(
