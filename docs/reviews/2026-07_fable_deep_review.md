@@ -449,3 +449,32 @@ $ curl prometheus/api/v1/query?query=ablage_celery_queue_length   → result cou
 Ursache: `app/workers/celery_metrics.py:330` `update_queue_metrics()` setzt die Gauge `ablage_celery_queue_length`, wird aber **nirgends aufgerufen** (`grep` findet nur die Definition). Damit können `CeleryQueueBacklog` (>50), `CeleryQueueBacklogCritical` (>200) und `CeleryQueueBlocked` **nie feuern** — genau deshalb blieb der 207-Nachrichten-Stau in `monitoring` (F-12) unbemerkt. Zusätzlich iteriert `update_queue_metrics` nur über `inspect.active_queues()` (= konsumierte Queues) → eine orphan Queue wäre selbst bei verdrahteter Metrik unsichtbar (doppelter Blindfleck). **Empfehlung:** `update_queue_metrics` periodisch aufrufen (Beat oder Metrics-Server-Thread) **und** über eine feste Queue-Liste statt nur `active_queues()` iterieren, damit auch konsumentenlose Queues erfasst werden. **Kein Fix jetzt** (Monitoring-Architektur-Entscheidung; F-12-Kerndefekt bereits behoben; F-12-Fix bringt `monitoring` immerhin in `active_queues`).
 
 **entrypoint-Lock (`docker/entrypoint.sh`) — Kern robust, ein P2-Race:** `pg_advisory_lock(815001)` macht die Migration **exactly-once über alle Container** (nur `backend` migriert, `worker`/`worker-cpu`/`beat` haben `RUN_MIGRATIONS=false`); Migrations-Subprozess nutzt die DDL-Owner-URL, das CMD behält die App-Rolle; bei alembic-Fehler `sys.exit(rc)` (Container startet nicht mit kaputtem Schema). **F-14 (P2):** Die Nicht-Migratoren warten **nicht** auf den Migrator — sie überspringen die Migration und `exec celery` sofort. Auf Fresh-Clone/Schema-Change könnte ein Worker/Beat gegen ein halb-migriertes Schema starten (Fenster: Sekunden). Gemildert: normaler Restart = Migration ist No-op (bereits head); Worker fragen beim Start die DB nicht aktiv ab; erster Task kommt verzögert (Beat-Intervall/API nach Migration); transienter Fehler → Retry. **Empfehlung:** Nicht-Migratoren den Advisory-Lock **blockierend** acquiren + sofort releasen (wartet, bis der Migrator fertig ist) statt die Migration nur zu überspringen.
+
+---
+
+## Vollständige Re-Validierung (2026-07-11)
+
+Nach Anwendung von Migration 272 und Abschluss aller Fixes wurde **jeder Commit dieser Instanz** (23 Commits über master, `f2400519d`→`6a0b218f3`) gegen echte Läufe re-validiert — kein Claim ohne Beweis.
+
+**Test-Matrix (162 Tests grün, je Datei einzeln wegen conftest-`event_loop`-Fixture):**
+
+| Fix | Beweis | Ergebnis |
+|---|---|---|
+| F-01/02/03 | `test_module_freeze.py` **4 passed**; Live-OpenAPI: `/finance/years` da, `/finance/liquidity` weg | ✅ |
+| F-06/07/08 + F-19 | ERP-Tests **95 passed** (connector+mirror+push) | ✅ |
+| F-10 | `test_celery_app.py` **22 passed** (inkl. `test_frozen_finance_cashflow_beats_are_pruned`) | ✅ |
+| F-12 | worker-cpu konsumiert live `monitoring`+`metrics`+`maintenance` | ✅ |
+| F-13 | `test_monitoring_tasks.py` **15 passed** (inkl. `TestF13QueueLengthMetric`); Gauge `celery_queue_length` je Queue gesetzt | ✅ |
+| F-16 | **23/23 Worker-Module importieren**, 23 nutzen Helfer; `test_rls_worker_context.py` **4 passed**; Worker `pong`; Bypass-Read live=4 | ✅ |
+| F-17 | Live-OpenAPI: `ml_dashboard`/`ki_pipeline`/`predictive_health`=0; Frontend `tsc -b` **EXIT 0** | ✅ |
+| F-18 | adhoc-data-sources (beide Endpunkte) unauth → **403** | ✅ |
+| F-20 + F-21 | `test_predictive_alerts` + `test_space_access_gate_f21` **22 passed** | ✅ |
+| F-15 | DoD-8 no-context **4→0**; User sieht 3, Company 4, Bypass 4; `test_f15_dod8…` assertet aktiv 0; Worker nach Restart konsumierend | ✅ |
+
+**Ein echter Verdacht, sauber aufgelöst:** Die OpenAPI-Probe zeigte `/finance/anomalies/*` (2) und `/finance/deadlines` (1) **live** — Plan §4a hatte sie als „einzufrieren" gelistet. Handler-Lektüre beweist: alle drei fragen ausschließlich die `Document`-Tabelle ab (`document_id`, `extracted_data`, Einspruchsfristen aus archivierten Dokumenten) — **Archiv-Domäne, kein Banking**. Der Plan hatte nach Pfadnamen geraten; der Code belegt korrektes Aktiv-Bleiben. **Kein Leck.** Nur die 4 `/liquidity/*`-Routen gehören eingefroren (via `liquidity_router` an `MODULE_FINANCE`) — und genau die sind weg.
+
+**Container:** 20/21 `healthy` (`redis-exporter` ohne Healthcheck, pre-existent). **Working Tree:** nur vorbestehende Fremd-Dateien, keine unkommittierte Arbeit dieser Instanz.
+
+**Rest-Härtung (dokumentiert, kein Go-Live-Blocker):** `documents_insert WITH CHECK true` verschärfen (INSERT-seitige Mandantentrennung) + FORCE-Tabellen `invoices`/`approval_requests`/`document_versions` auf dasselbe Escape-Muster prüfen.
+
+**Verdikt bestätigt: merge-ready**, und über den ursprünglichen Verdikt hinaus jetzt **ohne offenen Go-Live-Blocker** (F-15/F-16 vollständig gelöst + live verifiziert).
