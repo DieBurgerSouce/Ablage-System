@@ -64,11 +64,14 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | F-14 | Ops | entrypoint: Nicht-Migratoren warten nicht auf den Migrator → Fresh-Clone-Race (halb-migriertes Schema) | P2 | 📋 Dokumentiert (atk-ops: durch `depends_on: healthy` gemildert) |
 | S-05 | Security | Dev-Stack in `DEBUG=True` → Cookies ohne `Secure`, kein App-HSTS über :443; Security-Flags an `DEBUG` statt `is_production` | P2 | 📋 Deploy-Posture |
 | S-06 | Ops | `datev`-Queue geroutet, kein Konsument (inert durch Freeze; DoD-9 formal verletzt) | P2 | 📋 Dokumentiert |
-| F-17 | Freeze | ai_speculative-Freeze unvollständig: ml_dashboard/adhoc_reports/predictive_actions FE-frozen, aber BE plain registriert (aktiv) | P2 | 📋 Dokumentiert (koordinierter FE+BE-Fix) |
+| F-17 | Freeze | FE/BE-Freeze-Drift: **5 Module** FE-frozen aber BE plain registriert (aktiv) — ml_dashboard, adhoc_reports, ki_pipeline, predictive_health, expenses (Intent-Konflikt) | P2 | 📋 Dokumentiert (koordinierter FE+BE-Fix) |
 | F-18 | Security | `GET /reports/adhoc/data-sources` **unauth** → leakt interne Tabellennamen (on-prem, nur Schema-Metadaten) | P2 | 📋 Dokumentiert |
 | F-19 | Push | F-07-Dedup: PDF-lose Move-Adoption + ref-Kollision (gleiche invoice_number/Partner) → stille AP-Unterbuchung | P2 | 📋 Dokumentiert (Archiv erhält beide) |
 | F-20 | Ops | F-12 aktiviert `generate_all_alerts` ohne per-Typ-Dedup → In-Memory-Alert-Store wächst (latenter Vor-Bug, kein User-Spam) | P2 | 📋 Dokumentiert |
 | R-06 | Test | F-02-Freeze-Test war hardcodiert (10/13 Keys) → neue Module ungedeckt | P2 | ✅ Gefixt (Coverage-Assertion) |
+| F-21 | Security/Bug | Privat-ACL-Gates fragen `PrivatSpaceAccess.is_active` (existiert nicht) → AttributeError/500 auf Nicht-Owner-Zweig → DoD-8 (403) verletzt + Shared-Spaces tot | P1 | ✅ Gefixt + getestet |
+| F-22 | Security | NLQ-RAG (`nlq_service._process_chat_query`) ruft `semantic_search` **ohne user_id** → Cross-Tenant-Chunk-Leak — aktuell hinter gefrorenem ai_speculative (404) | P2→P0-bei-Reaktivierung | 📋 Reaktivierungs-Sperre |
+| F-23 | Ops | Cross-Channel-Dedupe-Asymmetrie: Mirror company-scoped, Import owner-scoped → möglicher Duplikat-Document (kein Leak) | P2 | 📋 Dokumentiert |
 
 *(Register wird pro Iteration ergänzt.)*
 
@@ -354,6 +357,28 @@ Selbst ein DB-Level-`DELETE`/`UPDATE` auf der Audit-Chain wird abgewiesen — di
 - **Auth-Härte (H4):** live bestätigt — abgelaufenes Token 401, Login-Rate-Limit 429 ab #6, Refresh-Rotation-Replay blockiert (alter Token geblacklistet), change-password prüft altes PW (F-27).
 - **Privat-Verschlüsselung (H5):** kein Klartext am Ruhepunkt (AES-256-GCM ersetzt file_content), Klartext/Key nie geloggt/persistiert, Salt+Nonce pro Eintrag. **P2-Hardening:** PBKDF2 100k Iterationen < OWASP-2023 (600k) → erhöhen.
 - **Mig-Konsistenz (H6):** `alembic_version=271`, Single-Head, keine Phantom-Spalten (alle Mirror/Push-Spalten live vorhanden, ORM↔DB deckungsgleich).
+
+---
+
+---
+
+## Iteration 3 — Konvergenz-Check (Frontend-Freeze + Pipeline/Privat)
+
+**atk-fe (Frontend-Freeze-Vollständigkeit): Konvergenz-Signal — kein P0/P1, Guard/Build/Sidebar sauber.**
+- **F-17 vervollständigt (P2):** Die FE-Freeze-Liste (`frozen-modules.ts`) ist **breiter** als der BE-gated Router-Satz — **5 Module** sind FE-frozen, aber ihr konsumierter BE-Router ist plain registriert (aktiv, auth-gated 403): `ml_dashboard` (:1649), `adhoc_reports` (:1664), **`ki_pipeline`** (:1660, neu), `predictive_health` (:1610), **`expenses`/spesen** (:1505 — echter Intent-Konflikt, in `module_registry.py:134` bewusst aktiv). Präzisierung: der `/predictive`-FE-Treffer konsumiert `predictive_health`, **nicht** `predictive_actions` (letzterer ist Bens Aktiv-Entscheidung F-11 und von keiner FE-Route erreicht). **Kein Datenleck** — alle auth+company-scoped, außer F-18.
+- **Guard wirksam (Sidebar-Sorge widerlegt):** `beforeLoad→frozenModuleGuard` wirft `redirect('/frozen')` **vor** dem Mount → keine API-Calls vor Redirect; `SidebarLink` filtert alle ~35 frozen Links zentral (`Sidebar.tsx:515`) → keine Dead-End-Links. Defense-in-depth (Link-Filter + Route-Redirect + BE-404) intakt; nur der BE-Layer fehlt bei den 5 F-17-Modulen.
+- **tsc -b = 0**, keine toten Imports. Selbst nachverifiziert.
+- **Test-Gap (P2):** `frozen-modules.spec.ts` (e2e) asserted 404 nur für 4 **korrekt-gatete** Endpoints — probt **nicht** die F-17-Endpoints (ml-dashboard/ki-pipeline/reports-adhoc/health-predictions) → bleibt grün trotz Inkonsistenz. Zusätzlich zielt eine Assertion auf die nicht-existente Route `/banking`. Empfehlung: e2e-Assertions um die F-17-Endpoints erweitern.
+
+**Empfehlung F-17 (koordinierter FE+BE-Fix, Ben-Scope):** Entweder die 4 spekulativen Router (ml_dashboard, ki_pipeline, adhoc_reports, predictive_health) unter passende MODULE-Keys gaten **und** `adhoc data-sources` auth-pflichtig machen — ODER die FE-Freeze-Liste um diese + `spesen` zurücknehmen (Intent-Entscheidung). Nicht merge-blockierend.
+
+**atk-pipeline (Pipeline-Integrität + Privat-ACL): 1 P1 (F-21, gefixt) + 2 P2, kein Live-Leak.**
+- **F-21 (P1, ✅ GEFIXT):** Die Privat-ACL-Gates `space_service.get_with_access_check:186` + `document_service.get_by_id_with_space_and_access_check:759` filtern `PrivatSpaceAccess.is_active == True` — eine **nicht existierende Spalte** (Beweis: `AttributeError - has no attribute 'is_active'`; Aktiv-/Revoke-Logik trägt `expires_at`). Der Nicht-Owner-Zweig warf dadurch **HTTP 500 statt 403** (DoD-8-Bruch) und **Shared-Space-Zugriff war komplett tot** (auch mit gültigem Grant → 500). Fail-closed (kein Datenleck). **Fix:** `is_active`-Bedingung in beiden Gates entfernt; `expires_at` trägt die Revoke-Logik. Regressionstest `test_space_access_gate_f21.py` (3 grün, Schema- + Quell-Guard). Die bestehenden Privat-Tests prüfen nur Endpoint-Existenz/unauth-403 — **nie die ACL-Grant-Ebene**, weshalb F-21 durchrutschte.
+- **F-22 (P2 → P0-bei-Reaktivierung):** `nlq_service._process_chat_query` ruft `semantic_search(...)` **ohne `user_id`** → RAG filtert nicht → Chunks **aller** User/Companies (Cross-Tenant-Leak). **Aktuell 404** (Endpoint hängt an gefrorenem `MODULE_AI_SPECULATIVE`, live: `module_frozen_router_skipped .../nlq`). **Reaktivierungs-Sperre:** ai_speculative darf **nie** ohne diesen Fix reaktiviert werden — sonst sofort P0. (`conversational_assistant.py:784` macht es mit `user_id` richtig, ist aber ebenfalls frozen.)
+- **F-23 (P2):** Cross-Channel-Dedupe-Asymmetrie — email/folder-Import dedupliziert **owner-scoped** (`create_import_document`), Mirror **company-scoped** (`_persist_attachment`). SHA256 ist überall identisch (kein Hash-Bug), aber ein Mirror-Doc (owner=System) + späterer email/folder-Import desselben Belegs → owner-scoped Dedupe findet die Mirror-Zeile nicht → Duplikat-Document. Kein Leak, GoBD-Hygiene. Empfehlung: einheitlicher Dedupe-Scope oder company+checksum-Check auch im Import-Pfad.
+- **Widerlegt:** H2 Privat-ACL-**Leak** (fail-closed; PrivatDocument ist eigene Tabelle, RAG/Suche fassen sie nie an — grep 0 Treffer). H3 Such-Cross-Tenant für die **aktive** Oberfläche (alle aktiven Such-Router geben `user_id` weiter, Doc-Suche owner-scoped via `accessible_docs`-CTE, selbst nachverifiziert). H4 **Doppel-Archivierung** (dreifach abgesichert: Beat selektiert `~EXISTS(document_archives)` + Mirror-Ausschluss; `archive_document` wirft bei Bestand; `DocumentArchive.document_id` ist `unique=True` → selbst bei TOCTOU nur eine Zeile). H5 **Beat-Sanity** nach F-10/F-12: 0/276 Beat-Einträge in toter Queue (selbst gegengeprüft: 0/216 explizit-gequeuete).
+
+**Pre-existierende Beobachtung (nicht Neuausrichtung, nicht mein Fix):** Der Integration-Test `test_list_spaces_endpoint_exists` schlägt fehl (`GET /api/v1/privat/spaces` → 404, obwohl `list_spaces` in `privat.py` codiert + `privat_router` registriert ist; die Route fehlt in der Live-OpenAPI). `git diff master..HEAD` für `privat.py`/privat-Services/diesen Test ist **leer** → der Fehler existiert auf master genauso, ist **unabhängig** von der Neuausrichtung und von F-21 (ein 404 ist Routing, upstream vom Service-Query). Verdient Bens separate Aufmerksamkeit (ein Kern-Privat-Listen-Endpoint fehlt in der OpenAPI), aber kein Merge-Blocker dieses Branches.
 
 ---
 
