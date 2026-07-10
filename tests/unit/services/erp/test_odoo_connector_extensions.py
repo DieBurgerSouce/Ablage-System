@@ -585,7 +585,30 @@ class TestCreateVendorBillDraft:
             ["move_type", "=", "in_invoice"],
             ["partner_id", "=", 77],
             ["ref", "=", "RE-2026-0815"],
+            ["invoice_date", "=", "2026-08-05"],
         ]]
+
+    @pytest.mark.asyncio
+    async def test_dedupe_key_includes_invoice_date(
+        self, odoo_config, mock_common_proxy, mock_models_proxy
+    ):
+        """F-19: Zwei Rechnungen desselben Partners mit gleicher Ref, aber
+        anderem Datum werden NICHT zusammengeworfen — die Dedupe-Suche filtert
+        auf invoice_date, also findet der zweite Push nichts (Suche leer) und
+        legt einen eigenen Entwurf an."""
+        connector = OdooConnector(odoo_config)
+        mock_models_proxy.execute_kw.side_effect = [[], 99]  # Suche leer -> create
+        await _connect(connector, mock_common_proxy, mock_models_proxy)
+
+        # gleiche Ref wie _make_bill, aber ANDERES Datum
+        move_id = await connector.create_vendor_bill_draft(
+            _make_bill(invoice_date=date(2027, 1, 3))
+        )
+
+        assert move_id == "99"
+        search_call = _rpc_calls(mock_models_proxy)[0]
+        assert search_call[1] == "search"
+        assert ["invoice_date", "=", "2027-01-03"] in search_call[2][0]
 
 
 # =============================================================================

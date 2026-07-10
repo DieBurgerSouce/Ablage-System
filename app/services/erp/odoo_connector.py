@@ -945,9 +945,14 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             # Idempotenz gegen Doppel-Push (F-07): Ein Celery-Retry nach
             # verlorener RPC-Antwort oder fehlgeschlagenem lokalem Commit darf
             # keinen zweiten Entwurf anlegen. Existiert bereits ein in_invoice
-            # mit gleichem Partner UND gleicher Referenz, wird er adoptiert
-            # statt ein Duplikat zu erzeugen. Der PDF-Anhang wird dann nicht
-            # erneut gesetzt (er haengt am ersten Entwurf).
+            # mit gleichem Partner, gleicher Referenz UND gleichem Rechnungsdatum,
+            # wird er adoptiert statt ein Duplikat zu erzeugen. Der PDF-Anhang
+            # wird dann nicht erneut gesetzt (er haengt am ersten Entwurf).
+            # F-19: invoice_date ist Teil des Dedupe-Schluessels — sonst wuerden
+            # ZWEI VERSCHIEDENE Rechnungen desselben Lieferanten mit zufaellig
+            # gleicher Nummer (Jahres-Reset "001"/"001", OCR-Fehllesung) still
+            # zusammengeworfen und der zweite offene Posten erreichte Odoo nie.
+            # Wiederhol-Sicherheit bleibt: dasselbe Dokument hat dasselbe Datum.
             existing = await self._execute_kw(
                 "account.move",
                 "search",
@@ -955,6 +960,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                     ["move_type", "=", "in_invoice"],
                     ["partner_id", "=", bill.partner_id],
                     ["ref", "=", bill.ref],
+                    ["invoice_date", "=", bill.invoice_date.isoformat()],
                 ]],
                 {"limit": 1},
             )
