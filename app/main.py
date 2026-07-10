@@ -1607,7 +1607,7 @@ app.include_router(classification_router, prefix="/api/v1")  # Vision 2.0 Phase 
 
 # Vision 2.0 Phase 5: Privacy & Predictive Maintenance (100% Completion)
 app.include_router(privacy_analytics_router, prefix="/api/v1")  # Vision 2.0 Phase 5: Differential Privacy Analytics
-app.include_router(predictive_health_router, prefix="/api/v1")  # Vision 2.0 Phase 5: Predictive Maintenance
+include_module_router(app, predictive_health_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # FROZEN (F-17): Predictive Maintenance
 
 # Vision 2.0 Phase 6: Autonomy Framework, Financial Insights & XAI
 app.include_router(document_lifecycle_router, prefix="/api/v1")  # Document Lifecycle SLA
@@ -1646,7 +1646,7 @@ app.include_router(document_hints_router, prefix="/api/v1")  # Feature #5: Proak
 app.include_router(collaboration_router, prefix="/api/v1")  # Feature #4: Echtzeit-Kollaboration
 app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqualitäts-Cockpit
 app.include_router(presence_router, prefix="/api/v1")  # Feature: Collaborative Presence Indicators
-app.include_router(ml_dashboard_router, prefix="/api/v1")  # Feature #10: ML Progress Dashboard
+include_module_router(app, ml_dashboard_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # FROZEN (F-17): ML Progress Dashboard
 app.include_router(document_timeline_router, prefix="/api/v1")  # Feature #11: Document Timeline
 app.include_router(folders_router, prefix="/api/v1")  # Phase 1.1: Geschäftliche Ordnerhierarchie
 app.include_router(comment_threads_router, prefix="/api/v1")  # Phase 3.1: Kommentar-Threads
@@ -1657,7 +1657,7 @@ app.include_router(analytics_team_router, prefix="/api/v1")  # Phase 5: Analytic
 app.include_router(approval_enhanced_router, prefix="/api/v1")  # Feature #3+#7: Approval Depth + Automation 2.0
 app.include_router(approval_extended_router, prefix="/api/v1")  # Feature #3: Approval Escalation & SLA
 app.include_router(automation_router, prefix="/api/v1")  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
-app.include_router(ki_pipeline_router, prefix="/api/v1")  # Feature #4: KI-Pipeline Intelligence
+include_module_router(app, ki_pipeline_router, MODULE_AI_SPECULATIVE, prefix="/api/v1")  # FROZEN (F-17): KI-Pipeline Intelligence
 app.include_router(annotations_enhanced_router, prefix="/api/v1")  # Feature #8: Kommentare & Annotationen
 app.include_router(annotations_extended_router, prefix="/api/v1")  # Feature #8: Bounding-Box, Replies, Tasks
 app.include_router(terminology_router, prefix="/api/v1")  # Feature #10: Deutsche Praezision

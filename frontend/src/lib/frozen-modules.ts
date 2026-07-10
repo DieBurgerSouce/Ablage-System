@@ -74,7 +74,6 @@ export const FROZEN_SECTIONS: FrozenSection[] = [
       '/cashflow',
       '/po-matching',
       '/recurring-invoices',
-      '/spesen',
     ],
   },
   {
@@ -131,7 +130,6 @@ export const FROZEN_SECTIONS: FrozenSection[] = [
       '/ki-pipeline',
       '/ml-dashboard',
       '/knowledge-graph',
-      '/adhoc-reporting',
       '/admin/esg',
     ],
   },

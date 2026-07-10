@@ -64,8 +64,8 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | F-14 | Ops | entrypoint: Nicht-Migratoren warten nicht auf den Migrator → Fresh-Clone-Race (halb-migriertes Schema) | P2 | 📋 Dokumentiert (atk-ops: durch `depends_on: healthy` gemildert) |
 | S-05 | Security | Dev-Stack in `DEBUG=True` → Cookies ohne `Secure`, kein App-HSTS über :443; Security-Flags an `DEBUG` statt `is_production` | P2 | 📋 Deploy-Posture |
 | S-06 | Ops | `datev`-Queue geroutet, kein Konsument (inert durch Freeze; DoD-9 formal verletzt) | P2 | 📋 Dokumentiert |
-| F-17 | Freeze | FE/BE-Freeze-Drift: **5 Module** FE-frozen aber BE plain registriert (aktiv) — ml_dashboard, adhoc_reports, ki_pipeline, predictive_health, expenses (Intent-Konflikt) | P2 | 📋 Dokumentiert (koordinierter FE+BE-Fix) |
-| F-18 | Security | `GET /reports/adhoc/data-sources` **unauth** → leakt interne Tabellennamen (on-prem, nur Schema-Metadaten) | P2 | 📋 Dokumentiert |
+| F-17 | Freeze | FE/BE-Freeze-Drift: 5 Module FE-frozen aber BE aktiv | P2 | ✅ Gefixt (Ben-Intent: ml_dashboard/ki_pipeline/predictive_health BE-eingefroren; adhoc/expenses aktiv, FE bereinigt) |
+| F-18 | Security | `GET /reports/adhoc/data-sources` **unauth** → leakt interne Tabellennamen | P2 | ✅ Gefixt (auth-pflichtig, live 200→403) |
 | F-19 | Push | F-07-Dedup: PDF-lose Move-Adoption + ref-Kollision (gleiche invoice_number/Partner) → stille AP-Unterbuchung | P2 | 📋 Dokumentiert (Archiv erhält beide) |
 | F-20 | Ops | F-12 aktiviert `generate_all_alerts` ohne per-Typ-Dedup → In-Memory-Alert-Store wächst (latenter Vor-Bug, kein User-Spam) | P2 | 📋 Dokumentiert |
 | R-06 | Test | F-02-Freeze-Test war hardcodiert (10/13 Keys) → neue Module ungedeckt | P2 | ✅ Gefixt (Coverage-Assertion) |

@@ -248,10 +248,15 @@ def _get_service():
 
 
 @router.get("/data-sources", response_model=List[DataSourceResponse])
-async def list_data_sources() -> List[DataSourceResponse]:
+async def list_data_sources(
+    current_user: User = Depends(get_current_user),
+) -> List[DataSourceResponse]:
     """Gibt alle verfügbaren Datenquellen zurück.
 
     Jede Datenquelle enthält Name und Beschreibung auf Deutsch.
+
+    SICHERHEIT (F-18): Auth-pflichtig — der Endpoint legt sonst unauthentifiziert
+    interne Tabellennamen offen.
     """
     service = _get_service()
     sources = service.get_data_sources()
@@ -262,10 +267,13 @@ async def list_data_sources() -> List[DataSourceResponse]:
     "/data-sources/{source}/fields",
     response_model=List[FieldDefinitionResponse],
 )
-async def list_source_fields(source: str) -> List[FieldDefinitionResponse]:
+async def list_source_fields(
+    source: str,
+    current_user: User = Depends(get_current_user),
+) -> List[FieldDefinitionResponse]:
     """Gibt die verfügbaren Felder für eine bestimmte Datenquelle zurück.
 
-    SICHERHEIT: Nur Felder aus der Whitelist werden zurückgegeben.
+    SICHERHEIT (F-18): Auth-pflichtig + nur Felder aus der Whitelist.
     """
     service = _get_service()
     try:
