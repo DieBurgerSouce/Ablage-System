@@ -60,7 +60,7 @@ Klassifikation: **P0** = merge-blockierend (Datenverlust, Sicherheitsloch, GoBD-
 | S-02 | Security | pgbouncer-Cross-Tenant-Leak **ausgeschlossen** (App direkt an postgres; GUC transaktions-lokal) | — | ✅ Widerlegt (verifiziert) |
 | S-03 | Security | CORS-Reflection + CSRF-Schwächung **ausgeschlossen** (fail-closed; CSRF-Fix nur Rotation) | — | ✅ Widerlegt (verifiziert) |
 | S-04 | Security | M-06-Rest: 3 einvoice-POSTs im Code ohne `current_user` (nur durch Freeze/404 geschützt) | P2 | 📋 Defense-in-Depth |
-| F-13 | Ops | `ablage_celery_queue_length`-Metrik nie emittiert (`update_queue_metrics` ungenutzt) → Queue-Backlog-Alerts tot → **Wurzel des F-12-Blindflecks** | P2 | 📋 Dokumentiert (live bestätigt) |
+| F-13 | Ops | `ablage_celery_queue_length`-Metrik nie emittiert (`update_queue_metrics` ungenutzt) → Queue-Backlog-Alerts tot → **Wurzel des F-12-Blindflecks** | P2 | ✅ Gefixt + live bewiesen |
 | F-14 | Ops | entrypoint: Nicht-Migratoren warten nicht auf den Migrator → Fresh-Clone-Race (halb-migriertes Schema) | P2 | 📋 Dokumentiert (atk-ops: durch `depends_on: healthy` gemildert) |
 | S-05 | Security | Dev-Stack in `DEBUG=True` → Cookies ohne `Secure`, kein App-HSTS über :443; Security-Flags an `DEBUG` statt `is_production` | P2 | 📋 Deploy-Posture |
 | S-06 | Ops | `datev`-Queue geroutet, kein Konsument (inert durch Freeze; DoD-9 formal verletzt) | P2 | 📋 Dokumentiert |

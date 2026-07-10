@@ -185,13 +185,25 @@ def check_queue_backpressure() -> Dict[str, Any]:
         redis_url = current_app.conf.broker_url
         redis_client = Redis.from_url(redis_url)
 
-        # Definierte Queues
+        # F-13: VOLLSTÄNDIGE Liste aller konsumierten/gerouteten Queues (Union der
+        # -Q-Flags von worker + worker-cpu, plus datev). Vorher fehlten u. a.
+        # monitoring/erp/notification(s)/default — genau die orphan-Queue
+        # `monitoring` (F-12, 207 gestaute Msgs) blieb damit unsichtbar. Nur mit
+        # der vollen Liste kann die Backlog-Alert-Familie einen Stau erkennen.
         queues = [
             "ocr_high", "ocr_normal",
             "embedding_high", "embedding_normal", "embedding_low",
-            "validation", "metadata",
-            "backup", "maintenance", "metrics"
+            "validation", "metadata", "maintenance", "metrics",
+            "backup", "dlq",
+            "workflow", "approval", "orchestration", "tracking", "privat",
+            "notification", "notifications", "erp", "default", "monitoring",
+            "datev",
         ]
+
+        # F-13: Die Prometheus-Gauge ablage_celery_queue_length wurde bislang NIE
+        # befüllt (update_queue_metrics war ungenutzt) -> CeleryQueueBacklog(-Critical)
+        # konnten nie feuern. Diese bereits beat-geschedulte Task setzt sie jetzt mit.
+        from app.workers.celery_metrics import celery_queue_length
 
         queue_lengths = {}
         total_length = 0
@@ -201,6 +213,10 @@ def check_queue_backpressure() -> Dict[str, Any]:
                 length = redis_client.llen(queue_name)
                 queue_lengths[queue_name] = length
                 total_length += length
+                try:
+                    celery_queue_length.labels(queue_name=queue_name).set(length)
+                except Exception:  # Metrik-Export darf die Task nie brechen
+                    pass
             except Exception as e:
                 logger.debug(
                     "queue_length_check_failed",

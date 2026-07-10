@@ -167,3 +167,38 @@ class TestTaskNaming:
         for task in tasks:
             assert task.name.startswith("app.workers.tasks.monitoring_tasks."), \
                 f"Task {task.name} folgt nicht der Namenskonvention"
+
+
+class TestF13QueueLengthMetric:
+    """F-13: check_queue_backpressure befüllt die Prometheus-Gauge über ALLE Queues.
+
+    Regressionsschutz gegen den F-12-Blindfleck: Die Metrik
+    ``ablage_celery_queue_length`` war nie befüllt (update_queue_metrics ungenutzt),
+    daher konnten CeleryQueueBacklog(-Critical) nie feuern — der 207-Nachrichten-Stau
+    in der orphan Queue ``monitoring`` blieb unsichtbar. check_queue_backpressure setzt
+    die Gauge jetzt mit und misst die vollständige Queue-Liste.
+    """
+
+    def test_backpressure_sets_prometheus_gauge(self):
+        import inspect
+
+        from app.workers.tasks.monitoring_tasks import check_queue_backpressure
+
+        source = inspect.getsource(check_queue_backpressure)
+        assert "celery_queue_length" in source, (
+            "check_queue_backpressure muss die Gauge ablage_celery_queue_length setzen "
+            "(sonst bleiben die Queue-Backlog-Alerts tot — F-13)."
+        )
+
+    def test_backpressure_measures_all_consumed_queues(self):
+        import inspect
+
+        from app.workers.tasks.monitoring_tasks import check_queue_backpressure
+
+        source = inspect.getsource(check_queue_backpressure)
+        # Genau die Queues, die vorher fehlten (inkl. der F-12-orphan-Queue):
+        for q in ("monitoring", "erp", "notification", "default", "dlq"):
+            assert f'"{q}"' in source, (
+                f"Queue {q!r} fehlt in der Backpressure-Messung — ein Stau dort "
+                "würde keinen Alert auslösen (F-12/F-13)."
+            )
