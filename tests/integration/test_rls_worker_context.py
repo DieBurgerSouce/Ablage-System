@@ -101,3 +101,29 @@ async def test_worker_context_does_not_bleed_to_plain_session():
     # FRISCHE Factory-Session (z. B. ein API-Endpunkt) darf KEINEN Bypass erben:
     async with get_async_session_context() as s:
         assert (await s.execute(text("SELECT is_rls_bypass_enabled()"))).scalar() is False
+
+
+async def test_f15_dod8_no_context_read_is_zero_once_migrated():
+    """DoD-8 (F-15): Nach Migration 272 liefert eine App-Rolle OHNE Kontext 0
+    documents-Zeilen. Solange die Migration nicht angewandt ist (owner_select-
+    Escape ``current_user_id IS NULL`` noch vorhanden), skippt der Test — so
+    greift er automatisch, sobald umgeschaltet wurde, ohne vorher rot zu sein."""
+    if await _role_bypasses_rls():
+        pytest.skip("Test-DB-Rolle hat BYPASSRLS — RLS greift nicht")
+
+    async with get_worker_session_context() as s:  # Bypass darf pg_policies lesen
+        qual = (
+            await s.execute(
+                text(
+                    "SELECT qual FROM pg_policies WHERE tablename='documents' "
+                    "AND policyname='documents_owner_select'"
+                )
+            )
+        ).scalar() or ""
+    if "current_user_id" in qual and "IS NULL" in qual:
+        pytest.skip("F-15-Migration 272 noch nicht angewandt (owner_select-Escape aktiv)")
+
+    async with get_async_session_context() as s:  # KEIN Kontext
+        await s.execute(text("RESET ALL"))
+        n = (await s.execute(text("SELECT count(*) FROM documents"))).scalar()
+    assert n == 0, "DoD-8: App-Rolle ohne Kontext muss 0 documents-Zeilen lesen"
