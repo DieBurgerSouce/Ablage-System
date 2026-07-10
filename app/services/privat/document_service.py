@@ -756,7 +756,9 @@ class PrivatDocumentService:
             .where(
                 PrivatSpaceAccess.space_id == space.id,
                 PrivatSpaceAccess.user_id == requesting_user_id,
-                PrivatSpaceAccess.is_active == True,
+                # F-21: PrivatSpaceAccess hat keine is_active-Spalte; expires_at
+                # trägt die Revoke-Logik. Die alte Bedingung warf AttributeError
+                # -> HTTP 500 statt 403 (DoD-8) und brach Shared-Doc-Zugriff.
                 or_(
                     PrivatSpaceAccess.expires_at.is_(None),
                     PrivatSpaceAccess.expires_at > now,

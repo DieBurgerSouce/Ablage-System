@@ -183,8 +183,10 @@ class PrivatSpaceService:
             .where(
                 PrivatSpaceAccess.space_id == space_id,
                 PrivatSpaceAccess.user_id == user_id,
-                PrivatSpaceAccess.is_active == True,
-                # SECURITY: expires_at check
+                # SECURITY: expires_at trägt Aktiv-/Revoke-Logik (revoke_access
+                # setzt expires_at). PrivatSpaceAccess hat KEINE is_active-Spalte
+                # (F-21): die alte Bedingung warf AttributeError -> HTTP 500 auf
+                # dem Nicht-Owner-Zweig (DoD-8-Bruch + Shared-Spaces tot).
                 or_(
                     PrivatSpaceAccess.expires_at == None,
                     PrivatSpaceAccess.expires_at > now
