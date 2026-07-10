@@ -19,7 +19,7 @@ from celery import shared_task, chain, group
 from sqlalchemy import select, and_, func
 
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import Document, BusinessEntity
 from app.core.safe_errors import safe_error_log
 
@@ -60,7 +60,7 @@ def link_all_documents_task(
     from app.services.document_entity_linker_service import DocumentEntityLinkerService
 
     async def _link_all():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = DocumentEntityLinkerService(db)
             result = await service.link_all_documents(
                 min_confidence=min_confidence,
@@ -117,7 +117,7 @@ def link_single_document_task(
     from app.services.document_entity_linker_service import DocumentEntityLinkerService
 
     async def _link():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = DocumentEntityLinkerService(db)
             match = await service.link_document(
                 document_id=UUID(document_id),
@@ -205,7 +205,7 @@ def post_lexware_import_linking_task(self) -> Dict[str, Any]:
             "low_confidence_count": 0,
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Zaehle unverknüpfte Dokumente mit OCR-Text
             count_stmt = select(func.count()).select_from(
                 select(Document).where(
@@ -281,7 +281,7 @@ def generate_linking_statistics_task() -> Dict[str, Any]:
     import asyncio
 
     async def _generate_stats():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats = {}
 
             # Gesamt-Dokumente
@@ -401,7 +401,7 @@ def reprocess_low_confidence_documents_task(
             "errors": 0,
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Dokumente mit niedriger Confidence finden
             # Hinweis: Wir speichern aktuell keine Confidence im Document-Model
             # Dies ist ein Placeholder für zukuenftige Erweiterung
@@ -480,7 +480,7 @@ def on_entity_imported_check_documents(entity_id: str) -> Dict[str, Any]:
     )
 
     async def _check_for_entity():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Entity laden
             stmt = select(BusinessEntity).where(
                 BusinessEntity.id == UUID(entity_id)

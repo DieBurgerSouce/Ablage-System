@@ -25,7 +25,7 @@ from app.workers.celery_metrics import (
     record_task_failed,
 )
 from app.core.safe_errors import safe_error_log
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import (
     SmartInboxItem,
     Document,
@@ -81,7 +81,7 @@ def aggregate_inbox_items(
     )
 
     async def _aggregate() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats = {
                 "documents_added": 0,
                 "approvals_added": 0,
@@ -334,7 +334,7 @@ def recalculate_priorities(
     logger.info("smart_inbox_priority_recalculation_started", batch_size=batch_size)
 
     async def _recalculate() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Lade pending/in_progress Items
             query = (
                 select(SmartInboxItem)
@@ -446,7 +446,7 @@ def train_behavior_model(
     logger.info("smart_inbox_behavior_training_started", lookback_days=lookback_days)
 
     async def _train_model() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
             # Lade historische completed/dismissed Items
@@ -597,7 +597,7 @@ def cleanup_completed_items(
     logger.info("smart_inbox_cleanup_started", retention_days=retention_days)
 
     async def _cleanup() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
             # Soft-Delete alte Items

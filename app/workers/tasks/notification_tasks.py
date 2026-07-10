@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.workers.celery_app import celery_app, CPUTask
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import User, Document, UserNotification
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
@@ -309,7 +309,7 @@ def send_daily_digest(self) -> Dict[str, Any]:
     logger.info("daily_digest_task_gestartet", task_id=self.request.id)
 
     async def run_digest():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             users = await get_users_with_digest_preference(db, "daily")
 
             results = {
@@ -406,7 +406,7 @@ def send_weekly_digest(self) -> Dict[str, Any]:
     logger.info("weekly_digest_task_gestartet", task_id=self.request.id)
 
     async def run_digest():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             users = await get_users_with_digest_preference(db, "weekly")
 
             results = {
@@ -556,7 +556,7 @@ def send_dunning_email_with_retry(
 
     async def do_send():
         from app.services.notification_service import EmailNotifier
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import Notification, NotificationStatus
 
         notifier = EmailNotifier()
@@ -590,7 +590,7 @@ def send_dunning_email_with_retry(
                 )
 
             # Aktualisiere Notification-Status in DB
-            async with get_async_session_context() as db:
+            async with get_worker_session_context() as db:
                 from uuid import UUID
                 from sqlalchemy import update
 
@@ -645,7 +645,7 @@ def send_dunning_email_with_retry(
             )
             # Markiere als endgültig fehlgeschlagen
             async def mark_failed():
-                async with get_async_session_context() as db:
+                async with get_worker_session_context() as db:
                     from uuid import UUID
                     from sqlalchemy import update
                     from app.db.models import Notification, NotificationStatus
@@ -698,7 +698,7 @@ def retry_failed_dunning_emails(self) -> Dict[str, Any]:
     )
 
     async def do_retry():
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import Notification, NotificationStatus
         from uuid import UUID
 
@@ -709,7 +709,7 @@ def retry_failed_dunning_emails(self) -> Dict[str, Any]:
             "errors": 0,
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Finde fehlgeschlagene Dunning-Notifications
             one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
             max_retry_attempts = 5
@@ -819,7 +819,7 @@ def cleanup_old_notifications(self, days: int = 90) -> Dict[str, Any]:
     )
 
     async def run_cleanup():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
             # Zaehle zu löschende

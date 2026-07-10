@@ -26,7 +26,7 @@ from sqlalchemy import select, and_, func
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.safe_errors import safe_error_log
 from app.core.redis_state import RedisStateManager
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import Document
 from app.db.models_ocr_feedback import (
     OCRBackendPerformance,
@@ -142,7 +142,7 @@ def consume_correction_queue(
             lambda: defaultdict(int)
         )
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             for correction in corrections:
                 doc_id_str = correction.get("document_id")
                 if not doc_id_str:
@@ -184,7 +184,7 @@ def consume_correction_queue(
         templates_created = 0
         templates_updated = 0
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             from app.services.ocr.auto_template_service import get_auto_template_service
 
             template_service = get_auto_template_service()
@@ -340,7 +340,7 @@ def apply_learned_patterns(
         templates_deactivated = 0
         templates_boosted = 0
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # 1. Lade Backend-Performance-Daten
             perf_query = (
                 select(OCRBackendPerformance)

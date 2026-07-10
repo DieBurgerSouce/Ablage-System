@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log, safe_error_detail
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import Document, ProcessingStatus
 from app.workers.celery_app import CPUTask, celery_app
 
@@ -38,7 +38,7 @@ def run_async_task(coro: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(coro)
 
 
-# NOTE: Wir nutzen get_async_session_context() aus app.db.session
+# NOTE: Wir nutzen get_worker_session_context() aus app.db.session
 # Das vermeidet Event-Loop-Bugs da Engine INSIDE async context erstellt wird
 
 
@@ -139,7 +139,7 @@ async def _detect_document_groups_async(
     """Async implementation of document group detection."""
     from app.services.document_grouping_service import DocumentGroupingService
 
-    async with get_async_session_context() as session:
+    async with get_worker_session_context() as session:
         # Build query based on filters
         query = select(Document).where(
             and_(
@@ -260,7 +260,7 @@ async def _batch_detect_groups_async(task_id: str, limit: int) -> Dict[str, Any]
     """Async implementation of batch group detection."""
     from sqlalchemy import func
 
-    async with get_async_session_context() as session:
+    async with get_worker_session_context() as session:
         # Find folders with ungrouped documents
         query = (
             select(Document.folder_name, func.count(Document.id).label("doc_count"))
@@ -402,7 +402,7 @@ async def _extract_entities_async(
     """Async implementation of entity extraction."""
     from app.services.entity_extraction_service import EntityExtractionService
 
-    async with get_async_session_context() as session:
+    async with get_worker_session_context() as session:
         # Load document
         query = select(Document).where(Document.id == document_id)
         result = await session.execute(query)
@@ -558,7 +558,7 @@ async def _batch_extract_entities_async(
     """Async implementation of batch entity extraction."""
     from sqlalchemy.sql import text
 
-    async with get_async_session_context() as session:
+    async with get_worker_session_context() as session:
         # Find documents without extracted entities
         base_conditions = [
             Document.deleted_at.is_(None),
@@ -751,7 +751,7 @@ async def _update_metrics_async() -> Dict[str, Any]:
     """Async implementation of metrics update."""
     from sqlalchemy import func
 
-    async with get_async_session_context() as session:
+    async with get_worker_session_context() as session:
         # Count documents with entities
         docs_with_entities = await session.execute(
             select(func.count(Document.id)).where(

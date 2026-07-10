@@ -21,7 +21,7 @@ import structlog
 from sqlalchemy import select, and_
 
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import Company, Document, InvoiceTracking
 from app.core.safe_errors import safe_error_log
 
@@ -61,7 +61,7 @@ def run_anomaly_detection_task(
     )
 
     async def _run() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats: Dict[str, object] = {
                 "companies_scanned": 0,
                 "total_anomalies": 0,
@@ -160,7 +160,7 @@ def check_single_document_anomalies_task(
     )
 
     async def _check() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_anomaly_detection_service(db)
             cid = UUID(company_id)
 

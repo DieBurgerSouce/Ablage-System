@@ -18,7 +18,7 @@ from celery import states
 from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 
 logger = structlog.get_logger(__name__)
 
@@ -70,7 +70,7 @@ def embed_document_task(
 
         service = get_semantic_search_service()
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             success = await service.embed_document(doc_uuid, session)
 
             return {
@@ -144,7 +144,7 @@ def batch_embed_documents_task(
 
         # Wiederhole bis keine unverarbeiteten Dokumente mehr
         while True:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 processed = await service.batch_embed_unprocessed(
                     session, batch_size=batch_size
                 )
@@ -241,7 +241,7 @@ def reindex_embeddings_task(
         offset = 0
 
         while True:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Dokumente laden
                 query = (
                     select(Document.id, Document.extracted_text)

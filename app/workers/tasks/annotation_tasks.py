@@ -19,7 +19,7 @@ import structlog
 from sqlalchemy import and_, select, func, update, delete
 
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
@@ -157,7 +157,7 @@ def check_overdue_comment_tasks_task(self) -> Dict[str, object]:
 
         notification_service = get_notification_service()
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             now = datetime.now(timezone.utc)
 
             # Finde überfällige offene Aufgaben
@@ -260,7 +260,7 @@ def cleanup_orphaned_annotations_task(self) -> Dict[str, object]:
 
         cleaned_bbox = 0
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # BoundingBox-Annotationen für gelöschte Dokumente
             orphaned_query = (
                 select(BoundingBoxAnnotation.id)
@@ -341,7 +341,7 @@ def cleanup_resolved_annotations_task(self, days: int = 180) -> Dict[str, object
     async def _do_cleanup() -> Dict[str, object]:
         from app.db.models import DocumentAnnotation
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
             # Zaehle zu entfernende Annotationen

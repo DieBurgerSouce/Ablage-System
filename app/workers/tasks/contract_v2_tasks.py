@@ -20,7 +20,7 @@ from uuid import UUID
 from sqlalchemy import select, and_, or_, func
 
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import Company, Document
 from app.db.models_contract import Contract, ContractDeadline, ContractStatus
 from app.core.safe_errors import safe_error_log, safe_error_detail
@@ -69,7 +69,7 @@ def extract_contract_dates_v2_task(
     from app.services.contract_service_v2 import get_contract_service_v2
 
     async def _extract_dates() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_service_v2(db)
 
             # Daten extrahieren
@@ -212,7 +212,7 @@ def check_upcoming_deadlines_v2_task(
     from app.services.notification_service import get_notification_service, NotificationPriority
 
     async def _check_deadlines() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats = {
                 "companies_checked": 0,
                 "deadlines_found": 0,
@@ -367,7 +367,7 @@ def generate_ical_export_task(
     from app.services.contract_service_v2 import get_contract_service_v2
 
     async def _generate_ical() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_service_v2(db)
 
             contract_uuids = None
@@ -440,7 +440,7 @@ def update_contract_statistics_task(
     from app.services.contract_service_v2 import get_contract_service_v2
 
     async def _update_stats() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             aggregated_stats = {
                 "companies_processed": 0,
                 "total_contracts": 0,
@@ -528,7 +528,7 @@ def check_expired_contracts_v2_task(self) -> Dict[str, Any]:
         Dict mit Statistiken
     """
     async def _check_expired() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             today = date.today()
 
             stats = {
@@ -616,7 +616,7 @@ def complete_contract_deadline_task(
     from app.services.contract_service_v2 import get_contract_service_v2
 
     async def _complete_deadline() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_service_v2(db)
 
             deadline = await service.complete_deadline(
@@ -696,7 +696,7 @@ def check_auto_renewals_task(
         Dict mit Renewal-Statistiken
     """
     async def _check_renewals() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats = {
                 "companies_checked": 0,
                 "contracts_checked": 0,
@@ -899,7 +899,7 @@ def link_document_to_contract_task(
     from app.services.contract_service_v2 import get_contract_service_v2
 
     async def _link_document() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_service_v2(db)
 
             success = await service.link_document(
@@ -979,7 +979,7 @@ def extract_contract_clauses_task(
     from app.db.models import Document
 
     async def _extract_clauses() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_clause_recognition_service(db)
 
             # Vertrag laden
@@ -1066,7 +1066,7 @@ def extract_all_contract_clauses_task(
     from app.db.models_contract import Contract, ContractStatus
 
     async def _extract_all() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats = {
                 "contracts_processed": 0,
                 "clauses_extracted": 0,
@@ -1148,7 +1148,7 @@ def compare_contract_to_benchmark_task(
     from app.db.models_contract import Contract
 
     async def _compare_benchmark() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_benchmark_service(db)
 
             contract = await db.get(Contract, UUID(contract_id))
@@ -1228,7 +1228,7 @@ def update_contract_benchmarks_task(
     from app.services.contracts import get_contract_benchmark_service
 
     async def _update_benchmarks() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_benchmark_service(db)
 
             cid = UUID(company_id) if company_id else None
@@ -1280,7 +1280,7 @@ def process_scheduled_cancellations_task(self) -> Dict[str, Any]:
     from app.db.models_contract import ContractCancellation, CancellationStatus
 
     async def _process_cancellations() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats = {
                 "cancellations_processed": 0,
                 "emails_sent": 0,
@@ -1368,7 +1368,7 @@ def check_cancellation_deadlines_task(
     from app.services.notification_service import get_notification_service, NotificationPriority
 
     async def _check_deadlines() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             stats = {
                 "contracts_checked": 0,
                 "warnings_created": 0,
@@ -1482,7 +1482,7 @@ def analyze_contract_costs_task(
     from app.db.models_contract import Contract
 
     async def _analyze_costs() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_cost_analyzer(db)
 
             contract = await db.get(Contract, UUID(contract_id))
@@ -1553,7 +1553,7 @@ def generate_contract_cost_report_task(
     from app.services.contracts import get_contract_cost_analyzer
 
     async def _generate_report() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = get_contract_cost_analyzer(db)
 
             summary = await service.get_portfolio_summary(

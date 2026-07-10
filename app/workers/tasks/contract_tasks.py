@@ -21,7 +21,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import (
     BusinessContract,
     ContractMilestone,
@@ -70,7 +70,7 @@ def send_contract_deadline_reminders_task(
     from app.services.notification_service import get_notification_service
 
     async def _send_reminders() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             notification_service = get_notification_service()
             today = date.today()
             cutoff_date = today + timedelta(days=days_ahead)
@@ -485,7 +485,7 @@ def check_expiring_contracts_task(
         days_ahead_list = [30, 60, 90]
 
     async def _check_expiring() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             today = date.today()
 
             stats = {
@@ -596,7 +596,7 @@ def auto_renew_contracts_task(self) -> Dict[str, object]:
         Dict mit Statistiken
     """
     async def _auto_renew() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             today = date.today()
 
             stats = {
@@ -734,7 +734,7 @@ def generate_contract_report_task(self) -> Dict[str, object]:
         Dict mit Report-Daten
     """
     async def _generate_report() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             today = date.today()
 
             # Portfolio-Statistiken
@@ -876,7 +876,7 @@ def check_renewal_option_expiry_task(self) -> Dict[str, object]:
         Dict mit Statistiken
     """
     async def _check_expiry() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             today = date.today()
 
             stats = {
@@ -955,7 +955,7 @@ def check_overdue_milestones_task(self) -> Dict[str, object]:
         Dict mit Statistiken
     """
     async def _check_overdue() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             today = date.today()
 
             stats = {
@@ -1085,7 +1085,7 @@ def check_contract_renewal_deadlines_task(
     from app.services.contracts.contract_renewal_service import get_contract_renewal_service
 
     async def _check_renewals() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             renewal_service = get_contract_renewal_service(db)
 
             cid = UUID(company_id) if company_id else None
@@ -1141,7 +1141,7 @@ def extract_contract_dates_task(
     from app.db.models import Document
 
     async def _extract_dates() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             renewal_service = get_contract_renewal_service(db)
 
             dates = await renewal_service.extract_contract_dates_from_document(
@@ -1235,7 +1235,7 @@ def send_contract_renewal_reminder_task(
     from app.db.models_contract import Contract
 
     async def _send_reminder() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             contract = await db.get(Contract, UUID(contract_id))
             if not contract:
                 return {"success": False, "error": "Vertrag nicht gefunden"}
@@ -1307,7 +1307,7 @@ def schedule_contract_reminders_task(
     from app.services.contracts.contract_renewal_service import get_contract_renewal_service
 
     async def _schedule() -> Dict[str, object]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             renewal_service = get_contract_renewal_service(db)
 
             deadline = date.fromisoformat(deadline_date)

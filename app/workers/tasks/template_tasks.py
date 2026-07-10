@@ -21,7 +21,7 @@ from sqlalchemy import select, and_, cast, delete, func
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.core.safe_errors import safe_error_log
 from app.core.safe_errors import safe_error_detail
 
@@ -96,7 +96,7 @@ def render_template_batch(
             batch_name=batch_name,
         )
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             service = TemplateEngineService(db)
 
             for index, data in enumerate(data_items):
@@ -202,7 +202,7 @@ def render_template_single(
     async def _render_single():
         from app.services.template_engine_service import TemplateEngineService
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             try:
                 service = TemplateEngineService(db)
 
@@ -308,7 +308,7 @@ def cleanup_temp_files(
             cutoff_time=cutoff_time.isoformat(),
         )
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             storage = StorageService()
 
             # Query temporäre Dokumente älter als cutoff
@@ -419,7 +419,7 @@ def cleanup_old_template_versions(
             keep_versions=keep_versions,
         )
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Alle eindeutigen Template-Namen
             templates_result = await db.execute(
                 select(distinct(DocumentTemplate.name)).where(
@@ -541,7 +541,7 @@ def collect_template_stats(self) -> Dict[str, Any]:
             "error_rate": 0.0,
         }
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Anzahl aktiver Templates
             templates_count = await db.execute(
                 select(func.count()).select_from(DocumentTemplate).where(

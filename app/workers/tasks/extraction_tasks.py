@@ -114,8 +114,8 @@ async def _async_reprocess_all(
 
     extraction_service = get_structured_extraction_service()
 
-    from app.db.session import get_async_session_context
-    async with get_async_session_context() as db:
+    from app.db.session import get_worker_session_context
+    async with get_worker_session_context() as db:
         # Basis-Query: Alle Dokumente mit OCR-Text
         # HINWEIS: is_deleted ist eine Property, nicht eine Column!
         # Daher muss deleted_at.is_(None) verwendet werden.
@@ -473,12 +473,12 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
     from app.services.structured_extraction_service import (
         get_structured_extraction_service,
     )
-    from app.db.session import get_async_session_context
+    from app.db.session import get_worker_session_context
 
     extraction_service = get_structured_extraction_service()
 
-    # Use get_async_session_context to avoid event loop issues
-    async with get_async_session_context() as db:
+    # Use get_worker_session_context (RLS-Bypass) to avoid event loop issues
+    async with get_worker_session_context() as db:
         # Dokument laden
         result = await db.execute(
             select(Document).where(Document.id == UUID(document_id))
@@ -626,8 +626,8 @@ def generate_extraction_stats() -> Dict[str, Any]:
 
 async def _async_generate_stats() -> Dict[str, Any]:
     """Async Implementation für Stats-Generierung."""
-    from app.db.session import get_async_session_context
-    async with get_async_session_context() as db:
+    from app.db.session import get_worker_session_context
+    async with get_worker_session_context() as db:
         # Gesamt-Dokumente
         total_result = await db.execute(
             select(func.count()).select_from(Document).where(
@@ -785,7 +785,7 @@ async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
         get_quick_classification_service,
     )
     from app.api.schemas.extracted_data import InvoiceDirection
-    from app.db.session import get_async_session_context
+    from app.db.session import get_worker_session_context
     from app.db.models import ProcessingStatus
 
     start_time = datetime.now(timezone.utc)
@@ -797,7 +797,7 @@ async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
         task_id=task.request.id
     )
 
-    async with get_async_session_context() as db:
+    async with get_worker_session_context() as db:
         try:
             # 1. Document laden und Status auf "processing" setzen
             result = await db.execute(
@@ -999,7 +999,7 @@ async def _async_reprocess_quick_classification(
 ) -> Dict[str, Any]:
     """Async Implementation des Quick-Classification Reprocessing."""
     from app.services.quick_classification_service import QuickClassificationService
-    from app.db.session import get_async_session_context
+    from app.db.session import get_worker_session_context
 
     start_time = datetime.now(timezone.utc)
     stats = {
@@ -1012,7 +1012,7 @@ async def _async_reprocess_quick_classification(
 
     qc_service = QuickClassificationService()
 
-    async with get_async_session_context() as db:
+    async with get_worker_session_context() as db:
         # Query: Alle Dokumente mit OCR-Text
         # WICHTIG: is_deleted ist eine Property, nicht Column! Filter via deleted_at
         query = select(Document).where(

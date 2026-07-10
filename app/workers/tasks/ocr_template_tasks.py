@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
@@ -69,7 +69,7 @@ def scan_template_candidates_task(
 
         service = get_auto_template_service()
 
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Companies bestimmen
             if company_id:
                 company_ids = [UUID(company_id)]

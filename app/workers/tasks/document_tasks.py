@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log, safe_error_detail
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import Document, User
 from app.services.storage_service import get_storage_service
 
@@ -72,7 +72,7 @@ def document_bulk_export_task(
     import asyncio
 
     async def _do_export():
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             return await _execute_bulk_export(
                 db=db,
                 document_ids=[UUID(doc_id) for doc_id in document_ids],

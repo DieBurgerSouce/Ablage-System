@@ -29,7 +29,7 @@ from sqlalchemy import select, delete
 from app.workers.celery_app import celery_app, GPUTask, CPUTask, gpu_memory_guard
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log, safe_error_detail
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import Document, ProcessingJob, OCRResult, ProcessingStatus, SystemMetrics, BatchJob
 from app.services.ocr_service import OCRService
 from app.german_validator import GermanValidator
@@ -333,7 +333,7 @@ def process_document_task(
 
     async def process_async() -> Dict[str, Any]:
         local_file_path = None  # Track temp file for cleanup
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             try:
                 # Update initial status
                 update_task_progress(task_id, 0, 100, "Dokument wird geladen...")
@@ -1203,7 +1203,7 @@ def batch_process_task(
             if batch_job_id:
                 try:
                     from app.services.batch_job_service import get_batch_job_service
-                    async with get_async_session_context() as session:
+                    async with get_worker_session_context() as session:
                         service = get_batch_job_service()
                         await service.update_progress(
                             db=session,
@@ -1220,7 +1220,7 @@ def batch_process_task(
             if not batch_job_id:
                 return False
             try:
-                async with get_async_session_context() as session:
+                async with get_worker_session_context() as session:
                     result = await session.execute(
                         select(BatchJob).where(BatchJob.id == UUID(batch_job_id))
                     )
@@ -1358,7 +1358,7 @@ def batch_process_task(
         async def complete_batch():
             try:
                 from app.services.batch_job_service import get_batch_job_service
-                async with get_async_session_context() as session:
+                async with get_worker_session_context() as session:
                     service = get_batch_job_service()
                     await service.complete_batch_job(
                         db=session,
@@ -1462,7 +1462,7 @@ def validate_german_text_task(
         # Update document if ID provided
         if document_id:
             async def update_doc():
-                async with get_async_session_context() as session:
+                async with get_worker_session_context() as session:
                     await update_document_status(
                         session,
                         UUID(document_id),
@@ -1518,7 +1518,7 @@ def extract_metadata_task(
     )
 
     async def extract_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Get document
             result = await session.execute(
                 select(Document).where(Document.id == doc_uuid)
@@ -1594,7 +1594,7 @@ def cleanup_task(self, hours_old: int = 24) -> Dict[str, Any]:
     )
 
     async def cleanup_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Delete old processing jobs
             result = await session.execute(
                 delete(ProcessingJob).where(
@@ -1779,7 +1779,7 @@ def update_system_metrics(self) -> Dict[str, Any]:
         })
 
     async def store_metrics() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Store CPU metrics
             session.add(SystemMetrics(
                 metric_type="cpu_usage",
@@ -1860,7 +1860,7 @@ def calculate_ocr_backend_performance(
     async def calculate_async() -> Dict[str, Any]:
         from app.services.ocr.self_learning_service import get_self_learning_service
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             service = get_self_learning_service(session)
 
             # Berechne Performance-Metriken
@@ -1923,7 +1923,7 @@ def process_pending_ocr_feedbacks(
     async def process_async() -> Dict[str, Any]:
         from app.services.ocr.self_learning_service import get_self_learning_service
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             service = get_self_learning_service(session)
 
             # Hole ausstehende Feedbacks

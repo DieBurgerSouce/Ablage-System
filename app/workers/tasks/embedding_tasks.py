@@ -23,7 +23,7 @@ from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log
 from app.db.models import Document, ProcessingStatus
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.services.embedding_service import get_embedding_service
 from app.services.search_analytics_service import get_search_analytics_service
 from app.core.cache import invalidate_on_document_change
@@ -83,7 +83,7 @@ def run_async_task(coro: Coroutine[Any, Any, T]) -> T:
     """
     return asyncio.run(coro)
 
-# NOTE: Wir nutzen get_async_session_context() aus app.db.session
+# NOTE: Wir nutzen get_worker_session_context() aus app.db.session
 # Das vermeidet Event-Loop-Bugs da Engine INSIDE async context erstellt wird
 
 
@@ -147,7 +147,7 @@ def generate_document_embedding(
     embedding_service = get_embedding_service()
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             try:
                 update_task_progress(task_id, 0, 100, "Lade Dokument...")
 
@@ -315,7 +315,7 @@ def batch_generate_embeddings(
     embedding_service = get_embedding_service()
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             successful = 0
             failed = 0
             skipped = 0
@@ -534,7 +534,7 @@ def regenerate_all_embeddings(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Build query to find all documents with extracted text
             query = select(Document.id).where(
                 Document.extracted_text.isnot(None),
@@ -618,7 +618,7 @@ def check_embedding_coverage(
     )
 
     async def check_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             from sqlalchemy import func
 
             # Base filter
@@ -719,7 +719,7 @@ def sync_document_to_qdrant(
     model = embedding_model or settings.VECTOR_AB_TREATMENT_EMBEDDING
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             try:
                 # Dokument laden
                 result = await session.execute(
@@ -867,7 +867,7 @@ def migrate_embeddings_to_qdrant(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Qdrant initialisieren
             qdrant = await get_qdrant_service()
             if not await qdrant.initialize():
@@ -1089,7 +1089,7 @@ def generate_jina_embedding(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             try:
                 # Dokument laden
                 result = await session.execute(
@@ -1206,7 +1206,7 @@ def analyze_ab_test_metrics(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             try:
                 # Orchestrator-Metriken holen
                 orchestrator = await get_vector_orchestrator()
@@ -1294,7 +1294,7 @@ def sync_pending_to_qdrant(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Dokumente finden die Embedding haben aber nicht in Qdrant
             query = select(Document.id).where(
                 Document.embedding.isnot(None),
@@ -1371,7 +1371,7 @@ def refresh_search_analytics(self) -> Dict[str, Any]:
     analytics_service = get_search_analytics_service()
 
     async def refresh_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             try:
                 success = await analytics_service.refresh_daily_statistics(session)
 

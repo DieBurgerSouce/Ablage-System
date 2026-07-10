@@ -21,7 +21,7 @@ from sqlalchemy import select, func
 from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log, safe_error_detail
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import (
     Document,
     RAGDocumentChunk,
@@ -42,7 +42,7 @@ def run_async_task(coro: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(coro)
 
 
-# NOTE: Wir nutzen get_async_session_context() aus app.db.session
+# NOTE: Wir nutzen get_worker_session_context() aus app.db.session
 # Das vermeidet Event-Loop-Bugs da Engine INSIDE async context erstellt wird
 
 
@@ -100,7 +100,7 @@ def chunk_document(
 
         chunking_service = get_chunking_service()
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             try:
                 update_task_progress(task_id, 0, 100, "Starte Chunking...")
 
@@ -209,7 +209,7 @@ def batch_chunk_documents(
 
         chunking_service = get_chunking_service()
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Dokumente ermitteln
             if document_ids:
                 doc_uuids = [UUID(d) for d in document_ids]
@@ -352,7 +352,7 @@ def regenerate_chunk_embeddings(
 
         embedding_service = get_embedding_service()
 
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Chunks laden
             query = select(RAGDocumentChunk)
             if document_id:
@@ -457,7 +457,7 @@ def run_rag_batch_job(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Job laden
             result = await session.execute(
                 select(RAGBatchJob).where(RAGBatchJob.id == job_uuid)
@@ -702,7 +702,7 @@ def get_rag_statistics(self) -> Dict[str, Any]:
     logger.info("get_rag_statistics_starting", task_id=task_id)
 
     async def collect_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Chunk-Statistiken
             chunk_count = await session.execute(
                 select(func.count(RAGDocumentChunk.id))
@@ -798,7 +798,7 @@ def scheduled_chunk_new_documents(self) -> Dict[str, Any]:
     logger.info("scheduled_chunk_new_documents_starting", task_id=task_id)
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Dokumente ohne Chunks finden
             subquery = select(RAGDocumentChunk.document_id).distinct()
             query = select(Document.id).where(
@@ -857,7 +857,7 @@ def sync_customer_cards_scheduled(self) -> Dict[str, Any]:
     logger.info("sync_customer_cards_scheduled_starting", task_id=task_id)
 
     async def process_async() -> Dict[str, Any]:
-        async with get_async_session_context() as session:
+        async with get_worker_session_context() as session:
             # Batch Job erstellen
             job = RAGBatchJob(
                 job_type=RAGJobType.CUSTOMER_CARD_SYNC,

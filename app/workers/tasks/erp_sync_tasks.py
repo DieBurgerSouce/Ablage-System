@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
-from app.db.session import get_async_session_context
+from app.db.session import get_worker_session_context
 from app.db.models import (
     ERPConnection,
     ERPSyncHistory,
@@ -215,7 +215,7 @@ def sync_connection(
     import asyncio
 
     async def _sync() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Load configuration
             config = await get_connection_config(db, UUID(connection_id))
             if not config:
@@ -340,7 +340,7 @@ def sync_entity(
     import asyncio
 
     async def _sync() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             config = await get_connection_config(db, UUID(connection_id))
             if not config:
                 return {"success": False, "error": "Verbindung nicht gefunden"}
@@ -391,7 +391,7 @@ def scheduled_sync_all() -> Dict[str, Any]:
     import asyncio
 
     async def _sync_all() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             now = datetime.now(timezone.utc)
 
             # Find connections due for sync
@@ -444,7 +444,7 @@ def test_connection(connection_id: str) -> Dict[str, Any]:
     import asyncio
 
     async def _test() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             config = await get_connection_config(db, UUID(connection_id))
             if not config:
                 return {"success": False, "error": "Verbindung nicht gefunden"}
@@ -498,7 +498,7 @@ def notify_conflicts() -> Dict[str, Any]:
     import asyncio
 
     async def _notify() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             # Count pending conflicts per connection
             result = await db.execute(
                 select(ERPConflict).where(
@@ -593,7 +593,7 @@ def cleanup_old_history(days: int = 90) -> Dict[str, Any]:
     from sqlalchemy import delete
 
     async def _cleanup() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
             result = await db.execute(
@@ -664,7 +664,7 @@ def push_vendor_bill_draft(self, document_id: str) -> Dict[str, Any]:
     is_final_attempt = self.request.retries >= self.max_retries
 
     async def _push() -> Dict[str, Any]:
-        async with get_async_session_context() as db:
+        async with get_worker_session_context() as db:
             result = await db.execute(
                 select(Document).where(Document.id == UUID(document_id))
             )

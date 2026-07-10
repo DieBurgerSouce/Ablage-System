@@ -100,13 +100,13 @@ def run_benchmark_batch(
 
     try:
         from app.services.benchmark_runner_service import get_benchmark_runner_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.schemas import BenchmarkRunRequest
         from uuid import UUID
 
         # Async Funktion für Benchmark
         async def run_benchmarks() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 runner = get_benchmark_runner_service()
                 # Konvertiere sample_ids zu UUIDs falls nötig
                 uuid_sample_ids = [
@@ -186,11 +186,11 @@ def run_scheduled_benchmarks(
     try:
         from app.services.ocr_training_service import get_ocr_training_service
         from app.services.benchmark_runner_service import get_benchmark_runner_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.schemas import BenchmarkRunRequest
 
         async def run_scheduled() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 training_service = get_ocr_training_service()
                 runner = get_benchmark_runner_service()
 
@@ -276,13 +276,13 @@ def generate_daily_stats(self) -> Dict[str, Any]:
 
     try:
         from app.services.ocr_training_service import get_ocr_training_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import OCRBackendStatsDaily
         from sqlalchemy import select, func
         from datetime import date
 
         async def generate_stats() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 training_service = get_ocr_training_service()
 
                 # Hole Backend-Statistiken für heute
@@ -392,10 +392,10 @@ def process_feedback_queue(
 
     try:
         from app.services.feedback_learning_service import get_feedback_learning_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
 
         async def process_feedback() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 feedback_service = get_feedback_learning_service()
 
                 # Verarbeite unverarbeitete Korrekturen
@@ -462,10 +462,10 @@ def update_learned_weights(
 
     try:
         from app.services.feedback_learning_service import get_feedback_learning_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
 
         async def update_weights() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 feedback_service = get_feedback_learning_service()
 
                 weights = await feedback_service.get_learned_weights(
@@ -535,13 +535,13 @@ def populate_training_batch(
 
     try:
         from app.services.ocr_training_service import get_ocr_training_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import OCRTrainingBatch, OCRTrainingBatchItem, OCRTrainingSample
         from sqlalchemy import select, func
         import random
 
         async def populate() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Hole Batch
                 result = await session.execute(
                     select(OCRTrainingBatch).where(OCRTrainingBatch.id == batch_id)
@@ -668,10 +668,10 @@ def generate_training_report(self) -> Dict[str, Any]:
         from app.services.ocr_training_service import get_ocr_training_service
         from app.services.feedback_learning_service import get_feedback_learning_service
         from app.services.benchmark_runner_service import get_benchmark_runner_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
 
         async def generate_report() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 training_service = get_ocr_training_service()
                 feedback_service = get_feedback_learning_service()
                 benchmark_runner = get_benchmark_runner_service()
@@ -798,11 +798,11 @@ def run_bulk_processing_job(
             BulkProcessingJob,
             _active_jobs,
         )
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from uuid import UUID
 
         async def run_job() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Load job from DB first
                 db_service = await get_bulk_ocr_processing_service(session)
                 db_job = await db_service.get_job(UUID(job_id))
@@ -918,11 +918,11 @@ def run_bulk_processing_job_cpu(
             BulkProcessingJob,
             _active_jobs,
         )
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from uuid import UUID
 
         async def run_job() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Load job from DB first
                 db_service = await get_bulk_ocr_processing_service(session)
                 db_job = await db_service.get_job(UUID(job_id))
@@ -1032,10 +1032,10 @@ def import_training_files(
 
     try:
         from app.services.bulk_ocr_processing_service import get_bulk_ocr_processing_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
 
         async def import_files() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 service = await get_bulk_ocr_processing_service(session)
                 result = await service.import_training_files(
                     
@@ -1108,13 +1108,13 @@ def process_document_batch(
 
     try:
         from app.services.benchmark_runner_service import get_benchmark_runner_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import OCRTrainingSample, OCRDocumentOutput
         from sqlalchemy import select
         from uuid import UUID
 
         async def process_batch() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 runner = get_benchmark_runner_service()
                 await runner._ensure_agents()
 
@@ -1237,7 +1237,7 @@ def create_quality_snapshot(
     )
 
     try:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import (
             OCRBackendBenchmark,
             OCRValidationCorrection,
@@ -1247,7 +1247,7 @@ def create_quality_snapshot(
         from datetime import datetime, timezone, timedelta
 
         async def create_snapshot() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 backends = [backend_name] if backend_name else [
                     "deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"
                 ]
@@ -1537,9 +1537,9 @@ def run_surya_hf_training(
                     )
 
                     async def setup_ab_test():
-                        from app.db.session import get_async_session_context
+                        from app.db.session import get_worker_session_context
 
-                        async with get_async_session_context() as session:
+                        async with get_worker_session_context() as session:
                             surya_mgr = SuryaCheckpointManager()
                             active = await surya_mgr.get_active_version(session)
 
@@ -1615,11 +1615,11 @@ def check_retraining_conditions(self) -> Dict[str, Any]:
     logger.info("check_retraining_conditions_starting", task_id=task_id)
 
     try:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.quality_monitoring_service import QualityMonitoringService
 
         async def check_conditions():
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Vollständiger QualityMonitoringService für Retraining-Empfehlung
 
                 monitoring_service = QualityMonitoringService(db=session)
@@ -1691,11 +1691,11 @@ def run_quality_monitoring(self) -> Dict[str, Any]:
     logger.info("run_quality_monitoring_starting", task_id=task_id)
 
     try:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.quality_monitoring_service import QualityMonitoringService
 
         async def run_monitoring():
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Vollständiger QualityMonitoringService für Qualitätsprüfung
 
                 monitoring_service = QualityMonitoringService(db=session)
@@ -1790,14 +1790,14 @@ def process_auto_ground_truth_batch(
     )
 
     try:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import Document, OCRTrainingSample, ProcessingStatus, TrainingSampleStatus
         from sqlalchemy import select, and_, not_
         from uuid import uuid4
         import hashlib
 
         async def process_batch() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Finde Dokumente ohne Training-Sample
                 subquery = select(OCRTrainingSample.file_path)
 
@@ -1929,7 +1929,7 @@ def generate_coverage_snapshot(self) -> Dict[str, Any]:
     )
 
     try:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.db.models import (
             BusinessDocumentProfile,
             OCRTrainingSample,
@@ -1940,7 +1940,7 @@ def generate_coverage_snapshot(self) -> Dict[str, Any]:
         from uuid import uuid4
 
         async def create_snapshot() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Hole alle aktiven Business-Profile
                 profiles_result = await session.execute(
                     select(BusinessDocumentProfile)
@@ -2096,10 +2096,10 @@ def llm_review_batch(
 
     try:
         from app.services.llm_ocr_review_service import get_llm_ocr_review_service
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
 
         async def run_batch_review() -> Dict[str, Any]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 review_service = get_llm_ocr_review_service()
                 result = await review_service.batch_review(
                     db=session,
@@ -2175,11 +2175,11 @@ def auto_trigger_retraining(
     )
 
     try:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.services.mlops.retraining_service import RetrainingService
 
         async def trigger_training():
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 retrain_service = RetrainingService(session)
 
                 # Schwellwert nochmals prüfen (Race-Condition vermeiden)
@@ -2297,11 +2297,11 @@ def auto_promote_ab_test_winners(self) -> Dict[str, Any]:
     logger.info("auto_promote_ab_test_winners_starting", task_id=task_id)
 
     try:
-        from app.db.session import get_async_session_context
+        from app.db.session import get_worker_session_context
         from app.ml.ab_testing import ABTestManager
 
         async def check_winners():
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 ab_manager = ABTestManager(db=session)
                 results = await ab_manager.check_and_apply_winners()
                 await session.commit()
