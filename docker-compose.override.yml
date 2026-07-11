@@ -17,6 +17,14 @@ services:
   backend:
     deploy:
       replicas: 1
+    # Go-Live-Runbook Block W1: WA/WE-Altbestand (444 Monats-Sammel-PDFs,
+    # Bild-Quelle der ~293k Odoo-Alt-Belege) read-only in den Container.
+    # Aufruf: python scripts/import_wa_we.py --execute --limit 5 \
+    #   --source-dir /data/wa_we/WA_Archiv --source-dir /data/wa_we/WE_Archiv
+    # Wirkt ab dem naechsten "docker compose up -d backend".
+    volumes:
+      - C:\Users\benfi\Firmenich-Odoo\WA_Archiv:/data/wa_we/WA_Archiv:ro
+      - C:\Users\benfi\Firmenich-Odoo\WE_Archiv:/data/wa_we/WE_Archiv:ro
 
   # Worker GPU: Immer Einzelinstanz (GPU-Sharing nicht moeglich)
   worker:
