@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker logs:*)"
+      "Bash(docker logs:*)",
+      "mcp__odoo-staging__odoo_execute_kw"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -1,5 +1,11 @@
 # Recent Changes
 
+## 2026-07-11 (Abend) — Wahrheitsabgleich re-verifiziert + M365-Toolkit versioniert
+**Goal-Session: alle DONE-Kriterien des Wahrheitsabgleichs (Eintrag unten) unabhängig read-only re-verifiziert — vollständig bestätigt, keine Nacharbeit nötig** (Belege tabellarisch: `~/.claude/plans/effervescent-wiggling-riddle.md`; Kernnotizen alle `last_updated: 2026-07-11`, Root 0 Müll, `ed75e2f97` inkl. Live-Beweis, Session-Log + Wikilink-Check intakt). Anschließend liegengebliebenes Housekeeping committet + gepusht:
+- **M365-Toolkit (Säule 1 „Firmen-E-Mail-Gedächtnis") ins Repo**: `scripts/m365/` — Inventur/Extraktion/Verify + `mail_lib` (MSAL Client-Credentials, Graph-GET-Client mit Backoff/Paging, SQLite-Index S1.4), Runbook P0, README, Start-/Loop-Skripte. Rein lesend, Code secret-frei geprüft; Plan: `~/.claude/plans/gleaming-plotting-crown.md`.
+- **.gitignore erweitert**: `scripts/m365/*.csv` (Mailbox-/Inventur-Exporte mit UPNs = PII bleiben lokal), `.hardening-worktrees/` (Parallel-Session-Worktrees), claude-flow proven-config-Tool-State (`.claude/proven-config.json` + `.proven-config-version`, `.claude-flow/harness-active-policy.json`). `.env.m365`/`secrets/`/`logs/` waren bereits ignoriert.
+- `settings.local.json`: odoo-staging `execute_kw`-Permission nachgezogen.
+
 ## 2026-07-11 (Tag) — RLS-Restrunde 272–274 KOMPLETT geschlossen + auf master
 **Fortsetzung der Nacht-Session mit Bens Gates; alles gepusht (`origin/master` = `c2673a0fe`).**
 - **Migration 273 ANGEWANDT** (Bens Gate): F-15-Klasse-`company_id IS NULL`-Escapes aus `invoices`/`approval_requests`-USING entfernt (Vorbedingung gemessen: 0 NULL-Zeilen) + `is_rls_bypass_enabled()`-Klausel für `companies`/`document_versions` ergänzt. DoD-8-Verifikation: kontextlos überall 0; Bypass sieht companies 5 (vorher 0 — Fix sichtbar wirksam).
