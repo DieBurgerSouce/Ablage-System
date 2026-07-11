@@ -1026,3 +1026,70 @@ class TestEdgeCases:
         )
 
         assert len(response.results) == 0
+
+
+@pytest.mark.asyncio
+class TestVectorSearchSQLQualifikation:
+    """Regressionstests: der pgvector-Distanz-Ausdruck muss die Spalte
+    tabellen-qualifizieren.
+
+    Gefunden durch den Go-Live-Such-Benchmark (AP-5, 2026-07-11): mit
+    user_id joint _vector_search auf documents (hat AUCH eine
+    embedding-Spalte) -> unqualifiziertes ``embedding <=> ...`` ->
+    asyncpg AmbiguousColumnError -> Chunk-Suche fuer eingeloggte User tot.
+    """
+
+    @pytest.fixture
+    def service(self):
+        with patch('app.services.rag.search_service.get_embedding_service') as mock_embed:
+            mock_embed_svc = MagicMock()
+            mock_embed_svc.generate_query_embedding_cached = AsyncMock(
+                return_value=[0.1] * 8
+            )
+            mock_embed.return_value = mock_embed_svc
+            return RAGSearchService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = MagicMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = []
+        db.execute = AsyncMock(return_value=mock_result)
+        return db
+
+    async def test_vector_search_mit_user_filter_qualifiziert_embedding(
+        self, service: RAGSearchService, mock_db
+    ):
+        """Mit documents-Join darf 'embedding' nicht mehrdeutig sein."""
+        from sqlalchemy.dialects import postgresql
+
+        await service._vector_search(
+            mock_db,
+            query_embedding=[0.1] * 8,
+            limit=5,
+            threshold=0.5,
+            user_id=uuid4(),
+        )
+
+        query = mock_db.execute.await_args.args[0]
+        sql = str(query.compile(dialect=postgresql.dialect()))
+        assert "rag_document_chunks.embedding <=>" in sql
+        assert "(1 - (embedding <=>" not in sql
+
+    async def test_vector_search_ohne_user_filter_bleibt_qualifiziert(
+        self, service: RAGSearchService, mock_db
+    ):
+        """Auch ohne Join schadet die Qualifikation nicht (Konsistenz)."""
+        from sqlalchemy.dialects import postgresql
+
+        await service._vector_search(
+            mock_db,
+            query_embedding=[0.1] * 8,
+            limit=5,
+            threshold=0.5,
+            user_id=None,
+        )
+
+        query = mock_db.execute.await_args.args[0]
+        sql = str(query.compile(dialect=postgresql.dialect()))
+        assert "rag_document_chunks.embedding <=>" in sql

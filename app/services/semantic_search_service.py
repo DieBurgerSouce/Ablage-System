@@ -229,7 +229,7 @@ class SemanticSearchService:
                 d.filename,
                 d.original_filename,
                 d.document_type,
-                1 - (d.embedding <=> :embedding::vector) AS similarity,
+                1 - (d.embedding <=> CAST(:embedding AS vector)) AS similarity,
                 d.created_at,
                 LEFT(d.extracted_text, 300) AS text_preview,
                 d.page_count
@@ -237,9 +237,9 @@ class SemanticSearchService:
             WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.embedding IS NOT NULL
                 AND d.deleted_at IS NULL
-                AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
+                AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                 {filter_clause}
-            ORDER BY d.embedding <=> :embedding::vector
+            ORDER BY d.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
 
@@ -384,7 +384,7 @@ class SemanticSearchService:
                 d.id AS document_id,
                 d.filename,
                 d.document_type,
-                1 - (d.embedding <=> :embedding::vector) AS similarity,
+                1 - (d.embedding <=> CAST(:embedding AS vector)) AS similarity,
                 d.created_at,
                 LEFT(d.extracted_text, 300) AS text_preview
             FROM documents d
@@ -392,8 +392,8 @@ class SemanticSearchService:
                 AND d.id != :source_id
                 AND d.embedding IS NOT NULL
                 AND d.deleted_at IS NULL
-                AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
-            ORDER BY d.embedding <=> :embedding::vector
+                AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
+            ORDER BY d.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
 
@@ -588,7 +588,7 @@ class SemanticSearchService:
                 await session.execute(
                     text("""
                         UPDATE documents
-                        SET embedding = :embedding::vector,
+                        SET embedding = CAST(:embedding AS vector),
                             embedding_updated_at = :updated_at,
                             embedding_model = :model
                         WHERE id = :doc_id

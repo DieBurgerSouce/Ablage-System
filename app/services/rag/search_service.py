@@ -329,9 +329,14 @@ class RAGSearchService:
         # Base Query mit Cosine Similarity via raw SQL
         # pgvector: <=> ist Cosine Distance, 1 - distance = similarity
         # CrossDBVector TypeDecorator exponiert keine pgvector-Operatoren,
-        # daher direktes SQL für den Distance-Ausdruck
+        # daher direktes SQL für den Distance-Ausdruck.
+        # WICHTIG: Spalte tabellen-qualifizieren — der user_id-Filter joint
+        # auf documents (hat AUCH embedding) -> unqualifiziert waere die
+        # Spalte mehrdeutig (AmbiguousColumnError, Benchmark-Fund 2026-07-11).
         from sqlalchemy import literal_column
-        similarity_expr = literal_column(f"(1 - (embedding <=> '{embedding_str}'::vector))")
+        similarity_expr = literal_column(
+            f"(1 - (rag_document_chunks.embedding <=> '{embedding_str}'::vector))"
+        )
 
         query = select(
             RAGDocumentChunk.id,

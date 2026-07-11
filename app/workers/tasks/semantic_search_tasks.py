@@ -281,7 +281,7 @@ def reindex_embeddings_task(
                         await session.execute(
                             sa_text("""
                                 UPDATE documents
-                                SET embedding = :embedding::vector,
+                                SET embedding = CAST(:embedding AS vector),
                                     embedding_updated_at = :updated_at,
                                     embedding_model = :model
                                 WHERE id = :doc_id
