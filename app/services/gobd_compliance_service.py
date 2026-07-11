@@ -696,7 +696,7 @@ class GoBDComplianceService:
         documentation = {
             "meta": {
                 "document_type": "GoBD Verfahrensdokumentation",
-                "version": "1.0",
+                "version": "2026.07",
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "company_id": str(company_id),
                 # WICHTIG: Firmennamen sind nicht PII im Sinne der DSGVO,
@@ -754,15 +754,20 @@ class GoBDComplianceService:
             "name": "Ablage-System OCR",
             "beschreibung": (
                 "Intelligentes Dokumentenmanagementsystem mit OCR-Verarbeitung, "
-                "automatischer Klassifizierung und GoBD-konformer Archivierung."
+                "automatischer Klassifizierung und GoBD-konformer Archivierung. "
+                "Seit dem 01.08.2026 ist Odoo 18 das führende ERP-System; das "
+                "Ablage-System wird als hash-gesicherte qualifizierte Zweitablage "
+                "aller Odoo-Belege und als Erfassungskanal für den Papier- und "
+                "E-Mail-Eingang betrieben."
             ),
             "einsatzzweck": [
                 "Digitalisierung von Eingangsrechnungen und Geschäftskorrespondenz",
-                "Automatische Texterkennung (OCR) mit GPU-Beschleunigung",
+                "Automatische Texterkennung (OCR) mit GPU-Beschleunigung (lokal, kein Cloud-Dienst)",
                 "Klassifizierung und Kategorisierung von Dokumenten",
                 "Revisionssichere Archivierung nach GoBD-Anforderungen",
+                "Vollarchiv-Spiegel aller Odoo-Belege (GoBD-Zweitablage, SaaS-Exit-Ebene)",
+                "Übergabe des Belegeingangs als Entwurfs-Lieferantenrechnung an Odoo",
                 "Aufbewahrungsfristen-Management",
-                "DATEV-Export für Steuerberater",
             ],
             "datenarten": [
                 {"art": "Eingangsrechnungen", "aufbewahrung": "10 Jahre"},
@@ -813,8 +818,17 @@ class GoBDComplianceService:
                 },
                 {
                     "name": "OCR Engine",
-                    "technologie": "DeepSeek-Janus-Pro / GOT-OCR 2.0",
-                    "funktion": "Texterkennung mit GPU-Beschleunigung",
+                    "technologie": "Surya (GPU-Standard) / PaddleOCR (Präzision) / Surya+Docling (CPU-Fallback)",
+                    "funktion": "Lokale Texterkennung mit GPU-Beschleunigung (On-Premises)",
+                },
+                {
+                    "name": "Odoo-Anbindung",
+                    "technologie": "XML-RPC (Odoo External API)",
+                    "funktion": (
+                        "Spiegel-Pull aller Odoo-Belege (30-Minuten-Takt, "
+                        "SHA-256-Verifikation gegen ir.attachment.checksum) und "
+                        "Push von Entwurfs-Lieferantenrechnungen"
+                    ),
                 },
                 {
                     "name": "Frontend",
@@ -832,10 +846,10 @@ class GoBDComplianceService:
                 "AES-256-GCM Verschlüsselung für sensible Daten",
             ],
             "datensicherung": [
-                "Tägliche Datenbank-Backups (PostgreSQL)",
-                "Inkrementelle MinIO-Backups",
-                "30-Tage Backup-Retention",
-                "Verschlüsselte Backup-Speicherung",
+                "restic-Snapshots nach 3-2-1-Prinzip (lokales Repository + client-verschlüsselte Cloud)",
+                "PostgreSQL-Dumps + MinIO-Objektbestand + Konfiguration",
+                "Retention-Policy mit restic forget --prune",
+                "Woechentlicher Integritätscheck, vierteljährliche Restore-Tests",
             ],
         }
 
@@ -867,7 +881,7 @@ class GoBDComplianceService:
                 "schritte": [
                     "1. Dokument aus Queue entnehmen",
                     "2. Vorverarbeitung (Deskew, Binarisierung)",
-                    "3. OCR mit konfigurierten Backend (DeepSeek/GOT-OCR)",
+                    "3. OCR mit konfiguriertem Backend (Surya-GPU/PaddleOCR)",
                     "4. Strukturierte Datenextraktion (Rechnungsnummer, Betrag, etc.)",
                     "5. Confidence-Score Berechnung",
                     "6. Speicherung der extrahierten Daten",
@@ -907,17 +921,39 @@ class GoBDComplianceService:
             },
             {
                 "prozess_id": "P005",
-                "name": "DATEV-Export",
-                "beschreibung": "Export von Buchungsdaten für Steuerberater",
+                "name": "Odoo-Beleg-Spiegel (GoBD-Zweitablage)",
+                "beschreibung": (
+                    "Automatische Spiegelung aller in Odoo erzeugten oder "
+                    "geänderten Belege in das Ablage-System. Odoo ist seit "
+                    "01.08.2026 das führende System; die Buchführungsdaten für "
+                    "die Steuerberatung (DATEV) kommen aus Odoo."
+                ),
                 "schritte": [
-                    "1. Zeitraum und Dokumenttypen auswählen",
-                    "2. Buchungsstapel gemäß DATEV-Format (Version 700) generieren",
-                    "3. Vendor-Mapping anwenden (Lieferant -> Konto)",
-                    "4. CSV-Export erstellen",
-                    "5. Export in Historie protokollieren",
-                    "6. Download bereitstellen",
+                    "1. Inkrementeller Abruf per XML-RPC alle 30 Minuten (Cursor auf Odoo-Änderungsdatum, 5-Minuten-Overlap)",
+                    "2. Download der Beleg-Anhänge und SHA-256-Verifikation gegen ir.attachment.checksum",
+                    "3. Dreistufige Duplikatprüfung (Odoo-ID-Mapping, Datei-Hash, nie überschreiben)",
+                    "4. GoBD-Archivierung mit Hash-Signatur und Audit-Chain-Eintrag",
+                    "5. Monitoring des Spiegel-Status (Stillstands-Alarm via Slack)",
                 ],
-                "verantwortlich": "Benutzer (manuell)",
+                "verantwortlich": "System (automatisch)",
+            },
+            {
+                "prozess_id": "P007",
+                "name": "Beleg-Push an Odoo (Entwurfs-Lieferantenrechnung)",
+                "beschreibung": (
+                    "Übergabe des im Ablage-System erfassten Belegeingangs "
+                    "(Scan/E-Mail) als Entwurfs-Lieferantenrechnung an Odoo. "
+                    "Buchung, Zahlung und Mahnwesen erfolgen in Odoo."
+                ),
+                "schritte": [
+                    "1. Beleg aus Scanner-Hotfolder oder IMAP-Rechnungsadresse erfassen",
+                    "2. Lokale OCR-Verarbeitung und Datenextraktion",
+                    "3. Archivierung im GoBD-Archiv (Archiv immer zuerst)",
+                    "4. Partner-Matching-Kaskade (Mapping, USt-Id, IBAN, Lieferantennummer, Name); nur eindeutige Treffer",
+                    "5. Anlage der Entwurfs-Lieferantenrechnung in Odoo inkl. PDF-Hauptanhang",
+                    "6. Ohne eindeutige Zuordnung: Aufgabe in der Review-Queue (manuelle Nachbearbeitung)",
+                ],
+                "verantwortlich": "System (automatisch) / Büro-Team (Review-Queue)",
             },
             {
                 "prozess_id": "P006",
@@ -974,7 +1010,7 @@ class GoBDComplianceService:
                         "Benutzer verwalten",
                         "System-Einstellungen ändern",
                         "Aufbewahrungsfristen konfigurieren",
-                        "DATEV-Export",
+                        "Odoo-Anbindung verwalten (Spiegel/Push, ERP-Verbindungen)",
                         "Steuerberater-Zugang verwalten",
                         "Compliance-Berichte abrufen",
                     ],
@@ -1002,7 +1038,7 @@ class GoBDComplianceService:
                     "beschreibung": "Steuerberater mit temporaerem Lesezugriff",
                     "berechtigungen": [
                         "Freigegebene Dokumente lesen",
-                        "DATEV-Export (eingeschraenkt)",
+                        "Export freigegebener Dokumente (Buchführungsdaten/DATEV laufen über Odoo)",
                         "Keine Änderungen möglich",
                         "Zeitlich und inhaltlich begrenzt",
                     ],

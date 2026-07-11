@@ -4,10 +4,14 @@ Automatische Generierung und Versionierung der GoBD-Verfahrensdokumentation.
 
 Die Verfahrensdokumentation beschreibt:
 1. Allgemeine Beschreibung des Systems
-2. Anwenderdokumentation (Benutzerhandbuch)
-3. Technische Systemdokumentation
-4. Betriebsdokumentation
-5. Internes Kontrollsystem (IKS)
+2. Systemlandschaft und Rollenverteilung (Stand 08/2026: Odoo führend,
+   Ablage-System = hash-gesicherte qualifizierte Zweitablage + Erfassungskanal)
+3. Anwenderdokumentation (Benutzerhandbuch)
+4. Technische Systemdokumentation (inkl. Odoo-Spiegel/-Push)
+5. Betriebsdokumentation
+6. Internes Kontrollsystem (IKS)
+7. Archivierungskonzept
+8. Aufbewahrungsfristen (mit führendem System je Kategorie)
 
 Erfuellt GoBD-Anforderungen:
 - Automatische Versionierung bei Systemupdates
@@ -35,7 +39,9 @@ logger = structlog.get_logger(__name__)
 
 
 # Aktuelle System-Version (wird bei Updates inkrementiert)
-CURRENT_SYSTEM_VERSION = "1.0.0"
+# 2.0.0: Odoo-Umstellung 08/2026 — Odoo 18 ist führendes ERP, das Ablage-System
+# ist hash-gesicherte qualifizierte Zweitablage + Erfassungskanal (Revision 2026.07).
+CURRENT_SYSTEM_VERSION = "2.0.0"
 
 
 class ProcedureDocService:
@@ -343,6 +349,7 @@ class ProcedureDocService:
             },
             "sections": [
                 self._section_allgemeine_beschreibung(),
+                self._section_systemlandschaft(),
                 self._section_anwenderdokumentation(),
                 self._section_technische_dokumentation(),
                 self._section_betriebsdokumentation(),
@@ -359,11 +366,18 @@ class ProcedureDocService:
             "content": {
                 "system_name": "Ablage-System OCR",
                 "zweck": (
-                    "Das Ablage-System OCR ist eine Enterprise-Plattform zur "
-                    "automatisierten Verarbeitung, Archivierung und Verwaltung von "
-                    "Geschäftsdokumenten. Das System erfuellt die Anforderungen der "
-                    "GoBD (Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung "
-                    "von Buechern, Aufzeichnungen und Unterlagen in elektronischer Form)."
+                    "Das Ablage-System OCR ist eine Plattform zur automatisierten "
+                    "Verarbeitung, Archivierung und Verwaltung von Geschäftsdokumenten. "
+                    "Seit dem 01.08.2026 ist Odoo 18 das führende ERP-System für die "
+                    "Geschäftsprozesse und die Aufbewahrung der dort erzeugten Belege; "
+                    "das Ablage-System wird daneben als hash-gesicherte qualifizierte "
+                    "Zweitablage (vollständiger Spiegel aller Odoo-Belege), als "
+                    "Erfassungskanal für den Papier- und E-Mail-Eingang (lokale OCR, "
+                    "Übergabe als Entwurfs-Lieferantenrechnung an Odoo) und als "
+                    "Aufbewahrungsort für Nicht-Odoo-Dokumente betrieben. Das System "
+                    "erfuellt die Anforderungen der GoBD (Grundsätze zur "
+                    "ordnungsmaessigen Führung und Aufbewahrung von Buechern, "
+                    "Aufzeichnungen und Unterlagen in elektronischer Form)."
                 ),
                 "funktionen": [
                     "Automatische Texterkennung (OCR) mit mehreren GPU-beschleunigten Backends",
@@ -382,10 +396,126 @@ class ProcedureDocService:
             }
         }
 
-    def _section_anwenderdokumentation(self) -> dict:
-        """Kapitel 2: Anwenderdokumentation."""
+    def _section_systemlandschaft(self) -> dict:
+        """Kapitel 2: Systemlandschaft und Rollenverteilung (Stand 08/2026).
+
+        Inhaltlich synchron zur Markdown-Fassung in
+        `compliance/procedure_documentation_service._generate_system_landscape_section`
+        (Revision 2026.07) — beide beschreiben dieselbe Odoo-Rollenverteilung.
+        """
         return {
-            "title": "2. Anwenderdokumentation",
+            "title": "2. Systemlandschaft und Rollenverteilung (Stand 08/2026)",
+            "content": {
+                "beteiligte_systeme": [
+                    {
+                        "system": "Odoo 18 (ERP)",
+                        "betriebsform": "SaaS",
+                        "rolle": (
+                            "Führendes System: Verkauf, Einkauf, Fakturierung, "
+                            "offene Posten, Bankabgleich, Mahnwesen, E-Rechnung, "
+                            "DATEV-Übergabe; Aufbewahrung der in Odoo erzeugten "
+                            "Belege inkl. ZUGFeRD-Originale"
+                        ),
+                    },
+                    {
+                        "system": "Ablage-System (dieses DMS)",
+                        "betriebsform": "On-Premises",
+                        "rolle": (
+                            "Hash-gesicherte qualifizierte Zweitablage aller "
+                            "Odoo-Belege; Erfassungskanal für Papier- und "
+                            "E-Mail-Eingang; Aufbewahrungsort für "
+                            "Nicht-Odoo-Dokumente und private Unterlagen"
+                        ),
+                    },
+                    {
+                        "system": "Lexware (Altsystem)",
+                        "betriebsform": "Lokal",
+                        "rolle": (
+                            "Alt-Archiv der Belege bis zur Umstellung; "
+                            "ausschließlich Lesezugriff bis zum Auslauf"
+                        ),
+                    },
+                ],
+                "datenzugriff_betriebspruefung": (
+                    "Die Auskunftserteilung bei Betriebsprüfungen (Datenzugriff "
+                    "Z1–Z3) erfolgt über Odoo bzw. den DATEV-Bestand der "
+                    "Steuerberatung. Das Archiv des Ablage-Systems dient als "
+                    "Recherche-, Sicherungs- und SaaS-Exit-Ebene (vollständige "
+                    "lokale Kopie aller Belege)."
+                ),
+                "eingefrorene_module": (
+                    "Die früher im Ablage-System vorgesehenen ERP-Doppelfunktionen "
+                    "(u. a. Mahnwesen, Banking, DATEV-Export, "
+                    "E-Rechnungs-Erzeugung) sind eingefroren und deaktiviert "
+                    "(Modul-Registry; deaktivierte Endpunkte liefern HTTP 404)."
+                ),
+                "spiegel_pull_odoo_zu_ablage": {
+                    "beschreibung": (
+                        "Alle in Odoo erzeugten oder geänderten Belege werden "
+                        "automatisch in das Ablage-System gespiegelt und dort "
+                        "GoBD-konform archiviert."
+                    ),
+                    "abrufintervall": (
+                        "alle 30 Minuten (Celery-Beat, inkrementeller Cursor auf "
+                        "dem Odoo-Änderungsdatum)"
+                    ),
+                    "hash_verifikation": (
+                        "SHA-256-Prüfung jedes Anhangs gegen die von Odoo "
+                        "gelieferte Prüfsumme (ir.attachment.checksum)"
+                    ),
+                    "idempotenz": (
+                        "Dreistufige Duplikatprüfung (externe Odoo-ID, "
+                        "Datei-Hash, nie überschreiben) — es entstehen keine "
+                        "Duplikate"
+                    ),
+                    "archivierung": (
+                        "Aufnahme in die Merkle-Audit-Chain, optional "
+                        "qualifizierter Zeitstempel nach RFC 3161 (TSA)"
+                    ),
+                },
+                "beleg_push_ablage_zu_odoo": {
+                    "beschreibung": (
+                        "Der Papier- und E-Mail-Eingang wird im Ablage-System "
+                        "erfasst und als Entwurfs-Lieferantenrechnung an Odoo "
+                        "übergeben."
+                    ),
+                    "schritte": [
+                        "Erfassung: Scanner-Hotfolder (Scan-to-Ablage) bzw. zentrale Rechnungs-Mailadresse (IMAP-Import)",
+                        "Verarbeitung: lokale OCR-Texterkennung (On-Premises, kein Cloud-Dienst), Klassifizierung, Datenextraktion",
+                        "Archivierung: automatischer GoBD-Archivierungslauf (Karenzzeit: 3 Tage für Korrekturen)",
+                        "Übergabe: Entwurfs-Lieferantenrechnung in Odoo mit Partner-Matching; nur eindeutige Zuordnungen werden übertragen",
+                        "Review-Queue: nicht eindeutig zuordenbare Rechnungen werden als Aufgabe manuell nachbearbeitet",
+                        "Idempotenz: Duplikatprüfung verhindert doppelte Rechnungsentwürfe in Odoo",
+                    ],
+                },
+                "verantwortlichkeiten": [
+                    {
+                        "aufgabe": "Systemadministration, Benutzerverwaltung, Freigaben",
+                        "verantwortlich": "Administrator (Systemverantwortlicher)",
+                    },
+                    {
+                        "aufgabe": "Belegerfassung (Scan/E-Mail), Bearbeitung der Review-Queue",
+                        "verantwortlich": "Büro-Team (Sachbearbeitung)",
+                    },
+                    {
+                        "aufgabe": "Buchführung, Jahresabschluss, DATEV-Übergabe",
+                        "verantwortlich": "Externe Steuerberatung (über Odoo/DATEV)",
+                    },
+                ],
+                "aenderungsvermerk": (
+                    "Revision 2026.07 (Juli 2026, Odoo-Umstellung): Kapitel "
+                    "Systemlandschaft neu aufgenommen; Odoo 18 ab 01.08.2026 "
+                    "führendes System; Ablage-System als hash-gesicherte "
+                    "qualifizierte Zweitablage und Erfassungskanal; "
+                    "ERP-Doppelfunktionen eingefroren."
+                ),
+            },
+        }
+
+    def _section_anwenderdokumentation(self) -> dict:
+        """Kapitel 3: Anwenderdokumentation."""
+        return {
+            "title": "3. Anwenderdokumentation",
             "content": {
                 "benutzerrollen": [
                     {
@@ -425,6 +555,16 @@ class ProcedureDocService:
                         ]
                     },
                     {
+                        "name": "Beleg-Eingang (Scan/E-Mail) mit Odoo-Übergabe",
+                        "schritte": [
+                            "Papierbeleg über Scanner-Hotfolder bzw. E-Rechnung/PDF über die zentrale Rechnungs-Mailadresse (IMAP) erfassen",
+                            "Lokale OCR-Texterkennung, Klassifizierung und Datenextraktion (On-Premises)",
+                            "Automatische GoBD-Archivierung nach Karenzzeit von 3 Tagen (täglicher Auto-Archivierungslauf)",
+                            "Anlage einer Entwurfs-Lieferantenrechnung in Odoo (Partner-Matching, nur eindeutige Treffer)",
+                            "Ohne eindeutige Zuordnung: Aufgabe in der Review-Queue zur manuellen Nachbearbeitung",
+                        ]
+                    },
+                    {
                         "name": "Archivierung",
                         "schritte": [
                             "Dokument zur Archivierung auswählen",
@@ -439,9 +579,9 @@ class ProcedureDocService:
         }
 
     def _section_technische_dokumentation(self) -> dict:
-        """Kapitel 3: Technische Systemdokumentation."""
+        """Kapitel 4: Technische Systemdokumentation."""
         return {
-            "title": "3. Technische Systemdokumentation",
+            "title": "4. Technische Systemdokumentation",
             "content": {
                 "architektur": {
                     "backend": "FastAPI (Python 3.11+)",
@@ -452,24 +592,43 @@ class ProcedureDocService:
                 },
                 "ocr_backends": [
                     {
-                        "name": "DeepSeek-Janus-Pro",
-                        "typ": "Multimodal Vision-Language Model",
-                        "vram": "12GB",
-                        "stärken": "Beste Umlaut-Genauigkeit, Fraktur, komplexe Layouts",
+                        "name": "Surya (GPU)",
+                        "typ": "Layout-Analyse + Texterkennung",
+                        "vram": "ca. 4GB",
+                        "einsatz": "Produktiver Standard (Realmessung Dez 2025: korrekte IBAN/BIC, keine Halluzinationen)",
                     },
                     {
-                        "name": "GOT-OCR 2.0",
-                        "typ": "Transformer-basiert",
-                        "vram": "10GB",
-                        "stärken": "Tabellen, Formeln, schnelle Verarbeitung",
+                        "name": "PaddleOCR",
+                        "typ": "CNN-basiert (Docker-Container)",
+                        "vram": "GPU optional",
+                        "einsatz": "Präzisions-Backend für 100% Umlaut-Genauigkeit",
                     },
                     {
-                        "name": "Surya + Docling",
+                        "name": "Surya + Docling (CPU)",
                         "typ": "Layout-Analyse Pipeline",
                         "vram": "0GB (CPU)",
-                        "stärken": "CPU-Fallback, Layout-Erkennung",
+                        "einsatz": "CPU-Fallback bei GPU-Ausfall",
                     },
                 ],
+                "odoo_integration": {
+                    "protokoll": "XML-RPC (Odoo External API), API-Key-Authentifizierung",
+                    "spiegel": (
+                        "Inkrementeller Pull aller Odoo-Belege alle 30 Minuten "
+                        "(Cursor auf write_date, 5-Minuten-Overlap); "
+                        "SHA-256-Verifikation gegen ir.attachment.checksum; "
+                        "GoBD-Einbuchung jedes gespiegelten Belegs"
+                    ),
+                    "push": (
+                        "Anlage von Entwurfs-Lieferantenrechnungen (account.move, "
+                        "move_type=in_invoice) inklusive PDF-Hauptanhang; "
+                        "Partner-Matching-Kaskade, nur eindeutige Treffer"
+                    ),
+                    "mandanten_kontext": (
+                        "Odoo-Company-Kontext (allowed_company_ids) je Verbindung; "
+                        "Rate-Limit und Fehler-Backoff über die "
+                        "Verbindungs-Konfiguration"
+                    ),
+                },
                 "sicherheit": {
                     "authentifizierung": "JWT mit httpOnly Cookies",
                     "passwort_hashing": "bcrypt (Cost Factor 12)",
@@ -486,14 +645,21 @@ class ProcedureDocService:
         }
 
     def _section_betriebsdokumentation(self) -> dict:
-        """Kapitel 4: Betriebsdokumentation."""
+        """Kapitel 5: Betriebsdokumentation."""
         return {
-            "title": "4. Betriebsdokumentation",
+            "title": "5. Betriebsdokumentation",
             "content": {
                 "backup": {
-                    "strategie": "Tägliche vollständige Backups",
-                    "aufbewahrung": "30 Tage lokal, 90 Tage remote",
-                    "komponenten": ["PostgreSQL", "Redis", "MinIO", "Konfiguration"],
+                    "strategie": (
+                        "restic-Snapshots nach 3-2-1-Prinzip: lokales Repository "
+                        "(NAS/USB) + client-verschlüsseltes Cloud-Repository"
+                    ),
+                    "aufbewahrung": (
+                        "Retention-Policy im Backup-Skript (restic forget --prune); "
+                        "woechentlicher restic-Integritätscheck; "
+                        "vierteljährliche Restore-Tests (DR-Runbook)"
+                    ),
+                    "komponenten": ["PostgreSQL (pg_dump)", "MinIO-Objektbestand", "Konfiguration (.env)"],
                 },
                 "monitoring": {
                     "metriken": "Prometheus",
@@ -510,9 +676,9 @@ class ProcedureDocService:
         }
 
     def _section_iks(self) -> dict:
-        """Kapitel 5: Internes Kontrollsystem."""
+        """Kapitel 6: Internes Kontrollsystem."""
         return {
-            "title": "5. Internes Kontrollsystem (IKS)",
+            "title": "6. Internes Kontrollsystem (IKS)",
             "content": {
                 "zugriffskontrollen": [
                     "Rollenbasierte Zugriffskontrolle (RBAC)",
@@ -536,9 +702,9 @@ class ProcedureDocService:
         }
 
     def _section_archivierung(self) -> dict:
-        """Kapitel 6: Archivierungskonzept."""
+        """Kapitel 7: Archivierungskonzept."""
         return {
-            "title": "6. Archivierungskonzept",
+            "title": "7. Archivierungskonzept",
             "content": {
                 "grundsätze": {
                     "nachvollziehbarkeit": (
@@ -569,45 +735,73 @@ class ProcedureDocService:
         }
 
     def _section_aufbewahrungsfristen(self) -> dict:
-        """Kapitel 7: Aufbewahrungsfristen."""
+        """Kapitel 8: Aufbewahrungsfristen."""
         return {
-            "title": "7. Aufbewahrungsfristen",
+            "title": "8. Aufbewahrungsfristen",
             "content": {
+                "hinweis_fuehrendes_system": (
+                    "Für die in Odoo erzeugten Belege (Ein-/Ausgangsrechnungen "
+                    "inkl. ZUGFeRD-Originale) ist Odoo das führende "
+                    "Aufbewahrungssystem; das Ablage-System hält den "
+                    "hash-gesicherten Spiegel. Für Papier-/E-Mail-Eingang, "
+                    "Verträge, Personal, Alt-Archiv (Lexware/WA-WE 2008–2026) "
+                    "und private Unterlagen ist das Ablage-System das führende "
+                    "Aufbewahrungssystem."
+                ),
                 "kategorien": [
                     {
-                        "kategorie": "Rechnungen",
+                        "kategorie": "Rechnungen (Odoo-Belege)",
+                        "fuehrendes_system": "Odoo (Ablage-System = Spiegel)",
+                        "frist_jahre": 10,
+                        "rechtsgrundlage": "§147 AO, §14b UStG",
+                    },
+                    {
+                        "kategorie": "Rechnungen (Papier-/E-Mail-Eingang)",
+                        "fuehrendes_system": "Ablage-System",
                         "frist_jahre": 10,
                         "rechtsgrundlage": "§147 AO, §14b UStG",
                     },
                     {
                         "kategorie": "Verträge",
+                        "fuehrendes_system": "Ablage-System",
                         "frist_jahre": 10,
                         "rechtsgrundlage": "§147 AO, §257 HGB",
                     },
                     {
                         "kategorie": "Geschäftsbriefe",
+                        "fuehrendes_system": "Ablage-System",
                         "frist_jahre": 6,
                         "rechtsgrundlage": "§257 HGB",
                     },
                     {
                         "kategorie": "Buchungsbelege",
+                        "fuehrendes_system": "Ablage-System",
                         "frist_jahre": 10,
                         "rechtsgrundlage": "§147 AO",
                     },
                     {
                         "kategorie": "Jahresabschluesse",
+                        "fuehrendes_system": "Odoo/DATEV (Steuerberatung)",
                         "frist_jahre": 10,
                         "rechtsgrundlage": "§257 HGB",
                     },
                     {
                         "kategorie": "Steuerbelege",
+                        "fuehrendes_system": "Ablage-System",
                         "frist_jahre": 10,
                         "rechtsgrundlage": "§147 AO",
                     },
                     {
                         "kategorie": "Personalakten",
+                        "fuehrendes_system": "Ablage-System",
                         "frist_jahre": 10,
                         "rechtsgrundlage": "§257 HGB",
+                    },
+                    {
+                        "kategorie": "Alt-Archiv (Lexware / WA-WE 2008–2026)",
+                        "fuehrendes_system": "Ablage-System",
+                        "frist_jahre": 10,
+                        "rechtsgrundlage": "§147 AO (bis Fristablauf der Belegjahre)",
                     },
                 ],
                 "automatisierung": {
