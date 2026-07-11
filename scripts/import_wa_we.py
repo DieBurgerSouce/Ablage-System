@@ -442,10 +442,8 @@ async def _import_datei(
 
 async def _execute_import(scan: ScanErgebnis, company_arg: Optional[str]) -> Dict[str, int]:
     """Echter Lauf: Session, Company/Owner, Import pro Datei mit Fehler-Isolation."""
-    from sqlalchemy import text
-
     import app.db.all_models  # noqa: F401  # vollstaendigen ORM-Graphen registrieren
-    from app.db.session import get_async_session_context
+    from app.db.session import get_worker_session_context
     from app.services.compliance.archive_service import GoBDArchiveService
     from app.services.storage_service import get_storage_service
 
@@ -453,13 +451,12 @@ async def _execute_import(scan: ScanErgebnis, company_arg: Optional[str]) -> Dic
     storage = get_storage_service()
     archive_service = GoBDArchiveService()
 
-    async with get_async_session_context() as session:
-        # Erst-Setup-/CLI-Kontext ohne Company-Session-Var -> RLS-Bypass
-        # (gleiches Muster wie scripts/create_admin.py / seed_e2e.py).
-        await session.execute(
-            text("SELECT set_config('app.rls_bypass', 'true', true)")
-        )
-
+    # RLS-Bypass SESSION-level (get_worker_session_context, F-16-Muster).
+    # WICHTIG: Das fruehere transaktions-lokale set_config(..., true) verdampfte
+    # beim Commit-pro-Datei nach Datei 1 -> Dedupe-Reads sahen 0 Zeilen
+    # (Zweitlauf haette dupliziert) und ab Migration 274 waeren die INSERTs
+    # der Dateien 2..n abgelehnt worden. Systemischer CLI-Import = Bypass ok.
+    async with get_worker_session_context() as session:
         company = await _resolve_company(session, company_arg)
         owner = await _resolve_owner(session)
         print(f"[import_wa_we] Ziel-Company: '{company.name}' ({company.id})")
@@ -473,11 +470,8 @@ async def _execute_import(scan: ScanErgebnis, company_arg: Optional[str]) -> Dic
                 zaehler[ergebnis] += 1
             except Exception as exc:
                 await session.rollback()
-                # RLS-Bypass gilt transaktionslokal (set_config(..., true))
-                # und ist nach dem Rollback weg -> neu setzen.
-                await session.execute(
-                    text("SELECT set_config('app.rls_bypass', 'true', true)")
-                )
+                # Bypass ist session-level (get_worker_session_context) und
+                # ueberlebt Commit UND Rollback — kein Re-Arm mehr noetig.
                 zaehler["fehler"] += 1
                 print(
                     f"[import_wa_we]   FEHLER: {eintrag.path.name} — "

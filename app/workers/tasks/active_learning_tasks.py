@@ -69,13 +69,15 @@ def populate_active_learning_queue(
         from app.services.active_learning.active_learning_service import (
             ActiveLearningService,
         )
-        from app.db.session import get_async_session_context
+        # Worker-Kontext (RLS-Bypass, F-16-Muster): der kontextlose Weg sah
+        # nach Migration 273 z.B. 0 companies -> Task tat still nichts.
+        from app.db.session import get_worker_session_context
         from app.db.models import Company
         from sqlalchemy import select
         from uuid import UUID
 
         async def populate() -> Dict[str, int]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 total_added = 0
                 companies_processed = 0
 
@@ -184,13 +186,15 @@ def calculate_learning_metrics(
         from app.services.active_learning.active_learning_service import (
             ActiveLearningService,
         )
-        from app.db.session import get_async_session_context
+        # Worker-Kontext (RLS-Bypass, F-16-Muster): der kontextlose Weg sah
+        # nach Migration 273 z.B. 0 companies -> Task tat still nichts.
+        from app.db.session import get_worker_session_context
         from app.db.models import Company
         from sqlalchemy import select
         from uuid import UUID
 
         async def calculate() -> Dict[str, float]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 total_reviewed = 0.0
                 total_corrections = 0.0
                 total_prevented = 0.0
@@ -295,13 +299,15 @@ def train_from_corrections(
     )
 
     try:
-        from app.db.session import get_async_session_context
+        # Worker-Kontext (RLS-Bypass, F-16-Muster): der kontextlose Weg sah
+        # nach Migration 273 z.B. 0 companies -> Task tat still nichts.
+        from app.db.session import get_worker_session_context
         from app.db.models_active_learning import ActiveLearningQueue
         from sqlalchemy import select, and_, update, func
         from uuid import UUID, uuid4
 
         async def process_corrections() -> Dict[str, int]:
-            async with get_async_session_context() as session:
+            async with get_worker_session_context() as session:
                 # Finde reviewed Items ohne Training-Batch
                 query = (
                     select(ActiveLearningQueue)

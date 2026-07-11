@@ -127,3 +127,69 @@ async def test_f15_dod8_no_context_read_is_zero_once_migrated():
         await s.execute(text("RESET ALL"))
         n = (await s.execute(text("SELECT count(*) FROM documents"))).scalar()
     assert n == 0, "DoD-8: App-Rolle ohne Kontext muss 0 documents-Zeilen lesen"
+
+
+# =============================================================================
+# Migration 274: documents-INSERT-Matrix (skippt bis 274 angewandt ist)
+# =============================================================================
+
+
+async def _alembic_version() -> str:
+    async with get_worker_session_context() as s:
+        return str(
+            (await s.execute(text("SELECT version_num FROM alembic_version"))).scalar()
+        )
+
+
+async def test_274_insert_matrix_kontextlos_und_nullcompany_abgelehnt():
+    """Nach 274: kontextloser INSERT + NULL-company-INSERT werden abgelehnt;
+    Bypass- und Company-Kontext-INSERT funktionieren (jeweils mit Rollback,
+    hinterlaesst keine Zeilen)."""
+    if await _role_bypasses_rls():
+        pytest.skip("Test-DB-Rolle hat BYPASSRLS/Superuser - RLS greift nicht")
+    if (await _alembic_version()) < "274":
+        pytest.skip("Migration 274 noch nicht angewandt (GATE)")
+
+    company_id = await _sample_company_id()
+    if company_id is None:
+        pytest.skip("keine documents-Zeile mit company_id vorhanden")
+
+    insert_sql = text(
+        "INSERT INTO documents (id, filename, original_filename, file_path, "
+        "file_size, mime_type, checksum, status, company_id, created_at, updated_at) "
+        "VALUES (gen_random_uuid(), 'rls274.pdf', 'rls274.pdf', 'x/rls274', "
+        "1, 'application/pdf', md5(random()::text), 'uploaded', :cid, now(), now())"
+    )
+
+    # 1) kontextlos -> abgelehnt (RowLevelSecurity-Fehler)
+    async with get_async_session_context() as s:
+        with pytest.raises(Exception) as excinfo:
+            await s.execute(insert_sql, {"cid": str(company_id)})
+        assert "row-level security" in str(excinfo.value).lower()
+        await s.rollback()
+
+    # 2) NULL-company MIT Company-Kontext -> abgelehnt
+    async with get_worker_session_context(company_id=company_id) as s:
+        with pytest.raises(Exception) as excinfo:
+            await s.execute(
+                text(
+                    "INSERT INTO documents (id, filename, original_filename, "
+                    "file_path, file_size, mime_type, checksum, status, "
+                    "company_id, created_at, updated_at) VALUES "
+                    "(gen_random_uuid(), 'rls274n.pdf', 'rls274n.pdf', 'x/rls274n', "
+                    "1, 'application/pdf', md5(random()::text), 'uploaded', "
+                    "NULL, now(), now())"
+                )
+            )
+        assert "row-level security" in str(excinfo.value).lower()
+        await s.rollback()
+
+    # 3) Worker-Bypass -> erlaubt (Rollback statt Commit)
+    async with get_worker_session_context() as s:
+        await s.execute(insert_sql, {"cid": str(company_id)})
+        await s.rollback()
+
+    # 4) Company-Kontext, eigene Company -> erlaubt (Rollback statt Commit)
+    async with get_worker_session_context(company_id=company_id) as s:
+        await s.execute(insert_sql, {"cid": str(company_id)})
+        await s.rollback()

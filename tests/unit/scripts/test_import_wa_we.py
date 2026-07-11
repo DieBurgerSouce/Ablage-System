@@ -184,3 +184,18 @@ class TestScanSourceDirs:
         ergebnis = scan_source_dirs([str(tmp_path / "gibt_es_nicht")])
         assert ergebnis.importierbar == []
         assert "Quellordner fehlt" in capsys.readouterr().out
+
+
+def test_execute_pfad_nutzt_session_level_bypass():
+    """Regressionswache (274-Vorbedingung, 2026-07-11): _execute_import muss
+    get_worker_session_context (SESSION-level RLS-Bypass) nutzen.
+
+    Das fruehere transaktions-lokale set_config(..., true) verdampfte beim
+    Commit-pro-Datei nach Datei 1 -> Dedupe-Reads sahen 0 Zeilen (Zweitlauf
+    haette ab Datei 2 dupliziert + doppelt GoBD-archiviert) und ab Migration
+    274 waeren die INSERTs der Dateien 2..n abgelehnt worden.
+    """
+    source = Path(_SCRIPTS_DIR, "import_wa_we.py").read_text(encoding="utf-8")
+    assert "get_worker_session_context" in source
+    assert "get_async_session_context" not in source
+    assert "set_config('app.rls_bypass'" not in source
