@@ -13,7 +13,11 @@
 | **Fix** | `priority_steps` + `queue_order_strategy` entfernt (ohne `priority_steps` → kombu-Default `[0]` → `_q_for_pri` liefert IMMER Basis-Queue). **`sep=':'` behalten** — serialisiert AUCH `_kombu.binding.*`; Entfernen bricht Bindings (`ValueError: not enough values to unpack` im `deliver→lookup`, Worker crasht bei jedem Publish). Verseuchte Bindings gelöscht + neu aufgebaut. Details: Claude-Memory `ablage-celery-priority-subqueue-trap`. |
 | **Verifiziert** | Normaler priority-9-Upload → `ocr_high` → solo-Worker → Surya-GPU-OCR → `completed` (echter Text, Umlaute) → Embedding(1024-dim)+RAG-Chunking → volltext-durchsuchbar. 0 `pending`, alle Container healthy. |
 
-### 🟡 Orphan-Queue `monitoring` akkumuliert — OFFEN (Scope-Entscheidung Ben, NEU 2026-07-09)
+### 🟢 Orphan-Queue `monitoring` — GELÖST (Review F-12, verifiziert 2026-07-11)
+
+> worker-cpu konsumiert `monitoring` seit dem Deep-Review-Fix F-12 (`docker-compose.yml` `-Q …,monitoring`); 207 gestaute Messages abgearbeitet. Live-verifiziert 11.07. via `celery inspect active_queues` (monitoring in der Konsumentenliste). Die 3 predictive-Tasks LAUFEN damit erstmals — F-20 (Alarm-Dedupe je source+alert_type) fängt den In-Memory-Wachstums-Vorbug. Ursprünglicher Befund darunter als Historie.
+
+### ~~🟡 Orphan-Queue `monitoring` akkumuliert — OFFEN (Scope-Entscheidung Ben, NEU 2026-07-09)~~
 
 > Gleiche Fehlerklasse wie oben, aber **pre-existierend** (nicht durch den OCR-Fix eingeführt — die Tasks hatten nie einen Consumer). Nach dem OCR-Fix landen sie statt in `monitoring:N` in der Basis-Queue `monitoring`, die weiterhin **kein Worker abonniert** → wächst langsam unbegrenzt.
 
