@@ -19,6 +19,7 @@ from celery import shared_task
 from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 from app.db.session import get_worker_session_context
@@ -29,6 +30,7 @@ from app.db.models import (
     ERPEntityMapping,
     ERPSyncStatus,
     ERPConflictStatus,
+    OdooSyncStatus,
 )
 from app.services.erp.base_connector import (
     ERPConnectionConfig,
@@ -49,6 +51,55 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 
+async def _resolve_connection_odoo_company_id(
+    db: AsyncSession, connection_id: UUID
+) -> Optional[int]:
+    """Loest die Odoo-Company-ID fuer eine Connection auf (AP-1, Runbook).
+
+    Prioritaet wie OdooMirrorService._resolve_odoo_company_id:
+    per-Connection-Wert in OdooSyncStatus.sync_state["odoo_company_id"]
+    (mirror_account_move-Zeile, Admin-pflegbar) VOR dem globalen Setting
+    ODOO_MIRROR_COMPANY_ID (Fallback fuers Ein-Verbindungs-Setup).
+    Unbrauchbare Werte werden verworfen (Warnung), dann greift der Fallback.
+    """
+    # Lazy-Import der Konstante: vermeidet Import-Zyklus services <-> workers
+    from app.services.erp.odoo_mirror_service import MIRROR_DATA_TYPE
+
+    result = await db.execute(
+        select(OdooSyncStatus).where(
+            and_(
+                OdooSyncStatus.connection_id == connection_id,
+                OdooSyncStatus.data_type == MIRROR_DATA_TYPE,
+            )
+        )
+    )
+    sync_status = result.scalar_one_or_none()
+
+    value: Optional[Any] = None
+    if sync_status is not None:
+        value = dict(sync_status.sync_state or {}).get("odoo_company_id")
+    if value is not None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            logger.warning(
+                "odoo_company_id_invalid_in_sync_state",
+                connection_id=str(connection_id),
+                value=str(value),
+            )
+
+    fallback = settings.ODOO_MIRROR_COMPANY_ID
+    if fallback is None:
+        return None
+    try:
+        return int(fallback)
+    except (TypeError, ValueError):
+        logger.warning(
+            "odoo_mirror_company_id_setting_invalid", value=str(fallback)
+        )
+        return None
+
+
 async def get_connection_config(db: AsyncSession, connection_id: UUID) -> Optional[ERPConnectionConfig]:
     """Laedt ERP-Verbindungskonfiguration aus der Datenbank."""
     result = await db.execute(
@@ -58,6 +109,12 @@ async def get_connection_config(db: AsyncSession, connection_id: UUID) -> Option
 
     if not connection:
         return None
+
+    # AP-1 (P1): Odoo-Company-Context gehoert in JEDE Config — sonst laufen
+    # find_partner/create_vendor_bill_draft im Push firmenuebergreifend
+    # (Company 1 "ALT-KOPIE"). Der Mirror ueberschreibt den Wert weiterhin
+    # mit seiner eigenen Aufloesung (identische Quelle, gleicher Wert).
+    odoo_company_id = await _resolve_connection_odoo_company_id(db, connection_id)
 
     # Decrypt API key mit AES-256-GCM (Connection-ID als AAD)
     api_key: Optional[str] = None
@@ -93,6 +150,7 @@ async def get_connection_config(db: AsyncSession, connection_id: UUID) -> Option
         database=connection.database_name or "",
         username=connection.username,
         api_key=api_key,
+        odoo_company_id=odoo_company_id,
         sync_direction=ERPSyncDirection(connection.sync_direction),
         sync_interval_minutes=connection.sync_interval_minutes,
         enabled_entities=[ERPEntity(e) for e in connection.enabled_entities],
