@@ -1,4 +1,10 @@
-$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNDRjZjA5NS0wMmU4LTQ1YjEtYjcwMC02NGM2NWVkZDdkYzAiLCJlbWFpbCI6ImFkbWluQGxvY2FsaG9zdC5jb20iLCJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjoxNzY4MDIyMzYzLCJpYXQiOjE3NjgwMjE0NjMsInR5cGUiOiJhY2Nlc3MiLCJqdGkiOiJrOFJWQXNWMmJuODl1bkg5cHFGNGxiQkp1YUM5QkhGekFXbW5Yb185Y3E4In0.MRqCR_uATkRHZE694lMQDvASdM5cs4cHLYjM7Gs33YM"
+# Token NIE hartkodieren (Sicherheitsfund 2026-07-07, war ein abgelaufener Access-Token).
+# Vor Aufruf setzen:  $env:ABLAGE_JWT = "<frischer Access-Token aus /api/v1/auth/login>"
+$token = $env:ABLAGE_JWT
+if ([string]::IsNullOrWhiteSpace($token)) {
+    Write-Host "ERROR: `$env:ABLAGE_JWT ist nicht gesetzt (Access-Token via POST /api/v1/auth/login holen)." -ForegroundColor Red
+    exit 1
+}
 
 $headers = @{
     "Authorization" = "Bearer $token"
