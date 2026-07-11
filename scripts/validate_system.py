@@ -5,21 +5,46 @@ import re
 from pathlib import Path
 
 # Professional Hygiene Policy: Allowed entries in Root
+# Synchronisiert 2026-07-11 (Root-Cleanup): jest.config.js/.eslintrc.js entfernt
+# (geloescht), reale Compose-Varianten/Configs/Verzeichnisse ergaenzt.
 ALLOWED_ROOT_ENTRIES = {
-    ".git", ".github", ".vscode", ".gitignore", ".env.example", ".env.rag.example",
-    ".env.production.example", "app", "frontend", "infrastructure", "docs",
-    "tests", "scripts", "alembic", "alembic.ini", "Dockerfile", "docker-compose.yml",
-    "docker-compose.dev.yml", "docker-compose.prod.yml", "docker-compose.rag.yaml",
-    "pyproject.toml", "package.json", "package-lock.json", "requirements.txt",
-    "requirements-dev.txt", "requirements-gpu.txt", "README.md", "CLAUDE.md",
-    "ARCHITECTURE.md", "DEPLOYMENT.md", "LICENSE", "VERSION", "CONTRIBUTING.md",
-    "SECURITY.md", "CHANGELOG.md", "CONVENTIONS.md", "Makefile", "jest.config.js",
-    "playwright.config.ts", "tsconfig.json", "node_modules", "venv", ".venv",
-    ".kiro", ".mcp.json", ".claude", ".claudeignore", ".devcontainer",
-    ".dockerignore", ".editorconfig", ".eslintrc.js", ".hypothesis",
-    ".markdownlint.json", ".playwright-mcp", ".pre-commit-config.yaml",
-    ".pytest_cache", ".releaserc.json", ".secrets.baseline", ".yamllint.yml",
-    "bootstrap_project.py", "startup.sh", "jupyter.config.py", ".env"
+    # Git/CI/Tooling
+    ".git", ".githooks", ".github", ".gitignore", ".gitattributes", ".vscode",
+    ".devcontainer", ".kiro", ".mcp.json", ".claude", ".claude-flow", ".swarm",
+    ".claudeignore", ".pre-commit-config.yaml", ".releaserc.json",
+    ".secrets.baseline", ".yamllint.yml", ".prettierignore", ".markdownlint.json",
+    ".editorconfig", ".dockerignore", ".playwright-mcp",
+    # Env-Vorlagen + lokale Laufzeit-Config
+    ".env", ".env.example", ".env.rag.example", ".env.production.example",
+    # Quellcode + Infrastruktur
+    "app", "frontend", "infrastructure", "docs", "tests", "scripts", "alembic",
+    "alembic.ini", "docker", "config", "security", "examples", "notebooks",
+    "Dockerfile", "docker-compose.yml", "docker-compose.dev.yml",
+    "docker-compose.prod.yml", "docker-compose.rag.yaml", "docker-compose.test.yml",
+    "docker-compose.override.yml", "docker-compose.airgap.yml",
+    "docker-compose.canary.yml", "docker-compose.cpu-ocr.yml",
+    # Build-/Paket-Konfiguration
+    "pyproject.toml", "pytest.ini", "package.json", "package-lock.json",
+    "requirements.txt", "requirements-dev.txt", "requirements-gpu.txt",
+    "playwright.config.ts", "tsconfig.json", "Makefile",
+    "bootstrap_project.py", "startup.sh", "jupyter.config.py", "import_lexware.ps1",
+    # Standard-Doku
+    "README.md", "CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "DEPLOYMENT.md",
+    "API_REFERENCE.md", "LICENSE", "VERSION", "CONTRIBUTING.md", "SECURITY.md",
+    "CHANGELOG.md", "CONVENTIONS.md", "CODE_OF_CONDUCT.md",
+    # Knowledge-Layer (AGENTS.md-Kontrakt)
+    "Static_Knowledge", "Dynamic_Knowledge", "Meta_Layer", "Execution_Layer",
+    "Relations", "Skills", "Trainings_Data",
+    # Laufzeit-/Datenverzeichnisse (nie committen, aber legitim auf Platte)
+    "data", "logs", "uploads", "models", "backups", "Firmendaten", "ARCHIVE",
+    "test_documents", "node_modules", "venv", ".venv",
+    # Generierte Caches
+    "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache", ".hypothesis",
+    # Parallel-Session-Worktrees + Plugins
+    ".hardening-worktrees", "plan-breakdown-plugin",
+    # Debug-/Report-Verzeichnisse (Aufraeumkandidaten, separater Scope)
+    "browser-diagnostics", "temp_paddle_test", "temp_results",
+    "playwright-report", "test-results",
 }
 
 def check_root_hygiene():
