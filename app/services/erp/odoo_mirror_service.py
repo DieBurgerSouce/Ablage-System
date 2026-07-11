@@ -85,6 +85,10 @@ MIRROR_FAILURE_ALERT_THRESHOLD = 5
 # Odoo-Datetime-Format (write_date kommt als String in diesem Format)
 ODOO_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+
+class MirrorCursorError(RuntimeError):
+    """Gesetzter, aber unparsebarer Spiegel-Cursor (F-05: kein Voll-Scan)."""
+
 # Gelesene account.move-Felder
 _MOVE_FIELDS: List[str] = [
     "id",
@@ -526,18 +530,30 @@ class OdooMirrorService:
 
     @staticmethod
     def _cursor_with_overlap(cursor: Optional[str]) -> Optional[str]:
-        """Cursor minus Overlap-Fenster (5 min) im Odoo-Datetime-Format."""
+        """Cursor minus Overlap-Fenster (5 min) im Odoo-Datetime-Format.
+
+        Raises:
+            MirrorCursorError: wenn ein GESETZTER Cursor unparsebar ist.
+                F-05 (Review-P2): frueher fiel der Lauf still auf einen
+                Voll-Scan der gesamten Historie zurueck (1 Attachment-RPC
+                je Move -> Odoo-SaaS-Drosselung, Risiko R2). Ein korrupter
+                Cursor ist ein Datenfehler -> Abbruch mit klarem Fehler;
+                der Cursor bleibt unveraendert (manuell pruefen/leeren).
+        """
         if not cursor:
             return None
         try:
             cursor_dt = datetime.strptime(cursor, ODOO_DATETIME_FORMAT)
-        except ValueError:
-            logger.warning(
+        except ValueError as exc:
+            logger.error(
                 "odoo_mirror_cursor_unparseable",
                 cursor=cursor,
-                action="full_scan_without_write_date_filter",
+                action="run_aborted_no_full_scan",
             )
-            return None
+            raise MirrorCursorError(
+                f"Spiegel-Cursor unparsebar ({cursor!r}) - Lauf abgebrochen "
+                "statt Voll-Scan; last_sync_cursor pruefen bzw. leeren"
+            ) from exc
         return (cursor_dt - CURSOR_OVERLAP).strftime(ODOO_DATETIME_FORMAT)
 
     # ==========================================================================

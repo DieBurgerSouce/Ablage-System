@@ -12,7 +12,7 @@ Feinpoliert und durchdacht - Reliable Odoo Task Orchestration.
 
 import structlog
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from celery import shared_task
@@ -876,6 +876,70 @@ async def _notify_mirror_stalled(
         )
 
 
+def _get_mirror_lock_client():
+    """Redis-Client fuers Mirror-Locking (gleiche Infrastruktur wie GPU-Lock)."""
+    from app.workers.celery_app import _get_redis_lock_client
+
+    return _get_redis_lock_client()
+
+
+# F-04 (Review-P2 / Runbook R-6): Overlap-Schutz je Connection. TTL = Beat-
+# Intervall; laeuft ein Backfill laenger, verfaellt der Lock (bewusst:
+# Crash-Sicherheit schlaegt perfekte Exklusivitaet; batch_limit haelt
+# Regellaeufe kurz).
+_MIRROR_LOCK_TTL_SECONDS = 1800
+
+
+def _try_acquire_mirror_lock(connection_id: str) -> Tuple[bool, Optional[str]]:
+    """Nicht-blockierender Overlap-Lock je Connection (SET NX EX).
+
+    Returns:
+        (should_run, lock_value): should_run=False -> Lauf ueberspringen
+        (ein anderer Lauf ist aktiv). Redis-Fehler = fail-open (True, None):
+        der GoBD-Spiegel darf nicht an einem Lock-Hiccup sterben.
+    """
+    import os
+    import time
+
+    from redis.exceptions import RedisError
+
+    key = f"ablage:odoo_mirror:lock:{connection_id}"
+    lock_value = f"mirror:{os.getpid()}:{time.time()}"
+    try:
+        acquired = _get_mirror_lock_client().set(
+            key, lock_value, nx=True, ex=_MIRROR_LOCK_TTL_SECONDS
+        )
+    except RedisError as exc:
+        logger.warning(
+            "odoo_mirror_lock_unavailable_fail_open",
+            connection_id=connection_id,
+            **safe_error_log(exc),
+        )
+        return True, None
+    if acquired:
+        return True, lock_value
+    return False, None
+
+
+def _release_mirror_lock(connection_id: str, lock_value: str) -> None:
+    """Gibt den Overlap-Lock frei — nur wenn wir ihn noch besitzen."""
+    from redis.exceptions import RedisError
+
+    key = f"ablage:odoo_mirror:lock:{connection_id}"
+    try:
+        client = _get_mirror_lock_client()
+        current = client.get(key)
+        if current is not None and current == lock_value.encode():
+            client.delete(key)
+    except RedisError as exc:
+        # TTL raeumt auf — nur loggen
+        logger.warning(
+            "odoo_mirror_lock_release_failed",
+            connection_id=connection_id,
+            **safe_error_log(exc),
+        )
+
+
 @celery_app.task(
     name="app.workers.tasks.odoo_tasks.odoo_mirror_incremental",
     bind=True,
@@ -925,6 +989,19 @@ def odoo_mirror_incremental(self) -> Dict[str, Any]:
 
             for connection in connections:
                 connection_id = str(connection.id)
+
+                # F-04: Overlap-Schutz — laeuft fuer diese Connection schon
+                # ein Spiegel (langsamer Backfill, manueller Trigger), wird
+                # dieser Beat-Lauf uebersprungen statt parallel zu arbeiten.
+                should_run, lock_value = _try_acquire_mirror_lock(connection_id)
+                if not should_run:
+                    logger.warning(
+                        "odoo_mirror_skipped_already_running",
+                        connection_id=connection_id,
+                    )
+                    summary[connection_id] = {"skipped": "lauf_bereits_aktiv"}
+                    continue
+
                 try:
                     run_result = await service.run_incremental(db, connection)
                     summary[connection_id] = {
@@ -946,6 +1023,9 @@ def odoo_mirror_incremental(self) -> Dict[str, Any]:
                         "errors": 1,
                         "error": safe_error_detail(run_error, "Odoo-Spiegel"),
                     }
+                finally:
+                    if lock_value:
+                        _release_mirror_lock(connection_id, lock_value)
 
                 # Stillstands-Warnung anhand des persistierten Status
                 status_result = await db.execute(

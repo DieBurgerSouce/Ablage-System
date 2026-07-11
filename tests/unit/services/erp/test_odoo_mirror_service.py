@@ -196,19 +196,26 @@ class TestDomainUndCursor:
         assert ["write_date", ">=", "2026-08-10 09:55:00"] in domain
 
     @pytest.mark.asyncio
-    async def test_unparseable_cursor_falls_back_to_full_scan(
+    async def test_unparseable_cursor_bricht_ab_statt_full_scan(
         self, service, connection, db
     ):
-        """Kaputter Cursor: kein write_date-Term (voller Scan statt Crash)."""
+        """F-05 (Review-P2): Korrupter Cursor -> Fehler + KEIN Voll-Scan.
+
+        Frueher fiel der Lauf STILL auf einen Scan der gesamten Odoo-Historie
+        zurueck (1 Attachment-RPC je Move -> SaaS-Drosselung, Risiko R2).
+        Ein gesetzter, aber unparsebarer Cursor ist ein Datenfehler: Abbruch
+        mit klarem Fehler, Cursor bleibt unveraendert, kein einziger RPC.
+        """
         sync_status = _make_sync_status(connection, cursor="nicht-parsebar")
         connector = FakeConnector(moves=[])
 
         with _patch_status(service, sync_status):
             result = await service.run_incremental(db, connection, connector=connector)
 
-        assert result.errors == 0
-        _, domain, _, _, _ = connector.iter_calls[0]
-        assert not any(term[0] == "write_date" for term in domain if isinstance(term, list))
+        assert result.errors == 1
+        assert result.fetched == 0
+        assert connector.iter_calls == []
+        assert result.new_cursor == "nicht-parsebar"
 
 
 # =============================================================================
