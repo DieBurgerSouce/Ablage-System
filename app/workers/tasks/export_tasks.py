@@ -34,7 +34,25 @@ engine = create_async_engine(
     pool_size=5,
     max_overflow=10,
 )
-async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+from contextlib import asynccontextmanager
+
+from app.db.session import arm_rls_bypass
+
+_pool_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@asynccontextmanager
+async def async_session_maker():
+    """Pool-Session mit session-level RLS-Bypass (F-16-Muster, 2026-07-11).
+
+    Behaelt den modul-eigenen Engine-Pool; der Bypass-GUC haftet an dessen
+    Verbindungen (gewollt: alle Tasks hier sind systemische Prozessoren).
+    Ohne Bypass sahen diese Tasks nach den RLS-Migrationen 272-274 still
+    0 Zeilen bzw. scheiterten an documents-INSERTs.
+    """
+    async with _pool_session_maker() as session:
+        await arm_rls_bypass(session)
+        yield session
 
 
 class ExportCancelledError(Exception):

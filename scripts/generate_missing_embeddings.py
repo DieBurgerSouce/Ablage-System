@@ -71,6 +71,13 @@ async def generate_missing_embeddings(
     }
 
     async with async_session_maker() as session:
+        # RLS-Bypass session-level (Restrunde 272-274): das Skript scannt
+        # company-uebergreifend Dokumente ohne Embedding — kontextlos saehe
+        # es 0 Zeilen. Muster: app.db.session.arm_rls_bypass.
+        from app.db.session import arm_rls_bypass
+
+        await arm_rls_bypass(session)
+
         # Build query for documents without embeddings
         query = select(Document).where(
             Document.extracted_text.isnot(None),

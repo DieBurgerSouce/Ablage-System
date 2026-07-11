@@ -210,11 +210,34 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+async def arm_rls_bypass(session: AsyncSession) -> None:
+    """Setzt den session-level RLS-Bypass auf einer BESTEHENDEN Session.
+
+    Fuer Task-Module mit eigenem Engine/Pool (task_callbacks, thumbnail_,
+    export_, extraction_, customer_detection_tasks), die nicht durch
+    ``get_worker_session_context`` gehen koennen, ohne ihren dedizierten
+    Pool zu verlieren. ``is_local=false`` — ueberlebt Commits; der GUC
+    haftet an den gepoolten Verbindungen des MODUL-EIGENEN Pools, was
+    gewollt ist (alle Tasks dieser Module sind systemische Prozessoren).
+    """
+    await session.execute(
+        text("SELECT set_config('app.rls_bypass', 'true', false)")
+    )
+
+
 # Aliases for backwards compatibility with Celery tasks
 # Many tasks use `async with async_session_factory() as db:` or
-# `async with async_session_maker() as db:` pattern
-async_session_factory = get_async_session_context
-async_session_maker = get_async_session_context
+# `async with async_session_maker() as db:` pattern.
+#
+# SEIT 2026-07-11 (RLS-Restrunde 272-274): Die Aliase zeigen auf den
+# WORKER-Kontext (Bypass) — sie werden ausschliesslich von Celery-Tasks/
+# Task-Handlern genutzt (Inventar: 0 Treffer in app/api; Design-Doc
+# 2026-07_rls_274_design.md §4). Kontextlose Task-Sessions waren nach den
+# Migrationen still kaputt (Reads = 0 Zeilen, documents-INSERT abgelehnt) —
+# Muster active_learning_tasks. Die API-Dependency ``get_async_session``
+# bleibt bewusst OHNE Bypass.
+async_session_factory = get_worker_session_context
+async_session_maker = get_worker_session_context
 
 
 @contextmanager
