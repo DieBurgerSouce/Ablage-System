@@ -198,3 +198,17 @@ backups/
 
 # A-Z-Loop Rohlogs
 .claude/reviews/*/loop-logs/
+
+# M365-Toolkit (Projekt "Firmen-E-Mail-Gedaechtnis", scripts/m365/) - 2026-07
+# Zugangsdaten/Secrets und Logs NIE committen. secrets/ deckt .env.m365, .pem,
+# .cer, .pfx ab (.pem ist bereits global ignoriert; hier zusaetzlich der Ordner).
+scripts/m365/.env.m365
+scripts/m365/secrets/
+scripts/m365/logs/
+# Der Runbook-Klickpfad fuer Ben soll versioniert bleiben (das globale *.md oben
+# wuerde ihn sonst verschlucken):
+!scripts/m365/RUNBOOK_P0_BEN.md
+
+# Root-Cleanup 2026-07-11: Coverage-Artefakte + Claude-cwd-Tempfiles nie wieder tracken
+.coverage
+tmpclaude-*

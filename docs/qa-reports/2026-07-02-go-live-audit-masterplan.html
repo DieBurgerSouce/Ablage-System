@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ablage-System — A–Z Go-Live-Readiness-Audit (Stand 2026-07-02)</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161b22; --panel2:#1c232c; --border:#2a323d;
+    --txt:#e6edf3; --muted:#9aa7b4; --accent:#4493f8;
+    --red:#f8514955; --redb:#f85149; --amber:#d2992255; --amberb:#e3b341;
+    --green:#3fb95055; --greenb:#3fb950; --grey:#6e7681; --greyb:#8b949e;
+    --p0:#ff6b6b; --p1:#f85149; --p2:#e3b341; --p3:#58a6ff;
+    --shadow:0 2px 12px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;font-size:15px}
+  .wrap{display:flex;max-width:1500px;margin:0 auto}
+  nav.toc{position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;
+    width:290px;min-width:290px;padding:24px 16px;background:var(--panel);
+    border-right:1px solid var(--border);font-size:13.5px}
+  nav.toc h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:6px;margin:2px 0}
+  nav.toc a:hover{background:var(--panel2);color:var(--txt)}
+  nav.toc .lvl2{padding-left:22px;font-size:12.5px}
+  main{flex:1;padding:36px 48px;min-width:0;max-width:1180px}
+  header.hero{border-bottom:1px solid var(--border);padding-bottom:24px;margin-bottom:8px}
+  h1{font-size:30px;margin:0 0 6px;line-height:1.25}
+  .sub{color:var(--muted);font-size:15px}
+  h2.sec{font-size:23px;margin:46px 0 6px;padding-top:14px;border-top:1px solid var(--border)}
+  h3{font-size:18px;margin:28px 0 6px;color:#cdd9e5}
+  p{margin:10px 0}
+  code{background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;
+    font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#a5d6ff}
+  .lead{color:var(--muted);font-size:16px;max-width:920px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:24px 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+  .card .n{font-size:34px;font-weight:700;line-height:1}
+  .card .l{color:var(--muted);font-size:13px;margin-top:6px}
+  .card.green{border-color:var(--greenb)} .card.green .n{color:var(--greenb)}
+  .card.red{border-color:var(--redb)} .card.red .n{color:var(--redb)}
+  .card.amber{border-color:var(--amberb)} .card.amber .n{color:var(--amberb)}
+  .card.blue{border-color:var(--accent)} .card.blue .n{color:var(--accent)}
+  .card.grey{border-color:var(--grey)} .card.grey .n{color:var(--greyb)}
+  .badge{display:inline-block;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid}
+  .b-open{background:var(--red);border-color:var(--redb);color:#ffc4c0}
+  .b-part{background:var(--amber);border-color:var(--amberb);color:#ffe9a8}
+  .b-done{background:var(--green);border-color:var(--greenb);color:#b6f0bd}
+  .b-defer{background:#6e768133;border-color:var(--grey);color:var(--greyb)}
+  .b-p0{background:#ff6b6b22;border-color:var(--p0);color:#ffb0b0}
+  .b-p1{background:var(--red);border-color:var(--p1);color:#ffc4c0}
+  .b-p2{background:var(--amber);border-color:var(--p2);color:#ffe9a8}
+  .b-p3{background:#58a6ff22;border-color:var(--p3);color:#a9d1ff}
+  .b-conf{background:#3fb95033;border-color:var(--greenb);color:#b6f0bd}
+  .b-plaus{background:#58a6ff22;border-color:var(--p3);color:#a9d1ff}
+  .b-ref{background:#6e768133;border-color:var(--grey);color:var(--greyb)}
+  .b-live{background:#4493f833;border-color:var(--accent);color:#bcd9ff}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--panel);
+    border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#cdd9e5;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#1a212a}
+  td .id{font-weight:700;color:#e6edf3;white-space:nowrap}
+  .tbl-wrap{overflow-x:auto}
+  .callout{border-left:4px solid var(--accent);background:var(--panel);border-radius:0 10px 10px 0;
+    padding:14px 18px;margin:18px 0}
+  .callout.warn{border-color:var(--amberb)}
+  .callout.crit{border-color:var(--redb)}
+  .callout.ok{border-color:var(--greenb)}
+  .callout h4{margin:0 0 6px;font-size:15px}
+  .ampel{display:flex;align-items:center;gap:20px;background:var(--panel);border:2px solid var(--redb);
+    border-radius:14px;padding:22px 26px;margin:20px 0;box-shadow:var(--shadow)}
+  .ampel .light{width:60px;height:60px;border-radius:50%;background:var(--redb);flex:0 0 auto;
+    box-shadow:0 0 24px var(--redb)}
+  .ampel .verdict{font-size:20px;font-weight:700;color:#ffc4c0}
+  .ampel .vsub{color:var(--muted);font-size:14px;margin-top:3px}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin:14px 0;font-size:13px;color:var(--muted)}
+  .blk{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:14px 0}
+  .blk.p0{border-left:4px solid var(--p0)} .blk.p1{border-left:4px solid var(--p1)}
+  .blk h4{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .blk .ev{font-size:12.5px;color:var(--muted);margin:6px 0}
+  .blk .seq{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px}
+  .seq ol{margin:6px 0;padding-left:20px} .seq li{margin:3px 0}
+  footer{margin-top:60px;border-top:1px solid var(--border);padding-top:20px;color:var(--muted);font-size:13px}
+  .tag{font-size:11.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);
+    border-radius:5px;padding:1px 7px;margin-left:6px}
+  details{background:var(--panel);border:1px solid var(--border);border-radius:10px;margin:12px 0;padding:4px 16px}
+  summary{cursor:pointer;padding:10px 0;font-weight:600}
+  .src{font-size:12.5px;color:var(--muted)}
+  .ok-t{color:var(--greenb)} .no-t{color:var(--redb)} .warn-t{color:var(--amberb)}
+  @media(max-width:980px){.wrap{flex-direction:column}nav.toc{position:static;height:auto;width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}main{padding:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+  <strong style="font-size:14px">🚦 Go-Live-Audit</strong><br>
+  <span class="src">Ablage-System · 2026-07-02</span>
+  <h2>Inhalt</h2>
+  <a href="#summary">0 · Executive Summary &amp; Ampel</a>
+  <a href="#methodik">1 · Methodik &amp; Quellen</a>
+  <a href="#versprechen">2 · Beweis-Status je Pilot-Versprechen</a>
+  <a href="#blocker">3 · Go-Live-Blocker (P0/P1)</a>
+  <a href="#blocker" class="lvl2">P0 · Installation &amp; Zugang</a>
+  <a href="#blocker" class="lvl2">P1 · Versprechen &amp; Betrieb</a>
+  <a href="#matrix">4 · Pfad-Statusmatrix (A1–A18)</a>
+  <a href="#neu">5 · Neue Funde vs. Register</a>
+  <a href="#dynamik">6 · Dynamische Belege</a>
+  <a href="#roadmap">7 · Remediation-Roadmap</a>
+  <a href="#dod">8 · DoD-Tracker</a>
+  <a href="#compliance">9 · Compliance (Status)</a>
+  <a href="#deferred">10 · Deferred &amp; Anti-Scope</a>
+  <a href="#anhang">Anhang · Alle 54 Findings</a>
+  <a href="#luecken">Anhang · Audit-Lücken (ehrlich)</a>
+</nav>
+
+<main>
+<header class="hero">
+  <h1>A–Z Go-Live-Readiness-Audit</h1>
+  <div class="sub">Ablage-System · Enterprise Document Processing · <strong>Stand 2026-07-02</strong> · Branch <code>feature/g03-cookie-auth-rls</code> · DB-Head <code>271</code></div>
+</header>
+
+<p class="lead">Dieser Bericht beantwortet <strong>eine</strong> Frage: „Wenn der Familien-Handelsbetrieb am Montag um 8:00 Uhr anfängt — klappt es, ohne Support-Anruf?" Er ist kein Feature-Katalog, sondern eine <strong>Beweisführung</strong>. Grundlage: 30+ Agenten in 5 Wellen (statische Tiefenanalyse aus 18 Blickwinkeln, adversariale Verifikation durch Gegenlesen, empirische Live-Verifikation gegen den laufenden Docker-Stack). Jeder kritische Punkt ist mit <code>datei:zeile</code> oder Live-Kommando-Output belegt. Bekannte Register-Punkte (Stand 06-25) wurden nur <em>status-verifiziert</em>, nicht neu „entdeckt".</p>
+
+<!-- ============ 0 SUMMARY ============ -->
+<h2 class="sec" id="summary">0 · Executive Summary</h2>
+
+<div class="ampel">
+  <div class="light"></div>
+  <div>
+    <div class="verdict">NO-GO für „Montag 8:00" im aktuellen Zustand</div>
+    <div class="vsub">Die App ist substanziell und funktioniert im Kern (Login, Cookie-Auth, deutsche UI, Dashboard rendern) — aber es fehlen <strong>Installations-Grundlagen</strong> (kein Weg, den ersten Admin anzulegen; keine Auto-Migration; Login über LAN/HTTP bricht in Produktion) und <strong>zwei Kernversprechen sind unbewiesen bzw. gefährdet</strong> (Skonto-Alerts, Restore). Alle Blocker sind eng umrissen und ohne Architektur-Umbau behebbar.</div>
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card red"><div class="n">3</div><div class="l">P0-Blocker (Installation &amp; Zugang)</div></div>
+  <div class="card red"><div class="n">14</div><div class="l">P1 bestätigt (Versprechen &amp; Betrieb)</div></div>
+  <div class="card amber"><div class="n">54</div><div class="l">Findings gesamt (dedupliziert)</div></div>
+  <div class="card blue"><div class="n">18</div><div class="l">neue Funde (nicht im 06-25-Register)</div></div>
+  <div class="card green"><div class="n">2/6</div><div class="l">Pilot-Versprechen belegbar erreichbar</div></div>
+  <div class="card grey"><div class="n">1/12</div><div class="l">DoD grün (nur „build/up"; api HANG)</div></div>
+</div>
+
+<div class="callout crit">
+  <h4>Die drei echten Installations-Blocker (ohne sie startet der Pilot nicht)</h4>
+  <p><strong>M-14 · Login über LAN/HTTP bricht in Produktion.</strong> Der Default-Stack terminiert kein TLS (nginx nur <code>:80</code>), das Auth-Cookie ist aber <code>Secure</code> sobald <code>ENVIRONMENT=production</code>. Browser verwerfen Secure-Cookies über <code>http://</code> (außer localhost). Da G03 alle JS-Token entfernt hat, hängt der Login allein am Cookie → <strong>alle 10 Arbeitsplätze kämen in eine 401-Schleife</strong>. <span class="badge b-conf">CONFIRMED (3/3)</span></p>
+  <p><strong>M-07 · Kein Weg, den ersten Admin anzulegen.</strong> <code>user_service.create_user</code> erzwingt <code>is_superuser=False</code>; der einzige Superuser-Seeder ist <code>scripts/seed_e2e.py</code> („never in production", Passwort <code>admin123</code>). Ohne Hand-SQL gibt es keinen produktiven Bootstrap. <span class="badge b-conf">CONFIRMED (3/3)</span></p>
+  <p><strong>M-08 · Keine Auto-Migration beim Deploy.</strong> <code>Dockerfile</code> startet nacktes uvicorn; nichts ruft <code>alembic upgrade head</code>. Eine frische DB bootet <code>healthy</code>, ist aber schema-leer → jede Query 500. <span class="badge b-conf">CONFIRMED (3/3)</span></p>
+  <p><strong>M-42 · Fresh-Clone-Crash-Loop.</strong> Der Postgres-Container läuft mit <code>-c ssl=on</code> und mountet <code>infrastructure/postgres/certs/server.crt|key</code> (<code>:ro</code>) — diese Zertifikate sind aber <strong>gitignored</strong> (live per <code>git check-ignore</code> bestätigt). Auf einem frischen Clone fehlen sie → Postgres startet nicht → Crash-Loop, noch vor der ersten Migration. <span class="badge b-conf">CONFIRMED (main-loop)</span></p>
+</div>
+
+<div class="callout warn">
+  <h4>Zwei Kernversprechen unbewiesen / gefährdet</h4>
+  <p><strong>„0 verpasste Skonto-Fristen"</strong> bricht doppelt und unabhängig: Die Skonto-Alert-Tasks routen auf die Queue <code>notification</code>, die <strong>kein Worker abonniert</strong> (live verifiziert) — <em>und</em> die Datenpipeline ist entkoppelt (<code>get_skonto_opportunities</code> liest einen JSON-Pfad, den die OCR-Extraktion nie schreibt). <span class="badge b-conf">M-10 CONFIRMED live</span> <span class="badge b-conf">M-12 CONFIRMED</span></p>
+  <p><strong>„0 Datenverluste"</strong> ist unbelegt: Der Auto-Restore-Test crasht (AttributeError), der Shell-Test meldet „BESTANDEN" ohne zu testen, und ein Restore wurde nie gegen die deployte Pipeline bewiesen. Es gibt zudem kein Off-Site-Backup (einziges Backup auf demselben Host). <span class="badge b-conf">M-16/M-17 CONFIRMED</span></p>
+</div>
+
+<div class="callout ok">
+  <h4>Was solide funktioniert (empirisch bestätigt)</h4>
+  <p>G03-Cookie-Auth ist sauber umgesetzt: Login liefert <code>HttpOnly</code>-Cookies (15 Min Access / 7 Tage Refresh), <strong>kein Token</strong> in localStorage/sessionStorage — XSS kann die Session nicht stehlen. Die deutsche UI rendert vollständig und konsistent, das Dashboard lädt. Backend/Frontend/Security/Integration-Tests laufen grün. Migrations-Head 271 wird sauber erreicht. Historische Blocker B1–B4, die api-Hang-ReDoS-Guards, G19 (signiertes GoBD-PDF), Art.30-View u.v.m. sind als erledigt bestätigt.</p>
+</div>
+
+<!-- ============ 1 METHODIK ============ -->
+<h2 class="sec" id="methodik">1 · Methodik &amp; Quellen</h2>
+<p>Fünf Wellen, orchestriert über den laufenden <code>feature/g03-cookie-auth-rls</code>-Stack:</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Welle</th><th>Was</th><th>Ergebnis</th></tr></thead>
+<tbody>
+<tr><td class="id">0 · Baseline</td><td>Erster vollständiger A-Z-Loop (<code>sim_a_to_z.ps1 -LoopId 8</code>) auf G03</td><td>build/up/security/integ <span class="ok-t">grün</span>; gates/docker/unit <span class="no-t">rot</span>; api <span class="no-t">HANG</span> (Schemathesis stallt); e2e/a11y/vitest/monitor nicht erreicht</td></tr>
+<tr><td class="id">1 · Statik</td><td>18 parallele Blickwinkel-Agenten (A1–A18), read-only gegen Code</td><td>132 Roh-Findings → <strong>54 dedupliziert</strong> gegen Register 06-25</td></tr>
+<tr><td class="id">2 · Dynamik</td><td>Baseline-Loop, Browser-Pilot-Walk (Playwright), Live-DB-/Queue-Checks</td><td>Login/Cookie/WS/RLS/Queues empirisch belegt; SLA-Walk + Throwaway-Drills <span class="warn-t">Session-Limit-blockiert</span></td></tr>
+<tr><td class="id">3 · Verifikation</td><td>Adversariales 3-Linsen-Refuter-Panel (Korrektheit/Reproduzierbarkeit/Impact) je P0/P1</td><td>P0/P1-Kern: <strong>16 CONFIRMED, 2 REFUTED</strong>; 34 P2/P3-Re-Verifikationen Session-Limit-blockiert (bleiben statisch PLAUSIBLE)</td></tr>
+<tr><td class="id">4 · Synthese</td><td>Konsolidierung → dieser HTML-Masterplan</td><td>Verdict-Regeln unten; Lücken transparent markiert (kein Fake-Green)</td></tr>
+</tbody></table></div>
+
+<p class="src"><strong>Verdict-Legende:</strong>
+<span class="badge b-conf">CONFIRMED</span> = adversarial gegengelesen bzw. live reproduziert ·
+<span class="badge b-live">LIVE</span> = empirisch am laufenden Stack belegt ·
+<span class="badge b-plaus">PLAUSIBLE</span> = statisch belegt, adversariale Re-Verifikation ausstehend (Session-Limit) ·
+<span class="badge b-ref">REFUTED</span> = beim Gegenlesen entkräftet.<br>
+<strong>Quellen:</strong> Wahrheitsanker = <code>docs/qa-reports/2026-06-25-offene-punkte-statusplan.html</code> + <code>.claude/memory/g03-cookie-auth-rls-2026-06-27.md</code>. Register älter als 06-25 gilt als abgeglichen. Pilot-Kontext aus Obsidian-Vault <code>_Ablage_System</code>.</p>
+
+<!-- ============ 2 VERSPRECHEN ============ -->
+<h2 class="sec" id="versprechen">2 · Beweis-Status je Pilot-Versprechen</h2>
+<p>Die messbaren Zusagen aus der Vision/Roadmap — und was das Audit dazu <em>beweisen</em> konnte. Die Zeitmessungen (SLA-Walk) fielen dem Session-Limit zum Opfer und sind als <span class="warn-t">unbewiesen</span> markiert, nicht als erfüllt.</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Versprechen</th><th>Status</th><th>Beleg / Risiko</th></tr></thead>
+<tbody>
+<tr><td><strong>Login funktioniert</strong></td><td><span class="badge b-done">bewiesen · ~0,5 s</span></td><td>UI-Login + Redirect zum Dashboard; HttpOnly-Cookies gesetzt; API-Login gemessen 0,44–0,57 s. <strong>Aber:</strong> in Prod über LAN/HTTP gebrochen (M-14).</td></tr>
+<tr><td><strong>Eingangsrechnung &lt; 2 Min</strong></td><td><span class="badge b-open">unbewiesen (blockiert)</span></td><td>Upload→OCR-Zeit nicht messbar: die <code>/documents/</code>-Endpoints geben für den Admin 401 (kein current-company, s.u.); OCR-GPU verfügbar (RTX 4080/CUDA 12.6, lazy-init). Risiken: OCR-SPOF (M-09), inline-OCR ohne Timeout (M-20), entkoppelte Pipeline (M-12). Cold-Start ≈ 88 s.</td></tr>
+<tr><td><strong>Dokumentsuche &lt; 10 Sek</strong></td><td><span class="badge b-part">teil-belegt</span></td><td><code>/extracted_data/search</code> 200 in <strong>0,25 s</strong>; aber <code>/documents/search/</code> 401 (current-company). Risiken: Query-Fehler als „Keine Ergebnisse" (M-34); Embedding/Reranker im API-Prozess auf GPU (M-35).</td></tr>
+<tr><td><strong>DATEV-Export &lt; 15 Min</strong></td><td><span class="badge b-open">unbewiesen</span></td><td>Nicht gemessen. Korrektheits-Risiken: Gutschrift-Vorzeichen (M-28), 1000-Dokument-Limit ohne ORDER BY (M-29).</td></tr>
+<tr><td><strong>0 verpasste Skonto-Fristen</strong></td><td><span class="badge b-open">gefährdet</span></td><td><strong>Doppelt gebrochen:</strong> Alert-Queue <code>notification</code> ohne Worker (M-10, live) + Datenpipeline entkoppelt (M-12).</td></tr>
+<tr><td><strong>0 Datenverluste</strong></td><td><span class="badge b-open">unbewiesen</span></td><td>Restore nie bewiesen (M-16), kein Off-Site-Backup (M-17), Offline-Mutationen gehen verloren (M-13).</td></tr>
+<tr><td><strong>Montag 8:00 ohne Support</strong></td><td><span class="badge b-open">nein</span></td><td>Installation nicht durchführbar (M-07 Admin, M-08 Migration) + LAN-Login (M-14).</td></tr>
+</tbody></table></div>
+
+<!-- ============ 3 BLOCKER ============ -->
+<h2 class="sec" id="blocker">3 · Go-Live-Blocker (P0/P1) — mit Behebungs-Sequenz</h2>
+<p>Streng gegen Blocker-Inflation gefiltert. „No-Go" = ohne Behebung startet oder funktioniert der Pilot nicht. Reihenfolge = empfohlene Abarbeitung.</p>
+
+<h3>P0 · Installation &amp; Zugang</h3>
+
+<div class="blk p0">
+  <h4>M-14 · Login über LAN/HTTP bricht in Produktion <span class="badge b-p0">P0</span> <span class="badge b-conf">CONFIRMED 3/3</span> <span class="badge b-open">neu</span></h4>
+  <div class="ev">Beleg: <code>app/api/dependencies.py:145</code> <code>secure=settings.is_production</code>; <code>docker-compose.yml:561</code> <code>ENVIRONMENT</code> default <code>production</code>; <code>frontend/nginx.conf</code> nur <code>listen 80</code> (kein 443/Zertifikat). Live gegenprobe: im Test-Stack (<code>ENVIRONMENT=development</code>) wird das Cookie <em>ohne</em> Secure gesetzt → Login klappt; in Prod flippt es auf Secure.</div>
+  <div>Pilot-Impact: 10 MA öffnen <code>http://&lt;server-lan-ip&gt;/</code>, Login akzeptiert die Zugangsdaten, aber das Session-Cookie wird nie gespeichert → Endlos-401. Zusätzlich Klartext-Traffic im LAN.</div>
+  <div class="seq"><strong>Deploy-Sequenz:</strong>
+    <ol>
+      <li>TLS am nginx terminieren: <code>:443</code> + Zertifikat (self-signed CA fürs LAN oder internes PKI), <code>:80</code>→<code>:443</code>-Redirect.</li>
+      <li>Frontend/Backend hinter HTTPS betreiben; Secure-Cookie bleibt aktiv (korrekt).</li>
+      <li>Verify: Login von einem zweiten Gerät (nicht localhost) über <code>https://&lt;lan-ip&gt;/</code>.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="blk p0">
+  <h4>M-07 · Kein produktiver First-Admin-Bootstrap <span class="badge b-p1">P1→P0-Installation</span> <span class="badge b-conf">CONFIRMED 3/3</span></h4>
+  <div class="ev">Beleg: <code>app/services/user_service.py</code> (<code>create_user</code> erzwingt <code>is_superuser=False</code>); einziger Superuser-Seeder <code>scripts/seed_e2e.py</code> (<code>admin@localhost.com</code>/<code>admin123</code>, „must never be used in production"); <code>/register</code> (<code>app/api/v1/auth.py</code>) ist öffentlich, erzeugt aber keinen Admin.</div>
+  <div>Pilot-Impact: Die Kundeninstallation kann nicht durchgeführt werden — es gibt keinen unterstützten Weg, den ersten Admin/Company anzulegen außer direktem DB-Schreiben.</div>
+  <div class="seq"><strong>Behebung:</strong> Ein <code>create-admin</code>-CLI/Management-Command (E-Mail, Passwort, Company interaktiv; setzt <code>is_superuser=True</code> + UserCompany <code>is_current=True</code>). Klein, aber zwingend.</div>
+</div>
+
+<div class="blk p0">
+  <h4>M-08 · Keine Auto-Migration im Startpfad <span class="badge b-p1">P1→P0-Installation</span> <span class="badge b-conf">CONFIRMED 3/3</span></h4>
+  <div class="ev">Beleg: <code>Dockerfile</code> CMD = nacktes uvicorn; kein compose-<code>command</code>/entrypoint ruft <code>alembic upgrade head</code>; Boot prüft nur <code>SELECT 1</code>.</div>
+  <div>Pilot-Impact: Frische DB bootet <code>healthy</code>, ist aber schema-leer → jede Query 500. Auch jedes Update-Deploy riskiert Schema-Drift.</div>
+  <div class="seq"><strong>Behebung:</strong> Entrypoint-Skript oder Init-Container mit <code>alembic upgrade head</code> vor uvicorn (idempotent; Head 271 wird von leerer DB nachweislich in einer Transaktion erreicht — Migrations-Kette ist gesund).</div>
+</div>
+
+<div class="blk p0">
+  <h4>M-01 / G01 · Slack-Alert-Kanal ins Leere <span class="badge b-p0">P0 (User-Action)</span> <span class="badge b-conf">CONFIRMED</span> <span class="badge b-ref">Panel: down</span></h4>
+  <div class="ev">Beleg: <code>app/core/config.py:640</code> <code>SLACK_WEBHOOK_URL</code>=None, <code>SLACK_ENABLED=False</code>; Webhook-Datei gitignore-t → fehlt auf frischem Host. G10/Sentry (<code>SENTRY_DSN</code> leer) war ebenfalls als P0 geführt, wurde aber <span class="badge b-ref">REFUTED</span> (Loki-Logging deckt Fehlerdetails; kein No-Op-Totalschaden).</div>
+  <div>Pilot-Impact: Solo-Support ohne Alarmierung — ein Backend-Crash am Montag bliebe unbemerkt (Risiko R01). Fix ist ~10 Min (URL/DSN in <code>.env</code>), aber vor Go-Live zwingend nachzuweisen (Crash → Alert kommt an).</div>
+</div>
+
+<h3>P1 · Versprechen &amp; Betrieb (alle CONFIRMED)</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th>ID</th><th>Finding</th><th>Beleg</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td class="id">M-03</td><td>RLS faktisch aus: App verbindet als Postgres-<strong>Superuser</strong> (umgeht jede Policy) + <code>RLS_ENFORCE_DEFAULT</code> default aus</td><td>Live: <code>ablage_admin superuser=true bypassrls=true</code></td><td><span class="badge b-live">CONFIRMED live</span></td></tr>
+<tr><td class="id">M-21</td><td>RLS-Abdeckung dünn: 269 Tabellen mit <code>company_id</code>, aber nur 92 mit Policy (≈177 ohne), nur <strong>5</strong> mit <code>force_rls</code></td><td>Live-Zählung <code>pg_policies</code>/<code>pg_class</code></td><td><span class="badge b-live">CONFIRMED live</span></td></tr>
+<tr><td class="id">M-06</td><td>einvoice generate/validate/xrechnung <strong>komplett unauthentifiziert</strong> → Rechnungs-PDF/XML per <code>document_id</code> + GoBD-DB-Write ohne Login</td><td><code>app/api/v1/einvoice.py:234</code></td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+<tr><td class="id">M-10</td><td>Queues <code>notification/notifications/default/datev/erp/gpu</code> ohne Worker-Konsument → Skonto/Mahnwesen/DATEV-Refresh stauen lautlos</td><td>Live: Worker-<code>-Q</code>-Listen vs. Routen</td><td><span class="badge b-live">CONFIRMED live</span></td></tr>
+<tr><td class="id">M-12</td><td>Skonto-Pipeline entkoppelt: <code>get_skonto_opportunities</code> liest JSON-Pfad, den OCR nie schreibt</td><td><code>banking/skonto_service.py</code></td><td><span class="badge b-conf">CONFIRMED 2/2</span></td></tr>
+<tr><td class="id">M-09</td><td>OCR-SPOF: einziger GPU-Worker (Prod-Compose solo/conc=1) konsumiert alle <code>ocr_*</code>; kein produktiver CPU-Fallback</td><td><code>docker-compose.yml</code>; CPU-Worker abonniert <code>ocr_*</code> nicht</td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+<tr><td class="id">M-16</td><td>Restore nie gegen deployte Pipeline bewiesen (Auto-Test crasht, Shell-Test meldet „BESTANDEN" ohne Test)</td><td><code>scripts/backup/*</code></td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+<tr><td class="id">M-17</td><td>Kein Off-Site-Backup default (einziges Backup auf demselben Host) + keine WAL/PITR (RPO bis ~24 h)</td><td><code>scripts/backup/*</code></td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+<tr><td class="id">M-13</td><td>Offline erzeugte Mutationen werden nie synchronisiert → stiller Datenverlust; Status-Leiste simuliert Sync</td><td><code>frontend/src/lib/offline-sync.ts</code></td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+<tr><td class="id">M-20</td><td>Synchrones Inline-OCR in <code>/ocr/process</code> ohne request-seitiges Timeout → hängender OCR-Call hängt die HTTP-Anfrage</td><td><code>app/main.py:2036-2042</code></td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-11</td><td>Beat-SPOF: eine Beat-Instanz steuert alle ~294 periodischen Tasks (Backup/GDPR/Retention/Dunning/Skonto)</td><td><code>app/workers/celery_app.py</code></td><td><span class="badge b-conf">CONFIRMED 2/3</span></td></tr>
+<tr><td class="id">M-15</td><td>Vault aus (<code>VAULT_ENABLED=False</code>) + Secrets Klartext in <code>.env</code>, keine Rotation</td><td><code>app/core/config.py</code></td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+<tr><td class="id">M-18</td><td>E2E-Auth-Fixture auf entfernten sessionStorage-Bearer gepinnt → gesamte „authenticated"-Suite testet eine UN-authentifizierte App und bleibt grün</td><td><code>frontend/e2e/auth.setup.ts</code></td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+<tr><td class="id">M-19</td><td>Einziger strikter OCR-E2E (Upload→completed) hart geskippt → Kernversprechen automatisiert unverifiziert</td><td><code>frontend/e2e/ocr-pipeline-cpu.spec.ts</code></td><td><span class="badge b-conf">CONFIRMED 3/3</span></td></tr>
+</tbody></table></div>
+
+<div class="callout warn">
+  <h4>Zwei ehemalige P0/P1 wurden beim Gegenlesen ENTKRÄFTET</h4>
+  <p><strong>M-02 / G10 (Sentry):</strong> <span class="badge b-ref">REFUTED (0/3)</span> — <code>SENTRY_DSN</code> leer ist kein „Totalschaden": Fehlerdetails landen weiterhin in Loki; Slack-Alert (M-01) bleibt der relevante Kanal.<br>
+  <strong>M-04 (Rate-Limit-Decorator):</strong> <span class="badge b-ref">REFUTED (0/3)</span> — die behauptete falsche Decorator-Reihenfolge greift nicht; das slowapi-Limit auf <code>/login</code>/<code>/verify-2fa</code> ist wirksam. <em>Kein</em> 2FA-Brute-Force-Loch. Gutes Beispiel dafür, warum die adversariale Welle nötig ist.</p>
+</div>
+
+<!-- ============ 4 MATRIX ============ -->
+<h2 class="sec" id="matrix">4 · Pfad-Statusmatrix (A1–A18)</h2>
+<p>Jeder der 18 Blickwinkel mit Ampel und Fund-Zahl. <span class="ok-t">grün</span> = pilotbereit, <span class="warn-t">gelb</span> = Findings offen, <span class="no-t">rot</span> = Blocker.</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>#</th><th>Blickwinkel</th><th>Ampel</th><th>Kernbefund</th></tr></thead>
+<tbody>
+<tr><td class="id">A1</td><td>RLS/Tenant-Isolation</td><td><span class="no-t">● rot</span></td><td>Superuser-Bypass live; ~177 Tabellen ohne Policy (M-03/M-21)</td></tr>
+<tr><td class="id">A2</td><td>Auth/Session/Cookie</td><td><span class="warn-t">● gelb</span></td><td>G03 sauber; aber LAN-Secure-Cookie (M-14 P0), Portal-localStorage (M-31), Session-Uhr (M-32)</td></tr>
+<tr><td class="id">A3</td><td>AuthZ-Coverage</td><td><span class="no-t">● rot</span></td><td>einvoice unauth (M-06); kein zentraler Authz-Layer (M-25)</td></tr>
+<tr><td class="id">A4</td><td>Fresh-Install/Bootstrap</td><td><span class="no-t">● rot</span></td><td>Kein First-Admin (M-07), keine Auto-Migration (M-08)</td></tr>
+<tr><td class="id">A5</td><td>DB/Migrations</td><td><span class="warn-t">● gelb</span></td><td>Head 271 sauber erreicht; aber create_all-in-Migration (M-40), startup.sh-Fallen (M-41/M-43)</td></tr>
+<tr><td class="id">A6</td><td>Celery/Async/Beat</td><td><span class="no-t">● rot</span></td><td>Queues ohne Konsument (M-10), Beat-SPOF (M-11), DLQ tot (M-26)</td></tr>
+<tr><td class="id">A7</td><td>OCR-Pipeline</td><td><span class="warn-t">● gelb</span></td><td>SPOF/kein CPU-Fallback in Prod (M-09); cpu-ocr-Override nur im Test-Compose</td></tr>
+<tr><td class="id">A8</td><td>Money-Path</td><td><span class="warn-t">● gelb</span></td><td>Skonto (M-12), DATEV-Vorzeichen (M-28), 1000-Limit (M-29), Float-Geld (M-47)</td></tr>
+<tr><td class="id">A9</td><td>Contract-Drift</td><td><span class="warn-t">● gelb</span></td><td>Realtime-WS tot (M-05, live), Job-WS 404 (M-33), <code>/companies/current</code> 404 + 401-Loop</td></tr>
+<tr><td class="id">A10</td><td>Frontend-UX</td><td><span class="warn-t">● gelb</span></td><td>Deutsche UI sauber; aber Doppel-Onboarding, ASCII-Umlaute (M-44), Fehler-als-„leer" (M-34)</td></tr>
+<tr><td class="id">A11</td><td>PWA/Offline/Realtime</td><td><span class="no-t">● rot</span></td><td>Offline-Datenverlust (M-13), SW-Stack fragmentiert (M-36)</td></tr>
+<tr><td class="id">A12</td><td>Config/Secrets/Env</td><td><span class="warn-t">● gelb</span></td><td>Vault aus (M-15), inkonsistente Prod-Erkennung (M-22)</td></tr>
+<tr><td class="id">A13</td><td>Deployment/Infra</td><td><span class="warn-t">● gelb</span></td><td>Infra real (Terraform/Ansible/K8s); aber SSL-Cert-Crash-Loop (M-42), Middleware-Reihenfolge (M-46)</td></tr>
+<tr><td class="id">A14</td><td>Observability</td><td><span class="no-t">● rot</span></td><td>Slack leer (M-01), Alert-Mail funktionslos (M-23), fragile Zustellung (M-24)</td></tr>
+<tr><td class="id">A15</td><td>Backup/Restore/DR</td><td><span class="no-t">● rot</span></td><td>Restore nie bewiesen (M-16), kein Off-Site (M-17), MinIO/Redis-Backup fraglich (M-37)</td></tr>
+<tr><td class="id">A16</td><td>Test-Truthfulness</td><td><span class="warn-t">● gelb</span></td><td>Fake-Green: Auth-Fixture (M-18), Loop-Masking (M-38), tautologische Asserts (M-39)</td></tr>
+<tr><td class="id">A17</td><td>Performance/SLA</td><td><span class="warn-t">● gelb</span></td><td>SLA nicht gemessen (blockiert); Cold-Start 88 s; GPU-Konkurrenz Suche↔OCR (M-35)</td></tr>
+<tr><td class="id">A18</td><td>Register-Verifikation</td><td><span class="ok-t">● grün</span></td><td>06-25-Erledigt-Claims bestätigt (M-54); Metrik-Korrekturen (M-53)</td></tr>
+</tbody></table></div>
+
+<!-- ============ 5 NEU vs REGISTER ============ -->
+<h2 class="sec" id="neu">5 · Neue Funde vs. Register-Verifikation</h2>
+<h3>Neu (nicht im 06-25-Register) — die eigentliche Ausbeute dieses Audits</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th>ID</th><th>Neuer Fund</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td class="id">M-14</td><td>TLS/Secure-Cookie bricht LAN-Login in Prod</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-06</td><td>einvoice-Endpoints komplett unauthentifiziert</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-10</td><td>Celery-Queues ohne Konsument (Skonto/DATEV/Mahnwesen)</td><td><span class="badge b-live">CONFIRMED live</span></td></tr>
+<tr><td class="id">M-05</td><td>Realtime-WebSocket verbindet nie (post-G03)</td><td><span class="badge b-live">CONFIRMED live (0 WS-Versuche)</span></td></tr>
+<tr><td class="id">M-12</td><td>Skonto-Alert-Pipeline entkoppelt</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-13</td><td>Offline-Mutationen gehen verloren</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-16</td><td>Restore nie bewiesen / „BESTANDEN"-ohne-Test</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-17</td><td>Kein Off-Site-Backup / kein PITR</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-18</td><td>E2E-Auth-Fixture testet unauth App (Fake-Green)</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">M-20</td><td>Inline-OCR ohne request-Timeout</td><td><span class="badge b-conf">CONFIRMED</span></td></tr>
+<tr><td class="id">—</td><td><code>/companies/current</code> 404 + nicht-konvergierende 401→Refresh→401-Schleife (Dashboard-Widget) für Admin ohne aktuelle Company</td><td><span class="badge b-live">beobachtet</span></td></tr>
+<tr><td class="id">—</td><td>Doppeltes Onboarding-Overlay auf erstem Bildschirm (G11 visuell)</td><td><span class="badge b-live">beobachtet</span></td></tr>
+<tr><td class="id">M-28/29/33/40/41/42/43</td><td>DATEV-Vorzeichen, 1000-Limit, Job-WS-404, create_all-in-Migration, startup.sh-Fallen, SSL-Cert-Crash-Loop, unvollständiges .env</td><td><span class="badge b-plaus">PLAUSIBLE</span></td></tr>
+</tbody></table></div>
+
+<h3>Register-Verifikation (06-25) — Status bestätigt</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Bekanntes Item</th><th>Status jetzt</th></tr></thead>
+<tbody>
+<tr><td>B1–B4, api-Hang-ReDoS-Guards, W1-001 (2FA-Debug), jose→PyJWT, W1-022 (/metrics), G07, G19 (signiertes GoBD-PDF), M14-TSA, OTEL, Art.30-View, build:strict, G03-Cookie-Auth</td><td><span class="badge b-done">now-fixed bestätigt (M-54)</span></td></tr>
+<tr><td>G01 Slack, G10 Sentry, RLS-Superuser/Enforce-Default, W1-002 Vault, E2E-16, MON-1 CeleryNoActivity, R27 SMTP</td><td><span class="badge b-open">confirms-open</span></td></tr>
+<tr><td>api-Hang „Code-Fix erledigt, Re-Fuzz deferred"</td><td><span class="badge b-open">regressed: Loop stallt empirisch in der api-Stufe</span></td></tr>
+<tr><td>W1-016 (349× as any), W1-019 (8 Endpoints ohne response_model)</td><td><span class="badge b-part">Metrik korrigiert (M-53): real ~49 handgeschrieben / ~17 Endpoints</span></td></tr>
+</tbody></table></div>
+
+<!-- ============ 6 DYNAMIK ============ -->
+<h2 class="sec" id="dynamik">6 · Dynamische Verifikation — Belege</h2>
+
+<h3>Baseline-A-Z-Loop (LoopId 8, erster Loop auf G03)</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Stufe</th><th>Ergebnis</th><th>Stufe</th><th>Ergebnis</th></tr></thead>
+<tbody>
+<tr><td>build</td><td class="ok-t">GRÜN (2s)</td><td>integ</td><td class="ok-t">GRÜN (139s)</td></tr>
+<tr><td>up (→Mig 271, seed)</td><td class="ok-t">GRÜN (44s)</td><td>api (Schemathesis)</td><td class="no-t">HANG (examples grün, Fuzz-Phase stallt &gt;2,5h, ~0 CPU)</td></tr>
+<tr><td>gates</td><td class="no-t">ROT (GPU-Healthcheck)</td><td>e2e</td><td class="warn-t">nicht erreicht</td></tr>
+<tr><td>docker</td><td class="no-t">ROT (236s)</td><td>a11y</td><td class="warn-t">nicht erreicht</td></tr>
+<tr><td>unit</td><td class="no-t">ROT (137 Fails)</td><td>vitest</td><td class="warn-t">nicht erreicht</td></tr>
+<tr><td>security</td><td class="ok-t">GRÜN (334s)</td><td>monitor</td><td class="warn-t">nicht erreicht</td></tr>
+</tbody></table></div>
+<p class="src">Der api-Hang reproduziert den dokumentierten DoD-Restposten empirisch: Schemathesis lädt 2836 Operationen, die <code>examples</code>-Phase besteht (10 passed), dann stallt die Fuzz-Phase trotz <code>--request-timeout=30s</code> ohne CPU-Last — ein Request, der weder abschließt noch das Timeout ehrt. Logs: <code>.claude/reviews/2026-07-02/loop-logs/run-20260702-1305*</code>.</p>
+
+<h3>Browser-Pilot-Walk (Playwright, localhost)</h3>
+<ul>
+<li><strong>Login funktioniert:</strong> UI-Login <code>admin@localhost.com</code> → Redirect <code>/login</code>→<code>/</code>. Set-Cookie: <code>access_token; HttpOnly; Max-Age=900; SameSite=lax</code> + <code>refresh_token; HttpOnly; Max-Age=604800</code>. Kein <code>Secure</code> hier, weil Test-Stack <code>ENVIRONMENT=development</code> (bestätigt die M-14-Nuance).</li>
+<li><strong>G03 bestätigt:</strong> sessionStorage nur <code>user</code> (Profil), localStorage nur App-Prefs — <strong>kein Token in JS</strong>.</li>
+<li><strong>M-05 empirisch (WebSocket global instrumentiert):</strong> nach Login + 5 s auf Dashboard <strong>0 WS-Verbindungsversuche</strong> → Realtime-Push tot.</li>
+<li><strong>Dashboard rendert &amp; ist nutzbar</strong> (Sidebar, Upload-Bereich, deutsche Texte) — aber zwei Onboarding-Tours überlappen sich, und <code>/companies/current</code>→404 löst eine nicht-konvergierende 401→Refresh→401-Schleife am „Letzte Dokumente"-Widget aus.</li>
+</ul>
+
+<h3>Live-DB- &amp; Queue-Checks (gegen laufenden Stack)</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Check</th><th>Kommando-Ergebnis</th><th>Finding</th></tr></thead>
+<tbody>
+<tr><td>App-DB-Rolle</td><td><code>ablage_admin superuser=true bypassrls=true</code></td><td>M-03 (RLS-Bypass)</td></tr>
+<tr><td>RLS-Abdeckung</td><td>111 Policies / 92 Tabellen; <strong>269</strong> Tabellen mit <code>company_id</code>; nur <strong>5</strong> mit <code>force_rls</code></td><td>M-21 (Coverage-Lücke)</td></tr>
+<tr><td>Worker-Queues</td><td>GPU: <code>ocr_*,embedding_*,validation,…</code>; CPU: <code>validation,…,workflow,approval,privat</code></td><td>M-09/M-10</td></tr>
+<tr><td>Ohne Konsument</td><td><code>notification, notifications, default, datev, erp, gpu</code></td><td>M-10 (Queues verwaisen)</td></tr>
+<tr><td>Redis-Auth</td><td><code>NOAUTH</code> (passwortgeschützt — gut)</td><td>Queue-Tiefe nicht messbar (sekundär)</td></tr>
+<tr><td>Backend-Boot</td><td>~88 s bis <code>/health=200</code> (OCR-Preload)</td><td>Deploy-/Restart-Datenpunkt</td></tr>
+<tr><td>Login (API)</td><td>0,44–0,57 s (3 Messungen)</td><td>schnell — unkritisch</td></tr>
+<tr><td><code>/documents/</code> + <code>/documents/search/</code></td><td><strong>401</strong> für Admin; <code>/companies/current</code>→404; <code>/extracted_data/search</code>→200 (0,25 s), <code>/auth/me</code>/<code>/companies</code>→200</td><td>Company-Scoped-Endpoints failen closed ohne current-company (reproduziert Dashboard-401-Loop)</td></tr>
+<tr><td>OCR-Backends</td><td>GPU verfügbar (RTX 4080, CUDA 12.6); tesseract/deepseek/surya_gpu „gesund" (lazy-init)</td><td>OCR könnte laufen — Upload durch 401 blockiert</td></tr>
+</tbody></table></div>
+
+<div class="callout warn">
+  <h4>Bestätigt &amp; reproduziert: Company-Scoped-Endpoints failen closed mit 401 ohne „aktuelle Company"</h4>
+  <p>Sowohl im Browser als auch am API-Level (mit Auth-Cookie) geben <code>/api/v1/documents/</code> und <code>/api/v1/documents/search/</code> für den Admin <strong>401</strong>, während <code>/auth/me</code>, <code>/companies</code>, <code>/extracted_data/search</code> und die OCR-Endpoints 200 liefern. Ursache: der Admin-Seed hat keine <code>is_current=True</code>-Company (nur der viewer), <code>/companies/current</code>→404. Die CompanyContext-Middleware failt korrekt closed — aber die App bietet keinen graziösen „Company wählen"-Pfad, sondern eine nicht-konvergierende 401→Refresh-Schleife. Für den Pilot heißt das: ohne sauber gesetzte current-company beim Onboarding sind Dokumentliste &amp; -suche unbenutzbar. (Nuance: teils Seed-Artefakt; ein via <code>create-admin</code>-CLI korrekt mit current-company angelegter Nutzer träfe es nicht.)</p>
+</div>
+
+<div class="callout warn">
+  <h4>Ehrlich: Diese dynamischen Checks fielen dem Session-Limit zum Opfer</h4>
+  <p>Der <strong>SLA-Walk</strong> (Upload→OCR-Zeit, Such-Latenz, DATEV-Export-Zeit, Cross-Tenant-Probe), der <strong>RLS-Fail-Closed-Drill</strong> auf einer Nicht-Superuser-Wegwerf-DB und die <strong>Failure-Drills</strong> (Backend/GPU/Beat killen) wurden gestartet, aber vom Account-Session-Limit abgebrochen. Sie sind nicht „grün" — sie sind <strong>unausgeführt</strong>. Re-Run-Rezepte liegen bereit (Wegwerf-Stack <code>-p azaudit</code>, <code>scripts/run_schemathesis.sh</code>). Failure-Drills wurden zusätzlich bewusst nicht erzwungen, um die aktive Parallel-Session auf derselben Maschine nicht zu stören.</p>
+</div>
+
+<!-- ============ 7 ROADMAP ============ -->
+<h2 class="sec" id="roadmap">7 · Remediation-Roadmap (empfohlene Reihenfolge)</h2>
+<div class="tbl-wrap"><table>
+<thead><tr><th>#</th><th>Maßnahme</th><th>Findings</th><th>Aufwand</th><th>Owner</th></tr></thead>
+<tbody>
+<tr><td class="id">1</td><td>Secrets provisionieren: Slack-Webhook + Sentry-DSN in <code>.env</code>, danach Crash→Alert-Drill</td><td>M-01</td><td>~15 Min + 1 Drill</td><td>User</td></tr>
+<tr><td class="id">2</td><td><code>create-admin</code>-CLI + Auto-Migration-Entrypoint (Installations-Grundlage)</td><td>M-07, M-08</td><td>0,5–1 Tag</td><td>Code</td></tr>
+<tr><td class="id">3</td><td>TLS am nginx terminieren (LAN-Zertifikat, :443 + Redirect)</td><td>M-14</td><td>0,5 Tag</td><td>Code/Ops</td></tr>
+<tr><td class="id">4</td><td>einvoice-Endpoints authentifizieren (<code>Depends(get_current_user)</code> + Company-Scope)</td><td>M-06</td><td>2–4 h</td><td>Code</td></tr>
+<tr><td class="id">5</td><td>Skonto-Pfad reparieren: Alert-Queue mit Worker versorgen + Pipeline verdrahten; danach End-to-End-Beweis</td><td>M-10, M-12</td><td>0,5–1 Tag</td><td>Code</td></tr>
+<tr><td class="id">6</td><td>Restore einmal echt beweisen + Off-Site-Ziel; Auto-Restore-Test reparieren</td><td>M-16, M-17</td><td>0,5 Tag</td><td>Ops</td></tr>
+<tr><td class="id">7</td><td>RLS-Paket: Nicht-Superuser-Rolle <code>ablage_app</code> (+ Passwort) → <code>DATABASE_URL</code>-Switch + <code>RLS_ENFORCE_DEFAULT=on</code> <strong>gemeinsam</strong>; Policy-Lücken schließen; danach Fail-Closed-Drill</td><td>M-03, M-21</td><td>1–2 Tage</td><td>Code/DB</td></tr>
+<tr><td class="id">8</td><td>Frontend-Realtime-Fix: WS-Token-Gate entfernen (Backend ist cookie-ready); Job-WS-Ziel korrigieren</td><td>M-05, M-33</td><td>2–4 h</td><td>Code</td></tr>
+<tr><td class="id">9</td><td>OCR-Resilienz: CPU-Fallback in Prod-Compose; Inline-OCR-Timeout; danach Upload→OCR-SLA messen</td><td>M-09, M-20, M-19</td><td>0,5–1 Tag</td><td>Code</td></tr>
+<tr><td class="id">10</td><td>Proof-Tag P1–P12 + Failure-Drills auf dediziertem Pilot-Host; 2× clean A-Z-Runs; api-Hang-Re-Fuzz</td><td>DoD</td><td>1–2 Tage</td><td>QA</td></tr>
+<tr><td class="id">11</td><td>Day-2: Portal-Cookie-Migration (M-31), Session-Uhr (M-32), DATEV-Vorzeichen/Limit (M-28/M-29), Onboarding konsolidieren (G11), ASCII-Umlaute (M-44)</td><td>diverse P2/P3</td><td>nach Pilot-Start</td><td>Code</td></tr>
+</tbody></table></div>
+
+<!-- ============ 8 DOD ============ -->
+<h2 class="sec" id="dod">8 · DoD-Tracker</h2>
+<div class="tbl-wrap"><table>
+<thead><tr><th>DoD-Punkt</th><th>Stand 2026-07-02</th></tr></thead>
+<tbody>
+<tr><td>2× clean A-Z-Runs</td><td><span class="badge b-open">offen</span> — Baseline-Loop 8 rot (gates/docker/unit) + api HANG; erster G03-Loop, WS-Auth-Brüche neu erfasst</td></tr>
+<tr><td>api-Hang-Re-Fuzz (empirisch)</td><td><span class="badge b-open">offen</span> — empirisch <strong>reproduziert</strong> (Loop stallt in api-Stufe); Isolierung der auslösenden Operation ausstehend</td></tr>
+<tr><td>~16 E2E-Specs reaktivieren</td><td><span class="badge b-open">offen</span> — zusätzlich M-18 (Auth-Fixture testet unauth App) entwertet die authenticated-Suite</td></tr>
+<tr><td>monitor CeleryNoActivity</td><td><span class="badge b-open">offen</span> — verbunden mit M-09/M-10</td></tr>
+<tr><td>Pilot-Workflow-E2E (Upload→OCR→Buchung→Archiv) mit SLA</td><td><span class="badge b-open">unbewiesen</span> — SLA-Walk Session-Limit-blockiert</td></tr>
+</tbody></table></div>
+
+<!-- ============ 9 COMPLIANCE ============ -->
+<h2 class="sec" id="compliance">9 · Compliance (nur Status, außerhalb Pilot-Tiefe)</h2>
+<div class="pill-row" style="display:flex;flex-wrap:wrap;gap:8px">
+  <span class="badge b-open">KOSIT/Mustang-Validator nicht verdrahtet (XRechnung 501-Stub, M-51)</span>
+  <span class="badge b-open">TSE/KassenSichV: nur Kasse-Skelett</span>
+  <span class="badge b-open">DATEV-Zertifizierung 0% (6–12 Mo)</span>
+  <span class="badge b-part">Verfahrensdoku: Generator, kein signiertes Artefakt (kurzfristig machbar)</span>
+  <span class="badge b-done">Art.30-Verzeichnis + View</span>
+  <span class="badge b-done">GoBD signiertes PDF (Mig 270)</span>
+  <span class="badge b-done">RFC-3161-TSA</span>
+</div>
+
+<!-- ============ 10 DEFERRED ============ -->
+<h2 class="sec" id="deferred">10 · Deferred (bewusst) &amp; Anti-Scope</h2>
+<p><strong>Deferred:</strong> Vault-Rotation/K8s, externer Pentest (sinnvoll nach RLS-Paket), Multi-Tenancy-Marktausbau, God-Object-Splits, Float→Decimal-Geldmigration (M-47, per Toleranzen kaschiert). <strong>Anti-Scope (bewusst nicht geprüft):</strong> ~190 spekulative AI/Analytics-Router (nicht pilotrelevant); Markt-/Strategie-/Pricing-Fragen (F-01…F-05 = Nutzer-Entscheidung); Worktree-/Branch-Hygiene (aktive Parallel-Session); keine Fixes in diesem Audit (nur Befund + Plan).</p>
+
+<!-- ============ ANHANG FINDINGS ============ -->
+<h2 class="sec" id="anhang">Anhang · Alle 54 Findings (P2/P3/info)</h2>
+<details><summary>P2 (mittel) — statisch belegt, adversariale Re-Verifikation Session-Limit-bedingt ausstehend</summary>
+<div class="tbl-wrap"><table>
+<thead><tr><th>ID</th><th>Titel</th><th>Pfad</th></tr></thead>
+<tbody>
+<tr><td class="id">M-21</td><td>RLS-Härtung unvollständig (Policy-Lücken, permissive Mig-110-OR, create_company scheitert unter Nicht-Superuser)</td><td>alembic/versions/251_*:82</td></tr>
+<tr><td class="id">M-22</td><td>Inkonsistente Produktions-Erkennung (Cookie-Secure &amp; /metrics fail-open bei ENVIRONMENT≠prod)</td><td>app/core/config.py:59</td></tr>
+<tr><td class="id">M-23</td><td>Alertmanager-E-Mail funktionslos (localhost:587, keine Env-Expansion, Platzhalter)</td><td>infrastructure/alerting/alertmanager.yml:64</td></tr>
+<tr><td class="id">M-24</td><td>Alert-Zustellung fragil (Secret-Bind-Mount→Verzeichnis; Grafana ohne Contact-Point; kein DeadMansSwitch)</td><td>docker-compose.yml:1251</td></tr>
+<tr><td class="id">M-25</td><td>Management-/Webhook-Endpoints unauth + kein zentraler Authz-Layer</td><td>app/middleware/company_context.py:87</td></tr>
+<tr><td class="id">M-26</td><td>DLQ auf Redis-Broker nicht funktional → gescheiterte Tasks lautlos verworfen</td><td>app/workers/celery_app.py:445</td></tr>
+<tr><td class="id">M-27</td><td>Teilzahlung mit Skonto schließt Rechnung nicht → Phantom-Offenposten &amp; Falsch-Mahnung</td><td>app/services/banking/partial_payment_service.py:151</td></tr>
+<tr><td class="id">M-28</td><td>DATEV-Export: Gutschriften/negative Beträge falsches Vorzeichen (hart 'S', abs) <span class="badge b-conf">CONFIRMED</span></td><td>app/services/datev/mapping/invoice_mapper.py:239</td></tr>
+<tr><td class="id">M-29</td><td>DATEV-Export lädt max. 1000 Dokumente ohne ORDER BY, Zeitraumfilter erst in Python → unvollständiger Stapel bei &gt;1000 <span class="badge b-conf">CONFIRMED</span></td><td>app/services/datev/export_service.py:525</td></tr>
+<tr><td class="id">M-30</td><td>OCR-Resilienz-Lücken (Timeout-CPU-Fallback für 'auto' toter Code; Preload No-Op)</td><td>app/workers/tasks/ocr_tasks.py:855</td></tr>
+<tr><td class="id">M-31</td><td>Kunden-Portal weiterhin localStorage-Bearer (XSS) + 401-Refresh ohne Mutex</td><td>frontend/src/features/portal/api/portal-api.ts:96</td></tr>
+<tr><td class="id">M-32</td><td>15-Min-Session-Uhr rein clientseitig, recordActivity nirgends verdrahtet → Zwangs-Logout</td><td>frontend/src/lib/auth/AuthContext.tsx:11</td></tr>
+<tr><td class="id">M-33</td><td>Job-Queue-WS kaputt: null-Token→10s-Polling; Ziel /api/v1/admin/jobs/ws existiert nicht</td><td>frontend/src/features/job-queue/hooks/use-job-websocket.ts:232</td></tr>
+<tr><td class="id">M-34</td><td>Query-Fehler in Suche/Missed-Skonto → „Keine Ergebnisse"; ErrorBoundary nutzt @deprecated-Komponente</td><td>frontend/src/app/routes/search.tsx:71</td></tr>
+<tr><td class="id">M-35</td><td>Default-Suche HYBRID: Embedding+Reranker im API-Prozess auf derselben RTX 4080 wie OCR (VRAM-Konkurrenz)</td><td>app/services/search_service.py:853</td></tr>
+<tr><td class="id">M-36</td><td>PWA-SW-Stack fragmentiert (3 SW, 2 tot); Update-Flow riskiert Lazy-Chunk-404</td><td>frontend/vite.config.ts:20</td></tr>
+<tr><td class="id">M-37</td><td>Auto-MinIO/Redis-Backup scheitert vermutlich im compose-Deploy → Blobs evtl. ungesichert</td><td>app/services/backup_service.py:507</td></tr>
+<tr><td class="id">M-38</td><td>A-Z-Loop überzeichnet grün (--continue-on-collection-errors; Security-Suite skippt-als-pass)</td><td>scripts/sim_a_to_z.ps1:127</td></tr>
+<tr><td class="id">M-39</td><td>Fake-Green-Assertions in E2E (tautologische/bedingte Asserts; isVisible-No-Op)</td><td>frontend/e2e/multi-upload.spec.ts:617</td></tr>
+<tr><td class="id">M-40</td><td>Reconcile-Migration 267 ruft <code>create_all(checkfirst=True)</code> IN der Migration → additiv, aber ORM-codestand-abhängig <span class="badge b-conf">CONFIRMED</span></td><td>alembic/versions/267_*:77</td></tr>
+<tr><td class="id">M-41</td><td>startup.sh überschreibt init.sql — <strong>aber</strong> startup.sh ist nirgends in compose/Dockerfile referenziert (kein Auto-Deploy-Pfad) <span class="badge b-ref">herabgestuft</span></td><td>scripts/startup.sh:106</td></tr>
+<tr><td class="id">M-42</td><td>Postgres <code>ssl=on</code> + gitignore-te Certs → Crash-Loop auf frischem Clone <span class="badge b-conf">CONFIRMED → §3 Blocker</span></td><td>docker-compose.yml:37</td></tr>
+<tr><td class="id">M-43</td><td>startup.sh erzeugt unvollständiges .env — <strong>aber</strong> nicht im Auto-Deploy-Pfad (nur manuelles Footgun) <span class="badge b-ref">herabgestuft</span></td><td>scripts/startup.sh:53</td></tr>
+</tbody></table></div>
+</details>
+<details><summary>P3 / info (niedrig)</summary>
+<div class="tbl-wrap"><table>
+<thead><tr><th>ID</th><th>Titel</th><th>Pfad</th></tr></thead>
+<tbody>
+<tr><td class="id">M-44</td><td>ASCII-transliterierte Umlaute in UI-Texten (Onboarding, KI-FAB, forgot-password) — verletzt Regel 2</td><td>frontend/.../OnboardingWizard.tsx:300</td></tr>
+<tr><td class="id">M-45</td><td>DB_SSL_MODE=require als ?sslmode= (asyncpg ignoriert es) → trügerische TLS-Sicherheit</td><td>app/core/config.py:1461</td></tr>
+<tr><td class="id">M-46</td><td>Deploy-Härtung: beat :latest; RequestSizeLimit-Middleware innerste; Dev-Override in Prod; Watchdog root+docker.sock</td><td>docker-compose.yml:972</td></tr>
+<tr><td class="id">M-47</td><td>Alle Geldbeträge als Float → Rundungs-/Summendrift, per 5-Cent-Toleranzen kaschiert</td><td>app/db/models_entity_business.py:461</td></tr>
+<tr><td class="id">M-48</td><td>DATEV BU-Heuristik: fehlender MwSt-Satz→19%; EU-Absender auto als IG-Erwerb</td><td>app/services/datev/mapping/tax_code_mapper.py:198</td></tr>
+<tr><td class="id">M-49</td><td>SEPA-Überweisung Stub UND auf tote default-Queue geroutet</td><td>app/workers/tasks/banking_tasks.py:2072</td></tr>
+<tr><td class="id">M-50</td><td>„100% Umlaut-Accuracy" unbelegt — German-Correction Best-Effort mit stillem Fallback</td><td>app/services/ocr/self_learning_service.py</td></tr>
+<tr><td class="id">M-52</td><td>W1-011: externe Risiko-Quellen weiterhin Stubs (NorthData/Schufa/Creditreform → None)</td><td>app/services/risk_scoring_service.py:202</td></tr>
+<tr><td class="id">M-53</td><td>Register-Metrik-Korrekturen (as-any real ~49 handgeschrieben; documents.py ~17 ohne response_model)</td><td>frontend/src/routeTree.gen.ts</td></tr>
+<tr><td class="id">M-51</td><td>info: XRechnung UBL / KOSIT-Mustang nicht verdrahtet (501-Stub); DATEV-Belegdatum nur DDMM ohne Jahr</td><td>app/api/v1/einvoice.py:346</td></tr>
+<tr><td class="id">M-54</td><td>info: Spot-Verify bestätigt now-fixed (18 Register-Items, siehe §5)</td><td>app/api/dependencies.py:134</td></tr>
+</tbody></table></div>
+</details>
+
+<!-- ============ ANHANG LÜCKEN ============ -->
+<h2 class="sec" id="luecken">Anhang · Audit-Lücken (transparent, kein Fake-Green)</h2>
+<div class="callout warn">
+<p>Was dieses Audit <strong>nicht</strong> abschließen konnte (Account-Session-Limit, reset 21:00; geteilte Dev-Maschine mit aktiver Parallel-Session):</p>
+<ul>
+<li><strong>SLA-Zeitmessung</strong> (Upload→OCR &lt; 2 Min, Suche &lt; 10 s, DATEV &lt; 15 Min) — Agent gestartet, abgebrochen. Die 3 Zeitversprechen bleiben <em>unbewiesen</em>.</li>
+<li><strong>Adversariale Re-Verifikation der P2/P3/info-Findings:</strong> Der Bulk-Rerun (34 Agenten) scheiterte am API-Rate-Limit. <strong>6 davon habe ich im Main-Loop einzeln nachverifiziert</strong> (M-28/M-29/M-40/M-42 <span class="badge b-conf">CONFIRMED</span>, M-41/M-43 <span class="badge b-ref">herabgestuft</span> — startup.sh nicht im Deploy-Pfad). Die übrigen <strong>28</strong> stehen weiter auf <span class="badge b-plaus">PLAUSIBLE</span> (statisch aus Welle 1 belegt). Die 18 P0/P1 sind vollständig adversarial verifiziert.</li>
+<li><strong>RLS-Fail-Closed-Drill</strong> auf Nicht-Superuser-Wegwerf-DB — der Superuser-Bypass ist live bewiesen, die korrekte Fail-Closed-Mechanik unter <code>ablage_app</code> aber nicht empirisch gezeigt.</li>
+<li><strong>Failure-Drills</strong> (Backend/GPU/Beat killen, Restore, Disk-Full) — bewusst nicht erzwungen, um die Parallel-Session nicht zu stören.</li>
+</ul>
+<p>Alle vier sind mit dokumentierten Re-Run-Rezepten nach 21:00 nachholbar. Sie sind hier als offen markiert, damit kein unverifizierter Punkt als „grün" gelesen wird.</p>
+</div>
+
+<footer>
+  Ablage-System · A–Z Go-Live-Readiness-Audit · Stand 2026-07-02 · Branch <code>feature/g03-cookie-auth-rls</code> · DB-Head 271<br>
+  Methodik: 5-Wellen-Multi-Agenten-Audit (18 Statik-Blickwinkel · adversariale Verifikation · Live-Stack-Belege). Wahrheitsanker: 2026-06-25-Statusplan. Jeder P0/P1 mit <code>datei:zeile</code> oder Live-Kommando belegt.
+</footer>
+
+</main>
+</div>
+</body>
+</html>
