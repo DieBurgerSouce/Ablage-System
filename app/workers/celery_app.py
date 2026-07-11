@@ -1287,10 +1287,11 @@ celery_app.conf.update(
         # =================================================================
         # Email/Folder Import Tasks (Auto-Import Vollautomatisierung)
         # =================================================================
-        # Email-Sync alle 15 Minuten
+        # Email-Sync alle 5 Minuten (AP-4 Go-Live-Runbook: DoD Mail->Draft
+        # < 15 min ist mit 15-min-Polling nicht erreichbar; 900 -> 300)
         "import-sync-all-email-configs": {
             "task": "app.workers.tasks.import_tasks.sync_all_email_configs",
-            "schedule": 900.0,  # 15 Minuten
+            "schedule": 300.0,  # 5 Minuten
         },
         # Folder-Polling alle 5 Minuten
         "import-poll-all-folder-configs": {
