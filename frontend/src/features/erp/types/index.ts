@@ -55,6 +55,9 @@ export interface ERPConnection {
 
   created_at: string;
   updated_at: string;
+
+  /** Effektive Odoo-Firmen-ID (per Verbindung oder globaler Fallback) */
+  odoo_company_id: number | null;
 }
 
 export interface ERPConnectionCreate {
@@ -71,6 +74,9 @@ export interface ERPConnectionCreate {
 
   max_requests_per_minute?: number;
   batch_size?: number;
+
+  /** Odoo-interne Firmen-ID (Spargelmesser = 2) */
+  odoo_company_id?: number;
 }
 
 export interface ERPConnectionUpdate {
@@ -88,6 +94,25 @@ export interface ERPConnectionUpdate {
   batch_size?: number;
 
   is_active?: boolean;
+
+  /** Odoo-interne Firmen-ID (Spargelmesser = 2) */
+  odoo_company_id?: number;
+}
+
+/** Status-Zeile des Odoo-Vollarchiv-Spiegels (GET /admin/erp/mirror-status) */
+export interface OdooMirrorStatus {
+  connection_id: string;
+  connection_name: string;
+  data_type: string;
+  last_sync_cursor: string | null;
+  last_sync_at: string | null;
+  last_successful_sync_at: string | null;
+  total_records_synced: number;
+  last_record_count: number | null;
+  last_run: Record<string, number> | null;
+  consecutive_failures: number;
+  is_paused: boolean;
+  last_error: string | null;
 }
 
 export interface ERPConnectionTestResult {

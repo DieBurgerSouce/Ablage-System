@@ -12,15 +12,21 @@ Feinpoliert und durchdacht - ERP-Administration auf Enterprise-Niveau.
 
 import structlog
 from datetime import datetime, timezone
-from typing import List, Optional
-from uuid import UUID
+from typing import Dict, List, Optional, Sequence
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, update, delete
 from sqlalchemy.orm import selectinload
 
-from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
+from app.core.config import settings
+from app.core.encryption import (
+    EncryptionError,
+    decrypt_data,
+    encrypt_api_key,
+    encrypt_data,
+)
 from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from app.db.models import (
@@ -66,6 +72,11 @@ class ERPConnectionCreate(BaseModel):
     max_requests_per_minute: int = Field(default=60, ge=1, le=1000)
     batch_size: int = Field(default=100, ge=10, le=1000)
 
+    # Odoo-interne Company-ID (Spargelmesser = 2). Wird per-Connection in
+    # OdooSyncStatus.sync_state["odoo_company_id"] persistiert und hat
+    # Vorrang vor dem globalen ODOO_MIRROR_COMPANY_ID (Fallback).
+    odoo_company_id: Optional[int] = Field(None, ge=1)
+
 
 class ERPConnectionUpdate(BaseModel):
     """Schema für Verbindungs-Update."""
@@ -84,6 +95,10 @@ class ERPConnectionUpdate(BaseModel):
     batch_size: Optional[int] = Field(None, ge=10, le=1000)
 
     is_active: Optional[bool] = None
+
+    # Explizit gesendetes null loescht den per-Connection-Wert (Fallback
+    # auf ODOO_MIRROR_COMPANY_ID greift dann wieder); nicht gesendet = unveraendert.
+    odoo_company_id: Optional[int] = Field(None, ge=1)
 
 
 class ERPConnectionResponse(BaseModel):
@@ -112,6 +127,9 @@ class ERPConnectionResponse(BaseModel):
 
     created_at: str
     updated_at: str
+
+    # Effektive Odoo-Company-ID (per-Connection-Wert oder globaler Fallback)
+    odoo_company_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -197,9 +215,111 @@ def _format_datetime(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
 
 
-def _connection_to_response(conn: ERPConnection) -> ERPConnectionResponse:
+def _encrypt_connection_api_key(api_key: str, connection_id: UUID) -> str:
+    """Verschluesselt den API-Key mit der AAD, die der Worker erwartet.
+
+    Die AAD MUSS ``erp_connection:{connection_id}`` sein — genau damit
+    entschluesselt ``decrypt_api_key`` in erp_sync_tasks. Die fruehere
+    Company-AAD (``erp:{company_id}``) war der Go-Live-P1-Fund 2026-07-11:
+    AES-GCM InvalidTag -> api_key=None -> jede UI-Connection scheiterte
+    beim Odoo-Login.
+    """
+    return encrypt_api_key(api_key, str(connection_id))
+
+
+async def _set_connection_odoo_company_id(
+    db: AsyncSession, connection_id: UUID, value: Optional[int]
+) -> None:
+    """Persistiert die Odoo-Company-ID per-Connection (migrationsfrei).
+
+    Ablageort ist ``OdooSyncStatus.sync_state["odoo_company_id"]`` der
+    Mirror-Zeile — dieselbe Quelle, die Mirror UND Push aufloesen
+    (Vorrang vor dem globalen ODOO_MIRROR_COMPANY_ID). ``None`` loescht
+    den Wert (Fallback greift wieder).
+    """
+    # Lazy-Import der Konstante: vermeidet Import-Gewicht im API-Modul
+    from app.services.erp.odoo_mirror_service import MIRROR_DATA_TYPE
+
+    result = await db.execute(
+        select(OdooSyncStatus).where(
+            and_(
+                OdooSyncStatus.connection_id == connection_id,
+                OdooSyncStatus.data_type == MIRROR_DATA_TYPE,
+            )
+        )
+    )
+    sync_status = result.scalar_one_or_none()
+
+    if sync_status is None:
+        if value is None:
+            return
+        db.add(
+            OdooSyncStatus(
+                connection_id=connection_id,
+                data_type=MIRROR_DATA_TYPE,
+                sync_state={"odoo_company_id": int(value)},
+                consecutive_failures=0,
+                is_paused=False,
+            )
+        )
+        return
+
+    # WICHTIG: komplettes Dict neu zuweisen, damit SQLAlchemy die Aenderung
+    # am CrossDBJSON-Feld erkennt (kein MutableDict).
+    state = dict(sync_status.sync_state or {})
+    if value is None:
+        state.pop("odoo_company_id", None)
+    else:
+        state["odoo_company_id"] = int(value)
+    sync_status.sync_state = state
+
+
+async def _effective_odoo_company_ids(
+    db: AsyncSession, connection_ids: Sequence[UUID]
+) -> Dict[UUID, Optional[int]]:
+    """Effektive Odoo-Company-ID je Connection (sync_state -> Env-Fallback)."""
+    from app.services.erp.odoo_mirror_service import MIRROR_DATA_TYPE
+
+    per_connection: Dict[UUID, int] = {}
+    ids = list(connection_ids)
+    if ids:
+        result = await db.execute(
+            select(OdooSyncStatus).where(
+                and_(
+                    OdooSyncStatus.connection_id.in_(ids),
+                    OdooSyncStatus.data_type == MIRROR_DATA_TYPE,
+                )
+            )
+        )
+        for row in result.scalars().all():
+            value = dict(row.sync_state or {}).get("odoo_company_id")
+            if value is None:
+                continue
+            try:
+                per_connection[row.connection_id] = int(value)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "odoo_company_id_invalid_in_sync_state",
+                    connection_id=str(row.connection_id),
+                    value=str(value),
+                )
+
+    fallback: Optional[int] = None
+    if settings.ODOO_MIRROR_COMPANY_ID is not None:
+        try:
+            fallback = int(settings.ODOO_MIRROR_COMPANY_ID)
+        except (TypeError, ValueError):
+            fallback = None
+
+    return {cid: per_connection.get(cid, fallback) for cid in ids}
+
+
+def _connection_to_response(
+    conn: ERPConnection, odoo_company_id: Optional[int] = None
+) -> ERPConnectionResponse:
     """Konvertiert DB-Model zu Response."""
     return ERPConnectionResponse(
+        odoo_company_id=odoo_company_id,
         id=str(conn.id),
         company_id=str(conn.company_id),
         name=conn.name,
@@ -253,7 +373,10 @@ async def list_connections(
     result = await db.execute(query)
     connections = result.scalars().all()
 
-    return [_connection_to_response(conn) for conn in connections]
+    effective = await _effective_odoo_company_ids(db, [c.id for c in connections])
+    return [
+        _connection_to_response(conn, effective.get(conn.id)) for conn in connections
+    ]
 
 
 @router.get(
@@ -285,7 +408,8 @@ async def get_connection(
             detail="ERP-Verbindung nicht gefunden",
         )
 
-    return _connection_to_response(connection)
+    effective = await _effective_odoo_company_ids(db, [connection.id])
+    return _connection_to_response(connection, effective.get(connection.id))
 
 
 @router.post(
@@ -303,11 +427,11 @@ async def create_connection(
     """Erstellt eine neue ERP-Verbindung."""
     # SECURITY FIX: API Key mit AES-256-GCM verschluesseln
     # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
+    # Die ID wird VOR der Verschluesselung erzeugt, weil sie die AAD ist
+    # (Worker entschluesselt mit decrypt_api_key(connection_id)).
+    connection_id = uuid4()
     try:
-        encrypted_key = encrypt_data(
-            data.api_key,
-            associated_data=f"erp:{company.id}"
-        )
+        encrypted_key = _encrypt_connection_api_key(data.api_key, connection_id)
     except EncryptionError as e:
         logger.error(
             "erp_api_key_encryption_failed",
@@ -320,6 +444,7 @@ async def create_connection(
         )
 
     connection = ERPConnection(
+        id=connection_id,
         company_id=company.id,
         name=data.name,
         erp_type=data.erp_type,
@@ -337,6 +462,9 @@ async def create_connection(
     )
 
     db.add(connection)
+    if data.odoo_company_id is not None:
+        await db.flush()  # Connection zuerst (FK von OdooSyncStatus)
+        await _set_connection_odoo_company_id(db, connection_id, data.odoo_company_id)
     await db.commit()
     await db.refresh(connection)
 
@@ -348,7 +476,8 @@ async def create_connection(
         user_id=str(current_user.id),
     )
 
-    return _connection_to_response(connection)
+    effective = await _effective_odoo_company_ids(db, [connection.id])
+    return _connection_to_response(connection, effective.get(connection.id))
 
 
 @router.put(
@@ -384,12 +513,20 @@ async def update_connection(
     # Update fields
     update_data = data.model_dump(exclude_unset=True)
 
-    # SECURITY FIX: Handle API key encryption
+    # Odoo-Company-ID lebt NICHT auf erp_connections, sondern im
+    # sync_state (siehe _set_connection_odoo_company_id) — vor dem
+    # setattr-Loop herausnehmen. Explizites null loescht den Wert.
+    if "odoo_company_id" in update_data:
+        await _set_connection_odoo_company_id(
+            db, connection_id, update_data.pop("odoo_company_id")
+        )
+
+    # SECURITY FIX: Handle API key encryption (AAD = connection_id,
+    # exakt wie decrypt_api_key im Worker — P1-Fund 2026-07-11)
     if "api_key" in update_data:
         try:
-            encrypted_key = encrypt_data(
-                update_data.pop("api_key"),
-                associated_data=f"erp:{company.id}"
+            encrypted_key = _encrypt_connection_api_key(
+                update_data.pop("api_key"), connection_id
             )
             update_data["encrypted_api_key"] = encrypted_key
         except EncryptionError as e:
@@ -419,7 +556,8 @@ async def update_connection(
         user_id=str(current_user.id),
     )
 
-    return _connection_to_response(connection)
+    effective = await _effective_odoo_company_ids(db, [connection.id])
+    return _connection_to_response(connection, effective.get(connection.id))
 
 
 @router.delete(

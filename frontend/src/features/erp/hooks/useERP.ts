@@ -19,6 +19,7 @@ import {
   listConflicts,
   resolveConflict,
   getERPStats,
+  getMirrorStatus,
   erpKeys,
 } from '../api';
 import type {
@@ -193,6 +194,18 @@ export function useERPStats() {
   return useQuery({
     queryKey: erpKeys.stats(),
     queryFn: getERPStats,
+    refetchInterval: 60000, // Jede Minute aktualisieren
+  });
+}
+
+// =============================================================================
+// Odoo-Spiegel Hook (GoBD-Zweitablage, Beat alle 30 min)
+// =============================================================================
+
+export function useMirrorStatus() {
+  return useQuery({
+    queryKey: erpKeys.mirrorStatus(),
+    queryFn: getMirrorStatus,
     refetchInterval: 60000, // Jede Minute aktualisieren
   });
 }

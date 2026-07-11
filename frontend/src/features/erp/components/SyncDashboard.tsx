@@ -49,6 +49,7 @@ import {
   useSyncHistory,
   useTriggerSync,
 } from '../hooks/useERP';
+import { MirrorStatusCard } from './MirrorStatusCard';
 import type { ERPSyncHistory, ERPSyncStatus, ERPSyncDirection } from '../types';
 
 // =============================================================================
@@ -279,6 +280,9 @@ export function SyncDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Odoo-Spiegel (GoBD-Zweitablage) */}
+      <MirrorStatusCard />
 
       {/* Stats Cards */}
       {history && history.length > 0 && <SyncStatsCard history={history} />}

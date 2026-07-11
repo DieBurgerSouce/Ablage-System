@@ -59,6 +59,7 @@ const connectionSchema = z.object({
   max_requests_per_minute: z.number().min(1).max(1000).default(60),
   batch_size: z.number().min(1).max(1000).default(100),
   is_active: z.boolean().default(true),
+  odoo_company_id: z.number().int().min(1).optional(),
 });
 
 type ConnectionFormValues = z.infer<typeof connectionSchema>;
@@ -114,6 +115,7 @@ export function ERPConnectionDialog({
       max_requests_per_minute: 60,
       batch_size: 100,
       is_active: true,
+      odoo_company_id: undefined,
     },
   });
 
@@ -133,6 +135,7 @@ export function ERPConnectionDialog({
         max_requests_per_minute: 60,
         batch_size: 100,
         is_active: connection.is_active,
+        odoo_company_id: connection.odoo_company_id ?? undefined,
       });
     } else {
       form.reset();
@@ -156,6 +159,7 @@ export function ERPConnectionDialog({
             max_requests_per_minute: values.max_requests_per_minute,
             batch_size: values.batch_size,
             is_active: values.is_active,
+            odoo_company_id: values.odoo_company_id,
           },
         });
       } else {
@@ -171,6 +175,7 @@ export function ERPConnectionDialog({
           enabled_entities: values.enabled_entities as ERPEntityType[],
           max_requests_per_minute: values.max_requests_per_minute,
           batch_size: values.batch_size,
+          odoo_company_id: values.odoo_company_id,
         });
       }
       onOpenChange(false);
@@ -289,6 +294,35 @@ export function ERPConnectionDialog({
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="odoo_company_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Odoo-Firmen-ID (Multi-Company)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="z. B. 2 (Spargelmesser)"
+                        value={field.value ?? ''}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === '' ? undefined : parseInt(e.target.value)
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Odoo-interne Company-ID für Spiegel und Rechnungs-Push.
+                      Ohne Wert greift der globale Fallback (ODOO_MIRROR_COMPANY_ID);
+                      ohne beides überspringt der Spiegel diese Verbindung.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

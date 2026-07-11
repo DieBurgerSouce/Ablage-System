@@ -14,6 +14,7 @@ import type {
   ERPConflict,
   ERPConflictResolve,
   ERPStats,
+  OdooMirrorStatus,
   SyncTriggerResponse,
 } from '../types';
 
@@ -124,6 +125,15 @@ export async function getERPStats(): Promise<ERPStats> {
 }
 
 // =============================================================================
+// Odoo-Spiegel (GoBD-Zweitablage)
+// =============================================================================
+
+export async function getMirrorStatus(): Promise<OdooMirrorStatus[]> {
+  const response = await api.get<OdooMirrorStatus[]>(`${BASE_URL}/mirror-status`);
+  return response.data;
+}
+
+// =============================================================================
 // React Query Keys
 // =============================================================================
 
@@ -135,4 +145,5 @@ export const erpKeys = {
   conflicts: (filters?: { connectionId?: string; status?: string }) =>
     [...erpKeys.all, 'conflicts', filters] as const,
   stats: () => [...erpKeys.all, 'stats'] as const,
+  mirrorStatus: () => [...erpKeys.all, 'mirror-status'] as const,
 };
