@@ -1,0 +1,172 @@
+# =============================================================================
+# Phoenix-DR-Probe: isolierter Zweitstack (Disaster-Recovery-Generalprobe)
+# =============================================================================
+# IMMER betreiben mit:
+#   docker compose --env-file C:/restic-phoenix/.env.phoenix \
+#     -f docker/phoenix/docker-compose.phoenix.yml -p ablage-phoenix <cmd>
+#
+# Bewusste Unterschiede zum Prod-Compose (docker-compose.yml):
+#   - KEINE container_name (Projekt-Prefix ablage-phoenix-* reicht, keine Kollision)
+#   - KEINE festen Subnets (Prod belegt 172.28.1-4.0/24; Docker waehlt frei)
+#   - KEINE GPU-Device-Reservation, kein Worker/Beat/Frontend/Monitoring/ClamAV
+#   - kleine Memory-Limits (Parallelbetrieb neben Prod, WSL-RAM begrenzt)
+#   - RUN_MIGRATIONS=false: der alembic-Stand der restaurierten DB wird explizit
+#     gegen config/alembic_version.txt aus dem Snapshot verglichen (DR-Runbook)
+#   - eigene Host-Ports: backend 18000, postgres 15434, redis 16380, minio 19000/19001
+#
+# Doku: docs/runbooks/disaster-recovery.md + docs/qa-reports/phoenix-2026-07/REPORT.md
+# =============================================================================
+name: ablage-phoenix
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ablage_system}
+      POSTGRES_USER: ${POSTGRES_USER:-ablage_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+    command: postgres -c shared_buffers=256MB -c max_connections=100
+    volumes:
+      - phoenix_pg_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:15434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ablage_admin} -d ${POSTGRES_DB:-ablage_system}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    tmpfs: [/tmp, /run]
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 1536M }
+    restart: "no"
+    networks: [phoenix-net]
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lfu --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}
+    volumes:
+      - phoenix_redis_data:/data
+    ports:
+      - "127.0.0.1:16380:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 384M }
+    restart: "no"
+    networks: [phoenix-net]
+
+  minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+    volumes:
+      - phoenix_minio_data:/data
+    ports:
+      - "127.0.0.1:19000:9000"
+      - "127.0.0.1:19001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 768M }
+    restart: "no"
+    networks: [phoenix-net]
+
+  backend:
+    image: ablage_system-backend:latest
+    environment:
+      ENVIRONMENT: production
+      VERSION: phoenix-dr-probe
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: INFO
+      # DR-Probe: keine Migrationen durch den Entrypoint - Stand wird explizit
+      # gegen config/alembic_version.txt aus dem Snapshot verglichen.
+      RUN_MIGRATIONS: "false"
+      # GPU-los booten: kein CUDA, kein Model-Preload (Preloader self-skippt zwar
+      # ohne CUDA, aber explizit ist beweisbarer).
+      CUDA_VISIBLE_DEVICES: ""
+      MODEL_PRELOAD_ENABLED: "false"
+      EMBEDDING_DEVICE: cpu
+      # Externe Anbindungen hart aus - Phoenix darf NICHT in Prod-Kanaele funken.
+      VAULT_ENABLED: "false"
+      QDRANT_ENABLED: "false"
+      TRACING_ENABLED: "false"
+      SLACK_ENABLED: "false"
+      SENTRY_DSN: ""
+      OLLAMA_URL: "http://127.0.0.1:9"   # bewusst tot - kein Host-Ollama-Zugriff
+      METRICS_SCRAPE_TOKEN: ""
+      CORS_ORIGINS: '[]'
+      # Secrets/Verbindungen (identisch zur restaurierten Prod-.env - die
+      # restaurierten Volumes tragen die Prod-IAM/Rollen/bcrypt-Hashes)
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_APP_USER:-${POSTGRES_USER:-ablage_admin}}:${POSTGRES_APP_PASSWORD:-${DB_PASSWORD}}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    volumes:
+      - ../../app:/app/app:ro
+      - ../../infrastructure:/app/infrastructure:ro
+      - ../../infrastructure/vault/config/certs:/app/certs:ro
+      - ../../alembic:/app/alembic:ro
+      - ../../alembic.ini:/app/alembic.ini:ro
+      - ../../scripts:/app/scripts:ro
+      - ../../tests:/app/tests:ro
+      - ../../pytest.ini:/app/pytest.ini:ro
+      - phoenix_uploads:/app/uploads
+      - phoenix_outputs:/app/outputs
+      - phoenix_backups:/var/backups/ablage
+    ports:
+      - "127.0.0.1:18000:8000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=512M,mode=1777
+      - /app/cache:size=512M,mode=1777
+      - /home/ablage/.cache:size=512M,mode=1777
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=30).raise_for_status()"]
+      interval: 15s
+      timeout: 35s
+      retries: 10
+      start_period: 420s
+    deploy:
+      resources:
+        limits: { cpus: '3.0', memory: 3G }
+    restart: "no"
+    networks: [phoenix-net]
+
+volumes:
+  phoenix_pg_data:
+  phoenix_redis_data:
+  phoenix_minio_data:
+  phoenix_uploads:
+  phoenix_outputs:
+  phoenix_backups:
+
+networks:
+  phoenix-net:
+    driver: bridge  # bewusst OHNE ipam/subnet: kein Konflikt mit Prod-172.28.x
