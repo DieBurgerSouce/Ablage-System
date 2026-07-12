@@ -51,7 +51,12 @@ class _CapturingSession:
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # Frischer Loop pro Aufruf: robust gegen von pytest-asyncio geschlossene Loops
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 def _where_clauses(sqls: list[str]) -> str:

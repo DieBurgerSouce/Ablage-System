@@ -46,6 +46,26 @@ RRF_K_CONSTANT = 60  # Standard RRF Fusion Konstante (bewahrt für Ranking-Stabi
 HYBRID_EXPANSION_FACTOR = 3  # Faktor für erweiterte Ergebnisse bei Hybrid-Suche
 
 
+def build_fts_expansion_terms(query: str) -> List[str]:
+    """F-P2-005: OR-Terme für die FTS-Expansion bauen.
+
+    Die Umlaut-/Kompositum-Expansion liefert Queries wie "Müller mueller";
+    plainto_tsquery verknüpft Wörter aber mit AND — ein Dokument mit nur
+    einer Schreibweise wurde nicht gefunden. Die SQL-Seite verknüpft die
+    hier gebauten Terme daher mit OR: Gesamtquery (AND-Gruppe, Präzision)
+    plus jedes Einzelwort (OR-Alternative, Recall), dedupliziert unter
+    Erhalt der Reihenfolge.
+    """
+    seen: Set[str] = set()
+    terms: List[str] = []
+    for term in [query, *query.split()]:
+        term = term.strip()
+        if term and term.lower() not in seen:
+            seen.add(term.lower())
+            terms.append(term)
+    return terms
+
+
 class SearchService:
     """Service für Dokumentensuche.
 
@@ -742,9 +762,22 @@ class SearchService:
         # Base query mit tsvector Suche und Field-Level Boosting
         # Inkludiert eigene UND geteilte Dokumente (via DocumentAccess)
         # Boosting: Treffer im Dateinamen ranken höher als im extrahierten Text
+        # F-P2-005 (Perception-Audit 2026-07-12): Die Umlaut-/Kompositum-
+        # Expansion wurde bisher via plainto_tsquery(:query) mit UND verknuepft
+        # (z. B. „Müller mueller" -> 'mull' & 'muell') -> ein Dokument mit nur
+        # „Müller" wurde NICHT gefunden (0 Treffer, obwohl vorhanden). Intent
+        # der Expansion ist OR (OCR-Toleranz). Wir bauen die tsquery daher als
+        # OR ueber plainto_tsquery(term) je Term: die Gesamtquery bleibt als
+        # AND-Gruppe erhalten (Praezision), zusaetzlich jedes Einzelwort als
+        # OR-Alternative (Recall). Leere (Stopword-)Terme werden gefiltert.
         fts_query = text("""
             WITH search_query AS (
-                SELECT plainto_tsquery('german_text', :query) AS query
+                SELECT CAST(COALESCE(
+                    (SELECT string_agg('(' || CAST(plainto_tsquery('german_text', t) AS text) || ')', ' | ')
+                     FROM unnest(CAST(:fts_terms AS text[])) AS t
+                     WHERE CAST(plainto_tsquery('german_text', t) AS text) <> ''),
+                    CAST(plainto_tsquery('german_text', :query) AS text)
+                ) AS tsquery) AS query
             ),
             accessible_docs AS (
                 -- Eigene Dokumente
@@ -812,18 +845,28 @@ class SearchService:
                 WHERE user_id = :user_id
                     AND (expires_at IS NULL OR expires_at > NOW())
             )
-            SELECT COUNT(*) FROM documents d,
-                plainto_tsquery('german_text', :query) AS query
+            SELECT COUNT(*) FROM documents d
+            CROSS JOIN (
+                SELECT CAST(COALESCE(
+                    (SELECT string_agg('(' || CAST(plainto_tsquery('german_text', t) AS text) || ')', ' | ')
+                     FROM unnest(CAST(:fts_terms AS text[])) AS t
+                     WHERE CAST(plainto_tsquery('german_text', t) AS text) <> ''),
+                    CAST(plainto_tsquery('german_text', :query) AS text)
+                ) AS tsquery) AS q
+            ) sq
             WHERE d.id IN (SELECT document_id FROM accessible_docs)
-                AND d.search_vector @@ query
+                AND d.search_vector @@ sq.q
                 {filters}
         """.format(filters=self._build_filter_sql(filters), owned_pred=owned_pred))
 
         # Extrahiere erstes Wort der Query für Filename-Matching (ohne Expansion)
         raw_query_first_word = query.split()[0] if query.split() else query
 
+        fts_terms = build_fts_expansion_terms(query)
+
         params = {
             "query": query,
+            "fts_terms": fts_terms,  # F-P2-005: OR-verknuepfte Terme
             "raw_query": raw_query_first_word,  # Für LIKE-Matching im Filename
             "user_id": str(user_id),
             "company_id": str(company_id) if company_id is not None else None,  # F-P2-001: firmenweite Sichtbarkeit
@@ -1016,9 +1059,23 @@ class SearchService:
         fts_results, _ = await self._search_fts(
             db, query, user_id, filters, 1, expanded_limit, highlight, company_id=company_id
         )
-        semantic_results, _ = await self._search_semantic(
-            db, query, user_id, filters, 1, expanded_limit, threshold, company_id=company_id
-        )
+        # F-P2-004 (Perception-Audit 2026-07-12): Semantik-Fehler (z. B.
+        # GPU-Modell-Dtype-Mismatch fp16/fp32 nach einem ressourcen-knappen
+        # Neustart -> RuntimeError „mat1 and mat2 must have the same dtype")
+        # darf die Suche NICHT auf HTTP 500 reissen. Die Volltextsuche (FTS,
+        # rein Postgres, kein GPU) bleibt als deterministischer Fallback. Der
+        # Buero-Nutzer bekommt dann degradierte, aber funktionierende Treffer.
+        try:
+            semantic_results, _ = await self._search_semantic(
+                db, query, user_id, filters, 1, expanded_limit, threshold, company_id=company_id
+            )
+        except Exception as e:
+            logger.warning(
+                "hybrid_semantic_degraded_to_fts",
+                reason=str(e)[:200],
+                exc_type=type(e).__name__,
+            )
+            semantic_results = []
 
         # RRF Score berechnen mit Standard-Konstante und adaptiven Gewichten
         k = RRF_K_CONSTANT
@@ -1065,7 +1122,18 @@ class SearchService:
         if rerank and self._rerank_enabled and len(sorted_items) > 1:
             # Top-Kandidaten für Reranking (max 30 für Performance)
             rerank_candidates = [item["result"] for item in sorted_items[:30]]
-            reranked_results = await self._rerank_results(query, rerank_candidates, per_page)
+            # F-P2-004 (Perception-Audit 2026-07-12): auch ein Reranker-Fehler
+            # (GPU-Dtype/OOM) darf die Suche nicht auf 500 reissen -> ohne
+            # Reranking auf die RRF-Sortierung zurueckfallen.
+            try:
+                reranked_results = await self._rerank_results(query, rerank_candidates, per_page)
+            except Exception as e:
+                logger.warning(
+                    "hybrid_rerank_degraded",
+                    reason=str(e)[:200],
+                    exc_type=type(e).__name__,
+                )
+                reranked_results = None
 
             if reranked_results:
                 # Score normalisieren

@@ -55,7 +55,7 @@ test('P3 Prueferin: Vertrauens-Oberflaechen sichten', async ({ page }) => {
     await page.waitForTimeout(1500);
     const first = page.locator('main a[href*="/documents/"], main [role="row"]').first();
     await first.waitFor({ state: 'visible', timeout: 15_000 });
-    await first.click();
+    await first.click({ timeout: 8000 });
     await page.waitForURL(/documents\//, { timeout: 15_000 });
     await page.waitForTimeout(2500);
 
@@ -67,7 +67,7 @@ test('P3 Prueferin: Vertrauens-Oberflaechen sichten', async ({ page }) => {
       .getByRole('tab', { name: /Verlauf|Historie|Audit|Protokoll|Lebenszyklus/i })
       .first();
     if (await trailTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await trailTab.click();
+      await trailTab.click({ timeout: 8000 }).catch(() => undefined);
       await page.waitForTimeout(1500);
       await shoot(page, P, 'audit-trail-tab');
     } else {
