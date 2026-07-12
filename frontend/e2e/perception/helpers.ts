@@ -7,11 +7,14 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import type { Page } from '@playwright/test';
 import { API_BASE, type Persona } from './users';
 
 export const ITER = process.env.PERCEPTION_ITER || '01';
 
+// ESM ("type": "module"): __dirname existiert nicht -> aus import.meta.url ableiten
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 export const REPORT_DIR = path.join(REPO_ROOT, 'docs', 'qa-reports', 'perception-2026-07');
 const SCREENSHOT_DIR = path.join(REPORT_DIR, 'screenshots', `iter${ITER}`);
@@ -204,6 +207,49 @@ export async function step(
   }
 }
 
+/**
+ * Fuehrt eine Dokumentensuche ueber die /search-Seite aus und stellt sicher,
+ * dass der Suchbegriff tatsaechlich in der controlled Autocomplete-Komponente
+ * ankommt (Verify via URL-Query). Vermeidet Pointer-Klicks (werden auf /search
+ * zeitweise von Overlays abgefangen) — fokussiert programmatisch.
+ * Rueckgabe: true, wenn die Suche mit dem Begriff ausgeloest wurde.
+ */
+export async function searchFor(page: Page, term: string): Promise<boolean> {
+  await page.goto('/search', { waitUntil: 'domcontentloaded' });
+  const input = page.locator('input[type="search"]').first();
+  await input.waitFor({ state: 'visible', timeout: 10_000 });
+  // Warten bis die Suchseite wirklich interaktiv ist (Lazy-Route)
+  await page
+    .getByText(/Dokumente durchsuchen|Geben Sie einen Suchbegriff/i)
+    .first()
+    .waitFor({ state: 'visible', timeout: 8000 })
+    .catch(() => undefined);
+
+  await input.focus();
+  await input.fill(term);
+  if ((await input.inputValue().catch(() => '')) !== term) {
+    await input.focus();
+    await page.keyboard.insertText(term);
+  }
+  // Auf den debounced URL-Sync warten = Beweis, dass die Query angekommen ist
+  const encoded = encodeURIComponent(term);
+  const registered = await page
+    .waitForURL(
+      (u) => u.search.includes(`q=${encoded}`) || u.search.includes(`q=${term}`),
+      { timeout: 6000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  const respPromise = page.waitForResponse(
+    (r) => r.url().includes('/documents/search/') && /[?&]q=[^&]*[^=&]/.test(r.url()),
+    { timeout: 15_000 }
+  );
+  await input.press('Enter');
+  await respPromise.catch(() => null);
+  return registered;
+}
+
 /** OCR-Status-Polling via API (Cookies der eingeloggten Seite werden mitgesendet). */
 export async function pollOcrStatus(
   page: Page,
@@ -221,6 +267,38 @@ export async function pollOcrStatus(
     await new Promise((r) => setTimeout(r, 5000));
   }
   return { status, elapsedMs: Date.now() - start };
+}
+
+/**
+ * Schliesst die Erstkontakt-Overlays (OnboardingWizard-Modal + ggf. gefuehrte
+ * Produkt-Tour) so, wie es ein Nutzer taete, der „erst mal selbst schauen" will:
+ * Wizard ueber das Schliessen-X ueberspringen, dann Tour per Escape wegnehmen.
+ * Rueckgabe: true, wenn danach keine blockierenden Overlays mehr offen sind.
+ */
+export async function dismissFirstRunOverlays(page: Page): Promise<boolean> {
+  // 1) OnboardingWizard-Modal ueberspringen (X mit aria-label "Onboarding ueberspringen")
+  const wizardSkip = page.getByRole('button', { name: /Onboarding ueberspringen|Onboarding überspringen/i }).first();
+  if (await wizardSkip.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await wizardSkip.click({ timeout: 5000 }).catch(() => undefined);
+    await page.waitForTimeout(600);
+  }
+  // 2) Gefuehrte Tour (falls sie nach dem Skip nachzieht) per Escape schliessen
+  for (let i = 0; i < 3; i += 1) {
+    const tourSkip = page.getByRole('button', { name: /Tour überspringen|Tour ueberspringen/i }).first();
+    if (await tourSkip.isVisible({ timeout: 800 }).catch(() => false)) {
+      await tourSkip.click({ timeout: 3000 }).catch(() => undefined);
+      await page.waitForTimeout(400);
+    } else {
+      await page.keyboard.press('Escape').catch(() => undefined);
+      await page.waitForTimeout(300);
+    }
+  }
+  // 3) Verifizieren: kein role=dialog mit state=open mehr, das Klicks blockt
+  const blocking = await page
+    .locator('div[role="dialog"][data-state="open"]')
+    .count()
+    .catch(() => 0);
+  return blocking === 0;
 }
 
 /** Onboarding-Unterdrueckung (nur fuer P2–P4 ab Iteration 02). */

@@ -17,8 +17,10 @@ import {
   logFinding,
   loginViaUi,
   pollOcrStatus,
+  searchFor,
   shoot,
   step,
+  dismissFirstRunOverlays,
   suppressOnboarding,
 } from './helpers';
 
@@ -32,13 +34,15 @@ test('P2 Prokurist: Beleg via Suche finden + Detail verstehen', async ({ page })
   expect(loggedIn, 'Login als Prokurist muss moeglich sein').toBe(true);
   await page.waitForTimeout(2000);
   await shoot(page, P, 'nach-login');
+  await dismissFirstRunOverlays(page);
 
-  // Vorbedingung: existiert ein durchsuchbares Dokument? Sonst selbst hochladen.
+  // Vorbedingung: existiert ein (firmenweit sichtbares) Dokument? Sonst selbst
+  // hochladen. Die Liste liefert { total, documents } (nicht items).
   const listResp = await page.request.get(`${API_BASE}/api/v1/documents?limit=1`);
   const hasDocs =
     listResp.ok() &&
-    (((await listResp.json().catch(() => ({}))) as { items?: unknown[]; total?: number })
-      .items?.length ?? 0) > 0;
+    (((await listResp.json().catch(() => ({}))) as { documents?: unknown[]; total?: number })
+      .total ?? 0) > 0;
   if (!hasDocs) {
     logFinding({
       persona: P,
@@ -51,7 +55,10 @@ test('P2 Prokurist: Beleg via Suche finden + Detail verstehen', async ({ page })
     await step(page, P, 'fallback-upload', 'Blocker', async () => {
       await page.goto('/upload', { waitUntil: 'domcontentloaded' });
       const respPromise = page.waitForResponse(
-        (r) => r.url().includes('/api/v1/documents') && r.request().method() === 'POST',
+        (r) =>
+          /\/api\/v1\/documents\/?(\?.*)?$/.test(r.url()) &&
+          r.request().method() === 'POST' &&
+          r.status() !== 307,
         { timeout: 60_000 }
       );
       await page.locator('input[type="file"]').first().setInputFiles(FIXTURE_PDF);
@@ -59,7 +66,7 @@ test('P2 Prokurist: Beleg via Suche finden + Detail verstehen', async ({ page })
         .getByRole('button', { name: /hochladen|upload starten|starten/i })
         .first();
       if (await startBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await startBtn.click();
+        await startBtn.click({ timeout: 5000 }).catch(() => undefined);
       }
       const resp = await respPromise;
       const body = await resp.json().catch(() => ({} as { id?: string }));
@@ -70,20 +77,8 @@ test('P2 Prokurist: Beleg via Suche finden + Detail verstehen', async ({ page })
   // Kernszenario: Suche nach "Müller" — Stoppuhr Query -> Treffer sichtbar
   const watch = new Stopwatch();
   await step(page, P, 'suche-mueller', 'Blocker', async () => {
-    const globalSearch = page
-      .locator('header input, [role="search"] input, input[type="search"], input[placeholder*="uch"]')
-      .first();
-    if (await globalSearch.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await globalSearch.fill('Müller');
-      watch.start();
-      await globalSearch.press('Enter');
-    } else {
-      await page.goto('/search', { waitUntil: 'domcontentloaded' });
-      const input = page.locator('main input').first();
-      await input.fill('Müller');
-      watch.start();
-      await input.press('Enter');
-    }
+    watch.start();
+    await searchFor(page, 'Müller');
     const result = page.locator('main a[href*="/documents/"], main [role="row"]').first();
     await result.waitFor({ state: 'visible', timeout: 30_000 });
     const searchMs = watch.mark('treffer_sichtbar');

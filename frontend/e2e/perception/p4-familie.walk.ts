@@ -11,6 +11,7 @@ import {
   loginViaUi,
   shoot,
   step,
+  dismissFirstRunOverlays,
   suppressOnboarding,
 } from './helpers';
 
@@ -24,6 +25,7 @@ test('P4 Familienmitglied: Privat-Space-Grundflow', async ({ page }) => {
   expect(loggedIn, 'Login als Familienmitglied muss moeglich sein').toBe(true);
   await page.waitForTimeout(2000);
   await shoot(page, P, 'nach-login');
+  await dismissFirstRunOverlays(page);
 
   // Privat-Bereich ueber die Navigation finden (wie ein Mensch)
   const navFound = await step(page, P, 'privat-in-navigation-finden', 'Stolper', async () => {
@@ -91,7 +93,7 @@ test('P4 Familienmitglied: Privat-Space-Grundflow', async ({ page }) => {
       .getByRole('button', { name: /hochladen|hinzufügen|anlegen|neu/i })
       .first();
     if (await cta.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await cta.click();
+      await cta.click({ timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(1500);
       await shoot(page, P, 'privat-erste-aktion');
       await page.keyboard.press('Escape').catch(() => undefined);

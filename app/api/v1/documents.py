@@ -1053,6 +1053,10 @@ async def search_documents(
                 db=db,
                 query=q,
                 user_id=current_user.id,
+                # F-P2-001 (Perception-Audit 2026-07-12): firmenweite Suche
+                # (Scope-Entscheid „firmenweit teilen") — alle Firmenmitglieder
+                # finden die Firmendokumente, nicht nur eigene Uploads.
+                company_id=company.id,
                 search_type=search_type,
                 filters=filters,
                 page=page,

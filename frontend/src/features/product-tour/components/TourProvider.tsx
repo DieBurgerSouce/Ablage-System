@@ -51,12 +51,22 @@ export function useTourContext(): TourContextValue {
 
 interface TourProviderProps {
   children: React.ReactNode
+  /**
+   * Auto-Start der gefuehrten Willkommens-Tour beim ersten Besuch.
+   *
+   * F-P1-004 (Perception-Audit 2026-07-12): Default auf `false` gesetzt. Der
+   * OnboardingWizard ist die kanonische Erstkontakt-Erfahrung; die gefuehrte
+   * Spotlight-Tour startete beim ersten Login zusaetzlich automatisch und
+   * ueberlagerte die App (ihr Spotlight-Overlay fing sogar Klicks aufs
+   * Suchfeld ab). Sie bleibt jederzeit ueber den Tour-Starter im Header
+   * (`TourLauncher`) manuell aufrufbar.
+   */
   autoStartWelcome?: boolean
 }
 
 export function TourProvider({
   children,
-  autoStartWelcome = true,
+  autoStartWelcome = false,
 }: TourProviderProps) {
   const tour = useTour({
     onTourComplete: useCallback(() => {
@@ -85,7 +95,9 @@ export function TourProvider({
     hasBadge,
   } = tour
 
-  // Auto-Start Willkommens-Tour für neue Benutzer
+  // Auto-Start Willkommens-Tour (nur wenn ein Aufrufer autoStartWelcome=true
+  // setzt — per Default AUS, siehe Prop-Doku / F-P1-004). Der OnboardingWizard
+  // uebernimmt den Erstkontakt; die Tour ist ueber TourLauncher opt-in.
   useEffect(() => {
     if (!autoStartWelcome) return
 

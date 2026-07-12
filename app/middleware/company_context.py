@@ -412,17 +412,22 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
 
         # I.7 HIGH: Verwende set_config() mit Parameter statt f-string SET
         # set_config() ist sicher gegen SQL-Injection da es den Wert als String behandelt
-        await db.execute(
-            sa.text("SELECT set_config('app.current_company_id', :cid, true)"),
-            {"cid": str(validated_uuid)}
-        )
-        # RLS-Reconciliation: Migration 210 nutzt FORCE-RLS-Policies gegen die Variable
-        # 'app.current_tenant_id' (slack_channels/user_company_roles/...). Wir spiegeln sie
-        # auf company_id, damit diese Policies konsistent mit allen uebrigen
-        # (app.current_company_id) funktionieren statt 0 Zeilen zu liefern.
-        await db.execute(
-            sa.text("SELECT set_config('app.current_tenant_id', :cid, true)"),
-            {"cid": str(validated_uuid)}
+        #
+        # F-P1-001 (Perception-Audit 2026-07-12): persist_rls_gucs statt direkter
+        # set_configs — ein commit() im Handler verlor sonst den Company-Kontext
+        # fuer den Rest des Requests (after_begin-Listener re-appliziert).
+        # RLS-Reconciliation: Migration 210 nutzt FORCE-RLS-Policies gegen die
+        # Variable 'app.current_tenant_id' (slack_channels/user_company_roles/...)
+        # — auf company_id gespiegelt, damit diese Policies konsistent mit allen
+        # uebrigen (app.current_company_id) funktionieren statt 0 Zeilen zu liefern.
+        from app.db.session import persist_rls_gucs
+
+        await persist_rls_gucs(
+            db,
+            {
+                "app.current_company_id": str(validated_uuid),
+                "app.current_tenant_id": str(validated_uuid),
+            },
         )
         record_security_rls_event("context_set")
         logger.debug(

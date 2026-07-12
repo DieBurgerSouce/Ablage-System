@@ -14,9 +14,11 @@ import {
   REPORT_DIR,
   Stopwatch,
   attachTaps,
+  dismissFirstRunOverlays,
   logFinding,
   loginViaUi,
   pollOcrStatus,
+  searchFor,
   shoot,
   step,
 } from './helpers';
@@ -40,20 +42,21 @@ test('P1 Azubi: Upload -> OCR -> Wiederfinden (TTFV)', async ({ page }) => {
   await page.waitForTimeout(2500);
   await shoot(page, P, 'nach-login-so-wie-es-ist');
 
-  // Onboarding wie ein echter Azubi durchlaufen (max. 8 Klicks, screenshotten)
-  await step(page, P, 'onboarding-durchlaufen', 'Stolper', async () => {
-    for (let i = 0; i < 8; i += 1) {
-      const btn = page
-        .getByRole('button', {
-          name: /^(Los geht's|Weiter|Fertig|Abschließen|Überspringen|Tour überspringen|Verstanden|Schließen)$/i,
-        })
-        .first();
-      if (!(await btn.isVisible({ timeout: 2000 }).catch(() => false))) break;
-      await shoot(page, P, `onboarding-schritt-${i + 1}`);
-      await btn.click();
-      await page.waitForTimeout(800);
-    }
-  });
+  // Ersteindruck des Onboardings festhalten, dann wie ein Nutzer, der „erst
+  // selbst schauen" will, sauber ueberspringen (Wizard-X + Tour-Escape).
+  await shoot(page, P, 'onboarding-erster-eindruck');
+  const cleared = await dismissFirstRunOverlays(page);
+  if (!cleared) {
+    logFinding({
+      persona: P,
+      iteration: ITER,
+      route: page.url(),
+      severity: 'Blocker',
+      description:
+        'Erstkontakt-Overlay laesst sich nicht schliessen — blockiert weiterhin die Bedienung.',
+      screenshot: await shoot(page, P, 'onboarding-nicht-schliessbar'),
+    });
+  }
   watch.mark('onboarding');
 
   // Upload ueber die Navigation finden (wie ein Mensch), sonst Befund + direkt hin
@@ -85,17 +88,24 @@ test('P1 Azubi: Upload -> OCR -> Wiederfinden (TTFV)', async ({ page }) => {
   // Fixture-Rechnung hochladen; Dokument-ID aus der Upload-Response schnappen
   let documentId = '';
   await step(page, P, 'datei-hochladen', 'Blocker', async () => {
+    // 307-Redirect (POST /documents -> /documents/) ueberspringen: nur die
+    // finale Antwort zaehlt, sonst ist der JSON-Body leer.
     const respPromise = page.waitForResponse(
-      (r) => r.url().includes('/api/v1/documents') && r.request().method() === 'POST',
+      (r) =>
+        /\/api\/v1\/documents\/?(\?.*)?$/.test(r.url()) &&
+        r.request().method() === 'POST' &&
+        r.status() !== 307,
       { timeout: 60_000 }
     );
     await page.locator('input[type="file"]').first().setInputFiles(FIXTURE_PDF);
-    // Falls der Wizard einen expliziten Start-Button hat, druecken
+    // Falls der Wizard einen expliziten Start-Button hat, druecken.
+    // WICHTIG: expliziter timeout — ohne ihn erbt click() den Test-Timeout
+    // (600s) und der Walk haengt an einem verdeckten/disabled Button fest.
     const startBtn = page
       .getByRole('button', { name: /hochladen|upload starten|starten/i })
       .first();
     if (await startBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await startBtn.click();
+      await startBtn.click({ timeout: 5000 }).catch(() => undefined);
     }
     const resp = await respPromise;
     const body = await resp.json().catch(() => ({}));
@@ -131,28 +141,22 @@ test('P1 Azubi: Upload -> OCR -> Wiederfinden (TTFV)', async ({ page }) => {
     });
   }
 
+  // Ohne globale Kopfzeilen-Suche muss der Azubi die Suchseite selbst finden
+  const headerSearch = page.locator('header input[type="search"]').first();
+  if (!(await headerSearch.isVisible({ timeout: 3000 }).catch(() => false))) {
+    logFinding({
+      persona: P,
+      iteration: ITER,
+      route: page.url(),
+      severity: 'Stolper',
+      description: 'Keine globale Suche in der Kopfzeile — Azubi muss die Suchseite selbst finden.',
+    });
+  }
+
   // Wiederfinden ueber die Suche ("Müller")
   const searched = await step(page, P, 'dokument-per-suche-finden', 'Blocker', async () => {
-    const globalSearch = page
-      .locator('header input, [role="search"] input, input[type="search"], input[placeholder*="uch"]')
-      .first();
-    if (await globalSearch.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await globalSearch.fill('Müller');
-      await globalSearch.press('Enter');
-    } else {
-      logFinding({
-        persona: P,
-        iteration: ITER,
-        route: page.url(),
-        severity: 'Stolper',
-        description: 'Keine globale Suche sichtbar — Azubi muss die Suchseite selbst finden.',
-      });
-      await page.goto('/search', { waitUntil: 'domcontentloaded' });
-      const input = page.locator('main input').first();
-      await input.fill('Müller');
-      await input.press('Enter');
-    }
-    await page.waitForTimeout(2500);
+    await searchFor(page, 'Müller');
+    await page.waitForTimeout(2000);
     await shoot(page, P, 'suchergebnis');
     const result = page.locator('main a[href*="/documents/"], main [role="row"]').first();
     await result.waitFor({ state: 'visible', timeout: 20_000 });

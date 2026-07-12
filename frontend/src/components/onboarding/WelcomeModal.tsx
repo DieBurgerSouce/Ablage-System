@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { isPrimaryOnboardingPending } from '@/features/onboarding/hooks/use-onboarding'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -85,9 +86,18 @@ export function WelcomeModal({ forceShow = false, onClose }: WelcomeModalProps) 
     const [dontShowAgain, setDontShowAgain] = useState(false)
 
     useEffect(() => {
-        // Check if onboarding was already completed
+        // forceShow (Settings-„Tour neu starten") oeffnet immer.
+        if (forceShow) {
+            setIsOpen(true)
+            return
+        }
+        // F-P1-004 (Perception-Audit 2026-07-12): Auto-Anzeige NUR, wenn der
+        // primaere OnboardingWizard nicht (mehr) aussteht — sonst ueberlagern
+        // sich zwei Willkommens-Dialoge. (WelcomeModal ist aktuell nicht im
+        // Root eingebunden; dieser Guard schuetzt gegen versehentliche
+        // Re-Aktivierung.)
         const completed = localStorage.getItem(STORAGE_KEY)
-        if (!completed || forceShow) {
+        if (!completed && !isPrimaryOnboardingPending()) {
             setIsOpen(true)
         }
     }, [forceShow])

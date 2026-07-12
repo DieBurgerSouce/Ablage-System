@@ -377,34 +377,51 @@ def process_document_task(
                             copied_confidence = dup_doc.ocr_confidence if dup_doc else None
                             copied_backend = dup_doc.ocr_backend_used if dup_doc else None
 
+                            # F-P1-002 (Perception-Audit 2026-07-12): Skip NUR,
+                            # wenn das Original wirklich Text hat. Vorher wurde
+                            # auch bei text-losem Original (z.B. selbst nie
+                            # ge-OCRt) COMPLETED gesetzt und returnt -> Dokument
+                            # dauerhaft "fertig", aber leer und unauffindbar.
                             if copied_text:
                                 document.extracted_text = copied_text
                                 document.ocr_confidence = copied_confidence
                                 document.ocr_backend_used = f"{copied_backend or 'unknown'}_copied"
 
+                                logger.warning(
+                                    "ocr_skipped_duplicate",
+                                    document_id=document_id,
+                                    duplicate_of=str(best.document_id),
+                                    ocr_text_copied=True,
+                                )
+                                metadata = document.document_metadata or {}
+                                metadata["potential_duplicate"] = True
+                                metadata["duplicate_of"] = str(best.document_id)
+                                metadata["ocr_skipped_reason"] = "exact_duplicate"
+                                metadata["ocr_copied_from"] = str(best.document_id)
+                                document.document_metadata = metadata
+                                document.status = ProcessingStatus.COMPLETED
+                                await session.commit()
+                                return {
+                                    "success": True,
+                                    "document_id": document_id,
+                                    "text": copied_text,
+                                    "confidence": copied_confidence or 0.0,
+                                    "backend_used": "skipped_duplicate_copy",
+                                    "processing_time_ms": 0,
+                                    "skipped_reason": "exact_duplicate",
+                                }
+
                             logger.warning(
-                                "ocr_skipped_duplicate",
+                                "ocr_duplicate_without_text_running_ocr",
                                 document_id=document_id,
                                 duplicate_of=str(best.document_id),
-                                ocr_text_copied=copied_text is not None,
                             )
+                            # Duplikat als Metadatum vermerken, aber normal
+                            # weiter-OCRen (kein return).
                             metadata = document.document_metadata or {}
                             metadata["potential_duplicate"] = True
                             metadata["duplicate_of"] = str(best.document_id)
-                            metadata["ocr_skipped_reason"] = "exact_duplicate"
-                            metadata["ocr_copied_from"] = str(best.document_id)
                             document.document_metadata = metadata
-                            document.status = ProcessingStatus.COMPLETED
-                            await session.commit()
-                            return {
-                                "success": True,
-                                "document_id": document_id,
-                                "text": copied_text,
-                                "confidence": copied_confidence or 0.0,
-                                "backend_used": "skipped_duplicate_copy",
-                                "processing_time_ms": 0,
-                                "skipped_reason": "exact_duplicate",
-                            }
                 except Exception as dup_err:
                     logger.debug(
                         "pre_ocr_duplicate_check_failed",

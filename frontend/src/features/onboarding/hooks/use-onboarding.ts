@@ -13,6 +13,27 @@ import { useLocalStorage } from '@/hooks/use-local-storage'
 
 const ONBOARDING_STORAGE_KEY = 'ablage_onboarding_v2'
 
+/**
+ * Liest ausserhalb von React, ob der primaere Erstkontakt-Flow (der
+ * OnboardingWizard) noch aussteht — d.h. weder abgeschlossen noch
+ * uebersprungen.
+ *
+ * F-P1-004 (Perception-Audit 2026-07-12): Der Wizard ist die EINE
+ * kanonische Willkommens-Erfahrung. WelcomeModal und die gefuehrte
+ * Produkt-Tour koppeln sich hieran, damit beim ersten Login nicht drei
+ * Onboarding-Ebenen gleichzeitig ueberlagern.
+ */
+export function isPrimaryOnboardingPending(): boolean {
+  try {
+    const raw = window.localStorage.getItem(ONBOARDING_STORAGE_KEY)
+    if (!raw) return true
+    const state = JSON.parse(raw) as Partial<OnboardingState>
+    return !state.completed && !state.skipped
+  } catch {
+    return true
+  }
+}
+
 export type OnboardingStep = 'willkommen' | 'firma' | 'upload' | 'ergebnis' | 'fertig'
 
 const STEP_ORDER: OnboardingStep[] = ['willkommen', 'firma', 'upload', 'ergebnis', 'fertig']

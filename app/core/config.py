@@ -372,10 +372,15 @@ class Settings(BaseSettings):
     RATE_LIMIT_WHITELIST: List[str] = []
 
     # Rate Limit Tiers (Daily >= Hourly validated in model_validator)
-    RATE_LIMIT_FREE_HOURLY: int = Field(default=10, ge=1, description="Hourly requests for free tier")
-    RATE_LIMIT_FREE_DAILY: int = Field(default=50, ge=1, description="Daily requests for free tier")
-    RATE_LIMIT_PREMIUM_HOURLY: int = Field(default=100, ge=1, description="Hourly requests for premium tier")
-    RATE_LIMIT_PREMIUM_DAILY: int = Field(default=1000, ge=1, description="Daily requests for premium tier")
+    # F-P1-003 (Perception-Audit 2026-07-12): Free 10/h sperrte normale
+    # Buero-Nutzer nach 10 Such-/Listen-Aufrufen fuer eine Stunde aus —
+    # check_rate_limit codierte die Werte zudem hart statt diese Settings zu
+    # lesen (jetzt verdrahtet, inkl. users.rate_limit_hourly-Override).
+    # 600/h = 10/min nachhaltig; On-Prem-Buero-Betrieb, kein SaaS-Free-Tier.
+    RATE_LIMIT_FREE_HOURLY: int = Field(default=600, ge=1, description="Hourly requests for free tier")
+    RATE_LIMIT_FREE_DAILY: int = Field(default=5000, ge=1, description="Daily requests for free tier")
+    RATE_LIMIT_PREMIUM_HOURLY: int = Field(default=2000, ge=1, description="Hourly requests for premium tier")
+    RATE_LIMIT_PREMIUM_DAILY: int = Field(default=20000, ge=1, description="Daily requests for premium tier")
     RATE_LIMIT_ADMIN_HOURLY: int = Field(default=10000, ge=1, description="Hourly requests for admin tier")
 
     # Rate Limit Windows (in seconds)

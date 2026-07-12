@@ -11,8 +11,10 @@ import {
   attachTaps,
   logFinding,
   loginViaUi,
+  searchFor,
   shoot,
   step,
+  dismissFirstRunOverlays,
   suppressOnboarding,
 } from './helpers';
 
@@ -26,12 +28,31 @@ test('P3 Prueferin: Vertrauens-Oberflaechen sichten', async ({ page }) => {
   expect(loggedIn, 'Login als Prueferin (Viewer) muss moeglich sein').toBe(true);
   await page.waitForTimeout(2000);
   await shoot(page, P, 'nach-login-viewer-sicht');
+  await dismissFirstRunOverlays(page);
 
-  // 1) Dokument-Detail: ist ein Verlauf/Audit-Trail sichtbar?
+  // Nebenbefund: /documents (Index) liefert eine 404-Seite (keine Route) —
+  // ein Pruefer, der die URL raet, landet auf „Seite nicht gefunden".
+  await page.goto('/documents', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  const notFound = /Seite nicht gefunden|404/i.test(
+    (await page.locator('main').innerText().catch(() => '')) || ''
+  );
+  if (notFound) {
+    logFinding({
+      persona: P,
+      iteration: ITER,
+      route: '/documents',
+      severity: 'Stolper',
+      description:
+        '/documents (Dokument-Index) zeigt eine 404-Seite — es gibt keine Sammel-Dokumentliste; Dokumente sind nur ueber Suche/Smart Inbox erreichbar.',
+      screenshot: await shoot(page, P, 'documents-404'),
+    });
+  }
+
+  // 1) Dokument ueber die (funktionierende) Suche oeffnen: Verlauf/Audit sichtbar?
   await step(page, P, 'dokument-detail-verlauf', 'Stolper', async () => {
-    await page.goto('/documents', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2500);
-    await shoot(page, P, 'dokumentliste');
+    await searchFor(page, 'Müller');
+    await page.waitForTimeout(1500);
     const first = page.locator('main a[href*="/documents/"], main [role="row"]').first();
     await first.waitFor({ state: 'visible', timeout: 15_000 });
     await first.click();
