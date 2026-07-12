@@ -82,7 +82,23 @@ Unabhängiger Review-Agent über den gesamten Diff: **keine High-Confidence-Korr
 5. **Chain-Statistik-Anzeige:** Der grüne Beweis zählt nur die Einträge DIESES Dokuments (dokument-lokal). Die firmenweite Ketten-Gesundheit zeigt weiterhin `/admin/audit-trail` (stündlicher Beat-Task).
 6. **Review-Finding (niedrig):** `chain.entries_total` ist auf die neuesten 100 Einträge gekappt (`get_entries_by_document(limit=100)`) — da jeder „Beweisen"-Klick selbst einen `INTEGRITY_CHECK_*`-Eintrag anhängt, kann ein viel geprüftes Dokument den Cap irgendwann erreichen; die Zahl wäre dann „geprüfte", nicht „alle" Einträge. Kein Security-/GoBD-Impact (Komplettprüfung = `verify_chain`-Beat), aber Kandidat für Umbenennung/echten Count.
 
-## 4. Reproduktion
+## 4. Abschluss-Validierung (Nachfrage Ben, 2026-07-12 abends)
+
+Systematischer Voll-Check nach Commit `2007a810c`:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Working Tree | sauber (einzig `.login-times.json` = pre-existierendes Perception-Harness-Artefakt, nicht von dieser Session) |
+| **Übersehene Bestandssuite** `tests/integration/test_gobd_api.py` (testet genau die geänderten Endpoints; im ersten Durchgang nicht gelaufen) | **21 passed** ✅ |
+| Weitere Konsumenten der geänderten Module (Backend-Tests + Frontend-Importe außerhalb features/gobd) | keine — grep-verifiziert |
+| Ruff-Diff `compliance.py` HEAD~1↔HEAD | identisch (keine neuen Meldungen) |
+| mypy-Diff HEAD~1↔HEAD (5 Dateien) | 206 → 244; **alle ~38 neuen = dieselben SQLAlchemy-ORM-Noise-Klassen wie der Bestand in denselben Dateien** (Column-Typ vs. Laufzeitwert, untyped `StorageService.__init__`, impliziter `Company`-Re-Export — Nachbarcode `verify_chain` erzeugt identische Meldungen). Kein `Any` eingeführt, keine neue Fehlerklasse; mypy ist für diese Dateien kein scharfes Gate (206 pre-existierend). |
+| Stack-Health | alle ablage-Container healthy, Backend+Frontend 200 |
+| OpenAPI | prove-Route vorhanden |
+| **Live-Beweis als ECHTE Zielpersona** `pruefer@localhost.com` (Viewer — erster Durchgang testete nur Prokurist) | Archiv-Info 200 (`is_verified: true`), prove → `verified`, Kette valid, 4 Einträge (jeder Beweis protokolliert sich selbst in der Kette — by design) ✅ |
+| Screenshots | 4 Dateien vorhanden (00-vorher, 01-Badge, 02-grün, 03-rot) |
+
+## 5. Reproduktion
 
 ```bash
 # Backend-Tests (im Container, GPU aus)
