@@ -61,6 +61,18 @@ class ChainEntry:
     user_id: Optional[uuid.UUID] = None
 
 
+@dataclass
+class DocumentChainVerification:
+    """Ergebnis der Ketten-Prüfung für die Einträge EINES Dokuments."""
+    total_entries: int
+    verified_entries: int
+    valid: Optional[bool]  # None = keine Einträge vorhanden
+    broken_at_sequence: Optional[int] = None
+    error_message: Optional[str] = None
+    first_entry_at: Optional[datetime] = None
+    last_entry_at: Optional[datetime] = None
+
+
 class AuditChainService:
     """Service für die Verwaltung der GoBD Audit-Chain.
 
@@ -298,6 +310,120 @@ class AuditChainService:
             total_entries=len(entries),
             verified_entries=verified_count,
             verification_time_ms=duration,
+        )
+
+    async def verify_document_entries(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+        document_id: uuid.UUID,
+        limit: int = 100,
+    ) -> DocumentChainVerification:
+        """Verifiziert alle Chain-Einträge eines einzelnen Dokuments.
+
+        Prüft für jeden Eintrag des Dokuments Content-Hash, Combined-Hash
+        und die Verkettung zum jeweiligen Vorgänger-Eintrag der Firma.
+        Bewusst dokument-lokal und damit schnell — die firmenweite
+        Komplett-Prüfung bleibt Aufgabe von verify_chain (Beat-Task).
+
+        Args:
+            db: Datenbank-Session
+            company_id: Firmen-ID
+            document_id: Dokument-ID
+            limit: Maximale Anzahl geprüfter Einträge
+
+        Returns:
+            DocumentChainVerification (valid=None wenn keine Einträge)
+        """
+        entries = await self.get_entries_by_document(
+            db=db,
+            company_id=company_id,
+            document_id=document_id,
+            limit=limit,
+        )
+
+        if not entries:
+            return DocumentChainVerification(
+                total_entries=0,
+                verified_entries=0,
+                valid=None,
+            )
+
+        entries = sorted(entries, key=lambda e: e.sequence_number)
+        verified_count = 0
+
+        for entry in entries:
+            expected_content_hash = self._calculate_content_hash(
+                ChainEntry(
+                    event_type=AuditChainEventType(entry.event_type),
+                    event_data=entry.event_data,
+                    document_id=entry.document_id,
+                    user_id=entry.user_id,
+                )
+            )
+            if entry.content_hash != expected_content_hash:
+                entry.verification_error = (
+                    f"Content-Hash stimmt nicht überein bei Sequenz {entry.sequence_number}"
+                )
+                return DocumentChainVerification(
+                    total_entries=len(entries),
+                    verified_entries=verified_count,
+                    valid=False,
+                    broken_at_sequence=entry.sequence_number,
+                    error_message=entry.verification_error,
+                    first_entry_at=entries[0].created_at,
+                    last_entry_at=entries[-1].created_at,
+                )
+
+            expected_combined = self._calculate_combined_hash(
+                entry.previous_hash, entry.content_hash
+            )
+            if entry.combined_hash != expected_combined:
+                entry.verification_error = (
+                    f"Combined-Hash stimmt nicht bei Sequenz {entry.sequence_number}"
+                )
+                return DocumentChainVerification(
+                    total_entries=len(entries),
+                    verified_entries=verified_count,
+                    valid=False,
+                    broken_at_sequence=entry.sequence_number,
+                    error_message=entry.verification_error,
+                    first_entry_at=entries[0].created_at,
+                    last_entry_at=entries[-1].created_at,
+                )
+
+            if entry.sequence_number > 1:
+                previous_entry = await self.get_entry_by_sequence(
+                    db=db,
+                    company_id=company_id,
+                    sequence_number=entry.sequence_number - 1,
+                )
+                if previous_entry is None or entry.previous_hash != previous_entry.combined_hash:
+                    entry.verification_error = (
+                        f"Verkettung zum Vorgänger gebrochen bei Sequenz {entry.sequence_number}"
+                    )
+                    return DocumentChainVerification(
+                        total_entries=len(entries),
+                        verified_entries=verified_count,
+                        valid=False,
+                        broken_at_sequence=entry.sequence_number,
+                        error_message=entry.verification_error,
+                        first_entry_at=entries[0].created_at,
+                        last_entry_at=entries[-1].created_at,
+                    )
+
+            # Nur Allow-List-Spalten des Immutability-Triggers anfassen
+            entry.is_verified = True
+            entry.last_verified_at = datetime.utcnow()
+            entry.verification_error = None
+            verified_count += 1
+
+        return DocumentChainVerification(
+            total_entries=len(entries),
+            verified_entries=verified_count,
+            valid=True,
+            first_entry_at=entries[0].created_at,
+            last_entry_at=entries[-1].created_at,
         )
 
     async def get_chain_statistics(

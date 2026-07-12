@@ -269,7 +269,7 @@ class GoBDArchiveService:
             if archive.signature_certificate:
                 tsa_verified = await self._verify_tsa_token(
                     token_base64=archive.signature_certificate,
-                    document_content=document_content,
+                    signed_data=bytes.fromhex(actual_hash),
                 )
                 check.tsa_verified = tsa_verified
 
@@ -734,15 +734,19 @@ class GoBDArchiveService:
     async def _verify_tsa_token(
         self,
         token_base64: str,
-        document_content: bytes,
+        signed_data: bytes,
     ) -> Optional[bool]:
-        """Verifiziert einen RFC 3161 TSA-Token gegen den Dokumenteninhalt.
+        """Verifiziert einen RFC 3161 TSA-Token.
 
         Nutzt tsa_service.verify_timestamp() für die Validierung.
 
         Args:
             token_base64: Base64-encoded TSA Response Token
-            document_content: Originaler Dokumenteninhalt
+            signed_data: Exakt die Bytes, die bei der Token-Erstellung an
+                request_timestamp() übergeben wurden. Beim Archivieren sind
+                das die rohen SHA-256-Digest-Bytes des Inhalts (siehe
+                _get_tsa_timestamp: bytes.fromhex(content_hash)) — NICHT der
+                volle Dateiinhalt, sonst schlägt der Imprint-Vergleich immer fehl.
 
         Returns:
             True wenn Token gültig, False wenn ungültig, None bei Fehler
@@ -755,10 +759,10 @@ class GoBDArchiveService:
         try:
             tsa_service = TimestampAuthorityService()
 
-            # Verifiziere Token gegen Originaldaten
+            # Verifiziere Token gegen die ursprünglich signierten Daten
             is_valid = tsa_service.verify_timestamp(
                 token_base64=token_base64,
-                original_data=document_content,
+                original_data=signed_data,
             )
 
             if is_valid:

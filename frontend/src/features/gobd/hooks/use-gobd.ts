@@ -57,13 +57,14 @@ export function useArchivedDocuments(params?: {
 }
 
 /**
- * Einzelner Archive-Eintrag
+ * Einzelner Archive-Eintrag (404 = noch nicht versiegelt, daher kein Retry)
  */
 export function useArchiveEntry(documentId: string) {
   return useQuery({
     queryKey: gobdKeys.archiveDetail(documentId),
     queryFn: () => gobdApi.getArchiveEntry(documentId),
     enabled: !!documentId,
+    retry: false,
   })
 }
 
@@ -134,6 +135,21 @@ export function useVerifyDocument() {
     },
     onError: () => {
       toast.error('Verifizierung fehlgeschlagen')
+    },
+  })
+}
+
+/**
+ * Live-Beweisführung: Storage-Re-Hash + Beweiskette + Zeitstempel.
+ * Kein Toast — das Ergebnis wird vom aufrufenden Panel selbst gerendert.
+ */
+export function useProveDocument() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (documentId: string) => gobdApi.proveDocumentIntegrity(documentId),
+    onSuccess: (proof) => {
+      queryClient.invalidateQueries({ queryKey: gobdKeys.archiveDetail(proof.document_id) })
     },
   })
 }

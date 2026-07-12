@@ -23,7 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
-from app.db.models import User, Document
+from app.db.models import Company, User, Document
+from app.middleware.company_context import require_company
 from app.db.bpmn_models.gobd import (
     AuditChainEventType,
     RetentionPolicy,
@@ -47,6 +48,18 @@ from app.services.storage_service import StorageService
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/compliance", tags=["GoBD Compliance"])
+
+
+async def require_company_id(
+    company: Company = Depends(require_company),
+) -> uuid.UUID:
+    """Company-ID MIT gesetztem RLS-Kontext.
+
+    get_user_company_id_dep liefert nur die ID ohne RLS-GUC — Selects auf
+    RLS-geschützte Tabellen (documents, document_archives) sehen dann
+    0 Zeilen und enden fälschlich als 404.
+    """
+    return company.id
 
 
 # ================== Pydantic Schemas ==================
@@ -269,7 +282,7 @@ async def archive_document(
     request: ArchiveDocumentRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: uuid.UUID = Depends(get_user_company_id_dep),
+    company_id: uuid.UUID = Depends(require_company_id),
 ):
     """Archiviert ein Dokument GoBD-konform.
 
@@ -382,7 +395,7 @@ async def get_document_archive(
     document_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: uuid.UUID = Depends(get_user_company_id_dep),
+    company_id: uuid.UUID = Depends(require_company_id),
 ):
     """Holt die Archiv-Informationen für ein Dokument."""
     archive = await gobd_archive_service.get_archive_by_document(
@@ -415,7 +428,7 @@ async def get_document_archive(
 async def get_archive_statistics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: uuid.UUID = Depends(get_user_company_id_dep),
+    company_id: uuid.UUID = Depends(require_company_id),
 ):
     """Holt Archivierungs-Statistiken."""
     return await gobd_archive_service.get_archive_statistics(
@@ -429,7 +442,7 @@ async def verify_archive_integrity(
     request: IntegrityCheckRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: uuid.UUID = Depends(get_user_company_id_dep),
+    company_id: uuid.UUID = Depends(require_company_id),
 ):
     """Verifiziert die Integritaet eines archivierten Dokuments.
 
@@ -553,7 +566,7 @@ async def verify_archive_integrity(
 async def get_failed_verifications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company_id: uuid.UUID = Depends(get_user_company_id_dep),
+    company_id: uuid.UUID = Depends(require_company_id),
 ):
     """Holt alle Archive mit fehlgeschlagener Integritaetsprüfung.
 
