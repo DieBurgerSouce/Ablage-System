@@ -32,6 +32,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 
 
+def _enum_wert(wert: object) -> str:
+    """F-P2-007 (Perception-Audit 2026-07-12): job_type/status sind
+    String-Spalten — aus der DB geladene Zeilen liefern str, frisch im
+    Request gesetzte Werte können Enum sein. `.value` auf str crashte
+    jede Job-Liste mit HTTP 500, sobald eine Zeile existierte."""
+    if isinstance(wert, Enum):
+        return str(wert.value)
+    return str(wert)
+
+
 class JobStatusResponse(BaseModel):
     """Status eines Batch-Jobs."""
     id: UUID
@@ -138,8 +148,8 @@ async def list_jobs(
         jobs=[
             JobStatusResponse(
                 id=j.id,
-                job_type=j.job_type.value,
-                status=j.status.value,
+                job_type=_enum_wert(j.job_type),
+                status=_enum_wert(j.status),
                 progress_percent=j.progress_percent,
                 items_total=j.items_total,
                 items_processed=j.items_processed,
@@ -191,8 +201,8 @@ async def get_job_status(
 
     return JobStatusResponse(
         id=job.id,
-        job_type=job.job_type.value,
-        status=job.status.value,
+        job_type=_enum_wert(job.job_type),
+        status=_enum_wert(job.status),
         progress_percent=job.progress_percent,
         items_total=job.items_total,
         items_processed=job.items_processed,
@@ -275,8 +285,8 @@ async def create_job(
 
     return JobStatusResponse(
         id=job.id,
-        job_type=job.job_type.value,
-        status=job.status.value,
+        job_type=_enum_wert(job.job_type),
+        status=_enum_wert(job.status),
         progress_percent=job.progress_percent,
         items_total=job.items_total,
         items_processed=job.items_processed,
@@ -320,7 +330,7 @@ async def cancel_job(
     if job.status not in [RAGBatchJobStatus.PENDING, RAGBatchJobStatus.RUNNING]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Job kann nicht abgebrochen werden (Status: {job.status.value})"
+            detail=f"Job kann nicht abgebrochen werden (Status: {_enum_wert(job.status)})"
         )
 
     # Job abbrechen
@@ -338,8 +348,8 @@ async def cancel_job(
 
     return JobStatusResponse(
         id=job.id,
-        job_type=job.job_type.value,
-        status=job.status.value,
+        job_type=_enum_wert(job.job_type),
+        status=_enum_wert(job.status),
         progress_percent=job.progress_percent,
         items_total=job.items_total,
         items_processed=job.items_processed,
@@ -470,8 +480,8 @@ async def get_job_stats(
         "recent_jobs": [
             {
                 "id": str(j.id),
-                "job_type": j.job_type.value,
-                "status": j.status.value,
+                "job_type": _enum_wert(j.job_type),
+                "status": _enum_wert(j.status),
                 "progress_percent": j.progress_percent,
                 "created_at": j.created_at.isoformat()
             }

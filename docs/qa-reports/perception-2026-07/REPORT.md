@@ -22,14 +22,15 @@
 
 ## 3. TTFV-Tabelle (Persona × Iteration)
 
-| Persona / Metrik | vor Fixes | Iteration 01 | Iteration 02 (Bestätigung) | Ziel |
-|---|---|---|---|---|
-| **P1 Azubi TTFV** (Login→Upload→OCR→gefunden) | ∞ (Blocker: Upload 500) | **0,4 min (24 s)** ✓ | **15,8 s** ✓ | < 5 min |
-| P1 OCR-Dauer (Surya-GPU) | – | 13–21 s | 12,5 s | < 300 s Budget |
-| **P2 Prokurist Suche→Treffer** | ∞ (0 Treffer, owner-scoped) | **1,4 s** ✓ | **2,5 s** ✓ | < 10 s |
-| P3 Prüferin Dokument-Detail erreichbar | nein (owner-scoped 0 Docs) | ja | ja (firmenweit) | – |
-| P4 Familie Privat-Space lädt | nein (Router-404) | ja (HTTP 200) | ja | – |
-| Blocker pro Iteration | – | **0** | **0** | 0 |
+| Persona / Metrik | vor Fixes | Iteration 01 | Iteration 02 (Bestätigung) | Iteration 03 (Tiefen-Sweep + Re-Walk) | Ziel |
+|---|---|---|---|---|---|
+| **P1 Azubi TTFV** (Login→Upload→OCR→gefunden) | ∞ (Blocker: Upload 500) | **0,4 min (24 s)** ✓ | **15,8 s** ✓ | **21,4 s** ✓ | < 5 min |
+| P1 OCR-Dauer (Surya-GPU) | – | 13–21 s | 12,5 s | 12,5 s | < 300 s Budget |
+| **P2 Prokurist Suche→Treffer** | ∞ (0 Treffer, owner-scoped) | **1,4 s** ✓ | **2,5 s** ✓ | **1,1 s** ✓ | < 10 s |
+| P3 Prüferin Dokument-Detail erreichbar | nein (owner-scoped 0 Docs) | ja | ja (firmenweit) | – (kein Re-Walk nötig) | – |
+| P4 Familie Privat-Space lädt | nein (Router-404) | ja (HTTP 200) | ja | – (kein Re-Walk nötig) | – |
+| 5xx im Hintergrund-Netzwerk-Tap (P1+P2) | – | 1 (annotations) | 1 (annotations) | **0** ✓ | 0 |
+| Blocker pro Iteration (Walks) | – | **0** | **0** | **0** | 0 |
 
 ## 4. Findings-Register
 
@@ -46,6 +47,10 @@
 | F-P1-005 | alle | 01 | global | Roter „destructive"-Toast **„Nicht gefunden — Die angeforderte Ressource wurde nicht gefunden"** bei jedem 404 (Hintergrund-/Polling-Aufrufe + gefrorene Optional-Module) → erschreckte neue Nutzer auf fast jeder Seite | Stolper | ja (Ton) | **gefixt+bewiesen**: 404 in `SILENT_STATUS_CODES` (globaler Toast unterdrückt; komponentennahe 404-Behandlung unberührt). Beweis: 33 vitest grün, `tsc -b` 0 | `frontend/src/lib/api/__tests__/error-toast-handler.test.ts` |
 | F-P2-004 | P1/P2 | 02 | `/documents/search/` | **Suche → HTTP 500** nach ressourcen-knappem Neustart: GPU-Modell lud in fp16, Semantic-/Reranker-Matmul warf `RuntimeError: mat1 and mat2 must have the same dtype (Half vs Float)` → riss die gesamte (Hybrid-)Suche auf 500 | Blocker | – | **gefixt+bewiesen**: Semantic- **und** Reranker-Aufruf in `_search_hybrid` mit try/except umschlossen → degradiert bei GPU-Fehler auf reine FTS (kein GPU) statt 500. Beweis: Suche HTTP 200, degraded-Pfad greift | `app/services/search_service.py` (`hybrid_semantic_degraded_to_fts`) |
 | F-P2-005 | P1/P2 | 02 | FTS-Suche | **FTS fand „Müller" nicht** (0 Treffer trotz vorhandenem Dokument): Umlaut-/Kompositum-Expansion wurde via `plainto_tsquery` mit **UND** verknüpft (`'mull' & 'muell'`) statt OR — die Expansion, deren Intent OCR-Toleranz (OR) ist, machte die Query strikter. Erst dadurch war die GPU-freie FTS als Fallback wertlos. | Blocker | – | **gefixt+bewiesen**: `_search_fts` baut die tsquery als **OR** je Term (Gesamtquery als AND-Gruppe + Einzelwörter als OR-Alternativen; `CAST(..)` statt `::` wegen SQLAlchemy-Bind-Falle). Beweis: FTS „Müller"=12, „Mueller"(ue)=12 (OCR-Umlaut-Toleranz), Cross-Company-Isolation hält, 3 pytest grün | `tests/unit/test_search_fts_or_terms.py` |
+| F-P2-006 | Admin/Ben | 03 | `GET /documents/` u. a. | **Ein invalider `documents.status`-Wert (`'uploaded'`, per SQL geseedetes RLS-Test-Artefakt) crashte JEDE Dokumentliste der Firma** mit Pydantic-ValueError → 500. Durch F-P2-001 (firmenweite Sicht) sehen jetzt alle Nutzer alle Firmen-Dokumente — ein einziges dreckiges Alt-Dokument reißt die Liste für die ganze Firma. | Blocker (latent, Sweep-Fund) | – | **gefixt+bewiesen**: `scripts/db/repair_legacy_document_status_20260712.sql` (Mapping invalid→`pending`, idempotent, verifiziert 0 übrig). Beweis: `/documents/` als Admin 200; Daten-Invariante als Regressionstest | `tests/integration/test_rls_policy_guards.py::test_documents_status_nur_gueltige_enum_werte` |
+| F-P2-007 | Admin | 03 | `/rag/jobs*`, `/inventory/goods-receipts/unprocessed-delivery-notes` | **`.value`-Aufrufe auf String-Spalten** (`RAGBatchJob.job_type/.status`, `Document.document_type`) + Phantom-Attribut `Document.entity_id` (heißt `business_entity_id`) → 500, sobald eine einzige Zeile existiert. Endpoints haben so nie funktioniert. | Stolper (Sweep-Fund) | – | **gefixt+bewiesen**: toleranter `_enum_wert()`-Serializer (12 Sites in rag/jobs) + `getattr`-Guard in inventory + `business_entity_id`. Beweis: alle 3 Endpoints 200, 3 Unit-Tests | `tests/unit/test_enum_wert_serialization.py` |
+| F-P2-008 | alle o. Kontext | 03 | `/smart-inbox*` | **4 weitere RLS-Policies mit ungeguardeten GUC-Casts** (`smart_inbox_items`, `zero_touch_results`, `nlq_query_logs`, `user_behavior_logs`) — ältere Signatur OHNE `missing_ok` wurde vom F-P1-001-Repair-Regex nicht erfasst; doppelt fragil (Fehler bei unge­setztem GUC UND bei `''`) → Smart Inbox 500 für Zugriffe ohne Company-Kontext (z. B. Bearer-API) | Blocker (latent, Sweep-Fund) | – | **gefixt+bewiesen**: `scripts/db/repair_rls_guc_casts_round2_20260712.sql` (4 Policies aufs kanonische NULLIF+missing_ok-Muster, deny-by-default erhalten). Beweis: smart-inbox 200, Policy-Invariante als Regressionstest | `tests/integration/test_rls_policy_guards.py::test_keine_rls_policy_mit_ungeguardetem_guc_cast` |
+| F-P2-009 | alle | 01–03 | `/annotations/*` | **Annotations-Router hat nie funktioniert**: behandelte `current_user` als dict (`current_user["id"]`/`["company_id"]`) — `get_current_user` liefert aber ein User-ORM-Objekt und `User` hat gar kein `company_id`-Attribut → TypeError → 500 bei jedem Aufruf. Auf der Dokument-Detailseite als Hintergrund-500 (potenziell roter „Server-Fehler"-Toast) in den Walk-Taps von Iter 01+02 sichtbar. | Stolper | – | **gefixt+bewiesen**: Attribut-Zugriff + `company_id` via `get_user_company_id_dep` (6 Endpoints). Beweis: GET annotations/stats 200 (echt-Dokument + Zufalls-UUID), **0×5xx im iter03-Walk-Tap** (vorher 1) | `tests/integration/test_annotations_endpoint_live.py` |
 | F-P2-002 | P2 | 01 | `/documents/$id` (Detail) | Detailansicht lässt Kernfragen offen — Lieferant/Absender, Betrag, Datum nicht auf den ersten Blick erkennbar (Prokurist muss suchen) | Stolper | – | **offen** (Empfehlung Iteration 02+: Kern-Metadaten prominent im Detail-Kopf) | Screenshot p2-detail |
 | F-P2-003 | P2 | 01 | `/documents/$id` | Status wird als englischer Rohwert angezeigt (`completed`/`pending`) statt deutscher Begriffe („Abgeschlossen"/„In Bearbeitung") | Kosmetik | **ja** | **offen** (Empfehlung: deutsche Status-Labels) | Screenshot p2-detail |
 | F-P3-005 | P3 | 01 | `/documents` (Index) | `/documents` liefert eine **404-Seite** (keine Sammel-Dokumentliste-Route); wer die URL rät, landet auf „Seite nicht gefunden". Dokumente sind nur über Suche/Smart Inbox erreichbar. | Stolper | – | **offen** (Empfehlung: entweder Index-Route mit Firmenliste, oder Nav-Eintrag „Dokumente" auf Suche zeigen) | Screenshot p3-documents-404 |
@@ -96,10 +101,18 @@ Aus dem P3-Walk (Steuerberaterin/Prüfer-Blick). **Nicht in diesem Loop gefixt**
 - **Harness-Härtung:** `searchFor`-Helfer (OR-robuste Suche, Verify-per-URL), gebundene Clicks (kein 600-s-Hänger mehr), `dismissFirstRunOverlays`.
 - **DoD erfüllt:** P1-TTFV < 5 min ✓, alle Blocker gefixt+belegt ✓, 2 Iterationen in Folge ohne neue Blocker (Iter 01 + Iter 02) ✓, Report vollständig ✓.
 
+### Iteration 03 (Tiefen-Sweep + Bestätigungs-Re-Walk, 2026-07-12)
+- **Kontext:** Session-Übernahme nach Docker-Engine-Ausfall (WSL-Neustart nötig) + Kollision mit einer parallel laufenden headless-Session (aufgelöst: diese Session übernahm nach Ben-Entscheid; die Parallel-Session hatte Iter 01+02 sauber committet). Zusätzlich zum Walk-Blick wurde der **F-31-Live-Sweep** (`test_get_endpoints_no_500`) gefahren — er fand 7 GET-5xx, alle latent (für die Personas unsichtbar, aber real für Admin-/API-Nutzer ab 01.08.).
+- **4 latente 5xx-Klassen gefixt und belegt:** F-P2-006 (invalider Legacy-Status crasht Firmen-Dokumentliste), F-P2-007 (`.value` auf String-Spalten + Phantom-`entity_id` in rag/inventory), F-P2-008 (4 weitere ungeguardete RLS-Policies → Smart-Inbox-500), F-P2-009 (Annotations-Router mit falschem `current_user`-Interface — hat nie funktioniert).
+- **Bestätigungs-Re-Walk P1+P2 grün:** TTFV 21,4 s / Suche 1,1 s, **0 neue Blocker, 0×5xx im Hintergrund-Tap** (Iter 01/02: je 1× annotations-500). Nur bekannte offene Stolper/Kosmetik erneut protokolliert.
+- **Tests:** 25 Unit + 10 Integration (perception-relevant) + F-31-Sweep 0×5xx + 2 Annotations-Live-Tests, alles grün. Keine Frontend-Änderung in dieser Iteration (`tsc -b` unverändert 0 aus Iter 02). Tech-Schuld §8.5 (OpenAPI-Schwelle) gemäß Empfehlung auf die Freeze-Landschaft angepasst (>1900).
+- **Suite-Gotcha dokumentiert:** pytest-asyncio-0.23-Loop-Pollution ist ordnungsabhängig — neue Async-DB-Tests folgen dem `mark.asyncio`-Muster von `test_rls_guc_persistence.py`, reine Unit-Tests bleiben sync (eigener frischer Loop pro Aufruf).
+
 ## 8. Offene Empfehlungen (priorisiert)
 
 1. **P3-Trust-Oberfläche sichtbar machen** (T-01…04) — höchste Priorität für „Prüfer-Vertrauen": Audit-Trail-Tab am Dokument, Hash/Zeitstempel/Signatur-Badge, Verfahrensdoku-Download in der Navigation, klare Prüfer-Rollen-Sicht. → eigener Trust-Theater-Folge-Prompt.
-2. **F-P2-002/003** — Kern-Metadaten (Lieferant/Betrag/Datum) prominent im Detail-Kopf; deutsche Status-Labels statt `completed`/`pending`.
-3. **F-P3-005** — `/documents`-Index: entweder Firmenliste-Route oder Nav-Eintrag „Dokumente" → Suche.
-4. **F-SYS-002** — `ablage.firmenich.lan` per DNS/hosts im Onboarding-Runbook fürs Team ausrollen.
-5. **Tech-Schuld** — `test_app_openapi_generates`-Schwelle (>2000 Pfade) ist seit dem Neuausrichtung-Modul-Freeze veraltet (aktuell 1989, freeze-bedingt); Schwelle an gefrorene Modul-Landschaft anpassen. RLS-`app.is_admin`-Seed-Gotcha in `seed_e2e.py` nachziehen.
+2. **PDF-Vorschau reparieren** (Walk-Evidenz Iter 02/03): CSP blockt `pdf.worker` von `unpkg.com` (verletzt zugleich die On-Premises-Regel — Worker-Bundle selbst hosten!) und `GET /documents/{id}/preview` liefert 404 → der Nutzer sieht sein Dokument auf der Detailseite nicht. Für ein Belegarchiv wahrnehmungskritisch.
+3. **F-P2-002/003** — Kern-Metadaten (Lieferant/Betrag/Datum) prominent im Detail-Kopf; deutsche Status-Labels statt `completed`/`pending`.
+4. **UX-Kleinigkeiten aus den Walks:** globale Suche in der Kopfzeile (P1), `/documents`-Index statt 404 (F-P3-005), Privat-Bereich in die sichtbare Navigation + Erste-Schritte-CTA im Privat-Space (P4).
+5. **F-SYS-002** — `ablage.firmenich.lan` per DNS/hosts im Onboarding-Runbook fürs Team ausrollen.
+6. **Tech-Schuld** — `documents.status`/`document_type` varchar↔Enum-Richtungsentscheidung endlich treffen (F-P2-006/007 sind Symptome; bis dahin schützt die Daten-Invariante in `test_rls_policy_guards.py`). RLS-Repairs Runde 1+2 in eine reguläre Alembic-Migration überführen. RLS-`app.is_admin`-Seed-Gotcha in `seed_e2e.py` nachziehen. `422 /saved-filters/shared` + `403 /tasks/{id}`-Hintergrundrauschen aus den Walk-Taps triagieren.

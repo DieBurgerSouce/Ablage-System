@@ -14,7 +14,10 @@ def test_app_openapi_generates() -> None:
     spec = app.openapi()
     assert spec.get("openapi"), "OpenAPI-Version fehlt"
     paths = spec.get("paths", {})
-    assert len(paths) > 2000, (
+    # Schwelle 1900: Stand nach dem Neuausrichtung-Modul-Freeze sind 1989
+    # Pfade legitim (vorher >2000). Der Guard soll GROSSE Ausfaelle erkennen
+    # (kaputte Generierung reisst hunderte Pfade weg), nicht einzelne Routen.
+    assert len(paths) > 1900, (
         f"Nur {len(paths)} paths generiert - OpenAPI-Generierung womoeglich "
         "teilweise gebrochen (z. B. reintroduced `from __future__ import annotations`)."
     )
