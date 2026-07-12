@@ -246,6 +246,24 @@ stage_config() {
     fi
 }
 
+# --- Quelle d: GoBD-Signierschluessel (Verfahrensdoku-Signaturen) --------------
+# Ohne diesen Schluessel sind nach einem Totalverlust ALLE bestehenden GoBD-/
+# Verfahrensdoku-Signaturen unverifizierbar (Phoenix-Probe 2026-07, F-PHX-P0-2).
+# Quelle ist das Docker-Volume (Default ablage_system_outputs), gelesen ueber
+# einen Wegwerf-Container mit :ro-Mount - der laufende Stack wird nicht beruehrt.
+stage_signing_keys() {
+    local key_dir="${RESTIC_STAGE_DIR}/config/gobd_signing"
+    local vol="${GOBD_SIGNING_VOLUME:-ablage_system_outputs}"
+    mkdir -p "${key_dir}"
+    if MSYS_NO_PATHCONV=1 docker run --rm -v "${vol}:/src:ro" -v "${key_dir}:/dst" \
+        alpine sh -c 'test -d /src/gobd_signing && cp -a /src/gobd_signing/. /dst/ && ls /dst' >>"${LOG_FILE}" 2>&1; then
+        chmod -R go-rwx "${key_dir}" 2>/dev/null || true
+        log "INFO" "Konfig: GoBD-Signierschluessel eingesammelt (Volume ${vol})"
+    else
+        log "WARN" "GoBD-Signierschluessel nicht gefunden (Volume ${vol}, Pfad gobd_signing/) - NICHT gesichert!"
+    fi
+}
+
 # --- restic-Helfer -------------------------------------------------------------
 ensure_repo() {
     local repo="$1"
@@ -326,6 +344,7 @@ main() {
         stage_postgres
         stage_minio
         stage_config
+        stage_signing_keys
 
         # Quellpfade: Stage (pg_dump + config [+ minio, wenn via mc]) und ggf.
         # der externe MinIO-Fallback-Snapshot.
