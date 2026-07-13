@@ -1414,7 +1414,7 @@ async def download_document(
     # Datei aus Storage laden
     storage = get_storage_service()
     try:
-        file_content = await storage.download_file(document.file_path)
+        file_content = await storage.download_document(document.file_path)
     except Exception as e:
         logger.error(
             "document_download_storage_error",
@@ -1813,7 +1813,7 @@ async def download_document_as_pdf(
     # Wenn bereits PDF und kein OCR-Text gewünscht, direkt zurückgeben
     if document.mime_type == "application/pdf" and not include_ocr_text:
         storage = get_storage_service()
-        file_content = await storage.download_file(document.file_path)
+        file_content = await storage.download_document(document.file_path)
         filename = document.original_filename or document.filename
         if not filename.lower().endswith('.pdf'):
             filename = f"{filename}.pdf"
@@ -1836,7 +1836,7 @@ async def download_document_as_pdf(
         from reportlab.pdfgen import canvas as reportlab_canvas
 
         storage = get_storage_service()
-        file_content = await storage.download_file(document.file_path)
+        file_content = await storage.download_document(document.file_path)
 
         # Bild laden
         if document.mime_type and document.mime_type.startswith("image/"):
