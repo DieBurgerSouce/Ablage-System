@@ -416,7 +416,9 @@ _CELERY_INCLUDE_ALL: List[str] = [
         "app.workers.tasks.lifecycle_tasks",
         "app.workers.tasks.duplicate_detection_tasks",
         "app.workers.tasks.folder_import_rule_tasks",
-        "app.workers.tasks.partition_maintenance",
+        # partition_maintenance entfernt (Reconcile 2026-07, Migration 276):
+        # Partitions-Subsystem kanonisch zurueckgebaut, DB-Funktionen existieren
+        # nicht mehr — die Tasks liefen zuvor jede Nacht ins Leere.
         # --- Batch 5: Previously orphaned modules (beat_schedule + event-driven) ---
         "app.workers.tasks.ai_conversation_tasks",
         "app.workers.tasks.ai_ethics_tasks",
@@ -2581,28 +2583,11 @@ celery_app.conf.update(
             "options": {"queue": "maintenance"},
         },
         # =================================================================
-        # Table Partitioning Maintenance (Phase 1.2)
+        # Table Partitioning Maintenance — ENTFERNT (Reconcile 2026-07,
+        # Migration 276): Schatten-Subsystem kanonisch zurueckgebaut; die
+        # 3 Beat-Jobs (partition-ensure-daily/-archive-weekly/-update-stats-
+        # daily) liefen auf Live seit jeher naechtlich ins Leere.
         # =================================================================
-        # Taeglich: Fehlende Partitionen fuer die naechsten 3 Monate erstellen (01:30)
-        "partition-ensure-daily": {
-            "task": "partition.ensure_partitions",
-            "schedule": crontab(hour=1, minute=30),
-            "kwargs": {"months_ahead": 3},
-            "options": {"queue": "maintenance"},
-        },
-        # Woechentlich: Alte Partitionen (>2 Jahre) archivieren (Sonntag 02:00)
-        "partition-archive-weekly": {
-            "task": "partition.archive_old",
-            "schedule": crontab(day_of_week=0, hour=2, minute=0),
-            "kwargs": {"older_than_months": 24},
-            "options": {"queue": "maintenance"},
-        },
-        # Taeglich: Row-Counts und Speicherverbrauch aktualisieren (05:15)
-        "partition-update-stats-daily": {
-            "task": "partition.update_stats",
-            "schedule": crontab(hour=5, minute=15),
-            "options": {"queue": "maintenance"},
-        },
         # =================================================================
         # Seasonal Pattern Recomputation (Cashflow Monte Carlo Integration)
         # Woechentliche Berechnung saisonaler Zahlungsmuster pro Entity
@@ -3247,13 +3232,8 @@ celery_app.conf.update(
         # Vault Secret Rotation (Phase 1.2 - Security Haertung)
         # =================================================================
         "vault.refresh_secrets": {"queue": "maintenance", "priority": 2},
-        # =================================================================
-        # Table Partitioning Maintenance (Phase 1.2)
-        # =================================================================
-        "partition.ensure_partitions": {"queue": "maintenance", "priority": 2},
-        "partition.archive_old": {"queue": "maintenance", "priority": 1},
-        "partition.update_stats": {"queue": "maintenance", "priority": 1},
-        "partition.health_check": {"queue": "maintenance", "priority": 3},
+        # Table Partitioning Maintenance: Routes entfernt (Reconcile 2026-07,
+        # Migration 276 — Subsystem kanonisch zurueckgebaut).
         # =================================================================
         # GoBD-Auto-Archivierung des Eingangskanals (Neuausrichtung Welle D)
         # =================================================================
