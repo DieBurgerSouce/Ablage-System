@@ -21,6 +21,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select, func as sa_func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.business_metrics import record_best_effort_failure
 from app.core.cache import invalidate_cache
 from app.core.safe_errors import safe_error_log
 from app.db.models import FeatureFlag
@@ -81,7 +82,11 @@ async def _write_history(
             },
         )
     except Exception as exc:
-        # Non-fatal – we log and continue so the main operation isn't blocked
+        # Non-fatal – we log and continue so the main operation isn't blocked.
+        # F-REC-2: Metrik macht den stillen Verlust sichtbar (Alert
+        # BestEffortWriteVerluste) — dieses Muster hat den Audit-Trail
+        # monatelang unbemerkt verschluckt, als die Tabelle auf Live fehlte.
+        record_best_effort_failure("feature_toggle_history_insert")
         logger.error("write_toggle_history_failed", **safe_error_log(exc), flag=flag.key)
 
 
@@ -460,6 +465,8 @@ class FeatureToggleAdminService:
                 for row in rows.fetchall()
             ]
         except Exception as exc:
+            # F-REC-2: leere Liste statt Fehler ist best-effort — Metrik statt Stille.
+            record_best_effort_failure("feature_toggle_history_select")
             logger.error("get_flag_history_failed", **safe_error_log(exc), flag=flag_name)
             return []
 

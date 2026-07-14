@@ -722,6 +722,27 @@ security_rls_events_total = Counter(
     ["event_type"]  # bypass_enabled, bypass_disabled, context_set, context_failed
 )
 
+# Best-Effort-Schreibpfade (F-REC-2, Reconcile 2026-07): try/except-geschluckte
+# Write-Fehler sind STILLER Datenverlust — genau dieses Muster hat den
+# Feature-Toggle-Audit-Trail monatelang unbemerkt verschluckt (Tabelle fehlte,
+# INSERT scheiterte, except loggte nur). Jeder Increment hier ist ein Vorfall.
+best_effort_write_failures_total = Counter(
+    "ablage_best_effort_write_failures_total",
+    "Geschluckte Fehler in Best-Effort-Schreib-/Lesepfaden (stiller Datenverlust-Verdacht)",
+    ["operation"]  # z.B. feature_toggle_history_insert, feature_toggle_history_select
+)
+
+
+def record_best_effort_failure(operation: str) -> None:
+    """Zeichnet einen geschluckten Best-Effort-Fehler auf (F-REC-2).
+
+    In jedem `except`-Block aufrufen, der einen Schreib-/Lesefehler bewusst
+    NICHT re-raised. Die zugehoerige Alert-Regel (business-alerts.yml,
+    BestEffortWriteVerluste) macht das Muster sichtbar, statt es monatelang
+    still scheitern zu lassen.
+    """
+    best_effort_write_failures_total.labels(operation=operation).inc()
+
 
 def record_security_header_violation(violation_type: str) -> None:
     """
