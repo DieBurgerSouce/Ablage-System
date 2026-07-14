@@ -259,16 +259,9 @@ from app.workers.tasks.folder_import_rule_tasks import (
     scan_import_folder_task,
 )
 
-# --- Partition Maintenance Tasks (Phase 1.2: Table Partitioning) ---
-try:
-    from app.workers.tasks.partition_maintenance import (
-        ensure_partitions_task,
-        archive_old_partitions_task,
-        update_partition_stats_task,
-        partition_health_check_task,
-    )
-except ImportError as _exc:
-    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
+# --- Partition Maintenance Tasks: ENTFERNT (Reconcile 2026-07, Migration 276)
+# Das Partitions-Schatten-Subsystem wurde kanonisch zurueckgebaut; der Import
+# hier registrierte die Tasks trotz fehlendem celery-include weiter.
 
 # --- Batch 4: Include-only modules (missing from __init__.py) ---
 try:
