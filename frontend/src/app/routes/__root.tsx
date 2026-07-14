@@ -8,8 +8,12 @@ import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal'
 import { Toaster } from '@/components/ui/toaster'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { OfflineSyncStatusBar } from '@/components/layout/OfflineSyncStatusBar'
-import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
 // P4.1: Enhanced Onboarding Wizard (5-step first-login experience)
+// F-P1-004 (Perception-Audit 2026-07-12): WelcomeModal (Legacy-4-Schritte-
+// Willkommen) hier ENTFERNT — es oeffnete sich beim ersten Login GLEICHZEITIG
+// mit dem OnboardingWizard (verschachtelte Willkommens-Dialoge). Der Wizard ist
+// die eine kanonische Erstkontakt-Erfahrung; WelcomeModal bleibt als Komponente
+// fuer eine kuenftige Settings-„Tour neu starten"-Aktion (forceShow) erhalten.
 import { OnboardingWizard } from '@/features/onboarding'
 // Feature 12: Guided Product Tours
 import { TourProvider } from '@/features/product-tour'
@@ -114,7 +118,6 @@ function RootComponent() {
                             {import.meta.env.DEV && <TanStackRouterDevtools />}
                         </AppLayout>
                         <OnboardingWizard />
-                        <WelcomeModal />
                         <SessionExpiredModal />
                         <Toaster />
                         <NotificationToastProvider />

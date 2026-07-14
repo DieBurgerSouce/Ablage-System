@@ -205,6 +205,8 @@ backups/
 scripts/m365/.env.m365
 scripts/m365/secrets/
 scripts/m365/logs/
+# Mailbox-/Inventur-Exporte enthalten UPNs (PII) - Daten bleiben lokal, nur Code versionieren
+scripts/m365/*.csv
 # Der Runbook-Klickpfad fuer Ben soll versioniert bleiben (das globale *.md oben
 # wuerde ihn sonst verschlucken):
 !scripts/m365/RUNBOOK_P0_BEN.md
@@ -212,3 +214,12 @@ scripts/m365/logs/
 # Root-Cleanup 2026-07-11: Coverage-Artefakte + Claude-cwd-Tempfiles nie wieder tracken
 .coverage
 tmpclaude-*
+
+# Worktrees paralleler Hardening-Sessions (analog .claude/worktrees/)
+.hardening-worktrees/
+
+# claude-flow proven-config: maschinenlokaler Tool-State (Champion-Policy-Adoption)
+.claude/proven-config.json
+.claude/.proven-config-version
+.claude-flow/harness-active-policy.json
+cookies.txt

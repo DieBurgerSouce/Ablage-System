@@ -106,12 +106,73 @@ async def run_alembic_with_lock() -> None:
             await conn.close()
 
 
+def _code_head() -> str:
+    """Ziel-Revision aus der Migrationskette (offline, ohne DB).
+
+    `alembic heads` liest nur das versions/-Verzeichnis (env.py wird fuer
+    dieses Kommando nicht ausgefuehrt). Bei Fehlern oder mehreren Heads
+    wird '' geliefert -> Version-Check wird uebersprungen (fail-open).
+    """
+    try:
+        out = subprocess.run(
+            ["alembic", "heads"], cwd="/app", capture_output=True, text=True, timeout=60
+        )
+        heads = [line.split()[0] for line in out.stdout.splitlines() if line.strip()]
+        if out.returncode == 0 and len(heads) == 1:
+            return heads[0]
+        print(f"[entrypoint] WARNUNG: alembic heads uneindeutig ({heads}) — Version-Check entfaellt.", flush=True)
+    except Exception as exc:  # noqa: BLE001 — fail-open ist hier Absicht
+        print(f"[entrypoint] WARNUNG: alembic heads fehlgeschlagen ({type(exc).__name__}) — Version-Check entfaellt.", flush=True)
+    return ""
+
+
+async def wait_for_migrations() -> None:
+    """F-14: Nicht-Migratoren warten, bis das Schema auf Code-Head steht.
+
+    Schliesst das Sekundenfenster, in dem ein Worker gegen ein halb
+    migriertes Schema startet (Fresh-Deploy/Schema-Change): erst am
+    Advisory-Lock dem aktiven Migrator den Vortritt lassen, dann
+    alembic_version gegen den Code-Head pruefen. Kommt innerhalb
+    PG_WAIT_TIMEOUT kein Migrator (z.B. Worker-only-Deployment), wird
+    mit Warnung fortgefahren (fail-open = bisheriges Verhalten).
+    """
+    target = _code_head()
+    deadline = time.monotonic() + wait_timeout
+    conn = await asyncpg.connect(dsn, timeout=10)
+    try:
+        while True:
+            # Aktiven Migrator abwarten (Lock nehmen und sofort freigeben).
+            await conn.execute("SELECT pg_advisory_lock($1)", lock_key)
+            await conn.execute("SELECT pg_advisory_unlock($1)", lock_key)
+            if not target:
+                print("[entrypoint] Migrator abgewartet (ohne Version-Check).", flush=True)
+                return
+            current = await conn.fetchval(
+                "SELECT version_num FROM alembic_version LIMIT 1"
+            ) if await conn.fetchval("SELECT to_regclass('public.alembic_version') IS NOT NULL") else None
+            if current == target:
+                print(f"[entrypoint] Schema auf Code-Head {target} — starte CMD.", flush=True)
+                return
+            if time.monotonic() >= deadline:
+                print(
+                    f"[entrypoint] WARNUNG: Schema ({current}) != Code-Head ({target}) nach "
+                    f"{wait_timeout}s — fahre fort (fail-open, F-14).",
+                    flush=True,
+                )
+                return
+            print(f"[entrypoint] Warte auf Migration ({current} -> {target}) ...", flush=True)
+            await asyncio.sleep(2)
+    finally:
+        await conn.close()
+
+
 async def main() -> None:
     await wait_for_postgres()
     if run_migrations:
         await run_alembic_with_lock()
     else:
-        print("[entrypoint] RUN_MIGRATIONS=false — Migration uebersprungen.", flush=True)
+        print("[entrypoint] RUN_MIGRATIONS=false — warte auf Migrator (F-14).", flush=True)
+        await wait_for_migrations()
 
 
 asyncio.run(main())

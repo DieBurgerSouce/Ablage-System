@@ -2,6 +2,12 @@
 """
 Partition Maintenance Tasks fuer Ablage-System.
 
+DEAKTIVIERT seit Reconcile 2026-07 (Migration 276): Das Partitions-Schatten-
+Subsystem (Mig 239) wurde kanonisch zurueckgebaut — die DB-Funktionen
+(create_time_partition etc.) existieren nicht mehr, die Beat-Jobs und
+task_routes sind aus celery_app.py entfernt. Modul bleibt als Referenz fuer
+eine etwaige kuenftige, dann durchgaengig geplante Partitionierung.
+
 Celery-Tasks fuer automatische Partitionspflege:
 - Sicherstellung zukuenftiger Partitionen (taeglich)
 - Archivierung alter Partitionen (woechentlich)

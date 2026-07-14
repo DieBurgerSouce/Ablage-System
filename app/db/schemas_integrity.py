@@ -46,6 +46,64 @@ class IntegrityVerifyResponse(BaseModel):
     verified_at: datetime
 
 
+class ProofVerdictEnum(str, Enum):
+    """Gesamturteil einer Dokument-Beweisführung."""
+
+    VERIFIED = "verified"
+    TAMPERED = "tampered"
+    NO_BASELINE = "no_baseline"
+
+
+class ChainProofInfo(BaseModel):
+    """Ergebnis der Beweisketten-Prüfung (Audit-Chain) für ein Dokument."""
+
+    entries_total: int
+    entries_verified: int
+    valid: Optional[bool] = Field(
+        None, description="None = keine Ketten-Einträge für dieses Dokument"
+    )
+    broken_at_sequence: Optional[int] = None
+    first_entry_at: Optional[datetime] = None
+    last_entry_at: Optional[datetime] = None
+    message: str  # Deutsche Meldung
+
+
+class TsaProofInfo(BaseModel):
+    """Ergebnis der RFC-3161-Zeitstempel-Prüfung."""
+
+    present: bool
+    valid: Optional[bool] = Field(
+        None, description="None = nicht prüfbar (kein Token oder Prüf-Fehler)"
+    )
+    message: str  # Deutsche Meldung
+
+
+class DocumentProofResponse(BaseModel):
+    """Antwort der Live-Beweisführung für ein Dokument.
+
+    Bewusst differenziert statt eines Pauschal-Booleans: Datei-Hash,
+    Beweiskette und Zeitstempel werden einzeln ausgewiesen.
+    """
+
+    document_id: UUID
+    verdict: ProofVerdictEnum
+    file_hash_matches: Optional[bool] = Field(
+        None, description="None = keine Baseline vorhanden"
+    )
+    baseline_source: Optional[str] = Field(
+        None, description='"archiv" | "integritaets_hash" | None'
+    )
+    stored_hash: Optional[str] = None
+    computed_hash: Optional[str] = None
+    hash_algorithm: str = "sha256"
+    archived_at: Optional[datetime] = None
+    archive_id: Optional[UUID] = None
+    chain: ChainProofInfo
+    tsa: TsaProofInfo
+    verified_at: datetime
+    message_de: str
+
+
 class MerkleBuildRequest(BaseModel):
     """Anfrage zum Erstellen eines täglichen Merkle-Baums."""
 

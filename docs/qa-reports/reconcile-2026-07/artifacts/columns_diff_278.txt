@@ -1,0 +1,727 @@
+21,22c21,22
+< active_learning_metrics|estimated_errors_prevented|integer|NO|0
+< active_learning_metrics|id|uuid|NO|gen_random_uuid()
+---
+> active_learning_metrics|estimated_errors_prevented|integer|NO|-
+> active_learning_metrics|id|uuid|NO|-
+24,26c24,26
+< active_learning_metrics|top_error_patterns|jsonb|YES|'[]'::jsonb
+< active_learning_metrics|total_corrections|integer|NO|0
+< active_learning_metrics|total_reviewed|integer|NO|0
+---
+> active_learning_metrics|top_error_patterns|jsonb|NO|-
+> active_learning_metrics|total_corrections|integer|NO|-
+> active_learning_metrics|total_reviewed|integer|NO|-
+31,33c31,33
+< active_learning_queue|estimated_impact|double precision|NO|'0'::double precision
+< active_learning_queue|field_focus|jsonb|YES|'[]'::jsonb
+< active_learning_queue|id|uuid|NO|gen_random_uuid()
+---
+> active_learning_queue|estimated_impact|double precision|NO|-
+> active_learning_queue|field_focus|jsonb|NO|-
+> active_learning_queue|id|uuid|NO|-
+40c40
+< active_learning_queue|status|character varying|NO|'queued'::character varying
+---
+> active_learning_queue|status|character varying|NO|-
+221d220
+< ai_decisions|what_if_data|jsonb|YES|-
+309,311c308,310
+< anomalies|details|jsonb|YES|'{}'::jsonb
+< anomalies|id|uuid|NO|gen_random_uuid()
+< anomalies|related_ids|jsonb|YES|'[]'::jsonb
+---
+> anomalies|details|jsonb|YES|-
+> anomalies|id|uuid|NO|-
+> anomalies|related_ids|jsonb|YES|-
+316c315
+< anomalies|score|double precision|YES|0.0
+---
+> anomalies|score|double precision|YES|-
+320c319
+< anomalies|status|character varying|NO|'open'::character varying
+---
+> anomalies|status|character varying|NO|-
+323c322
+< anomaly_rules|config|jsonb|NO|'{}'::jsonb
+---
+> anomaly_rules|config|jsonb|NO|-
+326,327c325,326
+< anomaly_rules|id|uuid|NO|gen_random_uuid()
+< anomaly_rules|is_active|boolean|NO|true
+---
+> anomaly_rules|id|uuid|NO|-
+> anomaly_rules|is_active|boolean|NO|-
+330c329
+< anomaly_rules|severity|character varying|NO|'warning'::character varying
+---
+> anomaly_rules|severity|character varying|NO|-
+369c368
+< approval_chain_templates|steps_config|jsonb|NO|'[]'::jsonb
+---
+> approval_chain_templates|steps_config|jsonb|NO|-
+398c397
+< approval_matrices|amount_min|numeric|NO|'0'::numeric
+---
+> approval_matrices|amount_min|numeric|NO|-
+499c498
+< audit_logs|success|boolean|NO|true
+---
+> audit_logs|success|boolean|YES|-
+681c680
+< bank_accounts|company_id|uuid|NO|-
+---
+> bank_accounts|company_id|uuid|YES|-
+741c740
+< bank_imports|company_id|uuid|NO|-
+---
+> bank_imports|company_id|uuid|YES|-
+781,782c780,781
+< bank_transactions|counterparty_bic|text|YES|-
+< bank_transactions|counterparty_iban|text|YES|-
+---
+> bank_transactions|counterparty_bic|character varying|YES|-
+> bank_transactions|counterparty_iban|character varying|YES|-
+815c814
+< barcode_detections|confidence|double precision|NO|'0'::double precision
+---
+> barcode_detections|confidence|double precision|NO|-
+819,824c818,823
+< barcode_detections|page_number|integer|NO|1
+< barcode_detections|parsed_data|jsonb|NO|'{}'::jsonb
+< barcode_detections|position_height|integer|NO|0
+< barcode_detections|position_width|integer|NO|0
+< barcode_detections|position_x|integer|NO|0
+< barcode_detections|position_y|integer|NO|0
+---
+> barcode_detections|page_number|integer|NO|-
+> barcode_detections|parsed_data|jsonb|YES|-
+> barcode_detections|position_height|integer|NO|-
+> barcode_detections|position_width|integer|NO|-
+> barcode_detections|position_x|integer|NO|-
+> barcode_detections|position_y|integer|NO|-
+1216c1215
+< business_entities|bic|text|YES|-
+---
+> business_entities|bic|character varying|YES|-
+1235c1234
+< business_entities|iban|text|YES|-
+---
+> business_entities|iban|character varying|YES|-
+1251d1249
+< business_entities|row_version|integer|NO|1
+1255c1253
+< business_entities|tax_number|text|YES|-
+---
+> business_entities|tax_number|character varying|YES|-
+1259c1257
+< business_entities|vat_id|text|YES|-
+---
+> business_entities|vat_id|character varying|YES|-
+1483c1481
+< cdc_consumer_offsets|config|jsonb|YES|'{}'::jsonb
+---
+> cdc_consumer_offsets|config|jsonb|YES|-
+1489,1490c1487,1488
+< cdc_consumer_offsets|last_sequence_number|bigint|YES|'0'::bigint
+< cdc_consumer_offsets|status|character varying|YES|'''active'''::character varying
+---
+> cdc_consumer_offsets|last_sequence_number|bigint|YES|-
+> cdc_consumer_offsets|status|character varying|YES|-
+1492c1490
+< change_data_capture_logs|changed_columns|jsonb|YES|'[]'::jsonb
+---
+> change_data_capture_logs|changed_columns|jsonb|YES|-
+1501c1499
+< change_data_capture_logs|processed|boolean|YES|false
+---
+> change_data_capture_logs|processed|boolean|YES|-
+1547c1545
+< cluster_suggestions|status|character varying|NO|'pending'::character varying
+---
+> cluster_suggestions|status|character varying|NO|-
+1641c1639
+< companies|bic|text|YES|-
+---
+> companies|bic|character varying|YES|-
+1657c1655
+< companies|iban|text|YES|-
+---
+> companies|iban|character varying|YES|-
+1670d1667
+< companies|row_version|integer|NO|1
+1677c1674
+< companies|tax_number|text|YES|-
+---
+> companies|tax_number|character varying|YES|-
+1679c1676
+< companies|vat_id|text|YES|-
+---
+> companies|vat_id|character varying|YES|-
+2059,2061c2056,2058
+< custom_field_definitions|is_active|boolean|NO|true
+< custom_field_definitions|is_filterable|boolean|NO|true
+< custom_field_definitions|is_searchable|boolean|NO|true
+---
+> custom_field_definitions|is_active|boolean|NO|-
+> custom_field_definitions|is_filterable|boolean|NO|-
+> custom_field_definitions|is_searchable|boolean|NO|-
+2065,2066c2062,2063
+< custom_field_definitions|required|boolean|NO|false
+< custom_field_definitions|sort_order|integer|NO|0
+---
+> custom_field_definitions|required|boolean|NO|-
+> custom_field_definitions|sort_order|integer|NO|-
+2082,2085c2079,2082
+< dashboard_builder_configs|id|uuid|NO|gen_random_uuid()
+< dashboard_builder_configs|is_default|boolean|NO|false
+< dashboard_builder_configs|is_shared|boolean|NO|false
+< dashboard_builder_configs|layout|jsonb|NO|'[]'::jsonb
+---
+> dashboard_builder_configs|id|uuid|NO|-
+> dashboard_builder_configs|is_default|boolean|NO|-
+> dashboard_builder_configs|is_shared|boolean|NO|-
+> dashboard_builder_configs|layout|jsonb|NO|-
+2089c2086
+< dashboard_builder_widgets|config|jsonb|NO|'{}'::jsonb
+---
+> dashboard_builder_widgets|config|jsonb|NO|-
+2093,2094c2090,2091
+< dashboard_builder_widgets|id|uuid|NO|gen_random_uuid()
+< dashboard_builder_widgets|refresh_interval_seconds|integer|NO|300
+---
+> dashboard_builder_widgets|id|uuid|NO|-
+> dashboard_builder_widgets|refresh_interval_seconds|integer|NO|-
+2224,2225c2221,2222
+< datev_buchungen|betrag_haben|double precision|NO|-
+< datev_buchungen|betrag_soll|double precision|NO|-
+---
+> datev_buchungen|betrag_haben|double precision|YES|-
+> datev_buchungen|betrag_soll|double precision|YES|-
+2227c2224
+< datev_buchungen|buchungs_guid|character varying|YES|-
+---
+> datev_buchungen|buchungs_guid|character varying|NO|-
+2242,2243c2239,2240
+< datev_buchungen|gegenkonto|character varying|YES|-
+< datev_buchungen|gobd_festgeschrieben|boolean|YES|false
+---
+> datev_buchungen|gegenkonto|character varying|NO|-
+> datev_buchungen|gobd_festgeschrieben|boolean|YES|-
+2246,2249c2243,2246
+< datev_buchungen|ist_festgeschrieben|boolean|YES|-
+< datev_buchungen|konto_haben|character varying|NO|-
+< datev_buchungen|konto_soll|character varying|NO|-
+< datev_buchungen|konto|character varying|YES|-
+---
+> datev_buchungen|ist_festgeschrieben|boolean|NO|-
+> datev_buchungen|konto_haben|character varying|YES|-
+> datev_buchungen|konto_soll|character varying|YES|-
+> datev_buchungen|konto|character varying|NO|-
+2257c2254
+< datev_buchungen|retry_count|integer|YES|-
+---
+> datev_buchungen|retry_count|integer|NO|-
+2259c2256
+< datev_buchungen|soll_haben|character varying|YES|-
+---
+> datev_buchungen|soll_haben|character varying|NO|-
+2266c2263
+< datev_buchungen|umsatz|numeric|YES|-
+---
+> datev_buchungen|umsatz|numeric|NO|-
+2268c2265
+< datev_buchungen|user_korrektur|boolean|YES|-
+---
+> datev_buchungen|user_korrektur|boolean|NO|-
+2291c2288
+< datev_connections|api_environment|character varying|YES|-
+---
+> datev_connections|api_environment|character varying|NO|-
+2294,2295c2291,2292
+< datev_connections|auto_beleg_upload|boolean|YES|false
+< datev_connections|auto_kontierung|boolean|YES|false
+---
+> datev_connections|auto_beleg_upload|boolean|YES|-
+> datev_connections|auto_kontierung|boolean|YES|-
+2298,2299c2295,2296
+< datev_connections|beraternummer|character varying|YES|-
+< datev_connections|buchungsmodus|character varying|YES|-
+---
+> datev_connections|beraternummer|character varying|NO|-
+> datev_connections|buchungsmodus|character varying|NO|-
+2308c2305
+< datev_connections|enabled_features|jsonb|YES|-
+---
+> datev_connections|enabled_features|jsonb|NO|-
+2312,2313c2309,2310
+< datev_connections|festschreibung_automatisch|boolean|YES|-
+< datev_connections|gobd_enabled|boolean|YES|-
+---
+> datev_connections|festschreibung_automatisch|boolean|NO|-
+> datev_connections|gobd_enabled|boolean|NO|-
+2325c2322
+< datev_connections|mandantennummer|character varying|YES|-
+---
+> datev_connections|mandantennummer|character varying|NO|-
+2327c2324
+< datev_connections|personenkontenlange|integer|YES|-
+---
+> datev_connections|personenkontenlange|integer|NO|-
+2330c2327
+< datev_connections|sachkontenlange|integer|YES|-
+---
+> datev_connections|sachkontenlange|integer|NO|-
+2383c2380
+< datev_kontierung_patterns|confidence|double precision|YES|0.5
+---
+> datev_kontierung_patterns|confidence|double precision|YES|-
+2390c2387
+< datev_kontierung_patterns|gegenkonto|character varying|YES|-
+---
+> datev_kontierung_patterns|gegenkonto|character varying|NO|-
+2394,2396c2391,2393
+< datev_kontierung_patterns|konto_haben|character varying|NO|-
+< datev_kontierung_patterns|konto_soll|character varying|NO|-
+< datev_kontierung_patterns|konto|character varying|YES|-
+---
+> datev_kontierung_patterns|konto_haben|character varying|YES|-
+> datev_kontierung_patterns|konto_soll|character varying|YES|-
+> datev_kontierung_patterns|konto|character varying|NO|-
+2400,2402c2397,2399
+< datev_kontierung_patterns|pattern_source|character varying|YES|-
+< datev_kontierung_patterns|pattern_type|character varying|NO|-
+< datev_kontierung_patterns|priority|integer|YES|-
+---
+> datev_kontierung_patterns|pattern_source|character varying|NO|-
+> datev_kontierung_patterns|pattern_type|character varying|YES|-
+> datev_kontierung_patterns|priority|integer|NO|-
+2665c2662
+< document_cluster_memberships|assigned_by|character varying|NO|'auto'::character varying
+---
+> document_cluster_memberships|assigned_by|character varying|NO|-
+2667c2664
+< document_cluster_memberships|confidence|double precision|NO|'0'::double precision
+---
+> document_cluster_memberships|confidence|double precision|NO|-
+2674c2671
+< document_clusters|cluster_type|character varying|NO|'auto'::character varying
+---
+> document_clusters|cluster_type|character varying|NO|-
+2678c2675
+< document_clusters|document_count|integer|NO|0
+---
+> document_clusters|document_count|integer|NO|-
+2680,2681c2677,2678
+< document_clusters|is_active|boolean|NO|true
+< document_clusters|metadata|jsonb|YES|'{}'::jsonb
+---
+> document_clusters|is_active|boolean|NO|-
+> document_clusters|metadata|jsonb|YES|-
+2730c2727
+< document_groups|company_id|uuid|NO|-
+---
+> document_groups|company_id|uuid|YES|-
+3019c3016
+< documents|custom_field_values|jsonb|YES|'{}'::jsonb
+---
+> documents|custom_field_values|jsonb|YES|-
+3040c3037
+< documents|keywords|jsonb|NO|'[]'::jsonb
+---
+> documents|keywords|jsonb|YES|'[]'::jsonb
+3057d3053
+< documents|row_version|integer|NO|1
+3210c3206
+< dunning_records|company_id|uuid|NO|-
+---
+> dunning_records|company_id|uuid|YES|-
+3431c3427
+< encrypted_field_meta|encryption_algorithm|character varying|NO|'AES-256-GCM'::character varying
+---
+> encrypted_field_meta|encryption_algorithm|character varying|NO|-
+3434c3430
+< encrypted_field_meta|key_version|integer|NO|1
+---
+> encrypted_field_meta|key_version|integer|NO|-
+3436,3437c3432,3433
+< encrypted_field_meta|row_count|integer|NO|0
+< encrypted_field_meta|status|character varying|NO|'active'::character varying
+---
+> encrypted_field_meta|row_count|integer|NO|-
+> encrypted_field_meta|status|character varying|NO|-
+3453c3449
+< entity_seasonal_patterns|avg_delay_adjustment|double precision|NO|'1'::double precision
+---
+> entity_seasonal_patterns|avg_delay_adjustment|double precision|NO|-
+3455c3451
+< entity_seasonal_patterns|confidence|double precision|NO|'0'::double precision
+---
+> entity_seasonal_patterns|confidence|double precision|NO|-
+3461c3457
+< entity_seasonal_patterns|sample_count|integer|NO|0
+---
+> entity_seasonal_patterns|sample_count|integer|NO|-
+3677,3678c3673,3674
+< event_log|handler_count|integer|NO|0
+< event_log|id|uuid|NO|gen_random_uuid()
+---
+> event_log|handler_count|integer|NO|-
+> event_log|id|uuid|NO|-
+3681c3677
+< event_log|processed|boolean|NO|false
+---
+> event_log|processed|boolean|NO|-
+3818,3826d3813
+< feature_toggle_history|action|character varying|NO|-
+< feature_toggle_history|changed_by_id|uuid|YES|-
+< feature_toggle_history|created_at|timestamp with time zone|NO|now()
+< feature_toggle_history|feature_flag_id|uuid|YES|-
+< feature_toggle_history|flag_name|character varying|NO|-
+< feature_toggle_history|id|uuid|NO|gen_random_uuid()
+< feature_toggle_history|new_value|jsonb|YES|-
+< feature_toggle_history|old_value|jsonb|YES|-
+< feature_toggle_history|reason|text|YES|-
+3844c3831
+< financial_goal_contributions|id|uuid|NO|gen_random_uuid()
+---
+> financial_goal_contributions|id|uuid|NO|-
+3849,3850c3836,3837
+< financial_goals|auto_update_enabled|boolean|NO|true
+< financial_goals|color|character varying|YES|'#10B981'::character varying
+---
+> financial_goals|auto_update_enabled|boolean|NO|-
+> financial_goals|color|character varying|YES|-
+3853c3840
+< financial_goals|current_value|numeric|NO|'0'::numeric
+---
+> financial_goals|current_value|numeric|NO|-
+3855,3858c3842,3845
+< financial_goals|goal_type|character varying|NO|'custom'::character varying
+< financial_goals|icon|character varying|YES|'Target'::character varying
+< financial_goals|id|uuid|NO|gen_random_uuid()
+< financial_goals|is_on_track|boolean|NO|true
+---
+> financial_goals|goal_type|character varying|NO|-
+> financial_goals|icon|character varying|YES|-
+> financial_goals|id|uuid|NO|-
+> financial_goals|is_on_track|boolean|NO|-
+3864,3867c3851,3854
+< financial_goals|notify_on_delay|boolean|NO|true
+< financial_goals|notify_on_milestone|boolean|NO|true
+< financial_goals|priority|integer|NO|1
+< financial_goals|progress_percent|numeric|NO|'0'::numeric
+---
+> financial_goals|notify_on_delay|boolean|NO|-
+> financial_goals|notify_on_milestone|boolean|NO|-
+> financial_goals|priority|integer|NO|-
+> financial_goals|progress_percent|numeric|NO|-
+3870c3857
+< financial_goals|status|character varying|NO|'active'::character varying
+---
+> financial_goals|status|character varying|NO|-
+3957c3944
+< fraud_alerts|severity|character varying|NO|'medium'::character varying
+---
+> fraud_alerts|severity|character varying|NO|-
+3959c3946
+< fraud_alerts|status|character varying|NO|'open'::character varying
+---
+> fraud_alerts|status|character varying|NO|-
+4106c4093
+< gdpr_deletion_requests|audit_entries_anonymized|integer|YES|0
+---
+> gdpr_deletion_requests|audit_entries_anonymized|integer|YES|-
+4111,4112c4098,4099
+< gdpr_deletion_requests|documents_deleted|integer|YES|0
+< gdpr_deletion_requests|id|uuid|NO|gen_random_uuid()
+---
+> gdpr_deletion_requests|documents_deleted|integer|YES|-
+> gdpr_deletion_requests|id|uuid|NO|-
+4116c4103
+< gdpr_deletion_requests|status|character varying|NO|'pending'::character varying
+---
+> gdpr_deletion_requests|status|character varying|NO|-
+4119,4131d4105
+< gdpr_deletion_status|abgeschlossen_am|timestamp with time zone|YES|-
+< gdpr_deletion_status|anfrage_id|uuid|YES|-
+< gdpr_deletion_status|angefragt_am|timestamp with time zone|YES|-
+< gdpr_deletion_status|anonymisierte_audit_eintraege|integer|YES|-
+< gdpr_deletion_status|bearbeitet_von_id|uuid|YES|-
+< gdpr_deletion_status|benutzer_email|character varying|YES|-
+< gdpr_deletion_status|frist|timestamp with time zone|YES|-
+< gdpr_deletion_status|geloeschte_dokumente|integer|YES|-
+< gdpr_deletion_status|grund|text|YES|-
+< gdpr_deletion_status|status_anzeige|text|YES|-
+< gdpr_deletion_status|status|character varying|YES|-
+< gdpr_deletion_status|user_id|uuid|YES|-
+< gdpr_deletion_status|verbleibende_tage|numeric|YES|-
+4212,4224d4185
+< gobd_audit_summary|aktive_benutzer|bigint|YES|-
+< gobd_audit_summary|company_id|uuid|YES|-
+< gobd_audit_summary|dokument_aktionen|bigint|YES|-
+< gobd_audit_summary|erfolgreiche_aktionen|bigint|YES|-
+< gobd_audit_summary|erster_eintrag|timestamp with time zone|YES|-
+< gobd_audit_summary|export_aktionen|bigint|YES|-
+< gobd_audit_summary|fehlgeschlagene_aktionen|bigint|YES|-
+< gobd_audit_summary|gesamt_eintraege|bigint|YES|-
+< gobd_audit_summary|hash_verifizierte|bigint|YES|-
+< gobd_audit_summary|letzter_eintrag|timestamp with time zone|YES|-
+< gobd_audit_summary|loesch_aktionen|bigint|YES|-
+< gobd_audit_summary|login_aktionen|bigint|YES|-
+< gobd_audit_summary|monat|timestamp with time zone|YES|-
+4561c4522
+< integration_configs|config|jsonb|NO|'{}'::jsonb
+---
+> integration_configs|config|jsonb|NO|-
+4564c4525
+< integration_configs|id|uuid|NO|gen_random_uuid()
+---
+> integration_configs|id|uuid|NO|-
+4566c4527
+< integration_configs|is_active|boolean|NO|true
+---
+> integration_configs|is_active|boolean|NO|-
+4570c4531
+< integration_configs|sync_interval_minutes|integer|NO|60
+---
+> integration_configs|sync_interval_minutes|integer|NO|-
+4575,4576c4536,4537
+< integration_sync_logs|error_details|jsonb|YES|'{}'::jsonb
+< integration_sync_logs|id|uuid|NO|gen_random_uuid()
+---
+> integration_sync_logs|error_details|jsonb|YES|-
+> integration_sync_logs|id|uuid|NO|-
+4578,4580c4539,4541
+< integration_sync_logs|items_failed|integer|NO|0
+< integration_sync_logs|items_processed|integer|NO|0
+< integration_sync_logs|items_total|integer|NO|0
+---
+> integration_sync_logs|items_failed|integer|NO|-
+> integration_sync_logs|items_processed|integer|NO|-
+> integration_sync_logs|items_total|integer|NO|-
+4582c4543
+< integration_sync_logs|status|character varying|NO|'started'::character varying
+---
+> integration_sync_logs|status|character varying|NO|-
+4654d4614
+< invoice_tracking|row_version|integer|NO|1
+4719,4720c4679,4680
+< key_rotation_logs|rows_processed|integer|NO|0
+< key_rotation_logs|rows_total|integer|NO|0
+---
+> key_rotation_logs|rows_processed|integer|NO|-
+> key_rotation_logs|rows_total|integer|NO|-
+4722c4682
+< key_rotation_logs|status|character varying|NO|'pending'::character varying
+---
+> key_rotation_logs|status|character varying|NO|-
+4889,4890c4849,4850
+< llm_cache|hit_count|integer|NO|0
+< llm_cache|id|uuid|NO|gen_random_uuid()
+---
+> llm_cache|hit_count|integer|NO|-
+> llm_cache|id|uuid|NO|-
+5023,5025c4983,4985
+< notification_rules|actions|jsonb|NO|'[]'::jsonb
+< notification_rules|conditions|jsonb|NO|'{}'::jsonb
+< notification_rules|cooldown_minutes|integer|YES|0
+---
+> notification_rules|actions|jsonb|NO|-
+> notification_rules|conditions|jsonb|NO|-
+> notification_rules|cooldown_minutes|integer|YES|-
+5028c4988
+< notification_rules|enabled|boolean|NO|true
+---
+> notification_rules|enabled|boolean|NO|-
+5031c4991
+< notification_rules|id|uuid|NO|gen_random_uuid()
+---
+> notification_rules|id|uuid|NO|-
+5036c4996
+< notification_rules|priority|character varying|NO|'normal'::character varying
+---
+> notification_rules|priority|character varying|NO|-
+5039,5040c4999,5000
+< notification_rules|timezone|character varying|NO|'Europe/Berlin'::character varying
+< notification_rules|trigger_count|integer|NO|0
+---
+> notification_rules|timezone|character varying|NO|-
+> notification_rules|trigger_count|integer|NO|-
+5456,5457c5416,5417
+< partition_management|id|uuid|NO|gen_random_uuid()
+< partition_management|is_archived|boolean|YES|false
+---
+> partition_management|id|uuid|NO|-
+> partition_management|is_archived|boolean|NO|-
+5461,5462c5421,5422
+< partition_management|row_count|bigint|YES|0
+< partition_management|size_bytes|bigint|YES|0
+---
+> partition_management|row_count|bigint|YES|-
+> partition_management|size_bytes|bigint|YES|-
+5476c5436
+< payment_batches|company_id|uuid|NO|-
+---
+> payment_batches|company_id|uuid|YES|-
+5543c5503
+< payment_orders|company_id|uuid|NO|-
+---
+> payment_orders|company_id|uuid|YES|-
+5819,5821c5779,5781
+< portfolio_snapshots|debt_to_assets_ratio|numeric|NO|'0'::numeric
+< portfolio_snapshots|id|uuid|NO|gen_random_uuid()
+< portfolio_snapshots|liquidity_ratio|numeric|NO|'0'::numeric
+---
+> portfolio_snapshots|debt_to_assets_ratio|numeric|NO|-
+> portfolio_snapshots|id|uuid|NO|-
+> portfolio_snapshots|liquidity_ratio|numeric|NO|-
+5824c5784
+< portfolio_snapshots|net_worth|numeric|NO|'0'::numeric
+---
+> portfolio_snapshots|net_worth|numeric|NO|-
+5827,5836c5787,5796
+< portfolio_snapshots|total_assets|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_cash|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_investments|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_liabilities|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_loans|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_mortgages|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_other_assets|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_other_liabilities|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_real_estate|numeric|NO|'0'::numeric
+< portfolio_snapshots|total_vehicles|numeric|NO|'0'::numeric
+---
+> portfolio_snapshots|total_assets|numeric|NO|-
+> portfolio_snapshots|total_cash|numeric|NO|-
+> portfolio_snapshots|total_investments|numeric|NO|-
+> portfolio_snapshots|total_liabilities|numeric|NO|-
+> portfolio_snapshots|total_loans|numeric|NO|-
+> portfolio_snapshots|total_mortgages|numeric|NO|-
+> portfolio_snapshots|total_other_assets|numeric|NO|-
+> portfolio_snapshots|total_other_liabilities|numeric|NO|-
+> portfolio_snapshots|total_real_estate|numeric|NO|-
+> portfolio_snapshots|total_vehicles|numeric|NO|-
+5907c5867
+< privat_coverage_gaps|id|uuid|NO|gen_random_uuid()
+---
+> privat_coverage_gaps|id|uuid|NO|-
+5910c5870
+< privat_coverage_gaps|is_resolved|boolean|NO|false
+---
+> privat_coverage_gaps|is_resolved|boolean|NO|-
+5988,5990c5948,5950
+< privat_early_warnings|id|uuid|NO|gen_random_uuid()
+< privat_early_warnings|is_dismissed|boolean|NO|false
+< privat_early_warnings|is_resolved|boolean|NO|false
+---
+> privat_early_warnings|id|uuid|NO|-
+> privat_early_warnings|is_dismissed|boolean|NO|-
+> privat_early_warnings|is_resolved|boolean|NO|-
+6106c6066
+< privat_kpi_history|id|uuid|NO|gen_random_uuid()
+---
+> privat_kpi_history|id|uuid|NO|-
+6111c6071
+< privat_kpi_history|source|character varying|NO|'automated'::character varying
+---
+> privat_kpi_history|source|character varying|NO|-
+6144c6104
+< privat_projections|id|uuid|NO|gen_random_uuid()
+---
+> privat_projections|id|uuid|NO|-
+6147c6107
+< privat_projections|projection_method|character varying|NO|'linear'::character varying
+---
+> privat_projections|projection_method|character varying|NO|-
+6149c6109
+< privat_projections|seasonality_detected|boolean|NO|false
+---
+> privat_projections|seasonality_detected|boolean|NO|-
+6192c6152
+< privat_recurring_payments|confidence|numeric|NO|0.0
+---
+> privat_recurring_payments|confidence|numeric|NO|-
+6198,6200c6158,6160
+< privat_recurring_payments|id|uuid|NO|gen_random_uuid()
+< privat_recurring_payments|is_active|boolean|NO|true
+< privat_recurring_payments|is_income|boolean|NO|false
+---
+> privat_recurring_payments|id|uuid|NO|-
+> privat_recurring_payments|is_active|boolean|NO|-
+> privat_recurring_payments|is_income|boolean|NO|-
+6205c6165
+< privat_recurring_payments|occurrence_count|integer|NO|0
+---
+> privat_recurring_payments|occurrence_count|integer|NO|-
+7947c7907
+< users|daily_quota|integer|YES|-
+---
+> users|daily_quota|integer|YES|100
+7954c7914
+< users|documents_processed_today|integer|YES|-
+---
+> users|documents_processed_today|integer|YES|0
+8184,8185c8144,8146
+< webhook_deliveries|attempts|integer|NO|0
+< webhook_deliveries|company_id|uuid|NO|-
+---
+> webhook_deliveries|attempt_count|integer|NO|-
+> webhook_deliveries|attempts|integer|YES|-
+> webhook_deliveries|company_id|uuid|YES|-
+8188,8189c8149,8152
+< webhook_deliveries|endpoint_id|uuid|NO|-
+< webhook_deliveries|event_id|uuid|NO|-
+---
+> webhook_deliveries|duration_ms|integer|YES|-
+> webhook_deliveries|endpoint_id|uuid|YES|-
+> webhook_deliveries|error_message|text|YES|-
+> webhook_deliveries|event_id|character varying|NO|-
+8191c8154,8155
+< webhook_deliveries|id|uuid|NO|gen_random_uuid()
+---
+> webhook_deliveries|http_status_code|integer|YES|-
+> webhook_deliveries|id|uuid|NO|-
+8193c8157
+< webhook_deliveries|max_attempts|integer|NO|3
+---
+> webhook_deliveries|max_attempts|integer|YES|-
+8195c8159
+< webhook_deliveries|payload|jsonb|NO|-
+---
+> webhook_deliveries|payload|json|NO|-
+8198c8162,8163
+< webhook_deliveries|status|character varying|NO|'pending'::character varying
+---
+> webhook_deliveries|status|character varying|NO|-
+> webhook_deliveries|subscription_id|uuid|NO|-
+8202c8167
+< webhook_endpoints|event_types|jsonb|NO|'[]'::jsonb
+---
+> webhook_endpoints|event_types|jsonb|NO|-
+8204,8206c8169,8171
+< webhook_endpoints|id|uuid|NO|gen_random_uuid()
+< webhook_endpoints|is_active|boolean|NO|true
+< webhook_endpoints|retry_policy|jsonb|NO|'{"max_retries": 3, "backoff_factor": 2, "timeout_seconds": 30}'::jsonb
+---
+> webhook_endpoints|id|uuid|NO|-
+> webhook_endpoints|is_active|boolean|NO|-
+> webhook_endpoints|retry_policy|jsonb|NO|-
+8213c8178
+< webhook_event_log|id|uuid|NO|gen_random_uuid()
+---
+> webhook_event_log|id|uuid|NO|-
+8217d8181
+< webhook_subscription_deliveries|attempt_count|integer|NO|-
+8219c8183
+< webhook_subscription_deliveries|created_at|timestamp with time zone|NO|now()
+---
+> webhook_subscription_deliveries|created_at|timestamp with time zone|YES|now()
+8221d8184
+< webhook_subscription_deliveries|duration_ms|integer|YES|-
+8226d8188
+< webhook_subscription_deliveries|http_status_code|integer|YES|-
+8234c8196
+< webhook_subscription_deliveries|status|character varying|NO|-
+---
+> webhook_subscription_deliveries|status|character varying|YES|-

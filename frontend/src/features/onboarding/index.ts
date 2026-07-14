@@ -5,5 +5,5 @@
  */
 
 export { OnboardingWizard } from './components/OnboardingWizard'
-export { useOnboarding } from './hooks/use-onboarding'
+export { useOnboarding, isPrimaryOnboardingPending } from './hooks/use-onboarding'
 export type { OnboardingStep } from './hooks/use-onboarding'

@@ -754,8 +754,8 @@ docker-compose down
 # 2. Backup auswählen
 ls /backups/
 
-# 3. Wiederherstellung starten
-./scripts/restore.sh /backups/backup_2025-01-08.tar.gz
+# 3. Wiederherstellung starten — BEWIESENER Weg: docs/runbooks/disaster-recovery.md §2
+#    (scripts/restore.sh ist DEPRECATED, F-PHX-P2-1)
 
 # 4. System starten
 docker-compose up -d

@@ -79,17 +79,6 @@ describe('error-toast-handler', () => {
                 });
             });
 
-            it('zeigt Toast für 404 Not Found', () => {
-                const error = createAxiosError(404);
-                showApiErrorToast(error);
-
-                expect(toast).toHaveBeenCalledWith({
-                    title: 'Nicht gefunden',
-                    description: 'Die angeforderte Ressource wurde nicht gefunden.',
-                    variant: 'destructive',
-                });
-            });
-
             it('zeigt Toast für 409 Conflict', () => {
                 const error = createAxiosError(409);
                 showApiErrorToast(error);
@@ -166,6 +155,15 @@ describe('error-toast-handler', () => {
         describe('Silent Status Codes', () => {
             it('ignoriert 401 Unauthorized (wird von Session-Modal behandelt)', () => {
                 const error = createAxiosError(401);
+                showApiErrorToast(error);
+
+                expect(toast).not.toHaveBeenCalled();
+            });
+
+            it('ignoriert 404 Not Found (F-P1-005: kein globaler roter Toast)', () => {
+                // Hintergrund-/Polling-Aufrufe und eingefrorene Optional-Module
+                // liefern 404 -> darf keinen erschreckenden globalen Toast ausloesen.
+                const error = createAxiosError(404);
                 showApiErrorToast(error);
 
                 expect(toast).not.toHaveBeenCalled();
@@ -312,9 +310,9 @@ describe('error-toast-handler', () => {
             showApiErrorToast(createAxiosError(404));
             showApiErrorToast(createAxiosError(403));
 
-            // 500 retryable -> sonner; 404/403 -> klassischer Toast
+            // 500 retryable -> sonner; 404 silent (F-P1-005); 403 -> klassischer Toast
             expect(sonnerToast.error).toHaveBeenCalledTimes(1);
-            expect(toast).toHaveBeenCalledTimes(2);
+            expect(toast).toHaveBeenCalledTimes(1);
         });
 
         it('erlaubt gleichen Fehler nach Rate-Limit-Intervall', async () => {

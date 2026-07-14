@@ -25,6 +25,7 @@ from sqlalchemy.orm import joinedload
 
 from app.db.models import (
     User,
+    UserCompany,
     Role,
     Company,
     TaxAdvisorInvite,
@@ -230,6 +231,20 @@ class TaxAdvisorService:
         # Rolle zuweisen
         user.roles.append(tax_advisor_role)
         db.add(user)
+
+        # K2 (Trust-Folge, 2026-07-14): Ohne UserCompany-Zuordnung war das
+        # Konto im Multi-Tenancy-Modell funktional tot — get_user_company_id/
+        # RLS loesen die Firma aus user_companies auf, nicht aus der Rolle.
+        # Der Steuerberater bekommt Lesezugriff (viewer) auf GENAU die
+        # einladende Firma; is_current=True, da es seine einzige Firma ist.
+        db.add(
+            UserCompany(
+                user_id=user.id,
+                company_id=invite.company_id,
+                role="viewer",
+                is_current=True,
+            )
+        )
 
         # Einladung aktualisieren
         invite.status = TaxAdvisorInviteStatus.ACCEPTED.value

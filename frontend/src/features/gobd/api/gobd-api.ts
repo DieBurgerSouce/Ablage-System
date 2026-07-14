@@ -9,7 +9,9 @@ import { apiClient } from '@/lib/api/client'
 import type {
   ArchiveEntry,
   ArchiveDocumentRequest,
+  ArchiveDocumentResponse,
   ArchiveStatistics,
+  DocumentProof,
   ExpiringArchive,
   VerificationResult,
   RetentionSetting,
@@ -28,18 +30,40 @@ import type {
 // ==================================================
 
 /**
- * Dokument archivieren
+ * Dokument archivieren (GoBD-Versiegelung).
+ *
+ * Backend-Endpoint ist POST /compliance/archive und erwartet `category`
+ * (nicht `retention_category`) — die alten /archive/documents-Pfade
+ * existierten im Backend nie.
  */
-export async function archiveDocument(request: ArchiveDocumentRequest): Promise<ArchiveEntry> {
-  const response = await apiClient.post<ArchiveEntry>('/archive/documents', request)
+export async function archiveDocument(
+  request: ArchiveDocumentRequest
+): Promise<ArchiveDocumentResponse> {
+  const response = await apiClient.post<ArchiveDocumentResponse>('/compliance/archive', {
+    document_id: request.document_id,
+    category: request.retention_category,
+    metadata: request.metadata,
+  })
   return response.data
 }
 
 /**
- * Archive-Eintrag abrufen
+ * Archive-Eintrag abrufen (404 = Dokument noch nicht versiegelt)
  */
 export async function getArchiveEntry(documentId: string): Promise<ArchiveEntry> {
-  const response = await apiClient.get<ArchiveEntry>(`/archive/documents/${documentId}`)
+  const response = await apiClient.get<ArchiveEntry>(`/compliance/archive/${documentId}`)
+  return response.data
+}
+
+/**
+ * Live-Beweisführung: Original wird serverseitig aus dem Storage geladen,
+ * neu gehasht und gegen die versiegelte Baseline geprüft (inkl. Beweiskette
+ * und RFC-3161-Zeitstempel).
+ */
+export async function proveDocumentIntegrity(documentId: string): Promise<DocumentProof> {
+  const response = await apiClient.post<DocumentProof>(
+    `/integrity/documents/${documentId}/prove`
+  )
   return response.data
 }
 
@@ -60,13 +84,20 @@ export async function listArchivedDocuments(params?: {
 }
 
 /**
- * Dokumentintegritaet verifizieren
+ * Dokumentintegritaet verifizieren (Kompatibilitäts-Wrapper um die
+ * Live-Beweisführung — der alte /archive/documents-Pfad existierte nie).
  */
 export async function verifyDocumentIntegrity(documentId: string): Promise<VerificationResult> {
-  const response = await apiClient.post<VerificationResult>(
-    `/archive/documents/${documentId}/verify`
-  )
-  return response.data
+  const proof = await proveDocumentIntegrity(documentId)
+  return {
+    is_valid: proof.verdict === 'verified',
+    document_id: proof.document_id,
+    content_hash: proof.computed_hash ?? '',
+    stored_hash: proof.stored_hash ?? '',
+    hash_algorithm: proof.hash_algorithm,
+    verified_at: proof.verified_at,
+    verification_message: proof.message_de,
+  }
 }
 
 /**
@@ -91,7 +122,7 @@ export async function verifyAllArchives(): Promise<{
  * Archiv-Statistiken abrufen
  */
 export async function getArchiveStatistics(): Promise<ArchiveStatistics> {
-  const response = await apiClient.get<ArchiveStatistics>('/archive/statistics')
+  const response = await apiClient.get<ArchiveStatistics>('/compliance/archive/statistics')
   return response.data
 }
 

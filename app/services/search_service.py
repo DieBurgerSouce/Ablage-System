@@ -46,6 +46,26 @@ RRF_K_CONSTANT = 60  # Standard RRF Fusion Konstante (bewahrt für Ranking-Stabi
 HYBRID_EXPANSION_FACTOR = 3  # Faktor für erweiterte Ergebnisse bei Hybrid-Suche
 
 
+def build_fts_expansion_terms(query: str) -> List[str]:
+    """F-P2-005: OR-Terme für die FTS-Expansion bauen.
+
+    Die Umlaut-/Kompositum-Expansion liefert Queries wie "Müller mueller";
+    plainto_tsquery verknüpft Wörter aber mit AND — ein Dokument mit nur
+    einer Schreibweise wurde nicht gefunden. Die SQL-Seite verknüpft die
+    hier gebauten Terme daher mit OR: Gesamtquery (AND-Gruppe, Präzision)
+    plus jedes Einzelwort (OR-Alternative, Recall), dedupliziert unter
+    Erhalt der Reihenfolge.
+    """
+    seen: Set[str] = set()
+    terms: List[str] = []
+    for term in [query, *query.split()]:
+        term = term.strip()
+        if term and term.lower() not in seen:
+            seen.add(term.lower())
+            terms.append(term)
+    return terms
+
+
 class SearchService:
     """Service für Dokumentensuche.
 
@@ -109,11 +129,17 @@ class SearchService:
         page: int,
         per_page: int,
         sort_by: SortField,
-        sort_order: SortOrder
+        sort_order: SortOrder,
+        company_id: Optional[UUID] = None
     ) -> str:
         """Generiert einen eindeutigen Cache-Key für Suchanfragen."""
         # Hash der Query
         query_hash = hashlib.sha256(query.encode()).hexdigest()[:12]
+
+        # F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
+        # company_id in den Key aufnehmen, damit Ergebnisse nicht zwischen
+        # Firmen ge-cached werden (Cross-Company-Cache-Bleed vermeiden).
+        company_component = str(company_id) if company_id is not None else "nocompany"
 
         # Hash der Filter (wenn vorhanden)
         filter_hash = "nofilter"
@@ -131,7 +157,7 @@ class SearchService:
             filter_json = json.dumps(filter_dict, sort_keys=True)
             filter_hash = hashlib.sha256(filter_json.encode()).hexdigest()[:8]
 
-        return f"search:{search_type.value}:{user_id}:{query_hash}:{page}:{per_page}:{sort_by.value}:{sort_order.value}:{filter_hash}"
+        return f"search:{search_type.value}:{user_id}:{company_component}:{query_hash}:{page}:{per_page}:{sort_by.value}:{sort_order.value}:{filter_hash}"
 
     def _generate_similar_cache_key(
         self,
@@ -382,6 +408,7 @@ class SearchService:
         db: AsyncSession,
         query: str,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
         search_type: SearchType = SearchType.HYBRID,
         filters: Optional[SearchFilters] = None,
         page: int = 1,
@@ -400,6 +427,7 @@ class SearchService:
             db: Datenbank-Session
             query: Suchbegriff
             user_id: Benutzer-ID für Zugriffsfilter
+            company_id: Firmen-ID für firmenweite Sichtbarkeit (F-P2-001, company-scoped)
             search_type: Art der Suche (fts, semantic, hybrid)
             filters: Optionale Filter
             page: Seitennummer (1-basiert)
@@ -420,7 +448,8 @@ class SearchService:
 
         # Cache-Key generieren
         cache_key = self._generate_search_cache_key(
-            query, user_id, search_type, filters, page, per_page, sort_by, sort_order
+            query, user_id, search_type, filters, page, per_page, sort_by, sort_order,
+            company_id=company_id
         )
 
         # Cache prüfen (wenn aktiviert)
@@ -505,15 +534,15 @@ class SearchService:
 
         if search_type == SearchType.FTS:
             results, total = await self._search_fts(
-                db, expanded_query, user_id, filters, page, per_page, highlight
+                db, expanded_query, user_id, filters, page, per_page, highlight, company_id=company_id
             )
         elif search_type == SearchType.SEMANTIC:
             results, total = await self._search_semantic(
-                db, query, user_id, filters, page, per_page, threshold
+                db, query, user_id, filters, page, per_page, threshold, company_id=company_id
             )
         else:  # HYBRID
             results, total = await self._search_hybrid(
-                db, expanded_query, user_id, filters, page, per_page, highlight, threshold, rerank
+                db, expanded_query, user_id, filters, page, per_page, highlight, threshold, rerank, company_id=company_id
             )
 
         # Sortierung anwenden (ausser bei Relevanz - schon sortiert)
@@ -561,7 +590,7 @@ class SearchService:
         did_you_mean = None
         if total == 0 and len(query) >= 3:
             try:
-                did_you_mean = await self._get_did_you_mean(db, query, user_id)
+                did_you_mean = await self._get_did_you_mean(db, query, user_id, company_id=company_id)
             except Exception as e:
                 logger.warning("did_you_mean_error", **safe_error_log(e))
 
@@ -606,7 +635,8 @@ class SearchService:
         query: str,
         user_id: UUID,
         threshold: float = 0.3,
-        limit: int = 1
+        limit: int = 1,
+        company_id: Optional[UUID] = None
     ) -> Optional[str]:
         """Findet aehnliche Begriffe via pg_trgm wenn Suche 0 Ergebnisse liefert.
 
@@ -619,10 +649,16 @@ class SearchService:
             user_id: Benutzer-ID fuer Zugriffsfilter
             threshold: Minimum similarity score (0-1)
             limit: Maximale Anzahl Vorschlaege
+            company_id: Firmen-ID für firmenweite Sichtbarkeit (F-P2-001, company-scoped)
 
         Returns:
             Bester Korrekturvorschlag oder None
         """
+        # F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
+        # Fallback auf owner-scoped wenn keine company_id gesetzt ist.
+        owned_pred = "company_id = :company_id" if company_id is not None else "owner_id = :user_id"
+        owned_pred_d = "d.company_id = :company_id" if company_id is not None else "d.owner_id = :user_id"
+
         # Erstes Wort der Query fuer Einzel-Wort-Korrektur
         query_word = query.strip().split()[0] if query.strip() else query.strip()
         if len(query_word) < 3:
@@ -633,15 +669,16 @@ class SearchService:
             filename_query = text("""
                 SELECT DISTINCT original_filename, similarity(original_filename, :query) AS sim
                 FROM documents
-                WHERE owner_id = :user_id
+                WHERE {owned_pred}
                     AND original_filename IS NOT NULL
                     AND similarity(original_filename, :query) > :threshold
                 ORDER BY sim DESC
                 LIMIT :limit
-            """)
+            """.format(owned_pred=owned_pred))
             result = await db.execute(filename_query, {
                 "query": query_word,
                 "user_id": str(user_id),
+                "company_id": str(company_id) if company_id is not None else None,
                 "threshold": threshold,
                 "limit": limit
             })
@@ -662,15 +699,16 @@ class SearchService:
                 FROM tags t
                 JOIN document_tags dt ON dt.tag_id = t.id
                 JOIN documents d ON d.id = dt.document_id
-                WHERE d.owner_id = :user_id
+                WHERE {owned_pred_d}
                     AND similarity(t.name, :query) > :threshold
                 GROUP BY t.name, sim
                 ORDER BY sim DESC
                 LIMIT :limit
-            """)
+            """.format(owned_pred_d=owned_pred_d))
             result = await db.execute(tag_query, {
                 "query": query_word,
                 "user_id": str(user_id),
+                "company_id": str(company_id) if company_id is not None else None,
                 "threshold": threshold,
                 "limit": limit
             })
@@ -706,10 +744,15 @@ class SearchService:
         filters: Optional[SearchFilters],
         page: int,
         per_page: int,
-        highlight: bool
+        highlight: bool,
+        company_id: Optional[UUID] = None
     ) -> Tuple[List[SearchResultItem], int]:
         """PostgreSQL Full-Text Search mit German Config und Field-Level Boosting."""
         offset = (page - 1) * per_page
+
+        # F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
+        # Fallback auf owner-scoped wenn keine company_id gesetzt ist.
+        owned_pred = "company_id = :company_id" if company_id is not None else "owner_id = :user_id"
 
         # Field-Level Boost-Werte aus Config
         filename_boost = settings.FTS_FIELD_BOOST_FILENAME
@@ -719,14 +762,28 @@ class SearchService:
         # Base query mit tsvector Suche und Field-Level Boosting
         # Inkludiert eigene UND geteilte Dokumente (via DocumentAccess)
         # Boosting: Treffer im Dateinamen ranken höher als im extrahierten Text
+        # F-P2-005 (Perception-Audit 2026-07-12): Die Umlaut-/Kompositum-
+        # Expansion wurde bisher via plainto_tsquery(:query) mit UND verknuepft
+        # (z. B. „Müller mueller" -> 'mull' & 'muell') -> ein Dokument mit nur
+        # „Müller" wurde NICHT gefunden (0 Treffer, obwohl vorhanden). Intent
+        # der Expansion ist OR (OCR-Toleranz). Wir bauen die tsquery daher als
+        # OR ueber plainto_tsquery(term) je Term: die Gesamtquery bleibt als
+        # AND-Gruppe erhalten (Praezision), zusaetzlich jedes Einzelwort als
+        # OR-Alternative (Recall). Leere (Stopword-)Terme werden gefiltert.
         fts_query = text("""
             WITH search_query AS (
-                SELECT plainto_tsquery('german_text', :query) AS query
+                SELECT CAST(COALESCE(
+                    (SELECT string_agg('(' || CAST(plainto_tsquery('german_text', t) AS text) || ')', ' | ')
+                     FROM unnest(CAST(:fts_terms AS text[])) AS t
+                     WHERE CAST(plainto_tsquery('german_text', t) AS text) <> ''),
+                    CAST(plainto_tsquery('german_text', :query) AS text)
+                ) AS tsquery) AS query
             ),
             accessible_docs AS (
                 -- Eigene Dokumente
+                -- F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
                 SELECT document_id FROM (
-                    SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                    SELECT id AS document_id FROM documents WHERE {owned_pred}
                 ) owned
                 UNION
                 -- Geteilte Dokumente (nicht abgelaufen)
@@ -776,31 +833,43 @@ class SearchService:
             )
             SELECT * FROM ranked_docs
             LIMIT :limit OFFSET :offset
-        """.format(filters=self._build_filter_sql(filters)))
+        """.format(filters=self._build_filter_sql(filters), owned_pred=owned_pred))
 
         # Count query (inkl. geteilte Dokumente)
         count_query = text("""
             WITH accessible_docs AS (
-                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                -- F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
+                SELECT id AS document_id FROM documents WHERE {owned_pred}
                 UNION
                 SELECT document_id FROM document_access
                 WHERE user_id = :user_id
                     AND (expires_at IS NULL OR expires_at > NOW())
             )
-            SELECT COUNT(*) FROM documents d,
-                plainto_tsquery('german_text', :query) AS query
+            SELECT COUNT(*) FROM documents d
+            CROSS JOIN (
+                SELECT CAST(COALESCE(
+                    (SELECT string_agg('(' || CAST(plainto_tsquery('german_text', t) AS text) || ')', ' | ')
+                     FROM unnest(CAST(:fts_terms AS text[])) AS t
+                     WHERE CAST(plainto_tsquery('german_text', t) AS text) <> ''),
+                    CAST(plainto_tsquery('german_text', :query) AS text)
+                ) AS tsquery) AS q
+            ) sq
             WHERE d.id IN (SELECT document_id FROM accessible_docs)
-                AND d.search_vector @@ query
+                AND d.search_vector @@ sq.q
                 {filters}
-        """.format(filters=self._build_filter_sql(filters)))
+        """.format(filters=self._build_filter_sql(filters), owned_pred=owned_pred))
 
         # Extrahiere erstes Wort der Query für Filename-Matching (ohne Expansion)
         raw_query_first_word = query.split()[0] if query.split() else query
 
+        fts_terms = build_fts_expansion_terms(query)
+
         params = {
             "query": query,
+            "fts_terms": fts_terms,  # F-P2-005: OR-verknuepfte Terme
             "raw_query": raw_query_first_word,  # Für LIKE-Matching im Filename
             "user_id": str(user_id),
+            "company_id": str(company_id) if company_id is not None else None,  # F-P2-001: firmenweite Sichtbarkeit
             "limit": per_page,
             "offset": offset,
             "filename_boost": filename_boost,
@@ -854,10 +923,15 @@ class SearchService:
         filters: Optional[SearchFilters],
         page: int,
         per_page: int,
-        threshold: float
+        threshold: float,
+        company_id: Optional[UUID] = None
     ) -> Tuple[List[SearchResultItem], int]:
         """Semantische Suche mit pgvector."""
         offset = (page - 1) * per_page
+
+        # F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
+        # Fallback auf owner-scoped wenn keine company_id gesetzt ist.
+        owned_pred = "company_id = :company_id" if company_id is not None else "owner_id = :user_id"
 
         # Query-Embedding generieren
         query_embedding = await self.embedding_service.generate_embedding_async(query, is_query=True)
@@ -866,7 +940,8 @@ class SearchService:
         # Semantic search query (inkl. geteilte Dokumente)
         semantic_query = text("""
             WITH accessible_docs AS (
-                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                -- F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
+                SELECT id AS document_id FROM documents WHERE {owned_pred}
                 UNION
                 SELECT document_id FROM document_access
                 WHERE user_id = :user_id
@@ -896,12 +971,13 @@ class SearchService:
             )
             SELECT * FROM semantic_results
             LIMIT :limit OFFSET :offset
-        """.format(filters=self._build_filter_sql(filters)))
+        """.format(filters=self._build_filter_sql(filters), owned_pred=owned_pred))
 
         # Count query (inkl. geteilte Dokumente)
         count_query = text("""
             WITH accessible_docs AS (
-                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                -- F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
+                SELECT id AS document_id FROM documents WHERE {owned_pred}
                 UNION
                 SELECT document_id FROM document_access
                 WHERE user_id = :user_id
@@ -912,11 +988,12 @@ class SearchService:
                 AND d.embedding IS NOT NULL
                 AND 1 - (d.embedding <=> CAST(:embedding AS vector)) >= :threshold
                 {filters}
-        """.format(filters=self._build_filter_sql(filters)))
+        """.format(filters=self._build_filter_sql(filters), owned_pred=owned_pred))
 
         params = {
             "embedding": embedding_str,
             "user_id": str(user_id),
+            "company_id": str(company_id) if company_id is not None else None,  # F-P2-001: firmenweite Sichtbarkeit
             "threshold": threshold,
             "limit": per_page,
             "offset": offset
@@ -968,7 +1045,8 @@ class SearchService:
         per_page: int,
         highlight: bool,
         threshold: float,
-        rerank: bool = True
+        rerank: bool = True,
+        company_id: Optional[UUID] = None
     ) -> Tuple[List[SearchResultItem], int]:
         """Hybrid-Suche mit Reciprocal Rank Fusion (RRF) und optionalem Reranking."""
         # Adaptive Gewichte basierend auf Query-Länge wählen
@@ -977,12 +1055,27 @@ class SearchService:
         # Beide Suchmethoden ausführen (mehr Ergebnisse holen für Fusion)
         expanded_limit = per_page * HYBRID_EXPANSION_FACTOR
 
+        # F-P2-001: firmenweite Sichtbarkeit (company-scoped statt owner-scoped)
         fts_results, _ = await self._search_fts(
-            db, query, user_id, filters, 1, expanded_limit, highlight
+            db, query, user_id, filters, 1, expanded_limit, highlight, company_id=company_id
         )
-        semantic_results, _ = await self._search_semantic(
-            db, query, user_id, filters, 1, expanded_limit, threshold
-        )
+        # F-P2-004 (Perception-Audit 2026-07-12): Semantik-Fehler (z. B.
+        # GPU-Modell-Dtype-Mismatch fp16/fp32 nach einem ressourcen-knappen
+        # Neustart -> RuntimeError „mat1 and mat2 must have the same dtype")
+        # darf die Suche NICHT auf HTTP 500 reissen. Die Volltextsuche (FTS,
+        # rein Postgres, kein GPU) bleibt als deterministischer Fallback. Der
+        # Buero-Nutzer bekommt dann degradierte, aber funktionierende Treffer.
+        try:
+            semantic_results, _ = await self._search_semantic(
+                db, query, user_id, filters, 1, expanded_limit, threshold, company_id=company_id
+            )
+        except Exception as e:
+            logger.warning(
+                "hybrid_semantic_degraded_to_fts",
+                reason=str(e)[:200],
+                exc_type=type(e).__name__,
+            )
+            semantic_results = []
 
         # RRF Score berechnen mit Standard-Konstante und adaptiven Gewichten
         k = RRF_K_CONSTANT
@@ -1029,7 +1122,18 @@ class SearchService:
         if rerank and self._rerank_enabled and len(sorted_items) > 1:
             # Top-Kandidaten für Reranking (max 30 für Performance)
             rerank_candidates = [item["result"] for item in sorted_items[:30]]
-            reranked_results = await self._rerank_results(query, rerank_candidates, per_page)
+            # F-P2-004 (Perception-Audit 2026-07-12): auch ein Reranker-Fehler
+            # (GPU-Dtype/OOM) darf die Suche nicht auf 500 reissen -> ohne
+            # Reranking auf die RRF-Sortierung zurueckfallen.
+            try:
+                reranked_results = await self._rerank_results(query, rerank_candidates, per_page)
+            except Exception as e:
+                logger.warning(
+                    "hybrid_rerank_degraded",
+                    reason=str(e)[:200],
+                    exc_type=type(e).__name__,
+                )
+                reranked_results = None
 
             if reranked_results:
                 # Score normalisieren

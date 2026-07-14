@@ -1,0 +1,10 @@
+# Live-VORHER-Pruefsummen 2026-07-14T18:33:56+02:00
+alembic_version=275
+policy_md5=abf41a6b555bca9064c1d704fbb8d271
+rls_flags_md5=69026e8a61dd692b0934d1b095f4168d
+audit_logs_count=563
+documents_count=25
+partition_management_count=0
+feature_toggle_history_exists=f
+cdc_logs_count=0
+enum_count=68

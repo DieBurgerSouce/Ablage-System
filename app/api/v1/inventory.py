@@ -659,8 +659,11 @@ async def get_unprocessed_delivery_notes(
         {
             "id": doc.id,
             "filename": doc.filename,
-            "document_type": doc.document_type.value if doc.document_type else None,
-            "entity_id": doc.entity_id,
+            # F-P2-007: document_type ist eine String-Spalte — aus der DB
+            # geladene Zeilen liefern str, .value darauf crasht mit 500.
+            "document_type": getattr(doc.document_type, "value", doc.document_type) if doc.document_type else None,
+            # F-P2-007: Document hat kein entity_id-Attribut (heißt business_entity_id)
+            "entity_id": doc.business_entity_id,
             "created_at": doc.created_at,
             "extracted_data": doc.extracted_data,
         }

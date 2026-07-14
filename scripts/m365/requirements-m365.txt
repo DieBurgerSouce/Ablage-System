@@ -1,0 +1,12 @@
+# M365-Extraktion (Phase P0/P1) — bewusst minimal gehalten.
+#
+# Installation:
+#   pip install -r requirements-m365.txt
+
+msal>=1.28
+httpx>=0.27
+
+# Optional (TNEF/winmail.dat-Entpackung, spaeter fuer mail_prep in Saeule 3).
+# mail_01_extract/mail_02_verify laufen OHNE dieses Paket; ist es nicht installiert,
+# wird TNEF spaeter nur markiert statt entpackt. Import daher immer try/except-optional.
+# tnefparse>=1.4

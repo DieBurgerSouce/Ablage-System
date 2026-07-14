@@ -22,9 +22,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_active_user, get_user_company_id_dep
 from app.core.safe_errors import safe_error_detail, safe_error_log
-from app.db.models import User
+from app.db.models import Company, Document, User
+from app.middleware.company_context import require_company
 from app.db.models_integrity import DocumentHash, IntegrityReport
 from app.db.schemas_integrity import (
+    ChainProofInfo,
+    DocumentProofResponse,
     IntegrityReportRequest,
     IntegrityReportResponse,
     IntegrityStatusResponse,
@@ -32,6 +35,8 @@ from app.db.schemas_integrity import (
     MerkleBuildRequest,
     MerkleBuildResponse,
     MerkleProofResponse,
+    ProofVerdictEnum,
+    TsaProofInfo,
 )
 from app.services.integrity.document_integrity_service import DocumentIntegrityService
 
@@ -168,6 +173,270 @@ async def verify_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=safe_error_detail(e, "Verifizierung"),
+        )
+
+
+@router.post(
+    "/documents/{document_id}/prove",
+    response_model=DocumentProofResponse,
+    summary="Dokument-Integrität live beweisen",
+    description=(
+        "Lädt das Original direkt aus dem Storage, berechnet den SHA-256-Hash neu "
+        "und vergleicht ihn mit der versiegelten Baseline (GoBD-Archiv bzw. "
+        "Integritäts-Hash). Prüft zusätzlich die Beweiskette (Audit-Chain) des "
+        "Dokuments und — falls vorhanden — den RFC-3161-Zeitstempel. "
+        "Kein Datei-Upload nötig."
+    ),
+)
+async def prove_document_integrity(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentProofResponse:
+    """Live-Beweisführung: Storage-Re-Hash + Beweiskette + Zeitstempel.
+
+    Multi-Tenant: require_company setzt den RLS-Context — ohne ihn liefert
+    die RLS-Policy auf documents 0 Zeilen und alles endet als 404.
+    """
+    from app.services.compliance.archive_service import gobd_archive_service
+    from app.services.compliance.audit_chain_service import audit_chain_service
+    from app.services.storage_service import StorageService
+
+    company_id: UUID = company.id
+
+    try:
+        doc_result = await db.execute(
+            select(Document).where(
+                and_(
+                    Document.id == document_id,
+                    Document.company_id == company_id,
+                )
+            )
+        )
+        document = doc_result.scalar_one_or_none()
+        if document is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Dokument nicht gefunden oder keine Berechtigung",
+            )
+
+        # Baselines auflösen: GoBD-Archiv bevorzugt, sonst Integritäts-Hash
+        archive = await gobd_archive_service.get_archive_by_document(
+            db=db,
+            document_id=document_id,
+            company_id=company_id,
+        )
+        doc_hash = await _integrity_service.get_document_integrity_status(
+            db, document_id
+        )
+        if doc_hash is not None and doc_hash.company_id != company_id:
+            doc_hash = None
+
+        # Beweiskette dieses Dokuments prüfen (unabhängig von der Baseline)
+        chain_result = await audit_chain_service.verify_document_entries(
+            db=db,
+            company_id=company_id,
+            document_id=document_id,
+        )
+        if chain_result.valid is None:
+            chain_message = (
+                "Für dieses Dokument liegen noch keine Einträge "
+                "in der Beweiskette vor."
+            )
+        elif chain_result.valid:
+            chain_message = (
+                f"{chain_result.verified_entries} Protokoll-Einträge geprüft — "
+                "Verkettung lückenlos intakt."
+            )
+        else:
+            chain_message = (
+                f"Beweiskette beschädigt bei Sequenz {chain_result.broken_at_sequence}: "
+                f"{chain_result.error_message}"
+            )
+        chain_info = ChainProofInfo(
+            entries_total=chain_result.total_entries,
+            entries_verified=chain_result.verified_entries,
+            valid=chain_result.valid,
+            broken_at_sequence=chain_result.broken_at_sequence,
+            first_entry_at=chain_result.first_entry_at,
+            last_entry_at=chain_result.last_entry_at,
+            message=chain_message,
+        )
+
+        verified_at = datetime.now(timezone.utc)
+
+        # Ehrlicher Zustand: keine Baseline — nichts zu beweisen
+        if archive is None and doc_hash is None:
+            await db.commit()
+            return DocumentProofResponse(
+                document_id=document_id,
+                verdict=ProofVerdictEnum.NO_BASELINE,
+                file_hash_matches=None,
+                baseline_source=None,
+                stored_hash=None,
+                computed_hash=None,
+                archived_at=None,
+                archive_id=None,
+                chain=chain_info,
+                tsa=TsaProofInfo(
+                    present=False,
+                    valid=None,
+                    message=(
+                        "Kein qualifizierter Zeitstempel vorhanden — "
+                        "wird bei der Archivierung erstellt."
+                    ),
+                ),
+                verified_at=verified_at,
+                message_de=(
+                    "Für dieses Dokument existiert noch keine versiegelte "
+                    "Archiv-Baseline. Die Versiegelung erfolgt automatisch bei der "
+                    "nächsten GoBD-Archivierung oder kann von einem Administrator "
+                    "sofort ausgelöst werden."
+                ),
+            )
+
+        if not document.file_path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Dokument hat keinen gespeicherten Dateipfad",
+            )
+
+        storage = StorageService()
+        if not storage.available:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Storage-Service nicht verfügbar",
+            )
+
+        try:
+            document_content = await storage.download_document(document.file_path)
+        except Exception as e:
+            logger.error(
+                "prove_storage_download_failed",
+                document_id=str(document_id),
+                file_path=document.file_path,
+                **safe_error_log(e),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=safe_error_detail(e, "Laden des Dokuments aus dem Storage"),
+            )
+
+        tsa_present = False
+        tsa_valid: Optional[bool] = None
+        archived_at: Optional[datetime] = None
+        archive_id: Optional[UUID] = None
+
+        if archive is not None:
+            tsa_present = bool(archive.signature_certificate)
+            archived_at = archive.archived_at
+            archive_id = archive.id
+            check_result = await gobd_archive_service.verify_archive_integrity(
+                db=db,
+                archive_id=archive.id,
+                company_id=company_id,
+                document_content=document_content,
+                triggered_by_id=current_user.id,
+                check_type="manual",
+            )
+            file_hash_matches = check_result.hash_match
+            stored_hash = check_result.expected_hash
+            computed_hash = check_result.actual_hash
+            tsa_valid = check_result.tsa_verified
+            baseline_source = "archiv"
+        else:
+            assert doc_hash is not None  # oben geprüft
+            file_hash_matches, _ = await _integrity_service.verify_document(
+                db, document_id, document_content
+            )
+            stored_hash = doc_hash.file_hash
+            computed_hash = _integrity_service._compute_sha256(document_content)
+            archived_at = doc_hash.computed_at
+            baseline_source = "integritaets_hash"
+
+        await db.commit()
+
+        if not tsa_present:
+            tsa_message = (
+                "Kein qualifizierter RFC-3161-Zeitstempel vorhanden — die "
+                "Versiegelung basiert auf der internen Hash-Beweiskette."
+            )
+        elif tsa_valid is True:
+            tsa_message = "Qualifizierter RFC-3161-Zeitstempel erfolgreich verifiziert."
+        elif tsa_valid is False:
+            tsa_message = (
+                "RFC-3161-Zeitstempel konnte NICHT verifiziert werden — "
+                "bitte Administrator informieren."
+            )
+        else:
+            tsa_message = (
+                "RFC-3161-Zeitstempel vorhanden, Prüfung derzeit nicht möglich."
+            )
+
+        chain_broken = chain_info.valid is False
+        if file_hash_matches and not chain_broken:
+            verdict = ProofVerdictEnum.VERIFIED
+            datum = archived_at.strftime("%d.%m.%Y") if archived_at else "der Versiegelung"
+            message_de = (
+                f"Dieses Dokument ist seit dem {datum} nachweislich unverändert. "
+                "Der aktuelle Dateiinhalt stimmt Bit für Bit mit dem versiegelten "
+                "SHA-256-Hash überein."
+            )
+            if chain_info.entries_total > 0:
+                message_de += (
+                    f" Alle {chain_info.entries_verified} Einträge der "
+                    "Beweiskette sind intakt."
+                )
+        elif file_hash_matches and chain_broken:
+            verdict = ProofVerdictEnum.TAMPERED
+            message_de = (
+                "Der Dateiinhalt stimmt mit der versiegelten Baseline überein, "
+                "aber die Beweiskette (Audit-Protokoll) ist beschädigt "
+                f"(Sequenz {chain_info.broken_at_sequence}). Bitte umgehend den "
+                "Administrator informieren."
+            )
+        else:
+            verdict = ProofVerdictEnum.TAMPERED
+            message_de = (
+                "Integritätsprüfung FEHLGESCHLAGEN: Der aktuelle Dateiinhalt "
+                "stimmt NICHT mit dem versiegelten Archiv-Hash überein — mögliche "
+                "Manipulation! Dokument nicht weiterverwenden, umgehend den "
+                "Administrator informieren und das Original aus dem Backup "
+                "wiederherstellen."
+            )
+            logger.error(
+                "document_proof_failed",
+                document_id=str(document_id),
+                baseline_source=baseline_source,
+                chain_valid=chain_info.valid,
+            )
+
+        return DocumentProofResponse(
+            document_id=document_id,
+            verdict=verdict,
+            file_hash_matches=file_hash_matches,
+            baseline_source=baseline_source,
+            stored_hash=stored_hash,
+            computed_hash=computed_hash,
+            archived_at=archived_at,
+            archive_id=archive_id,
+            chain=chain_info,
+            tsa=TsaProofInfo(present=tsa_present, valid=tsa_valid, message=tsa_message),
+            verified_at=verified_at,
+            message_de=message_de,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Fehler bei der Dokument-Beweisführung",
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Beweisführung"),
         )
 
 

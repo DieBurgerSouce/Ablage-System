@@ -1,0 +1,40 @@
+[
+  {
+    "persona": "p1-azubi",
+    "iteration": "03",
+    "route": "http://localhost/upload",
+    "severity": "Stolper",
+    "description": "Keine globale Suche in der Kopfzeile — Azubi muss die Suchseite selbst finden."
+  },
+  {
+    "persona": "p1-azubi",
+    "iteration": "03",
+    "route": "(gesamter Walk)",
+    "severity": "Stolper",
+    "description": "Technische Auffaelligkeiten im Hintergrund (15)",
+    "evidence": "403 GET /api/v1/documents/ | console: Failed to load resource: the server responded with a status of 403 (Forbidden) | 404 GET /api/v1/ai/decisions | console: Failed to load resource: the server responded with a status of 404 (Not Found) | 404 GET /api/v1/ai/pending-review-count | 404 GET /api/v1/finance-assistant/insights | 404 GET /api/v1/finance-assistant/help | 403 GET /api/v1/tasks/b9ac88d3-b42a-4c21-8f31-28f93727a453 | 404 GET /api/v1/extracted-data/a24af4ff-cb5c-4eea-99b1-80e07e399520 | 422 GET /api/v1/saved-filters/shared | console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) | 404 GET /api/v1/extracted_data/detail/684f4a3f-7b47-4a69-893d-b27f0d266a01 | console: Creating a worker from 'blob:http://localhost/8a884b4f-2558-4193-90f1-e2494315632f' violates the following Content Security Policy directive: \"script-src 'self' | console: Loading the script 'http://unpkg.com/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs' violates the following Content Security Policy directive: \"script-src 'self'\". | console: [2026-07-12T05:26:21.118Z] [ERROR] [PDF] Fehler beim Laden: {name: Error, message: Setting up fake worker failed: \"Failed to fetch dy…com/pdfjs-dist@5.4.296/bui"
+  },
+  {
+    "persona": "p2-prokurist",
+    "iteration": "03",
+    "route": "http://localhost/documents/684f4a3f-7b47-4a69-893d-b27f0d266a01",
+    "severity": "Stolper",
+    "description": "Detailansicht laesst Kernfragen offen — nicht erkennbar: Lieferant/Absender, Betrag, Datum."
+  },
+  {
+    "persona": "p2-prokurist",
+    "iteration": "03",
+    "route": "http://localhost/documents/684f4a3f-7b47-4a69-893d-b27f0d266a01",
+    "severity": "Kosmetik",
+    "languageIssue": true,
+    "description": "Detailansicht zeigt englische Status-Rohwerte (completed/pending/…) statt deutscher Begriffe."
+  },
+  {
+    "persona": "p2-prokurist",
+    "iteration": "03",
+    "route": "(gesamter Walk)",
+    "severity": "Stolper",
+    "description": "Technische Auffaelligkeiten im Hintergrund (10)",
+    "evidence": "404 GET /api/v1/ai/decisions | console: Failed to load resource: the server responded with a status of 404 (Not Found) | 404 GET /api/v1/ai/pending-review-count | 404 GET /api/v1/finance-assistant/insights | 404 GET /api/v1/finance-assistant/help | 422 GET /api/v1/saved-filters/shared | console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) | 404 GET /api/v1/extracted_data/detail/684f4a3f-7b47-4a69-893d-b27f0d266a01 | 404 GET /api/v1/documents/684f4a3f-7b47-4a69-893d-b27f0d266a01/preview | console: [2026-07-12T05:26:30.900Z] [ERROR] [Vorschau] Fehler beim Laden: {name: AxiosError, message: Request failed with status code 404, stack: AxiosError: Request fai"
+  }
+]

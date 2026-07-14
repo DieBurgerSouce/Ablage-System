@@ -5,6 +5,7 @@ Handles authentication, database sessions, and authorization.
 All error messages in German.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -88,22 +89,24 @@ async def set_rls_context(
     # PostgreSQL/asyncpg akzeptiert bei 'SET LOCAL' KEINE Bind-Parameter
     # (ProgrammingError) -> die alte Variante war doppelt kaputt: nie aufgerufen
     # UND syntaktisch unausfuehrbar. set_config(...,:v,true) ist parametrisiert
-    # (injection-sicher) und transaktions-lokal (is_local=true) - identisch zum
-    # bewaehrten company_context-Muster.
-    await session.execute(
-        text("SELECT set_config('app.current_user_id', :user_id, true)"),
-        {"user_id": str(validated_user_id)}
-    )
-    await session.execute(
-        text("SELECT set_config('app.is_admin', :is_admin, true)"),
-        {"is_admin": "true" if is_admin else "false"}
-    )
-    # RLS-Reconciliation: Migration 210 superuser_bypass-Policies nutzen die Variable
-    # 'app.current_user_is_superuser' (nicht 'app.is_admin'). Konsistent mitsetzen, damit
-    # Superuser auf den FORCE-RLS-Tabellen nicht faelschlich 0 Zeilen sehen.
-    await session.execute(
-        text("SELECT set_config('app.current_user_is_superuser', :is_su, true)"),
-        {"is_su": "true" if is_admin else "false"}
+    # (injection-sicher) und transaktions-lokal (is_local=true).
+    #
+    # F-P1-001 (Perception-Audit 2026-07-12): persist_rls_gucs statt direkter
+    # set_configs — ein commit() im Handler beendet die Transaktion und verlor
+    # den Kontext fuer den Rest des Requests (Upload-500 via ''-Cast bzw.
+    # "Could not refresh instance"). Der after_begin-Listener re-appliziert
+    # die GUCs jetzt in jeder Folgetransaktion derselben Request-Session.
+    # 'app.current_user_is_superuser': Migration-210-superuser_bypass-Policies
+    # nutzen diese Variable (nicht 'app.is_admin') — konsistent mitsetzen.
+    from app.db.session import persist_rls_gucs
+
+    await persist_rls_gucs(
+        session,
+        {
+            "app.current_user_id": str(validated_user_id),
+            "app.is_admin": "true" if is_admin else "false",
+            "app.current_user_is_superuser": "true" if is_admin else "false",
+        },
     )
 
 
@@ -269,6 +272,21 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
+        )
+
+    # K2 (Trust-Folge, 2026-07-14): Befristete Zugaenge (z.B. tax_advisor via
+    # Einladung) tragen access_until — nach Ablauf ist JEDER API-Zugriff zu
+    # verweigern. Vorher wurde das Feld nur gesetzt, aber im Auth-Pfad nie
+    # geprueft: abgelaufene Steuerberater-Konten behielten vollen Zugriff.
+    if user.access_until is not None and user.access_until < datetime.now(timezone.utc):
+        logger.warning(
+            "expired_user_api_access_blocked",
+            user_id=str(user.id),
+            access_until=user.access_until.isoformat(),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Der befristete Zugang ist abgelaufen",  # Temporary access expired
         )
 
     # RLS-USER-KONTEXT (Root-Cause-Fix RLS-light): Setzt app.current_user_id /
@@ -579,6 +597,28 @@ async def get_current_user_optional(
 from fastapi import Request
 
 
+def resolve_user_hourly_rate_limit(user: User) -> int:
+    """Ermittelt das Stunden-Request-Budget eines Nutzers (F-P1-003).
+
+    Prioritaet:
+    1. Superuser -> RATE_LIMIT_ADMIN_HOURLY
+    2. Admin-Console-Override users.rate_limit_hourly (falls gesetzt, > 0)
+    3. Tier-Setting (premium -> RATE_LIMIT_PREMIUM_HOURLY, sonst FREE)
+
+    Vorher waren 10/h (free) / 100/h (premium) hart codiert — normale
+    Buero-Nutzer waren damit nach 10 Such-/Listen-Aufrufen eine Stunde
+    gesperrt, und weder die Settings noch das User-Override wirkten.
+    """
+    if user.is_superuser:
+        return settings.RATE_LIMIT_ADMIN_HOURLY
+    custom_hourly = getattr(user, "rate_limit_hourly", None)
+    if custom_hourly and custom_hourly > 0:
+        return int(custom_hourly)
+    if getattr(user, "tier", "free") == "premium":
+        return settings.RATE_LIMIT_PREMIUM_HOURLY
+    return settings.RATE_LIMIT_FREE_HOURLY
+
+
 async def check_rate_limit(
     request: Request,
     current_user: User = Depends(get_current_active_user)
@@ -638,18 +678,11 @@ async def check_rate_limit(
         )
 
     # Determine rate limit based on user tier
-    user_tier = getattr(current_user, "tier", "free")
-    is_admin = current_user.is_superuser
-
-    if is_admin:
-        limit = 10000  # Effectively unlimited
-        window = 3600  # 1 hour
-    elif user_tier == "premium":
-        limit = 100
-        window = 3600  # 1 hour
-    else:
-        limit = 10
-        window = 3600  # 1 hour
+    # F-P1-003 (Perception-Audit 2026-07-12): Werte waren hart codiert
+    # (Free 10/h!) und ignorierten sowohl die RATE_LIMIT_*_HOURLY-Settings
+    # als auch das Admin-Console-Override users.rate_limit_hourly.
+    limit = resolve_user_hourly_rate_limit(current_user)
+    window = 3600  # 1 hour
 
     # Check rate limit
     key = f"rate_limit:{current_user.id}:{window}"

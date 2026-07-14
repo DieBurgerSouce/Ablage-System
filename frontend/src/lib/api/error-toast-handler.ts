@@ -84,6 +84,14 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
  */
 const SILENT_STATUS_CODES = new Set([
     401, // Handled by session-expired modal
+    // F-P1-005 (Perception-Audit 2026-07-12): 404 loest KEINEN globalen roten
+    // Toast mehr aus. Hintergrund-/Polling-Aufrufe und (nach der Neuausrichtung)
+    // eingefrorene Optional-Module liefern 404 -> jeder neue Nutzer sah beim
+    // ersten Login den erschreckenden Toast „Nicht gefunden - Die angeforderte
+    // Ressource wurde nicht gefunden". Echte, nutzerrelevante 404 werden
+    // weiterhin komponentennah behandelt (Error-Boundaries, Inline-Leerzustaende,
+    // Vollseiten-404-Route) und sind von dieser Unterdrueckung unberuehrt.
+    404,
 ]);
 
 /**

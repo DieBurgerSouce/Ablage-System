@@ -146,12 +146,18 @@ class DocumentService:
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            user_id: User-ID (Owner-Check)
-            company_id: Company-ID fuer Multi-Tenant-Isolation (Defense-in-Depth)
+            user_id: User-ID (nur Fallback, falls keine company_id)
+            company_id: Company-ID fuer firmenweite Sichtbarkeit
         """
-        conditions = [Document.id == document_id, Document.owner_id == user_id]
+        # F-P2-001 (Perception-Audit 2026-07-12, Scope-Entscheid Ben „firmenweit
+        # teilen"): Lesen ist firmenweit — jedes Firmenmitglied darf jedes
+        # Firmendokument OEFFNEN (geteiltes GoBD-Archiv). Ohne company_id
+        # (Alt-Aufrufer) bleibt es owner-scoped. Schreiboperationen
+        # (update/delete) bleiben unveraendert owner-geschuetzt.
         if company_id is not None:
-            conditions.append(Document.company_id == company_id)
+            conditions = [Document.id == document_id, Document.company_id == company_id]
+        else:
+            conditions = [Document.id == document_id, Document.owner_id == user_id]
         query = (
             select(Document)
             .options(selectinload(Document.tags))
@@ -180,12 +186,15 @@ class DocumentService:
         """Dokumente mit Filterung und Pagination auflisten.
 
         Args:
-            company_id: Company-ID fuer Multi-Tenant-Isolation (Defense-in-Depth)
+            company_id: Company-ID fuer firmenweite Sichtbarkeit
         """
-        # Basis-Query mit Owner + optionalem Company-Filter
-        conditions = [Document.owner_id == user_id]
+        # F-P2-001 (Perception-Audit 2026-07-12, Scope-Entscheid „firmenweit
+        # teilen"): Liste ist firmenweit — jedes Firmenmitglied sieht die
+        # Firmendokumente. Ohne company_id (Alt-Aufrufer) bleibt es owner-scoped.
         if company_id is not None:
-            conditions.append(Document.company_id == company_id)
+            conditions = [Document.company_id == company_id]
+        else:
+            conditions = [Document.owner_id == user_id]
         query = select(Document).where(and_(*conditions))
         count_query = select(func.count(Document.id)).where(and_(*conditions))
 

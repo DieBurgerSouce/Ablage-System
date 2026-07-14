@@ -50,6 +50,54 @@ export interface VerificationResult {
   verification_message: string
 }
 
+// ==================================================
+// Live-Beweisführung (POST /integrity/documents/{id}/prove)
+// ==================================================
+
+export type ProofVerdict = 'verified' | 'tampered' | 'no_baseline'
+
+export interface ChainProofInfo {
+  entries_total: number
+  entries_verified: number
+  valid: boolean | null
+  broken_at_sequence: number | null
+  first_entry_at: string | null
+  last_entry_at: string | null
+  message: string
+}
+
+export interface TsaProofInfo {
+  present: boolean
+  valid: boolean | null
+  message: string
+}
+
+export interface DocumentProof {
+  document_id: string
+  verdict: ProofVerdict
+  file_hash_matches: boolean | null
+  baseline_source: 'archiv' | 'integritaets_hash' | null
+  stored_hash: string | null
+  computed_hash: string | null
+  hash_algorithm: string
+  archived_at: string | null
+  archive_id: string | null
+  chain: ChainProofInfo
+  tsa: TsaProofInfo
+  verified_at: string
+  message_de: string
+}
+
+/** Antwort von POST /compliance/archive (Backend-Realschema) */
+export interface ArchiveDocumentResponse {
+  archive_id: string
+  document_id: string
+  content_hash: string
+  hash_algorithm: string
+  retention_expires_at: string
+  tsa_timestamp: string | null
+}
+
 export interface ArchiveStatistics {
   total_archived: number
   by_category: Record<RetentionCategory, number>

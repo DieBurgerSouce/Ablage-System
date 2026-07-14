@@ -1,0 +1,182 @@
+[
+  {
+    "persona": "p1-azubi",
+    "iteration": "02",
+    "route": "http://localhost/upload",
+    "severity": "Stolper",
+    "description": "Keine globale Suche in der Kopfzeile — Azubi muss die Suchseite selbst finden."
+  },
+  {
+    "persona": "p1-azubi",
+    "iteration": "02",
+    "route": "(gesamter Walk)",
+    "severity": "Stolper",
+    "description": "Technische Auffaelligkeiten im Hintergrund (16)",
+    "evidence": "403 GET /api/v1/documents/ | console: Failed to load resource: the server responded with a status of 403 (Forbidden) | 404 GET /api/v1/ai/decisions | console: Failed to load resource: the server responded with a status of 404 (Not Found) | 404 GET /api/v1/ai/pending-review-count | 404 GET /api/v1/finance-assistant/insights | 404 GET /api/v1/finance-assistant/help | 403 GET /api/v1/tasks/e22e1930-a950-4e8f-acb2-2a185d083ed7 | 404 GET /api/v1/extracted-data/53e200ea-86b7-43ea-9926-77916e963285 | 422 GET /api/v1/saved-filters/shared | console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) | 500 GET /api/v1/annotations/document/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a | console: Failed to load resource: the server responded with a status of 500 (Internal Server Error) | console: Creating a worker from 'blob:http://localhost/1ab0b5de-658c-4e2c-83c4-918484276da8' violates the following Content Security Policy directive: \"script-src 'self' | console: Loading the script 'http://unpkg.com/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs' violates the following Content Security Policy directive: \"script-src 'self'\". | console: [2026-07-12T03:41:06.231Z] [ERROR] [PDF] Fehler beim Laden: {name: Error, message: Setting up fake worker failed: \"Failed to fetch dy…com/pdfjs-dist@5.4.296/bui"
+  },
+  {
+    "persona": "p2-prokurist",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Stolper",
+    "description": "Detailansicht laesst Kernfragen offen — nicht erkennbar: Lieferant/Absender, Betrag, Datum."
+  },
+  {
+    "persona": "p2-prokurist",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Kosmetik",
+    "languageIssue": true,
+    "description": "Detailansicht zeigt englische Status-Rohwerte (completed/pending/…) statt deutscher Begriffe."
+  },
+  {
+    "persona": "p2-prokurist",
+    "iteration": "02",
+    "route": "(gesamter Walk)",
+    "severity": "Stolper",
+    "description": "Technische Auffaelligkeiten im Hintergrund (12)",
+    "evidence": "404 GET /api/v1/ai/decisions | console: Failed to load resource: the server responded with a status of 404 (Not Found) | 404 GET /api/v1/ai/pending-review-count | 404 GET /api/v1/finance-assistant/insights | 404 GET /api/v1/finance-assistant/help | 422 GET /api/v1/saved-filters/shared | console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) | 500 GET /api/v1/annotations/document/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a | console: Failed to load resource: the server responded with a status of 500 (Internal Server Error) | 404 GET /api/v1/extracted_data/detail/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a | 404 GET /api/v1/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a/preview | console: [2026-07-12T03:41:16.753Z] [ERROR] [Vorschau] Fehler beim Laden: {name: AxiosError, message: Request failed with status code 404, stack: AxiosError: Request fai"
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "/documents",
+    "severity": "Stolper",
+    "description": "/documents (Dokument-Index) zeigt eine 404-Seite — es gibt keine Sammel-Dokumentliste; Dokumente sind nur ueber Suche/Smart Inbox erreichbar.",
+    "screenshot": "screenshots/iter02/p3-steuerberaterin-13-documents-404.png"
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Stolper",
+    "description": "Schritt \"dokument-detail-verlauf\" fehlgeschlagen: locator.click: Test timeout of 600000ms exceeded.",
+    "screenshot": ""
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Kosmetik",
+    "description": "Schritt \"route-compliance\" fehlgeschlagen: page.goto: Target page, context or browser has been closed",
+    "screenshot": ""
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Kosmetik",
+    "description": "Schritt \"route-audit-trail\" fehlgeschlagen: page.goto: Target page, context or browser has been closed",
+    "screenshot": ""
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Kosmetik",
+    "description": "Schritt \"route-audit-logs\" fehlgeschlagen: page.goto: Target page, context or browser has been closed",
+    "screenshot": ""
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Stolper",
+    "trust": true,
+    "description": "Verfahrensdokumentation ist aus der UI heraus nicht auffindbar (weder Navigation noch Suche) — existiert nur \"hinter den Kulissen\"."
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "(gesamter Walk)",
+    "severity": "Stolper",
+    "description": "Technische Auffaelligkeiten im Hintergrund (15)",
+    "evidence": "404 GET /api/v1/ai/decisions | console: Failed to load resource: the server responded with a status of 404 (Not Found) | 404 GET /api/v1/ai/pending-review-count | 404 GET /api/v1/finance-assistant/insights | 404 GET /api/v1/finance-assistant/help | 429 GET /api/v1/rag/ai/context | console: Failed to load resource: the server responded with a status of 429 (Too Many Requests) | 429 GET /api/v1/rag/ai/actions | 422 GET /api/v1/saved-filters/shared | console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) | 500 GET /api/v1/annotations/document/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a | console: Failed to load resource: the server responded with a status of 500 (Internal Server Error) | 404 GET /api/v1/extracted_data/detail/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a | 404 GET /api/v1/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a/preview | console: [2026-07-12T03:41:32.998Z] [ERROR] [Vorschau] Fehler beim Laden: {name: AxiosError, message: Request failed with status code 404, stack: AxiosError: Request fai"
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "/documents",
+    "severity": "Stolper",
+    "description": "/documents (Dokument-Index) zeigt eine 404-Seite — es gibt keine Sammel-Dokumentliste; Dokumente sind nur ueber Suche/Smart Inbox erreichbar.",
+    "screenshot": "screenshots/iter02/p3-steuerberaterin-02-documents-404.png"
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "http://localhost/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a",
+    "severity": "Stolper",
+    "trust": true,
+    "description": "Keine erlebbare Integritaets-Information am Dokument (Hash/Prüfsumme/Zeitstempel/Signatur nicht sichtbar)."
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "/compliance",
+    "severity": "Stolper",
+    "trust": true,
+    "description": "Seite /compliance ist fuer die Prüfer-Rolle nicht nutzbar (Fehler-/Sperrseite) — was darf ein Prüfer hier eigentlich sehen?"
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "/audit-trail",
+    "severity": "Stolper",
+    "trust": true,
+    "description": "Seite /audit-trail ist fuer die Prüfer-Rolle nicht nutzbar (Fehler-/Sperrseite) — was darf ein Prüfer hier eigentlich sehen?"
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "/audit-logs",
+    "severity": "Stolper",
+    "trust": true,
+    "description": "Seite /audit-logs ist fuer die Prüfer-Rolle nicht nutzbar (Fehler-/Sperrseite) — was darf ein Prüfer hier eigentlich sehen?"
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "http://localhost/audit-logs",
+    "severity": "Stolper",
+    "trust": true,
+    "description": "Verfahrensdokumentation ist aus der UI heraus nicht auffindbar (weder Navigation noch Suche) — existiert nur \"hinter den Kulissen\"."
+  },
+  {
+    "persona": "p3-steuerberaterin",
+    "iteration": "02",
+    "route": "(gesamter Walk)",
+    "severity": "Stolper",
+    "description": "Technische Auffaelligkeiten im Hintergrund (12)",
+    "evidence": "404 GET /api/v1/ai/decisions | console: Failed to load resource: the server responded with a status of 404 (Not Found) | 404 GET /api/v1/ai/pending-review-count | 404 GET /api/v1/finance-assistant/insights | 404 GET /api/v1/finance-assistant/help | 422 GET /api/v1/saved-filters/shared | console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) | 500 GET /api/v1/annotations/document/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a | console: Failed to load resource: the server responded with a status of 500 (Internal Server Error) | 404 GET /api/v1/extracted_data/detail/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a | 404 GET /api/v1/documents/e2f1133f-84dd-4899-96a6-0e1bfaa01c2a/preview | console: [2026-07-12T03:54:00.457Z] [ERROR] [Vorschau] Fehler beim Laden: {name: AxiosError, message: Request failed with status code 404, stack: AxiosError: Request fai"
+  },
+  {
+    "persona": "p4-familie",
+    "iteration": "02",
+    "route": "http://localhost/",
+    "severity": "Stolper",
+    "description": "Schritt \"privat-in-navigation-finden\" fehlgeschlagen: locator.waitFor: Timeout 5000ms exceeded.",
+    "screenshot": "screenshots/iter02/p4-familie-02-FEHLER-privat-in-navigation-finden.png"
+  },
+  {
+    "persona": "p4-familie",
+    "iteration": "02",
+    "route": "/privat",
+    "severity": "Stolper",
+    "description": "Privat-Bereich ist ueber die sichtbare Navigation nicht auffindbar — Familienmitglied muesste die URL kennen."
+  },
+  {
+    "persona": "p4-familie",
+    "iteration": "02",
+    "route": "/privat",
+    "severity": "Stolper",
+    "description": "Privat-Bereich ohne erkennbare Handlungsaufforderung — neuer Nutzer weiss nicht, wie er startet."
+  },
+  {
+    "persona": "p4-familie",
+    "iteration": "02",
+    "route": "(gesamter Walk)",
+    "severity": "Stolper",
+    "description": "Technische Auffaelligkeiten im Hintergrund (5)",
+    "evidence": "404 GET /api/v1/ai/decisions | console: Failed to load resource: the server responded with a status of 404 (Not Found) | 404 GET /api/v1/ai/pending-review-count | 404 GET /api/v1/finance-assistant/insights | 404 GET /api/v1/finance-assistant/help"
+  }
+]

@@ -142,7 +142,7 @@ cat /restore/backup/restic-stage/config/alembic_version.txt
 
 | Datum | Repo | Snapshot-Alter | Dauer | Login | Dokumentabruf | Ergebnis |
 |-------|------|---------------:|------:|:-----:|:-------------:|----------|
-| _(erster Test nach Einrichtung eintragen)_ | | | | | | |
+| 2026-07-13 (Phönix-Generalprobe) | lokal `C:\restic-phoenix\repo` (Snapshot 589f1a8e) | 50 min | 9:33 min bis prove=verified, 15:02 min volle Batterie | ✓ | ✓ (inkl. Byte-Hash == stored_hash) | **OK** — Details: `docs/qa-reports/phoenix-2026-07/REPORT.md`, Windows-Ablauf: `docs/runbooks/disaster-recovery.md` |
 
 ---
 

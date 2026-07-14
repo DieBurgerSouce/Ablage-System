@@ -15,11 +15,11 @@ RLS Support:
 
 from contextlib import asynccontextmanager, contextmanager
 from threading import RLock
-from typing import AsyncGenerator, Generator, Optional
+from typing import AsyncGenerator, Dict, Generator, Optional
 from uuid import UUID
 
 import structlog
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, Session
@@ -28,6 +28,48 @@ from app.core.config import settings
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
+
+
+def _reapply_rls_gucs(sync_session: Session, transaction, connection) -> None:
+    """after_begin-Listener: re-appliziert vorgemerkte RLS-GUCs in jeder neuen
+    Transaktion der Session.
+
+    Hintergrund (Perception-Audit F-P1-001, 2026-07-12): set_config(..., true)
+    ist transaktions-lokal. Nach einem commit() im Handler lief der Rest des
+    Requests OHNE RLS-Kontext — der GUC steht auf der gepoolten Verbindung
+    dann sogar auf '' (Leerstring), was Alt-Policies vor der NULLIF-Haertung
+    crashen liess und danach schlicht 0 Zeilen lieferte (z.B. "Could not
+    refresh instance" direkt nach dem Upload-Commit).
+    """
+    gucs: Dict[str, str] = sync_session.info.get("rls_gucs") or {}
+    for key, value in gucs.items():
+        connection.execute(
+            text("SELECT set_config(:k, :v, true)"),
+            {"k": key, "v": value},
+        )
+
+
+async def persist_rls_gucs(session: AsyncSession, gucs: Dict[str, str]) -> None:
+    """Setzt RLS-GUCs transaktions-lokal UND haelt sie ueber Commits hinweg.
+
+    Die Werte werden in session.info vorgemerkt; ein einmalig registrierter
+    after_begin-Listener setzt sie zu Beginn JEDER Folgetransaktion erneut.
+    Transaktions-lokal (is_local=true) bleibt bewusst erhalten: beim
+    Zurueckgeben der Verbindung in den Pool haengt kein Kontext-Leak an der
+    Connection (der ''-Session-Rest wird von den NULLIF-gehaerteten Policies
+    als "kein Kontext" behandelt).
+    """
+    info = session.sync_session.info
+    store = info.setdefault("rls_gucs", {})
+    store.update(gucs)
+    if not info.get("rls_gucs_listener_registered"):
+        event.listen(session.sync_session, "after_begin", _reapply_rls_gucs)
+        info["rls_gucs_listener_registered"] = True
+    for key, value in gucs.items():
+        await session.execute(
+            text("SELECT set_config(:k, :v, true)"),
+            {"k": key, "v": value},
+        )
 
 # Cached sync engine for Celery tasks - Thread-safe singleton
 _sync_engine: Optional[Engine] = None

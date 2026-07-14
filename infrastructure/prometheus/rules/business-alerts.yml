@@ -372,3 +372,22 @@ groups:
           summary: "Cache Evictions zu hoch"
           description: "Die Cache-Eviction-Rate liegt bei {{ $value | humanize }}/s. Redis-Speicher moeglicherweise zu klein."
           runbook_url: "https://wiki.ablage-system.local/runbooks/cache-evictions-high"
+
+      # ===================================================================
+      # BEST-EFFORT-SCHREIBPFADE (F-REC-2, Reconcile 2026-07)
+      # ===================================================================
+
+      # Warnung: Ein Best-Effort-Schreib-/Lesepfad hat einen Fehler geschluckt.
+      # Genau dieses Muster hat den Feature-Toggle-Audit-Trail monatelang
+      # STILL verschluckt (Tabelle fehlte, INSERT scheiterte, except loggte nur).
+      - alert: BestEffortWriteVerluste
+        expr: |
+          increase(ablage_best_effort_write_failures_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: data_integrity
+        annotations:
+          summary: "Stiller Datenverlust-Verdacht: Best-Effort-Write geschluckt ({{ $labels.operation }})"
+          description: "Der Best-Effort-Pfad '{{ $labels.operation }}' hat in der letzten Stunde {{ $value | humanize }} Fehler geschluckt statt sie zu melden. Logs nach 'write_toggle_history_failed'/'get_flag_history_failed' bzw. der Operation durchsuchen — Daten gehen sonst unbemerkt verloren (F-REC-2)."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/best-effort-write-verluste"
