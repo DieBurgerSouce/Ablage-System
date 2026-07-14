@@ -1,4 +1,4 @@
-# Drift-Reconcile 2026-07 — Live-DB ↔ Alembic-Kette (Migrationen 276+277)
+# Drift-Reconcile 2026-07 — Live-DB ↔ Alembic-Kette (Migrationen 276–279)
 
 > **Datum:** 2026-07-14 · **Branch:** `feature/neuausrichtung-2026-07` (kein Push) ·
 > **Bediener:** Claude (Fable 5) mit Gates durch Ben · **Prod-Stack:** lief durchgehend unberührt weiter.
@@ -9,13 +9,18 @@
 
 | DONE-Kriterium | Status | Beleg |
 |---|---|---|
-| Frisch-Beweis: leere DB → `upgrade head` (277) fehlerfrei + Doppellauf-Idempotenz | ⬜ | §5 |
-| Katalog-Diff Frisch↔Live = nur dokumentierte Whitelist | ⬜ | §5/§8 |
-| Live-Policy-/RLS-Prüfsummen vorher == nachher | ⬜ | §6 |
-| Tests grün (Wegwerf-Container + Live) | ⬜ | §5/§6 |
-| OpenAPI-Diff = 0 (keine gefrorenen Module reaktiviert) | ⬜ | §6 |
-| Funktionsbatterie inkl. Feature-Toggle-History-Beweis grün | ⬜ | §6 |
-| Rollback-Anker (restic-Snapshot) protokolliert, Gate 2 durch Ben | ⬜ | §6 |
+| Frisch-Beweis: leere DB → `upgrade head` (279) fehlerfrei + Doppellauf-Idempotenz | ✅ | §5 |
+| Katalog-Diff Frisch↔Live: **alle 9 Dimensionen exakt 0** (Whitelist = nur Grants `ablage_app`) | ✅ | §6/§8 |
+| Live-Policy-Prüfsumme vorher == nachher (`abf41a6b…` beidseitig) | ✅ | §6 |
+| Tests grün (Klon: 8 passed · Live vor UND nach Neustarts: je 8 passed) | ✅ | §5/§6 |
+| OpenAPI-Diff = 0 (added=[] removed=[], 1990→1990 Pfade — keine gefrorenen Module reaktiviert) | ✅ | §6 |
+| Funktionsbatterie inkl. Feature-Toggle-History-Beweis grün | ✅ | §6 |
+| Rollback-Anker restic **`1c67592a`** (12,169 MiB, check: no errors), Gate 2 durch Ben 14.07. | ✅ | §6 |
+
+**Kernaussage:** Live-DB und Migrationskette sind erstmals **vollständig deckungsgleich**
+(Spalten, Constraints, Indexe, Policies, Trigger, Enums, Kommentare, RLS-Flags, Funktionen —
+je Diff 0). Der GoBD-relevante Feature-Toggle-Audit-Trail, der auf Live still verloren ging,
+funktioniert jetzt nachweislich end-to-end. Nebenbei aktiviert: Download-Fix F-PHX-P1-4 (E3).
 
 ## §2 Ausgangslage (Drift-Karte VORHER)
 
@@ -95,35 +100,63 @@ erzwingt 128-bit-Entropie + ≥25 % einzigartige Zeichen + ≥12-Zeichen-MinIO-K
 500t intermittierend unter Last (Retry hilft; Datenpfad unberührt); vom Harness gestoppte
 `docker run`-Clients lassen den Container weiterlaufen (Monitor auf Container-Ende setzen).
 
-## §6 PROVE Live (Gate 2)
+## §6 PROVE Live (Gate 2, Ben 14.07. — Freigabe nach Snapshot-Nennung)
 
-⬜ _Snapshot-ID, Freigabe, Prüfsummen vorher/nachher, alembic 275→277, Tests auf Live,
-OpenAPI-Diff, Funktionsbatterie inkl. Feature-Toggle-History-Beweis_
+| Schritt | Ergebnis |
+|---|---|
+| Rollback-Anker | restic-Snapshot **`1c67592a`** (14.07. 21:13, 12,169 MiB; enthält pg_dump, `alembic_version.txt`=275, GoBD-Signierschlüssel; `restic check`: no errors) |
+| Live-Lauf | `docker exec -e ALEMBIC_TX_PER_MIGRATION=1 ablage-backend … alembic upgrade head`: **275→276→277→278** in einem Durchlauf; **279** (Render-Normalisierung) nachgezogen — Live = Head **279**. Prod-Container liefen durchgehend |
+| Prüfsummen | `policy_md5` vorher **==** nachher (`abf41a6b555bca9064c1d704fbb8d271`); `audit_logs`=563, `documents`=25 unversehrt; Enums 68→**36**; `feature_toggle_history` existiert; Views=2 (`artifacts/live_{before,after}_checksums.txt`) |
+| **Finaler Katalog-Diff Live(279)↔Frisch(279)** | **alle 9 Dimensionen = 0**: COLS 0/8534 · CON 0/2007 · IDX 0/2764 · POLICIES 0/169 · TRG 0/28 · ENUM 0/36 · COMMENTS 0/1071 · RLS-Flags 0/491 · FUNCTIONS 0/31 |
+| Tests auf Live | `test_rls_policy_guards` + `test_rls_guc_persistence` + `test_module_freeze`: **8 passed** — vor UND nach den Neustarts |
+| OpenAPI | added=[] removed=[] (1990→1990 Pfade) — keine gefrorenen Module reaktiviert |
+| Funktionsbatterie | Login ✓ · Dokument 200 ✓ · FTS „Bürohaus" total=14 ✓ · `prove` **verified**, Kette valid ✓ · Upload→OCR **completed nach ~25 s** → per FTS auffindbar ✓ (Beweisdokument bleibt als 26. Dokument) |
+| **276-Kernbeweis** | Feature-Flag-Toggle (Superuser, PATCH 200/200): `feature_toggle_history` **0→2 Einträge**, History-API liefert beide Aktionen, Flag-Endzustand unverändert — der zuvor still verlorene GoBD-Audit-Trail schreibt jetzt real |
+| Bonus (Phönix E3) | Backend-Neustart aktivierte Download-Fix F-PHX-P1-4: `GET /documents/{id}/download` → **HTTP 200**, 472/472 Bytes |
 
 **Gate-2-Risiko-Hinweis (dokumentiert vor Freigabe):** Der Backend-Entrypoint führt bei
 Container-Start `alembic upgrade head` aus (`docker/entrypoint.sh`, RUN_MIGRATIONS-Default true;
 nur worker/worker-cpu/beat stehen auf false). Da `alembic/` per Bind-Mount im Container liegt,
-würde ein **ungeplanter Backend-Neustart** zwischen Migrations-Commit und Gate-2-Freigabe die
-Migrationen bereits anwenden. Mitigation: VORHER-Prüfsummen sind gesichert (§2), der Frisch-Beweis
-läuft vor dem Commit, das Fenster wird kurz gehalten.
+hätte ein **ungeplanter Backend-Neustart** zwischen Migrations-Commit und Gate-2-Freigabe die
+Migrationen bereits angewandt. Mitigation: VORHER-Prüfsummen gesichert (§2), Frisch-+Klon-Beweis
+vor dem Commit, Fenster kurz gehalten; Hinweis stand in der Gate-2-Frage.
 
-## §7 Begleit-Code (Commit 2)
+## §7 Begleit-Code (Commits 2–4)
 
-⬜ _celery_app.py-Diff (include Z.419, Beat Z.2583-2605, Routes Z.3251-3256),
-Docstring-Hinweis partition_maintenance.py, Worker-Neustart, Beat-Log-Nachweis_
+- `app/workers/celery_app.py`: include `partition_maintenance`, 3 Beat-Jobs
+  (`partition-ensure-daily/-archive-weekly/-update-stats-daily`) und 4 `task_routes` entfernt;
+  Import-Check im Container: `partition-beats: []`, 213 Beat-Einträge verbleiben, Freeze-Mechanik intakt.
+- Nachträge aus der Verifikation: `app/workers/tasks/__init__.py` importierte die Partition-Tasks
+  weiterhin (Decorator-Registrierung trotz fehlendem include) **und** führte sie in `__all__`
+  (latente Star-Import-Falle) — beides entfernt; `__all__`-Konsistenz verifiziert (fehlende Namen: []).
+- `partition_maintenance.py`: Kopf-Docstring „DEAKTIVIERT seit Reconcile 2026-07"; Modul bleibt als Referenz.
+- Neustarts: worker-cpu, worker (GPU), beat, backend — alle healthy; Backend-Entrypoint-alembic = No-op
+  („Schema auf 'head'"). Beat-Log seit Neustart: **0** Partition-Referenzen; worker-cpu-Banner partition-frei.
+- Commits: `6832b4616` (276–278 + Report/Artefakte) · `b193f208b` (279 + celery) ·
+  `a1e888c3d` (__init__-Import) · `55dc92716` (__all__). Kein Push (Regel).
 
 ## §8 Verbleibende Whitelist (Soll-Zustand für künftige Katalog-Diffs)
 
 | Objekt | Begründung |
 |---|---|
-| Grants `grantee=ablage_app` (≈493, nur Live) | opt-in `scripts/db/create_app_role.sql` — läuft bewusst nicht auf Wegwerf-DBs |
-| `users`-Default-Kosmetik (`daily_quota DEFAULT 100` etc., nur Live) | unkritisch, dokumentiert seit Phönix §6 |
+| Grants `grantee=ablage_app` (nur Live) | opt-in `scripts/db/create_app_role.sql` — läuft bewusst nicht auf Wegwerf-DBs; Default-Privileges griffen für neue Tabellen automatisch (feature_toggle_history: SELECT/INSERT/UPDATE/DELETE ✓, R8 gegenstandslos) |
 | `alembic_version`-Inhalt | naturgemäß |
-| ggf. `GRANT ... ON feature_toggle_history TO ablage_app` | falls nötig (R8), analog create_app_role.sql |
+| init.sql-Substrat (Extensions pg_trgm/uuid-ossp/unaccent + 2 Funktionen) | Deployment-Standard `infrastructure/postgres/init.sql` (docker-entrypoint-initdb.d) — Frisch-Vergleiche müssen es mit anwenden |
+
+Die frühere „users-Default-Kosmetik" ist durch 278/G4 **beseitigt** (kein Whitelist-Eintrag mehr nötig).
 
 ## §9 Findings & Folgearbeiten
 
-⬜ _wird am Ende gefüllt_
+| # | Finding / Folgearbeit | Status |
+|---|---|---|
+| F-REC-1 | **Zweite Drift-Ebene unter der Phönix-Karte** (Spalten-Attribute, FK-ON-DELETE, Indexe, Kommentare, 1 Funktion) — Gate 1.5 „Volle Parität" → Migration 278 generiert | ✅ behoben + bewiesen |
+| F-REC-2 | `feature_toggle_history`-Schreibpfad schluckte Fehler still (try/except) — der Audit-Trail fehlte MONATE unbemerkt. Empfehlung: solche „best-effort"-Writes mit Metrik/Alert versehen | 🟡 Folgearbeit (Backlog) |
+| F-REC-3 | Host-Port 5434 gehört inzwischen `claude-hub-postgres`; `.env`-`DATABASE_URL` (localhost:5434) ist **stale** und zeigt auf eine FREMDE DB. Doku/CLAUDE.md „PostgreSQL :5434" überholt. Empfehlung: `.env`-Eintrag korrigieren/entfernen | 🟡 Folgearbeit (Ben) |
+| F-REC-4 | Backend-Entrypoint migriert bei jedem Neustart automatisch (Bind-Mount + RUN_MIGRATIONS-Default true) — im Reconcile-Fenster ein dokumentiertes Risiko; generell gewollt, aber F-14 (Advisory-Lock nicht-blockierend für Nicht-Migratoren) bleibt offen | dokumentiert |
+| F-REC-5 | Feature-Flags-Tabelle enthält 4 Schemathesis-Fuzzing-Leichen (Namen `0`, Keys `0/00/0…`) — kosmetisch; bei Gelegenheit aufräumen | 🟡 Backlog |
+| F-REC-6 | Wegwerf-Container-Env gewachsen: SECRET_KEY jetzt Pflicht (+Entropie-Checks in Production-Mode) — Runbook-Gotcha-Liste ergänzt (§5) | ✅ dokumentiert |
+| F-REC-7 | Generator + Katalog-Methodik (`artifacts/gen278_emit.py`, 9-Dimensionen-Diff) sind wiederverwendbar für künftige Paritäts-Checks (z.B. Quartals-Restore-Test koppeln) | Empfehlung |
+| Offen (unverändert, Phönix E1/E2) | restic-Tagesautomatik + Hetzner-Offsite-Bein | Ben |
 
 ---
 *Alle Zahlen/Zitate stammen aus real ausgeführten Kommandos dieser Session (psql, docker, pg_dump,

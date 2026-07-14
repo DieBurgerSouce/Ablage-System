@@ -1,0 +1,169 @@
+     JOIN ai_conversations c ON ((m.conversation_id = c.id)))
+   FROM (ai_conversation_messages m
+   FROM ai_conversations
+   FROM ai_conversations
+   FROM approval_requests
+   FROM approval_requests
+   FROM business_rules
+   FROM documents
+   FROM documents
+   FROM documents
+   FROM documents
+   FROM documents
+   FROM documents
+   FROM documents d
+   FROM documents d
+   FROM expense_reports
+   FROM expense_reports
+   FROM teams
+   FROM teams
+   FROM teams
+   FROM teams
+   FROM teams
+   FROM teams
+   FROM teams
+   FROM teams
+   FROM user_companies
+   FROM workflow_executions
+   FROM workflow_executions
+   FROM workflows
+   FROM workflows
+  WHERE ((approval_requests.company_id IS NULL) OR (approval_requests.company_id = get_current_company_id())))))
+  WHERE ((approval_requests.company_id IS NULL) OR (approval_requests.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (approval_request_id IN ( SELECT approval_requests.id
+  WHERE ((d.id = ocr_results.document_id) AND (((d.owner_id)::text = current_setting('app.current_user_id'::text, true)) OR (current_setting('app.current_user_id'::text, true) IS NULL) OR (current_setting('app.current_user_id'::text, true) = ''::text) OR (current_setting('app.is_admin'::text, true) = 'true'::text)))))|-
+  WHERE ((d.id = processing_jobs.document_id) AND (((d.owner_id)::text = current_setting('app.current_user_id'::text, true)) OR (current_setting('app.current_user_id'::text, true) IS NULL) OR (current_setting('app.current_user_id'::text, true) = ''::text) OR (current_setting('app.is_admin'::text, true) = 'true'::text)))))|-
+  WHERE ((documents.company_id IS NULL) OR (documents.company_id = get_current_company_id())))))
+  WHERE ((documents.company_id IS NULL) OR (documents.company_id = get_current_company_id())))))
+  WHERE ((documents.company_id IS NULL) OR (documents.company_id = get_current_company_id())))))
+  WHERE ((documents.company_id IS NULL) OR (documents.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (document_id IN ( SELECT documents.id
+  WHERE ((documents.company_id IS NULL) OR (documents.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (document_id IN ( SELECT documents.id
+  WHERE ((documents.company_id IS NULL) OR (documents.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (source_document_id IN ( SELECT documents.id
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+  WHERE ((teams.company_id IS NULL) OR (teams.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+  WHERE ((workflow_executions.company_id IS NULL) OR (workflow_executions.company_id = get_current_company_id())))))
+  WHERE ((workflow_executions.company_id IS NULL) OR (workflow_executions.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (workflow_execution_id IN ( SELECT workflow_executions.id
+  WHERE ((workflows.company_id IS NULL) OR (workflows.company_id = get_current_company_id())))))
+  WHERE ((workflows.company_id IS NULL) OR (workflows.company_id = get_current_company_id())))))|(is_rls_bypass_enabled() OR (workflow_id IN ( SELECT workflows.id
+  WHERE (ai_conversations.company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)))|-
+  WHERE (ai_conversations.company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)))|-
+  WHERE (business_rules.company_id = COALESCE((NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid, business_rules.company_id))))|-
+  WHERE (c.company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)))|-
+  WHERE (expense_reports.company_id = get_current_company_id())))
+  WHERE (expense_reports.company_id = get_current_company_id())))|(expense_report_id IN ( SELECT expense_reports.id
+  WHERE (user_companies.user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid))) OR ((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean = true))|-
+public.absences.absences_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.ai_confidence_thresholds.ai_confidence_thresholds_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.ai_conversation_actions.ai_actions_isolation|*|(conversation_id IN ( SELECT ai_conversations.id
+public.ai_conversation_feedbacks.ai_feedbacks_isolation|*|(message_id IN ( SELECT m.id
+public.ai_conversation_messages.ai_messages_isolation|*|(conversation_id IN ( SELECT ai_conversations.id
+public.ai_conversations.ai_conversations_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.ai_decisions.ai_decisions_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.ai_ethics_audits.ai_ethics_audits_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.ai_learning_feedback.ai_learning_feedback_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.alert_rules.alert_rules_company_isolation|*|((company_id IS NULL) OR (company_id = get_current_company_id()))|((company_id IS NULL) OR (company_id = get_current_company_id()))
+public.approval_requests.approval_requests_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.approval_requests.superuser_bypass_approval_requests|*|((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean IS TRUE)|-
+public.approval_requests.tenant_isolation_approval_requests|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.approval_rules.approval_rules_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.approval_steps.approval_steps_tenant_isolation|*|(is_rls_bypass_enabled() OR (approval_request_id IN ( SELECT approval_requests.id
+public.bias_reports.bias_reports_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.bpmn_process_definitions.bpmn_process_definitions_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.bpmn_process_instances.bpmn_process_instances_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.business_contacts.business_contacts_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.business_rules.business_rules_tenant_isolation|*|(company_id = COALESCE((NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid, company_id))|-
+public.cash_categories.cash_categories_company_isolation|*|((company_id IS NULL) OR (company_id = get_current_company_id()))|((company_id IS NULL) OR (company_id = get_current_company_id()))
+public.cash_counts.cash_counts_company_isolation|*|(company_id = get_current_company_id())|(company_id = get_current_company_id())
+public.cash_entries.cash_entries_company_isolation|*|(company_id = get_current_company_id())|(company_id = get_current_company_id())
+public.cash_registers.cash_registers_company_isolation|*|(company_id = get_current_company_id())|(company_id = get_current_company_id())
+public.companies.company_access_policy|*|(is_rls_bypass_enabled() OR (id IN ( SELECT user_companies.company_id
+public.company_health_snapshots.company_health_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.departments.departments_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.dlp_audit_logs.dlp_audit_logs_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.dlp_policies.dlp_policies_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.document_annotations.document_annotations_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.document_archives.document_archives_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.document_comments.document_comments_tenant_isolation|*|(is_rls_bypass_enabled() OR (document_id IN ( SELECT documents.id
+public.document_lineage_events.lineage_events_company_isolation|*|(((company_id)::text = current_setting('app.current_company_id'::text, true)) OR (current_setting('app.is_admin'::text, true) = 'true'::text))|-
+public.document_lineage_summaries.lineage_summaries_company_isolation|*|(((company_id)::text = current_setting('app.current_company_id'::text, true)) OR (current_setting('app.is_admin'::text, true) = 'true'::text))|-
+public.document_relationships.document_relationships_tenant_isolation|*|(is_rls_bypass_enabled() OR (source_document_id IN ( SELECT documents.id
+public.document_templates.document_templates_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.document_versions.superuser_bypass_document_versions|*|((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean IS TRUE)|-
+public.document_versions.tenant_isolation_document_versions|*|(is_rls_bypass_enabled() OR (company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid))|-
+public.documents.documents_company_isolation|*|((company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid) OR ((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean = true))|((company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid) OR ((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean = true))
+public.documents.documents_owner_delete|d|(((owner_id)::text = current_setting('app.current_user_id'::text, true)) OR (current_setting('app.is_admin'::text, true) = 'true'::text))|-
+public.documents.documents_owner_select|r|(((owner_id)::text = current_setting('app.current_user_id'::text, true)) OR (current_setting('app.is_admin'::text, true) = 'true'::text))|-
+public.documents.documents_owner_update|w|(((owner_id)::text = current_setting('app.current_user_id'::text, true)) OR (current_setting('app.is_admin'::text, true) = 'true'::text))|-
+public.documents.documents_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id = get_current_company_id()))
+public.documents.superuser_bypass_documents|*|((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean IS TRUE)|-
+public.documents.tenant_isolation_documents|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.domain_events.domain_events_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.email_import_configs.email_import_configs_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.employees.employees_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.erp_connections.erp_connections_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.event_snapshots.event_snapshots_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.expense_items.expense_items_company_isolation|*|(expense_report_id IN ( SELECT expense_reports.id
+public.expense_reports.expense_reports_company_isolation|*|(company_id = get_current_company_id())|(company_id = get_current_company_id())
+public.external_enrichment_results.external_enrichment_results_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.folder_import_configs.folder_import_configs_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.generated_documents.generated_documents_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.graph_edges.graph_edges_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.invoice_tracking.invoice_tracking_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.invoices.invoices_company_isolation|*|(company_id = get_current_company_id())|((company_id IS NULL) OR (company_id = get_current_company_id()))
+public.invoices.invoices_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.invoices.superuser_bypass_invoices|*|((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean IS TRUE)|-
+public.invoices.tenant_isolation_invoices|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.leave_requests.leave_requests_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.life_events.life_events_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.merkle_tree_nodes.merkle_tree_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.nlq_query_logs.nlq_query_logs_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.ocr_backend_performance.backend_perf_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.ocr_correction_feedbacks.ocr_feedback_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id = get_current_company_id()))
+public.ocr_results.ocr_results_via_document|*|(EXISTS ( SELECT 1
+public.onboarding_tasks.onboarding_tasks_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.payment_predictions.payment_predictions_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.payment_transactions.payment_transactions_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.performance_reviews.performance_reviews_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.positions.positions_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.privat_spaces.privat_spaces_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.processing_jobs.processing_jobs_via_document|*|(EXISTS ( SELECT 1
+public.rate_limit_violations.rate_limit_violations_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.report_templates.report_templates_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.rule_execution_logs.rule_execution_logs_tenant_isolation|*|(rule_id IN ( SELECT business_rules.id
+public.rule_sets.rule_sets_tenant_isolation|*|(company_id = COALESCE((NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid, company_id))|-
+public.saved_filters.saved_filters_delete_policy|d|(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)|-
+public.saved_filters.saved_filters_insert_policy|a|-|((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) AND (company_id = (NULLIF(current_setting('app.company_id'::text, true), ''::text))::uuid))
+public.saved_filters.saved_filters_select_policy|r|((deleted_at IS NULL) AND ((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) OR ((is_shared = true) AND (company_id = (NULLIF(current_setting('app.company_id'::text, true), ''::text))::uuid))))|-
+public.saved_filters.saved_filters_update_policy|w|(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)|(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)
+public.shipments.shipments_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)
+public.shipments.shipments_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.slack_channels.slack_channels_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.slack_channels.superuser_bypass_slack_channels|*|((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean IS TRUE)|-
+public.slack_channels.tenant_isolation_slack_channels|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.smart_inbox_items.smart_inbox_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.tax_advisor_access_logs.tax_advisor_access_logs_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.tax_advisor_invites.tax_advisor_invites_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.team_activities.team_activities_tenant_isolation|*|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+public.team_documents.team_documents_tenant_isolation|*|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+public.team_invitations.team_invitations_tenant_isolation|*|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+public.team_memberships.team_memberships_tenant_isolation|*|(is_rls_bypass_enabled() OR (team_id IN ( SELECT teams.id
+public.teams.teams_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.template_snippets.template_snippets_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.tenant_rate_limits.tenant_rate_limits_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.tenant_usage_metrics.tenant_usage_metrics_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.time_entries.time_entries_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.trainings.trainings_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.user_behavior_logs.behavior_logs_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.user_companies.user_company_access_policy|*|((user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid) OR ((NULLIF(current_setting('app.is_admin'::text, true), ''::text))::boolean = true))|-
+public.validation_queue_items.validation_queue_items_tenant_isolation|*|(is_rls_bypass_enabled() OR (document_id IN ( SELECT documents.id
+public.workflow_executions.workflow_executions_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.workflow_step_executions.workflow_step_executions_tenant_isolation|*|(is_rls_bypass_enabled() OR (workflow_execution_id IN ( SELECT workflow_executions.id
+public.workflow_steps.workflow_steps_tenant_isolation|*|(is_rls_bypass_enabled() OR (workflow_id IN ( SELECT workflows.id
+public.workflows.workflows_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
+public.zero_touch_results.zero_touch_company_isolation|*|(company_id = (NULLIF(current_setting('app.current_company_id'::text, true), ''::text))::uuid)|-
+public.zm_submissions.zm_submissions_tenant_isolation|*|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))|(is_rls_bypass_enabled() OR (company_id IS NULL) OR (company_id = get_current_company_id()))
