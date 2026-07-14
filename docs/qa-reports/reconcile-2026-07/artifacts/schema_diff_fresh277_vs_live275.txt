@@ -1,0 +1,1179 @@
+26,27c26,29
+< \restrict bUpUJB3a4K9eHYAg2Sedcphm4JAkuGccYDksaQ52eK2qyYphDH2hMGebagJhY3A CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+< \unrestrict bUpUJB3a4K9eHYAg2Sedcphm4JAkuGccYDksaQ52eK2qyYphDH2hMGebagJhY3A;
+---
+> $$;
+> $$;
+> \restrict 28qfY2gB1faKA3xpkJFv5IyPaJTITX9cCNSTU59izQHv9WXNlIeOOIVAibjlrqV CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+> \unrestrict 28qfY2gB1faKA3xpkJFv5IyPaJTITX9cCNSTU59izQHv9WXNlIeOOIVAibjlrqV;
+101c103
+< ALTER TABLE ONLY public.alerts ADD CONSTRAINT alerts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.alerts ADD CONSTRAINT alerts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+121c123
+< ALTER TABLE ONLY public.approval_chain_templates ADD CONSTRAINT approval_chain_templates_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.approval_chain_templates ADD CONSTRAINT approval_chain_templates_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+193d194
+< ALTER TABLE ONLY public.bank_accounts ADD CONSTRAINT bank_accounts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+203d203
+< ALTER TABLE ONLY public.bank_imports ADD CONSTRAINT fk_bank_imports_company_id FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+242d241
+< ALTER TABLE ONLY public.bpmn_process_instances ADD CONSTRAINT fk_bpmn_process_instances_parent_instance_id FOREIGN KEY (parent_instance_id) REFERENCES public.bpmn_process_instances(id) ON DELETE SET NULL;
+284c283
+< ALTER TABLE ONLY public.business_contacts ADD CONSTRAINT business_contacts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.business_contacts ADD CONSTRAINT business_contacts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+287c286
+< ALTER TABLE ONLY public.business_contacts ADD CONSTRAINT business_contacts_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE CASCADE;
+---
+> ALTER TABLE ONLY public.business_contacts ADD CONSTRAINT business_contacts_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE SET NULL;
+290,294c289,293
+< ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+< ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_party_a_id_fkey FOREIGN KEY (party_a_id) REFERENCES public.business_entities(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_party_b_id_fkey FOREIGN KEY (party_b_id) REFERENCES public.business_entities(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id);
+> ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+> ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+> ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_party_a_id_fkey FOREIGN KEY (party_a_id) REFERENCES public.business_entities(id);
+> ALTER TABLE ONLY public.business_contracts ADD CONSTRAINT business_contracts_party_b_id_fkey FOREIGN KEY (party_b_id) REFERENCES public.business_entities(id);
+316,317c315,316
+< ALTER TABLE ONLY public.cash_counts ADD CONSTRAINT cash_counts_counted_by_id_fkey FOREIGN KEY (counted_by_id) REFERENCES public.users(id) ON DELETE RESTRICT;
+< ALTER TABLE ONLY public.cash_counts ADD CONSTRAINT cash_counts_difference_entry_id_fkey FOREIGN KEY (difference_entry_id) REFERENCES public.cash_entries(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.cash_counts ADD CONSTRAINT cash_counts_counted_by_id_fkey FOREIGN KEY (counted_by_id) REFERENCES public.users(id);
+> ALTER TABLE ONLY public.cash_counts ADD CONSTRAINT cash_counts_difference_entry_id_fkey FOREIGN KEY (difference_entry_id) REFERENCES public.cash_entries(id);
+319,321c318,320
+< ALTER TABLE ONLY public.cash_counts ADD CONSTRAINT cash_counts_verified_by_id_fkey FOREIGN KEY (verified_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_bank_transaction_id_fkey FOREIGN KEY (bank_transaction_id) REFERENCES public.bank_transactions(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_cancelled_by_entry_id_fkey FOREIGN KEY (cancelled_by_entry_id) REFERENCES public.cash_entries(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.cash_counts ADD CONSTRAINT cash_counts_verified_by_id_fkey FOREIGN KEY (verified_by_id) REFERENCES public.users(id);
+> ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_bank_transaction_id_fkey FOREIGN KEY (bank_transaction_id) REFERENCES public.bank_transactions(id);
+> ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_cancelled_by_entry_id_fkey FOREIGN KEY (cancelled_by_entry_id) REFERENCES public.cash_entries(id);
+324c323
+< ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.cash_categories(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.cash_categories(id);
+326,329c325,328
+< ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_counterparty_id_fkey FOREIGN KEY (counterparty_id) REFERENCES public.business_entities(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE RESTRICT;
+< ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_expense_report_id_fkey FOREIGN KEY (expense_report_id) REFERENCES public.expense_reports(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_counterparty_id_fkey FOREIGN KEY (counterparty_id) REFERENCES public.business_entities(id);
+> ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+> ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+> ALTER TABLE ONLY public.cash_entries ADD CONSTRAINT cash_entries_expense_report_id_fkey FOREIGN KEY (expense_report_id) REFERENCES public.expense_reports(id);
+419c418
+< ALTER TABLE ONLY public.contract_amendments ADD CONSTRAINT contract_amendments_approved_by_id_fkey FOREIGN KEY (approved_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.contract_amendments ADD CONSTRAINT contract_amendments_approved_by_id_fkey FOREIGN KEY (approved_by_id) REFERENCES public.users(id);
+421,422c420,421
+< ALTER TABLE ONLY public.contract_amendments ADD CONSTRAINT contract_amendments_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.contract_amendments ADD CONSTRAINT contract_amendments_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.contract_amendments ADD CONSTRAINT contract_amendments_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+> ALTER TABLE ONLY public.contract_amendments ADD CONSTRAINT contract_amendments_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+460c459
+< ALTER TABLE ONLY public.contract_renewal_options ADD CONSTRAINT contract_renewal_options_exercised_by_id_fkey FOREIGN KEY (exercised_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.contract_renewal_options ADD CONSTRAINT contract_renewal_options_exercised_by_id_fkey FOREIGN KEY (exercised_by_id) REFERENCES public.users(id);
+463c462
+< ALTER TABLE ONLY public.contracts ADD CONSTRAINT contracts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.contracts ADD CONSTRAINT contracts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+521,522d519
+< ALTER TABLE ONLY public.datev_buchungen ADD CONSTRAINT fk_datev_buchungen_entity FOREIGN KEY (entity_id) REFERENCES public.business_entities(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.datev_buchungen ADD CONSTRAINT fk_datev_buchungen_festschr_by FOREIGN KEY (festgeschrieben_by) REFERENCES public.users(id) ON DELETE SET NULL;
+530d526
+< ALTER TABLE ONLY public.datev_connections ADD CONSTRAINT fk_datev_conn_created_by FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+615c611
+< ALTER TABLE ONLY public.document_contacts ADD CONSTRAINT document_contacts_confirmed_by_id_fkey FOREIGN KEY (confirmed_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.document_contacts ADD CONSTRAINT document_contacts_confirmed_by_fkey FOREIGN KEY (confirmed_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+634d629
+< ALTER TABLE ONLY public.document_groups ADD CONSTRAINT fk_document_groups_company_id FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+724,726c719,720
+< ALTER TABLE ONLY public.documents ADD CONSTRAINT documents_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+< ALTER TABLE ONLY public.documents ADD CONSTRAINT documents_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id);
+< ALTER TABLE ONLY public.documents ADD CONSTRAINT documents_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE CASCADE;
+---
+> ALTER TABLE ONLY public.documents ADD CONSTRAINT documents_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+> ALTER TABLE ONLY public.documents ADD CONSTRAINT documents_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id);
+729a724
+> ALTER TABLE ONLY public.documents ADD CONSTRAINT fk_documents_company_id FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+733c728
+< ALTER TABLE ONLY public.domain_events ADD CONSTRAINT domain_events_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.domain_events ADD CONSTRAINT domain_events_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+764,766d758
+< ALTER TABLE ONLY public.dunning_records ADD CONSTRAINT fk_dunning_records_company_id FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+< ALTER TABLE ONLY public.dunning_records ADD CONSTRAINT fk_dunning_records_created_by_id FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.dunning_records ADD CONSTRAINT fk_dunning_records_updated_by_id FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+851d842
+< ALTER TABLE ONLY public.event_log ADD CONSTRAINT event_log_event_id_key UNIQUE (event_id);
+857,858c848,849
+< ALTER TABLE ONLY public.expense_items ADD CONSTRAINT expense_items_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.cash_categories(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.expense_items ADD CONSTRAINT expense_items_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.expense_items ADD CONSTRAINT expense_items_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.cash_categories(id);
+> ALTER TABLE ONLY public.expense_items ADD CONSTRAINT expense_items_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
+861c852
+< ALTER TABLE ONLY public.expense_items ADD CONSTRAINT expense_items_vendor_id_fkey FOREIGN KEY (vendor_id) REFERENCES public.business_entities(id) ON DELETE SET NULL;
+---
+> ALTER TABLE ONLY public.expense_items ADD CONSTRAINT expense_items_vendor_id_fkey FOREIGN KEY (vendor_id) REFERENCES public.business_entities(id);
+863d853
+< ALTER TABLE ONLY public.expense_reports ADD CONSTRAINT expense_reports_cash_entry_id_fkey FOREIGN KEY (cash_entry_id) REFERENCES public.cash_entries(id) ON DELETE SET NULL;
+866,867c856
+< ALTER TABLE ONLY public.expense_reports ADD CONSTRAINT expense_reports_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.expense_reports ADD CONSTRAINT expense_reports_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.users(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.expense_reports ADD CONSTRAINT expense_reports_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.users(id);
+872a862,863
+> ALTER TABLE ONLY public.expense_reports ADD CONSTRAINT fk_expense_reports_cash_entry FOREIGN KEY (cash_entry_id) REFERENCES public.cash_entries(id);
+> ALTER TABLE ONLY public.expense_reports ADD CONSTRAINT fk_expense_reports_deleted_by_id_users FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+884,886d874
+< ALTER TABLE ONLY public.feature_toggle_history ADD CONSTRAINT feature_toggle_history_changed_by_id_fkey FOREIGN KEY (changed_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.feature_toggle_history ADD CONSTRAINT feature_toggle_history_feature_flag_id_fkey FOREIGN KEY (feature_flag_id) REFERENCES public.feature_flags(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.feature_toggle_history ADD CONSTRAINT feature_toggle_history_pkey PRIMARY KEY (id);
+911c899
+< ALTER TABLE ONLY public.folders ADD CONSTRAINT folders_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.folders ADD CONSTRAINT folders_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+975c963
+< ALTER TABLE ONLY public.gobd_audit_chain ADD CONSTRAINT gobd_audit_chain_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.gobd_audit_chain ADD CONSTRAINT gobd_audit_chain_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+1083c1071
+< ALTER TABLE ONLY public.invoices ADD CONSTRAINT invoices_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.invoices ADD CONSTRAINT fk_invoices_company_id FOREIGN KEY (company_id) REFERENCES public.companies(id);
+1146d1133
+< ALTER TABLE ONLY public.llm_cache ADD CONSTRAINT llm_cache_prompt_hash_key UNIQUE (prompt_hash);
+1181d1167
+< ALTER TABLE ONLY public.notification_rules ADD CONSTRAINT fk_notification_rules_user_id FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+1182a1169
+> ALTER TABLE ONLY public.notification_rules ADD CONSTRAINT notification_rules_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+1203d1189
+< ALTER TABLE ONLY public.ocr_model_deployments ADD CONSTRAINT ocr_model_deployments_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+1225d1210
+< ALTER TABLE ONLY public.ocr_training_batch_items ADD CONSTRAINT ocr_training_batch_items_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+1228d1212
+< ALTER TABLE ONLY public.ocr_training_batches ADD CONSTRAINT ocr_training_batches_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+1233d1216
+< ALTER TABLE ONLY public.ocr_training_samples ADD CONSTRAINT ocr_training_samples_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+1259,1261d1241
+< ALTER TABLE ONLY public.payment_batches ADD CONSTRAINT fk_payment_batches_company_id FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+< ALTER TABLE ONLY public.payment_batches ADD CONSTRAINT fk_payment_batches_created_by_id FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.payment_batches ADD CONSTRAINT fk_payment_batches_updated_by_id FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+1274d1253
+< ALTER TABLE ONLY public.payment_orders ADD CONSTRAINT fk_payment_orders_company_id FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+1367,1368c1346
+< ALTER TABLE ONLY public.privat_coverage_gaps ADD CONSTRAINT fk_coverage_gaps_insurance FOREIGN KEY (insurance_id) REFERENCES public.privat_insurances(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.privat_coverage_gaps ADD CONSTRAINT fk_coverage_gaps_space FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+---
+> ALTER TABLE ONLY public.privat_coverage_gaps ADD CONSTRAINT privat_coverage_gaps_insurance_id_fkey FOREIGN KEY (insurance_id) REFERENCES public.privat_insurances(id) ON DELETE SET NULL;
+1369a1348
+> ALTER TABLE ONLY public.privat_coverage_gaps ADD CONSTRAINT privat_coverage_gaps_space_id_fkey FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1387,1388d1365
+< ALTER TABLE ONLY public.privat_early_warnings ADD CONSTRAINT fk_early_warnings_projection FOREIGN KEY (projection_id) REFERENCES public.privat_projections(id) ON DELETE SET NULL;
+< ALTER TABLE ONLY public.privat_early_warnings ADD CONSTRAINT fk_early_warnings_space FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1389a1367,1368
+> ALTER TABLE ONLY public.privat_early_warnings ADD CONSTRAINT privat_early_warnings_projection_id_fkey FOREIGN KEY (projection_id) REFERENCES public.privat_projections(id) ON DELETE SET NULL;
+> ALTER TABLE ONLY public.privat_early_warnings ADD CONSTRAINT privat_early_warnings_space_id_fkey FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1408d1386
+< ALTER TABLE ONLY public.privat_kpi_history ADD CONSTRAINT fk_kpi_history_space FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1409a1388,1389
+> ALTER TABLE ONLY public.privat_kpi_history ADD CONSTRAINT privat_kpi_history_space_id_fkey FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+> ALTER TABLE ONLY public.privat_kpi_history ADD CONSTRAINT uq_kpi_history_space_kpi_date UNIQUE (space_id, kpi_name, recorded_at);
+1413d1392
+< ALTER TABLE ONLY public.privat_projections ADD CONSTRAINT fk_projections_space FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1414a1394
+> ALTER TABLE ONLY public.privat_projections ADD CONSTRAINT privat_projections_space_id_fkey FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1420d1399
+< ALTER TABLE ONLY public.privat_recurring_payments ADD CONSTRAINT fk_recurring_payments_space FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1421a1401
+> ALTER TABLE ONLY public.privat_recurring_payments ADD CONSTRAINT privat_recurring_payments_space_id_fkey FOREIGN KEY (space_id) REFERENCES public.privat_spaces(id) ON DELETE CASCADE;
+1819,1820d1798
+< ALTER TABLE ONLY public.webhook_deliveries ADD CONSTRAINT webhook_deliveries_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+< ALTER TABLE ONLY public.webhook_deliveries ADD CONSTRAINT webhook_deliveries_endpoint_id_fkey FOREIGN KEY (endpoint_id) REFERENCES public.webhook_endpoints(id) ON DELETE CASCADE;
+1821a1800
+> ALTER TABLE ONLY public.webhook_deliveries ADD CONSTRAINT webhook_deliveries_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.webhook_subscriptions(id) ON DELETE CASCADE;
+1868c1847
+< ALTER TABLE ONLY public.workflows ADD CONSTRAINT workflows_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE RESTRICT;
+---
+> ALTER TABLE ONLY public.workflows ADD CONSTRAINT workflows_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+1990c1969
+< ALTER TEXT SEARCH CONFIGURATION public.german_text ADD MAPPING FOR asciiword WITH german_stem;
+---
+> ALTER TEXT SEARCH CONFIGURATION public.german_text ADD MAPPING FOR asciiword WITH public.unaccent, german_stem;
+2005c1984,2006
+< ALTER TEXT SEARCH CONFIGURATION public.german_text ADD MAPPING FOR word WITH german_stem;
+---
+> ALTER TEXT SEARCH CONFIGURATION public.german_text ADD MAPPING FOR word WITH public.unaccent, german_stem;
+> COMMENT ON COLUMN public.active_learning_metrics.avg_confidence_after IS 'Durchschnittliche OCR-Confidence nach Training';
+> COMMENT ON COLUMN public.active_learning_metrics.avg_confidence_before IS 'Durchschnittliche OCR-Confidence vor Training';
+> COMMENT ON COLUMN public.active_learning_metrics.company_id IS 'Company fuer Tenant-Isolation';
+> COMMENT ON COLUMN public.active_learning_metrics.estimated_errors_prevented IS 'Geschaetzte verhinderte zukuenftige Fehler';
+> COMMENT ON COLUMN public.active_learning_metrics.metric_date IS 'Tag fuer den die Metriken gelten';
+> COMMENT ON COLUMN public.active_learning_metrics.top_error_patterns IS 'Haeufigste Fehlermuster: [{pattern: ..., count: ...}]';
+> COMMENT ON COLUMN public.active_learning_metrics.total_corrections IS 'Anzahl tatsaechlicher Korrekturen (nicht uebersprungen)';
+> COMMENT ON COLUMN public.active_learning_metrics.total_reviewed IS 'Anzahl gepruefter Items an diesem Tag';
+> COMMENT ON COLUMN public.active_learning_queue.company_id IS 'Company fuer RLS und Tenant-Isolation';
+> COMMENT ON COLUMN public.active_learning_queue.correction_data IS 'Korrekturdaten: {field: {original: ..., corrected: ...}}';
+> COMMENT ON COLUMN public.active_learning_queue.document_id IS 'Dokument fuer Review';
+> COMMENT ON COLUMN public.active_learning_queue.estimated_impact IS 'Geschaetzte Anzahl zukuenftiger Fehler die diese Korrektur verhindert';
+> COMMENT ON COLUMN public.active_learning_queue.field_focus IS 'Felder die Aufmerksamkeit brauchen: [''amount'', ''date'', ''supplier'']';
+> COMMENT ON COLUMN public.active_learning_queue.ocr_backend IS 'Verwendetes OCR-Backend';
+> COMMENT ON COLUMN public.active_learning_queue.ocr_confidence IS 'Original OCR-Confidence (0.0-1.0)';
+> COMMENT ON COLUMN public.active_learning_queue.priority_score IS 'Gesamt-Prioritaet (0-1, hoeher = wertvoller fuer Training)';
+> COMMENT ON COLUMN public.active_learning_queue.queue_reason IS 'Grund: low_confidence, high_frequency_pattern, edge_case, user_nominated';
+> COMMENT ON COLUMN public.active_learning_queue.reviewed_at IS 'Zeitpunkt der Pruefung';
+> COMMENT ON COLUMN public.active_learning_queue.reviewed_by_id IS 'Benutzer der die Pruefung durchgefuehrt hat';
+> COMMENT ON COLUMN public.active_learning_queue.status IS 'Status: queued, in_review, reviewed, skipped';
+> COMMENT ON COLUMN public.active_learning_queue.training_batch_id IS 'Training-Batch der diese Korrektur konsumiert hat';
+> COMMENT ON COLUMN public.active_learning_queue.uncertainty_score IS 'OCR-Unsicherheit (Inverse der Confidence)';
+2029,2030d2029
+< COMMENT ON COLUMN public.ai_decisions.explanation IS 'Strukturierte Erklaerung: {factors: [...], main_reason: ..., confidence_source: ...}';
+< COMMENT ON COLUMN public.ai_decisions.what_if_data IS 'What-If Simulationsdaten fuer die Entscheidung';
+2041a2041,2054
+> COMMENT ON COLUMN public.approval_audit_logs.action_type IS 'created|approved|rejected|escalated|delegated|recalled|four_eyes_check';
+> COMMENT ON COLUMN public.approval_audit_logs.ip_address IS 'IPv4/IPv6 des Akteurs';
+> COMMENT ON COLUMN public.approval_audit_logs.metadata_json IS 'Zusaetzliche Kontextdaten';
+> COMMENT ON COLUMN public.approval_chain_templates.is_default IS 'Standard-Kette fuer Firma';
+> COMMENT ON COLUMN public.approval_chain_templates.steps_config IS '[{step: 1, approver_type: ''role''|''group''|''user'', approver_id: UUID, timeout_hours: 48}]';
+> COMMENT ON COLUMN public.approval_group_members.is_backup IS 'Stellvertreter (nur bei Abwesenheit)';
+> COMMENT ON COLUMN public.approval_groups.decision_mode IS 'any=einer genuegt, all=alle muessen, majority=Mehrheit';
+> COMMENT ON COLUMN public.approval_matrices.amount_max IS 'Hoechstbetrag (EUR, NULL = unbegrenzt)';
+> COMMENT ON COLUMN public.approval_matrices.amount_min IS 'Mindestbetrag (EUR)';
+> COMMENT ON COLUMN public.approval_matrices.department IS 'Abteilung (z.B. Einkauf, Finanzen)';
+> COMMENT ON COLUMN public.approval_matrices.document_type IS 'Dokumenttyp (optional, z.B. invoice, contract)';
+> COMMENT ON COLUMN public.approval_matrices.four_eyes_required IS 'Vier-Augen-Prinzip erforderlich';
+> COMMENT ON COLUMN public.approval_matrices.min_approvers IS 'Mindestanzahl Genehmiger';
+> COMMENT ON COLUMN public.approval_matrices.priority IS 'Hoehere Prioritaet = bevorzugt bei Ueberlappung';
+2101d2113
+< COMMENT ON COLUMN public.business_entities.row_version IS 'Optimistic Locking: Wird bei jedem UPDATE inkrementiert';
+2135a2148,2149
+> COMMENT ON COLUMN public.cluster_suggestions.company_id IS 'Mandanten-Zuordnung fuer Multi-Company Isolation';
+> COMMENT ON COLUMN public.cluster_suggestions.document_id IS 'Dokument, fuer das der Vorschlag gilt';
+2151d2164
+< COMMENT ON COLUMN public.companies.row_version IS 'Optimistic Locking: Wird bei jedem UPDATE inkrementiert';
+2187a2201,2210
+> COMMENT ON COLUMN public.custom_field_definitions.description IS 'Optionale Beschreibung fuer Benutzer';
+> COMMENT ON COLUMN public.custom_field_definitions.document_type IS 'Dokumenttyp-Filter (None = alle Typen)';
+> COMMENT ON COLUMN public.custom_field_definitions.dropdown_options IS 'Optionsliste: [{value, label}]';
+> COMMENT ON COLUMN public.custom_field_definitions.field_type IS 'Feldtyp: text, number, date, boolean, dropdown, multi_select, lookup';
+> COMMENT ON COLUMN public.custom_field_definitions.is_filterable IS 'Als Filter in Dokumentliste anbieten';
+> COMMENT ON COLUMN public.custom_field_definitions.is_searchable IS 'In Volltextsuche einschliessen';
+> COMMENT ON COLUMN public.custom_field_definitions.label IS 'Anzeige-Label (deutsch)';
+> COMMENT ON COLUMN public.custom_field_definitions.lookup_entity IS 'Lookup-Zielentitaet (z.B. ''business_entity'', ''document'')';
+> COMMENT ON COLUMN public.custom_field_definitions.name IS 'Interner Name (snake_case, eindeutig pro document_type+company)';
+> COMMENT ON COLUMN public.custom_field_definitions.validation_rules IS 'Validierungsregeln: {min, max, pattern, min_length, max_length}';
+2192c2215,2216
+< COMMENT ON COLUMN public.dashboard_builder_configs.company_id IS 'Mandanten-Zuordnung';
+---
+> COMMENT ON COLUMN public.dashboard_builder_configs.company_id IS 'Mandanten-Zuordnung (RESTRICT verhindert versehentliches Loeschen)';
+> COMMENT ON COLUMN public.dashboard_builder_configs.created_at IS 'Erstellungszeitpunkt';
+2195,2196c2219,2220
+< COMMENT ON COLUMN public.dashboard_builder_configs.is_default IS 'Standarddashboard des Benutzers';
+< COMMENT ON COLUMN public.dashboard_builder_configs.is_shared IS 'Firmenweit freigegeben';
+---
+> COMMENT ON COLUMN public.dashboard_builder_configs.is_default IS 'Standarddashboard des Benutzers (je User max. 1 aktives)';
+> COMMENT ON COLUMN public.dashboard_builder_configs.is_shared IS 'Firmenweit freigegeben (alle Benutzer der Company koennen lesen)';
+2198a2223
+> COMMENT ON COLUMN public.dashboard_builder_configs.updated_at IS 'Letzter Aenderungszeitpunkt';
+2200,2202c2225,2228
+< COMMENT ON COLUMN public.dashboard_builder_widgets.config IS 'Widget-spezifische Einstellungen';
+< COMMENT ON COLUMN public.dashboard_builder_widgets.dashboard_id IS 'Zugehoerige Dashboard-Konfiguration';
+< COMMENT ON COLUMN public.dashboard_builder_widgets.data_source IS 'Interner Service/Endpunkt-Name';
+---
+> COMMENT ON COLUMN public.dashboard_builder_widgets.config IS 'Widget-spezifische Einstellungen als JSONB (Farbe, Zeitraum, Schwellwerte, etc.)';
+> COMMENT ON COLUMN public.dashboard_builder_widgets.created_at IS 'Erstellungszeitpunkt';
+> COMMENT ON COLUMN public.dashboard_builder_widgets.dashboard_id IS 'Zugehoerige Dashboard-Konfiguration (wird beim Loeschen mitgeloescht)';
+> COMMENT ON COLUMN public.dashboard_builder_widgets.data_source IS 'Interne Bezeichnung des Service/Endpunkts der Daten liefert (z. B. ''invoice_tracking'', ''cashflow_predictor'')';
+2204,2205c2230,2231
+< COMMENT ON COLUMN public.dashboard_builder_widgets.refresh_interval_seconds IS 'Aktualisierungsintervall in Sekunden';
+< COMMENT ON COLUMN public.dashboard_builder_widgets.title IS 'Anzeigename des Widgets';
+---
+> COMMENT ON COLUMN public.dashboard_builder_widgets.refresh_interval_seconds IS 'Aktualisierungsintervall in Sekunden (Standard: 300, Minimum: 30)';
+> COMMENT ON COLUMN public.dashboard_builder_widgets.title IS 'Anzeigename des Widgets (deutsch)';
+2407a2434
+> COMMENT ON COLUMN public.document_cluster_memberships.cluster_id IS 'Zugeordneter Cluster';
+2408a2436
+> COMMENT ON COLUMN public.document_cluster_memberships.document_id IS 'Zugeordnetes Dokument';
+2411c2439,2440
+< COMMENT ON COLUMN public.document_clusters.centroid IS 'Cluster-Zentrum als Embedding-Vektor';
+---
+> COMMENT ON COLUMN public.document_clusters.business_entity_id IS 'Optionale Zuordnung zu einer Business Entity';
+> COMMENT ON COLUMN public.document_clusters.centroid IS 'Cluster-Zentrum als Durchschnitt aller Dokument-Embeddings';
+2412a2442
+> COMMENT ON COLUMN public.document_clusters.company_id IS 'Mandanten-Zuordnung fuer Multi-Company Isolation';
+2417a2448
+> COMMENT ON COLUMN public.document_clusters.parent_cluster_id IS 'Uebergeordneter Cluster fuer hierarchische Struktur';
+2422d2452
+< COMMENT ON COLUMN public.document_groups.company_id IS 'Mandanten-Zuordnung fuer Multi-Company Isolation';
+2431d2460
+< COMMENT ON COLUMN public.documents.custom_field_values IS 'Benutzerdefinierte Feldwerte (JSONB)';
+2433,2434d2461
+< COMMENT ON COLUMN public.documents.keywords IS 'Extrahierte Schluesselwoerter';
+< COMMENT ON COLUMN public.documents.one_liner IS 'Einzeilige Beschreibung';
+2437,2439d2463
+< COMMENT ON COLUMN public.documents.row_version IS 'Optimistic Locking: Wird bei jedem UPDATE inkrementiert';
+< COMMENT ON COLUMN public.documents.summary IS 'KI-generierte Zusammenfassung (3-5 Saetze)';
+< COMMENT ON COLUMN public.documents.summary_model IS 'LLM-Modell fuer Zusammenfassung';
+2467c2491,2496
+< COMMENT ON COLUMN public.event_log.correlation_id IS 'Korrelations-ID fuer zusammengehoerige Events';
+---
+> COMMENT ON COLUMN public.entity_seasonal_patterns.affected_months IS 'Betroffene Monate, z.B. [12, 1, 2]';
+> COMMENT ON COLUMN public.entity_seasonal_patterns.avg_delay_adjustment IS 'Multiplikator fuer durchschnittliche Verzoegerung';
+> COMMENT ON COLUMN public.entity_seasonal_patterns.confidence IS 'Konfidenz 0.0-1.0';
+> COMMENT ON COLUMN public.entity_seasonal_patterns.pattern_type IS 'z.B. holiday_slowdown, summer_slowdown, periodic_variation';
+> COMMENT ON COLUMN public.entity_seasonal_patterns.sample_count IS 'Anzahl zugrunde liegender Datenpunkte';
+> COMMENT ON COLUMN public.event_log.correlation_id IS 'Korrelations-ID';
+2469,2472c2498,2501
+< COMMENT ON COLUMN public.event_log.event_type IS 'Event-Typ (z.B. document.ocr_completed)';
+< COMMENT ON COLUMN public.event_log.handler_count IS 'Anzahl der Handler die es verarbeitet haben';
+< COMMENT ON COLUMN public.event_log.payload IS 'Event-Payload als JSON';
+< COMMENT ON COLUMN public.event_log.processed IS 'Wurde das Event verarbeitet?';
+---
+> COMMENT ON COLUMN public.event_log.event_type IS 'Event-Typ';
+> COMMENT ON COLUMN public.event_log.handler_count IS 'Anzahl Handler';
+> COMMENT ON COLUMN public.event_log.payload IS 'Event-Payload';
+> COMMENT ON COLUMN public.event_log.processed IS 'Wurde verarbeitet?';
+2504c2533
+< COMMENT ON COLUMN public.financial_goal_contributions.linked_transaction_id IS 'Verknuepfte Transaktion falls automatisch';
+---
+> COMMENT ON COLUMN public.financial_goal_contributions.linked_transaction_id IS 'Verknüpfte Transaktion falls automatisch';
+2509c2538
+< COMMENT ON COLUMN public.financial_goals.color IS 'Farbe fuer UI';
+---
+> COMMENT ON COLUMN public.financial_goals.color IS 'Farbe für UI';
+2513,2514c2542,2543
+< COMMENT ON COLUMN public.financial_goals.goal_type IS 'Typ des Ziels (retirement, education, property, debt_free, emergency_fund, travel, vehicle, renovation, investment, custom)';
+< COMMENT ON COLUMN public.financial_goals.icon IS 'Icon fuer UI';
+---
+> COMMENT ON COLUMN public.financial_goals.goal_type IS 'Typ des Ziels';
+> COMMENT ON COLUMN public.financial_goals.icon IS 'Icon für UI';
+2517c2546
+< COMMENT ON COLUMN public.financial_goals.linked_assets IS 'Verknuepfte Assets als JSON';
+---
+> COMMENT ON COLUMN public.financial_goals.linked_assets IS 'Verknüpfte Assets als JSON (z.B. [{''type'': ''investment'', ''id'': ''...''}])';
+2521c2550
+< COMMENT ON COLUMN public.financial_goals.notify_on_delay IS 'Benachrichtigung bei Verzoegerung?';
+---
+> COMMENT ON COLUMN public.financial_goals.notify_on_delay IS 'Benachrichtigung bei Verzögerung?';
+2523c2552
+< COMMENT ON COLUMN public.financial_goals.priority IS 'Prioritaet (1=hoechste)';
+---
+> COMMENT ON COLUMN public.financial_goals.priority IS 'Priorität (1=hoechste)';
+2526d2554
+< COMMENT ON COLUMN public.financial_goals.status IS 'Status (active, paused, completed, cancelled)';
+2528a2557,2563
+> COMMENT ON COLUMN public.fraud_alerts.anomaly_details IS 'Details zur erkannten Anomalie';
+> COMMENT ON COLUMN public.fraud_alerts.confidence IS 'Konfidenz der Erkennung (0.0-1.0)';
+> COMMENT ON COLUMN public.fraud_alerts.evidence IS 'Beweismaterial (Dokumente, Transaktionen)';
+> COMMENT ON COLUMN public.fraud_alerts.invoice_id IS 'ID der betroffenen Rechnung';
+> COMMENT ON COLUMN public.fraud_alerts.recommended_actions IS 'Empfohlene Aktionen';
+> COMMENT ON COLUMN public.fraud_alerts.risk_score IS 'Risiko-Score (0.0-1.0)';
+> COMMENT ON COLUMN public.fraud_alerts.similar_cases IS 'Referenzen zu ähnlichen Faellen';
+2574a2610,2633
+> COMMENT ON COLUMN public.integration_configs.company_id IS 'Mandant, zu dem diese Integration gehört';
+> COMMENT ON COLUMN public.integration_configs.config IS 'Integrationsspezifische Konfigurationsdaten (ohne Geheimnisse)';
+> COMMENT ON COLUMN public.integration_configs.created_at IS 'Erstellungszeitpunkt';
+> COMMENT ON COLUMN public.integration_configs.display_name IS 'Anzeigename im Dashboard (z. B. ''DATEV Rechenzentrum'')';
+> COMMENT ON COLUMN public.integration_configs.id IS 'Eindeutige Integrations-Konfigurations-ID';
+> COMMENT ON COLUMN public.integration_configs.integration_type IS 'Typ der Integration: datev | lexware | banking | slack | email';
+> COMMENT ON COLUMN public.integration_configs.is_active IS 'Gibt an, ob die Integration aktiv synchronisieren soll';
+> COMMENT ON COLUMN public.integration_configs.last_error_message IS 'Fehlermeldung der letzten fehlgeschlagenen Synchronisation';
+> COMMENT ON COLUMN public.integration_configs.last_sync_at IS 'Zeitpunkt der letzten abgeschlossenen Synchronisation';
+> COMMENT ON COLUMN public.integration_configs.last_sync_status IS 'Ergebnis der letzten Synchronisation: success | error | partial';
+> COMMENT ON COLUMN public.integration_configs.sync_interval_minutes IS 'Automatisches Sync-Intervall in Minuten (Standard: 60)';
+> COMMENT ON COLUMN public.integration_configs.updated_at IS 'Letzter Änderungszeitpunkt';
+> COMMENT ON COLUMN public.integration_sync_logs.company_id IS 'Mandant - denormalisiert für direkte Mandanten-Abfragen';
+> COMMENT ON COLUMN public.integration_sync_logs.completed_at IS 'Abschlusszeitpunkt (None wenn noch in Bearbeitung)';
+> COMMENT ON COLUMN public.integration_sync_logs.duration_seconds IS 'Laufzeit in Sekunden (berechnet bei Abschluss)';
+> COMMENT ON COLUMN public.integration_sync_logs.error_details IS 'Strukturierte Fehlerdetails (Liste von Einzel-Fehlern)';
+> COMMENT ON COLUMN public.integration_sync_logs.id IS 'Eindeutige Log-Eintrags-ID';
+> COMMENT ON COLUMN public.integration_sync_logs.integration_config_id IS 'Zugehörige Integrations-Konfiguration';
+> COMMENT ON COLUMN public.integration_sync_logs.items_failed IS 'Anzahl fehlerhafter Datensätze';
+> COMMENT ON COLUMN public.integration_sync_logs.items_processed IS 'Anzahl erfolgreich verarbeiteter Datensätze';
+> COMMENT ON COLUMN public.integration_sync_logs.items_total IS 'Gesamtanzahl der zur Verarbeitung vorgesehenen Datensätze';
+> COMMENT ON COLUMN public.integration_sync_logs.started_at IS 'Startzeitpunkt des Sync-Laufs';
+> COMMENT ON COLUMN public.integration_sync_logs.status IS 'Aktueller Status: started | success | error | partial';
+> COMMENT ON COLUMN public.integration_sync_logs.sync_type IS 'Art der Synchronisation: full | incremental | manual';
+2580d2638
+< COMMENT ON COLUMN public.invoice_tracking.row_version IS 'Optimistic Locking: Wird bei jedem UPDATE inkrementiert';
+2633,2634c2691,2692
+< COMMENT ON COLUMN public.llm_cache.expires_at IS 'Ablaufzeitpunkt (NULL = nie)';
+< COMMENT ON COLUMN public.llm_cache.extra_data IS 'Zusaetzliche Metadaten';
+---
+> COMMENT ON COLUMN public.llm_cache.expires_at IS 'Ablaufzeitpunkt';
+> COMMENT ON COLUMN public.llm_cache.extra_data IS 'Zusätzliche Metadaten';
+2638c2696
+< COMMENT ON COLUMN public.llm_cache.model IS 'Verwendetes Modell (z.B. qwen3:8b)';
+---
+> COMMENT ON COLUMN public.llm_cache.model IS 'Verwendetes Modell';
+2640c2698
+< COMMENT ON COLUMN public.llm_cache.prompt_embedding IS 'Embedding-Vektor fuer semantische Suche (384 dim)';
+---
+> COMMENT ON COLUMN public.llm_cache.prompt_embedding IS 'Embedding-Vektor für semantische Suche';
+2661c2719
+< COMMENT ON COLUMN public.notification_rules.actions IS 'Liste von auszufuehrenden Aktionen';
+---
+> COMMENT ON COLUMN public.notification_rules.actions IS 'Liste von auszuführenden Aktionen';
+2664,2665d2721
+< COMMENT ON COLUMN public.notification_rules.description IS 'Optionale Beschreibung';
+< COMMENT ON COLUMN public.notification_rules.enabled IS 'Ob die Regel aktiv ist';
+2667,2669c2723
+< COMMENT ON COLUMN public.notification_rules.event_type IS 'Event-Typ z.B. document.ocr_completed';
+< COMMENT ON COLUMN public.notification_rules.last_matched_event_id IS 'ID des letzten gematchten Events';
+< COMMENT ON COLUMN public.notification_rules.last_triggered_at IS 'Zeitpunkt des letzten Triggers';
+---
+> COMMENT ON COLUMN public.notification_rules.event_type IS 'Event-Typ z.B. document.ocr_completed, insurance.deadline_approaching';
+2671,2672d2724
+< COMMENT ON COLUMN public.notification_rules.name IS 'Name der Regel';
+< COMMENT ON COLUMN public.notification_rules.priority IS 'Prioritaet: low, normal, high, urgent';
+2675,2677d2726
+< COMMENT ON COLUMN public.notification_rules.timezone IS 'Zeitzone fuer Quiet Hours';
+< COMMENT ON COLUMN public.notification_rules.trigger_count IS 'Anzahl der Ausloeser';
+< COMMENT ON COLUMN public.notification_rules.user_id IS 'Benutzer, dem diese Regel gehoert';
+2704a2754,2761
+> COMMENT ON COLUMN public.partition_management.archived_at IS 'Zeitpunkt der Archivierung';
+> COMMENT ON COLUMN public.partition_management.is_archived IS 'Partition wurde detached (nicht mehr in Abfragen)';
+> COMMENT ON COLUMN public.partition_management.partition_name IS 'Eindeutiger Name der Partition';
+> COMMENT ON COLUMN public.partition_management.range_end IS 'Ende des Partitionsbereichs (exklusiv)';
+> COMMENT ON COLUMN public.partition_management.range_start IS 'Beginn des Partitionsbereichs (inklusive)';
+> COMMENT ON COLUMN public.partition_management.row_count IS 'Ungefaehre Zeilenanzahl (periodisch aktualisiert)';
+> COMMENT ON COLUMN public.partition_management.size_bytes IS 'Speicherverbrauch in Bytes (periodisch aktualisiert)';
+> COMMENT ON COLUMN public.partition_management.table_name IS 'Name der partitionierten Parent-Tabelle';
+2714c2771
+< COMMENT ON COLUMN public.portfolio_snapshots.asset_allocation IS 'Vermoegensverteilung als JSON';
+---
+> COMMENT ON COLUMN public.portfolio_snapshots.asset_allocation IS 'Vermögensverteilung als JSON (z.B. {''real_estate'': 45, ''investments'': 30, ...})';
+2718,2719c2775,2776
+< COMMENT ON COLUMN public.portfolio_snapshots.net_worth_change_absolute IS 'Absolute Aenderung zum Vormonat in EUR';
+< COMMENT ON COLUMN public.portfolio_snapshots.net_worth_change_percent IS 'Prozentuale Aenderung zum Vormonat';
+---
+> COMMENT ON COLUMN public.portfolio_snapshots.net_worth_change_absolute IS 'Absolute Änderung zum Vormonat in EUR';
+> COMMENT ON COLUMN public.portfolio_snapshots.net_worth_change_percent IS 'Prozentuale Änderung zum Vormonat';
+2721c2778
+< COMMENT ON COLUMN public.portfolio_snapshots.total_assets IS 'Summe aller Vermoegenswerte';
+---
+> COMMENT ON COLUMN public.portfolio_snapshots.total_assets IS 'Summe aller Vermögenswerte';
+2727c2784
+< COMMENT ON COLUMN public.portfolio_snapshots.total_other_assets IS 'Sonstige Vermoegenswerte';
+---
+> COMMENT ON COLUMN public.portfolio_snapshots.total_other_assets IS 'Sonstige Vermögenswerte';
+2731,2733c2788,2790
+< COMMENT ON COLUMN public.privat_coverage_gaps.current_coverage IS 'Aktuelle Deckungssumme (NULL wenn fehlend)';
+< COMMENT ON COLUMN public.privat_coverage_gaps.estimated_monthly_cost IS 'Geschaetzte Monatskosten fuer Behebung';
+< COMMENT ON COLUMN public.privat_coverage_gaps.extra_data IS 'Zusaetzliche Metadaten';
+---
+> COMMENT ON COLUMN public.privat_coverage_gaps.current_coverage IS 'Aktuelle Deckungssumme';
+> COMMENT ON COLUMN public.privat_coverage_gaps.estimated_monthly_cost IS 'Geschätzte Monatskosten';
+> COMMENT ON COLUMN public.privat_coverage_gaps.extra_data IS 'Zusätzliche Metadaten';
+2735,2740c2792,2797
+< COMMENT ON COLUMN public.privat_coverage_gaps.gap_type IS 'Lueckentyp: missing, undercovered, expired, overlapping';
+< COMMENT ON COLUMN public.privat_coverage_gaps.insurance_id IS 'Referenz auf privat_insurances (NULL = fehlende Versicherung)';
+< COMMENT ON COLUMN public.privat_coverage_gaps.insurance_type IS 'Versicherungstyp: liability, household, legal, health, etc.';
+< COMMENT ON COLUMN public.privat_coverage_gaps.is_resolved IS 'Wurde die Luecke behoben?';
+< COMMENT ON COLUMN public.privat_coverage_gaps.last_analysis_at IS 'Zeitpunkt der letzten Analyse';
+< COMMENT ON COLUMN public.privat_coverage_gaps.priority_score IS 'Prioritaets-Score 1-100';
+---
+> COMMENT ON COLUMN public.privat_coverage_gaps.gap_type IS 'Lückentyp';
+> COMMENT ON COLUMN public.privat_coverage_gaps.insurance_id IS 'Referenz auf Versicherung';
+> COMMENT ON COLUMN public.privat_coverage_gaps.insurance_type IS 'Versicherungstyp';
+> COMMENT ON COLUMN public.privat_coverage_gaps.is_resolved IS 'Behoben?';
+> COMMENT ON COLUMN public.privat_coverage_gaps.last_analysis_at IS 'Letzte Analyse';
+> COMMENT ON COLUMN public.privat_coverage_gaps.priority_score IS 'Prioritäts-Score 1-100';
+2743,2746c2800,2802
+< COMMENT ON COLUMN public.privat_coverage_gaps.resolved_at IS 'Zeitpunkt der Behebung';
+< COMMENT ON COLUMN public.privat_coverage_gaps.risk_description IS 'Beschreibung des Risikos';
+< COMMENT ON COLUMN public.privat_coverage_gaps.severity IS 'Schweregrad: low, medium, high, critical';
+< COMMENT ON COLUMN public.privat_coverage_gaps.space_id IS 'Referenz auf privat_spaces';
+---
+> COMMENT ON COLUMN public.privat_coverage_gaps.resolved_at IS 'Behebungszeitpunkt';
+> COMMENT ON COLUMN public.privat_coverage_gaps.risk_description IS 'Risikobeschreibung';
+> COMMENT ON COLUMN public.privat_coverage_gaps.severity IS 'Schweregrad';
+2748c2804
+< COMMENT ON COLUMN public.privat_early_warnings.breach_date IS 'Prognostiziertes Datum der Schwellenwert-Verletzung';
+---
+> COMMENT ON COLUMN public.privat_early_warnings.breach_date IS 'Prognostiziertes Datum der Verletzung';
+2753,2754c2809,2810
+< COMMENT ON COLUMN public.privat_early_warnings.expires_at IS 'Warnung verfaellt (z.B. wenn Breach-Datum erreicht)';
+< COMMENT ON COLUMN public.privat_early_warnings.extra_data IS 'Zusaetzliche Metadaten';
+---
+> COMMENT ON COLUMN public.privat_early_warnings.expires_at IS 'Warnung verfaellt';
+> COMMENT ON COLUMN public.privat_early_warnings.extra_data IS 'Zusätzliche Metadaten';
+2758c2814
+< COMMENT ON COLUMN public.privat_early_warnings.potential_impact IS 'Geschaetzter finanzieller Impact';
+---
+> COMMENT ON COLUMN public.privat_early_warnings.potential_impact IS 'Geschätzter finanzieller Impact';
+2760c2816
+< COMMENT ON COLUMN public.privat_early_warnings.projection_id IS 'Referenz auf die zugrundeliegende Projektion';
+---
+> COMMENT ON COLUMN public.privat_early_warnings.projection_id IS 'Zugrundeliegende Projektion';
+2765c2821
+< COMMENT ON COLUMN public.privat_early_warnings.threshold_value IS 'Schwellenwert der ueberschritten wird';
+---
+> COMMENT ON COLUMN public.privat_early_warnings.threshold_value IS 'Schwellenwert der überschritten wird';
+2767,2775c2823,2826
+< COMMENT ON COLUMN public.privat_early_warnings.warning_type IS 'Typ: threshold_breach, trend_reversal, volatility_spike, seasonal_anomaly';
+< COMMENT ON COLUMN public.privat_insurances.annual_premium_total IS 'Jaehrliche Gesamtpraemie in EUR';
+< COMMENT ON COLUMN public.privat_insurances.cancellation_deadline IS 'Berechnete Kuendigungsfrist';
+< COMMENT ON COLUMN public.privat_insurances.coverage_adequacy_score IS 'Deckungsadaequanz-Score 0-100';
+< COMMENT ON COLUMN public.privat_insurances.coverage_gap_analysis IS 'Deckungsluecken-Analyse als JSON';
+< COMMENT ON COLUMN public.privat_insurances.last_kpi_calculation IS 'Zeitpunkt der letzten KPI-Berechnung';
+< COMMENT ON COLUMN public.privat_kpi_history.components IS 'Aufschluesselung in Komponenten (z.B. Health Score Dimensionen)';
+< COMMENT ON COLUMN public.privat_kpi_history.extra_data IS 'Zusaetzliche Kontextdaten';
+< COMMENT ON COLUMN public.privat_kpi_history.kpi_name IS 'Name des KPI (z.B. dti, financial_health_score, net_worth)';
+---
+> COMMENT ON COLUMN public.privat_early_warnings.warning_type IS 'Typ: threshold_breach, trend_reversal, etc.';
+> COMMENT ON COLUMN public.privat_kpi_history.components IS 'Aufschluesselung in Komponenten';
+> COMMENT ON COLUMN public.privat_kpi_history.extra_data IS 'Zusätzliche Kontextdaten';
+> COMMENT ON COLUMN public.privat_kpi_history.kpi_name IS 'Name des KPI (z.B. dti, financial_health_score)';
+2777c2828
+< COMMENT ON COLUMN public.privat_kpi_history.kpi_value IS 'Numerischer Wert des KPI';
+---
+> COMMENT ON COLUMN public.privat_kpi_history.kpi_value IS 'Numerischer Wert';
+2781,2787d2831
+< COMMENT ON COLUMN public.privat_loans.amortization_schedule IS 'Tilgungsplan als JSON';
+< COMMENT ON COLUMN public.privat_loans.effective_annual_rate IS 'Effektiver Jahreszins in Prozent';
+< COMMENT ON COLUMN public.privat_loans.interest_saved_with_extra IS 'Moegliche Zinsersparnis bei Sondertilgung in EUR';
+< COMMENT ON COLUMN public.privat_loans.last_kpi_calculation IS 'Zeitpunkt der letzten KPI-Berechnung';
+< COMMENT ON COLUMN public.privat_loans.projected_payoff_date IS 'Voraussichtliches Rueckzahlungsdatum';
+< COMMENT ON COLUMN public.privat_loans.remaining_term_months IS 'Verbleibende Laufzeit in Monaten';
+< COMMENT ON COLUMN public.privat_loans.total_interest_projected IS 'Erwartete Gesamtzinsen in EUR';
+2789c2833
+< COMMENT ON COLUMN public.privat_projections.confidence_overall IS 'Gesamt-Konfidenz der Projektion 0-1';
+---
+> COMMENT ON COLUMN public.privat_projections.confidence_overall IS 'Gesamt-Konfidenz 0-1';
+2791,2792c2835,2836
+< COMMENT ON COLUMN public.privat_projections.data_points_used IS 'Anzahl historischer Datenpunkte fuer Berechnung';
+< COMMENT ON COLUMN public.privat_projections.extra_data IS 'Zusaetzliche Metadaten';
+---
+> COMMENT ON COLUMN public.privat_projections.data_points_used IS 'Anzahl historischer Datenpunkte';
+> COMMENT ON COLUMN public.privat_projections.extra_data IS 'Zusätzliche Metadaten';
+2794c2838
+< COMMENT ON COLUMN public.privat_projections.projected_values IS 'Monatliche Projektionen: [{month: 1, value: X, confidence: 0.9}, ...]';
+---
+> COMMENT ON COLUMN public.privat_projections.projected_values IS 'Monatliche Projektionen: [{month, value, confidence}]';
+2799c2843
+< COMMENT ON COLUMN public.privat_projections.threshold_breaches IS 'Erkannte zukuenftige Schwellenwertbrueche: [{month: 3, threshold_name: "DTI_CRITICAL", severity: "WARNING"}]';
+---
+> COMMENT ON COLUMN public.privat_projections.threshold_breaches IS 'Erkannte zukuenftige Schwellenwertbrueche';
+2801,2810c2845,2846
+< COMMENT ON COLUMN public.privat_projections.trend_strength IS 'Trendstaerke 0-1 (R-squared der Regression)';
+< COMMENT ON COLUMN public.privat_projections.valid_until IS 'Gueltig bis (danach neu berechnen)';
+< COMMENT ON COLUMN public.privat_properties.annual_roi IS 'Jaehrlicher ROI in Prozent';
+< COMMENT ON COLUMN public.privat_properties.calculated_net_yield IS 'Nettomietrendite in Prozent';
+< COMMENT ON COLUMN public.privat_properties.calculated_roi IS 'Gesamt-ROI in Prozent';
+< COMMENT ON COLUMN public.privat_properties.calculated_yield IS 'Bruttomietrendite in Prozent';
+< COMMENT ON COLUMN public.privat_properties.last_kpi_calculation IS 'Zeitpunkt der letzten KPI-Berechnung';
+< COMMENT ON COLUMN public.privat_properties.total_costs_ytd IS 'Nebenkosten YTD in EUR';
+< COMMENT ON COLUMN public.privat_properties.value_appreciation IS 'Wertzuwachs in EUR';
+< COMMENT ON COLUMN public.privat_properties.value_appreciation_rate IS 'Wertzuwachs in Prozent';
+---
+> COMMENT ON COLUMN public.privat_projections.trend_strength IS 'Trendstärke 0-1 (R-squared)';
+> COMMENT ON COLUMN public.privat_projections.valid_until IS 'Gültig bis';
+2812,2813c2848,2849
+< COMMENT ON COLUMN public.privat_recurring_payments.category IS 'Kategorie: subscription, utility, rent, insurance, etc.';
+< COMMENT ON COLUMN public.privat_recurring_payments.confidence IS 'Erkennungs-Konfidenz 0-1';
+---
+> COMMENT ON COLUMN public.privat_recurring_payments.category IS 'Kategorie';
+> COMMENT ON COLUMN public.privat_recurring_payments.confidence IS 'Erkennungs-Konfidenz';
+2815,2819c2851,2855
+< COMMENT ON COLUMN public.privat_recurring_payments.expected_day IS 'Erwarteter Tag im Zyklus (1-31 fuer monatlich)';
+< COMMENT ON COLUMN public.privat_recurring_payments.extra_data IS 'Zusaetzliche Metadaten';
+< COMMENT ON COLUMN public.privat_recurring_payments.frequency IS 'Haeufigkeit: daily, weekly, monthly, quarterly, yearly';
+< COMMENT ON COLUMN public.privat_recurring_payments.is_active IS 'Ist die Zahlung noch aktiv?';
+< COMMENT ON COLUMN public.privat_recurring_payments.is_income IS 'Ist es eine Einnahme (nicht Ausgabe)?';
+---
+> COMMENT ON COLUMN public.privat_recurring_payments.expected_day IS 'Erwarteter Tag im Zyklus';
+> COMMENT ON COLUMN public.privat_recurring_payments.extra_data IS 'Zusätzliche Metadaten';
+> COMMENT ON COLUMN public.privat_recurring_payments.frequency IS 'Häufigkeit';
+> COMMENT ON COLUMN public.privat_recurring_payments.is_active IS 'Ist aktiv?';
+> COMMENT ON COLUMN public.privat_recurring_payments.is_income IS 'Ist Einnahme?';
+2821,2823c2857,2859
+< COMMENT ON COLUMN public.privat_recurring_payments.linked_account_id IS 'Verknuepftes Bankkonto';
+< COMMENT ON COLUMN public.privat_recurring_payments.name IS 'Name der Zahlung (z.B. Netflix, Miete)';
+< COMMENT ON COLUMN public.privat_recurring_payments.next_expected IS 'Naechstes erwartetes Datum';
+---
+> COMMENT ON COLUMN public.privat_recurring_payments.linked_account_id IS 'Verknüpftes Bankkonto';
+> COMMENT ON COLUMN public.privat_recurring_payments.name IS 'Name der Zahlung';
+> COMMENT ON COLUMN public.privat_recurring_payments.next_expected IS 'Nächstes erwartetes Datum';
+2825,2826c2861
+< COMMENT ON COLUMN public.privat_recurring_payments.payee IS 'Zahlungsempfaenger';
+< COMMENT ON COLUMN public.privat_recurring_payments.space_id IS 'Referenz auf privat_spaces';
+---
+> COMMENT ON COLUMN public.privat_recurring_payments.payee IS 'Zahlungsempfänger';
+2844,2851d2878
+< COMMENT ON COLUMN public.privat_vehicles.average_fuel_consumption IS 'Durchschnittsverbrauch in l/100km';
+< COMMENT ON COLUMN public.privat_vehicles.current_estimated_value IS 'Geschaetzter aktueller Wert in EUR';
+< COMMENT ON COLUMN public.privat_vehicles.depreciation_monthly IS 'Monatliche Abschreibung in EUR';
+< COMMENT ON COLUMN public.privat_vehicles.last_kpi_calculation IS 'Zeitpunkt der letzten KPI-Berechnung';
+< COMMENT ON COLUMN public.privat_vehicles.next_service_date IS 'Naechster geplanter Servicetermin';
+< COMMENT ON COLUMN public.privat_vehicles.next_service_km IS 'Naechster Service bei km-Stand';
+< COMMENT ON COLUMN public.privat_vehicles.tco_per_km IS 'Kosten pro Kilometer in EUR';
+< COMMENT ON COLUMN public.privat_vehicles.tco_total IS 'Total Cost of Ownership in EUR';
+2978,2991d3004
+< COMMENT ON COLUMN public.webhook_deliveries.attempts IS 'Anzahl durchgefuehrter Zustellversuche';
+< COMMENT ON COLUMN public.webhook_deliveries.company_id IS 'Mandant fuer Multi-Tenancy-Isolation';
+< COMMENT ON COLUMN public.webhook_deliveries.delivered_at IS 'Zeitstempel der erfolgreichen Zustellung';
+< COMMENT ON COLUMN public.webhook_deliveries.endpoint_id IS 'Zugehoerige Endpoint-Konfiguration';
+< COMMENT ON COLUMN public.webhook_deliveries.event_id IS 'Referenz auf den Quell-Event (WebhookEventLog.id)';
+< COMMENT ON COLUMN public.webhook_deliveries.event_type IS 'Event-Typ, z.B. document.created';
+< COMMENT ON COLUMN public.webhook_deliveries.id IS 'Eindeutiger Zustellungs-Bezeichner';
+< COMMENT ON COLUMN public.webhook_deliveries.last_attempt_at IS 'Zeitstempel des letzten Zustellversuchs';
+< COMMENT ON COLUMN public.webhook_deliveries.max_attempts IS 'Maximale Anzahl Versuche bevor DLQ';
+< COMMENT ON COLUMN public.webhook_deliveries.next_retry_at IS 'Geplanter Zeitpunkt fuer den naechsten Retry';
+< COMMENT ON COLUMN public.webhook_deliveries.payload IS 'Vollstaendiges Event-Payload';
+< COMMENT ON COLUMN public.webhook_deliveries.response_body IS 'Gekuerzte HTTP-Antwort (max 1000 Zeichen)';
+< COMMENT ON COLUMN public.webhook_deliveries.response_status_code IS 'HTTP-Statuscode der letzten Antwort';
+< COMMENT ON COLUMN public.webhook_deliveries.status IS 'Zustellstatus: pending, delivered, failed, dlq';
+2994,2995c3007,3008
+< COMMENT ON COLUMN public.webhook_endpoints.event_types IS 'Abonnierte Event-Typen (leer = alle Events)';
+< COMMENT ON COLUMN public.webhook_endpoints.headers IS 'Optionale HTTP-Header fuer Zustellungen';
+---
+> COMMENT ON COLUMN public.webhook_endpoints.event_types IS 'Abonnierte Event-Typen, z.B. ["document.created"]. Leer = alle Events.';
+> COMMENT ON COLUMN public.webhook_endpoints.headers IS 'Optionale benutzerdefinierte HTTP-Header fuer Zustellungen';
+2997,2998c3010,3011
+< COMMENT ON COLUMN public.webhook_endpoints.is_active IS 'Aktiv/Inaktiv-Schalter';
+< COMMENT ON COLUMN public.webhook_endpoints.retry_policy IS 'Retry-Richtlinie: max_retries, backoff_factor, timeout_seconds';
+---
+> COMMENT ON COLUMN public.webhook_endpoints.is_active IS 'Aktiv/Inaktiv-Schalter fuer Soft-Delete';
+> COMMENT ON COLUMN public.webhook_endpoints.retry_policy IS 'Retry-Richtlinie: {max_retries, backoff_factor, timeout_seconds}';
+3000c3013
+< COMMENT ON COLUMN public.webhook_endpoints.url IS 'Ziel-URL fuer Webhook-Zustellungen';
+---
+> COMMENT ON COLUMN public.webhook_endpoints.url IS 'Ziel-URL fuer Webhook-Zustellungen (max 2000 Zeichen)';
+3004c3017
+< COMMENT ON COLUMN public.webhook_event_log.payload IS 'Vollstaendiges Event-Payload fuer Replay-Zustellungen';
+---
+> COMMENT ON COLUMN public.webhook_event_log.payload IS 'Vollstaendiges Event-Payload fuer spaetere Replay-Zustellungen';
+3018a3032
+> COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
+3019a3034
+> COMMENT ON EXTENSION unaccent IS 'text search dictionary that removes accents';
+3033,3034d3047
+< COMMENT ON TABLE public.dashboard_builder_configs IS 'Dashboard-Builder: Benutzerdefinierte Dashboard-Konfigurationen';
+< COMMENT ON TABLE public.dashboard_builder_widgets IS 'Dashboard-Builder: Widget-Instanzen auf Dashboards';
+3041a3055
+> COMMENT ON TABLE public.event_log IS 'Event Bus Historie für Audit und Replay';
+3051,3052d3064
+< COMMENT ON TABLE public.integration_configs IS 'Konfiguration und aktueller Status externer Integrationen pro Mandant';
+< COMMENT ON TABLE public.integration_sync_logs IS 'Detaillierte Sync-Protokolle mit Statistiken pro Synchronisations-Lauf';
+3054c3066,3067
+< COMMENT ON TABLE public.notification_rules IS 'Benutzerdefinierte Notification-Regeln fuer Events';
+---
+> COMMENT ON TABLE public.llm_cache IS 'Semantisches LLM-Antwort-Caching';
+> COMMENT ON TABLE public.notification_rules IS 'Benutzerdefinierte Notification-Regeln für Events';
+3062c3075,3080
+< COMMENT ON TABLE public.portfolio_snapshots IS 'Monatliche Vermoegenssnapshots fuer historische Analyse';
+---
+> COMMENT ON TABLE public.portfolio_snapshots IS 'Monatliche Vermögenssnapshots für historische Analyse';
+> COMMENT ON TABLE public.privat_coverage_gaps IS 'Versicherungslücken-Analyse';
+> COMMENT ON TABLE public.privat_early_warnings IS 'Proaktive Warnungen bei zukuenftigen Problemen';
+> COMMENT ON TABLE public.privat_kpi_history IS 'Tägliche KPI-Snapshots für Trend-Analyse';
+> COMMENT ON TABLE public.privat_projections IS 'Vorausberechnete KPI-Projektionen';
+> COMMENT ON TABLE public.privat_recurring_payments IS 'Erkannte wiederkehrende Zahlungen';
+3076d3093
+< COMMENT ON TABLE public.webhook_deliveries IS 'Zustellungsprotokoll fuer Outbound-Webhook-Events mit DLQ';
+3078a3096,3097
+> CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+> CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+3094c3113
+< CREATE FUNCTION public.kpi_history_utc_day(ts timestamp with time zone) RETURNS date LANGUAGE sql IMMUTABLE AS $$ SELECT (ts AT TIME ZONE 'UTC')::date $$;
+---
+> CREATE FUNCTION public.normalize_german_text(input_text text) RETURNS text LANGUAGE plpgsql IMMUTABLE AS $$ BEGIN RETURN unaccent(lower(trim(input_text)));
+3109c3128,3129
+< CREATE INDEX idx_documents_owner_id_rls ON public.documents USING btree (owner_id) WHERE (deleted_at IS NULL);
+---
+> CREATE FUNCTION public.update_updated_at_column() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = CURRENT_TIMESTAMP;
+> CREATE INDEX idx_documents_owner_id_rls ON public.documents USING btree (owner_id);
+3163d3182
+< CREATE INDEX ix_ai_confidence_thresholds_company_id_rls ON public.ai_confidence_thresholds USING btree (company_id);
+3173,3179d3191
+< CREATE INDEX ix_ai_decisions_company_id_rls ON public.ai_decisions USING btree (company_id);
+< CREATE INDEX ix_ai_decisions_confidence_level ON public.ai_decisions USING btree (confidence_level);
+< CREATE INDEX ix_ai_decisions_created_at ON public.ai_decisions USING btree (created_at);
+< CREATE INDEX ix_ai_decisions_decision_type ON public.ai_decisions USING btree (decision_type);
+< CREATE INDEX ix_ai_decisions_document_id ON public.ai_decisions USING btree (document_id);
+< CREATE INDEX ix_ai_decisions_pending_review ON public.ai_decisions USING btree (decision_type, requires_review, is_final) WHERE ((requires_review = true) AND (is_final = false));
+< CREATE INDEX ix_ai_decisions_requires_review ON public.ai_decisions USING btree (requires_review);
+3183d3194
+< CREATE INDEX ix_ai_feedback_decision_id ON public.ai_learning_feedback USING btree (ai_decision_id);
+3185d3195
+< CREATE INDEX ix_ai_feedback_processed ON public.ai_learning_feedback USING btree (processed_for_learning);
+3187d3196
+< CREATE INDEX ix_ai_learning_feedback_company_id_rls ON public.ai_learning_feedback USING btree (company_id);
+3190d3198
+< CREATE INDEX ix_ai_thresholds_decision_type ON public.ai_confidence_thresholds USING btree (decision_type);
+3316,3318d3323
+< CREATE INDEX ix_bank_accounts_active ON public.bank_accounts USING btree (company_id, iban) WHERE (deleted_at IS NULL);
+< CREATE INDEX ix_bank_accounts_company_id ON public.bank_accounts USING btree (company_id);
+< CREATE INDEX ix_bank_accounts_company_id_is_active ON public.bank_accounts USING btree (company_id, is_active);
+3329d3333
+< CREATE INDEX ix_bank_imports_company_id ON public.bank_imports USING btree (company_id);
+3381d3384
+< CREATE INDEX ix_bpmn_process_instances_parent_instance_id ON public.bpmn_process_instances USING btree (parent_instance_id);
+3440d3442
+< CREATE INDEX ix_business_entities_row_version ON public.business_entities USING btree (row_version);
+3494,3498d3495
+< CREATE INDEX ix_cdc_logs_company_id ON public.change_data_capture_logs USING btree (company_id);
+< CREATE INDEX ix_cdc_logs_operation ON public.change_data_capture_logs USING btree (operation);
+< CREATE INDEX ix_cdc_logs_processed ON public.change_data_capture_logs USING btree (processed);
+< CREATE INDEX ix_cdc_logs_source_id ON public.change_data_capture_logs USING btree (source_id);
+< CREATE INDEX ix_cdc_logs_source_table ON public.change_data_capture_logs USING btree (source_table);
+3501a3499,3503
+> CREATE INDEX ix_change_data_capture_logs_company_id ON public.change_data_capture_logs USING btree (company_id);
+> CREATE INDEX ix_change_data_capture_logs_operation ON public.change_data_capture_logs USING btree (operation);
+> CREATE INDEX ix_change_data_capture_logs_processed ON public.change_data_capture_logs USING btree (processed);
+> CREATE INDEX ix_change_data_capture_logs_source_id ON public.change_data_capture_logs USING btree (source_id);
+> CREATE INDEX ix_change_data_capture_logs_source_table ON public.change_data_capture_logs USING btree (source_table);
+3515,3516d3516
+< CREATE INDEX ix_cluster_memberships_cluster_id ON public.document_cluster_memberships USING btree (cluster_id);
+< CREATE INDEX ix_cluster_memberships_document_id ON public.document_cluster_memberships USING btree (document_id);
+3542d3541
+< CREATE INDEX ix_companies_row_version ON public.companies USING btree (row_version);
+3598,3601c3597
+< CREATE INDEX ix_coverage_gaps_insurance_type ON public.privat_coverage_gaps USING btree (insurance_type);
+< CREATE INDEX ix_coverage_gaps_priority ON public.privat_coverage_gaps USING btree (priority_score) WHERE (is_resolved = false);
+< CREATE INDEX ix_coverage_gaps_severity ON public.privat_coverage_gaps USING btree (severity);
+< CREATE INDEX ix_coverage_gaps_space_id ON public.privat_coverage_gaps USING btree (space_id);
+---
+> CREATE INDEX ix_coverage_gaps_priority ON public.privat_coverage_gaps USING btree (priority_score);
+3786a3783,3784
+> CREATE INDEX ix_document_cluster_memberships_cluster_id ON public.document_cluster_memberships USING btree (cluster_id);
+> CREATE INDEX ix_document_cluster_memberships_document_id ON public.document_cluster_memberships USING btree (document_id);
+3797,3798d3794
+< CREATE INDEX ix_document_groups_company_group_type ON public.document_groups USING btree (company_id, group_type);
+< CREATE INDEX ix_document_groups_company_id ON public.document_groups USING btree (company_id);
+3859,3860d3854
+< CREATE INDEX ix_documents_custom_field_values_gin ON public.documents USING gin (custom_field_values);
+< CREATE INDEX ix_documents_custom_fields_gin ON public.documents USING gin (custom_field_values jsonb_path_ops) WHERE (custom_field_values IS NOT NULL);
+3861a3856
+> CREATE INDEX ix_documents_deleted_at ON public.documents USING btree (deleted_at);
+3886d3880
+< CREATE INDEX ix_documents_row_version ON public.documents USING btree (row_version);
+3893,3894c3887
+< CREATE INDEX ix_documents_status_not_deleted ON public.documents USING btree (status, deleted_at) WHERE (deleted_at IS NULL);
+< CREATE INDEX ix_documents_summary_generated ON public.documents USING btree (company_id, summary_generated_at) WHERE (summary IS NOT NULL);
+---
+> CREATE INDEX ix_documents_status_not_deleted ON public.documents USING btree (status);
+3902d3894
+< CREATE INDEX ix_domain_events_chain_hash ON public.domain_events USING btree (chain_hash);
+3920,3921d3911
+< CREATE INDEX ix_dunning_records_company_id ON public.dunning_records USING btree (company_id);
+< CREATE INDEX ix_dunning_records_company_id_status ON public.dunning_records USING btree (company_id, status);
+3931d3920
+< CREATE INDEX ix_early_warnings_breach_date ON public.privat_early_warnings USING btree (breach_date);
+3933,3935d3921
+< CREATE INDEX ix_early_warnings_kpi_name ON public.privat_early_warnings USING btree (kpi_name);
+< CREATE INDEX ix_early_warnings_severity ON public.privat_early_warnings USING btree (severity);
+< CREATE INDEX ix_early_warnings_space_id ON public.privat_early_warnings USING btree (space_id);
+4017c4003
+< CREATE INDEX ix_event_log_correlation_id ON public.event_log USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+---
+> CREATE INDEX ix_event_log_correlation_id ON public.event_log USING btree (correlation_id);
+4019d4004
+< CREATE INDEX ix_event_log_event_id ON public.event_log USING btree (event_id);
+4022c4007
+< CREATE INDEX ix_event_log_space_id ON public.event_log USING btree (space_id) WHERE (space_id IS NOT NULL);
+---
+> CREATE INDEX ix_event_log_space_id ON public.event_log USING btree (space_id);
+4024c4009
+< CREATE INDEX ix_event_log_user_id ON public.event_log USING btree (user_id) WHERE (user_id IS NOT NULL);
+---
+> CREATE INDEX ix_event_log_user_id ON public.event_log USING btree (user_id);
+4044,4046d4028
+< CREATE INDEX ix_feature_toggle_history_changed_by_id ON public.feature_toggle_history USING btree (changed_by_id);
+< CREATE INDEX ix_feature_toggle_history_created_at ON public.feature_toggle_history USING btree (created_at);
+< CREATE INDEX ix_feature_toggle_history_flag_name ON public.feature_toggle_history USING btree (flag_name);
+4077d4058
+< CREATE INDEX ix_fraud_alert_company_id ON public.fraud_alerts USING btree (company_id);
+4080,4081d4060
+< CREATE INDEX ix_fraud_alert_document_id ON public.fraud_alerts USING btree (document_id);
+< CREATE INDEX ix_fraud_alert_entity_id ON public.fraud_alerts USING btree (entity_id);
+4082a4062,4066
+> CREATE INDEX ix_fraud_alerts_alert_type ON public.fraud_alerts USING btree (alert_type);
+> CREATE INDEX ix_fraud_alerts_company_id ON public.fraud_alerts USING btree (company_id);
+> CREATE INDEX ix_fraud_alerts_document_id ON public.fraud_alerts USING btree (document_id);
+> CREATE INDEX ix_fraud_alerts_entity_id ON public.fraud_alerts USING btree (entity_id);
+> CREATE INDEX ix_fraud_alerts_invoice_id ON public.fraud_alerts USING btree (invoice_id);
+4207a4192
+> CREATE INDEX ix_integration_configs_company_id ON public.integration_configs USING btree (company_id);
+4208a4194,4195
+> CREATE INDEX ix_integration_sync_logs_company_id ON public.integration_sync_logs USING btree (company_id);
+> CREATE INDEX ix_integration_sync_logs_integration_config_id ON public.integration_sync_logs USING btree (integration_config_id);
+4227d4213
+< CREATE INDEX ix_invoice_tracking_row_version ON public.invoice_tracking USING btree (row_version);
+4286d4271
+< CREATE INDEX ix_kpi_history_kpi_name ON public.privat_kpi_history USING btree (kpi_name);
+4288d4272
+< CREATE INDEX ix_kpi_history_space_id ON public.privat_kpi_history USING btree (space_id);
+4290d4273
+< CREATE INDEX ix_kpi_history_trend_lookup ON public.privat_kpi_history USING btree (space_id, kpi_name, recorded_at DESC);
+4310c4293
+< CREATE INDEX ix_llm_cache_expires_at ON public.llm_cache USING btree (expires_at) WHERE (expires_at IS NOT NULL);
+---
+> CREATE INDEX ix_llm_cache_expires_at ON public.llm_cache USING btree (expires_at);
+4313d4295
+< CREATE INDEX ix_llm_cache_prompt_hash ON public.llm_cache USING btree (prompt_hash);
+4355,4356d4336
+< CREATE INDEX ix_notification_rules_conditions_gin ON public.notification_rules USING gin (conditions jsonb_path_ops);
+< CREATE INDEX ix_notification_rules_enabled ON public.notification_rules USING btree (enabled) WHERE (enabled = true);
+4409d4388
+< CREATE INDEX ix_ocr_model_deployments_company_id ON public.ocr_model_deployments USING btree (company_id);
+4430,4431d4408
+< CREATE INDEX ix_ocr_training_batch_items_company_id ON public.ocr_training_batch_items USING btree (company_id);
+< CREATE INDEX ix_ocr_training_batch_items_company_status ON public.ocr_training_batch_items USING btree (company_id, status);
+4435,4436d4411
+< CREATE INDEX ix_ocr_training_batches_company_id ON public.ocr_training_batches USING btree (company_id);
+< CREATE INDEX ix_ocr_training_batches_company_status ON public.ocr_training_batches USING btree (company_id, status);
+4442,4443d4416
+< CREATE INDEX ix_ocr_training_samples_company_id ON public.ocr_training_samples USING btree (company_id);
+< CREATE INDEX ix_ocr_training_samples_company_status ON public.ocr_training_samples USING btree (company_id, status);
+4489a4463
+> CREATE INDEX ix_partition_management_table_name ON public.partition_management USING btree (table_name);
+4495d4468
+< CREATE INDEX ix_payment_batches_company_id ON public.payment_batches USING btree (company_id);
+4503d4475
+< CREATE INDEX ix_payment_orders_company_id ON public.payment_orders USING btree (company_id);
+4585a4558,4560
+> CREATE INDEX ix_privat_coverage_gaps_insurance_type ON public.privat_coverage_gaps USING btree (insurance_type);
+> CREATE INDEX ix_privat_coverage_gaps_severity ON public.privat_coverage_gaps USING btree (severity);
+> CREATE INDEX ix_privat_coverage_gaps_space_id ON public.privat_coverage_gaps USING btree (space_id);
+4598a4574,4577
+> CREATE INDEX ix_privat_early_warnings_breach_date ON public.privat_early_warnings USING btree (breach_date);
+> CREATE INDEX ix_privat_early_warnings_kpi_name ON public.privat_early_warnings USING btree (kpi_name);
+> CREATE INDEX ix_privat_early_warnings_severity ON public.privat_early_warnings USING btree (severity);
+> CREATE INDEX ix_privat_early_warnings_space_id ON public.privat_early_warnings USING btree (space_id);
+4612d4590
+< CREATE INDEX ix_privat_insurances_cancellation_deadline ON public.privat_insurances USING btree (cancellation_deadline) WHERE (cancellation_deadline IS NOT NULL);
+4615d4592
+< CREATE INDEX ix_privat_insurances_last_kpi_calculation ON public.privat_insurances USING btree (last_kpi_calculation);
+4620a4598,4599
+> CREATE INDEX ix_privat_kpi_history_kpi_name ON public.privat_kpi_history USING btree (kpi_name);
+> CREATE INDEX ix_privat_kpi_history_space_id ON public.privat_kpi_history USING btree (space_id);
+4623,4624d4601
+< CREATE INDEX ix_privat_loans_last_kpi_calculation ON public.privat_loans USING btree (last_kpi_calculation);
+< CREATE INDEX ix_privat_loans_projected_payoff_date ON public.privat_loans USING btree (projected_payoff_date) WHERE (projected_payoff_date IS NOT NULL);
+4627c4604,4605
+< CREATE INDEX ix_privat_properties_calculated_yield ON public.privat_properties USING btree (calculated_yield) WHERE (calculated_yield IS NOT NULL);
+---
+> CREATE INDEX ix_privat_projections_kpi_name ON public.privat_projections USING btree (kpi_name);
+> CREATE INDEX ix_privat_projections_space_id ON public.privat_projections USING btree (space_id);
+4630d4607
+< CREATE INDEX ix_privat_properties_last_kpi_calculation ON public.privat_properties USING btree (last_kpi_calculation);
+4631a4609,4611
+> CREATE INDEX ix_privat_recurring_payments_category ON public.privat_recurring_payments USING btree (category);
+> CREATE INDEX ix_privat_recurring_payments_frequency ON public.privat_recurring_payments USING btree (frequency);
+> CREATE INDEX ix_privat_recurring_payments_space_id ON public.privat_recurring_payments USING btree (space_id);
+4654,4655d4633
+< CREATE INDEX ix_privat_vehicles_last_kpi_calculation ON public.privat_vehicles USING btree (last_kpi_calculation);
+< CREATE INDEX ix_privat_vehicles_next_service_date ON public.privat_vehicles USING btree (next_service_date) WHERE (next_service_date IS NOT NULL);
+4710,4711d4687
+< CREATE INDEX ix_projections_kpi_name ON public.privat_projections USING btree (kpi_name);
+< CREATE INDEX ix_projections_space_id ON public.privat_projections USING btree (space_id);
+4713c4689
+< CREATE INDEX ix_projections_with_breaches ON public.privat_projections USING btree (space_id) WHERE ((threshold_breaches IS NOT NULL) AND (threshold_breaches <> '[]'::jsonb));
+---
+> CREATE INDEX ix_projections_with_breaches ON public.privat_projections USING btree (space_id) WHERE (threshold_breaches IS NOT NULL);
+4785d4760
+< CREATE INDEX ix_recurring_payments_category ON public.privat_recurring_payments USING btree (category);
+4787,4789c4762
+< CREATE INDEX ix_recurring_payments_frequency ON public.privat_recurring_payments USING btree (frequency);
+< CREATE INDEX ix_recurring_payments_next_expected ON public.privat_recurring_payments USING btree (next_expected) WHERE (is_active = true);
+< CREATE INDEX ix_recurring_payments_space_id ON public.privat_recurring_payments USING btree (space_id);
+---
+> CREATE INDEX ix_recurring_payments_next_expected ON public.privat_recurring_payments USING btree (next_expected);
+4960d4932
+< CREATE INDEX ix_sync_logs_company_id ON public.integration_sync_logs USING btree (company_id);
+5104,5109c5076
+< CREATE INDEX ix_webhook_deliveries_company_event ON public.webhook_deliveries USING btree (company_id, event_type);
+< CREATE INDEX ix_webhook_deliveries_company_id ON public.webhook_deliveries USING btree (company_id);
+< CREATE INDEX ix_webhook_deliveries_endpoint_id ON public.webhook_deliveries USING btree (endpoint_id);
+< CREATE INDEX ix_webhook_deliveries_endpoint_status ON public.webhook_deliveries USING btree (endpoint_id, status);
+< CREATE INDEX ix_webhook_deliveries_event_id ON public.webhook_deliveries USING btree (event_id);
+< CREATE INDEX ix_webhook_deliveries_retry_pending ON public.webhook_deliveries USING btree (status, next_retry_at) WHERE (((status)::text = ANY ((ARRAY['pending'::character varying, 'failed'::character varying])::text[])) AND (next_retry_at IS NOT NULL));
+---
+> CREATE INDEX ix_webhook_deliveries_next_retry_at ON public.webhook_deliveries USING btree (next_retry_at) WHERE (((status)::text = 'pending'::text) AND (next_retry_at IS NOT NULL));
+5110a5078
+> CREATE INDEX ix_webhook_deliveries_subscription_id ON public.webhook_deliveries USING btree (subscription_id);
+5117c5085,5087
+< CREATE INDEX ix_webhook_sub_deliveries_next_retry_at ON public.webhook_subscription_deliveries USING btree (next_retry_at) WHERE (((status)::text = 'pending'::text) AND (next_retry_at IS NOT NULL));
+---
+> CREATE INDEX ix_webhook_sub_deliveries_created_at ON public.webhook_subscription_deliveries USING btree (created_at);
+> CREATE INDEX ix_webhook_sub_deliveries_event_id ON public.webhook_subscription_deliveries USING btree (event_id);
+> CREATE INDEX ix_webhook_sub_deliveries_next_retry_at ON public.webhook_subscription_deliveries USING btree (next_retry_at);
+5297,5298c5267,5268
+< CREATE TABLE public.active_learning_metrics ( id uuid DEFAULT gen_random_uuid() NOT NULL, metric_date date NOT NULL, company_id uuid NOT NULL, total_reviewed integer DEFAULT 0 NOT NULL, total_corrections integer DEFAULT 0 NOT NULL, estimated_errors_prevented integer DEFAULT 0 NOT NULL, avg_confidence_before double precision, avg_confidence_after double precision, top_error_patterns jsonb DEFAULT '[]'::jsonb, created_at timestamp with time zone DEFAULT now() NOT NULL );
+< CREATE TABLE public.active_learning_queue ( id uuid DEFAULT gen_random_uuid() NOT NULL, document_id uuid NOT NULL, company_id uuid NOT NULL, priority_score double precision NOT NULL, uncertainty_score double precision NOT NULL, estimated_impact double precision DEFAULT '0'::double precision NOT NULL, queue_reason character varying(100) NOT NULL, ocr_backend character varying(50), ocr_confidence double precision, field_focus jsonb DEFAULT '[]'::jsonb, status character varying(20) DEFAULT 'queued'::character varying NOT NULL, reviewed_by_id uuid, reviewed_at timestamp with time zone, correction_data jsonb, training_batch_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.active_learning_metrics ( id uuid NOT NULL, metric_date date NOT NULL, company_id uuid NOT NULL, total_reviewed integer NOT NULL, total_corrections integer NOT NULL, estimated_errors_prevented integer NOT NULL, avg_confidence_before double precision, avg_confidence_after double precision, top_error_patterns jsonb NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL );
+> CREATE TABLE public.active_learning_queue ( id uuid NOT NULL, document_id uuid NOT NULL, company_id uuid NOT NULL, reviewed_by_id uuid, priority_score double precision NOT NULL, uncertainty_score double precision NOT NULL, estimated_impact double precision NOT NULL, queue_reason character varying(100) NOT NULL, ocr_backend character varying(50), ocr_confidence double precision, field_focus jsonb NOT NULL, status character varying(20) NOT NULL, reviewed_at timestamp with time zone, correction_data jsonb, training_batch_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL );
+5311c5281
+< CREATE TABLE public.ai_decisions ( id uuid DEFAULT gen_random_uuid() NOT NULL, company_id uuid, document_id uuid, decision_type character varying(50) NOT NULL, decision_value jsonb NOT NULL, confidence double precision NOT NULL, calibrated_confidence double precision, confidence_level character varying(20) NOT NULL, explanation jsonb, features_used jsonb, model_version character varying(50), auto_applied boolean DEFAULT false, requires_review boolean DEFAULT true, is_final boolean DEFAULT false, reviewed_by_id uuid, reviewed_at timestamp with time zone, review_action character varying(20), review_comment text, modified_value jsonb, processing_time_ms integer, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), what_if_data jsonb );
+---
+> CREATE TABLE public.ai_decisions ( id uuid DEFAULT gen_random_uuid() NOT NULL, company_id uuid, document_id uuid, decision_type character varying(50) NOT NULL, decision_value jsonb NOT NULL, confidence double precision NOT NULL, calibrated_confidence double precision, confidence_level character varying(20) NOT NULL, explanation jsonb, features_used jsonb, model_version character varying(50), auto_applied boolean DEFAULT false, requires_review boolean DEFAULT true, is_final boolean DEFAULT false, reviewed_by_id uuid, reviewed_at timestamp with time zone, review_action character varying(20), review_comment text, modified_value jsonb, processing_time_ms integer, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now() );
+5318,5319c5288,5289
+< CREATE TABLE public.anomalies ( id uuid DEFAULT gen_random_uuid() NOT NULL, rule_id uuid, anomaly_type character varying(50) NOT NULL, severity character varying(20) NOT NULL, title character varying(500) NOT NULL, description text, source_table character varying(100) NOT NULL, source_id uuid NOT NULL, related_ids jsonb DEFAULT '[]'::jsonb, score double precision DEFAULT 0.0, details jsonb DEFAULT '{}'::jsonb, status character varying(20) DEFAULT 'open'::character varying NOT NULL, resolved_at timestamp with time zone, resolved_by_id uuid, resolution_note text, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now(), CONSTRAINT ck_anomalies_score_range CHECK (((score >= (0)::double precision) AND (score <= (1)::double precision))), CONSTRAINT ck_anomalies_severity CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[]))), CONSTRAINT ck_anomalies_status CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'investigating'::character varying, 'resolved'::character varying, 'false_positive'::character varying])::text[]))) );
+< CREATE TABLE public.anomaly_rules ( id uuid DEFAULT gen_random_uuid() NOT NULL, name character varying(255) NOT NULL, description text, rule_type character varying(50) NOT NULL, config jsonb DEFAULT '{}'::jsonb NOT NULL, severity character varying(20) DEFAULT 'warning'::character varying NOT NULL, is_active boolean DEFAULT true NOT NULL, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), CONSTRAINT ck_anomaly_rules_rule_type CHECK (((rule_type)::text = ANY ((ARRAY['duplicate_invoice'::character varying, 'amount_outlier'::character varying, 'supplier_change'::character varying, 'missing_chain_doc'::character varying, 'unusual_frequency'::character varying, 'amount_threshold'::character varying])::text[]))), CONSTRAINT ck_anomaly_rules_severity CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[]))) );
+---
+> CREATE TABLE public.anomalies ( id uuid NOT NULL, rule_id uuid, anomaly_type character varying(50) NOT NULL, severity character varying(20) NOT NULL, title character varying(500) NOT NULL, description text, source_table character varying(100) NOT NULL, source_id uuid NOT NULL, related_ids jsonb, score double precision, details jsonb, status character varying(20) NOT NULL, resolved_at timestamp with time zone, resolved_by_id uuid, resolution_note text, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now(), CONSTRAINT ck_anomalies_score_range CHECK (((score >= (0)::double precision) AND (score <= (1)::double precision))), CONSTRAINT ck_anomalies_severity CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[]))), CONSTRAINT ck_anomalies_status CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'investigating'::character varying, 'resolved'::character varying, 'false_positive'::character varying])::text[]))) );
+> CREATE TABLE public.anomaly_rules ( id uuid NOT NULL, name character varying(255) NOT NULL, description text, rule_type character varying(50) NOT NULL, config jsonb NOT NULL, severity character varying(20) NOT NULL, is_active boolean NOT NULL, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), CONSTRAINT ck_anomaly_rules_rule_type CHECK (((rule_type)::text = ANY ((ARRAY['duplicate_invoice'::character varying, 'amount_outlier'::character varying, 'supplier_change'::character varying, 'missing_chain_doc'::character varying, 'unusual_frequency'::character varying, 'amount_threshold'::character varying])::text[]))), CONSTRAINT ck_anomaly_rules_severity CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[]))) );
+5323c5293
+< CREATE TABLE public.approval_chain_templates ( id uuid NOT NULL, company_id uuid NOT NULL, name character varying(255) NOT NULL, description text, steps_config jsonb DEFAULT '[]'::jsonb NOT NULL, is_default boolean, is_active boolean, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid );
+---
+> CREATE TABLE public.approval_chain_templates ( id uuid NOT NULL, company_id uuid NOT NULL, name character varying(255) NOT NULL, description text, steps_config jsonb NOT NULL, is_default boolean, is_active boolean, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid );
+5327c5297
+< CREATE TABLE public.approval_matrices ( id uuid NOT NULL, company_id uuid NOT NULL, department character varying(100) NOT NULL, document_type character varying(50), amount_min numeric(15,2) DEFAULT '0'::numeric NOT NULL, amount_max numeric(15,2), chain_template_id uuid, four_eyes_required boolean, min_approvers integer, priority integer, is_active boolean, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid );
+---
+> CREATE TABLE public.approval_matrices ( id uuid NOT NULL, company_id uuid NOT NULL, department character varying(100) NOT NULL, document_type character varying(50), amount_min numeric(15,2) NOT NULL, amount_max numeric(15,2), chain_template_id uuid, four_eyes_required boolean, min_approvers integer, priority integer, is_active boolean, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid );
+5332c5302
+< CREATE TABLE public.audit_logs ( id uuid NOT NULL, user_id uuid, action character varying(100) NOT NULL, success boolean DEFAULT true NOT NULL, resource_type character varying(50), resource_id uuid, ip_address character varying(45), user_agent character varying(255), request_method character varying(10), request_path character varying(255), audit_metadata jsonb DEFAULT '{}'::jsonb, created_at timestamp with time zone DEFAULT now(), sequence_number bigint, integrity_hash character varying(64), previous_hash character varying(64), gobd_relevant boolean DEFAULT false, document_hash character varying(128), action_details jsonb, company_id uuid, error_message character varying(2000) );
+---
+> CREATE TABLE public.audit_logs ( id uuid NOT NULL, user_id uuid, action character varying(100) NOT NULL, resource_type character varying(50), resource_id uuid, ip_address character varying(45), user_agent character varying(255), request_method character varying(10), request_path character varying(255), audit_metadata jsonb DEFAULT '{}'::jsonb, created_at timestamp with time zone DEFAULT now(), sequence_number bigint, integrity_hash character varying(64), previous_hash character varying(64), gobd_relevant boolean DEFAULT false, document_hash character varying(128), action_details jsonb, company_id uuid, success boolean, error_message character varying(2000) );
+5343c5313
+< CREATE TABLE public.bank_accounts ( id uuid NOT NULL, user_id uuid, account_name character varying(255) NOT NULL, iban character varying(34) NOT NULL, bic character varying(11), bank_name character varying(255), account_holder character varying(255), account_type character varying(50), blz character varying(8), fints_url character varying(500), fints_version character varying(10), login_id_encrypted character varying(500), pin_hash character varying(255), tan_method character varying(50), tan_media character varying(100), tan_mechanism_id character varying(20), last_sync_at timestamp with time zone, sync_from_date date, auto_sync_enabled boolean, sync_interval_hours integer, current_balance numeric(15,2), balance_date timestamp with time zone, currency character varying(3), is_active boolean, connection_status character varying(50), last_error text, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone, company_id uuid NOT NULL );
+---
+> CREATE TABLE public.bank_accounts ( id uuid NOT NULL, user_id uuid, account_name character varying(255) NOT NULL, iban character varying(34) NOT NULL, bic character varying(11), bank_name character varying(255), account_holder character varying(255), account_type character varying(50), blz character varying(8), fints_url character varying(500), fints_version character varying(10), login_id_encrypted character varying(500), pin_hash character varying(255), tan_method character varying(50), tan_media character varying(100), tan_mechanism_id character varying(20), last_sync_at timestamp with time zone, sync_from_date date, auto_sync_enabled boolean, sync_interval_hours integer, current_balance numeric(15,2), balance_date timestamp with time zone, currency character varying(3), is_active boolean, connection_status character varying(50), last_error text, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone, company_id uuid );
+5345c5315
+< CREATE TABLE public.bank_imports ( id uuid NOT NULL, user_id uuid, bank_account_id uuid, filename character varying(255), file_hash character varying(64), file_size integer, format character varying(50) NOT NULL, format_variant character varying(100), status character varying(50), transaction_count integer, duplicate_count integer, error_count integer, errors jsonb, date_from date, date_to date, imported_at timestamp with time zone DEFAULT now(), processing_duration_ms integer, company_id uuid NOT NULL );
+---
+> CREATE TABLE public.bank_imports ( id uuid NOT NULL, user_id uuid, bank_account_id uuid, filename character varying(255), file_hash character varying(64), file_size integer, format character varying(50) NOT NULL, format_variant character varying(100), status character varying(50), transaction_count integer, duplicate_count integer, error_count integer, errors jsonb, date_from date, date_to date, imported_at timestamp with time zone DEFAULT now(), processing_duration_ms integer, company_id uuid );
+5347,5348c5317,5318
+< CREATE TABLE public.bank_transactions ( id uuid NOT NULL, bank_account_id uuid NOT NULL, import_id uuid, transaction_id character varying(100), booking_date date NOT NULL, value_date date NOT NULL, amount numeric(15,2) NOT NULL, currency character varying(3), counterparty_name character varying(255), counterparty_iban text, counterparty_bic text, counterparty_bank_name character varying(255), reference_text text, end_to_end_id character varying(35), mandate_id character varying(35), creditor_id character varying(35), transaction_type character varying(50), booking_text character varying(100), prima_nota character varying(20), parsed_invoice_numbers jsonb, parsed_customer_numbers jsonb, parsed_references jsonb, reconciliation_status character varying(50), matched_document_id uuid, matched_invoice_number character varying(100), match_confidence double precision, match_method character varying(50), matched_at timestamp with time zone, matched_by_id uuid, allocated_amount numeric(15,2), remaining_amount numeric(15,2), is_partial_payment boolean, parent_transaction_id uuid, raw_data jsonb, imported_at timestamp with time zone DEFAULT now(), created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now() );
+< CREATE TABLE public.barcode_detections ( id uuid NOT NULL, document_id uuid NOT NULL, code_type character varying(30) NOT NULL, category character varying(20) NOT NULL, raw_value character varying(4096) NOT NULL, parsed_data jsonb DEFAULT '{}'::jsonb NOT NULL, position_x integer DEFAULT 0 NOT NULL, position_y integer DEFAULT 0 NOT NULL, position_width integer DEFAULT 0 NOT NULL, position_height integer DEFAULT 0 NOT NULL, page_number integer DEFAULT 1 NOT NULL, confidence double precision DEFAULT '0'::double precision NOT NULL, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now(), CONSTRAINT ck_barcode_confidence_range CHECK (((confidence >= (0.0)::double precision) AND (confidence <= (1.0)::double precision))), CONSTRAINT ck_barcode_page_positive CHECK ((page_number >= 1)) );
+---
+> CREATE TABLE public.bank_transactions ( id uuid NOT NULL, bank_account_id uuid NOT NULL, import_id uuid, transaction_id character varying(100), booking_date date NOT NULL, value_date date NOT NULL, amount numeric(15,2) NOT NULL, currency character varying(3), counterparty_name character varying(255), counterparty_iban character varying(34), counterparty_bic character varying(11), counterparty_bank_name character varying(255), reference_text text, end_to_end_id character varying(35), mandate_id character varying(35), creditor_id character varying(35), transaction_type character varying(50), booking_text character varying(100), prima_nota character varying(20), parsed_invoice_numbers jsonb, parsed_customer_numbers jsonb, parsed_references jsonb, reconciliation_status character varying(50), matched_document_id uuid, matched_invoice_number character varying(100), match_confidence double precision, match_method character varying(50), matched_at timestamp with time zone, matched_by_id uuid, allocated_amount numeric(15,2), remaining_amount numeric(15,2), is_partial_payment boolean, parent_transaction_id uuid, raw_data jsonb, imported_at timestamp with time zone DEFAULT now(), created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now() );
+> CREATE TABLE public.barcode_detections ( id uuid NOT NULL, document_id uuid NOT NULL, code_type character varying(30) NOT NULL, category character varying(20) NOT NULL, raw_value character varying(4096) NOT NULL, parsed_data jsonb, position_x integer NOT NULL, position_y integer NOT NULL, position_width integer NOT NULL, position_height integer NOT NULL, page_number integer NOT NULL, confidence double precision NOT NULL, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now(), CONSTRAINT ck_barcode_confidence_range CHECK (((confidence >= (0.0)::double precision) AND (confidence <= (1.0)::double precision))), CONSTRAINT ck_barcode_page_positive CHECK ((page_number >= 1)) );
+5368c5338
+< CREATE TABLE public.business_entities ( id uuid NOT NULL, entity_type character varying(20) NOT NULL, name character varying(255) NOT NULL, display_name character varying(255), short_name character varying(50), vat_id text, tax_number text, trade_register character varying(50), iban text, bic text, bank_name character varying(100), street character varying(255), street_number character varying(20), postal_code character varying(10), city character varying(100), country character varying(2), phone character varying(30), fax character varying(30), email character varying(255), website character varying(255), name_aliases jsonb, address_patterns jsonb, email_domains jsonb, document_count integer, first_document_date timestamp with time zone, last_document_date timestamp with time zone, total_invoice_amount double precision, currency character varying(3), is_active boolean, verified boolean, confidence_score double precision, auto_detected boolean, notes text, custom_fields jsonb, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid, deleted_at timestamp with time zone, lexware_ids jsonb DEFAULT '{}'::jsonb, company_presence jsonb DEFAULT '[]'::jsonb, primary_customer_number character varying(50), primary_supplier_number character varying(50), risk_score double precision, risk_factors jsonb DEFAULT '{}'::jsonb, payment_behavior_score double precision, risk_calculated_at timestamp with time zone, default_folder_id uuid, row_version integer DEFAULT 1 NOT NULL, company_id uuid );
+---
+> CREATE TABLE public.business_entities ( id uuid NOT NULL, entity_type character varying(20) NOT NULL, name character varying(255) NOT NULL, display_name character varying(255), short_name character varying(50), vat_id character varying(20), tax_number character varying(30), trade_register character varying(50), iban character varying(34), bic character varying(11), bank_name character varying(100), street character varying(255), street_number character varying(20), postal_code character varying(10), city character varying(100), country character varying(2), phone character varying(30), fax character varying(30), email character varying(255), website character varying(255), name_aliases jsonb, address_patterns jsonb, email_domains jsonb, document_count integer, first_document_date timestamp with time zone, last_document_date timestamp with time zone, total_invoice_amount double precision, currency character varying(3), is_active boolean, verified boolean, confidence_score double precision, auto_detected boolean, notes text, custom_fields jsonb, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid, deleted_at timestamp with time zone, lexware_ids jsonb DEFAULT '{}'::jsonb, company_presence jsonb DEFAULT '[]'::jsonb, primary_customer_number character varying(50), primary_supplier_number character varying(50), risk_score double precision, risk_factors jsonb DEFAULT '{}'::jsonb, payment_behavior_score double precision, risk_calculated_at timestamp with time zone, default_folder_id uuid, company_id uuid );
+5379,5380c5349,5350
+< CREATE TABLE public.cdc_consumer_offsets ( id uuid NOT NULL, consumer_name character varying(100) NOT NULL, last_sequence_number bigint DEFAULT '0'::bigint, last_processed_at timestamp with time zone, status character varying(20) DEFAULT '''active'''::character varying, error_message text, config jsonb DEFAULT '{}'::jsonb, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now() );
+< CREATE TABLE public.change_data_capture_logs ( id uuid NOT NULL, source_table character varying(100) NOT NULL, source_id uuid NOT NULL, operation character varying(10) NOT NULL, old_data jsonb, new_data jsonb, changed_columns jsonb DEFAULT '[]'::jsonb, sequence_number bigint NOT NULL, processed boolean DEFAULT false, processed_at timestamp with time zone, consumer_id character varying(100), company_id uuid, user_id uuid, transaction_id character varying(100), created_at timestamp with time zone DEFAULT now() );
+---
+> CREATE TABLE public.cdc_consumer_offsets ( id uuid NOT NULL, consumer_name character varying(100) NOT NULL, last_sequence_number bigint, last_processed_at timestamp with time zone, status character varying(20), error_message text, config jsonb, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now() );
+> CREATE TABLE public.change_data_capture_logs ( id uuid NOT NULL, source_table character varying(100) NOT NULL, source_id uuid NOT NULL, operation character varying(10) NOT NULL, old_data jsonb, new_data jsonb, changed_columns jsonb, sequence_number bigint NOT NULL, processed boolean, processed_at timestamp with time zone, consumer_id character varying(100), company_id uuid, user_id uuid, transaction_id character varying(100), created_at timestamp with time zone DEFAULT now() );
+5384c5354
+< CREATE TABLE public.cluster_suggestions ( id uuid NOT NULL, document_id uuid NOT NULL, suggested_cluster_id uuid, suggested_entity_id uuid, suggested_category character varying(100), similarity_score double precision NOT NULL, reference_document_id uuid, status character varying(20) DEFAULT 'pending'::character varying NOT NULL, responded_at timestamp with time zone, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.cluster_suggestions ( id uuid NOT NULL, document_id uuid NOT NULL, suggested_cluster_id uuid, suggested_entity_id uuid, suggested_category character varying(100), similarity_score double precision NOT NULL, reference_document_id uuid, status character varying(20) NOT NULL, responded_at timestamp with time zone, company_id uuid NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL );
+5391c5361
+< CREATE TABLE public.companies ( id uuid NOT NULL, name character varying(255) NOT NULL, short_name character varying(50), display_name character varying(255), legal_form character varying(50), commercial_register character varying(100), court character varying(100), vat_id text, tax_number text, street character varying(255), street_number character varying(20), postal_code character varying(10), city character varying(100), country character varying(2) DEFAULT 'DE'::character varying, email character varying(255), phone character varying(50), website character varying(255), iban text, bic text, bank_name character varying(100), alternative_names jsonb DEFAULT '[]'::jsonb, default_currency character varying(3) DEFAULT 'EUR'::character varying, fiscal_year_start integer DEFAULT 1, kontenrahmen character varying(10) DEFAULT 'SKR03'::character varying, is_active boolean DEFAULT true, is_default boolean DEFAULT false, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid, deleted_at timestamp with time zone, subscription_tier character varying(50) DEFAULT 'free'::character varying NOT NULL, subscription_started_at timestamp with time zone, subscription_expires_at timestamp with time zone, billing_email character varying(255), billing_address jsonb DEFAULT '{}'::jsonb, payment_method character varying(50), max_users integer DEFAULT 5 NOT NULL, max_documents_per_month integer DEFAULT 100 NOT NULL, max_storage_gb integer DEFAULT 5 NOT NULL, features_enabled jsonb DEFAULT '["ocr", "search", "export"]'::jsonb NOT NULL, filing_rules jsonb DEFAULT '{}'::jsonb, row_version integer DEFAULT 1 NOT NULL );
+---
+> CREATE TABLE public.companies ( id uuid NOT NULL, name character varying(255) NOT NULL, short_name character varying(50), display_name character varying(255), legal_form character varying(50), commercial_register character varying(100), court character varying(100), vat_id character varying(20), tax_number character varying(50), street character varying(255), street_number character varying(20), postal_code character varying(10), city character varying(100), country character varying(2) DEFAULT 'DE'::character varying, email character varying(255), phone character varying(50), website character varying(255), iban character varying(34), bic character varying(11), bank_name character varying(100), alternative_names jsonb DEFAULT '[]'::jsonb, default_currency character varying(3) DEFAULT 'EUR'::character varying, fiscal_year_start integer DEFAULT 1, kontenrahmen character varying(10) DEFAULT 'SKR03'::character varying, is_active boolean DEFAULT true, is_default boolean DEFAULT false, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), created_by_id uuid, deleted_at timestamp with time zone, subscription_tier character varying(50) DEFAULT 'free'::character varying NOT NULL, subscription_started_at timestamp with time zone, subscription_expires_at timestamp with time zone, billing_email character varying(255), billing_address jsonb DEFAULT '{}'::jsonb, payment_method character varying(50), max_users integer DEFAULT 5 NOT NULL, max_documents_per_month integer DEFAULT 100 NOT NULL, max_storage_gb integer DEFAULT 5 NOT NULL, features_enabled jsonb DEFAULT '["ocr", "search", "export"]'::jsonb NOT NULL, filing_rules jsonb DEFAULT '{}'::jsonb );
+5411c5381
+< CREATE TABLE public.custom_field_definitions ( id uuid NOT NULL, name character varying(64) NOT NULL, label character varying(200) NOT NULL, description character varying(500), field_type character varying(20) NOT NULL, document_type character varying(50), required boolean DEFAULT false NOT NULL, default_value character varying(500), validation_rules jsonb, dropdown_options jsonb, lookup_entity character varying(100), sort_order integer DEFAULT 0 NOT NULL, is_searchable boolean DEFAULT true NOT NULL, is_filterable boolean DEFAULT true NOT NULL, company_id uuid NOT NULL, created_by uuid, is_active boolean DEFAULT true NOT NULL, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now() );
+---
+> CREATE TABLE public.custom_field_definitions ( id uuid NOT NULL, name character varying(64) NOT NULL, label character varying(200) NOT NULL, description character varying(500), field_type character varying(20) NOT NULL, document_type character varying(50), required boolean NOT NULL, default_value character varying(500), validation_rules jsonb, dropdown_options jsonb, lookup_entity character varying(100), sort_order integer NOT NULL, is_searchable boolean NOT NULL, is_filterable boolean NOT NULL, company_id uuid NOT NULL, created_by uuid, is_active boolean NOT NULL, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now() );
+5413,5414c5383,5384
+< CREATE TABLE public.dashboard_builder_configs ( id uuid DEFAULT gen_random_uuid() NOT NULL, company_id uuid NOT NULL, user_id uuid NOT NULL, name character varying(255) NOT NULL, description text, layout jsonb DEFAULT '[]'::jsonb NOT NULL, is_default boolean DEFAULT false NOT NULL, is_shared boolean DEFAULT false NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+< CREATE TABLE public.dashboard_builder_widgets ( id uuid DEFAULT gen_random_uuid() NOT NULL, dashboard_id uuid NOT NULL, widget_type character varying(50) NOT NULL, title character varying(255) NOT NULL, config jsonb DEFAULT '{}'::jsonb NOT NULL, data_source character varying(100) NOT NULL, refresh_interval_seconds integer DEFAULT 300 NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, CONSTRAINT ck_dashboard_builder_widget_refresh_min CHECK ((refresh_interval_seconds >= 30)), CONSTRAINT ck_dashboard_builder_widget_type CHECK (((widget_type)::text = ANY ((ARRAY['invoice_status'::character varying, 'cashflow_chart'::character varying, 'ocr_queue'::character varying, 'kpi_cards'::character varying, 'anomaly_summary'::character varying, 'recent_documents'::character varying, 'open_tasks'::character varying, 'integration_health'::character varying, 'active_learning_stats'::character varying])::text[]))) );
+---
+> CREATE TABLE public.dashboard_builder_configs ( id uuid NOT NULL, company_id uuid NOT NULL, user_id uuid NOT NULL, name character varying(255) NOT NULL, description text, layout jsonb NOT NULL, is_default boolean NOT NULL, is_shared boolean NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+> CREATE TABLE public.dashboard_builder_widgets ( id uuid NOT NULL, dashboard_id uuid NOT NULL, widget_type character varying(50) NOT NULL, title character varying(255) NOT NULL, config jsonb NOT NULL, data_source character varying(100) NOT NULL, refresh_interval_seconds integer NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, CONSTRAINT ck_dashboard_builder_widget_refresh_min CHECK ((refresh_interval_seconds >= 30)), CONSTRAINT ck_dashboard_builder_widget_type CHECK (((widget_type)::text = ANY ((ARRAY['invoice_status'::character varying, 'cashflow_chart'::character varying, 'ocr_queue'::character varying, 'kpi_cards'::character varying, 'anomaly_summary'::character varying, 'recent_documents'::character varying, 'open_tasks'::character varying, 'integration_health'::character varying, 'active_learning_stats'::character varying])::text[]))) );
+5424c5394
+< CREATE TABLE public.datev_buchungen ( id uuid NOT NULL, connection_id uuid NOT NULL, document_id uuid, company_id uuid NOT NULL, umsatz numeric(15,2), soll_haben character varying(1), konto character varying(10), gegenkonto character varying(10), bu_schluessel character varying(5), belegdatum date NOT NULL, belegfeld_1 character varying(36), belegfeld_2 character varying(12), buchungstext character varying(60), kostenstelle_1 character varying(20), kostenstelle_2 character varying(20), kostentraeger character varying(20), skonto numeric(15,2), leistungsdatum date, zahlungsbedingung character varying(20), waehrung character varying(3) NOT NULL, kurs numeric(12,6), basis_umsatz numeric(15,2), buchungs_guid character varying(36), ist_festgeschrieben boolean, festschreibung_datum timestamp with time zone, festschreibung_hash character varying(64), sync_status character varying(20) NOT NULL, datev_buchung_id character varying(50), synced_at timestamp with time zone, sync_error text, retry_count integer, suggestion_confidence double precision, suggestion_source character varying(20), original_suggestion_konto character varying(10), original_suggestion_gegenkonto character varying(10), user_korrektur boolean, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, created_by uuid, entity_id uuid, buchungsnummer integer, buchungsdatum date, valutadatum date, betrag_soll double precision NOT NULL, betrag_haben double precision NOT NULL, konto_soll character varying(10) NOT NULL, konto_haben character varying(10) NOT NULL, steuerschluessel character varying(5), belegnummer character varying(36), gobd_festgeschrieben boolean DEFAULT false, gobd_hash character varying(64), festgeschrieben_at timestamp with time zone, festgeschrieben_by uuid, CONSTRAINT ck_datev_buchung_soll_haben CHECK (((soll_haben)::text = ANY ((ARRAY['S'::character varying, 'H'::character varying])::text[]))), CONSTRAINT ck_datev_buchung_sync_status CHECK (((sync_status)::text = ANY ((ARRAY['pending'::character varying, 'synced'::character varying, 'failed'::character varying, 'conflict'::character varying])::text[]))), CONSTRAINT ck_datev_buchung_umsatz_positiv CHECK ((umsatz > (0)::numeric)) );
+---
+> CREATE TABLE public.datev_buchungen ( id uuid NOT NULL, connection_id uuid NOT NULL, document_id uuid, company_id uuid NOT NULL, umsatz numeric(15,2) NOT NULL, soll_haben character varying(1) NOT NULL, konto character varying(10) NOT NULL, gegenkonto character varying(10) NOT NULL, bu_schluessel character varying(5), belegdatum date NOT NULL, belegfeld_1 character varying(36), belegfeld_2 character varying(12), buchungstext character varying(60), kostenstelle_1 character varying(20), kostenstelle_2 character varying(20), kostentraeger character varying(20), skonto numeric(15,2), leistungsdatum date, zahlungsbedingung character varying(20), waehrung character varying(3) NOT NULL, kurs numeric(12,6), basis_umsatz numeric(15,2), buchungs_guid character varying(36) NOT NULL, ist_festgeschrieben boolean NOT NULL, festschreibung_datum timestamp with time zone, festschreibung_hash character varying(64), sync_status character varying(20) NOT NULL, datev_buchung_id character varying(50), synced_at timestamp with time zone, sync_error text, retry_count integer NOT NULL, suggestion_confidence double precision, suggestion_source character varying(20), original_suggestion_konto character varying(10), original_suggestion_gegenkonto character varying(10), user_korrektur boolean NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, created_by uuid, entity_id uuid, buchungsnummer integer, buchungsdatum date, valutadatum date, betrag_soll double precision, betrag_haben double precision, konto_soll character varying(10), konto_haben character varying(10), steuerschluessel character varying(5), belegnummer character varying(36), gobd_festgeschrieben boolean, gobd_hash character varying(64), festgeschrieben_at timestamp with time zone, festgeschrieben_by uuid, CONSTRAINT ck_datev_buchung_soll_haben CHECK (((soll_haben)::text = ANY ((ARRAY['S'::character varying, 'H'::character varying])::text[]))), CONSTRAINT ck_datev_buchung_sync_status CHECK (((sync_status)::text = ANY ((ARRAY['pending'::character varying, 'synced'::character varying, 'failed'::character varying, 'conflict'::character varying])::text[]))), CONSTRAINT ck_datev_buchung_umsatz_positiv CHECK ((umsatz > (0)::numeric)) );
+5426c5396
+< CREATE TABLE public.datev_connections ( id uuid NOT NULL, erp_connection_id uuid, company_id uuid NOT NULL, name character varying(100) NOT NULL, beraternummer character varying(10), mandantennummer character varying(10), wirtschaftsjahr_beginn integer NOT NULL, client_id character varying(100), client_secret_encrypted text, redirect_uri character varying(500), access_token_encrypted text, refresh_token_encrypted text, token_expires_at timestamp with time zone, api_environment character varying(20), api_version character varying(10) NOT NULL, enabled_features jsonb, kontenrahmen character varying(10) NOT NULL, sachkontenlange integer, personenkontenlange integer, buchungsmodus character varying(20), sammelkonto_debitoren character varying(10), sammelkonto_kreditoren character varying(10), erloskonto_standard character varying(10), aufwandskonto_standard character varying(10), gobd_enabled boolean, festschreibung_automatisch boolean, beleglink_prefix character varying(500), connection_status character varying(30) NOT NULL, last_error text, last_connection_at timestamp with time zone, last_stammdaten_sync timestamp with time zone, last_buchungen_sync timestamp with time zone, last_belege_sync timestamp with time zone, is_active boolean NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, created_by uuid, updated_by uuid, created_by_id uuid, description text, mandant_nr character varying(10), berater_nr character varying(10), environment character varying(20), webhook_url character varying(500), auto_kontierung boolean DEFAULT false, auto_beleg_upload boolean DEFAULT false, sync_interval_minutes integer, last_buchung_nr integer, last_sync_at timestamp with time zone, CONSTRAINT ck_datev_conn_api_env CHECK (((api_environment)::text = ANY ((ARRAY['production'::character varying, 'sandbox'::character varying])::text[]))), CONSTRAINT ck_datev_conn_buchungsmodus CHECK (((buchungsmodus)::text = ANY ((ARRAY['automatisch'::character varying, 'manuell'::character varying, 'bestaetigung'::character varying])::text[]))), CONSTRAINT ck_datev_conn_kontenrahmen CHECK (((kontenrahmen)::text = ANY ((ARRAY['SKR03'::character varying, 'SKR04'::character varying])::text[]))), CONSTRAINT ck_datev_conn_personenkontenlange CHECK (((personenkontenlange >= 5) AND (personenkontenlange <= 9))), CONSTRAINT ck_datev_conn_sachkontenlange CHECK (((sachkontenlange >= 4) AND (sachkontenlange <= 8))), CONSTRAINT ck_datev_conn_wj_beginn CHECK (((wirtschaftsjahr_beginn >= 1) AND (wirtschaftsjahr_beginn <= 12))) );
+---
+> CREATE TABLE public.datev_connections ( id uuid NOT NULL, erp_connection_id uuid, company_id uuid NOT NULL, name character varying(100) NOT NULL, beraternummer character varying(10) NOT NULL, mandantennummer character varying(10) NOT NULL, wirtschaftsjahr_beginn integer NOT NULL, client_id character varying(100), client_secret_encrypted text, redirect_uri character varying(500), access_token_encrypted text, refresh_token_encrypted text, token_expires_at timestamp with time zone, api_environment character varying(20) NOT NULL, api_version character varying(10) NOT NULL, enabled_features jsonb NOT NULL, kontenrahmen character varying(10) NOT NULL, sachkontenlange integer NOT NULL, personenkontenlange integer NOT NULL, buchungsmodus character varying(20) NOT NULL, sammelkonto_debitoren character varying(10), sammelkonto_kreditoren character varying(10), erloskonto_standard character varying(10), aufwandskonto_standard character varying(10), gobd_enabled boolean NOT NULL, festschreibung_automatisch boolean NOT NULL, beleglink_prefix character varying(500), connection_status character varying(30) NOT NULL, last_error text, last_connection_at timestamp with time zone, last_stammdaten_sync timestamp with time zone, last_buchungen_sync timestamp with time zone, last_belege_sync timestamp with time zone, is_active boolean NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, created_by uuid, updated_by uuid, created_by_id uuid, description text, mandant_nr character varying(10), berater_nr character varying(10), environment character varying(20), webhook_url character varying(500), auto_kontierung boolean, auto_beleg_upload boolean, sync_interval_minutes integer, last_buchung_nr integer, last_sync_at timestamp with time zone, CONSTRAINT ck_datev_conn_api_env CHECK (((api_environment)::text = ANY ((ARRAY['production'::character varying, 'sandbox'::character varying])::text[]))), CONSTRAINT ck_datev_conn_buchungsmodus CHECK (((buchungsmodus)::text = ANY ((ARRAY['automatisch'::character varying, 'manuell'::character varying, 'bestaetigung'::character varying])::text[]))), CONSTRAINT ck_datev_conn_kontenrahmen CHECK (((kontenrahmen)::text = ANY ((ARRAY['SKR03'::character varying, 'SKR04'::character varying])::text[]))), CONSTRAINT ck_datev_conn_personenkontenlange CHECK (((personenkontenlange >= 5) AND (personenkontenlange <= 9))), CONSTRAINT ck_datev_conn_sachkontenlange CHECK (((sachkontenlange >= 4) AND (sachkontenlange <= 8))), CONSTRAINT ck_datev_conn_wj_beginn CHECK (((wirtschaftsjahr_beginn >= 1) AND (wirtschaftsjahr_beginn <= 12))) );
+5429c5399
+< CREATE TABLE public.datev_kontierung_patterns ( id uuid NOT NULL, connection_id uuid NOT NULL, company_id uuid NOT NULL, entity_id uuid, entity_name_pattern character varying(200), document_type character varying(50), amount_range_min numeric(15,2), amount_range_max numeric(15,2), text_keywords jsonb, konto character varying(10), gegenkonto character varying(10), bu_schluessel character varying(5), kostenstelle character varying(20), usage_count integer NOT NULL, success_count integer NOT NULL, last_used_at timestamp with time zone, feature_vector jsonb, model_version character varying(20), pattern_source character varying(20), is_active boolean NOT NULL, priority integer, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, pattern_type character varying(50) NOT NULL, keyword_pattern character varying(200), amount_min double precision, amount_max double precision, konto_soll character varying(10) NOT NULL, konto_haben character varying(10) NOT NULL, steuerschluessel character varying(5), confidence double precision DEFAULT 0.5, CONSTRAINT ck_datev_pattern_source CHECK (((pattern_source)::text = ANY ((ARRAY['manual'::character varying, 'learned'::character varying, 'imported'::character varying])::text[]))) );
+---
+> CREATE TABLE public.datev_kontierung_patterns ( id uuid NOT NULL, connection_id uuid NOT NULL, company_id uuid NOT NULL, entity_id uuid, entity_name_pattern character varying(200), document_type character varying(50), amount_range_min numeric(15,2), amount_range_max numeric(15,2), text_keywords jsonb, konto character varying(10) NOT NULL, gegenkonto character varying(10) NOT NULL, bu_schluessel character varying(5), kostenstelle character varying(20), usage_count integer NOT NULL, success_count integer NOT NULL, last_used_at timestamp with time zone, feature_vector jsonb, model_version character varying(20), pattern_source character varying(20) NOT NULL, is_active boolean NOT NULL, priority integer NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, pattern_type character varying(50), keyword_pattern character varying(200), amount_min double precision, amount_max double precision, konto_soll character varying(10), konto_haben character varying(10), steuerschluessel character varying(5), confidence double precision, CONSTRAINT ck_datev_pattern_source CHECK (((pattern_source)::text = ANY ((ARRAY['manual'::character varying, 'learned'::character varying, 'imported'::character varying])::text[]))) );
+5445,5446c5415,5416
+< CREATE TABLE public.document_cluster_memberships ( id uuid NOT NULL, document_id uuid NOT NULL, cluster_id uuid NOT NULL, similarity_score double precision NOT NULL, assigned_at timestamp with time zone DEFAULT now() NOT NULL, assigned_by character varying(50) DEFAULT 'auto'::character varying NOT NULL, confidence double precision DEFAULT '0'::double precision NOT NULL );
+< CREATE TABLE public.document_clusters ( id uuid NOT NULL, name character varying(255) NOT NULL, description text, cluster_type character varying(50) DEFAULT 'auto'::character varying NOT NULL, centroid double precision[], document_count integer DEFAULT 0 NOT NULL, avg_similarity double precision, company_id uuid NOT NULL, business_entity_id uuid, parent_cluster_id uuid, metadata jsonb DEFAULT '{}'::jsonb, is_active boolean DEFAULT true NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.document_cluster_memberships ( id uuid NOT NULL, document_id uuid NOT NULL, cluster_id uuid NOT NULL, similarity_score double precision NOT NULL, assigned_at timestamp with time zone DEFAULT now() NOT NULL, assigned_by character varying(50) NOT NULL, confidence double precision NOT NULL );
+> CREATE TABLE public.document_clusters ( id uuid NOT NULL, name character varying(255) NOT NULL, description text, cluster_type character varying(50) NOT NULL, centroid public.vector(1024), document_count integer NOT NULL, avg_similarity double precision, company_id uuid NOT NULL, business_entity_id uuid, parent_cluster_id uuid, metadata jsonb, is_active boolean NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+5451c5421
+< CREATE TABLE public.document_groups ( id uuid NOT NULL, name character varying(255) NOT NULL, description text, group_type character varying(30) NOT NULL, primary_document_id uuid, detection_method character varying(50), detection_confidence double precision, detection_details jsonb, detection_signals jsonb, total_pages integer, combined_text text, combined_text_hash character varying(64), business_entity_id uuid, document_date timestamp with time zone, reference_number character varying(100), extracted_data jsonb, user_confirmed boolean, user_split boolean, confirmation_date timestamp with time zone, confirmed_by_id uuid, needs_review boolean, review_priority integer, owner_id uuid, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone, company_id uuid NOT NULL );
+---
+> CREATE TABLE public.document_groups ( id uuid NOT NULL, name character varying(255) NOT NULL, description text, group_type character varying(30) NOT NULL, primary_document_id uuid, detection_method character varying(50), detection_confidence double precision, detection_details jsonb, detection_signals jsonb, total_pages integer, combined_text text, combined_text_hash character varying(64), business_entity_id uuid, document_date timestamp with time zone, reference_number character varying(100), extracted_data jsonb, user_confirmed boolean, user_split boolean, confirmation_date timestamp with time zone, confirmed_by_id uuid, needs_review boolean, review_priority integer, owner_id uuid, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone, company_id uuid );
+5469,5470c5439,5440
+< CREATE TABLE public.documents ( id uuid NOT NULL, filename character varying(255) NOT NULL, original_filename character varying(255) NOT NULL, file_path character varying(500), file_size integer, mime_type character varying(100), checksum character varying(64), document_type character varying(50) DEFAULT 'other'::character varying, status character varying(50) DEFAULT 'pending'::character varying NOT NULL, page_count integer, extracted_text text, ocr_backend_used character varying(50), ocr_confidence double precision, processing_duration_ms integer, has_umlauts boolean DEFAULT false, german_validation_score double precision, detected_language character varying(10), document_metadata jsonb DEFAULT '{}'::jsonb, upload_date timestamp with time zone DEFAULT now(), processed_date timestamp with time zone, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone, deleted_by_id uuid, owner_id uuid, current_version_number integer DEFAULT 0, total_versions integer DEFAULT 0, search_vector tsvector, embedding public.vector(1024), embedding_updated_at timestamp with time zone, embedding_model character varying(100), data_category character varying(50) DEFAULT 'document_content'::character varying, thumbnail_key character varying(500), preview_key character varying(500), thumbnail_generated_at timestamp with time zone, source character varying(50) DEFAULT 'web'::character varying NOT NULL, business_entity_id uuid, group_id uuid, page_number_in_group integer, is_group_primary boolean, extracted_data jsonb, scan_timestamp timestamp with time zone, scan_batch_id character varying(100), original_filename_sequence integer, quick_classification_status character varying(20) DEFAULT 'pending'::character varying NOT NULL, quick_classification_result jsonb, qdrant_indexed_at timestamp with time zone, company_id uuid NOT NULL, is_archived boolean DEFAULT false NOT NULL, archived_at timestamp with time zone, chain_id character varying(100), chain_position integer, chain_root_document_id uuid, project_id uuid, custom_field_values jsonb DEFAULT '{}'::jsonb, row_version integer DEFAULT 1 NOT NULL, summary text, keywords jsonb DEFAULT '[]'::jsonb NOT NULL, one_liner character varying(500), summary_generated_at timestamp with time zone, summary_model character varying(100), CONSTRAINT check_documents_ocr_confidence CHECK (((ocr_confidence IS NULL) OR ((ocr_confidence >= (0)::double precision) AND (ocr_confidence <= (1.0)::double precision)))), CONSTRAINT ck_documents_chain_integrity CHECK (((chain_root_document_id IS NULL) = (chain_position IS NULL))), CONSTRAINT ck_documents_german_validation_score_range CHECK (((german_validation_score IS NULL) OR ((german_validation_score >= (0)::double precision) AND (german_validation_score <= (1)::double precision)))), CONSTRAINT ck_documents_ocr_confidence_range CHECK (((ocr_confidence IS NULL) OR ((ocr_confidence >= (0)::double precision) AND (ocr_confidence <= (1)::double precision)))) );
+< CREATE TABLE public.domain_events ( id uuid NOT NULL, company_id uuid NOT NULL, aggregate_type character varying(50) NOT NULL, aggregate_id uuid NOT NULL, sequence_number bigint NOT NULL, event_type character varying(100) NOT NULL, event_data jsonb NOT NULL, metadata jsonb DEFAULT '{}'::jsonb NOT NULL, correlation_id uuid, causation_id uuid, user_id uuid, created_at timestamp with time zone DEFAULT now(), event_hash character varying(64), previous_hash character varying(64), chain_hash character varying(64), event_metadata jsonb );
+---
+> CREATE TABLE public.documents ( id uuid NOT NULL, filename character varying(255) NOT NULL, original_filename character varying(255) NOT NULL, file_path character varying(500), file_size integer, mime_type character varying(100), checksum character varying(64), document_type character varying(50) DEFAULT 'other'::character varying, status character varying(50) DEFAULT 'pending'::character varying NOT NULL, page_count integer, extracted_text text, ocr_backend_used character varying(50), ocr_confidence double precision, processing_duration_ms integer, has_umlauts boolean DEFAULT false, german_validation_score double precision, detected_language character varying(10), document_metadata jsonb DEFAULT '{}'::jsonb, upload_date timestamp with time zone DEFAULT now(), processed_date timestamp with time zone, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), owner_id uuid, current_version_number integer DEFAULT 0, total_versions integer DEFAULT 0, search_vector tsvector, embedding public.vector(1024), embedding_updated_at timestamp with time zone, embedding_model character varying(100), data_category character varying(50) DEFAULT 'document_content'::character varying, thumbnail_key character varying(500), preview_key character varying(500), thumbnail_generated_at timestamp with time zone, source character varying(50) DEFAULT 'web'::character varying NOT NULL, business_entity_id uuid, group_id uuid, page_number_in_group integer, is_group_primary boolean, extracted_data jsonb, scan_timestamp timestamp with time zone, scan_batch_id character varying(100), original_filename_sequence integer, quick_classification_status character varying(20) DEFAULT 'pending'::character varying NOT NULL, quick_classification_result jsonb, qdrant_indexed_at timestamp with time zone, company_id uuid NOT NULL, is_archived boolean DEFAULT false NOT NULL, archived_at timestamp with time zone, deleted_at timestamp with time zone, deleted_by_id uuid, chain_id character varying(100), chain_position integer, chain_root_document_id uuid, project_id uuid, custom_field_values jsonb, summary text, keywords jsonb DEFAULT '[]'::jsonb, one_liner character varying(500), summary_generated_at timestamp with time zone, summary_model character varying(100), CONSTRAINT check_documents_ocr_confidence CHECK (((ocr_confidence IS NULL) OR ((ocr_confidence >= (0)::double precision) AND (ocr_confidence <= (1.0)::double precision)))), CONSTRAINT ck_documents_chain_integrity CHECK (((chain_root_document_id IS NULL) = (chain_position IS NULL))), CONSTRAINT ck_documents_german_validation_score_range CHECK (((german_validation_score IS NULL) OR ((german_validation_score >= (0)::double precision) AND (german_validation_score <= (1)::double precision)))), CONSTRAINT ck_documents_ocr_confidence_range CHECK (((ocr_confidence IS NULL) OR ((ocr_confidence >= (0)::double precision) AND (ocr_confidence <= (1)::double precision)))) );
+> CREATE TABLE public.domain_events ( id uuid NOT NULL, company_id uuid NOT NULL, aggregate_type character varying(50) NOT NULL, aggregate_id uuid NOT NULL, sequence_number bigint NOT NULL, event_type character varying(100) NOT NULL, event_data jsonb NOT NULL, metadata jsonb DEFAULT '{}'::jsonb NOT NULL, correlation_id uuid, causation_id uuid, user_id uuid, created_at timestamp with time zone DEFAULT now(), event_metadata jsonb, event_hash character varying(64), previous_hash character varying(64), chain_hash character varying(64) );
+5480c5450
+< CREATE TABLE public.dunning_records ( id uuid NOT NULL, user_id uuid, document_id uuid NOT NULL, invoice_number character varying(100), invoice_date date, due_date date, gross_amount numeric(15,2), outstanding_amount numeric(15,2), currency character varying(3), business_entity_id uuid, debtor_name character varying(255), debtor_email character varying(255), dunning_level integer, reminder_fee numeric(15,2), late_interest_rate numeric(7,4), accrued_interest numeric(15,2), total_outstanding numeric(15,2), first_reminder_at timestamp with time zone, second_reminder_at timestamp with time zone, final_reminder_at timestamp with time zone, next_action_at timestamp with time zone, status character varying(50), resolved_at timestamp with time zone, resolved_by_id uuid, resolution_notes text, partial_payment_ids jsonb, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), is_b2b boolean DEFAULT true, b2b_pauschale_claimed boolean DEFAULT false, mahnstopp boolean DEFAULT false, mahnstopp_reason character varying(255), mahnstopp_until timestamp with time zone, company_id uuid NOT NULL, created_by_id uuid, updated_by_id uuid, CONSTRAINT ck_dunning_records_interest_positive CHECK (((accrued_interest IS NULL) OR (accrued_interest >= (0)::numeric))), CONSTRAINT ck_dunning_records_interest_rate_range CHECK (((late_interest_rate IS NULL) OR ((late_interest_rate >= (0)::numeric) AND (late_interest_rate <= (100)::numeric)))), CONSTRAINT ck_dunning_records_outstanding_positive CHECK (((outstanding_amount IS NULL) OR (outstanding_amount >= (0)::numeric))) );
+---
+> CREATE TABLE public.dunning_records ( id uuid NOT NULL, user_id uuid, document_id uuid NOT NULL, invoice_number character varying(100), invoice_date date, due_date date, gross_amount numeric(15,2), outstanding_amount numeric(15,2), currency character varying(3), business_entity_id uuid, debtor_name character varying(255), debtor_email character varying(255), dunning_level integer, reminder_fee numeric(15,2), late_interest_rate numeric(7,4), accrued_interest numeric(15,2), total_outstanding numeric(15,2), first_reminder_at timestamp with time zone, second_reminder_at timestamp with time zone, final_reminder_at timestamp with time zone, next_action_at timestamp with time zone, status character varying(50), resolved_at timestamp with time zone, resolved_by_id uuid, resolution_notes text, partial_payment_ids jsonb, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), is_b2b boolean DEFAULT true, b2b_pauschale_claimed boolean DEFAULT false, mahnstopp boolean DEFAULT false, mahnstopp_reason character varying(255), mahnstopp_until timestamp with time zone, company_id uuid, created_by_id uuid, updated_by_id uuid, CONSTRAINT ck_dunning_records_interest_positive CHECK (((accrued_interest IS NULL) OR (accrued_interest >= (0)::numeric))), CONSTRAINT ck_dunning_records_interest_rate_range CHECK (((late_interest_rate IS NULL) OR ((late_interest_rate >= (0)::numeric) AND (late_interest_rate <= (100)::numeric)))), CONSTRAINT ck_dunning_records_outstanding_positive CHECK (((outstanding_amount IS NULL) OR (outstanding_amount >= (0)::numeric))) );
+5488c5458
+< CREATE TABLE public.encrypted_field_meta ( id uuid NOT NULL, table_name character varying(100) NOT NULL, column_name character varying(100) NOT NULL, encryption_key_id character varying(100) NOT NULL, encryption_algorithm character varying(50) DEFAULT 'AES-256-GCM'::character varying NOT NULL, key_version integer DEFAULT 1 NOT NULL, rotated_at timestamp with time zone, row_count integer DEFAULT 0 NOT NULL, status character varying(20) DEFAULT 'active'::character varying NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.encrypted_field_meta ( id uuid NOT NULL, table_name character varying(100) NOT NULL, column_name character varying(100) NOT NULL, encryption_key_id character varying(100) NOT NULL, encryption_algorithm character varying(50) NOT NULL, key_version integer NOT NULL, rotated_at timestamp with time zone, row_count integer NOT NULL, status character varying(20) NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+5490c5460
+< CREATE TABLE public.entity_seasonal_patterns ( id uuid NOT NULL, entity_id uuid NOT NULL, company_id uuid NOT NULL, pattern_type character varying(50) NOT NULL, affected_months json NOT NULL, avg_delay_adjustment double precision DEFAULT '1'::double precision NOT NULL, confidence double precision DEFAULT '0'::double precision NOT NULL, sample_count integer DEFAULT 0 NOT NULL, last_computed_at timestamp with time zone DEFAULT now(), created_at timestamp with time zone DEFAULT now() );
+---
+> CREATE TABLE public.entity_seasonal_patterns ( id uuid NOT NULL, entity_id uuid NOT NULL, company_id uuid NOT NULL, pattern_type character varying(50) NOT NULL, affected_months jsonb NOT NULL, avg_delay_adjustment double precision NOT NULL, confidence double precision NOT NULL, sample_count integer NOT NULL, last_computed_at timestamp with time zone DEFAULT now(), created_at timestamp with time zone DEFAULT now() );
+5502c5472
+< CREATE TABLE public.event_log ( id uuid DEFAULT gen_random_uuid() NOT NULL, event_id uuid NOT NULL, event_type character varying(100) NOT NULL, source character varying(100) NOT NULL, correlation_id uuid, user_id uuid, space_id uuid, payload jsonb NOT NULL, processed boolean DEFAULT false NOT NULL, processed_at timestamp with time zone, handler_count integer DEFAULT 0 NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.event_log ( id uuid NOT NULL, event_id uuid NOT NULL, event_type character varying(100) NOT NULL, source character varying(100) NOT NULL, correlation_id uuid, user_id uuid, space_id uuid, payload jsonb NOT NULL, processed boolean NOT NULL, processed_at timestamp with time zone, handler_count integer NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL );
+5510d5479
+< CREATE TABLE public.feature_toggle_history ( id uuid DEFAULT gen_random_uuid() NOT NULL, feature_flag_id uuid, flag_name character varying(100) NOT NULL, action character varying(50) NOT NULL, old_value jsonb, new_value jsonb, changed_by_id uuid, reason text, created_at timestamp with time zone DEFAULT now() NOT NULL );
+5512,5513c5481,5482
+< CREATE TABLE public.financial_goal_contributions ( id uuid DEFAULT gen_random_uuid() NOT NULL, goal_id uuid NOT NULL, amount numeric(14,2) NOT NULL, contribution_date date DEFAULT CURRENT_DATE NOT NULL, source_type character varying(50), source_description character varying(255), linked_transaction_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, created_by_id uuid, note text );
+< CREATE TABLE public.financial_goals ( id uuid DEFAULT gen_random_uuid() NOT NULL, space_id uuid NOT NULL, name character varying(200) NOT NULL, description text, goal_type character varying(50) DEFAULT 'custom'::character varying NOT NULL, icon character varying(50) DEFAULT 'Target'::character varying, color character varying(7) DEFAULT '#10B981'::character varying, target_value numeric(14,2) NOT NULL, target_date date NOT NULL, current_value numeric(14,2) DEFAULT '0'::numeric NOT NULL, progress_percent numeric(8,4) DEFAULT '0'::numeric NOT NULL, monthly_savings_required numeric(12,2), months_remaining integer, is_on_track boolean DEFAULT true NOT NULL, projected_completion_date date, linked_assets jsonb, status character varying(20) DEFAULT 'active'::character varying NOT NULL, priority integer DEFAULT 1 NOT NULL, auto_update_enabled boolean DEFAULT true NOT NULL, last_auto_update timestamp with time zone, notify_on_milestone boolean DEFAULT true NOT NULL, notify_on_delay boolean DEFAULT true NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, completed_at timestamp with time zone );
+---
+> CREATE TABLE public.financial_goal_contributions ( id uuid NOT NULL, goal_id uuid NOT NULL, amount numeric(14,2) NOT NULL, contribution_date date DEFAULT CURRENT_DATE NOT NULL, source_type character varying(50), source_description character varying(255), linked_transaction_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, created_by_id uuid, note text );
+> CREATE TABLE public.financial_goals ( id uuid NOT NULL, space_id uuid NOT NULL, name character varying(200) NOT NULL, description text, goal_type character varying(50) NOT NULL, icon character varying(50), color character varying(7), target_value numeric(14,2) NOT NULL, target_date date NOT NULL, current_value numeric(14,2) NOT NULL, progress_percent numeric(8,4) NOT NULL, monthly_savings_required numeric(12,2), months_remaining integer, is_on_track boolean NOT NULL, projected_completion_date date, linked_assets jsonb, status character varying(20) NOT NULL, priority integer NOT NULL, auto_update_enabled boolean NOT NULL, last_auto_update timestamp with time zone, notify_on_milestone boolean NOT NULL, notify_on_delay boolean NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, completed_at timestamp with time zone );
+5518c5487
+< CREATE TABLE public.fraud_alerts ( id uuid NOT NULL, company_id uuid NOT NULL, alert_type character varying(50) NOT NULL, severity character varying(20) DEFAULT 'medium'::character varying NOT NULL, status character varying(30) DEFAULT 'open'::character varying NOT NULL, title character varying(255) NOT NULL, description text NOT NULL, risk_score double precision, confidence double precision, document_id uuid, entity_id uuid, invoice_id uuid, evidence jsonb, anomaly_details jsonb, similar_cases jsonb, recommended_actions jsonb, assigned_to_id uuid, investigation_notes text, resolution_notes text, detected_at timestamp with time zone DEFAULT now(), acknowledged_at timestamp with time zone, resolved_at timestamp with time zone, resolved_by_id uuid, CONSTRAINT ck_fraud_alert_severity CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'low'::character varying, 'medium'::character varying, 'high'::character varying, 'critical'::character varying])::text[]))), CONSTRAINT ck_fraud_alert_status CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'investigating'::character varying, 'confirmed'::character varying, 'false_positive'::character varying, 'resolved'::character varying])::text[]))) );
+---
+> CREATE TABLE public.fraud_alerts ( id uuid NOT NULL, company_id uuid NOT NULL, alert_type character varying(50) NOT NULL, severity character varying(20) NOT NULL, status character varying(30) NOT NULL, title character varying(255) NOT NULL, description text NOT NULL, risk_score double precision, confidence double precision, document_id uuid, entity_id uuid, invoice_id uuid, evidence jsonb, anomaly_details jsonb, similar_cases jsonb, recommended_actions jsonb, assigned_to_id uuid, investigation_notes text, resolution_notes text, detected_at timestamp with time zone DEFAULT now(), acknowledged_at timestamp with time zone, resolved_at timestamp with time zone, resolved_by_id uuid, CONSTRAINT ck_fraud_alert_severity CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'low'::character varying, 'medium'::character varying, 'high'::character varying, 'critical'::character varying])::text[]))), CONSTRAINT ck_fraud_alert_status CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'investigating'::character varying, 'confirmed'::character varying, 'false_positive'::character varying, 'resolved'::character varying])::text[]))) );
+5528c5497
+< CREATE TABLE public.gdpr_deletion_requests ( id uuid DEFAULT gen_random_uuid() NOT NULL, user_id uuid, status character varying(50) DEFAULT 'pending'::character varying NOT NULL, reason text, deletion_deadline timestamp with time zone NOT NULL, requested_at timestamp with time zone DEFAULT now(), completed_at timestamp with time zone, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), processed_by_id uuid, deletion_reason character varying(255), documents_deleted integer DEFAULT 0, audit_entries_anonymized integer DEFAULT 0 );
+---
+> CREATE TABLE public.gdpr_deletion_requests ( id uuid NOT NULL, user_id uuid, status character varying(50) NOT NULL, reason text, deletion_deadline timestamp with time zone NOT NULL, requested_at timestamp with time zone DEFAULT now(), completed_at timestamp with time zone, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), processed_by_id uuid, deletion_reason character varying(255), documents_deleted integer, audit_entries_anonymized integer );
+5553,5554c5522,5523
+< CREATE TABLE public.integration_configs ( id uuid DEFAULT gen_random_uuid() NOT NULL, company_id uuid NOT NULL, integration_type character varying(50) NOT NULL, display_name character varying(255) NOT NULL, config jsonb DEFAULT '{}'::jsonb NOT NULL, is_active boolean DEFAULT true NOT NULL, last_sync_at timestamp with time zone, last_sync_status character varying(20), last_error_message text, sync_interval_minutes integer DEFAULT 60 NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, CONSTRAINT ck_integration_configs_interval_positive CHECK ((sync_interval_minutes > 0)), CONSTRAINT ck_integration_configs_last_status CHECK (((last_sync_status IS NULL) OR ((last_sync_status)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying, 'partial'::character varying])::text[])))), CONSTRAINT ck_integration_configs_type CHECK (((integration_type)::text = ANY ((ARRAY['datev'::character varying, 'lexware'::character varying, 'banking'::character varying, 'slack'::character varying, 'email'::character varying])::text[]))) );
+< CREATE TABLE public.integration_sync_logs ( id uuid DEFAULT gen_random_uuid() NOT NULL, integration_config_id uuid NOT NULL, company_id uuid NOT NULL, sync_type character varying(20) NOT NULL, status character varying(20) DEFAULT 'started'::character varying NOT NULL, items_processed integer DEFAULT 0 NOT NULL, items_failed integer DEFAULT 0 NOT NULL, items_total integer DEFAULT 0 NOT NULL, error_details jsonb DEFAULT '{}'::jsonb, started_at timestamp with time zone NOT NULL, completed_at timestamp with time zone, duration_seconds double precision, CONSTRAINT ck_sync_logs_items_non_negative CHECK (((items_processed >= 0) AND (items_failed >= 0) AND (items_total >= 0))), CONSTRAINT ck_sync_logs_status CHECK (((status)::text = ANY ((ARRAY['started'::character varying, 'success'::character varying, 'error'::character varying, 'partial'::character varying])::text[]))), CONSTRAINT ck_sync_logs_sync_type CHECK (((sync_type)::text = ANY ((ARRAY['full'::character varying, 'incremental'::character varying, 'manual'::character varying])::text[]))) );
+---
+> CREATE TABLE public.integration_configs ( id uuid NOT NULL, company_id uuid NOT NULL, integration_type character varying(50) NOT NULL, display_name character varying(255) NOT NULL, config jsonb NOT NULL, is_active boolean NOT NULL, last_sync_at timestamp with time zone, last_sync_status character varying(20), last_error_message text, sync_interval_minutes integer NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+> CREATE TABLE public.integration_sync_logs ( id uuid NOT NULL, integration_config_id uuid NOT NULL, company_id uuid NOT NULL, sync_type character varying(20) NOT NULL, status character varying(20) NOT NULL, items_processed integer NOT NULL, items_failed integer NOT NULL, items_total integer NOT NULL, error_details jsonb, started_at timestamp with time zone NOT NULL, completed_at timestamp with time zone, duration_seconds double precision );
+5558c5527
+< CREATE TABLE public.invoice_tracking ( id uuid DEFAULT gen_random_uuid() NOT NULL, document_id uuid NOT NULL, invoice_number character varying(100), invoice_date timestamp with time zone, due_date timestamp with time zone, amount double precision, currency character varying(3), status character varying(20) NOT NULL, paid_at timestamp with time zone, paid_amount double precision, dunning_level integer, last_dunning_at timestamp with time zone, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone, skonto_percentage double precision, skonto_days integer, skonto_deadline timestamp with time zone, skonto_amount double precision, skonto_used boolean DEFAULT false NOT NULL, net_payment_days integer, is_partial_payment boolean DEFAULT false NOT NULL, outstanding_amount double precision, entity_id uuid, company_id uuid, project_id uuid, row_version integer DEFAULT 1 NOT NULL, skonto_used_at timestamp with time zone, net_days integer );
+---
+> CREATE TABLE public.invoice_tracking ( id uuid DEFAULT gen_random_uuid() NOT NULL, document_id uuid NOT NULL, invoice_number character varying(100), invoice_date timestamp with time zone, due_date timestamp with time zone, amount double precision, currency character varying(3), status character varying(20) NOT NULL, paid_at timestamp with time zone, paid_amount double precision, dunning_level integer, last_dunning_at timestamp with time zone, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone, skonto_percentage double precision, skonto_days integer, skonto_deadline timestamp with time zone, skonto_amount double precision, skonto_used boolean DEFAULT false NOT NULL, net_payment_days integer, is_partial_payment boolean DEFAULT false NOT NULL, outstanding_amount double precision, entity_id uuid, company_id uuid, project_id uuid, skonto_used_at timestamp with time zone, net_days integer );
+5562c5531
+< CREATE TABLE public.key_rotation_logs ( id uuid NOT NULL, table_name character varying(100) NOT NULL, column_name character varying(100) NOT NULL, old_key_version integer NOT NULL, new_key_version integer NOT NULL, rows_processed integer DEFAULT 0 NOT NULL, rows_total integer DEFAULT 0 NOT NULL, status character varying(20) DEFAULT 'pending'::character varying NOT NULL, error_message text, started_at timestamp with time zone, completed_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.key_rotation_logs ( id uuid NOT NULL, table_name character varying(100) NOT NULL, column_name character varying(100) NOT NULL, old_key_version integer NOT NULL, new_key_version integer NOT NULL, rows_processed integer NOT NULL, rows_total integer NOT NULL, status character varying(20) NOT NULL, error_message text, started_at timestamp with time zone, completed_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL );
+5574c5543
+< CREATE TABLE public.llm_cache ( id uuid DEFAULT gen_random_uuid() NOT NULL, prompt_hash character varying(64) NOT NULL, prompt_text text NOT NULL, prompt_embedding double precision[], response text NOT NULL, model character varying(50) NOT NULL, model_version character varying(50), temperature numeric(3,2), hit_count integer DEFAULT 0 NOT NULL, last_hit_at timestamp with time zone, token_count_prompt integer, token_count_response integer, latency_ms integer, created_at timestamp with time zone DEFAULT now() NOT NULL, expires_at timestamp with time zone, extra_data jsonb );
+---
+> CREATE TABLE public.llm_cache ( id uuid NOT NULL, prompt_hash character varying(64) NOT NULL, prompt_text text NOT NULL, prompt_embedding jsonb, response text NOT NULL, model character varying(50) NOT NULL, model_version character varying(50), temperature numeric(3,2), hit_count integer NOT NULL, last_hit_at timestamp with time zone, token_count_prompt integer, token_count_response integer, latency_ms integer, created_at timestamp with time zone DEFAULT now() NOT NULL, expires_at timestamp with time zone, extra_data jsonb );
+5585c5554
+< CREATE TABLE public.notification_rules ( id uuid DEFAULT gen_random_uuid() NOT NULL, user_id uuid NOT NULL, name character varying(100) NOT NULL, description text, enabled boolean DEFAULT true NOT NULL, event_type character varying(100) NOT NULL, event_source character varying(50), conditions jsonb DEFAULT '{}'::jsonb NOT NULL, actions jsonb DEFAULT '[]'::jsonb NOT NULL, quiet_hours_start time without time zone, quiet_hours_end time without time zone, timezone character varying(50) DEFAULT 'Europe/Berlin'::character varying NOT NULL, cooldown_minutes integer DEFAULT 0, max_per_day integer, priority character varying(20) DEFAULT 'normal'::character varying NOT NULL, trigger_count integer DEFAULT 0 NOT NULL, last_triggered_at timestamp with time zone, last_matched_event_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.notification_rules ( id uuid NOT NULL, user_id uuid NOT NULL, name character varying(100) NOT NULL, description text, enabled boolean NOT NULL, event_type character varying(100) NOT NULL, event_source character varying(50), conditions jsonb NOT NULL, actions jsonb NOT NULL, quiet_hours_start time without time zone, quiet_hours_end time without time zone, timezone character varying(50) NOT NULL, cooldown_minutes integer, max_per_day integer, priority character varying(20) NOT NULL, trigger_count integer NOT NULL, last_triggered_at timestamp with time zone, last_matched_event_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+5609c5578
+< CREATE TABLE public.partition_management ( id uuid DEFAULT gen_random_uuid() NOT NULL, table_name character varying(100) NOT NULL, partition_name character varying(150) NOT NULL, range_start timestamp with time zone NOT NULL, range_end timestamp with time zone NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, row_count bigint DEFAULT 0, size_bytes bigint DEFAULT 0, is_archived boolean DEFAULT false, archived_at timestamp with time zone );
+---
+> CREATE TABLE public.partition_management ( id uuid NOT NULL, table_name character varying(100) NOT NULL, partition_name character varying(150) NOT NULL, range_start timestamp with time zone NOT NULL, range_end timestamp with time zone NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, row_count bigint, size_bytes bigint, is_archived boolean NOT NULL, archived_at timestamp with time zone );
+5611c5580
+< CREATE TABLE public.payment_batches ( id uuid NOT NULL, user_id uuid, bank_account_id uuid NOT NULL, batch_name character varying(255), batch_type character varying(50) NOT NULL, payment_count integer, total_amount numeric(15,2), currency character varying(3), requested_execution_date date, status character varying(50), tan_required boolean, tan_challenge text, tan_challenge_data bytea, approved_by_id uuid, approved_at timestamp with time zone, sepa_xml text, sepa_message_id character varying(35), submitted_at timestamp with time zone, completed_at timestamp with time zone, successful_count integer, failed_count integer, last_error text, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), company_id uuid NOT NULL, created_by_id uuid, updated_by_id uuid );
+---
+> CREATE TABLE public.payment_batches ( id uuid NOT NULL, user_id uuid, bank_account_id uuid NOT NULL, batch_name character varying(255), batch_type character varying(50) NOT NULL, payment_count integer, total_amount numeric(15,2), currency character varying(3), requested_execution_date date, status character varying(50), tan_required boolean, tan_challenge text, tan_challenge_data bytea, approved_by_id uuid, approved_at timestamp with time zone, sepa_xml text, sepa_message_id character varying(35), submitted_at timestamp with time zone, completed_at timestamp with time zone, successful_count integer, failed_count integer, last_error text, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), company_id uuid, created_by_id uuid, updated_by_id uuid );
+5613c5582
+< CREATE TABLE public.payment_orders ( id uuid NOT NULL, user_id uuid, bank_account_id uuid NOT NULL, document_id uuid, invoice_number character varying(100), payment_type character varying(50) NOT NULL, sepa_type character varying(50), beneficiary_name character varying(140) NOT NULL, beneficiary_iban character varying(34) NOT NULL, beneficiary_bic character varying(11), amount numeric(15,2) NOT NULL, currency character varying(3), reference text, end_to_end_id character varying(35), execution_date date, mandate_id character varying(35), mandate_date date, sequence_type character varying(10), creditor_id character varying(35), batch_id uuid, batch_sequence integer, status character varying(50), tan_required boolean, tan_challenge text, tan_challenge_data bytea, tan_entered_at timestamp with time zone, approved_by_id uuid, approved_at timestamp with time zone, submitted_at timestamp with time zone, bank_reference character varying(100), last_error text, retry_count integer, uses_skonto boolean, skonto_amount numeric(15,2), original_amount numeric(15,2), skonto_deadline date, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), company_id uuid NOT NULL, CONSTRAINT ck_payment_orders_amount_positive CHECK ((amount >= (0)::numeric)) );
+---
+> CREATE TABLE public.payment_orders ( id uuid NOT NULL, user_id uuid, bank_account_id uuid NOT NULL, document_id uuid, invoice_number character varying(100), payment_type character varying(50) NOT NULL, sepa_type character varying(50), beneficiary_name character varying(140) NOT NULL, beneficiary_iban character varying(34) NOT NULL, beneficiary_bic character varying(11), amount numeric(15,2) NOT NULL, currency character varying(3), reference text, end_to_end_id character varying(35), execution_date date, mandate_id character varying(35), mandate_date date, sequence_type character varying(10), creditor_id character varying(35), batch_id uuid, batch_sequence integer, status character varying(50), tan_required boolean, tan_challenge text, tan_challenge_data bytea, tan_entered_at timestamp with time zone, approved_by_id uuid, approved_at timestamp with time zone, submitted_at timestamp with time zone, bank_reference character varying(100), last_error text, retry_count integer, uses_skonto boolean, skonto_amount numeric(15,2), original_amount numeric(15,2), skonto_deadline date, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), company_id uuid, CONSTRAINT ck_payment_orders_amount_positive CHECK ((amount >= (0)::numeric)) );
+5628c5597
+< CREATE TABLE public.portfolio_snapshots ( id uuid DEFAULT gen_random_uuid() NOT NULL, space_id uuid NOT NULL, snapshot_date date NOT NULL, total_real_estate numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_vehicles numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_investments numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_cash numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_other_assets numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_mortgages numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_loans numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_other_liabilities numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_assets numeric(14,2) DEFAULT '0'::numeric NOT NULL, total_liabilities numeric(14,2) DEFAULT '0'::numeric NOT NULL, net_worth numeric(14,2) DEFAULT '0'::numeric NOT NULL, net_worth_change_absolute numeric(14,2), net_worth_change_percent numeric(8,4), debt_to_assets_ratio numeric(8,4) DEFAULT '0'::numeric NOT NULL, liquidity_ratio numeric(8,4) DEFAULT '0'::numeric NOT NULL, asset_allocation jsonb, created_at timestamp with time zone DEFAULT now() NOT NULL );
+---
+> CREATE TABLE public.portfolio_snapshots ( id uuid NOT NULL, space_id uuid NOT NULL, snapshot_date date NOT NULL, total_real_estate numeric(14,2) NOT NULL, total_vehicles numeric(14,2) NOT NULL, total_investments numeric(14,2) NOT NULL, total_cash numeric(14,2) NOT NULL, total_other_assets numeric(14,2) NOT NULL, total_mortgages numeric(14,2) NOT NULL, total_loans numeric(14,2) NOT NULL, total_other_liabilities numeric(14,2) NOT NULL, total_assets numeric(14,2) NOT NULL, total_liabilities numeric(14,2) NOT NULL, net_worth numeric(14,2) NOT NULL, net_worth_change_absolute numeric(14,2), net_worth_change_percent numeric(8,4), debt_to_assets_ratio numeric(8,4) NOT NULL, liquidity_ratio numeric(8,4) NOT NULL, asset_allocation jsonb, created_at timestamp with time zone DEFAULT now() NOT NULL );
+5633c5602
+< CREATE TABLE public.privat_coverage_gaps ( id uuid DEFAULT gen_random_uuid() NOT NULL, space_id uuid NOT NULL, insurance_id uuid, insurance_type character varying(50) NOT NULL, gap_type character varying(50) NOT NULL, recommended_coverage numeric(15,2), current_coverage numeric(15,2), gap_amount numeric(15,2), severity character varying(20) NOT NULL, risk_description text, recommendation text, estimated_monthly_cost numeric(10,2), priority_score integer, is_resolved boolean DEFAULT false NOT NULL, resolved_at timestamp with time zone, last_analysis_at timestamp with time zone DEFAULT now() NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, extra_data jsonb );
+---
+> CREATE TABLE public.privat_coverage_gaps ( id uuid NOT NULL, space_id uuid NOT NULL, insurance_id uuid, insurance_type character varying(50) NOT NULL, gap_type character varying(50) NOT NULL, recommended_coverage numeric(15,2), current_coverage numeric(15,2), gap_amount numeric(15,2), severity character varying(20) NOT NULL, risk_description text, recommendation text, estimated_monthly_cost numeric(10,2), priority_score integer, is_resolved boolean NOT NULL, resolved_at timestamp with time zone, last_analysis_at timestamp with time zone DEFAULT now() NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, extra_data jsonb );
+5637c5606
+< CREATE TABLE public.privat_early_warnings ( id uuid DEFAULT gen_random_uuid() NOT NULL, space_id uuid NOT NULL, projection_id uuid, kpi_name character varying(100) NOT NULL, warning_type character varying(50) NOT NULL, severity character varying(20) NOT NULL, current_value numeric(15,4) NOT NULL, projected_value numeric(15,4) NOT NULL, threshold_value numeric(15,4), threshold_name character varying(100), breach_date date NOT NULL, days_until_breach integer NOT NULL, title character varying(255) NOT NULL, description text, recommendation text, potential_impact numeric(15,2), action_url character varying(255), confidence numeric(3,2) NOT NULL, is_dismissed boolean DEFAULT false NOT NULL, dismissed_at timestamp with time zone, dismissed_reason text, is_resolved boolean DEFAULT false NOT NULL, resolved_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL, expires_at timestamp with time zone, extra_data jsonb );
+---
+> CREATE TABLE public.privat_early_warnings ( id uuid NOT NULL, space_id uuid NOT NULL, projection_id uuid, kpi_name character varying(100) NOT NULL, warning_type character varying(50) NOT NULL, severity character varying(20) NOT NULL, current_value numeric(15,4) NOT NULL, projected_value numeric(15,4) NOT NULL, threshold_value numeric(15,4), threshold_name character varying(100), breach_date date NOT NULL, days_until_breach integer NOT NULL, title character varying(255) NOT NULL, description text, recommendation text, potential_impact numeric(15,2), action_url character varying(255), confidence numeric(3,2) NOT NULL, is_dismissed boolean NOT NULL, dismissed_at timestamp with time zone, dismissed_reason text, is_resolved boolean NOT NULL, resolved_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL, expires_at timestamp with time zone, extra_data jsonb );
+5644c5613
+< CREATE TABLE public.privat_kpi_history ( id uuid DEFAULT gen_random_uuid() NOT NULL, space_id uuid NOT NULL, kpi_name character varying(100) NOT NULL, kpi_value numeric(15,4) NOT NULL, kpi_unit character varying(20), components jsonb, recorded_at timestamp with time zone DEFAULT now() NOT NULL, source character varying(50) DEFAULT 'automated'::character varying NOT NULL, extra_data jsonb );
+---
+> CREATE TABLE public.privat_kpi_history ( id uuid NOT NULL, space_id uuid NOT NULL, kpi_name character varying(100) NOT NULL, kpi_value numeric(15,4) NOT NULL, kpi_unit character varying(20), components jsonb, recorded_at timestamp with time zone DEFAULT now() NOT NULL, source character varying(50) NOT NULL, extra_data jsonb );
+5646c5615
+< CREATE TABLE public.privat_projections ( id uuid DEFAULT gen_random_uuid() NOT NULL, space_id uuid NOT NULL, kpi_name character varying(100) NOT NULL, projection_months integer NOT NULL, projection_method character varying(50) DEFAULT 'linear'::character varying NOT NULL, current_value numeric(15,4) NOT NULL, projected_values jsonb NOT NULL, threshold_breaches jsonb, trend_direction character varying(20) NOT NULL, trend_strength numeric(5,4), seasonality_detected boolean DEFAULT false NOT NULL, confidence_overall numeric(3,2) NOT NULL, data_points_used integer NOT NULL, calculated_at timestamp with time zone DEFAULT now() NOT NULL, valid_until timestamp with time zone NOT NULL, extra_data jsonb );
+---
+> CREATE TABLE public.privat_projections ( id uuid NOT NULL, space_id uuid NOT NULL, kpi_name character varying(100) NOT NULL, projection_months integer NOT NULL, projection_method character varying(50) NOT NULL, current_value numeric(15,4) NOT NULL, projected_values jsonb NOT NULL, threshold_breaches jsonb, trend_direction character varying(20) NOT NULL, trend_strength numeric(5,4), seasonality_detected boolean NOT NULL, confidence_overall numeric(3,2) NOT NULL, data_points_used integer NOT NULL, calculated_at timestamp with time zone DEFAULT now() NOT NULL, valid_until timestamp with time zone NOT NULL, extra_data jsonb );
+5648c5617
+< CREATE TABLE public.privat_recurring_payments ( id uuid DEFAULT gen_random_uuid() NOT NULL, space_id uuid NOT NULL, name character varying(255) NOT NULL, payee character varying(255), expected_amount numeric(10,2) NOT NULL, amount_variance numeric(10,2), frequency character varying(20) NOT NULL, expected_day integer, category character varying(50), last_occurrence date, next_expected date, occurrence_count integer DEFAULT 0 NOT NULL, confidence numeric(3,2) DEFAULT 0.0 NOT NULL, is_active boolean DEFAULT true NOT NULL, is_income boolean DEFAULT false NOT NULL, linked_account_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, extra_data jsonb );
+---
+> CREATE TABLE public.privat_recurring_payments ( id uuid NOT NULL, space_id uuid NOT NULL, name character varying(255) NOT NULL, payee character varying(255), expected_amount numeric(10,2) NOT NULL, amount_variance numeric(10,2), frequency character varying(20) NOT NULL, expected_day integer, category character varying(50), last_occurrence date, next_expected date, occurrence_count integer NOT NULL, confidence numeric(3,2) NOT NULL, is_active boolean NOT NULL, is_income boolean NOT NULL, linked_account_id uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, extra_data jsonb );
+5755c5724
+< CREATE TABLE public.users ( id uuid NOT NULL, email character varying(255) NOT NULL, username character varying(100) NOT NULL, hashed_password character varying(255) NOT NULL, full_name character varying(255), is_active boolean DEFAULT true, is_superuser boolean DEFAULT false, preferred_language character varying(10) DEFAULT 'de'::character varying, preferred_ocr_backend character varying(50) DEFAULT 'auto'::character varying, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), last_login timestamp with time zone, tier character varying(20) DEFAULT 'free'::character varying, rate_limit_hourly integer, rate_limit_daily integer, last_activity_at timestamp with time zone, password_reset_required boolean DEFAULT false, deactivated_at timestamp with time zone, deactivated_by_id uuid, notes text, totp_secret character varying(256), totp_enabled boolean DEFAULT false NOT NULL, totp_backup_codes json, totp_setup_at timestamp with time zone, deletion_requested_at timestamp with time zone, deletion_scheduled_for timestamp with time zone, deletion_reason character varying(500), deletion_confirmed boolean DEFAULT false NOT NULL, email_verified boolean DEFAULT false NOT NULL, email_verified_at timestamp with time zone, preferences jsonb, access_until timestamp with time zone, invited_by_id uuid, invited_at timestamp with time zone, access_scope jsonb, daily_quota integer, documents_processed_today integer, totp_failed_attempts integer, totp_lockout_until timestamp with time zone );
+---
+> CREATE TABLE public.users ( id uuid NOT NULL, email character varying(255) NOT NULL, username character varying(100) NOT NULL, hashed_password character varying(255) NOT NULL, full_name character varying(255), is_active boolean DEFAULT true, is_superuser boolean DEFAULT false, preferred_language character varying(10) DEFAULT 'de'::character varying, preferred_ocr_backend character varying(50) DEFAULT 'auto'::character varying, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), last_login timestamp with time zone, tier character varying(20) DEFAULT 'free'::character varying, rate_limit_hourly integer, rate_limit_daily integer, last_activity_at timestamp with time zone, password_reset_required boolean DEFAULT false, deactivated_at timestamp with time zone, deactivated_by_id uuid, notes text, totp_secret character varying(256), totp_enabled boolean DEFAULT false NOT NULL, totp_backup_codes json, totp_setup_at timestamp with time zone, deletion_requested_at timestamp with time zone, deletion_scheduled_for timestamp with time zone, deletion_reason character varying(500), deletion_confirmed boolean DEFAULT false NOT NULL, email_verified boolean DEFAULT false NOT NULL, email_verified_at timestamp with time zone, preferences jsonb, access_until timestamp with time zone, invited_by_id uuid, invited_at timestamp with time zone, access_scope jsonb, daily_quota integer DEFAULT 100, documents_processed_today integer DEFAULT 0, totp_failed_attempts integer, totp_lockout_until timestamp with time zone );
+5766,5769c5735,5738
+< CREATE TABLE public.webhook_deliveries ( id uuid DEFAULT gen_random_uuid() NOT NULL, endpoint_id uuid NOT NULL, company_id uuid NOT NULL, event_type character varying(100) NOT NULL, event_id uuid NOT NULL, payload jsonb NOT NULL, status character varying(20) DEFAULT 'pending'::character varying NOT NULL, attempts integer DEFAULT 0 NOT NULL, max_attempts integer DEFAULT 3 NOT NULL, response_status_code integer, response_body text, last_attempt_at timestamp with time zone, next_retry_at timestamp with time zone, delivered_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL );
+< CREATE TABLE public.webhook_endpoints ( id uuid DEFAULT gen_random_uuid() NOT NULL, company_id uuid NOT NULL, url character varying(2000) NOT NULL, description text, secret_hash character varying(256) NOT NULL, event_types jsonb DEFAULT '[]'::jsonb NOT NULL, is_active boolean DEFAULT true NOT NULL, headers jsonb, retry_policy jsonb DEFAULT '{"max_retries": 3, "backoff_factor": 2, "timeout_seconds": 30}'::jsonb NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+< CREATE TABLE public.webhook_event_log ( id uuid DEFAULT gen_random_uuid() NOT NULL, company_id uuid NOT NULL, event_type character varying(100) NOT NULL, source_table character varying(100) NOT NULL, source_id uuid NOT NULL, payload jsonb NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL );
+< CREATE TABLE public.webhook_subscription_deliveries ( id uuid NOT NULL, subscription_id uuid NOT NULL, event_type character varying(50) NOT NULL, event_id character varying(50) NOT NULL, payload json NOT NULL, status character varying(20) NOT NULL, attempt_count integer NOT NULL, http_status_code integer, response_body text, error_message text, duration_ms integer, next_retry_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL, delivered_at timestamp with time zone, attempt integer, max_attempts integer, response_status_code integer, response_time_ms integer, error_type character varying(100) );
+---
+> CREATE TABLE public.webhook_deliveries ( id uuid NOT NULL, subscription_id uuid NOT NULL, event_type character varying(50) NOT NULL, event_id character varying(50) NOT NULL, payload json NOT NULL, status character varying(20) NOT NULL, attempt_count integer NOT NULL, http_status_code integer, response_body text, error_message text, duration_ms integer, next_retry_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL, delivered_at timestamp with time zone, endpoint_id uuid, company_id uuid, attempts integer, max_attempts integer, response_status_code integer, last_attempt_at timestamp with time zone );
+> CREATE TABLE public.webhook_endpoints ( id uuid NOT NULL, company_id uuid NOT NULL, url character varying(2000) NOT NULL, description text, secret_hash character varying(256) NOT NULL, event_types jsonb NOT NULL, is_active boolean NOT NULL, headers jsonb, retry_policy jsonb NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL );
+> CREATE TABLE public.webhook_event_log ( id uuid NOT NULL, company_id uuid NOT NULL, event_type character varying(100) NOT NULL, source_table character varying(100) NOT NULL, source_id uuid NOT NULL, payload jsonb NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL );
+> CREATE TABLE public.webhook_subscription_deliveries ( id uuid NOT NULL, subscription_id uuid NOT NULL, event_id character varying(64) NOT NULL, event_type character varying(100) NOT NULL, payload jsonb NOT NULL, status character varying(20), attempt integer, max_attempts integer, response_status_code integer, response_body text, response_time_ms integer, error_message text, error_type character varying(100), created_at timestamp with time zone DEFAULT now(), delivered_at timestamp with time zone, next_retry_at timestamp with time zone );
+5814a5784
+> CREATE TYPE public.activity_visibility AS ENUM ( 'PUBLIC', 'PRIVATE', 'COMPANY' );
+5821a5792,5794
+> CREATE TYPE public.approvalpriority AS ENUM ( 'LOW', 'NORMAL', 'HIGH', 'URGENT' );
+> CREATE TYPE public.approvalruletype AS ENUM ( 'AMOUNT_THRESHOLD', 'CATEGORY', 'SUPPLIER', 'COST_CENTER', 'DOCUMENT_TYPE', 'RISK_LEVEL', 'CUSTOM' );
+> CREATE TYPE public.approvalstatus AS ENUM ( 'PENDING', 'APPROVED', 'REJECTED', 'ESCALATED', 'EXPIRED', 'CANCELLED' );
+5824a5798
+> CREATE TYPE public.check_item_status AS ENUM ( 'pending', 'passed', 'warning', 'failed', 'skipped' );
+5828a5803,5805
+> CREATE TYPE public.delegation_reason AS ENUM ( 'VACATION', 'ILLNESS', 'PARENTAL_LEAVE', 'BUSINESS_TRIP', 'PROJECT', 'TRAINING', 'OTHER' );
+> CREATE TYPE public.delegation_status AS ENUM ( 'PENDING', 'ACTIVE', 'EXPIRED', 'REVOKED', 'DECLINED' );
+> CREATE TYPE public.delegation_type AS ENUM ( 'FULL', 'PARTIAL', 'APPROVAL', 'READ_ONLY', 'EMERGENCY' );
+5831a5809,5810
+> CREATE TYPE public.document_type AS ENUM ( 'invoice', 'contract', 'receipt', 'form', 'letter', 'report', 'other' );
+> CREATE TYPE public.documenttype AS ENUM ( 'invoice', 'contract', 'form', 'letter', 'report', 'other' );
+5832a5812
+> CREATE TYPE public.gap_category AS ENUM ( 'missing_receipt', 'unmatched_transaction', 'missing_invoice', 'incomplete_data', 'amount_discrepancy' );
+5833a5814,5815
+> CREATE TYPE public.invitation_role AS ENUM ( 'MEMBER', 'LEAD', 'ADMIN', 'DEPUTY', 'OBSERVER' );
+> CREATE TYPE public.invitation_status AS ENUM ( 'PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED', 'CANCELLED' );
+5839a5822,5823
+> CREATE TYPE public.movementstatus AS ENUM ( 'PENDING', 'CONFIRMED', 'CANCELLED' );
+> CREATE TYPE public.movementtype AS ENUM ( 'GOODS_RECEIPT', 'GOODS_ISSUE', 'TRANSFER', 'ADJUSTMENT_PLUS', 'ADJUSTMENT_MINUS', 'RETURN_INBOUND', 'RETURN_OUTBOUND', 'SCRAPPING' );
+5842a5827,5830
+> CREATE TYPE public.ocr_backend AS ENUM ( 'auto', 'deepseek', 'got_ocr', 'surya', 'surya_gpu' );
+> CREATE TYPE public.processing_status AS ENUM ( 'pending', 'queued', 'processing', 'completed', 'failed', 'cancelled' );
+> CREATE TYPE public.processingbackend AS ENUM ( 'deepseek', 'got_ocr', 'surya', 'surya_gpu', 'hybrid', 'auto' );
+> CREATE TYPE public.processingstatus AS ENUM ( 'pending', 'queued', 'processing', 'completed', 'failed', 'cancelled', 'retrying' );
+5846a5835,5843
+> CREATE TYPE public.sample_source AS ENUM ( 'automatic', 'rule_based', 'manual', 'low_confidence' );
+> CREATE TYPE public.subscription_tier AS ENUM ( 'free', 'basic', 'professional', 'enterprise' );
+> CREATE TYPE public.team_activity_type AS ENUM ( 'MEMBER_JOINED', 'MEMBER_LEFT', 'MEMBER_ROLE_CHANGED', 'TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_ARCHIVED', 'DOCUMENT_SHARED', 'TASK_ASSIGNED', 'COMMENT_ADDED', 'MENTION', 'MILESTONE_REACHED' );
+> CREATE TYPE public.team_document_permission AS ENUM ( 'READ', 'COMMENT', 'EDIT', 'FULL' );
+> CREATE TYPE public.team_member_role AS ENUM ( 'MEMBER', 'LEAD', 'ADMIN', 'DEPUTY', 'OBSERVER' );
+> CREATE TYPE public.team_status AS ENUM ( 'ACTIVE', 'INACTIVE', 'ARCHIVED', 'PENDING' );
+> CREATE TYPE public.team_type AS ENUM ( 'DEPARTMENT', 'PROJECT', 'WORKING_GROUP', 'COMMITTEE', 'VIRTUAL' );
+> CREATE TYPE public.team_visibility AS ENUM ( 'PUBLIC', 'PRIVATE', 'COMPANY' );
+> CREATE TYPE public.template_delegation_type AS ENUM ( 'FULL', 'PARTIAL', 'APPROVAL', 'READ_ONLY', 'EMERGENCY' );
+5849a5847,5848
+> CREATE TYPE public.validation_rule_type AS ENUM ( 'confidence_threshold', 'field_pattern', 'document_type', 'first_occurrence', 'error_pattern' );
+> CREATE TYPE public.validation_status AS ENUM ( 'pending', 'in_progress', 'approved', 'rejected', 'skipped' );
+5850a5850,5851
+> CREATE TYPE public.verification_status AS ENUM ( 'unverified', 'verified', 'tampered' );
+> CREATE TYPE public.year_end_status AS ENUM ( 'draft', 'in_progress', 'review', 'completed', 'exported' );
+5861d5861
+< CREATE UNIQUE INDEX ix_dashboard_builder_configs_one_default ON public.dashboard_builder_configs USING btree (user_id, company_id) WHERE (is_default = true);
+5865a5866
+> CREATE UNIQUE INDEX ix_event_log_event_id ON public.event_log USING btree (event_id);
+5867a5869
+> CREATE UNIQUE INDEX ix_llm_cache_prompt_hash ON public.llm_cache USING btree (prompt_hash);
+5880c5882
+< CREATE UNIQUE INDEX ix_webhook_sub_deliveries_event_id ON public.webhook_subscription_deliveries USING btree (event_id);
+---
+> CREATE UNIQUE INDEX ix_webhook_deliveries_event_id ON public.webhook_deliveries USING btree (event_id);
+5885d5886
+< CREATE UNIQUE INDEX uq_kpi_history_space_kpi_date ON public.privat_kpi_history USING btree (space_id, kpi_name, public.kpi_history_utc_day(recorded_at));
+5889,5890d5889
+< CREATE VIEW public.gdpr_deletion_status AS SELECT dr.id AS anfrage_id, dr.user_id, u.email AS benutzer_email, dr.status, dr.reason AS grund, dr.requested_at AS angefragt_am, dr.deletion_deadline AS frist, dr.completed_at AS abgeschlossen_am, dr.documents_deleted AS geloeschte_dokumente, dr.audit_entries_anonymized AS anonymisierte_audit_eintraege, dr.processed_by_id AS bearbeitet_von_id, CASE WHEN ((dr.status)::text = 'completed'::text) THEN 'Abgeschlossen'::text WHEN ((dr.status)::text = 'rejected'::text) THEN 'Abgelehnt'::text WHEN ((dr.status)::text = 'cancelled'::text) THEN 'Storniert'::text WHEN ((dr.status)::text = 'processing'::text) THEN 'In Bearbeitung'::text WHEN ((dr.deletion_deadline < now()) AND ((dr.status)::text = 'pending'::text)) THEN 'Ueberfaellig'::text WHEN ((dr.deletion_deadline < (now() + '7 days'::interval)) AND ((dr.status)::text = 'pending'::text)) THEN 'Frist bald'::text ELSE 'Offen'::text END AS status_anzeige, CASE WHEN ((dr.status)::text = 'pending'::text) THEN GREATEST((0)::numeric, (EXTRACT(epoch FROM (dr.deletion_deadline - now())) / (86400)::numeric)) ELSE NULL::numeric END AS verbleibende_tage FROM (public.gdpr_deletion_requests dr LEFT JOIN public.users u ON ((u.id = dr.user_id)));
+< CREATE VIEW public.gobd_audit_summary AS SELECT company_id, date_trunc('month'::text, created_at) AS monat, count(*) AS gesamt_eintraege, count(*) FILTER (WHERE (success = true)) AS erfolgreiche_aktionen, count(*) FILTER (WHERE (success = false)) AS fehlgeschlagene_aktionen, count(DISTINCT user_id) AS aktive_benutzer, count(*) FILTER (WHERE ((action)::text ~~ 'document%%'::text)) AS dokument_aktionen, count(*) FILTER (WHERE (((action)::text ~~ 'delete%%'::text) OR ((action)::text ~~ 'remove%%'::text))) AS loesch_aktionen, count(*) FILTER (WHERE ((action)::text ~~ 'export%%'::text)) AS export_aktionen, count(*) FILTER (WHERE ((action)::text ~~ 'login%%'::text)) AS login_aktionen, count(*) FILTER (WHERE (integrity_hash IS NOT NULL)) AS hash_verifizierte, min(created_at) AS erster_eintrag, max(created_at) AS letzter_eintrag FROM public.audit_logs al WHERE (company_id IS NOT NULL) GROUP BY company_id, (date_trunc('month'::text, created_at));
+5932a5932,5933
+> END;
+> END;
+5939a5941
+> RETURN NEW;

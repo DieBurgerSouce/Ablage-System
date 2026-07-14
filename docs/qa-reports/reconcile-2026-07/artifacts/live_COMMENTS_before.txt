@@ -1,0 +1,1107 @@
+r|active_learning_metrics||Active Learning Impact-Metriken pro Tag und Company
+r|active_learning_metrics|avg_confidence_after|Durchschnittliche OCR-Confidence nach Training
+r|active_learning_metrics|avg_confidence_before|Durchschnittliche OCR-Confidence vor Training
+r|active_learning_metrics|company_id|Company fuer Tenant-Isolation
+r|active_learning_metrics|estimated_errors_prevented|Geschaetzte verhinderte zukuenftige Fehler
+r|active_learning_metrics|metric_date|Tag fuer den die Metriken gelten
+r|active_learning_metrics|top_error_patterns|Haeufigste Fehlermuster: [{pattern: ..., count: ...}]
+r|active_learning_metrics|total_corrections|Anzahl tatsaechlicher Korrekturen (nicht uebersprungen)
+r|active_learning_metrics|total_reviewed|Anzahl gepruefter Items an diesem Tag
+r|active_learning_queue||Active Learning Queue fuer priorisierte OCR-Korrekturen
+r|active_learning_queue|company_id|Company fuer RLS und Tenant-Isolation
+r|active_learning_queue|correction_data|Korrekturdaten: {field: {original: ..., corrected: ...}}
+r|active_learning_queue|document_id|Dokument fuer Review
+r|active_learning_queue|estimated_impact|Geschaetzte Anzahl zukuenftiger Fehler die diese Korrektur verhindert
+r|active_learning_queue|field_focus|Felder die Aufmerksamkeit brauchen: ['amount', 'date', 'supplier']
+r|active_learning_queue|ocr_backend|Verwendetes OCR-Backend
+r|active_learning_queue|ocr_confidence|Original OCR-Confidence (0.0-1.0)
+r|active_learning_queue|priority_score|Gesamt-Prioritaet (0-1, hoeher = wertvoller fuer Training)
+r|active_learning_queue|queue_reason|Grund: low_confidence, high_frequency_pattern, edge_case, user_nominated
+r|active_learning_queue|reviewed_at|Zeitpunkt der Pruefung
+r|active_learning_queue|reviewed_by_id|Benutzer der die Pruefung durchgefuehrt hat
+r|active_learning_queue|status|Status: queued, in_review, reviewed, skipped
+r|active_learning_queue|training_batch_id|Training-Batch der diese Korrektur konsumiert hat
+r|active_learning_queue|uncertainty_score|OCR-Unsicherheit (Inverse der Confidence)
+r|ai_conversation_actions|action_type|payment_run, approve_invoices, categorize_documents, etc.
+r|ai_conversation_actions|affected_documents|Array von betroffenen Dokument-IDs
+r|ai_conversation_actions|message_id|Nachricht in der die Aktion vorgeschlagen wurde
+r|ai_conversation_actions|parameters|Aktionsparameter
+r|ai_conversation_actions|result|Ergebnis nach Ausfuehrung
+r|ai_conversation_feedbacks|comment|Optionaler Freitext-Kommentar
+r|ai_conversation_feedbacks|correction|Korrigierte Antwort vom Benutzer
+r|ai_conversation_feedbacks|expected_intent|Erwartete Intent falls falsch erkannt
+r|ai_conversation_feedbacks|rating|1-5 Sterne-Bewertung
+r|ai_conversation_messages|confidence|Konfidenz der Intent-Erkennung (0.0-1.0)
+r|ai_conversation_messages|content|Nachrichteninhalt (Markdown-formatiert)
+r|ai_conversation_messages|extra_data|Zusaetzliche Metadaten (Insights, Suggestions, etc.)
+r|ai_conversation_messages|intent|Erkannte Absicht (nur fuer user-Nachrichten)
+r|ai_conversation_messages|model_used|LLM-Modell (ollama/mistral, etc.)
+r|ai_conversation_messages|referenced_documents|Array von Dokument-IDs die referenziert wurden
+r|ai_conversations|context_data|Zusaetzlicher Kontext (ausgewaehlte Dokumente, etc.)
+r|ai_conversations|context_page|Seite auf der die Konversation gestartet wurde
+r|ai_conversations|is_active|False wenn archiviert
+r|ai_conversations|is_starred|Vom Benutzer markiert
+r|ai_conversations|preferences|Benutzer-Praeferenzen fuer diese Session
+r|ai_conversations|session_id|Eindeutige Session-ID fuer Frontend-Zuordnung
+r|ai_conversations|title|Automatisch generierter oder manueller Titel
+r|ai_conversations|total_tokens|Gesamte Token-Nutzung (fuer Kosten-Tracking)
+r|ai_ethics_audits|audit_type|bias_check, fairness_review, guardrail_check
+r|ai_ethics_audits|created_by_id|User der das Audit ausgelöst hat (null = automatisch)
+r|ai_ethics_audits|decision_id|ID der geprüften Entscheidung
+r|ai_ethics_audits|decision_type|z.B. risk_scoring, entity_matching, document_classification
+r|ai_ethics_audits|details|Detaillierte Audit-Ergebnisse (z.B. Disparate Impact)
+r|ai_ethics_audits|fairness_score|Fairness-Score (0.0 = unfair, 1.0 = fair)
+r|ai_ethics_audits|recommendations|Array von Empfehlungen zur Bias-Reduktion
+r|ai_ethics_audits|result|passed, warning, failed
+r|app_config||System-weite Konfiguration als Key-Value Store
+r|app_config|description|Beschreibung der Konfiguration
+r|app_config|key|Eindeutiger Schluessel für die Konfiguration
+r|app_config|value|JSONB-Wert der Konfiguration
+r|approval_audit_logs|action_type|created|approved|rejected|escalated|delegated|recalled|four_eyes_check
+r|approval_audit_logs|ip_address|IPv4/IPv6 des Akteurs
+r|approval_audit_logs|metadata_json|Zusaetzliche Kontextdaten
+r|approval_chain_templates|is_default|Standard-Kette fuer Firma
+r|approval_chain_templates|steps_config|[{step: 1, approver_type: 'role'|'group'|'user', approver_id: UUID, timeout_hours: 48}]
+r|approval_delegations||Genehmigungsdelegation / Stellvertretung
+r|approval_group_members|is_backup|Stellvertreter (nur bei Abwesenheit)
+r|approval_groups|decision_mode|any=einer genuegt, all=alle muessen, majority=Mehrheit
+r|approval_matrices|amount_max|Hoechstbetrag (EUR, NULL = unbegrenzt)
+r|approval_matrices|amount_min|Mindestbetrag (EUR)
+r|approval_matrices|department|Abteilung (z.B. Einkauf, Finanzen)
+r|approval_matrices|document_type|Dokumenttyp (optional, z.B. invoice, contract)
+r|approval_matrices|four_eyes_required|Vier-Augen-Prinzip erforderlich
+r|approval_matrices|min_approvers|Mindestanzahl Genehmiger
+r|approval_matrices|priority|Hoehere Prioritaet = bevorzugt bei Ueberlappung
+r|approval_requests||Genehmigungsanfragen mit Multi-Step Chain
+r|approval_requests|amount|Betrag falls relevant
+r|approval_requests|approval_chain|Kopie der Chain bei Erstellung
+r|approval_requests|entity_type|invoice, expense, document, purchase_order, contract
+r|approval_requests|priority|low, normal, high, urgent
+r|approval_requests|status|pending, approved, rejected, escalated, expired, cancelled
+r|approval_rules||Regeln fuer automatisches Approval-Routing
+r|approval_rules|approval_chain|Genehmiger-Chain als JSON Array
+r|approval_rules|conditions|Bedingungen als JSON
+r|approval_rules|entity_types|Entity-Typen auf die Regel angewendet wird
+r|approval_rules|escalation_after_hours|Eskalation nach X Stunden
+r|approval_rules|escalation_to_role|Eskalation an diese Rolle
+r|approval_rules|priority|Niedrig = Hoehere Prioritaet
+r|approval_rules|rule_type|amount_threshold, category, supplier, cost_center, document_type, risk_level, custom
+r|approval_rules|sla_hours|Max. Bearbeitungszeit in Stunden
+r|approval_steps||Einzelne Schritte im Genehmigungsprozess
+r|approval_steps|approver_type|user, role, group
+r|approval_steps|approver_value|User-ID, Rollenname, etc.
+r|approval_steps|decision|approved, rejected
+r|approval_steps|status|pending, approved, rejected, escalated, expired, cancelled
+r|autonomous_proposal_queue|ai_decision_id|Referenz zur urspruenglichen AI-Decision
+r|autonomous_proposal_queue|delay_hours|Urspruengliche Verzoegerung in Stunden
+r|autonomous_proposal_queue|executed_at|Zeitpunkt der Ausfuehrung
+r|autonomous_proposal_queue|executed_by|User-ID oder 'system' bei Auto-Accept
+r|autonomous_proposal_queue|metadata|Zusaetzliche Metadaten
+r|autonomous_proposal_queue|proposal_type|Typ: file_document, approve_payment, send_dunning, update_master_data, assign_entity, classify_document
+r|autonomous_proposal_queue|proposed_value|Vorgeschlagener Wert als JSON
+r|autonomous_proposal_queue|reasoning|Begruendung des Vorschlags
+r|autonomous_proposal_queue|rollback_until|Bis wann Rollback moeglich ist
+r|autonomous_proposal_queue|scheduled_at|Geplante Ausfuehrungszeit
+r|autonomous_proposal_queue|status|pending, approved, rejected, auto_accepted, expired, rolled_back, cancelled
+r|autonomous_proposal_queue|target_id|ID des Ziel-Objekts (Document, Invoice, Entity, etc.)
+r|autonomous_trust_config|change_reason|Grund fuer letzte Level-Aenderung
+r|autonomous_trust_config|delay_hours|Wartezeit in Stunden (Override)
+r|autonomous_trust_config|delayed_threshold|Ab hier verzoegerte Aktion (Override)
+r|autonomous_trust_config|document_type|Optional: Spezifisches Level fuer diesen Dokumenttyp
+r|autonomous_trust_config|immediate_threshold|Ab hier sofortige Aktion (Override)
+r|autonomous_trust_config|level_changed_at|Zeitpunkt der letzten Level-Aenderung
+r|autonomous_trust_config|metrics_snapshot|Letzter Metriken-Snapshot (total_decisions, approval_rate, etc.)
+r|autonomous_trust_config|trust_level|Trust-Level: assistance, auto_accept, confidence, autonomous
+r|autonomy_metrics||Aggregierte Autonomie-Metriken
+r|autonomy_settings||Autonomie-Einstellungen pro Company
+r|batch_jobs|progress|Fortschritt 0-100%
+r|bias_reports|affected_entities|Anzahl betroffener Entities
+r|bias_reports|dimensions|Array von Bias-Dimensionen mit Metriken
+r|bias_reports|expires_at|Ablaufdatum (z.B. nach 30 Tagen)
+r|bias_reports|generated_at|Zeitpunkt der Report-Generierung
+r|bias_reports|overall_fairness|Gesamt-Fairness-Score (0.0 - 1.0)
+r|bias_reports|recommendations|Array von priorisierten Empfehlungen
+r|bias_reports|report_type|risk_scoring, entity_matching, document_classification
+r|bpmn_process_definitions|bpmn_xml|BPMN 2.0 XML
+r|bpmn_process_definitions|key|Eindeutiger Prozess-Key
+r|bpmn_process_definitions|name|Anzeigename
+r|bpmn_process_definitions|process_data|Parsed BPMN als JSONB
+r|bpmn_process_instances|business_key|Externer Schluessel
+r|business_entities|company_presence|List of company short_names where entity exists
+r|business_entities|default_folder_id|Default folder for auto-filing documents from this entity
+r|business_entities|lexware_ids|Lexware IDs per company: {folie: {kd_nr, matchcode, lief_nr}, messer: {...}}
+r|business_entities|payment_behavior_score|Payment behavior score 0-100 (100 = best payer)
+r|business_entities|primary_customer_number|Primary customer number for display (e.g., 12345)
+r|business_entities|primary_supplier_number|Primary supplier number for display
+r|business_entities|risk_calculated_at|Timestamp of last risk calculation
+r|business_entities|risk_factors|Risk factor breakdown: {payment_delay, default_rate, ...}
+r|business_entities|risk_score|Overall risk score 0-100 (100 = highest risk)
+r|business_rules|actions|Aktionen als JSON-Array
+r|business_rules|applies_to_document_types|Nur fuer bestimmte Dokumenttypen
+r|business_rules|applies_to_sources|Nur fuer bestimmte Quellen
+r|business_rules|category|approval, compliance, fraud, workflow, etc.
+r|business_rules|condition|Bedingung als JSON-Struktur
+r|business_rules|else_actions|Aktionen wenn Regel NICHT matcht
+r|business_rules|execution_count|Wie oft ausgefuehrt
+r|business_rules|match_count|Wie oft gematcht
+r|business_rules|priority|Ausfuehrungsprioritaet (hoeher = frueher)
+r|business_rules|stop_on_match|Weitere Regeln nach Match stoppen
+r|cash_entries|cancelled_at|Zeitpunkt der Stornierung (GoBD Audit Trail)
+r|cash_entries|cancelled_by_user_id|User der die Stornierung durchgeführt hat
+r|cashflow_predictions||Cashflow-Prognosen fuer Liquiditaetsplanung
+r|categorization_feedback|actual_category|Tatsaechliche Kategorie nach Nutzer-Korrektur
+r|categorization_feedback|company_id|Mandanten-Zuordnung fuer Multi-Company Isolation
+r|categorization_feedback|confidence|Confidence-Score der urspruenglichen Vorhersage (0.0-1.0)
+r|categorization_feedback|corrected_by_id|Nutzer der die Korrektur vorgenommen hat
+r|categorization_feedback|document_id|Referenz auf verarbeitetes Dokument (SET NULL bei Loeschung)
+r|categorization_feedback|document_type|Dokumenttyp zum Zeitpunkt der Kategorisierung
+r|categorization_feedback|predicted_category|Vom Engine vorhergesagte Kategorie (z.B. 'invoice', 'contract')
+r|categorization_feedback|source|Wie wurde kategorisiert: auto_high_confidence, user_correction, bulk_accept
+r|categorization_feedback|vendor_entity_id|FK zu business_entities fuer lieferantenbezogene Lernmuster
+r|categorization_feedback|vendor_name|Anonymisierter Lieferantenname fuer Muster-Erkennung
+r|categorization_feedback|was_correct|True wenn Vorhersage korrekt war, False bei Korrektur
+r|chat_tool_actions||Tool-Aktionen aus dem RAG Chat Agent Mode
+r|chat_tool_actions|confirmed_by_id|User der die Aktion bestaetigt hat
+r|chat_tool_actions|created_at|Zeitpunkt der Erstellung
+r|chat_tool_actions|error_message|Fehlermeldung bei failed status
+r|chat_tool_actions|executed_at|Zeitpunkt der Ausfuehrung
+r|chat_tool_actions|message_id|Assistant-Message die die Aktion vorgeschlagen hat
+r|chat_tool_actions|parameters|Tool-Parameter als JSON
+r|chat_tool_actions|requires_confirmation|Muss vom User bestaetigt werden
+r|chat_tool_actions|result|Ergebnis nach Ausfuehrung
+r|chat_tool_actions|session_id|Chat Session in der die Aktion aufgetreten ist
+r|chat_tool_actions|status|pending_confirmation, confirmed, executed, rejected, failed
+r|chat_tool_actions|tool_name|Name des aufgerufenen Tools
+r|cluster_suggestions||Cluster-/Entity-/Kategorie-Vorschlaege bei Dokument-Upload
+r|cluster_suggestions|company_id|Mandanten-Zuordnung fuer Multi-Company Isolation
+r|cluster_suggestions|document_id|Dokument, fuer das der Vorschlag gilt
+r|cluster_suggestions|reference_document_id|Das aehnliche Referenz-Dokument
+r|cluster_suggestions|responded_at|Zeitpunkt der Nutzer-Reaktion
+r|cluster_suggestions|similarity_score|Aehnlichkeitswert zum Referenz-Dokument (0.0-1.0)
+r|cluster_suggestions|status|Status: pending, accepted, rejected, ignored
+r|cluster_suggestions|suggested_category|Vorgeschlagene Kategorie/Dokumenttyp
+r|cluster_suggestions|suggested_cluster_id|Vorgeschlagener Cluster
+r|cluster_suggestions|suggested_entity_id|Vorgeschlagene Business Entity
+r|companies|billing_address|Rechnungsadresse als JSON
+r|companies|billing_email|E-Mail fuer Rechnungen
+r|companies|features_enabled|Aktivierte Features als JSON-Array
+r|companies|filing_rules|Custom auto-filing rules per document type. Format: {'invoice': {'folder_id': 'uuid', 'folder_name': 'Custom'}, ...}
+r|companies|max_documents_per_month|Maximale Dokumente pro Monat
+r|companies|max_storage_gb|Maximaler Speicher in GB
+r|companies|max_users|Maximale Anzahl Benutzer
+r|companies|payment_method|Zahlungsmethode: invoice, sepa, card
+r|companies|subscription_expires_at|Ablaufdatum des Abonnements (null = unbegrenzt)
+r|companies|subscription_started_at|Beginn des aktuellen Abonnements
+r|companies|subscription_tier|Abonnement-Stufe: free, basic, professional, enterprise
+r|company_health_snapshots|active_alerts|Aktive Alerts
+r|company_health_snapshots|auto_process_rate|Automatisierungsgrad (0.0 - 1.0)
+r|company_health_snapshots|critical_alerts|Kritische Alerts
+r|company_health_snapshots|documents_count|Gesamtanzahl Dokumente
+r|company_health_snapshots|health_score_compliance|Compliance-Score (GoBD, DSGVO)
+r|company_health_snapshots|health_score_financial|Finanzielle Gesundheit (Cash Flow, Liquidität)
+r|company_health_snapshots|health_score_operations|Operative Effizienz (Durchlaufzeiten, Fehlerrate)
+r|company_health_snapshots|health_score_overall|Gesamt-Score (gewichteter Durchschnitt)
+r|company_health_snapshots|health_score_risk|Risiko-Score (inverse Skala: 100 = kein Risiko)
+r|company_health_snapshots|invoices_overdue|Überfällige Rechnungen
+r|company_health_snapshots|invoices_pending|Offene Rechnungen
+r|company_health_snapshots|metrics_data|Erweiterte Metriken (z.B. OCR-Qualität, User-Aktivität)
+r|company_health_snapshots|overdue_amount|Summe überfälliger Beträge
+r|company_health_snapshots|pending_amount|Summe offener Beträge
+r|company_health_snapshots|snapshot_date|Datum des Snapshots (täglich)
+r|company_settings|alternative_names|Alternative Schreibweisen fuer Dokumentenerkennung
+r|company_settings|bic|BIC/SWIFT
+r|company_settings|calendar_oauth_tokens|Verschlüsselte OAuth-Tokens nach Provider
+r|company_settings|calendar_sync_state|Sync-State Mapping {uid: external_event_id}
+r|company_settings|calendar_sync|Sync-Konfiguration (Provider, URL, Kategorien)
+r|company_settings|city|Stadt
+r|company_settings|commercial_register|Handelsregister-Nr.
+r|company_settings|company_name|Offizieller Firmenname
+r|company_settings|country|Land
+r|company_settings|court|Registergericht
+r|company_settings|email|Zentrale E-Mail-Adresse
+r|company_settings|iban|IBAN
+r|company_settings|phone|Telefonnummer
+r|company_settings|postal_code|PLZ
+r|company_settings|street|Strasse mit Hausnummer
+r|company_settings|tax_number|Steuernummer
+r|company_settings|vat_id|USt-IdNr. (z.B. DE123456789)
+r|company_settings|website|Webseite
+r|custom_field_definitions|description|Optionale Beschreibung fuer Benutzer
+r|custom_field_definitions|document_type|Dokumenttyp-Filter (None = alle Typen)
+r|custom_field_definitions|dropdown_options|Optionsliste: [{value, label}]
+r|custom_field_definitions|field_type|Feldtyp: text, number, date, boolean, dropdown, multi_select, lookup
+r|custom_field_definitions|is_filterable|Als Filter in Dokumentliste anbieten
+r|custom_field_definitions|is_searchable|In Volltextsuche einschliessen
+r|custom_field_definitions|label|Anzeige-Label (deutsch)
+r|custom_field_definitions|lookup_entity|Lookup-Zielentitaet (z.B. 'business_entity', 'document')
+r|custom_field_definitions|name|Interner Name (snake_case, eindeutig pro document_type+company)
+r|custom_field_definitions|validation_rules|Validierungsregeln: {min, max, pattern, min_length, max_length}
+r|customer_dunning_overrides|custom_payment_terms_days|Abweichende Zahlungsfrist
+r|customer_dunning_overrides|exclude_from_auto_dunning|Keine automatischen Mahnungen
+r|customer_dunning_overrides|max_mahn_stufe|Max. Eskalationsstufe (z.B. 2 = nie Inkasso)
+r|customer_dunning_overrides|preferred_contact_method|email, phone, letter
+r|dashboard_builder_configs|company_id|Mandanten-Zuordnung (RESTRICT verhindert versehentliches Loeschen)
+r|dashboard_builder_configs|created_at|Erstellungszeitpunkt
+r|dashboard_builder_configs|description|Optionale Beschreibung
+r|dashboard_builder_configs|id|Eindeutige Dashboard-ID
+r|dashboard_builder_configs|is_default|Standarddashboard des Benutzers (je User max. 1 aktives)
+r|dashboard_builder_configs|is_shared|Firmenweit freigegeben (alle Benutzer der Company koennen lesen)
+r|dashboard_builder_configs|layout|Grid-Layout als JSONB-Array: [{"widget_id": "uuid", "x": 0, "y": 0, "w": 6, "h": 4}]
+r|dashboard_builder_configs|name|Anzeigename des Dashboards
+r|dashboard_builder_configs|updated_at|Letzter Aenderungszeitpunkt
+r|dashboard_builder_configs|user_id|Eigentuemer-Benutzer
+r|dashboard_builder_widgets|config|Widget-spezifische Einstellungen als JSONB (Farbe, Zeitraum, Schwellwerte, etc.)
+r|dashboard_builder_widgets|created_at|Erstellungszeitpunkt
+r|dashboard_builder_widgets|dashboard_id|Zugehoerige Dashboard-Konfiguration (wird beim Loeschen mitgeloescht)
+r|dashboard_builder_widgets|data_source|Interne Bezeichnung des Service/Endpunkts der Daten liefert (z. B. 'invoice_tracking', 'cashflow_predictor')
+r|dashboard_builder_widgets|id|Eindeutige Widget-ID
+r|dashboard_builder_widgets|refresh_interval_seconds|Aktualisierungsintervall in Sekunden (Standard: 300, Minimum: 30)
+r|dashboard_builder_widgets|title|Anzeigename des Widgets (deutsch)
+r|dashboard_builder_widgets|widget_type|Widget-Typ (invoice_status, cashflow_chart, ...)
+r|dashboard_share_audits|action|Aktion: shared, unshared, permission_changed
+r|dashboard_share_audits|created_at|Zeitpunkt der Aktion
+r|dashboard_share_audits|dashboard_id|Dashboard-ID (immer gesetzt)
+r|dashboard_share_audits|dashboard_share_id|Referenz zur Freigabe (kann NULL sein bei Loeschung)
+r|dashboard_share_audits|details|Zusaetzliche Details zur Aktion (alte/neue Werte, etc.)
+r|dashboard_share_audits|id|Eindeutige Audit-ID
+r|dashboard_share_audits|performed_by_id|Benutzer der die Aktion durchgefuehrt hat
+r|datev_beleglinks|beleglink_guid|DATEV Beleglink-GUID
+r|datev_beleglinks|beleglink_url|Vollstaendige URL zum Beleg
+r|datev_beleglinks|checksum_sha256|SHA-256 Hash der Datei
+r|datev_beleglinks|datev_document_id|ID in DATEV Belegarchiv
+r|datev_beleglinks|upload_status|Upload-Status: pending, uploaded, failed
+r|datev_buchungen|basis_umsatz|Basisumsatz bei Fremdwaehrung
+r|datev_buchungen|belegdatum|Belegdatum
+r|datev_buchungen|belegfeld_1|Belegfeld 1 (Rechnungsnummer)
+r|datev_buchungen|belegfeld_2|Belegfeld 2
+r|datev_buchungen|bu_schluessel|Steuerschluessel (BU-Schluessel)
+r|datev_buchungen|buchungs_guid|Eindeutige unveraenderliche Buchungs-ID (GoBD)
+r|datev_buchungen|buchungstext|Buchungstext (max 60 Zeichen)
+r|datev_buchungen|datev_buchung_id|ID in DATEV nach Sync
+r|datev_buchungen|document_id|Verknuepftes Dokument
+r|datev_buchungen|festschreibung_datum|Zeitpunkt der Festschreibung
+r|datev_buchungen|festschreibung_hash|SHA-256 Hash der festgeschriebenen Daten
+r|datev_buchungen|gegenkonto|Gegenkonto
+r|datev_buchungen|ist_festgeschrieben|Buchung festgeschrieben (unveraenderlich)
+r|datev_buchungen|konto|Konto (Soll bei S, Haben bei H)
+r|datev_buchungen|kostenstelle_1|Kostenstelle 1
+r|datev_buchungen|kostenstelle_2|Kostenstelle 2
+r|datev_buchungen|kostentraeger|Kostentraeger
+r|datev_buchungen|kurs|Wechselkurs bei Fremdwaehrung
+r|datev_buchungen|leistungsdatum|Leistungsdatum
+r|datev_buchungen|original_suggestion_gegenkonto|Urspruenglicher Gegenkontovorschlag
+r|datev_buchungen|original_suggestion_konto|Urspruenglicher Kontovorschlag
+r|datev_buchungen|retry_count|Anzahl Sync-Versuche
+r|datev_buchungen|skonto|Skontobetrag
+r|datev_buchungen|soll_haben|S=Soll, H=Haben
+r|datev_buchungen|suggestion_confidence|Konfidenz des Kontierungsvorschlags (0-1)
+r|datev_buchungen|suggestion_source|Quelle: rule, ml, manual
+r|datev_buchungen|sync_error|Fehlermeldung bei Sync-Fehler
+r|datev_buchungen|sync_status|Sync-Status: pending, synced, failed, conflict
+r|datev_buchungen|synced_at|Zeitpunkt des Syncs
+r|datev_buchungen|umsatz|Umsatz in EUR
+r|datev_buchungen|user_korrektur|Vom User korrigiert (fuer ML-Training)
+r|datev_buchungen|waehrung|Waehrung (ISO 4217)
+r|datev_buchungen|zahlungsbedingung|Zahlungsbedingung
+r|datev_configurations|berater_nr|Beraternummer (max. 7-stellig)
+r|datev_configurations|buchungstext_format|Format fuer Buchungstext
+r|datev_configurations|incoming_creditor_account|Kreditorenkonto Eingang (z.B. 70000)
+r|datev_configurations|incoming_expense_account|Aufwandskonto Eingang (z.B. 4200 Wareneingang)
+r|datev_configurations|is_default|Standard-Konfiguration
+r|datev_configurations|kontenrahmen|SKR03 oder SKR04
+r|datev_configurations|mandanten_nr|Mandantennummer (max. 5-stellig)
+r|datev_configurations|outgoing_debtor_account|Debitorenkonto Ausgang (z.B. 10000)
+r|datev_configurations|outgoing_revenue_account|Erloeskonto Ausgang (z.B. 8400)
+r|datev_configurations|sachkontenlange|Laenge Sachkonten (4-8 Stellen)
+r|datev_configurations|sammelkonto_debitoren|Sammelkonto Debitoren
+r|datev_configurations|sammelkonto_kreditoren|Sammelkonto Kreditoren
+r|datev_configurations|user_id|Benutzer-spezifische Konfiguration
+r|datev_configurations|wj_beginn|Wirtschaftsjahr-Beginn
+r|datev_connections|access_token_encrypted|AES-256-GCM verschluesselter Access Token
+r|datev_connections|api_environment|API Umgebung: production, sandbox
+r|datev_connections|api_version|API Version
+r|datev_connections|aufwandskonto_standard|Standard-Aufwandskonto (z.B. 4400)
+r|datev_connections|beleglink_prefix|URL-Prefix fuer Beleglinks
+r|datev_connections|beraternummer|DATEV Beraternummer (5-stellig)
+r|datev_connections|buchungsmodus|Buchungsmodus: automatisch, manuell, bestaetigung
+r|datev_connections|client_id|DATEVconnect OAuth2 Client ID
+r|datev_connections|client_secret_encrypted|AES-256-GCM verschluesseltes Client Secret
+r|datev_connections|company_id|Multi-Tenant Zuordnung
+r|datev_connections|connection_status|Verbindungsstatus
+r|datev_connections|enabled_features|Aktivierte Features als JSON Array
+r|datev_connections|erloskonto_standard|Standard-Erloeskonto (z.B. 8400)
+r|datev_connections|erp_connection_id|Optionale Verknuepfung mit ERP-Connection
+r|datev_connections|festschreibung_automatisch|Automatische Festschreibung am Monatsende
+r|datev_connections|gobd_enabled|GoBD-Compliance aktiviert
+r|datev_connections|is_active|Verbindung aktiv
+r|datev_connections|kontenrahmen|Kontenrahmen: SKR03, SKR04
+r|datev_connections|last_belege_sync|Letzter Belegbilder-Sync
+r|datev_connections|last_buchungen_sync|Letzter Buchungen-Sync
+r|datev_connections|last_connection_at|Letzte erfolgreiche Verbindung
+r|datev_connections|last_error|Letzte Fehlermeldung
+r|datev_connections|last_stammdaten_sync|Letzter Stammdaten-Sync
+r|datev_connections|mandantennummer|DATEV Mandantennummer (5-stellig)
+r|datev_connections|name|Anzeigename der Verbindung
+r|datev_connections|personenkontenlange|Laenge der Personenkonten (5-9)
+r|datev_connections|redirect_uri|OAuth2 Redirect URI
+r|datev_connections|refresh_token_encrypted|AES-256-GCM verschluesselter Refresh Token
+r|datev_connections|sachkontenlange|Laenge der Sachkonten (4-8)
+r|datev_connections|sammelkonto_debitoren|Sammelkonto Debitoren (z.B. 1400)
+r|datev_connections|sammelkonto_kreditoren|Sammelkonto Kreditoren (z.B. 1600)
+r|datev_connections|token_expires_at|Token Ablaufzeitpunkt
+r|datev_connections|wirtschaftsjahr_beginn|Monat des Wirtschaftsjahresbeginns (1-12)
+r|datev_exports|content_hash|SHA256 der Export-Datei
+r|datev_exports|export_type|buchungsstapel, stammdaten
+r|datev_exports|included_documents|Array von Dokument-UUIDs
+r|datev_exports|skipped_documents|Array von uebersprungenen Dokument-UUIDs
+r|datev_exports|status|completed, failed, partial
+r|datev_exports|warnings|Array von Warnmeldungen
+r|datev_kontenplan|datev_id|ID in DATEV
+r|datev_kontenplan|ist_automatikkonto|Automatikkonto (automatische Steuerberechnung)
+r|datev_kontenplan|ist_gesperrt|Konto gesperrt
+r|datev_kontenplan|kontenklasse|Kontenklasse (0-9)
+r|datev_kontenplan|kontobezeichnung|Kontobezeichnung
+r|datev_kontenplan|kontonummer|Kontonummer
+r|datev_kontenplan|kontotyp|Kontotyp: sachkonto, personenkonto, anlage
+r|datev_kontenplan|sammelkonto|Uebergeordnetes Sammelkonto
+r|datev_kontenplan|steuercode_default|Standard-Steuerschluessel
+r|datev_kontierung_patterns|amount_range_max|Maximaler Betrag fuer Match
+r|datev_kontierung_patterns|amount_range_min|Minimaler Betrag fuer Match
+r|datev_kontierung_patterns|bu_schluessel|Vorgeschlagener Steuerschluessel
+r|datev_kontierung_patterns|document_type|Dokumenttyp: invoice, credit_note, receipt, etc.
+r|datev_kontierung_patterns|entity_id|Optionale Zuordnung zu Geschaeftspartner
+r|datev_kontierung_patterns|entity_name_pattern|Fuzzy-Match Pattern fuer Firmennamen
+r|datev_kontierung_patterns|feature_vector|Feature-Vektor fuer ML-Matching
+r|datev_kontierung_patterns|gegenkonto|Vorgeschlagenes Gegenkonto
+r|datev_kontierung_patterns|konto|Vorgeschlagenes Konto
+r|datev_kontierung_patterns|kostenstelle|Vorgeschlagene Kostenstelle
+r|datev_kontierung_patterns|model_version|Version des ML-Modells
+r|datev_kontierung_patterns|pattern_source|Quelle: manual, learned, imported
+r|datev_kontierung_patterns|priority|Prioritaet bei Mehrfach-Match (hoeher = besser)
+r|datev_kontierung_patterns|success_count|Anzahl erfolgreiche Verwendungen (ohne Korrektur)
+r|datev_kontierung_patterns|text_keywords|Stichwort-Array fuer Textmatching
+r|datev_kontierung_patterns|usage_count|Anzahl Verwendungen
+r|datev_sync_history|celery_task_id|Celery Task ID
+r|datev_sync_history|error_details|Detaillierte Fehlerinformationen
+r|datev_sync_history|failed_records|Liste fehlgeschlagener Datensaetze
+r|datev_sync_history|status|Status: running, success, failed, partial
+r|datev_sync_history|sync_direction|Richtung: push, pull, bidirectional
+r|datev_sync_history|sync_type|Sync-Typ: stammdaten, kontenplan, buchungen, belege, full
+r|datev_sync_history|triggered_by|Ausloeser: manual, scheduled, webhook, api
+r|datev_vendor_mappings|business_entity_id|Verknuepfter Geschaeftspartner
+r|datev_vendor_mappings|cost_center|Kostenstelle
+r|datev_vendor_mappings|cost_object|Kostentraeger
+r|datev_vendor_mappings|creditor_account|Personenkonto (Kreditor)
+r|datev_vendor_mappings|expense_account|Aufwandskonto
+r|datev_vendor_mappings|vendor_iban|IBAN (exakter Match)
+r|datev_vendor_mappings|vendor_name|Firmenname (Fuzzy-Match)
+r|datev_vendor_mappings|vendor_vat_id|USt-IdNr (exakter Match)
+r|delegation_audit_logs|action|z.B. approval:execute, document:read
+r|delegation_audit_logs|details|Zusaetzliche Details wie amount, vendor, etc.
+r|delegation_audit_logs|resource_type|z.B. document, approval, invoice
+r|delegation_templates|is_system|System-Template (nicht loeschbar)
+r|delegations|delegate_id|User der die Rechte erhaelt
+r|delegations|delegation_type|full, partial, approval, read_only, emergency
+r|delegations|delegator_id|User der seine Rechte delegiert
+r|delegations|max_amount|Max. Betrag pro Genehmigung
+r|delegations|max_approvals|Max. Anzahl Genehmigungen (NULL = unbegrenzt)
+r|delegations|notes|Interne Notizen
+r|delegations|notify_on_usage|Bei jeder Nutzung benachrichtigen
+r|delegations|permissions|Liste der delegierten Berechtigungen
+r|delegations|reason_text|Freitext-Begruendung
+r|delegations|reason|vacation, illness, parental_leave, business_trip, project, training, other
+r|delegations|requires_acceptance|Muss Delegate bestaetigen?
+r|delegations|scope|Einschraenkung auf bestimmte Ressourcen
+r|delegations|status|pending, active, expired, revoked, declined
+r|delegations|usage_count|Wie oft wurde die Delegation genutzt
+r|dlp_audit_logs||DLP Audit-Log fuer Compliance und Forensik
+r|dlp_audit_logs|action_type|download, view, print, export
+r|dlp_audit_logs|company_id|Mandanten-Zuordnung - PFLICHT
+r|dlp_audit_logs|event_type|access_check, policy_change, watermark_applied, sensitive_data_found
+r|dlp_audit_logs|result|allowed, blocked, watermarked, notified
+r|dlp_audit_logs|sensitive_data_types|{'credit_card': 2, 'iban': 1} - NUR Counts!
+r|dlp_policies||DLP Policies fuer Enterprise Security
+r|dlp_policies|allowed_roles|Rollen die Zugriff haben
+r|dlp_policies|blocked_roles|Rollen die explizit blockiert sind
+r|dlp_policies|company_id|Mandanten-Zuordnung - PFLICHT fuer Isolation
+r|dlp_policies|document_types|Betroffene Dokumenttypen
+r|dlp_policies|policy_id|Human-readable Policy-ID (z.B. 'confidential-docs')
+r|dlp_policies|tags_blocked|Dokument darf diese Tags nicht haben
+r|dlp_policies|tags_required|Dokument muss diese Tags haben
+r|dlp_policies|time_restrictions|{'start': '09:00', 'end': '18:00', 'weekdays': [0-6]}
+r|dlp_policies|watermark_config|Wasserzeichen-Konfiguration
+r|document_access_logs||GoBD-konformes Dokumenten-Zugriffsprotokoll
+r|document_access_logs|access_metadata|Zusaetzliche Kontext-Infos (Format, Export-Typ, etc.)
+r|document_access_logs|access_reason|Optionaler Grund/Kontext des Zugriffs
+r|document_access_logs|access_type|Art des Zugriffs: view, download, export, etc.
+r|document_access_logs|bytes_transferred|Uebertragene Bytes (bei Download/Export)
+r|document_access_logs|request_id|Korrelations-ID zur Request-Verfolgung
+r|document_access_logs|sequence_number|Aufsteigende Sequenz fuer Lueckendetektion
+r|document_annotations|annotation_type|comment, highlight, drawing, shape, text
+r|document_annotations|color|Farbe (hex oder named color)
+r|document_annotations|company_id|Multi-Tenant Company
+r|document_annotations|content|Text-Inhalt (für Kommentare)
+r|document_annotations|created_at|Erstellungszeitpunkt
+r|document_annotations|document_id|Verknüpftes Dokument
+r|document_annotations|is_resolved|True wenn Kommentar als gelöst markiert
+r|document_annotations|mentioned_user_ids|Array von User-IDs die erwähnt wurden
+r|document_annotations|page|Seitennummer (1-basiert)
+r|document_annotations|parent_annotation_id|Parent-Annotation für Threads
+r|document_annotations|position|Position: {x, y, width, height} in Prozent oder Pixeln
+r|document_annotations|resolved_at|Zeitpunkt der Auflösung
+r|document_annotations|resolved_by_id|User der die Annotation aufgelöst hat
+r|document_annotations|svg_data|SVG-Daten für Zeichnungen/Formen
+r|document_annotations|updated_at|Zeitpunkt der letzten Änderung
+r|document_annotations|user_id|Ersteller der Annotation
+r|document_archives||GoBD-konforme Archivierung: Revisionssichere Speicherung mit Hash-Signatur
+r|document_archives|content_hash|SHA-256 Hash des Dokument-Inhalts
+r|document_archives|enforcement_status|Status der Aufbewahrungsfristen-Durchsetzung
+r|document_archives|gdpr_conflict_resolved_at|Zeitpunkt der GDPR-Konflikt-Aufloesung
+r|document_archives|post_retention_review_at|Zeitpunkt der geplanten Post-Retention Review
+r|document_archives|post_retention_review_scheduled|Flag ob Post-Retention Review geplant ist
+r|document_archives|retention_category|invoice, contract, correspondence, etc.
+r|document_archives|signature_certificate|TSA-Zertifikat (optional)
+r|document_cluster_memberships||Zuordnungen von Dokumenten zu Clustern mit Aehnlichkeitswert
+r|document_cluster_memberships|assigned_at|Zeitpunkt der Zuordnung
+r|document_cluster_memberships|assigned_by|Zuordnungsquelle: auto, user, system
+r|document_cluster_memberships|cluster_id|Zugeordneter Cluster
+r|document_cluster_memberships|confidence|Konfidenz der Zuordnung (0.0-1.0)
+r|document_cluster_memberships|document_id|Zugeordnetes Dokument
+r|document_cluster_memberships|similarity_score|Aehnlichkeit zum Cluster-Zentroid (0.0-1.0)
+r|document_clusters||Dokumenten-Cluster fuer automatische Gruppierung und Visualisierung
+r|document_clusters|avg_similarity|Durchschnittliche Intra-Cluster-Aehnlichkeit (0.0-1.0)
+r|document_clusters|business_entity_id|Optionale Zuordnung zu einer Business Entity
+r|document_clusters|centroid|Cluster-Zentrum als Durchschnitt aller Dokument-Embeddings
+r|document_clusters|cluster_type|Cluster-Typ: auto, manual, entity, category
+r|document_clusters|company_id|Mandanten-Zuordnung fuer Multi-Company Isolation
+r|document_clusters|description|Optionale Beschreibung des Clusters
+r|document_clusters|document_count|Anzahl der Dokumente im Cluster
+r|document_clusters|is_active|Ob der Cluster aktiv ist
+r|document_clusters|metadata|Zusaetzliche Metadaten zum Cluster
+r|document_clusters|name|Anzeigename des Clusters
+r|document_clusters|parent_cluster_id|Uebergeordneter Cluster fuer hierarchische Struktur
+r|document_comments|company_id|Multi-Tenant: Firmenzugehoerigkeit
+r|document_comments|deleted_at|Timestamp des Soft Delete
+r|document_comments|deleted_by_id|User der den Kommentar geloescht hat
+r|document_comments|field_reference|Feld-Referenz fuer Inline-Kommentare (z.B. "invoice_number", "total_amount")
+r|document_mentions|context|Kontext-Text (z.B. Kommentar-Inhalt)
+r|document_mentions|read|Wurde die Mention gelesen?
+r|document_relationships|relationship_type|quote_to_order, order_to_delivery, delivery_to_invoice, etc.
+r|document_workflow_items|assigned_to|Zugewiesener Bearbeiter
+r|document_workflow_items|entered_stage_at|Wann in aktuelle Stage gewechselt
+r|document_workflow_items|metadata_json|Zusaetzliche Metadaten
+r|document_workflow_items|notes|Notizen zum Workflow-Item
+r|document_workflow_items|priority|Prioritaet (low, normal, high, urgent)
+r|documents|data_category|GDPR Datenkategorie für Aufbewahrungsfristen
+r|documents|quick_classification_result|Ergebnis: {direction, confidence, reason, tag_assigned, user_overridden}
+r|documents|quick_classification_status|Status der schnellen Klassifizierung: pending, processing, completed, failed
+r|domain_events|aggregate_id|ID des Aggregates (z.B. Document.id)
+r|domain_events|aggregate_type|z.B. Document, Invoice, Entity, BankTransaction
+r|domain_events|causation_id|ID des auslösenden Events
+r|domain_events|correlation_id|Correlation-ID für Event-Ketten
+r|domain_events|created_at|Zeitpunkt der Event-Erzeugung
+r|domain_events|event_data|Event-Payload (alle relevanten Daten)
+r|domain_events|event_type|z.B. DocumentCreated, InvoiceApproved, EntityLinked
+r|domain_events|metadata|Zusätzliche Metadaten (IP, User-Agent, etc.)
+r|domain_events|sequence_number|Sequenznummer innerhalb des Aggregates (für Ordering)
+r|domain_events|user_id|User der das Event ausgelöst hat (null = System)
+r|dunning_records|b2b_pauschale_claimed|EUR40 Pauschale nach §288 Abs. 5 BGB
+r|dunning_records|is_b2b|B2B: +9% Zinsen, B2C: +5% Zinsen
+r|dunning_records|mahnstopp|Stoppt automatische Mahnung
+r|dunning_stage_configs|action_type|email, letter, phone, escalation
+r|dunning_stage_configs|fee_amount|Mahngebuehr in EUR
+r|dunning_stage_configs|stage_name|z.B. Zahlungserinnerung, 1. Mahnung
+r|dunning_stage_configs|stage_number|1-basiert: 1=erste Stufe
+r|dunning_stage_configs|template_id|Template-ID fuer Dokument-Generierung
+r|dunning_stage_configs|trigger_days_after_due|Tage nach Faelligkeit
+r|encrypted_field_meta||Metadaten fuer Field-Level Encryption (DSGVO Art. 32)
+r|encrypted_field_meta|column_name|Name der verschluesselten Spalte
+r|encrypted_field_meta|encryption_algorithm|Verschluesselungsalgorithmus
+r|encrypted_field_meta|encryption_key_id|Identifikator des verwendeten Schluessels
+r|encrypted_field_meta|key_version|Version des Encryption Keys
+r|encrypted_field_meta|rotated_at|Zeitpunkt der letzten Key-Rotation
+r|encrypted_field_meta|row_count|Anzahl der mit diesem Key verschluesselten Zeilen
+r|encrypted_field_meta|status|Status: active, rotating, deprecated
+r|encrypted_field_meta|table_name|Name der Tabelle mit verschluesselter Spalte
+r|entity_seasonal_patterns|affected_months|Betroffene Monate, z.B. [12, 1, 2]
+r|entity_seasonal_patterns|avg_delay_adjustment|Multiplikator fuer durchschnittliche Verzoegerung
+r|entity_seasonal_patterns|confidence|Konfidenz 0.0-1.0
+r|entity_seasonal_patterns|pattern_type|z.B. holiday_slowdown, summer_slowdown, periodic_variation
+r|entity_seasonal_patterns|sample_count|Anzahl zugrunde liegender Datenpunkte
+r|event_log||Event Bus Historie für Audit und Replay
+r|event_log|correlation_id|Korrelations-ID
+r|event_log|event_id|Eindeutige Event-ID
+r|event_log|event_type|Event-Typ
+r|event_log|handler_count|Anzahl Handler
+r|event_log|payload|Event-Payload
+r|event_log|processed_at|Verarbeitungszeitpunkt
+r|event_log|processed|Wurde verarbeitet?
+r|event_log|source|Quelle des Events
+r|event_log|space_id|Privat-Space-ID
+r|event_log|user_id|Benutzer-ID
+r|event_snapshots|aggregate_id|ID des Aggregates
+r|event_snapshots|aggregate_type|z.B. Document, Invoice, Entity
+r|event_snapshots|created_at|Zeitpunkt der Snapshot-Erzeugung
+r|event_snapshots|sequence_number|Sequenznummer bis zu der der Snapshot gültig ist
+r|event_snapshots|state|Vollständiger State des Aggregates
+r|event_snapshots|version|Snapshot-Version (für Schema-Evolution)
+r|external_enrichment_results|cached_until|Ablaufdatum des Cache (TTL)
+r|external_enrichment_results|confidence|Confidence-Score (0.0 - 1.0)
+r|external_enrichment_results|created_at|Zeitpunkt der Anfrage
+r|external_enrichment_results|enriched_data|Extrahierte und normalisierte Daten
+r|external_enrichment_results|entity_id|Verknüpfter Geschäftspartner
+r|external_enrichment_results|error_message|Fehlermeldung bei failed Status
+r|external_enrichment_results|raw_data|Raw API Response (für Debugging/Audit)
+r|external_enrichment_results|source_url|URL zur Datenquelle (falls vorhanden)
+r|external_enrichment_results|source|z.B. handelsregister, creditreform, schufa, northdata
+r|external_enrichment_results|status|pending, completed, failed, cached
+r|external_enrichment_results|updated_at|Zeitpunkt der letzten Aktualisierung
+r|finance_document_history|action|created, updated, deleted, restored, category_changed, year_changed, etc.
+r|finance_document_history|changed_fields|List of changed fields
+r|finance_document_history|description|Human-readable description of the change
+r|finance_document_history|ip_address|User IP address
+r|finance_document_history|metadata|Additional context information
+r|finance_document_history|new_values|New values (for updates)
+r|finance_document_history|old_values|Previous values (for updates)
+r|finance_document_history|user_agent|Browser/Client info
+r|financial_goal_contributions||Beitraege zu finanziellen Zielen
+r|financial_goal_contributions|amount|Beitragsbetrag in EUR
+r|financial_goal_contributions|contribution_date|Datum des Beitrags
+r|financial_goal_contributions|linked_transaction_id|Verknüpfte Transaktion falls automatisch
+r|financial_goal_contributions|note|Optionale Notiz
+r|financial_goal_contributions|source_description|Beschreibung der Quelle
+r|financial_goal_contributions|source_type|Quelle (manual, automatic, transfer)
+r|financial_goals||Finanzielle Ziele mit Progress-Tracking
+r|financial_goals|auto_update_enabled|Automatische Fortschrittsaktualisierung?
+r|financial_goals|color|Farbe für UI
+r|financial_goals|completed_at|Zeitpunkt der Zielerreichung
+r|financial_goals|current_value|Aktueller Betrag
+r|financial_goals|description|Beschreibung
+r|financial_goals|goal_type|Typ des Ziels
+r|financial_goals|icon|Icon für UI
+r|financial_goals|is_on_track|Liegt das Ziel im Plan?
+r|financial_goals|last_auto_update|Letzte automatische Aktualisierung
+r|financial_goals|linked_assets|Verknüpfte Assets als JSON (z.B. [{'type': 'investment', 'id': '...'}])
+r|financial_goals|monthly_savings_required|Erforderliche monatliche Sparrate
+r|financial_goals|months_remaining|Verbleibende Monate bis Zieldatum
+r|financial_goals|name|Name des Ziels
+r|financial_goals|notify_on_delay|Benachrichtigung bei Verzögerung?
+r|financial_goals|notify_on_milestone|Benachrichtigung bei Meilensteinen?
+r|financial_goals|priority|Priorität (1=hoechste)
+r|financial_goals|progress_percent|Fortschritt in Prozent (0-100)
+r|financial_goals|projected_completion_date|Prognostiziertes Erreichen basierend auf aktuellem Tempo
+r|financial_goals|target_date|Zieldatum
+r|financial_goals|target_value|Zielbetrag in EUR
+r|fraud_alerts||Betrugs-Warnungen aus Anomalieerkennung
+r|fraud_alerts|anomaly_details|Details zur erkannten Anomalie
+r|fraud_alerts|confidence|Konfidenz der Erkennung (0.0-1.0)
+r|fraud_alerts|evidence|Beweismaterial (Dokumente, Transaktionen)
+r|fraud_alerts|invoice_id|ID der betroffenen Rechnung
+r|fraud_alerts|recommended_actions|Empfohlene Aktionen
+r|fraud_alerts|risk_score|Risiko-Score (0.0-1.0)
+r|fraud_alerts|similar_cases|Referenzen zu ähnlichen Faellen
+r|gl_accounts|account_class|Kontenklasse 0-9
+r|gl_accounts|account_name|Kontobezeichnung
+r|gl_accounts|account_number|Kontonummer (z.B. 1200)
+r|gl_accounts|default_tax_code|Standard BU-Schluessel
+r|gl_accounts|is_custom|True = Custom Account
+r|gobd_archive_integrity_checks||GoBD Integritaetspruefungen fuer Dokument-Archive
+r|gobd_archive_integrity_checks|check_type|scheduled, manual, repair_verification
+r|gobd_audit_chain||GoBD Audit-Chain: Blockchain-aehnliche verkettete Ereignis-Protokollierung
+r|gobd_audit_chain|combined_hash|SHA-256(previous_hash + content_hash)
+r|gobd_audit_chain|content_hash|SHA-256 Hash des Ereignis-Inhalts
+r|gobd_audit_chain|event_data|Ereignis-Payload (keine PII!)
+r|gobd_audit_chain|event_type|Typ des Ereignisses (AuditChainEventType)
+r|gobd_audit_chain|previous_hash|SHA-256 Hash des vorherigen Eintrags (NULL fuer Genesis)
+r|gobd_audit_chain|sequence_number|Lueckenlose Sequenznummer (startet bei 1)
+r|gobd_audit_chain|tsa_provider|Name des TSA-Providers
+r|gobd_audit_chain|tsa_timestamp|RFC 3161 Zeitstempel von TSA
+r|gobd_audit_chain|tsa_token|Base64-encoded TSA Response Token
+r|gobd_audit_chain|user_id|Benutzer der das Ereignis ausgeloest hat
+r|gobd_retention_deletion_requests||GoBD Loeschanfragen fuer abgelaufene Dokumente
+r|gobd_retention_deletion_requests|status|pending, approved, rejected, executed
+r|gobd_retention_policies||GoBD Aufbewahrungsrichtlinien pro Dokumentkategorie
+r|gobd_retention_policies|approval_roles|Rollen die Loeschung freigeben koennen
+r|gobd_retention_policies|auto_delete_after_expiry|Automatisch loeschen nach Ablauf (GEFAEHRLICH!)
+r|gobd_retention_policies|critical_days_before|Tage vor Ablauf fuer kritische Warnung
+r|gobd_retention_policies|document_category|Dokumentkategorie: invoice, contract, etc.
+r|gobd_retention_policies|legal_basis|Gesetzliche Grundlage: §147 AO, §257 HGB, etc.
+r|gobd_retention_policies|notification_recipients|User-IDs oder Rollen fuer Benachrichtigungen
+r|gobd_retention_policies|require_approval_for_delete|Freigabe vor Loeschung erforderlich
+r|gobd_retention_policies|retention_years|Aufbewahrungsdauer in Jahren
+r|gobd_retention_policies|warning_days_before|Tage vor Ablauf fuer erste Warnung
+r|gobd_tsa_configs||RFC 3161 TSA-Provider Konfiguration fuer qualifizierte Zeitstempel
+r|gobd_tsa_configs|auth_type|none, basic, certificate
+r|gobd_tsa_configs|credentials_vault_key|Key im Vault fuer Credentials
+r|gobd_tsa_configs|provider_type|rfc3161, qualified_eidas
+r|graph_edges|edge_type|ISSUED_TO, CONTAINS, PAID_VIA, BELONGS_TO, LINKED_TO
+r|graph_edges|properties|Kanten-Eigenschaften (z.B. confidence, created_by)
+r|graph_edges|source_id|UUID des Source-Objekts
+r|graph_edges|source_type|Entity-Typ: entity, document, invoice, bank_account
+r|graph_edges|target_id|UUID des Target-Objekts
+r|graph_edges|target_type|Entity-Typ: entity, document, invoice, bank_account
+r|graph_edges|weight|Gewichtung für Graph-Algorithmen (PageRank, etc.)
+r|inbound_webhook_events||Inbound webhook events from external providers (DATEV, carriers)
+r|inbound_webhook_events|action|create, update, delete, status_change
+r|inbound_webhook_events|config_id|ERP-Verbindung (fuer DATEV), nullable fuer Carrier-Provider
+r|inbound_webhook_events|event_id|Externe Event-ID (Idempotenz)
+r|inbound_webhook_events|event_type|Provider-spezifischer Event-Typ
+r|inbound_webhook_events|external_ref|Tracking-Nr, Rechnungs-Nr, etc.
+r|inbound_webhook_events|internal_event_type|EventType-Wert nach Mapping
+r|inbound_webhook_events|payload_hash|SHA-256 Hash des Payloads
+r|inbound_webhook_events|payload_preview|Sanitized Preview (keine PII)
+r|inbound_webhook_events|provider|datev, dhl, dpd, ups, gls
+r|inbound_webhook_events|task_id|Celery Task-ID
+r|integration_configs|company_id|Mandant, zu dem diese Integration gehört
+r|integration_configs|config|Integrationsspezifische Konfigurationsdaten (ohne Geheimnisse)
+r|integration_configs|created_at|Erstellungszeitpunkt
+r|integration_configs|display_name|Anzeigename im Dashboard (z. B. 'DATEV Rechenzentrum')
+r|integration_configs|id|Eindeutige Integrations-Konfigurations-ID
+r|integration_configs|integration_type|Typ der Integration: datev | lexware | banking | slack | email
+r|integration_configs|is_active|Gibt an, ob die Integration aktiv synchronisieren soll
+r|integration_configs|last_error_message|Fehlermeldung der letzten fehlgeschlagenen Synchronisation
+r|integration_configs|last_sync_at|Zeitpunkt der letzten abgeschlossenen Synchronisation
+r|integration_configs|last_sync_status|Ergebnis der letzten Synchronisation: success | error | partial
+r|integration_configs|sync_interval_minutes|Automatisches Sync-Intervall in Minuten (Standard: 60)
+r|integration_configs|updated_at|Letzter Änderungszeitpunkt
+r|integration_sync_logs|company_id|Mandant - denormalisiert für direkte Mandanten-Abfragen
+r|integration_sync_logs|completed_at|Abschlusszeitpunkt (None wenn noch in Bearbeitung)
+r|integration_sync_logs|duration_seconds|Laufzeit in Sekunden (berechnet bei Abschluss)
+r|integration_sync_logs|error_details|Strukturierte Fehlerdetails (Liste von Einzel-Fehlern)
+r|integration_sync_logs|id|Eindeutige Log-Eintrags-ID
+r|integration_sync_logs|integration_config_id|Zugehörige Integrations-Konfiguration
+r|integration_sync_logs|items_failed|Anzahl fehlerhafter Datensätze
+r|integration_sync_logs|items_processed|Anzahl erfolgreich verarbeiteter Datensätze
+r|integration_sync_logs|items_total|Gesamtanzahl der zur Verarbeitung vorgesehenen Datensätze
+r|integration_sync_logs|started_at|Startzeitpunkt des Sync-Laufs
+r|integration_sync_logs|status|Aktueller Status: started | success | error | partial
+r|integration_sync_logs|sync_type|Art der Synchronisation: full | incremental | manual
+r|invoice_tracking|company_id|Multi-Tenant Isolation
+r|invoice_tracking|entity_id|Verknuepfung mit BusinessEntity (Kunde/Lieferant)
+r|invoice_tracking|is_partial_payment|True wenn Teilzahlung erwartet/erfolgt
+r|invoice_tracking|net_payment_days|Zahlungsziel netto (z.B. 30 Tage)
+r|invoice_tracking|outstanding_amount|Ausstehender Betrag (amount - paid_amount)
+r|invoice_tracking|skonto_amount|Berechneter Skonto-Betrag in EUR
+r|invoice_tracking|skonto_days|Tage nach Rechnungsdatum fuer Skonto-Berechtigung
+r|invoice_tracking|skonto_deadline|Berechnetes Skonto-Ablaufdatum
+r|invoice_tracking|skonto_percentage|Skonto-Prozentsatz (z.B. 2.0 fuer 2%)
+r|invoice_tracking|skonto_used|True wenn Skonto bei Zahlung abgezogen wurde
+r|invoice_tracking|status|Status: open, sent, paid, overdue, dunning, cancelled, partial
+r|journal_entries|confidence|Confidence 0.00-1.00
+r|journal_entries|description|Buchungsbeschreibung
+r|journal_entries|entry_number|Buchungsnummer (JE-2024-00001)
+r|journal_entries|exchange_rate|Wechselkurs
+r|journal_entries|fiscal_period|Periode 1-12
+r|journal_entries|fiscal_year|Geschaeftsjahr
+r|journal_entries|posting_date|Buchungsdatum
+r|journal_entries|source|Quelle: manual, auto_booking, import, pipeline
+r|journal_entries|total_amount|Gesamtbetrag
+r|journal_entry_lines|account_name|Kontobezeichnung
+r|journal_entry_lines|account_number|Kontonummer (SKR03/04)
+r|journal_entry_lines|cost_center|Kostenstelle
+r|journal_entry_lines|cost_object|Kostentraeger
+r|journal_entry_lines|credit_amount|Haben-Betrag
+r|journal_entry_lines|debit_amount|Soll-Betrag
+r|journal_entry_lines|line_number|Zeilennummer
+r|journal_entry_lines|tax_amount|Steuerbetrag
+r|journal_entry_lines|tax_code|DATEV BU-Schluessel
+r|journal_entry_lines|tax_rate|Steuersatz in Prozent
+r|journal_entry_lines|text|Buchungstext
+r|key_rotation_logs||Audit-Protokoll fuer Encryption Key-Rotation
+r|key_rotation_logs|column_name|Name der Spalte
+r|key_rotation_logs|completed_at|Ende der Rotation
+r|key_rotation_logs|error_message|Fehlermeldung bei fehlgeschlagener Rotation
+r|key_rotation_logs|new_key_version|Neue Key-Version
+r|key_rotation_logs|old_key_version|Vorherige Key-Version
+r|key_rotation_logs|rows_processed|Bisher verarbeitete Zeilen
+r|key_rotation_logs|rows_total|Gesamtzahl zu verarbeitender Zeilen
+r|key_rotation_logs|started_at|Start der Rotation
+r|key_rotation_logs|status|Status: pending, in_progress, completed, failed
+r|key_rotation_logs|table_name|Name der Tabelle
+r|life_events|checklist|Array von Checklist-Items: [{task, completed, due_date, category}]
+r|life_events|company_id|Multi-Tenant Company
+r|life_events|completed_at|Zeitpunkt der Fertigstellung
+r|life_events|created_at|Zeitpunkt der Erstellung/Detection
+r|life_events|description|Detaillierte Beschreibung
+r|life_events|detection_confidence|Confidence-Score der Auto-Detection (0.0 - 1.0)
+r|life_events|detection_source|Quelle der Detection (z.B. document_classifier, user_input)
+r|life_events|event_date|Datum des Ereignisses (falls bekannt)
+r|life_events|event_type|birth, marriage, divorce, home_purchase, job_change, retirement, inheritance, etc.
+r|life_events|financial_impact|Finanzielle Auswirkungen: {tax_implications, insurance_changes, pension_impact, etc.}
+r|life_events|recommendations|Array von Empfehlungen: [{type, title, description, priority, action_url}]
+r|life_events|related_document_ids|Array von Document-IDs die zu diesem Event gehören
+r|life_events|status|detected, acknowledged, in_progress, completed, cancelled
+r|life_events|title|Event-Titel (z.B. "Hauskauf in München")
+r|life_events|updated_at|Zeitpunkt der letzten Aktualisierung
+r|life_events|user_id|Benutzer dem das Event zugeordnet ist
+r|llm_cache||Semantisches LLM-Antwort-Caching
+r|llm_cache|expires_at|Ablaufzeitpunkt
+r|llm_cache|extra_data|Zusätzliche Metadaten
+r|llm_cache|hit_count|Anzahl Cache-Hits
+r|llm_cache|last_hit_at|Zeitpunkt des letzten Hits
+r|llm_cache|latency_ms|Original-Antwortzeit in Millisekunden
+r|llm_cache|model_version|Modell-Version
+r|llm_cache|model|Verwendetes Modell
+r|llm_cache|prompt_embedding|Embedding-Vektor für semantische Suche
+r|llm_cache|prompt_hash|SHA-256 Hash des normalisierten Prompts
+r|llm_cache|prompt_text|Originaler Prompt-Text
+r|llm_cache|response|LLM-Antwort
+r|llm_cache|temperature|Verwendete Temperature
+r|llm_cache|token_count_prompt|Token-Anzahl im Prompt
+r|llm_cache|token_count_response|Token-Anzahl in der Antwort
+r|mahn_tasks|status|pending, in_progress, completed, snoozed, cancelled
+r|mahn_tasks|task_type|reminder, escalate, phone_call, review, collection
+r|mahnung_history|action_type|reminder_sent, escalated, phone_call, payment_received, etc.
+r|mahnung_history|mahn_stufe|Mahnstufe zum Zeitpunkt der Aktion
+r|mahnung_history|outcome|success, failed, pending, etc.
+r|merkle_tree_nodes|entry_count|Anzahl Audit-Einträge in diesem Teilbaum
+r|merkle_tree_nodes|hash_value|SHA-256 Hash dieses Knotens (hex-encoded)
+r|merkle_tree_nodes|left_child_hash|Hash des linken Kindknotens (null bei Blättern)
+r|merkle_tree_nodes|level|Baum-Ebene (0 = Root, höhere Werte = Blätter)
+r|merkle_tree_nodes|position|Position in der Ebene (0-based index)
+r|merkle_tree_nodes|right_child_hash|Hash des rechten Kindknotens (null bei Blättern)
+r|merkle_tree_nodes|tree_id|Tree-Identifier (z.B. "audit_2026_01" für Januar 2026)
+r|notification_message_templates|channels|JSON-Array mit unterstuetzten Notification-Channels
+r|notification_message_templates|variables|JSON mit required/optional Variablen
+r|notification_rules||Benutzerdefinierte Notification-Regeln für Events
+r|notification_rules|actions|Liste von auszuführenden Aktionen
+r|notification_rules|conditions|JSON-Bedingungen mit Operatoren (AND, OR, NOT)
+r|notification_rules|cooldown_minutes|Mindestabstand zwischen Benachrichtigungen
+r|notification_rules|event_source|Optional: Quelle filtern (z.B. privat, business)
+r|notification_rules|event_type|Event-Typ z.B. document.ocr_completed, insurance.deadline_approaching
+r|notification_rules|max_per_day|Maximale Anzahl pro Tag (NULL = unbegrenzt)
+r|notification_rules|quiet_hours_end|Ende der Ruhezeit (z.B. 08:00)
+r|notification_rules|quiet_hours_start|Start der Ruhezeit (z.B. 22:00)
+r|ocr_backend_performance||Aggregierte OCR-Backend Performance für Confidence-Tuning
+r|ocr_correction_feedbacks||OCR-Korrekturen für Self-Learning und Confidence-Kalibrierung
+r|odoo_ai_feedback||AI feedback pushed to Odoo (risk scores, suggestions)
+r|odoo_ai_feedback|connection_id|FK to erp_connections (deferred - table may not exist)
+r|odoo_ai_feedback|feedback_data|The feedback data (sanitized)
+r|odoo_ai_feedback|feedback_type|risk_score, payment_suggestion, skonto_prediction
+r|odoo_ai_feedback|odoo_field|Target field in Odoo
+r|odoo_ai_feedback|odoo_record_id|ID of updated record in Odoo
+r|odoo_ai_feedback|odoo_response|Sanitized response
+r|odoo_sync_status||Extended sync status per data type for Odoo
+r|odoo_sync_status|connection_id|FK to erp_connections (deferred - table may not exist)
+r|odoo_sync_status|data_type|projects, timesheet, inventory, products, etc.
+r|odoo_sync_status|is_paused|Paused due to errors
+r|odoo_sync_status|last_sync_cursor|Cursor/offset for incremental sync
+r|odoo_sync_status|sync_state|Additional state data
+r|odoo_webhook_events||Odoo webhook events for idempotent processing
+r|odoo_webhook_events|action|create, update, delete
+r|odoo_webhook_events|connection_id|FK to erp_connections (deferred - table may not exist)
+r|odoo_webhook_events|event_id|Odoo webhook event ID
+r|odoo_webhook_events|event_type|customer, supplier, invoice, payment, product, etc.
+r|odoo_webhook_events|odoo_record_id|ID of record in Odoo
+r|odoo_webhook_events|payload_hash|SHA-256 hash of payload
+r|odoo_webhook_events|payload_preview|Sanitized preview (no PII)
+r|odoo_webhook_events|task_id|Celery task ID
+r|parallel_approvals|approval_key|Eindeutiger Key fuer diese Genehmigung
+r|parallel_approvals|approvers|Liste der Genehmiger-User-IDs
+r|parallel_approvals|consensus_type|all, majority, any, unanimous, quorum
+r|parallel_approvals|element_id|BPMN Element-ID
+r|parallel_approvals|final_decision|approved, rejected
+r|parallel_approvals|quorum_count|Mindestanzahl bei quorum-Typ
+r|parallel_approvals|status|pending, approved, rejected, cancelled, expired
+r|parallel_approvals|votes|Dict: user_id -> {decision, comment, voted_at}
+r|partition_management||Verwaltung und Tracking aller Tabellen-Partitionen (Phase 1.2)
+r|partition_management|archived_at|Zeitpunkt der Archivierung
+r|partition_management|is_archived|Partition wurde detached (nicht mehr in Abfragen)
+r|partition_management|partition_name|Eindeutiger Name der Partition
+r|partition_management|range_end|Ende des Partitionsbereichs (exklusiv)
+r|partition_management|range_start|Beginn des Partitionsbereichs (inklusive)
+r|partition_management|row_count|Ungefaehre Zeilenanzahl (periodisch aktualisiert)
+r|partition_management|size_bytes|Speicherverbrauch in Bytes (periodisch aktualisiert)
+r|partition_management|table_name|Name der partitionierten Parent-Tabelle
+r|payment_transactions|amount|Zahlungsbetrag in EUR
+r|payment_transactions|bank_transaction_id|Verknuepfung mit Bank-Transaktion
+r|payment_transactions|company_id|Multi-Tenant Isolation
+r|payment_transactions|notes|Interne Notizen
+r|payment_transactions|payment_method|bank_transfer, credit_card, cash, sepa_direct_debit, paypal
+r|payment_transactions|payment_reference|Verwendungszweck/Referenz
+r|payment_transactions|reconciliation_status|pending, matched, manual, failed
+r|payment_transactions|skonto_deducted|Abgezogener Skonto-Betrag
+r|pending_actions||Ausstehende Aktionen fuer Genehmigung
+r|phone_call_logs|outcome|reached, not_reached, voicemail, callback_requested, payment_promised, dispute_raised
+r|portfolio_snapshots||Monatliche Vermögenssnapshots für historische Analyse
+r|portfolio_snapshots|asset_allocation|Vermögensverteilung als JSON (z.B. {'real_estate': 45, 'investments': 30, ...})
+r|portfolio_snapshots|debt_to_assets_ratio|Verschuldungsgrad (Liabilities/Assets)
+r|portfolio_snapshots|liquidity_ratio|Liquiditaetsquote (Cash/Liabilities)
+r|portfolio_snapshots|net_worth_change_absolute|Absolute Änderung zum Vormonat in EUR
+r|portfolio_snapshots|net_worth_change_percent|Prozentuale Änderung zum Vormonat
+r|portfolio_snapshots|net_worth|Nettovermoegen (Assets - Liabilities)
+r|portfolio_snapshots|snapshot_date|Datum des Snapshots
+r|portfolio_snapshots|total_assets|Summe aller Vermögenswerte
+r|portfolio_snapshots|total_cash|Barvermoegen und Bankguthaben
+r|portfolio_snapshots|total_investments|Gesamtwert Investments (Aktien, ETFs, Fonds)
+r|portfolio_snapshots|total_liabilities|Summe aller Verbindlichkeiten
+r|portfolio_snapshots|total_loans|Sonstige Kredite (Auto, Konsum)
+r|portfolio_snapshots|total_mortgages|Hypotheken und Immobilienkredite
+r|portfolio_snapshots|total_other_assets|Sonstige Vermögenswerte
+r|portfolio_snapshots|total_other_liabilities|Sonstige Verbindlichkeiten
+r|portfolio_snapshots|total_real_estate|Gesamtwert Immobilien
+r|portfolio_snapshots|total_vehicles|Gesamtwert Fahrzeuge
+r|privat_coverage_gaps||Versicherungslücken-Analyse
+r|privat_coverage_gaps|current_coverage|Aktuelle Deckungssumme
+r|privat_coverage_gaps|estimated_monthly_cost|Geschätzte Monatskosten
+r|privat_coverage_gaps|extra_data|Zusätzliche Metadaten
+r|privat_coverage_gaps|gap_amount|Differenz zur Empfehlung
+r|privat_coverage_gaps|gap_type|Lückentyp
+r|privat_coverage_gaps|insurance_id|Referenz auf Versicherung
+r|privat_coverage_gaps|insurance_type|Versicherungstyp
+r|privat_coverage_gaps|is_resolved|Behoben?
+r|privat_coverage_gaps|last_analysis_at|Letzte Analyse
+r|privat_coverage_gaps|priority_score|Prioritäts-Score 1-100
+r|privat_coverage_gaps|recommendation|Handlungsempfehlung
+r|privat_coverage_gaps|recommended_coverage|Empfohlene Deckungssumme
+r|privat_coverage_gaps|resolved_at|Behebungszeitpunkt
+r|privat_coverage_gaps|risk_description|Risikobeschreibung
+r|privat_coverage_gaps|severity|Schweregrad
+r|privat_early_warnings||Proaktive Warnungen bei zukuenftigen Problemen
+r|privat_early_warnings|action_url|Link zur entsprechenden Aktion
+r|privat_early_warnings|breach_date|Prognostiziertes Datum der Verletzung
+r|privat_early_warnings|confidence|Konfidenz der Warnung 0-1
+r|privat_early_warnings|current_value|Aktueller Wert
+r|privat_early_warnings|days_until_breach|Tage bis zur Verletzung
+r|privat_early_warnings|description|Detaillierte Beschreibung
+r|privat_early_warnings|expires_at|Warnung verfaellt
+r|privat_early_warnings|extra_data|Zusätzliche Metadaten
+r|privat_early_warnings|is_dismissed|Wurde die Warnung verworfen?
+r|privat_early_warnings|is_resolved|Wurde das Problem behoben?
+r|privat_early_warnings|kpi_name|Betroffener KPI
+r|privat_early_warnings|potential_impact|Geschätzter finanzieller Impact
+r|privat_early_warnings|projected_value|Projizierter Wert zum Breach-Zeitpunkt
+r|privat_early_warnings|projection_id|Zugrundeliegende Projektion
+r|privat_early_warnings|recommendation|Handlungsempfehlung
+r|privat_early_warnings|severity|Schweregrad: info, warning, critical
+r|privat_early_warnings|space_id|Referenz auf privat_spaces
+r|privat_early_warnings|threshold_name|Name des Schwellenwerts
+r|privat_early_warnings|threshold_value|Schwellenwert der überschritten wird
+r|privat_early_warnings|title|Titel der Warnung (deutsch)
+r|privat_early_warnings|warning_type|Typ: threshold_breach, trend_reversal, etc.
+r|privat_kpi_history||Tägliche KPI-Snapshots für Trend-Analyse
+r|privat_kpi_history|components|Aufschluesselung in Komponenten
+r|privat_kpi_history|extra_data|Zusätzliche Kontextdaten
+r|privat_kpi_history|kpi_name|Name des KPI (z.B. dti, financial_health_score)
+r|privat_kpi_history|kpi_unit|Einheit: percent, currency, ratio, score
+r|privat_kpi_history|kpi_value|Numerischer Wert
+r|privat_kpi_history|recorded_at|Zeitpunkt der Aufzeichnung
+r|privat_kpi_history|source|Quelle: automated, manual, recalculated
+r|privat_kpi_history|space_id|Referenz auf privat_spaces
+r|privat_projections||Vorausberechnete KPI-Projektionen
+r|privat_projections|calculated_at|Zeitpunkt der Berechnung
+r|privat_projections|confidence_overall|Gesamt-Konfidenz 0-1
+r|privat_projections|current_value|Aktueller Wert zum Berechnungszeitpunkt
+r|privat_projections|data_points_used|Anzahl historischer Datenpunkte
+r|privat_projections|extra_data|Zusätzliche Metadaten
+r|privat_projections|kpi_name|Name des projizierten KPI
+r|privat_projections|projected_values|Monatliche Projektionen: [{month, value, confidence}]
+r|privat_projections|projection_method|Methode: linear, exponential, seasonal, ensemble
+r|privat_projections|projection_months|Projektionszeitraum in Monaten (3, 6, 12)
+r|privat_projections|seasonality_detected|Wurde Saisonalitaet erkannt?
+r|privat_projections|space_id|Referenz auf privat_spaces
+r|privat_projections|threshold_breaches|Erkannte zukuenftige Schwellenwertbrueche
+r|privat_projections|trend_direction|Trendrichtung: rising, falling, stable, volatile
+r|privat_projections|trend_strength|Trendstärke 0-1 (R-squared)
+r|privat_projections|valid_until|Gültig bis
+r|privat_recurring_payments||Erkannte wiederkehrende Zahlungen
+r|privat_recurring_payments|amount_variance|Tolerierte Abweichung
+r|privat_recurring_payments|category|Kategorie
+r|privat_recurring_payments|confidence|Erkennungs-Konfidenz
+r|privat_recurring_payments|expected_amount|Erwarteter Betrag
+r|privat_recurring_payments|expected_day|Erwarteter Tag im Zyklus
+r|privat_recurring_payments|extra_data|Zusätzliche Metadaten
+r|privat_recurring_payments|frequency|Häufigkeit
+r|privat_recurring_payments|is_active|Ist aktiv?
+r|privat_recurring_payments|is_income|Ist Einnahme?
+r|privat_recurring_payments|last_occurrence|Letztes Auftreten
+r|privat_recurring_payments|linked_account_id|Verknüpftes Bankkonto
+r|privat_recurring_payments|name|Name der Zahlung
+r|privat_recurring_payments|next_expected|Nächstes erwartetes Datum
+r|privat_recurring_payments|occurrence_count|Anzahl Vorkommen
+r|privat_recurring_payments|payee|Zahlungsempfänger
+r|privat_tasks||Orchestrator-generierte Tasks fuer Benutzeraktionen im Privat-Modul
+r|privat_tasks|category|Kategorie: financial, insurance, property, loan, general
+r|privat_tasks|description|Ausfuehrliche Beschreibung
+r|privat_tasks|due_date|Faelligkeitsdatum
+r|privat_tasks|extra_data|Zusaetzliche Metadaten vom Orchestrator
+r|privat_tasks|priority|Prioritaet: low, medium, high, critical
+r|privat_tasks|related_entity_id|ID der verknuepften Entitaet
+r|privat_tasks|related_entity_type|Typ der verknuepften Entitaet: property, loan, insurance
+r|privat_tasks|result_action_taken|Getroffene Massnahme
+r|privat_tasks|result_notes|Notizen nach Abschluss
+r|privat_tasks|source_action_id|ID der ausloesenden OrchestrationAction
+r|privat_tasks|source_module|Ausloesendes Modul: financial_health, insurance, loan, etc.
+r|privat_tasks|source_reason|Grund fuer Task-Erstellung
+r|privat_tasks|space_id|Referenz auf privat_spaces
+r|privat_tasks|status|Status: pending, in_progress, completed, cancelled, snoozed
+r|privat_tasks|task_type|Typ: review, action, follow_up, reminder, approval
+r|privat_tasks|title|Kurzer Titel der Aufgabe
+r|privat_tasks|user_id|Zugewiesener Benutzer
+r|proactive_action_states||Zustand proaktiver Aufgaben (erledigt/verschoben)
+r|proactive_action_states|action_id|Zusammengesetzte ID: '{action_type}:{source_id}'
+r|proactive_action_states|completed_at|Zeitpunkt der Erledigung
+r|proactive_action_states|is_completed|Aufgabe wurde als erledigt markiert
+r|proactive_action_states|snoozed_until|Aufgabe bis zu diesem Zeitpunkt unterdrücken
+r|proactive_insights||Proaktive Insights fuer Benutzer
+r|procedure_documentation_versions||GoBD Verfahrensdokumentation: Automatisch generierte und versionierte Systemdokumentation
+r|procedure_documentation_versions|change_summary|Zusammenfassung der Aenderungen
+r|procedure_documentation_versions|content|Verfahrensdokumentation als JSON
+r|procedure_documentation_versions|version|Semantic Version (z.B. 2.1.0)
+r|processing_jobs|message|Status-Nachricht
+r|processing_jobs|progress|Fortschritt 0-100%
+r|rate_limit_violations|limit_type|minute, hour, day, burst
+r|retention_settings||GoBD Aufbewahrungsfristen-Konfiguration pro Dokumentkategorie
+r|retention_settings|category|z.B. invoice, contract, correspondence
+r|retention_settings|display_name|Anzeigename auf Deutsch
+r|retention_settings|legal_basis|z.B. §147 AO, §257 HGB
+r|retention_settings|reminder_days_before|Tage vor Ablauf fuer Warnung
+r|rule_execution_logs|execution_time_ms|Ausfuehrungszeit in Millisekunden
+r|rule_sets|is_default|Standard-Set fuer Company
+r|rule_sets|rule_ids|Geordnete Liste der Regel-IDs
+r|saved_searches|company_id|Firma fuer Team-Sharing
+r|saved_searches|created_at|Erstellungszeitpunkt
+r|saved_searches|filters|Gespeicherter Filter-Zustand (document_type, status, date_range, etc.)
+r|saved_searches|is_default|Ist dies die Standard-Suche des Benutzers?
+r|saved_searches|is_shared|Mit Team geteilt
+r|saved_searches|last_used_at|Zeitpunkt der letzten Ausfuehrung
+r|saved_searches|name|Benutzer-definierter Name fuer die Suche
+r|saved_searches|query|Der Suchbegriff / Query String
+r|saved_searches|search_type|Suchtyp: fts, semantic, hybrid
+r|saved_searches|sort_field|Sortierfeld (created_at, relevance, etc.)
+r|saved_searches|sort_order|Sortierreihenfolge: asc oder desc
+r|saved_searches|updated_at|Letzte Aenderung
+r|saved_searches|use_count|Anzahl der Ausfuehrungen dieser Suche
+r|saved_searches|user_id|Besitzer der gespeicherten Suche
+r|shipment_events||Tracking-Events fuer Sendungen
+r|shipments||Sendungsverfolgung fuer Paketdienste (DHL, DPD, Hermes, UPS, GLS, FedEx, Deutsche Post)
+r|skonto_recommendations||Skonto-Optimierungsempfehlungen
+r|slack_channels||Slack-Kanal-Konfiguration fuer Benachrichtigungen
+r|slack_channels|channel_id|Slack Channel ID (z.B. C01234567)
+r|slack_channels|channel_name|Kanal-Name ohne #
+r|slack_channels|channel_type|Kanal-Typ: public, private, dm
+r|slack_channels|company_id|Firmen-spezifischer Kanal (NULL = global)
+r|slack_channels|custom_icon|Custom Emoji als Icon
+r|slack_channels|include_context|Kontext-Details einschliessen
+r|slack_channels|is_default|Standard-Kanal fuer nicht-routbare Nachrichten
+r|slack_channels|mention_users|Slack User-IDs die bei Nachrichten erwaehnt werden
+r|slack_channels|min_priority|Mindest-Prioritaet: low, normal, high, urgent
+r|slack_channels|notification_types|Notification-Typen die an diesen Kanal gehen
+r|slack_message_logs||Log fuer gesendete Slack-Nachrichten
+r|slack_message_logs|message_preview|Erste 500 Zeichen
+r|slack_message_logs|message_ts|Slack Message Timestamp/ID
+r|slack_message_logs|reference_type|document, approval, workflow, etc.
+r|slack_message_logs|slack_channel_id|Slack Channel ID als Backup
+r|slack_message_logs|thread_ts|Thread Timestamp wenn Antwort
+r|slack_user_mappings||Mapping Ablage-System User <-> Slack User
+r|slack_user_mappings|dm_enabled|Direkte Nachrichten erlauben
+r|slack_user_mappings|dm_notification_types|Notification-Typen die als DM gesendet werden
+r|slack_user_mappings|is_verified|Slack-Account verifiziert
+r|slack_user_mappings|mention_on_approval|Bei Freigabe-Anfragen erwaehnen
+r|slack_user_mappings|quiet_hours_end|Ruhezeit Ende (HH:MM)
+r|slack_user_mappings|quiet_hours_start|Ruhezeit Start (HH:MM)
+r|slack_user_mappings|slack_user_id|Slack User ID (z.B. U01234567)
+r|slack_user_mappings|slack_username|Slack Display Name
+r|tax_advisor_access_logs||GoBD Steuerberater-Zugriffsprotokolle (revisionssicher)
+r|tax_advisor_access_logs|action|document_view, archive_export, integrity_check
+r|tax_advisor_access_logs|resource_type|document, archive, procedure_doc
+r|tax_advisor_invites||GoBD Steuerberater-Einladungen fuer temporaeren Prueferzugang
+r|tax_advisor_invites|accepted_user_id|Erstellter Benutzer nach Akzeptierung
+r|tax_advisor_invites|access_duration_days|Zugang in Tagen (Standard: 30)
+r|tax_advisor_invites|access_scope|Eingeschraenkter Zugriff (Zeitraum, Dokumenttypen)
+r|tax_advisor_invites|company_id|Firma, fuer die der Zugang gilt
+r|tax_advisor_invites|email|E-Mail des Steuerberaters
+r|tax_advisor_invites|expires_at|Ablaufdatum des Invite-Tokens
+r|tax_advisor_invites|full_name|Name des Steuerberaters
+r|tax_advisor_invites|invited_by_id|Einladender Admin
+r|tax_advisor_invites|status|pending, accepted, expired, revoked
+r|tax_advisor_invites|tax_advisor_id|Steuerberater-ID der Kammer
+r|tax_advisor_invites|tax_firm_name|Steuerkanzlei
+r|tax_advisor_invites|token_hash|SHA-256 Hash des Invite-Tokens
+r|tax_periods|period_number|Monat 1-12 oder Quartal 1-4
+r|tax_periods|period_type|monthly oder quarterly
+r|tax_periods|total_input_vat|Vorsteuer
+r|tax_periods|total_output_vat|Umsatzsteuer
+r|tax_periods|vat_payable|Zahllast
+r|team_activities|activity_type|member_joined, member_left, document_shared, etc.
+r|team_documents|permission|read, comment, edit, full
+r|team_invitations|email|Fuer externe Einladungen
+r|team_invitations|status|pending, accepted, declined, expired, cancelled
+r|team_memberships|allocation_percent|Prozentuale Zuordnung zum Team
+r|team_memberships|department|Herkunfts-Abteilung (bei Projektteams)
+r|team_memberships|is_primary|Hauptteam des Users
+r|team_memberships|left_at|Wann Team verlassen
+r|team_memberships|reason|Grund fuer Mitgliedschaft
+r|team_memberships|role|member, lead, admin, deputy, observer
+r|team_memberships|title|Funktion/Titel im Team
+r|team_memberships|valid_until|NULL = unbegrenzt
+r|teams|code|Kurzcode (z.B. DEV, SALES)
+r|teams|level|Hierarchie-Ebene (0 = Root)
+r|teams|path|Materialized Path fuer schnelle Hierarchie-Queries
+r|teams|status|active, inactive, archived, pending
+r|teams|team_type|department, project, working_group, committee, virtual
+r|teams|visibility|public, private, company
+r|tenant_configs|branding|Branding-Konfiguration (z.B. {'logo_url': '...', 'primary_color': '#...'})
+r|tenant_configs|features|Feature-Flags (z.B. {'ocr_enabled': true, 'max_users': 50})
+r|tenant_configs|is_active|Mandant aktiv (false = deaktiviert, keine Zugriffe)
+r|tenant_configs|quotas|Kontingente (z.B. {'documents_per_month': 10000, 'storage_gb': 100})
+r|tenant_rate_limits|batch_requests_per_hour|Batch-Operations Limit
+r|tenant_rate_limits|burst_limit|Max Requests in 1 Sekunde
+r|tenant_rate_limits|endpoint_pattern|Endpoint-Pattern (z.B. /api/v1/documents/*)
+r|tenant_rate_limits|export_requests_per_day|Export-Limit pro Tag
+r|tenant_rate_limits|is_custom|True wenn manuell angepasst
+r|tenant_rate_limits|ocr_requests_per_hour|OCR-spezifisches Limit
+r|tenant_usage_metrics|endpoint_breakdown|Requests pro Endpoint
+r|tenant_usage_metrics|period_type|hourly, daily, monthly
+r|users|access_scope|Eingeschraenkter Zugriff (z.B. nur bestimmte Firmen, Zeitraeume)
+r|users|access_until|Zeitliche Begrenzung des Zugangs (fuer Steuerberater/Pruefer)
+r|users|invited_at|Zeitpunkt der Einladung
+r|users|invited_by_id|Benutzer, der diesen Account eingeladen hat
+r|validation_analytics|confidence_improvement|avg_after - avg_before
+r|validation_analytics|hour|Stunde (0-23) fuer stuendliche Granularitaet, NULL fuer taeglich
+r|validation_field_reviews|bounding_box|{"x": 0, "y": 0, "width": 100, "height": 20, "page": 1}
+r|validation_field_reviews|field_key|z.B. invoice_number, iban, total_amount
+r|validation_field_reviews|field_label|Deutscher Anzeigename
+r|validation_field_reviews|field_type|z.B. text, number, date, currency, iban
+r|validation_field_reviews|format_issues|Format-spezifische Probleme
+r|validation_field_reviews|umlaut_issues|Umlaut-spezifische Probleme
+r|validation_field_reviews|validation_errors|Liste von Validierungsfehlern
+r|validation_field_reviews|validation_status|pending, validated, error, skipped
+r|validation_queue_items|fields_below_threshold|Anzahl Felder mit Confidence unter Schwellenwert
+r|validation_queue_items|priority|1 = hoechste Prioritaet
+r|validation_queue_items|rejection_category|z.B. ocr_error, missing_data, wrong_format
+r|validation_queue_items|started_at|Wann wurde mit der Validierung begonnen
+r|validation_queue_items|validation_notes|Notizen vom Validator
+r|validation_rules|conditions|z.B. {"confidence_below": 0.85, "fields": ["iban"]}
+r|validation_rules|is_system|System-Regeln koennen nicht geloescht werden
+r|validation_rules|priority|1 = hoechste Prioritaet, wird an Queue-Items vererbt
+r|validation_sample_configs|min_confidence_threshold|Dokumente unter diesem Wert werden immer validiert
+r|webhook_endpoints||Registrierte Outbound-Webhook-Endpoints pro Mandant
+r|webhook_endpoints|company_id|Mandant (Multi-Tenancy)
+r|webhook_endpoints|description|Optionale Beschreibung des Endpoints
+r|webhook_endpoints|event_types|Abonnierte Event-Typen, z.B. ["document.created"]. Leer = alle Events.
+r|webhook_endpoints|headers|Optionale benutzerdefinierte HTTP-Header fuer Zustellungen
+r|webhook_endpoints|id|Eindeutiger Endpoint-Bezeichner
+r|webhook_endpoints|is_active|Aktiv/Inaktiv-Schalter fuer Soft-Delete
+r|webhook_endpoints|retry_policy|Retry-Richtlinie: {max_retries, backoff_factor, timeout_seconds}
+r|webhook_endpoints|secret_hash|HMAC-SHA256 Hash des Webhook-Secrets (nie Klartext)
+r|webhook_endpoints|url|Ziel-URL fuer Webhook-Zustellungen (max 2000 Zeichen)
+r|webhook_event_log||Unveraenderbares Event-Journal fuer Webhook-Replay
+r|webhook_event_log|company_id|Mandant fuer Multi-Tenancy-Isolation
+r|webhook_event_log|event_type|Event-Typ, z.B. document.created, invoice.updated
+r|webhook_event_log|id|Eindeutiger Event-Bezeichner
+r|webhook_event_log|payload|Vollstaendiges Event-Payload fuer spaetere Replay-Zustellungen
+r|webhook_event_log|source_id|Primaerschluessel des ausloesenden Datensatzes
+r|webhook_event_log|source_table|Quell-Tabelle des Events, z.B. documents, invoices
+r|workflow_sla_definitions|alert_thresholds|Custom alert thresholds: [{percent, level, severity}]
+r|workflow_sla|alerts_sent|Liste der gesendeten Alert-Typen
+r|workflow_sla|current_alert_level|info_50, warning_75, high_90, critical_100
+r|workflow_sla|status|on_track, warning, at_risk, critical, breached
+r|workflow_stages|auto_transition_after_hours|Auto-Weiterleitung nach N Stunden
+r|workflow_stages|color|Hex-Farbe fuer UI
+r|workflow_stages|icon|Lucide Icon-Name
+r|workflow_stages|is_final|Ist dies die finale Stage?
+r|workflow_stages|required_approval|Freigabe erforderlich?
+r|workflow_stages|stage_key|Eindeutiger Key (z.B. 'eingang', 'pruefung')
+r|workflow_stages|stage_name|Deutsche Anzeige-Bezeichnung
+r|workflow_stages|stage_order|Reihenfolge der Stage (1, 2, 3, ...)
