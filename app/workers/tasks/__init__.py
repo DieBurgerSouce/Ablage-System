@@ -960,11 +960,7 @@ __all__ = [
     "poll_folder_imports_task",
     "apply_rules_to_pending_imports_task",
     "scan_import_folder_task",
-    # Phase 1.2: Partition Maintenance tasks
-    "ensure_partitions_task",
-    "archive_old_partitions_task",
-    "update_partition_stats_task",
-    "partition_health_check_task",
+    # Partition-Maintenance-Tasks entfernt (Reconcile 2026-07, Migration 276)
     # Batch 4: Include-only modules (Group B)
     # Backup tasks
     "backup_full_task",
