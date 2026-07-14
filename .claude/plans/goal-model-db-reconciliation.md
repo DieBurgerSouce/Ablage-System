@@ -1,5 +1,13 @@
 # /goal — Modell↔DB-Versöhnung & ehrlich-grüne DB-Integrationstests
 
+> ✅ **ABGESCHLOSSEN (2026-07-14, Drift-Reconcile E4):** Das Kernziel dieses Plans
+> ist erreicht und übertroffen — Live-DB ↔ Migrationskette sind in **allen 9
+> Katalog-Dimensionen exakt deckungsgleich** (Migrationen 276–279, auf Live
+> angewandt, Live-Head 279; Klon-Generalprobe + From-scratch + Doppellauf bewiesen).
+> Beweise: `docs/qa-reports/reconcile-2026-07/REPORT.md` · Risiko R9 im Vault
+> geschlossen · master = origin (Merge `4d4e6a98e`). Diese Datei bleibt als
+> Historie/Kontext erhalten.
+
 > **Zweck:** Diese Datei enthält einen kopierfertigen `/goal`-Prompt. Den Block
 > unter „PROMPT" in `/goal` einfügen. Der Rest ist Kontext/Evidenz, damit die
 > nächste Instanz ohne Archäologie startet.
