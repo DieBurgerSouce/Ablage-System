@@ -5,6 +5,7 @@ Handles authentication, database sessions, and authorization.
 All error messages in German.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -271,6 +272,21 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
+        )
+
+    # K2 (Trust-Folge, 2026-07-14): Befristete Zugaenge (z.B. tax_advisor via
+    # Einladung) tragen access_until — nach Ablauf ist JEDER API-Zugriff zu
+    # verweigern. Vorher wurde das Feld nur gesetzt, aber im Auth-Pfad nie
+    # geprueft: abgelaufene Steuerberater-Konten behielten vollen Zugriff.
+    if user.access_until is not None and user.access_until < datetime.now(timezone.utc):
+        logger.warning(
+            "expired_user_api_access_blocked",
+            user_id=str(user.id),
+            access_until=user.access_until.isoformat(),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Der befristete Zugang ist abgelaufen",  # Temporary access expired
         )
 
     # RLS-USER-KONTEXT (Root-Cause-Fix RLS-light): Setzt app.current_user_id /
