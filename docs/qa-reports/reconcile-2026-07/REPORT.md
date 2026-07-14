@@ -151,9 +151,9 @@ Die frühere „users-Default-Kosmetik" ist durch 278/G4 **beseitigt** (kein Whi
 |---|---|---|
 | F-REC-1 | **Zweite Drift-Ebene unter der Phönix-Karte** (Spalten-Attribute, FK-ON-DELETE, Indexe, Kommentare, 1 Funktion) — Gate 1.5 „Volle Parität" → Migration 278 generiert | ✅ behoben + bewiesen |
 | F-REC-2 | `feature_toggle_history`-Schreibpfad schluckte Fehler still (try/except) — der Audit-Trail fehlte MONATE unbemerkt. Empfehlung: solche „best-effort"-Writes mit Metrik/Alert versehen | 🟡 Folgearbeit (Backlog) |
-| F-REC-3 | Host-Port 5434 gehört inzwischen `claude-hub-postgres`; `.env`-`DATABASE_URL` (localhost:5434) ist **stale** und zeigt auf eine FREMDE DB. Doku/CLAUDE.md „PostgreSQL :5434" überholt. Empfehlung: `.env`-Eintrag korrigieren/entfernen | 🟡 Folgearbeit (Ben) |
-| F-REC-4 | Backend-Entrypoint migriert bei jedem Neustart automatisch (Bind-Mount + RUN_MIGRATIONS-Default true) — im Reconcile-Fenster ein dokumentiertes Risiko; generell gewollt, aber F-14 (Advisory-Lock nicht-blockierend für Nicht-Migratoren) bleibt offen | dokumentiert |
-| F-REC-5 | Feature-Flags-Tabelle enthält 4 Schemathesis-Fuzzing-Leichen (Namen `0`, Keys `0/00/0…`) — kosmetisch; bei Gelegenheit aufräumen | 🟡 Backlog |
+| F-REC-3 | Host-Port 5434 gehört inzwischen `claude-hub-postgres`; `.env`-`DATABASE_URL` (localhost:5434) ist **stale** und zeigt auf eine FREMDE DB | ✅ behoben 14.07.: alle 4 stalen Host-URLs (`DATABASE_URL`/`REDIS_URL`/`CELERY_*`) auskommentiert mit Warnkommentar; compose interpoliert sie nicht (verifiziert), Container-URLs kommen aus docker-compose.yml |
+| F-REC-4 | Backend-Entrypoint migriert bei jedem Neustart automatisch (Bind-Mount + RUN_MIGRATIONS-Default true) — F-14: Nicht-Migratoren warteten nicht auf den Migrator | ✅ F-14 behoben 14.07. (`f04a5989f`): wait_for_migrations() (Lock-Vortritt + alembic-heads-Check, fail-open), live getestet („Schema auf Code-Head 279"). AKTIVIERUNG: nächster `docker compose build` (Entrypoint ist image-baked, z.B. Fenster Generalprobe 24.07.) |
+| F-REC-5 | Feature-Flags-Tabelle enthält 4 Schemathesis-Fuzzing-Leichen (Namen `0`, Keys `0/00/0…`) | ✅ behoben 14.07.: `scripts/db/cleanup_feature_flag_fuzz_20260714.sql` (Live 4→0 transaktional, History unangetastet) |
 | F-REC-6 | Wegwerf-Container-Env gewachsen: SECRET_KEY jetzt Pflicht (+Entropie-Checks in Production-Mode) — Runbook-Gotcha-Liste ergänzt (§5) | ✅ dokumentiert |
 | F-REC-7 | Generator + Katalog-Methodik (`artifacts/gen278_emit.py`, 9-Dimensionen-Diff) sind wiederverwendbar für künftige Paritäts-Checks (z.B. Quartals-Restore-Test koppeln) | Empfehlung |
 | Offen (unverändert, Phönix E1/E2) | restic-Tagesautomatik + Hetzner-Offsite-Bein | Ben |
@@ -161,3 +161,18 @@ Die frühere „users-Default-Kosmetik" ist durch 278/G4 **beseitigt** (kein Whi
 ---
 *Alle Zahlen/Zitate stammen aus real ausgeführten Kommandos dieser Session (psql, docker, pg_dump,
 pytest, curl); Artefakte unter `artifacts/`.*
+
+### Nachtrag Backlog-Session 14.07. abends
+
+- **F-PHX-P2-1** ✅ (`143da03fc`): `scripts/backup.sh`/`restore.sh` → Deprecation-Stubs (exit 1,
+  Verweis DR-Runbook; Altfassungen zielten auf DB `ablage_ocr` = leere Backups vorgetäuscht),
+  Backup-Recovery-Guide.md → Pointer, 4 Doc-Referenzen umgebogen.
+- **K2 (Trust-Folge)** ✅ (`69665151d`): `accept_invite` legt jetzt UserCompany an (viewer,
+  is_current — vorher war das StB-Konto im Multi-Tenancy-Modell funktional tot) und
+  `access_until` wird zentral in `get_current_user` enforced (403 nach Ablauf; 0 Bestandskonten
+  betroffen). 3 Tests grün; Backend neu gestartet (aktiviert auch F-REC-2-Metrik); Smoke grün
+  (Login, GET 200, OpenAPI 1990 Pfade unverändert).
+- **Docker-MCP-Leichen** ✅: 330 laufende `docker-mcp`-Container (mcp/sqlite, mcp/explorium,
+  mcp/unreal-engine — Docker-Desktop-MCP-Gateway spawnt pro Session, räumt nie ab) → 308 Stück
+  älter 6 h entfernt, 22 junge belassen (Parallel-Sessions). Root-Cause liegt im Docker-MCP-Toolkit,
+  nicht im Ablage-Stack; bei Wiederanstieg Gateway-Konfiguration prüfen.
