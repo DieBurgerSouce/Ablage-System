@@ -248,8 +248,8 @@ curl -k https://ablage.internal.company.local/api/v1/health
 ### Update installieren (Air-Gapped System)
 
 ```bash
-# Backup erstellen
-./scripts/backup.sh --full
+# Backup erstellen (restic, siehe docs/runbooks/disaster-recovery.md §1)
+bash scripts/backup/restic_backup.sh
 
 # Update entpacken
 tar -xzf ablage-system-update-1.0.0-to-1.1.0.tar.gz -C /opt/ablage-system/updates/

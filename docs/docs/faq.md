@@ -303,8 +303,8 @@ Grafana-Dashboards sind vorkonfiguriert.
 
 **Automatisches Backup**:
 ```bash
-# Daily backup um 2 AM
-0 2 * * * /opt/ablage-system/scripts/backup.sh
+# Daily backup (restic — siehe docs/runbooks/disaster-recovery.md §1)
+0 2 * * * bash /opt/ablage-system/scripts/backup/restic_backup.sh
 ```
 
 **Backup enthält**:
