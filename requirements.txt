@@ -2,7 +2,7 @@
 # Python 3.11+ required
 
 # Core Framework
-fastapi==0.121.3  # G-OpenAPI: an verifizierte Realität angeglichen; 0.110.0 inkompatibel mit pydantic 2.11
+fastapi==0.139.2  # G-OpenAPI: an verifizierte Realität angeglichen; 0.110.0 inkompatibel mit pydantic 2.11
 starlette==0.50.0  # G-OpenAPI: explizit gepinnt (fastapi 0.121 braucht <0.51); verhindert Drift
 uvicorn[standard]==0.27.0
 python-multipart==0.0.9
@@ -19,15 +19,15 @@ qwen-vl-utils>=0.0.2  # Qwen VL image processing utilities
 sentence-transformers>=2.2.2  # For multilingual-e5-large embeddings
 
 # Database & ORM
-sqlalchemy==2.0.25
+sqlalchemy==2.0.51
 alembic==1.13.1
 asyncpg==0.29.0
 pgvector==0.2.4  # PostgreSQL vector extension for semantic search
 
 # Task Queue
-celery==5.3.4
+celery==5.6.3
 celery-redbeat==2.2.0  # Redis-backed distributed Beat scheduler (HA)
-redis==5.0.1
+redis==8.0.1
 flower==2.0.1  # Celery monitoring tool
 kombu==5.3.4  # Celery messaging library
 
